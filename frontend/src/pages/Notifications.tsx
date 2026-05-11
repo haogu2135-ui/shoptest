@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { List, Typography, Tag, Button, Empty, Spin, message, Popconfirm, Space } from 'antd';
 import { BellOutlined, CheckOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -39,16 +39,7 @@ const Notifications: React.FC = () => {
   const userId = Number(localStorage.getItem('userId'));
   const { t, language } = useLanguage();
 
-  useEffect(() => {
-    if (!userId) {
-      message.warning(t('messages.loginRequired'));
-      navigate('/login');
-      return;
-    }
-    fetchNotifications();
-  }, [userId, navigate]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const res = await notificationApi.getByUser(userId);
       setNotifications(res.data);
@@ -57,7 +48,16 @@ const Notifications: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t, userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      message.warning(t('messages.loginRequired'));
+      navigate('/login');
+      return;
+    }
+    fetchNotifications();
+  }, [fetchNotifications, userId, navigate, t]);
 
   const handleMarkAsRead = async (id: number) => {
     try {

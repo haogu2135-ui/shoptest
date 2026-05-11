@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space } from 'antd';
 import { DeleteOutlined, StopOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
@@ -13,7 +13,7 @@ const UserManagement: React.FC = () => {
   const currentUserId = Number(localStorage.getItem('userId'));
   const { t, language } = useLanguage();
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await adminApi.getUsers();
@@ -23,11 +23,11 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const handleRoleChange = async (userId: number, newRole: string) => {
     try {

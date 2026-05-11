@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Spin, Typography, Slider, Checkbox, Modal, Space } from 'antd';
 import { ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -41,18 +41,10 @@ const ProductList: React.FC = () => {
     categoryApi.getAll().then(res => setCategories(res.data)).catch(() => {});
   }, []);
 
-  const categoryTree = buildCategoryTree(categories);
-  const categoryRows = flattenCategoryTree(categoryTree);
+  const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const categoryRows = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
 
-  useEffect(() => {
-    const kw = searchParams.get('keyword') || '';
-    const cid = searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined;
-    setKeyword(kw);
-    setCategoryId(cid);
-    fetchProducts(kw, cid);
-  }, [searchParams, language]);
-
-  const fetchProducts = async (kw?: string, cid?: number) => {
+  const fetchProducts = useCallback(async (kw?: string, cid?: number) => {
     try {
       setLoading(true);
       const res = await productApi.getAll(kw || undefined, cid);
@@ -63,7 +55,15 @@ const ProductList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [language, t]);
+
+  useEffect(() => {
+    const kw = searchParams.get('keyword') || '';
+    const cid = searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined;
+    setKeyword(kw);
+    setCategoryId(cid);
+    fetchProducts(kw, cid);
+  }, [fetchProducts, searchParams, language]);
 
   const handleSearch = (value: string) => {
     const params = new URLSearchParams();

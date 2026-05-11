@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Checkbox, Divider, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import { adminApi, logisticsCarrierApi, orderApi } from '../api';
@@ -59,7 +59,7 @@ const OrderManagement: React.FC = () => {
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const { formatMoney } = useMarket();
 
-  const fetchOrders = async (status?: string) => {
+  const fetchOrders = useCallback(async (status?: string) => {
     try {
       setLoading(true);
       const res = await adminApi.getOrders(status);
@@ -69,11 +69,11 @@ const OrderManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchOrders(filterStatus);
-  }, [filterStatus]);
+  }, [fetchOrders, filterStatus]);
 
   useEffect(() => {
     logisticsCarrierApi.getAll(true)

@@ -66,7 +66,7 @@ export const userApi = {
     getProfile: () => api.get<User>('/users/profile'),
     updateProfile: (user: Partial<User>) => api.put('/users/profile', user),
     updatePassword: (userId: number, oldPassword: string, newPassword: string) =>
-        api.put(`/users/password?userId=${userId}&oldPassword=${oldPassword}&newPassword=${newPassword}`)
+        api.put('/users/password', null, { params: { userId, oldPassword, newPassword } })
 };
 
 // 商品相关 API

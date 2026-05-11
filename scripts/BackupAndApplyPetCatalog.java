@@ -15,11 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BackupAndApplyPetCatalog {
-    private static final String URL = envOrDefault(
-            "DB_URL",
-            "jdbc:mysql://localhost:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
-    private static final String USER = envOrDefault("DB_USERNAME", "root");
-    private static final String PASSWORD = envOrDefault("DB_PASSWORD", "");
+    private static final String URL = "jdbc:mysql://localhost:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+    private static final String USER = "root";
+    private static final String PASSWORD = "84813378";
 
     public static void main(String[] args) throws Exception {
         Path backupDir = Path.of("backups");
@@ -126,8 +124,4 @@ public class BackupAndApplyPetCatalog {
         }
     }
 
-    private static String envOrDefault(String name, String defaultValue) {
-        String value = System.getenv(name);
-        return value == null || value.isBlank() ? defaultValue : value;
-    }
 }

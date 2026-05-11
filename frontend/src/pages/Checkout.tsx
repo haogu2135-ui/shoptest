@@ -135,7 +135,7 @@ const Checkout: React.FC = () => {
           setSelectedUserCouponId(null);
         }
       });
-  }, [cartItems, selectedUserCouponId]);
+  }, [cartItems, selectedUserCouponId, t]);
 
   const guestShippingFee = cartTotal >= market.freeShippingThreshold ? 0 : 30;
   const shippingFee = couponQuote?.shippingFee ?? (isGuestCheckout ? guestShippingFee : 0);

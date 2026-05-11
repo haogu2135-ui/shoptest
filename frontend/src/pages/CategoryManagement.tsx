@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Divider,
@@ -39,10 +39,6 @@ const CategoryManagement: React.FC = () => {
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const byId = useMemo(() => new Map(flatCategories.map((category) => [category.id, category])), [flatCategories]);
@@ -52,7 +48,7 @@ const CategoryManagement: React.FC = () => {
     return toTreeOptions(categoryTree, (category) => category.level === 3 || blockedIds.has(category.id), language);
   }, [categoryTree, editingCategory, language]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
       const res = await categoryApi.getAll();
@@ -62,7 +58,11 @@ const CategoryManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   const openModal = (category?: Category | null, parent?: Category | null) => {
     setEditingCategory(category || null);

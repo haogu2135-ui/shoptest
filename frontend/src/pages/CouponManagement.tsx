@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, GiftOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -23,7 +23,7 @@ const CouponManagement: React.FC = () => {
   const couponType = Form.useWatch('couponType', form);
   const { formatMoney } = useMarket();
 
-  const loadCoupons = async () => {
+  const loadCoupons = useCallback(async () => {
     setLoading(true);
     try {
       const res = await adminApi.getCoupons();
@@ -33,7 +33,7 @@ const CouponManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   const loadUsers = async () => {
     try {
@@ -47,7 +47,7 @@ const CouponManagement: React.FC = () => {
   useEffect(() => {
     loadCoupons();
     loadUsers();
-  }, []);
+  }, [loadCoupons]);
 
   const openCreate = () => {
     setEditingCoupon(null);

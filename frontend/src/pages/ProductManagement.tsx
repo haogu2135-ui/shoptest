@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, InputNumber, message, Space, Select, Tag, Switch, DatePicker,
   Tooltip, Typography, Divider, Image, Popconfirm, TreeSelect, Upload, Tabs,
@@ -106,12 +106,6 @@ const ProductManagement: React.FC = () => {
     discount: t('pages.productAdmin.discount'),
   };
 
-  useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-    fetchBrands();
-  }, []);
-
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const categoryOptions = useMemo(() => toTreeOptions(categoryTree, undefined, language), [categoryTree, language]);
@@ -121,7 +115,7 @@ const ProductManagement: React.FC = () => {
     return category ? descendantIdSet(category) : new Set<number>([filterCategory]);
   }, [filterCategory, flatCategories]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await productApi.getAll();
@@ -131,25 +125,31 @@ const ProductManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await categoryApi.getAll();
       setCategories(response.data);
     } catch (error) {
       message.error(t('pages.productAdmin.fetchCategoriesFailed'));
     }
-  };
+  }, [t]);
 
-  const fetchBrands = async () => {
+  const fetchBrands = useCallback(async () => {
     try {
       const response = await brandApi.getAll({ activeOnly: true });
       setBrands(response.data);
     } catch (error) {
       message.error(t('pages.productAdmin.fetchBrandsFailed'));
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+    fetchBrands();
+  }, [fetchProducts, fetchCategories, fetchBrands]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Button,
   Divider,
@@ -37,11 +37,7 @@ const BrandManagement: React.FC = () => {
   const [form] = Form.useForm();
   const { t } = useLanguage();
 
-  useEffect(() => {
-    fetchBrands();
-  }, []);
-
-  const fetchBrands = async () => {
+  const fetchBrands = useCallback(async () => {
     setLoading(true);
     try {
       const response = await brandApi.getAll();
@@ -51,7 +47,11 @@ const BrandManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchBrands();
+  }, [fetchBrands]);
 
   const openModal = (brand?: Brand) => {
     setEditingBrand(brand || null);

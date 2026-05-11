@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Row, Col, Button, Empty, Spin, Typography, message, Popconfirm, Tag } from 'antd';
 import { ShoppingCartOutlined, DeleteOutlined, HeartFilled } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -19,16 +19,7 @@ const Wishlist: React.FC = () => {
   const { t } = useLanguage();
   const { formatMoney } = useMarket();
 
-  useEffect(() => {
-    if (!userId) {
-      message.warning(t('messages.loginRequired'));
-      navigate('/login');
-      return;
-    }
-    fetchWishlist();
-  }, [userId, navigate]);
-
-  const fetchWishlist = async () => {
+  const fetchWishlist = useCallback(async () => {
     try {
       const res = await wishlistApi.getByUser(userId);
       setItems(res.data);
@@ -37,7 +28,16 @@ const Wishlist: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t, userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      message.warning(t('messages.loginRequired'));
+      navigate('/login');
+      return;
+    }
+    fetchWishlist();
+  }, [fetchWishlist, userId, navigate, t]);
 
   const handleRemove = async (productId: number) => {
     try {

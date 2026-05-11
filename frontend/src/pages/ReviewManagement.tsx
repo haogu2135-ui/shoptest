@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Table, Button, Popconfirm, Rate, message, Typography, Divider, Input, Modal, Select, Space, Tag } from 'antd';
 import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
@@ -24,7 +24,7 @@ const ReviewManagement: React.FC = () => {
 
   const filteredReviews = statusFilter ? reviews.filter((review) => (review.status || 'PENDING') === statusFilter) : reviews;
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       setLoading(true);
       const res = await adminApi.getReviews();
@@ -34,11 +34,11 @@ const ReviewManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchReviews();
-  }, []);
+  }, [fetchReviews]);
 
   const handleDelete = async (id: number) => {
     try {

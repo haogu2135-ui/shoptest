@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Cascader, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Select, Space, Tabs, Tag, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, LockOutlined, PlusOutlined, StarFilled, StarOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -79,20 +79,7 @@ const Profile: React.FC = () => {
   const [addressForm] = Form.useForm();
   const [petForm] = Form.useForm();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      message.warning(t('messages.loginRequired'));
-      navigate('/login');
-      return;
-    }
-    fetchUserInfo();
-    fetchOrders();
-    fetchAddresses();
-    fetchPetProfiles();
-  }, [navigate]);
-
-  const fetchUserInfo = async () => {
+  const fetchUserInfo = useCallback(async () => {
     try {
       const response = await userApi.getProfile();
       setUser(response.data);
@@ -101,9 +88,9 @@ const Profile: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
     try {
@@ -124,9 +111,9 @@ const Profile: React.FC = () => {
     } catch {
       message.error(t('pages.profile.fetchOrdersFailed'));
     }
-  };
+  }, [t]);
 
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
     try {
@@ -135,16 +122,29 @@ const Profile: React.FC = () => {
     } catch {
       setAddresses([]);
     }
-  };
+  }, []);
 
-  const fetchPetProfiles = async () => {
+  const fetchPetProfiles = useCallback(async () => {
     try {
       const response = await petProfileApi.getMine();
       setPetProfiles(response.data || []);
     } catch {
       setPetProfiles([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      message.warning(t('messages.loginRequired'));
+      navigate('/login');
+      return;
+    }
+    fetchUserInfo();
+    fetchOrders();
+    fetchAddresses();
+    fetchPetProfiles();
+  }, [fetchAddresses, fetchOrders, fetchPetProfiles, fetchUserInfo, navigate, t]);
 
   const refreshPaymentState = async (orderId: number) => {
     const [orderRes, paymentListRes] = await Promise.all([

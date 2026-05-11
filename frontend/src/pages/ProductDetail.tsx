@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Row, Col, Card, Button, Tag, Divider, Typography, Spin, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented } from 'antd';
 import { HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
@@ -215,6 +215,43 @@ const ProductDetail: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [galleryImages, imagePaused, isModalVisible, loading, product]);
 
+  const fetchReviews = useCallback(async () => {
+    try {
+      const res = await reviewApi.getAll(Number(id));
+      setReviews(res.data.reviews || []);
+      setAverageRating(Number(res.data.averageRating || 0));
+    } catch {
+      // ignore
+    }
+  }, [id]);
+
+  const fetchRecommendations = useCallback(async () => {
+    try {
+      const res = await productApi.getRecommendations(Number(id));
+      setRecommendations(res.data.map((item: Product) => localizeProduct(item, language)));
+    } catch {
+      // ignore
+    }
+  }, [id, language]);
+
+  const fetchQuestions = useCallback(async () => {
+    try {
+      const res = await questionApi.getByProduct(Number(id));
+      setQuestions(res.data || []);
+    } catch {
+      setQuestions([]);
+    }
+  }, [id]);
+
+  const fetchReviewableOrders = useCallback(async () => {
+    try {
+      const ordersRes = await reviewApi.getReviewableOrders(Number(id));
+      setReviewableOrders(ordersRes.data || []);
+    } catch {
+      setReviewableOrders([]);
+    }
+  }, [id]);
+
   useEffect(() => {
     const fetchProduct = async () => {
       setLoading(true);
@@ -242,44 +279,7 @@ const ProductDetail: React.FC = () => {
         .catch(() => {});
       fetchReviewableOrders();
     }
-  }, [id, language]);
-
-  const fetchReviews = async () => {
-    try {
-      const res = await reviewApi.getAll(Number(id));
-      setReviews(res.data.reviews || []);
-      setAverageRating(Number(res.data.averageRating || 0));
-    } catch {
-      // ignore
-    }
-  };
-
-  const fetchRecommendations = async () => {
-    try {
-      const res = await productApi.getRecommendations(Number(id));
-      setRecommendations(res.data.map((item: Product) => localizeProduct(item, language)));
-    } catch {
-      // ignore
-    }
-  };
-
-  const fetchQuestions = async () => {
-    try {
-      const res = await questionApi.getByProduct(Number(id));
-      setQuestions(res.data || []);
-    } catch {
-      setQuestions([]);
-    }
-  };
-
-  const fetchReviewableOrders = async () => {
-    try {
-      const ordersRes = await reviewApi.getReviewableOrders(Number(id));
-      setReviewableOrders(ordersRes.data || []);
-    } catch {
-      setReviewableOrders([]);
-    }
-  };
+  }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews, id, language]);
 
   const handleAddToCart = async () => {
     const token = localStorage.getItem('token');

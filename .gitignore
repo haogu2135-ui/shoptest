@@ -18,8 +18,6 @@ dist/
 .claude/settings.local.json
 *.iml
 
-backups/
-
 *.log
 *.tmp
 *.class

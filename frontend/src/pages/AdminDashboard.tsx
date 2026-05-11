@@ -176,7 +176,7 @@ const AdminDashboard: React.FC = () => {
       }
     };
     fetchStats();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return <div style={{ textAlign: 'center', paddingTop: 100 }}><Spin size="large" /></div>;
