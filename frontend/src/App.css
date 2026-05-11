@@ -1,0 +1,244 @@
+.layout {
+  min-height: 100vh;
+}
+
+/* Shopee-style primary color overrides */
+.ant-btn-primary {
+  background: #ee4d2d;
+  border-color: #ee4d2d;
+}
+
+.ant-btn-primary:hover {
+  background: #ff6b35;
+  border-color: #ff6b35;
+}
+
+.ant-btn-primary:focus {
+  background: #ee4d2d;
+  border-color: #ee4d2d;
+}
+
+.ant-input-affix-wrapper:hover,
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:focus {
+  border-color: #ee4d2d;
+  box-shadow: 0 0 0 2px rgba(238, 77, 45, 0.2);
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #ee4d2d !important;
+}
+
+.ant-tabs-ink-bar {
+  background: #ee4d2d;
+}
+
+.ant-radio-button-wrapper-checked {
+  border-color: #ee4d2d !important;
+  color: #ee4d2d !important;
+}
+
+.ant-radio-button-wrapper-checked::before {
+  background: #ee4d2d !important;
+}
+
+.ant-tag-orange {
+  color: #ee4d2d;
+  background: #fff2ee;
+  border-color: #ffccc7;
+}
+
+.ant-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.ant-card-hoverable:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.support-order-select-popup {
+  z-index: 1305 !important;
+}
+
+.shop-footer {
+  padding: 34px 0 22px !important;
+  border-top: 4px solid #ee4d2d;
+  background: #fff !important;
+}
+
+.shop-footer__inner {
+  width: min(1200px, calc(100% - 24px));
+  margin: 0 auto;
+}
+
+.shop-footer__columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  text-align: left;
+}
+
+.shop-footer h3 {
+  margin: 0 0 12px;
+  color: #333;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.shop-footer p {
+  margin: 6px 0;
+  color: #777;
+  font-size: 13px;
+}
+
+.shop-footer__copy {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #eee;
+  color: #999;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .shop-footer__columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cart-page__mobileList {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .cart-page,
+  .checkout-page,
+  .notifications-page {
+    padding: 14px !important;
+  }
+
+  .cart-page h2.ant-typography,
+  .checkout-page h2.ant-typography,
+  .notifications-page h3.ant-typography {
+    font-size: 22px;
+  }
+
+  .cart-page__table {
+    display: none;
+  }
+
+  .cart-page__mobileList {
+    display: grid;
+    gap: 10px;
+  }
+
+  .cart-page__mobileItem {
+    border-color: #eee;
+    box-shadow: 0 2px 10px rgba(20, 20, 20, 0.05);
+  }
+
+  .cart-page__mobileItemTop {
+    display: grid;
+    grid-template-columns: auto 64px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .cart-page__mobileItemTop img {
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    object-fit: cover;
+  }
+
+  .cart-page__mobileItemTop a {
+    display: -webkit-box;
+    overflow: hidden;
+    color: #222;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .cart-page__mobileItemBottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #f2f2f2;
+  }
+
+  .cart-page__total {
+    display: block;
+    margin-top: 4px;
+  }
+
+  .cart-page .ant-card:last-child .ant-btn-primary {
+    width: 100%;
+  }
+
+  .checkout-page .ant-card {
+    margin-bottom: 12px !important;
+  }
+
+  .checkout-page .ant-space-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .checkout-page .ant-space-compact .ant-btn {
+    width: 100%;
+    border-radius: 6px !important;
+  }
+
+  .checkout-page .ant-list-item {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .checkout-page .ant-radio-wrapper {
+    margin-inline-end: 0;
+  }
+
+  .checkout-page .ant-radio-wrapper .ant-space {
+    flex-wrap: wrap;
+  }
+
+  .notifications-page > div:first-child {
+    align-items: flex-start !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .notifications-page .ant-list-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .notifications-page .ant-list-item-action {
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  .notifications-page .ant-space {
+    flex-wrap: wrap;
+  }
+}
+
+/* Hide horizontal scrollbar */
+::-webkit-scrollbar {
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bbb;
+}

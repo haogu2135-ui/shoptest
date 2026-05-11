@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.SupportMessageMapper">
+    <resultMap id="supportMessageMap" type="com.example.shop.entity.SupportMessage">
+        <id property="id" column="id"/>
+        <result property="sessionId" column="session_id"/>
+        <result property="senderId" column="sender_id"/>
+        <result property="senderRole" column="sender_role"/>
+        <result property="content" column="content"/>
+        <result property="isReadByUser" column="is_read_by_user"/>
+        <result property="isReadByAdmin" column="is_read_by_admin"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="senderName" column="sender_name"/>
+    </resultMap>
+
+    <select id="findBySessionId" resultMap="supportMessageMap">
+        SELECT sm.*, u.username AS sender_name
+        FROM support_messages sm
+        LEFT JOIN users u ON sm.sender_id = u.id
+        WHERE sm.session_id = #{sessionId}
+        ORDER BY sm.created_at ASC, sm.id ASC
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.SupportMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO support_messages (session_id, sender_id, sender_role, content, is_read_by_user, is_read_by_admin, created_at)
+        VALUES (#{sessionId}, #{senderId}, #{senderRole}, #{content}, #{isReadByUser}, #{isReadByAdmin}, #{createdAt})
+    </insert>
+
+    <update id="markReadByUser">
+        UPDATE support_messages
+        SET is_read_by_user = TRUE
+        WHERE session_id = #{sessionId}
+          AND sender_role = 'ADMIN'
+    </update>
+
+    <update id="markReadByAdmin">
+        UPDATE support_messages
+        SET is_read_by_admin = TRUE
+        WHERE session_id = #{sessionId}
+          AND sender_role = 'USER'
+    </update>
+
+    <select id="countUnreadByAdmin" resultType="int">
+        SELECT COUNT(*)
+        FROM support_messages
+        WHERE sender_role = 'USER'
+          AND is_read_by_admin = FALSE
+    </select>
+
+    <select id="countUnreadByUser" resultType="int">
+        SELECT COUNT(*)
+        FROM support_messages sm
+        JOIN support_sessions ss ON sm.session_id = ss.id
+        WHERE ss.user_id = #{userId}
+          AND sm.sender_role = 'ADMIN'
+          AND sm.is_read_by_user = FALSE
+    </select>
+</mapper>

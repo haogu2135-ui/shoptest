@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>购物车</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .navbar {
+            background-color: #333;
+            padding: 15px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+        }
+        .cart-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .cart-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .cart-item img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            margin-right: 20px;
+            border-radius: 5px;
+        }
+        .item-details {
+            flex-grow: 1;
+        }
+        .item-name {
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+        .item-price {
+            color: #e44d26;
+            font-weight: bold;
+        }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            margin: 0 20px;
+        }
+        .quantity-btn {
+            background-color: #f0f0f0;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .quantity-input {
+            width: 50px;
+            text-align: center;
+            margin: 0 10px;
+        }
+        .remove-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .cart-summary {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .total {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .checkout-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        .checkout-btn:hover {
+            background-color: #218838;
+        }
+        .empty-cart {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">MyShop</div>
+        <div class="nav-links">
+            <a href="/api/products">继续购物</a>
+            <a th:href="@{/logout}">退出登录</a>
+        </div>
+    </div>
+
+    <div class="cart-container">
+        <h2>购物车</h2>
+        <div th:if="${cartItems.empty}" class="empty-cart">
+            <p>购物车是空的</p>
+            <a href="/api/products" class="checkout-btn">去购物</a>
+        </div>
+        <div th:each="item : ${cartItems}" class="cart-item">
+            <img th:src="@{'/images/' + ${item.product.image}}" th:alt="${item.product.name}">
+            <div class="item-details">
+                <div class="item-name" th:text="${item.product.name}"></div>
+                <div class="item-price" th:text="'¥' + ${#numbers.formatDecimal(item.product.price, 1, 2)}"></div>
+            </div>
+            <div class="quantity-controls">
+                <button class="quantity-btn" th:onclick="'updateQuantity(' + ${item.id} + ', ' + (${item.quantity} - 1) + ')'">-</button>
+                <input type="number" class="quantity-input" th:value="${item.quantity}" min="1" 
+                       th:onchange="'updateQuantity(' + ${item.id} + ', this.value)'">
+                <button class="quantity-btn" th:onclick="'updateQuantity(' + ${item.id} + ', ' + (${item.quantity} + 1) + ')'">+</button>
+            </div>
+            <button class="remove-btn" th:onclick="'removeItem(' + ${item.id} + ')'">删除</button>
+        </div>
+        <div th:if="${!cartItems.empty}" class="cart-summary">
+            <div class="total" th:text="'总计: ¥' + ${#numbers.formatDecimal(total, 1, 2)}"></div>
+            <button class="checkout-btn" onclick="checkout()">结算</button>
+        </div>
+    </div>
+
+    <script>
+        function updateQuantity(itemId, quantity) {
+            if (quantity < 1) return;
+            fetch('/api/cart/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    itemId: itemId,
+                    quantity: quantity
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('更新失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('更新失败，请稍后重试');
+            });
+        }
+
+        function removeItem(itemId) {
+            if (!confirm('确定要删除这个商品吗？')) return;
+            fetch('/api/cart/remove/' + itemId, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('删除失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('删除失败，请稍后重试');
+            });
+        }
+
+        function checkout() {
+            fetch('/api/orders/create', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('订单创建成功！');
+                    window.location.href = '/api/products';
+                } else {
+                    alert('创建订单失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('创建订单失败，请稍后重试');
+            });
+        }
+    </script>
+</body>
+</html> 

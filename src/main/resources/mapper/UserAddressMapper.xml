@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.UserAddressMapper">
+    <resultMap id="userAddressMap" type="com.example.shop.entity.UserAddress">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="recipientName" column="recipient_name"/>
+        <result property="phone" column="phone"/>
+        <result property="address" column="address"/>
+        <result property="isDefault" column="is_default"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findByUserId" resultMap="userAddressMap">
+        SELECT * FROM user_addresses WHERE user_id = #{userId} ORDER BY is_default DESC, id DESC
+    </select>
+
+    <select id="findById" resultMap="userAddressMap">
+        SELECT * FROM user_addresses WHERE id = #{id}
+    </select>
+
+    <select id="findDefaultByUserId" resultMap="userAddressMap">
+        SELECT * FROM user_addresses WHERE user_id = #{userId} AND is_default = TRUE LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.UserAddress" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_addresses (user_id, recipient_name, phone, address, is_default, created_at, updated_at)
+        VALUES (#{userId}, #{recipientName}, #{phone}, #{address}, #{isDefault}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.example.shop.entity.UserAddress">
+        UPDATE user_addresses
+        SET recipient_name = #{recipientName},
+            phone = #{phone},
+            address = #{address},
+            is_default = #{isDefault},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM user_addresses WHERE id = #{id}
+    </delete>
+
+    <update id="clearDefault">
+        UPDATE user_addresses SET is_default = FALSE, updated_at = NOW() WHERE user_id = #{userId}
+    </update>
+
+    <update id="setDefault">
+        UPDATE user_addresses SET is_default = TRUE, updated_at = NOW() WHERE id = #{id} AND user_id = #{userId}
+    </update>
+</mapper>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.PetProfileMapper">
+    <resultMap id="petProfileMap" type="com.example.shop.entity.PetProfile">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="name" column="name"/>
+        <result property="petType" column="pet_type"/>
+        <result property="breed" column="breed"/>
+        <result property="birthday" column="birthday"/>
+        <result property="weight" column="weight"/>
+        <result property="size" column="size"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findByUserId" resultMap="petProfileMap">
+        SELECT * FROM pet_profiles WHERE user_id = #{userId} ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="findById" resultMap="petProfileMap">
+        SELECT * FROM pet_profiles WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.PetProfile" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO pet_profiles (user_id, name, pet_type, breed, birthday, weight, size, created_at, updated_at)
+        VALUES (#{userId}, #{name}, #{petType}, #{breed}, #{birthday}, #{weight}, #{size}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.example.shop.entity.PetProfile">
+        UPDATE pet_profiles
+        SET name = #{name},
+            pet_type = #{petType},
+            breed = #{breed},
+            birthday = #{birthday},
+            weight = #{weight},
+            size = #{size},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteByIdAndUserId">
+        DELETE FROM pet_profiles WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+</mapper>

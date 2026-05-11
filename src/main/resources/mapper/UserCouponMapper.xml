@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.UserCouponMapper">
+    <resultMap id="userCouponMap" type="com.example.shop.entity.UserCoupon">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="couponId" column="coupon_id"/>
+        <result property="status" column="status"/>
+        <result property="orderId" column="order_id"/>
+        <result property="claimedAt" column="claimed_at"/>
+        <result property="usedAt" column="used_at"/>
+        <result property="couponName" column="coupon_name"/>
+        <result property="couponType" column="coupon_type"/>
+        <result property="couponScope" column="coupon_scope"/>
+        <result property="thresholdAmount" column="threshold_amount"/>
+        <result property="reductionAmount" column="reduction_amount"/>
+        <result property="discountPercent" column="discount_percent"/>
+        <result property="maxDiscountAmount" column="max_discount_amount"/>
+        <result property="startAt" column="start_at"/>
+        <result property="endAt" column="end_at"/>
+        <result property="description" column="description"/>
+    </resultMap>
+
+    <sql id="userCouponColumns">
+        uc.id, uc.user_id, uc.coupon_id, uc.status, uc.order_id, uc.claimed_at, uc.used_at,
+        c.name AS coupon_name, c.coupon_type, c.scope AS coupon_scope, c.threshold_amount,
+        c.reduction_amount, c.discount_percent, c.max_discount_amount, c.start_at, c.end_at,
+        c.description
+    </sql>
+
+    <select id="findById" resultMap="userCouponMap">
+        SELECT <include refid="userCouponColumns"/>
+        FROM user_coupons uc
+        JOIN coupons c ON c.id = uc.coupon_id
+        WHERE uc.id = #{id}
+    </select>
+
+    <select id="findByIdAndUserId" resultMap="userCouponMap">
+        SELECT <include refid="userCouponColumns"/>
+        FROM user_coupons uc
+        JOIN coupons c ON c.id = uc.coupon_id
+        WHERE uc.id = #{id} AND uc.user_id = #{userId}
+    </select>
+
+    <select id="findByCouponIdAndUserId" resultMap="userCouponMap">
+        SELECT <include refid="userCouponColumns"/>
+        FROM user_coupons uc
+        JOIN coupons c ON c.id = uc.coupon_id
+        WHERE uc.coupon_id = #{couponId} AND uc.user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="findByUserId" resultMap="userCouponMap">
+        SELECT <include refid="userCouponColumns"/>
+        FROM user_coupons uc
+        JOIN coupons c ON c.id = uc.coupon_id
+        WHERE uc.user_id = #{userId}
+        ORDER BY uc.status ASC, c.end_at ASC, uc.id DESC
+    </select>
+
+    <select id="findUnusedByUserId" resultMap="userCouponMap">
+        SELECT <include refid="userCouponColumns"/>
+        FROM user_coupons uc
+        JOIN coupons c ON c.id = uc.coupon_id
+        WHERE uc.user_id = #{userId}
+          AND uc.status = 'UNUSED'
+          AND c.status = 'ACTIVE'
+          AND (c.start_at IS NULL OR c.start_at &lt;= NOW())
+          AND (c.end_at IS NULL OR c.end_at &gt;= NOW())
+        ORDER BY c.end_at ASC, uc.id DESC
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.UserCoupon" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_coupons (user_id, coupon_id, status, order_id, claimed_at, used_at)
+        VALUES (#{userId}, #{couponId}, #{status}, #{orderId}, #{claimedAt}, #{usedAt})
+    </insert>
+
+    <update id="markUsed">
+        UPDATE user_coupons
+        SET status = 'USED',
+            order_id = #{orderId},
+            used_at = NOW()
+        WHERE id = #{id} AND status = 'UNUSED'
+    </update>
+
+    <update id="releaseUsed">
+        UPDATE user_coupons
+        SET status = 'UNUSED',
+            order_id = NULL,
+            used_at = NULL
+        WHERE id = #{id} AND status = 'USED'
+    </update>
+</mapper>

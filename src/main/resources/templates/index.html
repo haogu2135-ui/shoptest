@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Shopee Style E-commerce</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">MyShop</div>
+        <div class="nav-links">
+            <a href="/login" th:unless="${#authentication.principal}">登录/注册</a>
+            <a href="/cart" th:if="${#authentication.principal}">购物车</a>
+        </div>
+    </nav>
+
+    <div class="product-grid">
+        <div class="product-card" th:each="product : ${products}">
+            <img th:src="@{'/images/' + ${product.image}}" alt="Product Image">
+            <h3 th:text="${product.name}"></h3>
+            <p class="price" th:text="'¥' + ${#numbers.formatDecimal(product.price, 1, 2)}"></p>
+            <button class="add-to-cart" th:data-product-id="${product.id}">加入购物车</button>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.OrderRepository">
+    <resultMap id="orderMap" type="com.example.shop.entity.Order">
+        <id property="id" column="id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="userId" column="user_id"/>
+        <result property="originalAmount" column="original_amount"/>
+        <result property="discountAmount" column="discount_amount"/>
+        <result property="shippingFee" column="shipping_fee"/>
+        <result property="totalAmount" column="total_amount"/>
+        <result property="userCouponId" column="user_coupon_id"/>
+        <result property="couponId" column="coupon_id"/>
+        <result property="couponName" column="coupon_name"/>
+        <result property="status" column="status"/>
+        <result property="shippingAddress" column="shipping_address"/>
+        <result property="paymentMethod" column="payment_method"/>
+        <result property="trackingNumber" column="tracking_number"/>
+        <result property="trackingCarrierCode" column="tracking_carrier_code"/>
+        <result property="trackingCarrierName" column="tracking_carrier_name"/>
+        <result property="returnTrackingNumber" column="return_tracking_number"/>
+        <result property="shippedAt" column="shipped_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="orderMap">
+        SELECT * FROM orders
+    </select>
+
+    <select id="findById" resultMap="orderMap">
+        SELECT * FROM orders WHERE id = #{id}
+    </select>
+
+    <select id="findByOrderNo" resultMap="orderMap">
+        SELECT * FROM orders WHERE order_no = #{orderNo}
+    </select>
+
+    <select id="findByOrderNoAndEmail" resultMap="orderMap">
+        SELECT o.*
+        FROM orders o
+        INNER JOIN users u ON u.id = o.user_id
+        WHERE o.order_no = #{orderNo}
+          AND LOWER(u.email) = LOWER(#{email})
+        LIMIT 1
+    </select>
+
+    <select id="findByUserId" resultMap="orderMap">
+        SELECT * FROM orders WHERE user_id = #{userId}
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="findPendingPaymentBefore" resultMap="orderMap">
+        SELECT * FROM orders
+        WHERE status = 'PENDING_PAYMENT'
+          AND created_at &lt;= #{cutoff}
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.Order" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO orders (order_no, user_id, original_amount, discount_amount, shipping_fee, total_amount, user_coupon_id, coupon_id, coupon_name, status, shipping_address, payment_method, tracking_number, tracking_carrier_code, tracking_carrier_name, return_tracking_number, shipped_at, created_at, updated_at)
+        VALUES (#{orderNo}, #{userId}, #{originalAmount}, #{discountAmount}, #{shippingFee}, #{totalAmount}, #{userCouponId}, #{couponId}, #{couponName}, #{status}, #{shippingAddress}, #{paymentMethod}, #{trackingNumber}, #{trackingCarrierCode}, #{trackingCarrierName}, #{returnTrackingNumber}, #{shippedAt}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.example.shop.entity.Order">
+        UPDATE orders
+        SET order_no = #{orderNo},
+            user_id = #{userId},
+            original_amount = #{originalAmount},
+            discount_amount = #{discountAmount},
+            shipping_fee = #{shippingFee},
+            total_amount = #{totalAmount},
+            user_coupon_id = #{userCouponId},
+            coupon_id = #{couponId},
+            coupon_name = #{couponName},
+            status = #{status},
+            shipping_address = #{shippingAddress},
+            payment_method = #{paymentMethod},
+            tracking_number = #{trackingNumber},
+            tracking_carrier_code = #{trackingCarrierCode},
+            tracking_carrier_name = #{trackingCarrierName},
+            return_tracking_number = #{returnTrackingNumber},
+            shipped_at = #{shippedAt},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE orders SET status = #{status}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="updateStatusIfCurrent">
+        UPDATE orders
+        SET status = #{status},
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND status = #{currentStatus}
+    </update>
+
+    <update id="updateShipping">
+        UPDATE orders
+        SET status = #{status},
+            tracking_number = #{trackingNumber},
+            tracking_carrier_code = #{trackingCarrierCode},
+            tracking_carrier_name = #{trackingCarrierName},
+            shipped_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateReturnTracking">
+        UPDATE orders
+        SET status = #{status},
+            return_tracking_number = #{returnTrackingNumber},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM orders WHERE id = #{id}
+    </delete>
+</mapper> 

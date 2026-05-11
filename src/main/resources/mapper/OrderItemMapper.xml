@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.OrderItemRepository">
+    <resultMap id="orderItemMap" type="com.example.shop.entity.OrderItem">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="quantity" column="quantity"/>
+        <result property="price" column="price"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="productNameSnapshot" column="product_name_snapshot"/>
+        <result property="imageUrlSnapshot" column="image_url_snapshot"/>
+        <result property="selectedSpecs" column="selected_specs"/>
+        <result property="productName" column="product_name"/>
+        <result property="imageUrl" column="image_url"/>
+    </resultMap>
+
+    <select id="findByOrderId" resultMap="orderItemMap">
+        SELECT oi.*,
+               COALESCE(p.name, oi.product_name_snapshot, CONCAT('#', oi.product_id)) as product_name,
+               COALESCE(p.image_url, oi.image_url_snapshot) as image_url
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = #{orderId}
+    </select>
+
+    <select id="findAll" resultMap="orderItemMap">
+        SELECT oi.*,
+               COALESCE(p.name, oi.product_name_snapshot, CONCAT('#', oi.product_id)) as product_name,
+               COALESCE(p.image_url, oi.image_url_snapshot) as image_url
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+    </select>
+
+    <select id="findByOrderIdAndProductId" resultMap="orderItemMap">
+        SELECT oi.*,
+               COALESCE(p.name, oi.product_name_snapshot, CONCAT('#', oi.product_id)) as product_name,
+               COALESCE(p.image_url, oi.image_url_snapshot) as image_url
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = #{orderId} AND oi.product_id = #{productId}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.OrderItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_items (order_id, product_id, quantity, price, product_name_snapshot, image_url_snapshot, selected_specs, created_at)
+        VALUES (#{orderId}, #{productId}, #{quantity}, #{price}, #{productNameSnapshot}, #{imageUrlSnapshot}, #{selectedSpecs}, #{createdAt})
+    </insert>
+
+    <delete id="deleteByOrderId">
+        DELETE FROM order_items WHERE order_id = #{orderId}
+    </delete>
+</mapper>

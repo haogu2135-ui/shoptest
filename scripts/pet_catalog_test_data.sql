@@ -1,0 +1,57 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
+DELETE FROM product_questions;
+DELETE FROM reviews;
+DELETE FROM wishlist;
+DELETE FROM cart_items;
+DELETE FROM products;
+DELETE FROM categories;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+INSERT INTO brands (id, name, description, logo_url, website_url, status, sort_order) VALUES
+(1, 'PawPilot', 'Smart feeding and connected pet care devices.', 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=240&q=80', 'https://pawpilot.example.com', 'ACTIVE', 10),
+(2, 'HydraWhisk', 'Quiet hydration products for cats and small pets.', 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=240&q=80', 'https://hydrawhisk.example.com', 'ACTIVE', 20),
+(3, 'TrailTails', 'Walking, travel and safety gear for daily adventures.', 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=240&q=80', 'https://trailtails.example.com', 'ACTIVE', 30),
+(4, 'CloudNap', 'Comfort beds and furniture for restful pets.', 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=240&q=80', 'https://cloudnap.example.com', 'ACTIVE', 40),
+(5, 'BrightBite', 'Dental toys and enrichment for healthy play.', 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=240&q=80', 'https://brightbite.example.com', 'ACTIVE', 50),
+(6, 'PurePaws', 'Gentle grooming and hygiene essentials.', 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=240&q=80', 'https://purepaws.example.com', 'ACTIVE', 60),
+(7, 'NutriTail', 'Balanced nutrition for cats and dogs.', 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=240&q=80', 'https://nutritail.example.com', 'ACTIVE', 70),
+(8, 'CanineCore', 'Training treats and puppy care basics.', 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=240&q=80', 'https://caninecore.example.com', 'ACTIVE', 80)
+ON DUPLICATE KEY UPDATE
+name = VALUES(name),
+description = VALUES(description),
+logo_url = VALUES(logo_url),
+website_url = VALUES(website_url),
+status = VALUES(status),
+sort_order = VALUES(sort_order);
+
+INSERT INTO categories (id, name, description, parent_id, level, image_url) VALUES
+(1, 'Pet Supplies', 'English default catalog root for pet-only test data.', NULL, 1, 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=900&q=80'),
+(2, 'Pet Food', 'Dry food, wet food, treats and supplements for dogs and cats.', 1, 2, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80'),
+(3, 'Bowls, Feeders & Waterers', 'Automatic feeders, slow feeders, bowls and fountains.', 1, 2, 'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80'),
+(4, 'Beds & Furniture', 'Comfort beds, crates, mats and calming furniture.', 1, 2, 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80'),
+(5, 'Toys & Enrichment', 'Chew toys, puzzles, teaser toys and training rewards.', 1, 2, 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80'),
+(6, 'Grooming & Hygiene', 'Shampoo, brushes, litter, pads and daily care.', 1, 2, 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=900&q=80'),
+(7, 'Walking & Travel', 'Leashes, harnesses, carriers and travel accessories.', 1, 2, 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=900&q=80'),
+(8, 'Dog Food', 'Daily nutrition and treats for dogs.', 2, 3, 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80'),
+(9, 'Cat Food', 'Daily nutrition and treats for cats.', 2, 3, 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80'),
+(10, 'Automatic Feeders', 'Programmable feeding and portion control.', 3, 3, 'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80'),
+(11, 'Water Fountains', 'Filtered drinking fountains and replacement filters.', 3, 3, 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80'),
+(12, 'Interactive Toys', 'Puzzle toys and active play for pets.', 5, 3, 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80'),
+(13, 'Harnesses & Leashes', 'Adjustable walking sets and safety gear.', 7, 3, 'https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80');
+
+INSERT INTO products (
+    id, name, description, price, stock, category_id, image_url, status, brand,
+    original_price, discount, limited_time_price, limited_time_start_at, limited_time_end_at,
+    tag, images, specifications, detail_content, warranty, shipping, free_shipping,
+    free_shipping_threshold, is_featured
+) VALUES
+(1, 'PawPilot Smart Pet Feeder 4L', 'Programmable automatic feeder with portion control, sealed food storage and a clear schedule for cats and small dogs.', 129.90, 42, 10, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'PawPilot', 159.90, 19, 109.90, '2026-05-01 00:00:00', '2026-06-30 23:59:59', 'hot', '["https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium","Capacity":"4 L","Material":"BPA-free ABS","Color":"White","i18n.es.name":"Comedero inteligente PawPilot 4L","i18n.es.description":"Comedero automatico programable con control de porciones para gatos y perros pequenos.","i18n.zh.name":"PawPilot 4L \\u667a\\u80fd\\u5ba0\\u7269\\u5582\\u98df\\u5668","i18n.zh.description":"\\u652f\\u6301\\u5b9a\\u65f6\\u4e0e\\u5206\\u91cf\\u63a7\\u5236\\u7684\\u81ea\\u52a8\\u5582\\u98df\\u5668\\uff0c\\u9002\\u5408\\u732b\\u548c\\u5c0f\\u578b\\u72ac\\u3002"}', '[{"type":"text","content":"Set up to six meals per day and keep dry food fresh with the sealed hopper."},{"type":"text","content":"English is the default content. Spanish and Chinese demo text is stored in specifications for language fallback testing."}]', '1 year limited warranty', 'Ships in a protective box; free over threshold.', TRUE, 899.00, TRUE),
+(2, 'HydraWhisk Quiet Cat Water Fountain', 'Low-noise filtered water fountain that encourages cats to drink more throughout the day.', 49.90, 75, 11, 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'HydraWhisk', 64.90, 23, NULL, NULL, NULL, 'new', '["https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Cat","Capacity":"2.5 L","Material":"Stainless steel, ABS","Color":"Blue","Filter":"Replace every 30 days","i18n.es.name":"Fuente silenciosa HydraWhisk para gato","i18n.es.description":"Fuente filtrada de bajo ruido que ayuda a los gatos a beber mas agua."}', '[{"type":"text","content":"Circulating water and replaceable filters help keep every sip fresh."}]', '6 month warranty', 'Standard shipping', FALSE, NULL, TRUE),
+(3, 'TrailTails Adjustable No-Pull Harness', 'Soft padded harness with reflective trim and two leash attachment points for safer daily walks.', 34.90, 120, 13, 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'TrailTails', 44.90, 22, NULL, NULL, NULL, 'hot', '["https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium, Large","Material":"Nylon","Color":"Black","Closure":"Quick-release buckles"}', '[{"type":"text","content":"Adjustable neck and chest straps help the harness fit growing pets and different breeds."}]', '1 year limited warranty', 'Standard shipping', FALSE, NULL, FALSE),
+(4, 'CloudNap Orthopedic Calming Bed', 'Bolstered pet bed with orthopedic foam support and a washable cover for deep everyday rest.', 89.90, 36, 4, 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'CloudNap', 109.90, 18, 79.90, '2026-05-01 00:00:00', '2026-05-31 23:59:59', 'discount', '["https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Medium, Large","Material":"Orthopedic foam, plush cover","Color":"Gray","Care":"Machine-washable cover"}', '[{"type":"text","content":"The raised edge supports curled sleepers while the foam base cushions joints."}]', '1 year limited warranty', 'Ships compressed; allow 24 hours to expand.', TRUE, 899.00, TRUE),
+(5, 'BrightBite Dental Chew Toy Set', 'Durable chew toy pair with textured ridges for enrichment and everyday dental care.', 18.90, 180, 12, 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'BrightBite', 24.90, 24, NULL, NULL, NULL, 'new', '["https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium","Material":"Silicone","Color":"Green","Pack":"2 pieces"}', '[{"type":"text","content":"Textured surfaces help massage gums during supervised play."}]', '30 day replacement for manufacturing defects', 'Standard shipping', FALSE, NULL, FALSE),
+(6, 'PurePaws Oatmeal Sensitive Shampoo', 'Gentle oatmeal shampoo for sensitive skin, designed for dogs and cats with a light clean scent.', 15.90, 95, 6, 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'PurePaws', 19.90, 20, NULL, NULL, NULL, NULL, '["https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"All sizes","Volume":"500 ml","Formula":"Oatmeal, aloe","Coat Type":"Sensitive skin"}', '[{"type":"text","content":"A mild grooming essential for routine baths and coat care."}]', 'Quality guarantee', 'Standard shipping', FALSE, NULL, FALSE),
+(7, 'NutriTail Grain-Free Salmon Cat Food 2kg', 'Complete dry cat food with salmon protein, taurine and balanced minerals for adult cats.', 32.90, 88, 9, 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'NutriTail', 39.90, 18, NULL, NULL, NULL, 'hot', '["https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Cat","Weight":"2 kg","Flavor":"Salmon","Life Stage":"Adult"}', '[{"type":"text","content":"Balanced daily nutrition for adult cats with a fish-first flavor profile."}]', 'Freshness guarantee', 'Food items ship separately when needed.', FALSE, NULL, TRUE),
+(8, 'CanineCore Puppy Training Treats', 'Soft bite-size chicken treats for puppy training, recall practice and positive reinforcement.', 12.90, 160, 8, 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'CanineCore', 16.90, 24, NULL, NULL, NULL, 'new', '["https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium","Weight":"300 g","Flavor":"Chicken","Texture":"Soft"}', '[{"type":"text","content":"Small, soft rewards help keep training fast and focused."}]', 'Freshness guarantee', 'Standard shipping', FALSE, NULL, FALSE);

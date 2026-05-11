@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.PaymentRepository">
+    <resultMap id="paymentMap" type="com.example.shop.entity.Payment">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="amount" column="amount"/>
+        <result property="channel" column="channel"/>
+        <result property="status" column="status"/>
+        <result property="paymentUrl" column="payment_url"/>
+        <result property="transactionId" column="transaction_id"/>
+        <result property="expiresAt" column="expires_at"/>
+        <result property="paidAt" column="paid_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findById" resultMap="paymentMap">
+        SELECT * FROM payments WHERE id = #{id}
+    </select>
+
+    <select id="findByOrderIdAndChannel" resultMap="paymentMap">
+        SELECT * FROM payments WHERE order_id = #{orderId} AND channel = #{channel}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByOrderNoAndChannel" resultMap="paymentMap">
+        SELECT * FROM payments WHERE order_no = #{orderNo} AND channel = #{channel}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByTransactionId" resultMap="paymentMap">
+        SELECT * FROM payments WHERE transaction_id = #{transactionId}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByOrderId" resultMap="paymentMap">
+        SELECT * FROM payments WHERE order_id = #{orderId}
+        ORDER BY id DESC
+    </select>
+
+    <select id="findLatestByOrderId" resultMap="paymentMap">
+        SELECT * FROM payments WHERE order_id = #{orderId}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findPendingByOrderId" resultMap="paymentMap">
+        SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'PENDING'
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findExpiredPending" resultMap="paymentMap">
+        SELECT * FROM payments WHERE status = 'PENDING' AND expires_at IS NOT NULL AND expires_at &lt;= NOW()
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.Payment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO payments (order_id, order_no, amount, channel, status, payment_url, transaction_id, expires_at, paid_at, created_at, updated_at)
+        VALUES (#{orderId}, #{orderNo}, #{amount}, #{channel}, #{status}, #{paymentUrl}, #{transactionId}, #{expiresAt}, #{paidAt}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.example.shop.entity.Payment">
+        UPDATE payments
+        SET amount = #{amount},
+            channel = #{channel},
+            status = #{status},
+            payment_url = #{paymentUrl},
+            transaction_id = #{transactionId},
+            expires_at = #{expiresAt},
+            paid_at = #{paidAt},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="markPaid">
+        UPDATE payments
+        SET status = 'PAID',
+            transaction_id = #{transactionId},
+            paid_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
+    <update id="markFailed">
+        UPDATE payments
+        SET status = 'FAILED',
+            updated_at = NOW()
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
+    <update id="markExpired">
+        UPDATE payments
+        SET status = 'EXPIRED',
+            updated_at = NOW()
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+</mapper>

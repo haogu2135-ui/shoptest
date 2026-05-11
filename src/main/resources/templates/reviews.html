@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品评价</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .navbar {
+            background-color: #333;
+            padding: 15px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+        }
+        .review-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .product-info {
+            display: flex;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .product-image {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            margin-right: 20px;
+            border-radius: 5px;
+        }
+        .product-details {
+            flex-grow: 1;
+        }
+        .product-name {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        .average-rating {
+            color: #f0ad4e;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .review-form {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .rating-input {
+            margin-bottom: 15px;
+        }
+        .rating-input label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .rating-stars {
+            display: flex;
+            gap: 10px;
+        }
+        .star {
+            font-size: 24px;
+            cursor: pointer;
+            color: #ddd;
+        }
+        .star.active {
+            color: #f0ad4e;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            resize: vertical;
+        }
+        .submit-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .submit-btn:hover {
+            background-color: #0056b3;
+        }
+        .review-list {
+            margin-top: 30px;
+        }
+        .review-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .reviewer-name {
+            font-weight: bold;
+        }
+        .review-date {
+            color: #666;
+        }
+        .review-rating {
+            color: #f0ad4e;
+            margin-bottom: 10px;
+        }
+        .review-content {
+            color: #333;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">MyShop</div>
+        <div class="nav-links">
+            <a href="/api/products">返回商品列表</a>
+            <a th:href="@{/logout}">退出登录</a>
+        </div>
+    </div>
+
+    <div class="review-container">
+        <div class="product-info">
+            <img th:src="@{'/images/' + ${product.image}}" th:alt="${product.name}" class="product-image">
+            <div class="product-details">
+                <h2 class="product-name" th:text="${product.name}"></h2>
+                <div class="average-rating">
+                    平均评分：<span th:text="${#numbers.formatDecimal(averageRating, 1, 1)}">0.0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="review-form">
+            <h3>写评价</h3>
+            <form id="reviewForm">
+                <div class="rating-input">
+                    <label>评分</label>
+                    <div class="rating-stars">
+                        <span class="star" data-rating="1">★</span>
+                        <span class="star" data-rating="2">★</span>
+                        <span class="star" data-rating="3">★</span>
+                        <span class="star" data-rating="4">★</span>
+                        <span class="star" data-rating="5">★</span>
+                    </div>
+                </div>
+                <textarea name="comment" rows="4" placeholder="分享您的使用体验..." required></textarea>
+                <button type="submit" class="submit-btn">提交评价</button>
+            </form>
+        </div>
+
+        <div class="review-list">
+            <h3>全部评价</h3>
+            <div th:each="review : ${reviews}" class="review-item">
+                <div class="review-header">
+                    <span class="reviewer-name" th:text="${review.user.username}"></span>
+                    <span class="review-date" th:text="${#dates.format(review.createTime, 'yyyy-MM-dd HH:mm')}"></span>
+                </div>
+                <div class="review-rating">
+                    <span th:each="i : ${#numbers.sequence(1, review.rating)}">★</span>
+                    <span th:each="i : ${#numbers.sequence(review.rating + 1, 5)}">☆</span>
+                </div>
+                <div class="review-content" th:text="${review.comment}"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 评分星星交互
+        const stars = document.querySelectorAll('.star');
+        let selectedRating = 0;
+
+        stars.forEach(star => {
+            star.addEventListener('mouseover', function() {
+                const rating = this.dataset.rating;
+                updateStars(rating);
+            });
+
+            star.addEventListener('mouseout', function() {
+                updateStars(selectedRating);
+            });
+
+            star.addEventListener('click', function() {
+                selectedRating = this.dataset.rating;
+                updateStars(selectedRating);
+            });
+        });
+
+        function updateStars(rating) {
+            stars.forEach(star => {
+                star.classList.toggle('active', star.dataset.rating <= rating);
+            });
+        }
+
+        // 提交评价
+        document.getElementById('reviewForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (selectedRating === 0) {
+                alert('请选择评分');
+                return;
+            }
+
+            const comment = this.querySelector('textarea').value;
+            fetch('/api/reviews', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    productId: [[${product.id}]],
+                    rating: selectedRating,
+                    comment: comment
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('评价提交成功！');
+                    location.reload();
+                } else {
+                    alert('评价提交失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('评价提交失败，请稍后重试');
+            });
+        });
+    </script>
+</body>
+</html> 

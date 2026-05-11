@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.UserMapper">
+    <resultMap id="userMap" type="com.example.shop.entity.User">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="email" column="email"/>
+        <result property="phone" column="phone"/>
+        <result property="address" column="address"/>
+        <result property="role" column="role"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <select id="findById" resultMap="userMap">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <select id="findByUsername" resultMap="userMap">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+
+    <select id="findByPhone" resultMap="userMap">
+        SELECT * FROM users WHERE phone = #{phone}
+    </select>
+
+    <select id="findByUsernameOrPhone" resultMap="userMap">
+        SELECT * FROM users WHERE username = #{login} OR phone = #{login} LIMIT 1
+    </select>
+
+    <select id="findByUsernameOrPhoneOrEmail" resultMap="userMap">
+        SELECT * FROM users WHERE username = #{login} OR phone = #{login} OR email = #{login} LIMIT 1
+    </select>
+
+    <select id="findAll" resultMap="userMap">
+        SELECT * FROM users
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password, email, phone, address, role, created_at, updated_at, status)
+        VALUES (#{username}, #{password}, #{email}, #{phone}, #{address}, #{role}, #{createdAt}, #{updatedAt}, #{status})
+    </insert>
+
+    <update id="update" parameterType="com.example.shop.entity.User">
+        UPDATE users
+        SET username = #{username},
+            password = #{password},
+            email = #{email},
+            phone = #{phone},
+            address = #{address},
+            role = #{role},
+            updated_at = #{updatedAt},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE users SET password = #{password} WHERE id = #{userId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+</mapper> 

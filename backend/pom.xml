@@ -1,0 +1,8 @@
+<dependencies>
+    <!-- 添加支付宝SDK依赖 -->
+    <dependency>
+        <groupId>com.alipay.sdk</groupId>
+        <artifactId>alipay-sdk-java</artifactId>
+        <version>4.35.79.ALL</version>
+    </dependency>
+</dependencies> 

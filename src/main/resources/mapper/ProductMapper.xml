@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.ProductMapper">
+    <resultMap id="productMap" type="com.example.shop.entity.Product">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="price" column="price"/>
+        <result property="stock" column="stock"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="isFeatured" column="is_featured"/>
+        <result property="brand" column="brand"/>
+        <result property="originalPrice" column="original_price"/>
+        <result property="discount" column="discount"/>
+        <result property="limitedTimePrice" column="limited_time_price"/>
+        <result property="limitedTimeStartAt" column="limited_time_start_at"/>
+        <result property="limitedTimeEndAt" column="limited_time_end_at"/>
+        <result property="tag" column="tag"/>
+        <result property="images" column="images"/>
+        <result property="specifications" column="specifications"/>
+        <result property="detailContent" column="detail_content"/>
+        <result property="variants" column="variants"/>
+        <result property="warranty" column="warranty"/>
+        <result property="shipping" column="shipping"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="productMap">
+        SELECT
+            id, name, description, price, stock, category_id, image_url, is_featured,
+            brand, original_price, discount, limited_time_price, limited_time_start_at,
+            limited_time_end_at, tag, images, specifications, detail_content, variants, warranty,
+            shipping, status, created_at, updated_at
+        FROM products
+    </select>
+
+    <select id="findById" resultMap="productMap">
+        SELECT
+            id, name, description, price, stock, category_id, image_url, is_featured,
+            brand, original_price, discount, limited_time_price, limited_time_start_at,
+            limited_time_end_at, tag, images, specifications, detail_content, variants, warranty,
+            shipping, status, created_at, updated_at
+        FROM products WHERE id = #{id}
+    </select>
+
+    <select id="findByCategory" resultMap="productMap">
+        SELECT
+            id, name, description, price, stock, category_id, image_url, is_featured,
+            brand, original_price, discount, limited_time_price, limited_time_start_at,
+            limited_time_end_at, tag, images, specifications, detail_content, variants, warranty,
+            shipping, status, created_at, updated_at
+        FROM products WHERE category_id = #{categoryId}
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.Product" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO products (
+            name, description, price, stock, category_id, image_url, is_featured, brand, original_price, discount,
+            limited_time_price, limited_time_start_at, limited_time_end_at, tag, images, specifications, detail_content, variants,
+            warranty, shipping, status, created_at, updated_at
+        )
+        VALUES (
+            #{name}, #{description}, #{price}, #{stock}, #{categoryId}, #{imageUrl}, #{isFeatured}, #{brand}, #{originalPrice}, #{discount},
+            #{limitedTimePrice}, #{limitedTimeStartAt}, #{limitedTimeEndAt}, #{tag}, #{images}, #{specifications}, #{detailContent}, #{variants},
+            #{warranty}, #{shipping}, #{status}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.example.shop.entity.Product">
+        UPDATE products
+        SET name = #{name},
+            description = #{description},
+            price = #{price},
+            stock = #{stock},
+            category_id = #{categoryId},
+            image_url = #{imageUrl},
+            is_featured = #{isFeatured},
+            brand = #{brand},
+            original_price = #{originalPrice},
+            discount = #{discount},
+            limited_time_price = #{limitedTimePrice},
+            limited_time_start_at = #{limitedTimeStartAt},
+            limited_time_end_at = #{limitedTimeEndAt},
+            tag = #{tag},
+            images = #{images},
+            specifications = #{specifications},
+            detail_content = #{detailContent},
+            variants = #{variants},
+            warranty = #{warranty},
+            shipping = #{shipping},
+            updated_at = #{updatedAt},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <update id="decreaseStock">
+        UPDATE products
+        SET stock = stock - #{quantity}
+        WHERE id = #{productId} AND stock &gt;= #{quantity}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM products WHERE id = #{id}
+    </delete>
+</mapper> 

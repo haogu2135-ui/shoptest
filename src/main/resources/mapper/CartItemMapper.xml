@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.CartItemMapper">
+    <resultMap id="cartItemMap" type="com.example.shop.entity.CartItem">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="quantity" column="quantity"/>
+        <result property="price" column="price"/>
+        <result property="selectedSpecs" column="selected_specs"/>
+        <result property="productName" column="product_name"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="stock" column="stock"/>
+        <result property="productStatus" column="product_status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="cartItemColumns">
+        ci.id, ci.user_id, ci.product_id, ci.quantity, ci.price, ci.selected_specs, ci.created_at, ci.updated_at,
+        p.name AS product_name, p.image_url, p.stock, p.status AS product_status
+    </sql>
+
+    <select id="findByUserId" resultMap="cartItemMap">
+        SELECT <include refid="cartItemColumns"/>
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        WHERE ci.user_id = #{userId}
+    </select>
+
+    <select id="findById" resultMap="cartItemMap">
+        SELECT <include refid="cartItemColumns"/>
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        WHERE ci.id = #{id}
+    </select>
+
+    <select id="findByUserIdAndProductId" resultMap="cartItemMap">
+        SELECT <include refid="cartItemColumns"/>
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        WHERE ci.user_id = #{userId}
+          AND ci.product_id = #{productId}
+        LIMIT 1
+    </select>
+
+    <select id="findByUserIdAndProductIdAndSelectedSpecs" resultMap="cartItemMap">
+        SELECT <include refid="cartItemColumns"/>
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        WHERE ci.user_id = #{userId}
+          AND ci.product_id = #{productId}
+          AND (
+            (#{selectedSpecs} IS NULL AND ci.selected_specs IS NULL)
+            OR ci.selected_specs = #{selectedSpecs}
+          )
+        LIMIT 1
+    </select>
+
+    <select id="findByIds" resultMap="cartItemMap">
+        SELECT <include refid="cartItemColumns"/>
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        WHERE ci.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <insert id="insert" parameterType="com.example.shop.entity.CartItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cart_items (user_id, product_id, quantity, price, selected_specs, created_at, updated_at)
+        VALUES (#{userId}, #{productId}, #{quantity}, #{price}, #{selectedSpecs}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.example.shop.entity.CartItem">
+        UPDATE cart_items
+        SET quantity = #{quantity},
+            price = #{price},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM cart_items WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByIds">
+        DELETE FROM cart_items WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteByUserId">
+        DELETE FROM cart_items WHERE user_id = #{userId}
+    </delete>
+</mapper>
