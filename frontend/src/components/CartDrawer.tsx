@@ -1,18 +1,32 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Drawer, Empty, InputNumber, List, message, Progress, Space, Tag, Typography } from 'antd';
-import { AppleOutlined, GoogleOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { AppleOutlined, ClockCircleOutlined, GoogleOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { cartApi } from '../api';
+import { apiBaseUrl, cartApi } from '../api';
 import type { CartItem } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { getGuestCartItems, removeGuestCartItem, updateGuestCartQuantity } from '../utils/guestCart';
+import { saveCartItemForLater } from '../utils/saveForLater';
+import './CartDrawer.css';
 
 const { Text } = Typography;
+const cartDrawerImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+
+const resolveCartImage = (imageUrl?: string) => {
+  if (!imageUrl) return cartDrawerImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
+
+const isAvailable = (item: CartItem) =>
+  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock > 0);
 
 const canCheckout = (item: CartItem) =>
-  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock >= item.quantity);
+  isAvailable(item) && (item.stock === undefined || item.stock >= item.quantity);
 
 const CartDrawer: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -56,11 +70,13 @@ const CartDrawer: React.FC = () => {
     };
   }, [loadCart]);
 
-  const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
   const checkoutItems = useMemo(() => items.filter(canCheckout), [items]);
+  const subtotal = useMemo(() => checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [checkoutItems]);
   const freeShippingThreshold = market.freeShippingThreshold;
   const remaining = Math.max(0, freeShippingThreshold - subtotal);
-  const progress = Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
+  const progress = freeShippingThreshold > 0
+    ? Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100))
+    : 100;
 
   const updateQuantity = async (item: CartItem, quantity: number) => {
     try {
@@ -90,6 +106,22 @@ const CartDrawer: React.FC = () => {
     }
   };
 
+  const saveForLater = async (item: CartItem) => {
+    try {
+      saveCartItemForLater(item);
+      if (localStorage.getItem('token') && localStorage.getItem('userId')) {
+        await cartApi.removeItem(item.id);
+        setItems((current) => current.filter((entry) => entry.id !== item.id));
+      } else {
+        setItems(removeGuestCartItem(item.id));
+      }
+      message.success(t('pages.cart.savedForLater'));
+      window.dispatchEvent(new Event('shop:cart-updated'));
+    } catch {
+      message.error(t('messages.operationFailed'));
+    }
+  };
+
   const goCheckout = (paymentMethod?: string) => {
     if (checkoutItems.length === 0) {
       message.warning(t('pages.cart.chooseItems'));
@@ -98,6 +130,8 @@ const CartDrawer: React.FC = () => {
     sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(checkoutItems.map((item) => item.id)));
     if (paymentMethod) {
       sessionStorage.setItem('checkoutPaymentMethod', paymentMethod);
+    } else {
+      sessionStorage.removeItem('checkoutPaymentMethod');
     }
     setOpen(false);
     navigate('/checkout');
@@ -110,22 +144,31 @@ const CartDrawer: React.FC = () => {
       width="min(420px, 100vw)"
       open={open}
       onClose={() => setOpen(false)}
+      className="cart-drawer"
       styles={{ body: { padding: 16 } }}
       extra={<Text strong>{formatMoney(subtotal)}</Text>}
     >
-      <div style={{ marginBottom: 18 }}>
+      <div className="cart-drawer__shipping">
         <Text strong>
           {remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}
         </Text>
         <Progress percent={progress} showInfo={false} strokeColor="#124734" style={{ marginTop: 8 }} />
       </div>
 
-      <Space.Compact block style={{ marginBottom: 16 }}>
-        <Button onClick={() => goCheckout('SHOP_PAY')}>Shop Pay</Button>
-        <Button onClick={() => goCheckout('PAYPAL')}>PayPal</Button>
-        <Button icon={<AppleOutlined />} onClick={() => goCheckout('APPLE_PAY')}>Pay</Button>
-        <Button icon={<GoogleOutlined />} onClick={() => goCheckout('GOOGLE_PAY')}>Pay</Button>
-      </Space.Compact>
+      {items.length > 0 ? (
+        <Space.Compact block className="cart-drawer__express" style={{ marginBottom: 16 }}>
+          <Button disabled={checkoutItems.length === 0} onClick={() => goCheckout('SHOP_PAY')}>Shop Pay</Button>
+          <Button disabled={checkoutItems.length === 0} onClick={() => goCheckout('PAYPAL')}>PayPal</Button>
+          <Button disabled={checkoutItems.length === 0} icon={<AppleOutlined />} onClick={() => goCheckout('APPLE_PAY')}>Pay</Button>
+          <Button disabled={checkoutItems.length === 0} icon={<GoogleOutlined />} onClick={() => goCheckout('GOOGLE_PAY')}>Pay</Button>
+        </Space.Compact>
+      ) : null}
+
+      {items.length > checkoutItems.length ? (
+        <Text type="secondary" className="cart-drawer__unavailable">
+          {t('pages.cart.unavailableSummary', { count: items.length - checkoutItems.length })}
+        </Text>
+      ) : null}
 
       {items.length === 0 ? (
         <Empty image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />} description={t('pages.cart.empty')}>
@@ -137,15 +180,29 @@ const CartDrawer: React.FC = () => {
         <List
           loading={loading}
           dataSource={items}
+          className="cart-drawer__list"
           renderItem={(item) => (
             <List.Item
+              className="cart-drawer__item"
               actions={[
-                <Button type="link" danger onClick={() => removeItem(item)}>{t('common.delete')}</Button>,
+                <Button key="later" type="link" icon={<ClockCircleOutlined />} onClick={() => saveForLater(item)}>{t('pages.cart.saveForLaterShort')}</Button>,
+                <Button key="delete" type="link" danger onClick={() => removeItem(item)}>{t('common.delete')}</Button>,
               ]}
             >
               <List.Item.Meta
-                avatar={<img src={item.imageUrl} alt={item.productName} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6 }} />}
-                title={<button type="button" style={{ border: 0, background: 'transparent', padding: 0, fontWeight: 700, cursor: 'pointer' }} onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{item.productName}</button>}
+                avatar={
+                  <img
+                    src={resolveCartImage(item.imageUrl)}
+                    alt={item.productName}
+                    className="cart-drawer__image"
+                    onError={(event) => {
+                      if (event.currentTarget.src !== cartDrawerImageFallback) {
+                        event.currentTarget.src = cartDrawerImageFallback;
+                      }
+                    }}
+                  />
+                }
+                title={<button type="button" className="cart-drawer__productLink" onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{item.productName}</button>}
                 description={
                   <Space direction="vertical" size={4}>
                     {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
@@ -156,7 +213,7 @@ const CartDrawer: React.FC = () => {
                       max={item.stock || undefined}
                       size="small"
                       value={item.quantity}
-                      disabled={!canCheckout(item)}
+                      disabled={!isAvailable(item)}
                       onChange={(value) => updateQuantity(item, value || 1)}
                     />
                   </Space>
@@ -167,9 +224,9 @@ const CartDrawer: React.FC = () => {
         />
       )}
 
-      <div style={{ position: 'sticky', bottom: 0, paddingTop: 16, background: '#fff' }}>
+      <div className="cart-drawer__footer">
         <Space direction="vertical" style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div className="cart-drawer__subtotal">
             <Text>{t('common.subtotal')}</Text>
             <Text strong>{formatMoney(subtotal)}</Text>
           </div>

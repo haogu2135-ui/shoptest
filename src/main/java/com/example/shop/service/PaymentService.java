@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -52,6 +53,15 @@ public class PaymentService {
 
     @Value("${payment.supported-channels:VISA,MX_LOCAL_CARD,SPEI,OXXO,ALIPAY,WECHAT}")
     private String supportedChannels;
+
+    @Value("${payment.checkout-base-url:https://pay.example.local/checkout}")
+    private String paymentCheckoutBaseUrl;
+
+    @Value("${app.runtime-mode:production}")
+    private String runtimeMode;
+
+    @Value("${payment.simulation-enabled:}")
+    private String paymentSimulationEnabled;
 
     @Value("${stripe.secret-key:}")
     private String stripeSecretKey;
@@ -115,6 +125,7 @@ public class PaymentService {
 
     @Transactional
     public Payment simulatePaid(Long paymentId) {
+        assertPaymentSimulationEnabled();
         Payment payment = paymentRepository.findById(paymentId);
         if (payment == null) {
             throw new IllegalArgumentException("Payment not found");
@@ -139,6 +150,7 @@ public class PaymentService {
 
     @Transactional
     public Payment simulateCallback(Long paymentId) {
+        assertPaymentSimulationEnabled();
         Payment payment = paymentRepository.findById(paymentId);
         if (payment == null) {
             throw new IllegalArgumentException("Payment not found");
@@ -226,6 +238,10 @@ public class PaymentService {
 
     public List<Payment> findByOrderId(Long orderId) {
         return paymentRepository.findByOrderId(orderId);
+    }
+
+    public Payment findById(Long paymentId) {
+        return paymentRepository.findById(paymentId);
     }
 
     @Transactional
@@ -362,13 +378,30 @@ public class PaymentService {
     }
 
     private String buildPaymentUrl(String orderNo, String channel, LocalDateTime expiresAt) {
-        return "https://pay.example.local/checkout/" + orderNo
-                + "?channel=" + channel
-                + "&expiresAt=" + expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String baseUrl = isBlank(paymentCheckoutBaseUrl)
+                ? "https://pay.example.local/checkout"
+                : paymentCheckoutBaseUrl.trim().replaceAll("/+$", "");
+        return baseUrl + "/" + urlEncode(orderNo)
+                + "?channel=" + urlEncode(channel)
+                + "&expiresAt=" + urlEncode(expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     }
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private void assertPaymentSimulationEnabled() {
+        if (!isPaymentSimulationEnabled()) {
+            throw new IllegalStateException("Payment simulation is disabled");
+        }
+    }
+
+    public boolean isPaymentSimulationEnabled() {
+        if (!isBlank(paymentSimulationEnabled)) {
+            return Boolean.parseBoolean(paymentSimulationEnabled.trim());
+        }
+        String mode = runtimeMode == null ? "production" : runtimeMode.trim().toLowerCase(Locale.ROOT);
+        return "debug".equals(mode) || "dev".equals(mode) || "test".equals(mode);
     }
 
     private String sha256(String value) {
@@ -383,5 +416,9 @@ public class PaymentService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is not available", e);
         }
+    }
+
+    private String urlEncode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 }

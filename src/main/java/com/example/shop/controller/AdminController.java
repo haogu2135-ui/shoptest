@@ -8,6 +8,7 @@ import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.entity.Product;
 import com.example.shop.entity.Review;
+import com.example.shop.entity.SecurityAuditLog;
 import com.example.shop.entity.User;
 import com.example.shop.entity.LogisticsCarrier;
 import com.example.shop.service.OrderItemService;
@@ -17,6 +18,7 @@ import com.example.shop.service.NotificationService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.ReviewService;
+import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.UserService;
 import com.example.shop.service.LogisticsCarrierService;
 import com.example.shop.util.CsvUtils;
@@ -25,6 +27,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,9 +40,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -71,6 +77,7 @@ public class AdminController {
     private final NotificationService notificationService;
     private final PetBirthdayCouponService petBirthdayCouponService;
     private final LogisticsCarrierService logisticsCarrierService;
+    private final SecurityAuditLogService auditLogService;
 
     // ==================== Dashboard ====================
 
@@ -80,7 +87,9 @@ public class AdminController {
         List<Order> orders = orderService.getAllOrders();
         List<User> users = userService.findAll();
         List<OrderItem> orderItems = orderItemService.getAllOrderItems();
-        Set<String> revenueStatuses = Set.of("PENDING_SHIPMENT", "SHIPPED", "COMPLETED");
+        Set<String> revenueStatuses = Set.of(
+                "PENDING_SHIPMENT", "SHIPPED", "COMPLETED",
+                "RETURN_REQUESTED", "RETURN_APPROVED", "RETURN_SHIPPED");
 
         List<Order> paidOrders = orders.stream()
                 .filter(order -> revenueStatuses.contains(order.getStatus()))
@@ -340,14 +349,21 @@ public class AdminController {
     }
 
     @PutMapping("/orders/{id}/status")
-    public ResponseEntity<?> updateOrderStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateOrderStatus(@PathVariable Long id,
+                                               @RequestBody Map<String, String> body,
+                                               Authentication authentication,
+                                               HttpServletRequest request) {
         String newStatus = body.get("status");
         if (newStatus == null || newStatus.isEmpty()) {
+            auditLogService.record("ORDER_STATUS_UPDATE", "FAILURE", authentication, "ORDER", id, request,
+                    "Order status is required", null);
             return ResponseEntity.badRequest().body(Map.of("error", "状态不能为空"));
         }
 
         Order order = orderService.getOrderById(id);
         if (order == null) {
+            auditLogService.record("ORDER_STATUS_UPDATE", "FAILURE", authentication, "ORDER", id, request,
+                    "Order not found", "to=" + newStatus);
             return ResponseEntity.notFound().build();
         }
 
@@ -367,27 +383,38 @@ public class AdminController {
                 updated = orderService.updateOrderStatus(id, newStatus);
             }
             if (updated) {
+                auditLogService.record(auditActionForOrderStatus(order.getStatus(), newStatus), "SUCCESS", authentication, "ORDER", id, request,
+                        "Order status updated", "from=" + order.getStatus() + ",to=" + newStatus + ",orderNo=" + order.getOrderNo());
                 return ResponseEntity.ok(Map.of("message", "状态更新成功", "status", newStatus));
             }
-            return ResponseEntity.badRequest().body(Map.of("error", "更新失败"));
+            auditLogService.record(auditActionForOrderStatus(order.getStatus(), newStatus), "FAILURE", authentication, "ORDER", id, request,
+                    "Order status update returned false", "from=" + order.getStatus() + ",to=" + newStatus + ",orderNo=" + order.getOrderNo());
+            return ResponseEntity.badRequest().body(Map.of("error", "Update failed"));
         } catch (IllegalArgumentException e) {
+            auditLogService.record(auditActionForOrderStatus(order.getStatus(), newStatus), "FAILURE", authentication, "ORDER", id, request, e.getMessage(), "to=" + newStatus);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {
+            auditLogService.record(auditActionForOrderStatus(order.getStatus(), newStatus), "FAILURE", authentication, "ORDER", id, request, e.getMessage(), "to=" + newStatus);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @PostMapping("/orders/batch-ship")
-    public ResponseEntity<?> batchShipOrders(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> batchShipOrders(@RequestBody Map<String, Object> body,
+                                             Authentication authentication,
+                                             HttpServletRequest request) {
         Object idsValue = body.get("orderIds");
         String trackingPrefix = String.valueOf(body.getOrDefault("trackingPrefix", "BATCH"));
         String trackingCarrierCode = body.get("trackingCarrierCode") == null ? null : String.valueOf(body.get("trackingCarrierCode"));
         if (!(idsValue instanceof List<?>)) {
+            auditLogService.record("ORDER_BATCH_SHIP", "FAILURE", authentication, "ORDER", null, request,
+                    "orderIds is required", "trackingPrefix=" + trackingPrefix + ",carrier=" + trackingCarrierCode);
             return ResponseEntity.badRequest().body(Map.of("error", "orderIds is required"));
         }
 
         int success = 0;
         int failed = 0;
+        StringBuilder failedIds = new StringBuilder();
         for (Object idValue : (List<?>) idsValue) {
             try {
                 Long id = Long.valueOf(String.valueOf(idValue));
@@ -395,8 +422,17 @@ public class AdminController {
                 success++;
             } catch (Exception e) {
                 failed++;
+                if (failedIds.length() < 500) {
+                    if (failedIds.length() > 0) {
+                        failedIds.append(",");
+                    }
+                    failedIds.append(idValue);
+                }
             }
         }
+        auditLogService.record("ORDER_BATCH_SHIP", failed == 0 ? "SUCCESS" : "FAILURE", authentication, "ORDER", null, request,
+                "Batch ship completed",
+                "success=" + success + ",failed=" + failed + ",failedIds=" + failedIds + ",trackingPrefix=" + trackingPrefix + ",carrier=" + trackingCarrierCode);
         return ResponseEntity.ok(Map.of("success", success, "failed", failed));
     }
 
@@ -491,7 +527,9 @@ public class AdminController {
     // ==================== Order Export ====================
 
     @GetMapping("/orders/export")
-    public ResponseEntity<byte[]> exportOrders(@RequestParam(required = false) String status) {
+    public ResponseEntity<byte[]> exportOrders(@RequestParam(required = false) String status,
+                                               Authentication authentication,
+                                               HttpServletRequest request) {
         List<Order> orders = orderService.getAllOrders();
         if (status != null && !status.isEmpty()) {
             orders = orders.stream()
@@ -525,10 +563,106 @@ public class AdminController {
         }
 
         byte[] body = csv.toString().getBytes(StandardCharsets.UTF_8);
+        auditLogService.record("ORDER_EXPORT", "SUCCESS", authentication, "ORDER", null, request,
+                "Orders exported", "status=" + status + ",count=" + orders.size());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=orders.csv")
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .body(body);
+    }
+
+    // ==================== Security Audit Logs ====================
+
+    @GetMapping("/audit-logs")
+    public ResponseEntity<List<SecurityAuditLog>> getAuditLogs(@RequestParam(required = false) String action,
+                                                               @RequestParam(required = false) String result,
+                                                               @RequestParam(required = false) String actorUsername,
+                                                               @RequestParam(required = false) String resourceType,
+                                                               @RequestParam(required = false) String startAt,
+                                                               @RequestParam(required = false) String endAt,
+                                                               @RequestParam(required = false, defaultValue = "200") int limit) {
+        return ResponseEntity.ok(auditLogService.search(
+                action,
+                result,
+                actorUsername,
+                resourceType,
+                parseDateTime(startAt),
+                parseDateTime(endAt),
+                limit));
+    }
+
+    @GetMapping("/audit-logs/export")
+    public ResponseEntity<byte[]> exportAuditLogs(@RequestParam(required = false) String action,
+                                                  @RequestParam(required = false) String result,
+                                                  @RequestParam(required = false) String actorUsername,
+                                                  @RequestParam(required = false) String resourceType,
+                                                  @RequestParam(required = false) String startAt,
+                                                  @RequestParam(required = false) String endAt,
+                                                  Authentication authentication,
+                                                  HttpServletRequest request) {
+        List<SecurityAuditLog> logs = auditLogService.search(
+                action,
+                result,
+                actorUsername,
+                resourceType,
+                parseDateTime(startAt),
+                parseDateTime(endAt),
+                5000);
+
+        StringBuilder csv = new StringBuilder("\uFEFF");
+        csv.append(CsvUtils.row(Arrays.asList(
+                "id", "createdAt", "action", "result", "actorUserId", "actorUsername", "actorRole",
+                "resourceType", "resourceId", "ipAddress", "userAgent", "message", "metadata"
+        ))).append("\r\n");
+        for (SecurityAuditLog log : logs) {
+            csv.append(CsvUtils.row(Arrays.asList(
+                    log.getId(),
+                    log.getCreatedAt(),
+                    log.getAction(),
+                    log.getResult(),
+                    log.getActorUserId(),
+                    log.getActorUsername(),
+                    log.getActorRole(),
+                    log.getResourceType(),
+                    log.getResourceId(),
+                    log.getIpAddress(),
+                    log.getUserAgent(),
+                    log.getMessage(),
+                    log.getMetadata()
+            ))).append("\r\n");
+        }
+
+        auditLogService.record("AUDIT_LOG_EXPORT", "SUCCESS", authentication, "SECURITY_AUDIT_LOG", null, request,
+                "Security audit logs exported", "count=" + logs.size());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=security-audit-logs.csv")
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(csv.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String auditActionForOrderStatus(String currentStatus, String newStatus) {
+        if ("RETURNED".equals(newStatus)) {
+            return "REFUND_COMPLETE";
+        }
+        if ("RETURN_APPROVED".equals(newStatus)) {
+            return "RETURN_APPROVE";
+        }
+        if ("COMPLETED".equals(newStatus) && "RETURN_REQUESTED".equals(currentStatus)) {
+            return "RETURN_REJECT";
+        }
+        return "ORDER_STATUS_UPDATE";
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     // ==================== Review Management ====================

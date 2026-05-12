@@ -157,7 +157,17 @@ export interface Order {
     trackingCarrierCode?: string;
     trackingCarrierName?: string;
     returnTrackingNumber?: string;
+    returnReason?: string;
+    returnRequestedAt?: string;
+    returnApprovedAt?: string;
+    returnRejectedAt?: string;
+    returnShippedAt?: string;
+    returnedAt?: string;
+    returnable?: boolean;
+    returnDeadline?: string;
+    refundedAt?: string;
     shippedAt?: string;
+    completedAt?: string;
     username?: string;
     orderItems?: OrderItem[];
     createdAt?: string;
@@ -293,6 +303,29 @@ export interface PetProfile {
     updatedAt?: string;
 }
 
+export interface PetGalleryPhoto {
+    id: number;
+    userId?: number;
+    username: string;
+    imageUrl: string;
+    originalFilename?: string;
+    contentType: string;
+    fileSize: number;
+    source?: 'USER_UPLOAD' | 'SEED';
+    likeCount?: number;
+    likedByMe?: boolean;
+    canDelete?: boolean;
+    createdAt?: string;
+}
+
+export interface PetGalleryQuota {
+    limit: number;
+    userUploads: number;
+    ipUploads: number;
+    remaining: number;
+    canUpload: boolean;
+}
+
 export interface Review {
     id: number;
     userId: number;
@@ -332,6 +365,27 @@ export interface Payment {
     transactionId?: string;
     expiresAt?: string;
     paidAt?: string;
+    createdAt: string;
+}
+
+export interface AppConfig {
+    runtimeMode: 'production' | 'debug' | 'dev' | 'test' | string;
+    paymentSimulationEnabled: boolean;
+}
+
+export interface SecurityAuditLog {
+    id: number;
+    action: string;
+    result: string;
+    actorUserId?: number;
+    actorUsername?: string;
+    actorRole?: string;
+    resourceType?: string;
+    resourceId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    message?: string;
+    metadata?: string;
     createdAt: string;
 }
 

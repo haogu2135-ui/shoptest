@@ -174,11 +174,110 @@
   color: #8b5e34;
 }
 
+.shopee-section__hint {
+  margin: -4px 0 12px;
+  color: #6c6a62;
+  font-size: 13px;
+}
+
+.shopee-personalized-products {
+  border-top: 3px solid #124734;
+}
+
 .shopee-home-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 14px;
+}
+
+.shopee-mobile-priority {
+  display: none;
+}
+
+.shopee-mobile-quick-panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #eee4d3;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(18, 71, 52, 0.12);
+}
+
+.shopee-mobile-quick-panel button {
+  min-width: 0;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 4px;
+  background: #f7f4ee;
+  color: #173f2b;
+  cursor: pointer;
+}
+
+.shopee-mobile-quick-panel button:nth-child(1) {
+  background: #eaf4ef;
+}
+
+.shopee-mobile-quick-panel button:nth-child(2) {
+  background: #fff7e6;
+}
+
+.shopee-mobile-quick-panel button:nth-child(3) {
+  background: #fff1f2;
+}
+
+.shopee-mobile-quick-panel button:nth-child(4) {
+  background: #eef2ff;
+}
+
+.shopee-mobile-quick-panel button:nth-child(5) {
+  background: #ecfeff;
+}
+
+.shopee-mobile-quick-panel button:nth-child(6) {
+  background: #f0fdf4;
+}
+
+.shopee-mobile-quick-panel button:nth-child(7) {
+  background: #fefce8;
+}
+
+.shopee-mobile-quick-panel button:nth-child(8) {
+  background: #f5f3ff;
+}
+
+.shopee-mobile-quick-panel__icon {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.78);
+  color: #124734;
+  font-size: 18px;
+}
+
+.shopee-mobile-quick-panel__label {
+  width: 100%;
+  min-height: 30px;
+  display: -webkit-box;
+  overflow: hidden;
+  color: #173f2b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .shopee-coupon-entry {
@@ -281,13 +380,20 @@
   min-height: 100%;
   display: block;
   padding: 0;
+  border: 1px solid transparent;
   text-align: left;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
-.shopee-product:hover {
+.shopee-product:hover,
+.shopee-product:focus-visible {
   transform: translateY(-2px);
   box-shadow: 0 1px 12px rgba(0, 0, 0, 0.16);
+}
+
+.shopee-product:focus-visible {
+  outline: 2px solid #124734;
+  outline-offset: 2px;
 }
 
 .shopee-product__imageWrap {
@@ -350,6 +456,48 @@
 .shopee-product__body {
   display: block;
   padding: 10px;
+  overflow-wrap: anywhere;
+}
+
+.shopee-product__quickActions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.shopee-product:hover .shopee-product__quickActions,
+.shopee-product:focus-within .shopee-product__quickActions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.shopee-product__quickActions button {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #124734;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(18, 71, 52, 0.18);
+}
+
+.shopee-product__quickActions button:hover {
+  background: #124734;
+  color: #fff;
+}
+
+.shopee-product__quickActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .shopee-product__name {
@@ -369,18 +517,30 @@
   justify-content: space-between;
   gap: 8px;
   margin-top: 8px;
+  min-width: 0;
 }
 
 .shopee-product__price {
+  min-width: 0;
   color: #ee4d2d;
   font-size: 18px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .shopee-product__sold,
 .shopee-product__original {
   color: #8b8b8b;
   font-size: 12px;
+}
+
+.shopee-product__sold {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shopee-product__original {
@@ -404,18 +564,68 @@
   padding: 18px 0 4px;
 }
 
+.pet-ugc .shopee-section__header {
+  gap: 12px;
+}
+
+.pet-ugc__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pet-ugc__file {
+  display: none;
+}
+
+.pet-ugc__upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  padding: 7px 10px;
+  background: #124734;
+  color: #fff;
+  font-weight: 700;
+}
+
+.pet-ugc__upload:hover {
+  color: #fff;
+  background: #173f2b;
+}
+
+.pet-ugc__upload:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pet-ugc__status {
+  margin: -4px 0 14px;
+  color: #6c6a62;
+  font-size: 13px;
+  line-height: 19px;
+}
+
 .pet-ugc__grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
 }
 
-.pet-ugc__grid button {
+.pet-ugc__card {
+  overflow: hidden;
+  border: 1px solid #eee4d3;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.pet-ugc__imageButton {
   position: relative;
   overflow: hidden;
+  width: 100%;
   aspect-ratio: 3 / 4;
   border: 0;
-  border-radius: 8px;
   padding: 0;
   background: #eee;
   cursor: pointer;
@@ -429,19 +639,113 @@
   transition: transform 0.18s ease;
 }
 
-.pet-ugc__grid button:hover img {
+.pet-ugc__imageButton:hover img {
   transform: scale(1.04);
 }
 
-.pet-ugc__grid span {
+.pet-ugc__imageButton > span {
   position: absolute;
   left: 8px;
   bottom: 8px;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
   padding: 4px 7px;
   border-radius: 4px;
   background: rgba(18, 71, 52, 0.82);
   color: #fff;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-ugc__meta {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 8px;
+}
+
+.pet-ugc__like,
+.pet-ugc__delete {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pet-ugc__like {
+  min-width: 0;
+  max-width: calc(100% - 34px);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  padding: 4px 0;
+  color: #6c6a62;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-ugc__like--active {
+  color: #ee4d2d;
+}
+
+.pet-ugc__delete {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #9b1c1c;
+}
+
+.pet-ugc__delete:hover {
+  background: #fff1f0;
+}
+
+.pet-ugc-preview .ant-modal-content {
+  overflow: hidden;
+  padding: 0;
+  border-radius: 8px;
+  background: #111;
+}
+
+.pet-ugc-preview .ant-modal-close {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.36);
+}
+
+.pet-ugc-preview__figure {
+  position: relative;
+  margin: 0;
+  background: #111;
+}
+
+.pet-ugc-preview__figure img {
+  width: 100%;
+  max-height: min(78vh, 760px);
+  display: block;
+  object-fit: contain;
+}
+
+.pet-ugc-preview__figure figcaption {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  padding: 5px 9px;
+  border-radius: 4px;
+  background: rgba(18, 71, 52, 0.86);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {
@@ -462,17 +766,51 @@
     background-color: #173f2b;
     background-position: center, center;
     background-repeat: no-repeat;
-    background-size: cover, contain;
+    background-size: cover, cover;
+    padding: 16px 0 32px;
   }
 
   .shopee-hero h1 {
-    font-size: 28px;
+    font-size: 27px;
+    line-height: 1.14;
   }
 
   .shopee-hero__main {
-    min-height: 520px;
+    min-height: 348px;
     align-items: flex-end;
-    padding: 28px 20px;
+    padding: 22px 20px 38px;
+  }
+
+  .shopee-hero__eyebrow {
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+
+  .shopee-hero p {
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 10px 0 16px;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .shopee-hero__actions {
+    gap: 8px;
+  }
+
+  .shopee-hero__actions .ant-btn {
+    height: 40px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .shopee-mobile-priority {
+    position: relative;
+    z-index: 2;
+    display: block;
+    margin-top: -22px;
   }
 
   .shopee-section__header--accent {
@@ -497,14 +835,120 @@
   }
 
   .pet-trust-strip {
-    grid-template-columns: 1fr 1fr;
+    grid-auto-columns: minmax(150px, 1fr);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    overflow-x: auto;
+    padding-bottom: 3px;
+    scrollbar-width: none;
+  }
+
+  .pet-trust-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pet-trust-strip > div {
+    min-height: 78px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .pet-trust-strip .anticon {
+    font-size: 19px;
+  }
+
+  .pet-trust-strip strong {
+    font-size: 13px;
+    line-height: 17px;
+  }
+
+  .pet-trust-strip span {
+    font-size: 12px;
+    line-height: 16px;
   }
 
   .pet-ugc__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .pet-ugc .shopee-section__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pet-ugc__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .pet-ugc__actions button {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  .pet-ugc__upload {
+    justify-content: center;
+  }
+
   .shopee-categories {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .shopee-categories::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shopee-categories button {
+    min-width: 92px;
+    min-height: 92px;
+    padding: 10px 6px;
+  }
+
+  .shopee-categories button > span:first-child {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+
+  .shopee-product__body {
+    padding: 8px;
+  }
+
+  .shopee-product__quickActions {
+    right: 6px;
+    bottom: 6px;
+    opacity: 1;
+    transform: none;
+  }
+
+  .shopee-product__quickActions button {
+    width: 31px;
+    height: 31px;
+  }
+
+  .shopee-product__name {
+    min-height: 36px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .shopee-product__meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 6px;
+  }
+
+  .shopee-product__price {
+    font-size: 16px;
+    line-height: 20px;
+  }
+
+  .shopee-product__sold {
+    max-width: 100%;
+    text-align: left;
   }
 }

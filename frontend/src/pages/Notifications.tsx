@@ -6,6 +6,7 @@ import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
+import './Notifications.css';
 
 const { Text, Title } = Typography;
 
@@ -15,6 +16,18 @@ const typeColors: Record<string, string> = {
   SYSTEM: 'default',
   DELIVERY: 'green',
 };
+
+const notifyNavbarChanged = () => {
+  window.dispatchEvent(new Event('shop:notifications-updated'));
+};
+
+const sortNotifications = (items: AppNotification[]) =>
+  [...items].sort((left, right) => {
+    if (left.isRead !== right.isRead) return left.isRead ? 1 : -1;
+    const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
+    const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+    return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
+  });
 
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -26,7 +39,7 @@ const Notifications: React.FC = () => {
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await notificationApi.getByUser(userId);
-      setNotifications(res.data);
+      setNotifications(sortNotifications(res.data));
     } catch {
       message.error(t('pages.notifications.fetchFailed'));
     } finally {
@@ -46,7 +59,8 @@ const Notifications: React.FC = () => {
   const handleMarkAsRead = async (id: number) => {
     try {
       await notificationApi.markAsRead(id);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
+      setNotifications((current) => current.map(n => n.id === id ? { ...n, isRead: true } : n));
+      notifyNavbarChanged();
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -55,7 +69,8 @@ const Notifications: React.FC = () => {
   const handleMarkAllAsRead = async () => {
     try {
       await notificationApi.markAllAsRead(userId);
-      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+      setNotifications((current) => current.map(n => ({ ...n, isRead: true })));
+      notifyNavbarChanged();
       message.success(t('pages.notifications.allRead'));
     } catch {
       message.error(t('messages.operationFailed'));
@@ -65,7 +80,8 @@ const Notifications: React.FC = () => {
   const handleDelete = async (id: number) => {
     try {
       await notificationApi.delete(id);
-      setNotifications(notifications.filter(n => n.id !== id));
+      setNotifications((current) => current.filter(n => n.id !== id));
+      notifyNavbarChanged();
       message.success(t('messages.deleteSuccess'));
     } catch {
       message.error(t('messages.deleteFailed'));
@@ -81,19 +97,19 @@ const Notifications: React.FC = () => {
         />
       );
     }
-    return <div style={{ marginBottom: 4, whiteSpace: 'pre-wrap' }}>{item.message}</div>;
+    return <div className="notifications-page__plainText">{item.message}</div>;
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
+    return <div className="notifications-page notifications-page--loading"><Spin size="large" /></div>;
   }
 
   return (
-    <div className="notifications-page" style={{ padding: '24px', maxWidth: 800, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <BellOutlined style={{ fontSize: 24, marginRight: 8 }} />
-          <Title level={3} style={{ margin: 0 }}>{t('pages.notifications.title')}</Title>
+    <div className="notifications-page">
+      <div className="notifications-page__header">
+        <div className="notifications-page__title">
+          <BellOutlined />
+          <Title level={3}>{t('pages.notifications.title')}</Title>
         </div>
         {notifications.some(n => !n.isRead) && (
           <Button icon={<CheckOutlined />} onClick={handleMarkAllAsRead}>{t('pages.notifications.markAll')}</Button>
@@ -106,12 +122,12 @@ const Notifications: React.FC = () => {
           dataSource={notifications}
           renderItem={item => (
             <List.Item
-              style={{ background: item.isRead ? '#fff' : '#fff8f0', padding: '16px', marginBottom: 8, borderRadius: 8, border: '1px solid #f0f0f0' }}
+              className={item.isRead ? 'notifications-page__item' : 'notifications-page__item notifications-page__item--unread'}
               actions={[
                 !item.isRead && (
-                  <Button size="small" type="link" onClick={() => handleMarkAsRead(item.id)}>{t('pages.notifications.markRead')}</Button>
+                  <Button key="mark-read" size="small" type="link" onClick={() => handleMarkAsRead(item.id)}>{t('pages.notifications.markRead')}</Button>
                 ),
-                <Popconfirm title={t('pages.notifications.deleteConfirm')} onConfirm={() => handleDelete(item.id)}>
+                <Popconfirm key="delete" title={t('pages.notifications.deleteConfirm')} onConfirm={() => handleDelete(item.id)}>
                   <Button size="small" type="link" danger icon={<DeleteOutlined />} />
                 </Popconfirm>,
               ].filter(Boolean)}

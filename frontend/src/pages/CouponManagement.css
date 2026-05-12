@@ -1,0 +1,54 @@
+.coupon-management-page {
+  padding: 32px 24px;
+}
+
+.coupon-management-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.coupon-management-page__actions {
+  justify-content: flex-end;
+}
+
+.coupon-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+.coupon-management-page__formRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.coupon-management-page__formRow .ant-input-number {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .coupon-management-page {
+    padding: 16px 12px;
+  }
+
+  .coupon-management-page__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .coupon-management-page__header h3.ant-typography {
+    font-size: 22px;
+  }
+
+  .coupon-management-page__actions,
+  .coupon-management-page__actions .ant-btn {
+    width: 100%;
+  }
+
+  .coupon-management-page__formRow {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

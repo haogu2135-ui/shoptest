@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Checkbox, Empty, InputNumber, message, Popconfirm, Progress, Space, Table, Typography } from 'antd';
 import { ClockCircleOutlined, DeleteOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { cartApi } from '../api';
+import { apiBaseUrl, cartApi } from '../api';
 import type { CartItem } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -15,8 +15,18 @@ import {
   saveCartItemForLater,
   type SavedForLaterItem,
 } from '../utils/saveForLater';
+import './Cart.css';
 
 const { Title, Text } = Typography;
+const cartImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+const resolveCartPageImage = (imageUrl?: string) => {
+  if (!imageUrl) return cartImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
+
 const isAvailable = (item: CartItem) =>
   (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock > 0);
 const canCheckout = (item: CartItem) =>
@@ -124,7 +134,9 @@ const Cart: React.FC = () => {
           item.selectedSpecs,
           item.price,
         );
-        setCartItems(getGuestCartItems());
+        const nextItems = getGuestCartItems();
+        setCartItems(nextItems);
+        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       }
       removeSavedForLaterProduct(item.productId, item.selectedSpecs);
       setSavedItems(getSavedForLaterItems());
@@ -167,7 +179,9 @@ const Cart: React.FC = () => {
   const selectedTotal = selectedItems.reduce((total, item) => total + item.price * item.quantity, 0);
   const freeShippingThreshold = market.freeShippingThreshold;
   const freeShippingRemaining = Math.max(0, freeShippingThreshold - selectedTotal);
-  const freeShippingPercent = Math.min(100, Math.round((selectedTotal / freeShippingThreshold) * 100));
+  const freeShippingPercent = freeShippingThreshold > 0
+    ? Math.min(100, Math.round((selectedTotal / freeShippingThreshold) * 100))
+    : 100;
   const selectedPurchasableCount = selectedIds.filter((id) => purchasableItems.some((item) => item.id === id)).length;
   const allSelected = purchasableItems.length > 0 && selectedPurchasableCount === purchasableItems.length;
 
@@ -189,6 +203,7 @@ const Cart: React.FC = () => {
       return;
     }
     sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(selectedIds));
+    sessionStorage.removeItem('checkoutPaymentMethod');
     navigate('/checkout');
   };
 
@@ -223,7 +238,16 @@ const Cart: React.FC = () => {
       key: 'productName',
       render: (name: string, record: CartItem) => (
         <Space>
-          <img src={record.imageUrl} alt={name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }} />
+          <img
+            src={resolveCartPageImage(record.imageUrl)}
+            alt={name}
+            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
+            onError={(event) => {
+              if (event.currentTarget.src !== cartImageFallback) {
+                event.currentTarget.src = cartImageFallback;
+              }
+            }}
+          />
           <div>
             <Link to={`/products/${record.productId}`}><Text>{name}</Text></Link>
             {record.selectedSpecs ? <div><Text type="secondary">{formatSelectedSpecs(record.selectedSpecs, t)}</Text></div> : null}
@@ -280,7 +304,7 @@ const Cart: React.FC = () => {
 
   if (!loading && cartItems.length === 0 && savedItems.length === 0) {
     return (
-      <div style={{ padding: '80px 24px', textAlign: 'center' }}>
+      <div className="cart-page cart-page--empty">
         <Empty image={<ShoppingOutlined style={{ fontSize: 64, color: '#ccc' }} />} description={t('pages.cart.empty')}>
           <Button type="primary" onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
         </Empty>
@@ -289,7 +313,7 @@ const Cart: React.FC = () => {
   }
 
   return (
-    <div className="cart-page" style={{ padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
+    <div className="cart-page">
       <Title level={2}>{t('pages.cart.title')}</Title>
       <Card size="small" style={{ marginBottom: 16 }}>
         <Space wrap>
@@ -326,7 +350,15 @@ const Cart: React.FC = () => {
                 checked={selectedIds.includes(item.id)}
                 onChange={(e) => toggleOne(item.id, e.target.checked)}
               />
-              <img src={item.imageUrl} alt={item.productName} />
+              <img
+                src={resolveCartPageImage(item.imageUrl)}
+                alt={item.productName}
+                onError={(event) => {
+                  if (event.currentTarget.src !== cartImageFallback) {
+                    event.currentTarget.src = cartImageFallback;
+                  }
+                }}
+              />
               <div>
                 <Link to={`/products/${item.productId}`}><Text strong>{item.productName}</Text></Link>
                 {item.selectedSpecs ? <div><Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text></div> : null}
@@ -354,7 +386,7 @@ const Cart: React.FC = () => {
           </Card>
         ))}
       </div>
-      <Card style={{ marginTop: 16 }}>
+      <Card className="cart-page__summary" style={{ marginTop: 16 }}>
         <div style={{ marginBottom: 16 }}>
           <Text strong>
             {freeShippingRemaining > 0
@@ -386,7 +418,15 @@ const Cart: React.FC = () => {
             {savedItems.map((item) => (
               <div className="cart-page__savedItem" key={item.id}>
                 <Link to={`/products/${item.productId}`}>
-                  <img src={item.imageUrl} alt={item.productName} />
+                  <img
+                    src={resolveCartPageImage(item.imageUrl)}
+                    alt={item.productName}
+                    onError={(event) => {
+                      if (event.currentTarget.src !== cartImageFallback) {
+                        event.currentTarget.src = cartImageFallback;
+                      }
+                    }}
+                  />
                 </Link>
                 <div className="cart-page__savedInfo">
                   <Link to={`/products/${item.productId}`}><Text strong>{item.productName}</Text></Link>

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
 import { CloseOutlined, CustomerServiceOutlined, SendOutlined, ShoppingOutlined, SoundOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { orderApi, supportApi, supportWebSocketUrl, userApi } from '../api';
+import { apiBaseUrl, orderApi, supportApi, supportWebSocketUrl, userApi } from '../api';
 import type { Order, OrderItem, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -13,6 +13,15 @@ const ORDER_PREFIX = '[ORDER]';
 const SUPPORT_BUTTON_POSITION_KEY = 'shop-support-button-position';
 const SUPPORT_BUTTON_SIZE = 56;
 const SUPPORT_BUTTON_MARGIN = 12;
+const supportOrderImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+
+const resolveSupportOrderImage = (imageUrl?: string) => {
+  if (!imageUrl) return supportOrderImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
 
 type SupportButtonPosition = {
   left: number;
@@ -552,7 +561,7 @@ const CustomerSupportWidget: React.FC = () => {
                             </Space>
                           </Card>
                         ) : (
-                          <div style={{ display: 'inline-block', padding: '8px 10px', borderRadius: 8, background: mine ? '#ee4d2d' : '#fff', color: mine ? '#fff' : '#333', border: mine ? 0 : '1px solid #eee', whiteSpace: 'pre-wrap' }}>
+                          <div style={{ display: 'inline-block', padding: '8px 10px', borderRadius: 8, background: mine ? '#ee4d2d' : '#fff', color: mine ? '#fff' : '#333', border: mine ? 0 : '1px solid #eee', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                             {item.content}
                           </div>
                         )}
@@ -611,9 +620,9 @@ const CustomerSupportWidget: React.FC = () => {
               placeholder={t('pages.support.inputPlaceholder')}
               autoSize={{ minRows: 2, maxRows: 4 }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 8 }}>
-              <Button disabled={!session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
-              <Button type="primary" icon={<SendOutlined />} onClick={send}>{t('common.send')}</Button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <Button style={{ flex: '1 1 150px' }} disabled={!session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
+              <Button style={{ flex: '1 1 110px' }} type="primary" icon={<SendOutlined />} onClick={send}>{t('common.send')}</Button>
             </div>
           </div>
         </div>
@@ -643,7 +652,18 @@ const CustomerSupportWidget: React.FC = () => {
               renderItem={(item) => (
                 <List.Item>
                   <List.Item.Meta
-                    avatar={item.imageUrl ? <img src={item.imageUrl} alt={item.productName} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }} /> : undefined}
+                    avatar={
+                      <img
+                        src={resolveSupportOrderImage(item.imageUrl)}
+                        alt={item.productName}
+                        style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }}
+                        onError={(event) => {
+                          if (event.currentTarget.src !== supportOrderImageFallback) {
+                            event.currentTarget.src = supportOrderImageFallback;
+                          }
+                        }}
+                      />
+                    }
                     title={item.productName || `#${item.productId}`}
                     description={
                       <Space direction="vertical" size={0}>

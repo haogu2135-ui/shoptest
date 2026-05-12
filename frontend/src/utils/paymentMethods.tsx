@@ -8,7 +8,23 @@ export interface PaymentMethodOption {
     label: React.ReactNode;
 }
 
+export interface PaymentMethodDetail {
+    value: PaymentMethod;
+    title: string;
+    descriptionKey: string;
+    badgeKey: string;
+}
+
 export const paymentMethodOrder: PaymentMethod[] = ['STRIPE', 'SHOP_PAY', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'VISA', 'MX_LOCAL_CARD', 'SPEI', 'OXXO', 'ALIPAY', 'WECHAT'];
+
+export const paymentSimulationEnabledFallback = process.env.REACT_APP_PAYMENT_SIMULATION_ENABLED === 'true';
+
+export const mexicoPaymentMethodDetails: PaymentMethodDetail[] = [
+    { value: 'STRIPE', title: 'Stripe / Tarjeta', descriptionKey: 'pages.checkout.paymentStripeDesc', badgeKey: 'pages.checkout.paymentInstant' },
+    { value: 'OXXO', title: 'OXXO Pay', descriptionKey: 'pages.checkout.paymentOxxoDesc', badgeKey: 'pages.checkout.paymentCash' },
+    { value: 'SPEI', title: 'SPEI', descriptionKey: 'pages.checkout.paymentSpeiDesc', badgeKey: 'pages.checkout.paymentBank' },
+    { value: 'MX_LOCAL_CARD', title: 'Tarjeta local', descriptionKey: 'pages.checkout.paymentLocalCardDesc', badgeKey: 'pages.checkout.paymentInstant' },
+];
 
 export const createPaymentMethodOptions = (t: (key: string) => string): PaymentMethodOption[] => ([
     { value: 'STRIPE', label: <span><CreditCardOutlined /> Stripe</span> },

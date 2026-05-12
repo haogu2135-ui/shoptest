@@ -1,4 +1,5 @@
 import type { CartItem, Product } from '../types';
+import { createLocalId } from './localIds';
 
 const GUEST_CART_KEY = 'shop-guest-cart';
 
@@ -33,7 +34,7 @@ export const addGuestCartItem = (product: Product | any, quantity = 1, selectedS
   }
 
   const item: CartItem = {
-    id: -Date.now(),
+    id: createLocalId(items.map((cartItem) => cartItem.id)),
     userId: 0,
     productId: product.id,
     quantity,

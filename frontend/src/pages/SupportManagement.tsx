@@ -1,13 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
 import { CustomerServiceOutlined, SendOutlined, ShoppingOutlined } from '@ant-design/icons';
-import { adminSupportApi, orderApi, supportWebSocketUrl } from '../api';
+import { adminSupportApi, apiBaseUrl, orderApi, supportWebSocketUrl } from '../api';
 import type { Order, OrderItem, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 
 const { Text, Title } = Typography;
 const ORDER_PREFIX = '[ORDER]';
+const supportOrderImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+
+const resolveSupportOrderImage = (imageUrl?: string) => {
+  if (!imageUrl) return supportOrderImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
 
 const SupportManagement: React.FC = () => {
   const [sessions, setSessions] = useState<SupportSession[]>([]);
@@ -390,7 +399,18 @@ const SupportManagement: React.FC = () => {
               renderItem={(item) => (
                 <List.Item>
                   <List.Item.Meta
-                    avatar={item.imageUrl ? <img src={item.imageUrl} alt={item.productName} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }} /> : undefined}
+                    avatar={
+                      <img
+                        src={resolveSupportOrderImage(item.imageUrl)}
+                        alt={item.productName}
+                        style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }}
+                        onError={(event) => {
+                          if (event.currentTarget.src !== supportOrderImageFallback) {
+                            event.currentTarget.src = supportOrderImageFallback;
+                          }
+                        }}
+                      />
+                    }
                     title={item.productName || `#${item.productId}`}
                     description={`${formatMoney(item.price)} x ${item.quantity}`}
                   />

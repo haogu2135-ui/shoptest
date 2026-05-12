@@ -1,3 +1,24 @@
+.product-management-page {
+  padding: 32px 24px;
+}
+
+.product-management-page__toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.product-management-page__filters {
+  flex-wrap: wrap;
+}
+
+.product-management-page__filters .ant-input-affix-wrapper,
+.product-management-page__filters .ant-select {
+  min-width: 0;
+}
+
 .shopify-product-modal .ant-modal-content {
   background: #f1f1f1;
   padding: 0;
@@ -202,6 +223,80 @@
   gap: 10px;
 }
 
+.shopify-variant-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.shopify-variant-summary span {
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+  background: #fafafa;
+  color: #666666;
+  font-size: 12px;
+}
+
+.shopify-variant-summary b {
+  color: #222222;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.shopify-variant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+
+.shopify-variant-actions .ant-btn {
+  min-width: 0;
+}
+
+.product-action-space {
+  row-gap: 6px;
+}
+
+.product-action-space .ant-btn {
+  min-width: 0;
+}
+
+.product-feature-button.ant-btn {
+  color: #7a5a00;
+  border-color: #d8b23d;
+  background: #fff8df;
+}
+
+.product-feature-button.ant-btn:hover,
+.product-feature-button.ant-btn:focus {
+  color: #5f4300;
+  border-color: #b88700;
+  background: #fff1b8;
+}
+
+.product-feature-button--active.ant-btn {
+  color: #6b4200;
+  border-color: #f0a500;
+  background: #ffd666;
+  box-shadow: 0 0 0 1px rgba(240, 165, 0, 0.16);
+}
+
+.product-feature-button--active.ant-btn:hover,
+.product-feature-button--active.ant-btn:focus {
+  color: #4d2f00;
+  border-color: #d48806;
+  background: #ffc53d;
+}
+
 .shopify-variant-row {
   display: grid;
   grid-template-columns: 120px minmax(220px, 1fr) 130px 100px minmax(160px, 1fr) 36px;
@@ -339,6 +434,24 @@
 }
 
 @media (max-width: 640px) {
+  .product-management-page {
+    padding: 16px 12px;
+  }
+
+  .product-management-page h3.ant-typography {
+    font-size: 22px;
+  }
+
+  .product-management-page__toolbar,
+  .product-management-page__toolbar > .ant-space,
+  .product-management-page__filters,
+  .product-management-page__filters .ant-input-affix-wrapper,
+  .product-management-page__filters .ant-select,
+  .product-management-page__toolbar .ant-upload-wrapper,
+  .product-management-page__toolbar .ant-btn {
+    width: 100%;
+  }
+
   .shopify-product-modal .ant-modal-body {
     padding: 14px;
   }
@@ -347,6 +460,7 @@
   .shopify-two-col,
   .shopify-inventory-box,
   .shopify-metafield-row,
+  .shopify-variant-summary,
   .shopify-option-row,
   .shopify-variant-row {
     grid-template-columns: 1fr;

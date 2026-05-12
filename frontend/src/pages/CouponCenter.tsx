@@ -9,6 +9,12 @@ import { useMarket } from '../hooks/useMarket';
 
 const { Text, Title } = Typography;
 
+const couponStatusColor: Record<string, string> = {
+  UNUSED: 'green',
+  USED: 'default',
+  EXPIRED: 'volcano',
+};
+
 const CouponCenter: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -54,7 +60,7 @@ const CouponCenter: React.FC = () => {
 
   const describeCoupon = (coupon: Pick<Coupon, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>) => {
     if (coupon.couponType === 'FULL_REDUCTION') {
-      return `${formatMoney(coupon.thresholdAmount)} - ${formatMoney(coupon.reductionAmount)}`;
+      return `${t('pages.adminCoupons.minimumSpend')} ${formatMoney(coupon.thresholdAmount)} / ${t('pages.adminCoupons.reductionAmount')} ${formatMoney(coupon.reductionAmount)}`;
     }
     const maxText = coupon.maxDiscountAmount ? `, ${t('pages.coupons.maxDiscount', { amount: formatMoney(coupon.maxDiscountAmount) })}` : '';
     return t('pages.coupons.discountPayable', { percent: coupon.discountPercent || 100 }) + maxText;
@@ -70,6 +76,7 @@ const CouponCenter: React.FC = () => {
     try {
       await couponApi.claim(couponId, userId);
       message.success(t('pages.coupons.claimedSuccess'));
+      window.dispatchEvent(new Event('shop:coupons-updated'));
       await loadCoupons();
     } catch (error: any) {
       message.error(error?.response?.data?.error || t('pages.coupons.claimFailed'));
@@ -88,23 +95,29 @@ const CouponCenter: React.FC = () => {
       message.info(t('pages.coupons.noClaimable'));
       return;
     }
-    setClaimingAll(true);
-    let claimed = 0;
-    for (const coupon of claimableCoupons) {
-      try {
-        await couponApi.claim(coupon.id, userId);
-        claimed += 1;
-      } catch {
-        // Other coupons can still be claimed if one is exhausted concurrently.
+    try {
+      setClaimingAll(true);
+      let claimed = 0;
+      for (const coupon of claimableCoupons) {
+        try {
+          await couponApi.claim(coupon.id, userId);
+          claimed += 1;
+        } catch {
+          // Other coupons can still be claimed if one is exhausted concurrently.
+        }
       }
-    }
-    if (claimed > 0) {
-      message.success(t('pages.coupons.claimedAllSuccess', { count: claimed }));
-    } else {
+      if (claimed > 0) {
+        message.success(t('pages.coupons.claimedAllSuccess', { count: claimed }));
+        window.dispatchEvent(new Event('shop:coupons-updated'));
+      } else {
+        message.error(t('pages.coupons.claimFailed'));
+      }
+      await loadCoupons();
+    } catch {
       message.error(t('pages.coupons.claimFailed'));
+    } finally {
+      setClaimingAll(false);
     }
-    await loadCoupons();
-    setClaimingAll(false);
   };
 
   if (loading) {
@@ -112,7 +125,7 @@ const CouponCenter: React.FC = () => {
   }
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px' }}>
+    <div className="coupon-center-page" style={{ maxWidth: 1100, margin: '0 auto', padding: '24px' }}>
       <Title level={2}><GiftOutlined /> {t('pages.coupons.title')}</Title>
 
       <Card
@@ -136,6 +149,7 @@ const CouponCenter: React.FC = () => {
               return (
                 <Col xs={24} md={12} lg={8} key={coupon.id}>
                   <Card
+                    className="coupon-center-page__coupon"
                     size="small"
                     title={coupon.name}
                     extra={<Tag color={coupon.couponType === 'FULL_REDUCTION' ? 'volcano' : 'blue'}>{coupon.couponType === 'FULL_REDUCTION' ? t('pages.coupons.fullReduction') : t('pages.coupons.discount')}</Tag>}
@@ -145,7 +159,7 @@ const CouponCenter: React.FC = () => {
                       {coupon.description ? <Text type="secondary">{coupon.description}</Text> : null}
                       {coupon.endAt ? <Text type="secondary">{t('pages.coupons.validUntil', { time: new Date(coupon.endAt).toLocaleString() })}</Text> : null}
                       {remaining !== null ? <Text type="secondary">{t('pages.coupons.remaining', { count: remaining })}</Text> : null}
-                      <Button type="primary" disabled={claimingAll || claimed || remaining === 0} loading={claimingId === coupon.id} onClick={() => claimCoupon(coupon.id)}>
+                      <Button type="primary" block disabled={claimingAll || claimed || remaining === 0} loading={claimingId === coupon.id} onClick={() => claimCoupon(coupon.id)}>
                         {claimed ? t('pages.coupons.claimed') : t('pages.coupons.claim')}
                       </Button>
                     </Space>
@@ -172,7 +186,7 @@ const CouponCenter: React.FC = () => {
                 ].filter(Boolean)}
               >
                 <List.Item.Meta
-                  title={<Space><Text strong>{coupon.couponName}</Text><Tag>{t(`status.${coupon.status}`)}</Tag></Space>}
+                  title={<Space wrap><Text strong>{coupon.couponName}</Text><Tag color={couponStatusColor[coupon.status] || 'default'}>{t(`status.${coupon.status}`)}</Tag></Space>}
                   description={`${describeCoupon(coupon)} ${coupon.endAt ? t('pages.coupons.validUntilPrefix', { time: new Date(coupon.endAt).toLocaleString() }) : ''}`}
                 />
               </List.Item>

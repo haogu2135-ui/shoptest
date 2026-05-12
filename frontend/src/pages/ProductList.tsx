@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Spin, Typography, Slider, Checkbox, Modal, Space } from 'antd';
-import { BarChartOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Spin, Typography, Slider, Checkbox, Modal, Space, Drawer } from 'antd';
+import { BarChartOutlined, BellOutlined, FilterOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { productApi, cartApi, categoryApi } from '../api';
+import { apiBaseUrl, productApi, cartApi, categoryApi } from '../api';
 import type { Product, Category, ProductVariant } from '../types';
 import { buildCategoryTree, flattenCategoryTree, getLocalizedCategoryValue } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
@@ -11,11 +11,24 @@ import { localizeProduct } from '../utils/localizedProduct';
 import { addGuestCartItem } from '../utils/guestCart';
 import { buildBundleSpecs, getBundleInfo } from '../utils/bundle';
 import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
+import { addStockAlert, readStockAlerts, removeStockAlert } from '../utils/stockAlerts';
+import './ProductList.css';
 
 const { Text } = Typography;
 const SEARCH_HISTORY_KEY = 'shop-product-search-history';
 const MAX_SEARCH_HISTORY = 6;
 const DEFAULT_PRICE_RANGE: [number, number] = [0, 10000];
+const SMART_DEVICE_CATEGORY_IDS = new Set([10, 11]);
+const SMART_DEVICE_TERMS = ['smart', 'automatic', 'feeder', 'feeders', 'fountain', 'waterer', 'waterers', 'camera', 'tracker', 'sensor', 'device', 'connected'];
+const productImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+
+const resolveProductListImage = (imageUrl?: string) => {
+  if (!imageUrl) return productImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
 
 type OptionGroup = {
   name: string;
@@ -73,6 +86,21 @@ const writeSearchHistory = (history: string[]) => {
   localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_SEARCH_HISTORY)));
 };
 
+const productSearchText = (product: Product) => [
+  product.name,
+  product.description,
+  product.brand,
+  ...Object.values(product.specifications || {}),
+].join(' ').toLowerCase();
+
+const matchesSmartDeviceCollection = (product: Product) => {
+  if (SMART_DEVICE_CATEGORY_IDS.has(Number(product.categoryId))) {
+    return true;
+  }
+  const text = productSearchText(product);
+  return SMART_DEVICE_TERMS.some((term) => text.includes(term));
+};
+
 const ProductList: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -92,24 +120,125 @@ const ProductList: React.FC = () => {
   const [quickAddOptions, setQuickAddOptions] = useState<Record<string, string>>({});
   const [searchHistory, setSearchHistory] = useState<string[]>(() => readSearchHistory());
   const [currentPage, setCurrentPage] = useState(1);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [alertedStockProductIds, setAlertedStockProductIds] = useState<Set<number>>(
+    () => new Set(readStockAlerts().map((alert) => alert.productId)),
+  );
+  const priceRangeMaxRef = useRef(DEFAULT_PRICE_RANGE[1]);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const collection = searchParams.get('collection') || '';
   const pageSize = 12;
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const getPositiveRate = (product: Product) => product.positiveRate ?? 0;
+  const petSizeOptions = [
+    { label: t('pages.profile.petSizeSmall'), value: 'Small' },
+    { label: t('pages.profile.petSizeMedium'), value: 'Medium' },
+    { label: t('pages.profile.petSizeLarge'), value: 'Large' },
+  ];
+  const materialOptions = [
+    { label: t('pages.productList.materialCotton'), value: 'Cotton' },
+    { label: t('pages.productList.materialNylon'), value: 'Nylon' },
+    { label: t('pages.productList.materialSilicone'), value: 'Silicone' },
+    { label: t('pages.productList.materialWood'), value: 'Wood' },
+  ];
+  const colorOptions = [
+    { label: t('pages.productList.colorBlack'), value: 'Black' },
+    { label: t('pages.productList.colorBlue'), value: 'Blue' },
+    { label: t('pages.productList.colorGreen'), value: 'Green' },
+    { label: t('pages.productList.colorPink'), value: 'Pink' },
+  ];
+  useEffect(() => {
+    categoryApi.getAll().then(res => setCategories(res.data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const refreshStockAlerts = () => {
+      setAlertedStockProductIds(new Set(readStockAlerts().map((alert) => alert.productId)));
+    };
+    window.addEventListener('shop:stock-alerts-updated', refreshStockAlerts);
+    window.addEventListener('storage', refreshStockAlerts);
+    return () => {
+      window.removeEventListener('shop:stock-alerts-updated', refreshStockAlerts);
+      window.removeEventListener('storage', refreshStockAlerts);
+    };
+  }, []);
+
+  const collectionProducts = useMemo(() => {
+    let result = products;
+    if (collection === 'smart-devices') {
+      result = result.filter(matchesSmartDeviceCollection);
+    }
+    if (collection && keyword.trim()) {
+      const normalizedKeyword = keyword.trim().toLowerCase();
+      result = result.filter((product) => productSearchText(product).includes(normalizedKeyword));
+    }
+    return result;
+  }, [collection, keyword, products]);
+
+  const maxCatalogPrice = useMemo(() => {
+    const highestPrice = collectionProducts.reduce((max, product) => Math.max(max, Number(getPrice(product) || 0)), 0);
+    if (highestPrice <= 0) return 50;
+    const roundTo = highestPrice > 1000 ? 100 : highestPrice > 200 ? 50 : 10;
+    return Math.max(50, Math.ceil(highestPrice / roundTo) * roundTo);
+  }, [collectionProducts]);
+
+  const priceStep = maxCatalogPrice > 1000 ? 50 : maxCatalogPrice > 200 ? 10 : 5;
+
+  const displayedPriceRange = useMemo<[number, number]>(() => {
+    const min = Math.min(priceRange[0], maxCatalogPrice);
+    const max = Math.min(Math.max(priceRange[1], min), maxCatalogPrice);
+    return [min, max];
+  }, [maxCatalogPrice, priceRange]);
+
+  const priceFilterActive = displayedPriceRange[0] > 0 || displayedPriceRange[1] < maxCatalogPrice;
   const activeFilterCount = [
-    priceRange[0] !== DEFAULT_PRICE_RANGE[0] || priceRange[1] !== DEFAULT_PRICE_RANGE[1],
+    priceFilterActive,
     petSizes.length > 0,
     materials.length > 0,
     colors.length > 0,
   ].filter(Boolean).length;
 
   useEffect(() => {
-    categoryApi.getAll().then(res => setCategories(res.data)).catch(() => {});
-  }, []);
+    setPriceRange((currentRange) => {
+      const previousMax = priceRangeMaxRef.current;
+      const followsCatalogMax = currentRange[1] === previousMax || currentRange[1] >= previousMax;
+      const nextMin = Math.min(currentRange[0], maxCatalogPrice);
+      const nextMax = followsCatalogMax ? maxCatalogPrice : Math.min(currentRange[1], maxCatalogPrice);
+      const normalizedRange: [number, number] = [nextMin, Math.max(nextMin, nextMax)];
+      return normalizedRange[0] === currentRange[0] && normalizedRange[1] === currentRange[1]
+        ? currentRange
+        : normalizedRange;
+    });
+    priceRangeMaxRef.current = maxCatalogPrice;
+  }, [maxCatalogPrice]);
 
-  const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const visibleCategories = useMemo(() => {
+    const hasActiveCatalogNarrowing = Boolean(collection || keyword.trim() || categoryId);
+    if (collectionProducts.length === 0) {
+      return hasActiveCatalogNarrowing ? [] : categories;
+    }
+    const sourceProducts = collectionProducts;
+    if (sourceProducts.length === 0) {
+      return categories;
+    }
+    const categoryById = new Map(categories.map((category) => [category.id, category]));
+    const visibleIds = new Set<number>();
+    sourceProducts.forEach((product) => {
+      let currentId: number | undefined | null = product.categoryId;
+      while (currentId) {
+        const category = categoryById.get(currentId);
+        if (!category || visibleIds.has(category.id)) {
+          break;
+        }
+        visibleIds.add(category.id);
+        currentId = category.parentId;
+      }
+    });
+    return categories.filter((category) => visibleIds.has(category.id));
+  }, [categories, categoryId, collection, collectionProducts, keyword]);
+  const categoryTree = useMemo(() => buildCategoryTree(visibleCategories), [visibleCategories]);
   const categoryRows = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const quickAddOptionGroups = useMemo(() => getProductOptionGroups(quickAddProduct), [quickAddProduct]);
   const quickAddVariants = useMemo(() => getProductVariants(quickAddProduct), [quickAddProduct]);
@@ -120,6 +249,17 @@ const ProductList: React.FC = () => {
       Object.entries(variant.options || {}).every(([key, value]) => quickAddOptions[key] === value),
     );
   }, [quickAddOptions, quickAddVariants]);
+  const quickAddPrice = useMemo(
+    () => quickAddBundleInfo?.price ?? quickAddVariant?.price ?? (quickAddProduct ? getPrice(quickAddProduct) : 0),
+    [quickAddBundleInfo, quickAddProduct, quickAddVariant],
+  );
+  const buildQuickAddCartSnapshot = () => quickAddProduct ? ({
+    ...quickAddProduct,
+    stock: quickAddVariant?.stock ?? quickAddProduct.stock,
+    price: quickAddPrice,
+    effectivePrice: quickAddPrice,
+    imageUrl: quickAddVariant?.imageUrl || quickAddProduct.imageUrl,
+  }) : null;
 
   const fetchProducts = useCallback(async (kw?: string, cid?: number) => {
     try {
@@ -137,9 +277,10 @@ const ProductList: React.FC = () => {
   useEffect(() => {
     const kw = searchParams.get('keyword') || '';
     const cid = searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined;
+    const activeCollection = searchParams.get('collection') || '';
     setKeyword(kw);
     setCategoryId(cid);
-    fetchProducts(kw, cid);
+    fetchProducts(activeCollection ? undefined : kw, cid);
   }, [fetchProducts, searchParams, language]);
 
   const handleSearch = (value: string) => {
@@ -150,6 +291,7 @@ const ProductList: React.FC = () => {
       writeSearchHistory(nextHistory);
     }
     const params = new URLSearchParams();
+    if (collection) params.set('collection', collection);
     if (trimmed) params.set('keyword', trimmed);
     if (categoryId) params.set('categoryId', categoryId.toString());
     navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
@@ -171,8 +313,12 @@ const ProductList: React.FC = () => {
     navigate('/compare');
   };
 
+  const openProductDetail = (productId: number) => {
+    navigate(`/products/${productId}`);
+  };
+
   const resetFilters = () => {
-    setPriceRange(DEFAULT_PRICE_RANGE);
+    setPriceRange([0, maxCatalogPrice]);
     setPetSizes([]);
     setMaterials([]);
     setColors([]);
@@ -182,15 +328,28 @@ const ProductList: React.FC = () => {
   const handleCategoryChange = (cid: number | undefined) => {
     setCategoryId(cid);
     const params = new URLSearchParams();
+    if (collection) params.set('collection', collection);
     if (keyword) params.set('keyword', keyword);
     if (cid) params.set('categoryId', cid.toString());
     navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
+    setFilterDrawerOpen(false);
   };
 
   const openQuickAdd = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
     setQuickAddProduct(product);
     setQuickAddOptions({});
+  };
+
+  const handleStockAlert = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    if (alertedStockProductIds.has(product.id)) {
+      removeStockAlert(product.id);
+      message.success(t('pages.stockAlerts.removed'));
+      return;
+    }
+    const result = addStockAlert(product);
+    message.success(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'));
   };
 
   const submitQuickAdd = async () => {
@@ -214,11 +373,12 @@ const ProductList: React.FC = () => {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
       const selectedSpecs = buildBundleSpecs(quickAddProduct, quickAddOptions, quickAddVariant?.sku);
+      const snapshot = buildQuickAddCartSnapshot();
       try {
         if (token && userId) {
           await cartApi.addItem(Number(userId), quickAddProduct.id, 1, selectedSpecs);
-        } else {
-          addGuestCartItem(quickAddProduct, 1, selectedSpecs, bundleInfo.price);
+        } else if (snapshot) {
+          addGuestCartItem(snapshot, 1, selectedSpecs, bundleInfo.price);
         }
         message.success(t('messages.addCartSuccess'));
         setQuickAddProduct(null);
@@ -237,12 +397,13 @@ const ProductList: React.FC = () => {
         ...(quickAddVariant?.sku ? { _variantSku: quickAddVariant.sku } : {}),
       })
       : undefined;
-    const selectedPrice = quickAddVariant?.price ?? getPrice(quickAddProduct);
+    const selectedPrice = quickAddPrice;
+    const snapshot = buildQuickAddCartSnapshot();
     try {
       if (token && userId) {
         await cartApi.addItem(Number(userId), quickAddProduct.id, 1, selectedSpecs);
-      } else {
-        addGuestCartItem(quickAddProduct, 1, selectedSpecs, selectedPrice);
+      } else if (snapshot) {
+        addGuestCartItem(snapshot, 1, selectedSpecs, selectedPrice);
       }
       message.success(t('messages.addCartSuccess'));
       setQuickAddProduct(null);
@@ -253,12 +414,11 @@ const ProductList: React.FC = () => {
     }
   };
 
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = collectionProducts.filter((product) => {
     const price = getPrice(product);
     const specs = product.specifications || {};
     const specText = Object.values(specs).join(' ').toLowerCase();
-    const priceFilterActive = priceRange[0] !== DEFAULT_PRICE_RANGE[0] || priceRange[1] !== DEFAULT_PRICE_RANGE[1];
-    const matchPrice = !priceFilterActive || (price >= priceRange[0] && price <= priceRange[1]);
+    const matchPrice = !priceFilterActive || (price >= displayedPriceRange[0] && price <= displayedPriceRange[1]);
     const matchSize = petSizes.length === 0 || petSizes.some((size) => specText.includes(size.toLowerCase()));
     const matchMaterial = materials.length === 0 || materials.some((material) => specText.includes(material.toLowerCase()));
     const matchColor = colors.length === 0 || colors.some((color) => specText.includes(color.toLowerCase()) || product.name.toLowerCase().includes(color.toLowerCase()));
@@ -278,6 +438,13 @@ const ProductList: React.FC = () => {
     return 0;
   });
 
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, sortedProducts.length]);
+
   const paginatedProducts = sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const renderBadges = (product: Product) => {
@@ -289,27 +456,96 @@ const ProductList: React.FC = () => {
     return badges;
   };
 
+  const renderPrimaryAction = (product: Product) => {
+    const soldOut = product.stock !== undefined && product.stock <= 0;
+    if (soldOut) {
+      const alerted = alertedStockProductIds.has(product.id);
+      return (
+        <Button
+          key="stock-alert"
+          icon={<BellOutlined />}
+          size="small"
+          className="product-list__actionButton product-list__alertButton"
+          onClick={(e) => handleStockAlert(e, product)}
+        >
+          {alerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
+        </Button>
+      );
+    }
+    return (
+      <Button
+        key="quick-add"
+        type="primary"
+        icon={<ShoppingCartOutlined />}
+        size="small"
+        className="product-list__actionButton"
+        onClick={(e) => openQuickAdd(e, product)}
+      >
+        {t('pages.productList.quickAdd')}
+      </Button>
+    );
+  };
+
+  const renderCategoryPanel = () => (
+    <div className="product-list__categoryStack">
+      <Button type={!categoryId ? 'primary' : 'text'} block onClick={() => handleCategoryChange(undefined)} className="product-list__categoryButton">
+        {t('pages.productList.allCategories')}
+      </Button>
+      {categoryRows.map(cat => (
+        <Button
+          key={cat.id}
+          type={categoryId === cat.id ? 'primary' : 'text'}
+          block
+          onClick={() => handleCategoryChange(cat.id)}
+          className="product-list__categoryButton"
+          style={{ paddingLeft: 12 + ((cat.level || 1) - 1) * 14 }}
+        >
+          {getLocalizedCategoryValue(cat, language, 'name')}
+        </Button>
+      ))}
+    </div>
+  );
+
+  const renderFilterPanel = () => (
+    <Space direction="vertical" className="product-list__filterStack" size="middle">
+      <div>
+        <Text strong>{t('pages.productList.price')}</Text>
+        <Slider range min={0} max={maxCatalogPrice} step={priceStep} value={displayedPriceRange} onChange={(value) => setPriceRange(value as [number, number])} />
+        <Text type="secondary">{formatMoney(displayedPriceRange[0])} - {formatMoney(displayedPriceRange[1])}</Text>
+      </div>
+      <div>
+        <Text strong className="product-list__filterLabel">{t('pages.productList.filterSize')}</Text>
+        <Checkbox.Group
+          value={petSizes}
+          onChange={(value) => setPetSizes(value.map(String))}
+          options={petSizeOptions}
+        />
+      </div>
+      <div>
+        <Text strong className="product-list__filterLabel">{t('pages.productList.filterMaterial')}</Text>
+        <Checkbox.Group
+          value={materials}
+          onChange={(value) => setMaterials(value.map(String))}
+          options={materialOptions}
+        />
+      </div>
+      <div>
+        <Text strong className="product-list__filterLabel">{t('pages.productList.filterColor')}</Text>
+        <Checkbox.Group
+          value={colors}
+          onChange={(value) => setColors(value.map(String))}
+          options={colorOptions}
+        />
+      </div>
+    </Space>
+  );
+
   return (
-    <div style={{ padding: '24px 12px', maxWidth: 1200, margin: '0 auto', overflow: 'hidden' }}>
+    <div className="product-list">
       <Row gutter={24}>
         <Col xs={0} sm={0} md={5} lg={4}>
           <Card title={t('pages.productList.title')} size="small" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <Button type={!categoryId ? 'primary' : 'text'} block onClick={() => handleCategoryChange(undefined)} style={{ textAlign: 'left' }}>
-                {t('pages.productList.allCategories')}
-              </Button>
-              {categoryRows.map(cat => (
-                <Button
-                  key={cat.id}
-                  type={categoryId === cat.id ? 'primary' : 'text'}
-                  block
-                  onClick={() => handleCategoryChange(cat.id)}
-                  style={{ textAlign: 'left', paddingLeft: 12 + ((cat.level || 1) - 1) * 14 }}
-                >
-                  {cat.level && cat.level > 1 ? '  ' : ''}{getLocalizedCategoryValue(cat, language, 'name')}
-                </Button>
-              ))}
-            </div>
+            {renderCategoryPanel()}
           </Card>
           <Card
             title={
@@ -325,37 +561,16 @@ const ProductList: React.FC = () => {
               </Button>
             }
           >
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <div>
-                <Text strong>{t('pages.productList.price')}</Text>
-                <Slider range min={0} max={10000} step={50} value={priceRange} onChange={(value) => setPriceRange(value as [number, number])} />
-                <Text type="secondary">{formatMoney(priceRange[0])} - {formatMoney(priceRange[1])}</Text>
-              </div>
-              <Checkbox.Group
-                value={petSizes}
-                onChange={(value) => setPetSizes(value.map(String))}
-                options={['Small', 'Medium', 'Large']}
-              />
-              <Checkbox.Group
-                value={materials}
-                onChange={(value) => setMaterials(value.map(String))}
-                options={['Cotton', 'Nylon', 'Silicone', 'Wood']}
-              />
-              <Checkbox.Group
-                value={colors}
-                onChange={(value) => setColors(value.map(String))}
-                options={['Black', 'Blue', 'Green', 'Pink']}
-              />
-            </Space>
+            {renderFilterPanel()}
           </Card>
         </Col>
         <Col xs={24} sm={24} md={19} lg={20}>
-          <Card style={{ marginBottom: 16 }}>
+          <Card className="product-list__toolbar">
             <Row gutter={[12, 12]} align="middle">
-              <Col xs={24} sm={16} md={14} flex="auto">
-                <Input.Search placeholder={t('pages.productList.searchPlaceholder')} value={keyword} onChange={e => setKeyword(e.target.value)} onSearch={handleSearch} style={{ width: '100%', maxWidth: 400 }} />
+              <Col xs={24} sm={12} md={14} flex="auto">
+                <Input.Search placeholder={t('pages.productList.searchPlaceholder')} value={keyword} onChange={e => setKeyword(e.target.value)} onSearch={handleSearch} className="product-list__search" />
               </Col>
-              <Col xs={16} sm={5} md={6}>
+              <Col xs={12} sm={5} md={6}>
                 <Select value={sortBy} onChange={setSortBy} style={{ width: '100%' }}
                   options={[
                     { value: 'default', label: t('pages.productList.defaultSort') },
@@ -367,7 +582,14 @@ const ProductList: React.FC = () => {
                   ]}
                 />
               </Col>
-              <Col xs={8} sm={3} md={4}><Text type="secondary">{t('pages.productList.count', { count: filteredProducts.length })}</Text></Col>
+              <Col xs={12} sm={7} md={4}>
+                <div className="product-list__toolbarMeta">
+                  <Text type="secondary">{t('pages.productList.count', { count: filteredProducts.length })}</Text>
+                  <Button className="product-list__filterButton" icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
+                    {t('pages.productList.filters')}
+                  </Button>
+                </div>
+              </Col>
             </Row>
             {searchHistory.length > 0 && (
               <Space wrap size={[8, 8]} style={{ marginTop: 12 }}>
@@ -386,35 +608,61 @@ const ProductList: React.FC = () => {
           {loading ? (
             <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
           ) : paginatedProducts.length === 0 ? (
-            <Empty description={t('pages.productList.empty')} style={{ padding: 80 }} />
+            <Empty description={t('pages.productList.empty')} style={{ padding: 80 }}>
+              <Space wrap>
+                {activeFilterCount > 0 ? (
+                  <Button onClick={resetFilters}>{t('pages.productList.resetFilters')}</Button>
+                ) : null}
+                {(keyword || categoryId || collection) ? (
+                  <Button type="primary" onClick={() => navigate('/products')}>
+                    {t('pages.productList.allCategories')}
+                  </Button>
+                ) : null}
+              </Space>
+            </Empty>
           ) : (
             <>
               <Row gutter={[16, 16]}>
                 {paginatedProducts.map(product => (
-                  <Col key={product.id} xs={24} sm={12} md={8} lg={6}>
+                  <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
                     <Card
+                      className="product-list__card"
                       hoverable
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openProductDetail(product.id)}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openProductDetail(product.id);
+                        }
+                      }}
                       cover={
-                        <div style={{ position: 'relative' }}>
-                          <img alt={product.name} src={product.imageUrl} style={{ width: '100%', height: 200, objectFit: 'cover' }}
-                            onClick={() => navigate(`/products/${product.id}`)} />
-                          <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        <div className="product-list__imageWrap">
+                          <img
+                            alt={product.name}
+                            src={resolveProductListImage(product.imageUrl)}
+                            className="product-list__image"
+                            onError={(event) => {
+                              if (event.currentTarget.src !== productImageFallback) {
+                                event.currentTarget.src = productImageFallback;
+                              }
+                            }}
+                          />
+                          <div className="product-list__badges">
                             {renderBadges(product).map((badge) => <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>)}
                           </div>
                           {product.stock !== undefined && product.stock <= 0 && (
-                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 600 }}>
+                            <div className="product-list__soldOut">
                               {t('pages.productList.soldOut')}
                             </div>
                           )}
                         </div>
                       }
                       actions={[
-                        <Button type="primary" icon={<ShoppingCartOutlined />} size="small"
-                          disabled={product.stock !== undefined && product.stock <= 0}
-                          onClick={(e) => openQuickAdd(e, product)}>
-                          {t('pages.productList.quickAdd')}
-                        </Button>,
-                        <Button icon={<BarChartOutlined />} size="small" onClick={(e) => handleCompare(e, product)}>
+                        renderPrimaryAction(product),
+                        <Button key="compare" icon={<BarChartOutlined />} size="small" className="product-list__actionButton" onClick={(e) => handleCompare(e, product)}>
                           {isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
                         </Button>,
                       ]}
@@ -423,19 +671,19 @@ const ProductList: React.FC = () => {
                         title={<Text ellipsis={{ tooltip: product.name }}>{product.name}</Text>}
                         description={
                           <div>
-                            <div style={{ color: '#ff5722', fontWeight: 600, fontSize: 16 }}>
+                            <div className="product-list__priceLine">
                               {formatMoney(getPrice(product))}
                               {product.originalPrice && product.originalPrice > getPrice(product) && (
-                                <Text delete type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>{formatMoney(product.originalPrice)}</Text>
+                                <Text delete type="secondary" className="product-list__originalPrice">{formatMoney(product.originalPrice)}</Text>
                               )}
-                              {product.activeLimitedTimeDiscount && <Tag color="red" style={{ marginLeft: 8 }}>{t('pages.productList.limitedTime')}</Tag>}
+                              {product.activeLimitedTimeDiscount && <Tag color="red" className="product-list__priceTag">{t('pages.productList.limitedTime')}</Tag>}
                             </div>
-                            <div style={{ marginTop: 4 }}>
-                              <Text type="secondary" style={{ fontSize: 12 }}>
+                            <div className="product-list__ratingLine">
+                              <Text type="secondary">
                                 {t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })}
                               </Text>
                             </div>
-                            {product.brand && <Text type="secondary" style={{ fontSize: 12 }}>{product.brand}</Text>}
+                            {product.brand && <Text type="secondary" className="product-list__brand">{product.brand}</Text>}
                           </div>
                         }
                       />
@@ -452,6 +700,37 @@ const ProductList: React.FC = () => {
           )}
         </Col>
       </Row>
+      <Drawer
+        title={
+          <Space>
+            <FilterOutlined />
+            <span>{t('pages.productList.filters')}</span>
+            {activeFilterCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeFilterCount })}</Tag> : null}
+          </Space>
+        }
+        open={filterDrawerOpen}
+        onClose={() => setFilterDrawerOpen(false)}
+        placement="bottom"
+        height="82vh"
+        className="product-list__mobileDrawer"
+        extra={
+          <Button type="link" disabled={activeFilterCount === 0} onClick={resetFilters}>
+            {t('pages.productList.resetFilters')}
+          </Button>
+        }
+      >
+        <div className="product-list__drawerContent">
+          <Card title={t('pages.productList.title')} size="small">
+            {renderCategoryPanel()}
+          </Card>
+          <Card title={t('pages.productList.filters')} size="small">
+            {renderFilterPanel()}
+          </Card>
+          <Button type="primary" block size="large" onClick={() => setFilterDrawerOpen(false)}>
+            {t('common.confirm')}
+          </Button>
+        </div>
+      </Drawer>
       <Modal
         title={quickAddProduct ? t('pages.productList.quickAddTitle', { name: quickAddProduct.name }) : t('pages.productList.quickAdd')}
         open={!!quickAddProduct}
@@ -500,7 +779,7 @@ const ProductList: React.FC = () => {
                 />
               ))}
               <Text>
-                {t('pages.productList.quickAddPrice')}: {formatMoney(quickAddVariant?.price ?? (quickAddProduct ? getPrice(quickAddProduct) : 0))}
+                {t('pages.productList.quickAddPrice')}: {formatMoney(quickAddPrice)}
               </Text>
               {quickAddVariant?.stock !== undefined && (
                 <Text type="secondary">{t('pages.productDetail.stock')}: {quickAddVariant.stock}</Text>

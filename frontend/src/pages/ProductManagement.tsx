@@ -5,9 +5,9 @@ import {
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
-  SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined,
+  SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined,
 } from '@ant-design/icons';
-import { productApi, categoryApi, adminApi, brandApi } from '../api';
+import { apiBaseUrl, productApi, categoryApi, adminApi, brandApi } from '../api';
 import type { Product, Category, Brand } from '../types';
 import { buildCategoryTree, descendantIdSet, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
@@ -19,6 +19,15 @@ import './ProductManagement.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+const productAdminImageFallback = 'https://via.placeholder.com/80?text=IMG';
+
+const resolveProductAdminImage = (imageUrl?: string) => {
+  if (!imageUrl) return productAdminImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
 
 const tagColorMap: Record<string, string> = { hot: 'red', new: 'blue', discount: 'orange' };
 const productStatusColors: Record<string, string> = {
@@ -89,11 +98,30 @@ const bundleItemsToFormRows = (value?: string) => {
   return rows.length > 0 ? rows : [{ name: '', quantity: 1 }];
 };
 
+const normalizeVariantOptionText = (value?: string) =>
+  String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(', ');
+
+const createSkuFromOptions = (options: Record<string, string>, index: number) => {
+  const suffix = Object.values(options)
+    .map((value) => String(value || '').trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toUpperCase())
+    .filter(Boolean)
+    .join('-');
+  return suffix ? `SKU-${suffix}` : `SKU-${index + 1}`;
+};
+
+const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+
 const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
+  const [productSubmitting, setProductSubmitting] = useState(false);
+  const [batchStatusUpdating, setBatchStatusUpdating] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form] = Form.useForm();
@@ -116,6 +144,7 @@ const ProductManagement: React.FC = () => {
   const previewTag = Form.useWatch('tag', form);
   const previewFeatured = Form.useWatch('isFeatured', form);
   const previewFreeShipping = Form.useWatch('freeShipping', form);
+  const previewVariants = Form.useWatch('variants', form);
   const { formatMoney } = useMarket();
 
   const tagOptions = [
@@ -128,6 +157,17 @@ const ProductManagement: React.FC = () => {
     new: t('pages.productAdmin.new'),
     discount: t('pages.productAdmin.discount'),
   };
+  const variantSummary = useMemo(() => {
+    const rows = Array.isArray(previewVariants) ? previewVariants : [];
+    const validRows = rows.filter((row: any) => String(row?.optionText || '').trim());
+    const totalStock = validRows.reduce((sum: number, row: any) => sum + Number(row?.stock || 0), 0);
+    const prices = validRows
+      .map((row: any) => Number(row?.price || 0))
+      .filter((price: number) => price > 0);
+    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+    return { count: validRows.length, totalStock, minPrice, maxPrice };
+  }, [previewVariants]);
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
@@ -298,6 +338,7 @@ const ProductManagement: React.FC = () => {
       return;
     }
     try {
+      setBatchStatusUpdating(status);
       const ids = selectedProductIds.map((id) => Number(id));
       const res = await adminApi.batchUpdateProductStatus(ids, status);
       message.success(t('pages.productAdmin.batchUpdateResult', res.data));
@@ -305,7 +346,20 @@ const ProductManagement: React.FC = () => {
       fetchProducts();
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.operationFailed'));
+    } finally {
+      setBatchStatusUpdating(null);
     }
+  };
+
+  const handleDuplicate = (record: Product) => {
+    handleEdit(record);
+    setEditingProduct(null);
+    form.setFieldsValue({
+      name: `${record.name} ${t('pages.productAdmin.copySuffix')}`,
+      status: 'PENDING_REVIEW',
+      isFeatured: false,
+    });
+    message.success(t('pages.productAdmin.duplicatedDraft'));
   };
 
   const generateVariantRows = () => {
@@ -325,16 +379,35 @@ const ProductManagement: React.FC = () => {
       }
       return rows.flatMap((row) => group.values.map((value: string) => ({ ...row, [group.name]: value })));
     }, []);
-    form.setFieldValue('variants', combinations.map((options) => ({
-      optionText: Object.entries(options).map(([key, value]) => `${key}=${value}`).join(', '),
-      price: form.getFieldValue('price') || 0,
-      stock: form.getFieldValue('stock') || 0,
-    })));
+    const existingRows = new Map(
+      (form.getFieldValue('variants') || [])
+        .map((row: any) => [normalizeVariantOptionText(row?.optionText), row])
+        .filter(([optionText]: any) => optionText)
+    );
+    form.setFieldValue('variants', combinations.map((options, index) => {
+      const optionText = Object.entries(options).map(([key, value]) => `${key}=${value}`).join(', ');
+      const existing = existingRows.get(normalizeVariantOptionText(optionText)) as any;
+      return {
+        sku: existing?.sku || createSkuFromOptions(options, index),
+        optionText,
+        price: existing?.price ?? form.getFieldValue('price') ?? 0,
+        stock: existing?.stock ?? form.getFieldValue('stock') ?? 0,
+        imageUrl: existing?.imageUrl,
+      };
+    }));
+  };
+
+  const syncStockFromVariants = () => {
+    const rows = (form.getFieldValue('variants') || []).filter((row: any) => String(row?.optionText || '').trim());
+    const totalStock = rows.reduce((sum: number, row: any) => sum + Number(row?.stock || 0), 0);
+    form.setFieldValue('stock', totalStock);
+    message.success(t('pages.productAdmin.stockSyncedFromVariants', { count: rows.length, stock: totalStock }));
   };
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      setProductSubmitting(true);
       // Convert specifications from array of {key, value} to object
       const specs: Record<string, string> = {};
       if (values.specifications) {
@@ -402,6 +475,7 @@ const ProductManagement: React.FC = () => {
           };
         })
         .filter((variant: any) => Object.keys(variant.options).length > 0 && variant.price > 0);
+      const variantStockTotal = variants.reduce((sum: number, variant: any) => sum + Number(variant.stock || 0), 0);
       const {
         specifications: _specs,
         images: _images,
@@ -418,6 +492,7 @@ const ProductManagement: React.FC = () => {
       } = values;
       const payload: any = {
         ...rest,
+        stock: variants.length > 0 ? variantStockTotal : rest.stock,
         specifications: Object.keys(specs).length > 0 ? specs : null,
         images: imageList.length > 0 ? imageList : null,
         detailContent: detailContent.length > 0 ? detailContent : null,
@@ -434,8 +509,11 @@ const ProductManagement: React.FC = () => {
       }
       setModalVisible(false);
       fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.errorFields) return;
       message.error(t('messages.operationFailed'));
+    } finally {
+      setProductSubmitting(false);
     }
   };
 
@@ -460,6 +538,55 @@ const ProductManagement: React.FC = () => {
     link.download = 'product-import-template.csv';
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportFilteredProducts = () => {
+    if (filteredProducts.length === 0) {
+      message.warning(t('pages.productAdmin.exportEmpty'));
+      return;
+    }
+    const headers = [
+      'id', 'name', 'description', 'price', 'stock', 'categoryId', 'categoryName', 'imageUrl',
+      'isFeatured', 'brand', 'originalPrice', 'discount', 'tag', 'status', 'freeShipping',
+      'freeShippingThreshold', 'variantCount', 'variantStock', 'createdAt',
+    ];
+    const rows = filteredProducts.map((product: any) => {
+      const variants = parseJsonArray(product.variants);
+      const variantStock = variants.reduce((sum: number, variant: any) => sum + Number(variant?.stock || 0), 0);
+      return [
+        product.id,
+        product.name,
+        product.description,
+        product.price,
+        product.stock,
+        product.categoryId,
+        product.categoryName,
+        product.imageUrl,
+        product.isFeatured ? 'true' : 'false',
+        product.brand,
+        product.originalPrice,
+        product.discount,
+        product.tag,
+        product.status || 'ACTIVE',
+        product.freeShipping ? 'true' : 'false',
+        product.freeShippingThreshold,
+        variants.length,
+        variantStock,
+        product.createdAt,
+      ];
+    });
+    const csv = [
+      headers.map(csvCell).join(','),
+      ...rows.map((row) => row.map(csvCell).join(',')),
+    ].join('\r\n');
+    const blob = new Blob(['\uFEFF', `${csv}\r\n`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `products-${dayjs().format('YYYYMMDD-HHmm')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    message.success(t('pages.productAdmin.exportSuccess', { count: filteredProducts.length }));
   };
 
   const handleImportProducts = async (file: File) => {
@@ -527,7 +654,7 @@ const ProductManagement: React.FC = () => {
         <div className="product-live-preview__card">
           <div className="product-live-preview__image">
             {image ? (
-              <img src={image} alt={previewName || t('pages.productAdmin.productTitlePreview')} />
+              <img src={resolveProductAdminImage(image)} alt={previewName || t('pages.productAdmin.productTitlePreview')} />
             ) : (
               <span>{t('pages.productAdmin.mediaPreview')}</span>
             )}
@@ -567,7 +694,7 @@ const ProductManagement: React.FC = () => {
       key: 'imageUrl',
       width: 80,
       render: (url: string) => (
-        <Image src={url} width={50} height={50} style={{ objectFit: 'cover', borderRadius: 6 }} fallback="https://via.placeholder.com/50" />
+        <Image src={resolveProductAdminImage(url)} width={50} height={50} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
       ),
     },
     {
@@ -640,19 +767,21 @@ const ProductManagement: React.FC = () => {
     {
       title: t('common.actions'),
       key: 'action',
-      width: 280,
+      width: 340,
       render: (_: any, record: Product) => (
-        <Space size="small">
+        <Space size="small" wrap className="product-action-space">
           <Tooltip title={record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured')}>
             <Button
-              icon={record.isFeatured ? <StarFilled style={{ color: '#ff9800' }} /> : <StarOutlined />}
+              className={record.isFeatured ? 'product-feature-button product-feature-button--active' : 'product-feature-button'}
+              icon={record.isFeatured ? <StarFilled /> : <StarOutlined />}
               onClick={() => handleToggleFeatured(record)}
-              type={record.isFeatured ? 'primary' : 'default'}
-              ghost
               size="small"
             />
           </Tooltip>
           <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button>
+          <Tooltip title={t('pages.productAdmin.duplicateProduct')}>
+            <Button icon={<CopyOutlined />} onClick={() => handleDuplicate(record)} size="small" />
+          </Tooltip>
           {(record.status || 'ACTIVE') !== 'ACTIVE' && (
             <Button size="small" onClick={() => handleProductStatus(record, 'ACTIVE')}>{t('pages.productAdmin.approve')}</Button>
           )}
@@ -671,12 +800,12 @@ const ProductManagement: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '32px 24px' }}>
+    <div className="product-management-page">
       <Title level={3} style={{ marginBottom: 0 }}>{t('pages.productAdmin.title')}</Title>
       <Divider />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, gap: 16, flexWrap: 'wrap' }}>
-        <Space>
+      <div className="product-management-page__toolbar">
+        <Space className="product-management-page__filters">
           <Input
             placeholder={t('pages.productAdmin.searchPlaceholder')}
             prefix={<SearchOutlined />}
@@ -709,14 +838,17 @@ const ProductManagement: React.FC = () => {
           />
         </Space>
         <Space wrap>
-          <Button disabled={selectedProductIds.length === 0} onClick={() => handleBatchProductStatus('ACTIVE')}>
+          <Button disabled={selectedProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'ACTIVE'} onClick={() => handleBatchProductStatus('ACTIVE')}>
             {t('pages.productAdmin.batchApprove')}
           </Button>
-          <Button disabled={selectedProductIds.length === 0} danger onClick={() => handleBatchProductStatus('REJECTED')}>
+          <Button disabled={selectedProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'REJECTED'} danger onClick={() => handleBatchProductStatus('REJECTED')}>
             {t('pages.productAdmin.batchReject')}
           </Button>
           <Button icon={<DownloadOutlined />} onClick={downloadImportTemplate}>
             {t('pages.productAdmin.downloadTemplate')}
+          </Button>
+          <Button icon={<DownloadOutlined />} onClick={exportFilteredProducts}>
+            {t('pages.productAdmin.exportProducts')}
           </Button>
           <Upload accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts}>
             <Button icon={<UploadOutlined />}>{t('pages.productAdmin.importProducts')}</Button>
@@ -751,17 +883,18 @@ const ProductManagement: React.FC = () => {
         destroyOnClose
         className="shopify-product-modal"
         okText={editingProduct ? t('pages.productAdmin.saveProduct') : t('pages.productAdmin.addProduct')}
+        confirmLoading={productSubmitting}
       >
         <Form form={form} layout="vertical" initialValues={{ images: [], specifications: [{}], optionGroups: [{ name: 'Size', values: '' }, { name: 'Color', values: '' }], detailContent: [emptyDetailBlock], bundleEnabled: false, bundleItems: [{ name: '', quantity: 1 }], freeShipping: false }}>
           <div className="shopify-product-editor">
             <div className="shopify-product-editor__main">
               <section className="shopify-card">
                 <Form.Item name="name" label={t('pages.productAdmin.titleField')} rules={[{ required: true, message: t('pages.productAdmin.nameRequired') }]}>
-                  <Input className="shopify-input" placeholder="智能自动宠物喂食器｜猫狗通用定时喂食" />
+                  <Input className="shopify-input" placeholder={t('pages.productAdmin.sampleNamePlaceholder')} />
                 </Form.Item>
 
                 <Form.Item name="description" label={t('pages.productAdmin.description')} rules={[{ required: true, message: t('pages.productAdmin.descriptionRequired') }]}>
-                  <TextArea className="shopify-rich-text" rows={7} placeholder="Describe benefits, materials, use cases and care instructions..." />
+                  <TextArea className="shopify-rich-text" rows={7} placeholder={t('pages.productAdmin.descriptionRichPlaceholder')} />
                 </Form.Item>
 
                 <Divider>{t('pages.productAdmin.languageSettings')}</Divider>
@@ -842,7 +975,7 @@ const ProductManagement: React.FC = () => {
                 <Form.Item name="categoryId" label={t('common.category')} rules={[{ required: true, message: t('pages.productAdmin.categoryRequired') }]}>
                   <TreeSelect
                     className="shopify-input"
-                    placeholder="Automatic Feeders in Pet Bowls, Feeders & Waterers"
+                    placeholder={t('pages.productAdmin.categoryPlaceholder')}
                     treeDefaultExpandAll
                     treeData={categoryOptions}
                   />
@@ -876,7 +1009,7 @@ const ProductManagement: React.FC = () => {
                 </div>
                 <div className="shopify-two-col">
                   <Form.Item name="bundleTitle" label={t('bundle.bundleTitle')}>
-                    <Input placeholder="Walking starter kit" />
+                    <Input placeholder={t('pages.productAdmin.bundleTitlePlaceholder')} />
                   </Form.Item>
                   <Form.Item name="bundlePrice" label={t('bundle.bundlePrice')}>
                     <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="0.00" />
@@ -931,7 +1064,7 @@ const ProductManagement: React.FC = () => {
                 </div>
                 <div className="shopify-two-col">
                   <Form.Item name="shipping" label={t('pages.productAdmin.shipping')}>
-                    <Input placeholder="Store default • Sample box • 0 kg" />
+                    <Input placeholder={t('pages.productAdmin.shippingRulePlaceholder')} />
                   </Form.Item>
                   <Form.Item name="freeShippingThreshold" label={t('pages.productAdmin.freeShippingThreshold')}>
                     <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="50.00" />
@@ -948,6 +1081,17 @@ const ProductManagement: React.FC = () => {
                   <h3>{t('pages.productAdmin.variants')}</h3>
                 </div>
                 <Text type="secondary">{t('pages.productAdmin.variantHint')}</Text>
+                <div className="shopify-variant-summary">
+                  <span>{t('pages.productAdmin.variants')}: <b>{variantSummary.count}</b></span>
+                  <span>{t('pages.productAdmin.stock')}: <b>{variantSummary.totalStock}</b></span>
+                  <span>{t('pages.productAdmin.price')}: <b>{variantSummary.minPrice && variantSummary.maxPrice ? `${formatMoney(variantSummary.minPrice)} - ${formatMoney(variantSummary.maxPrice)}` : formatMoney(0)}</b></span>
+                </div>
+                <div className="shopify-variant-actions">
+                  <Button icon={<SyncOutlined />} onClick={syncStockFromVariants} disabled={variantSummary.count === 0}>
+                    {t('pages.productAdmin.syncStockFromVariants')}
+                  </Button>
+                  <Text type="secondary">{t('pages.productAdmin.variantStockAutoSync')}</Text>
+                </div>
                 <Form.List name="optionGroups">
                   {(fields, { add, remove }) => (
                     <div className="shopify-option-list">
@@ -1006,7 +1150,7 @@ const ProductManagement: React.FC = () => {
               <section className="shopify-card">
                 <div className="shopify-card__header">
                   <h3>{t('pages.productAdmin.categoryMetafields')}</h3>
-                  <span className="shopify-chip">Automatic Feeders in Pet Bowls, Feeders & Waterers</span>
+                  <span className="shopify-chip">{t('pages.productAdmin.categoryMetafieldPreset')}</span>
                 </div>
                 <Form.Item label={t('pages.productAdmin.specs')}>
                   <Form.List name="specifications">
@@ -1038,7 +1182,7 @@ const ProductManagement: React.FC = () => {
                 </div>
                 <div className="shopify-seo-preview">
                   <Text>{t('pages.productAdmin.myStore')}</Text>
-                  <Text type="secondary">https://shopmx.example.com › products ›</Text>
+                  <Text type="secondary">{t('pages.productAdmin.seoUrlPath')}</Text>
                   <h4>{descriptionPreview ? form.getFieldValue('name') : t('pages.productAdmin.productTitlePreview')}</h4>
                   <p>{descriptionPreview || t('pages.productAdmin.metaDescriptionPreview')}</p>
                   <Text type="secondary">{formatMoney(form.getFieldValue('price'))}</Text>

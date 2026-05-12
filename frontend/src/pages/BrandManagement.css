@@ -1,0 +1,29 @@
+.brand-management-page {
+  padding: 32px 24px;
+}
+
+.brand-management-page__add {
+  margin-bottom: 16px;
+}
+
+.brand-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .brand-management-page {
+    padding: 16px 12px;
+  }
+
+  .brand-management-page h3.ant-typography {
+    font-size: 22px;
+  }
+
+  .brand-management-page__add {
+    width: 100%;
+  }
+
+  .brand-management-page .ant-modal .ant-space {
+    width: 100%;
+  }
+}

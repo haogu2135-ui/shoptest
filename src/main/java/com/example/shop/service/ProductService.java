@@ -16,5 +16,6 @@ public interface ProductService {
     List<Product> findByIsFeaturedTrueOrderByIdAsc();
     List<Product> search(String keyword, Long categoryId);
     List<Product> findRelatedProducts(Long productId, Long categoryId);
+    List<Product> findPersonalizedRecommendations(Long userId);
     ProductImportResult importCsv(MultipartFile file);
 } 

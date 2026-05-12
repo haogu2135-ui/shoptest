@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { logisticsCarrierApi } from '../api';
 import type { LogisticsCarrier } from '../types';
+import { useLanguage } from '../i18n';
+import './LogisticsCarrierManagement.css';
 
 const { Title, Text } = Typography;
 
@@ -13,22 +15,23 @@ const LogisticsCarrierManagement: React.FC = () => {
   const [editingCarrier, setEditingCarrier] = useState<LogisticsCarrier | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
+  const { t } = useLanguage();
 
-  const fetchCarriers = async () => {
+  const fetchCarriers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await logisticsCarrierApi.getAll(false);
       setCarriers(res.data || []);
     } catch (err: any) {
-      message.error(err.response?.data?.error || 'Failed to load carriers');
+      message.error(err.response?.data?.error || t('pages.logisticsCarriers.fetchFailed'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchCarriers();
-  }, []);
+  }, [fetchCarriers]);
 
   const openModal = (carrier?: LogisticsCarrier) => {
     setEditingCarrier(carrier || null);
@@ -45,14 +48,14 @@ const LogisticsCarrierManagement: React.FC = () => {
       } else {
         await logisticsCarrierApi.create(values);
       }
-      message.success('Saved');
+      message.success(t('pages.logisticsCarriers.saved'));
       setModalOpen(false);
       setEditingCarrier(null);
       form.resetFields();
       fetchCarriers();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err.response?.data?.error || 'Save failed');
+      message.error(err.response?.data?.error || t('pages.logisticsCarriers.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -61,21 +64,21 @@ const LogisticsCarrierManagement: React.FC = () => {
   const handleDelete = async (id: number) => {
     try {
       await logisticsCarrierApi.delete(id);
-      message.success('Deleted');
+      message.success(t('pages.logisticsCarriers.deleted'));
       fetchCarriers();
     } catch (err: any) {
-      message.error(err.response?.data?.error || 'Delete failed');
+      message.error(err.response?.data?.error || t('pages.logisticsCarriers.deleteFailed'));
     }
   };
 
   return (
-    <div>
-      <Title level={4}>快递公司配置</Title>
-      <Card style={{ marginBottom: 16 }}>
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Text type="secondary">配置 17TRACK carrier code，订单发货时选择后会默认按该快递公司查询。</Text>
+    <div className="logistics-carrier-page">
+      <Title level={4}>{t('pages.logisticsCarriers.title')}</Title>
+      <Card className="logistics-carrier-page__intro">
+        <Space wrap>
+          <Text type="secondary">{t('pages.logisticsCarriers.description')}</Text>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-            新增快递公司
+            {t('pages.logisticsCarriers.addCarrier')}
           </Button>
         </Space>
       </Card>
@@ -84,26 +87,31 @@ const LogisticsCarrierManagement: React.FC = () => {
         loading={loading}
         dataSource={carriers}
         bordered
+        scroll={{ x: 640 }}
         columns={[
-          { title: '名称', dataIndex: 'name', key: 'name' },
+          { title: t('pages.logisticsCarriers.name'), dataIndex: 'name', key: 'name' },
           { title: '17TRACK Code', dataIndex: 'trackingCode', key: 'trackingCode', width: 180 },
           {
-            title: '状态',
+            title: t('common.status'),
             dataIndex: 'status',
             key: 'status',
             width: 120,
-            render: (status: string) => <Tag color={status === 'ACTIVE' ? 'green' : 'default'}>{status}</Tag>,
+            render: (status: string) => (
+              <Tag color={status === 'ACTIVE' ? 'green' : 'default'}>
+                {status === 'ACTIVE' ? t('pages.logisticsCarriers.active') : t('pages.logisticsCarriers.inactive')}
+              </Tag>
+            ),
           },
-          { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 100 },
+          { title: t('pages.logisticsCarriers.sortOrder'), dataIndex: 'sortOrder', key: 'sortOrder', width: 100 },
           {
-            title: '操作',
+            title: t('common.actions'),
             key: 'actions',
             width: 180,
             render: (_: unknown, carrier: LogisticsCarrier) => (
               <Space>
-                <Button size="small" onClick={() => openModal(carrier)}>编辑</Button>
-                <Popconfirm title="删除这个快递公司？" onConfirm={() => handleDelete(carrier.id)}>
-                  <Button size="small" danger>删除</Button>
+                <Button size="small" onClick={() => openModal(carrier)}>{t('common.edit')}</Button>
+                <Popconfirm title={t('pages.logisticsCarriers.deleteConfirm')} onConfirm={() => handleDelete(carrier.id)}>
+                  <Button size="small" danger>{t('common.delete')}</Button>
                 </Popconfirm>
               </Space>
             ),
@@ -112,7 +120,7 @@ const LogisticsCarrierManagement: React.FC = () => {
       />
 
       <Modal
-        title={editingCarrier ? '编辑快递公司' : '新增快递公司'}
+        title={editingCarrier ? t('pages.logisticsCarriers.editTitle') : t('pages.logisticsCarriers.addTitle')}
         open={modalOpen}
         onOk={handleSave}
         confirmLoading={saving}
@@ -123,21 +131,21 @@ const LogisticsCarrierManagement: React.FC = () => {
         }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入快递公司名称' }]}>
+          <Form.Item name="name" label={t('pages.logisticsCarriers.name')} rules={[{ required: true, message: t('pages.logisticsCarriers.nameRequired') }]}>
             <Input placeholder="DHL Express" />
           </Form.Item>
-          <Form.Item name="trackingCode" label="17TRACK Code" rules={[{ required: true, message: '请输入 17TRACK carrier code' }]}>
+          <Form.Item name="trackingCode" label="17TRACK Code" rules={[{ required: true, message: t('pages.logisticsCarriers.codeRequired') }]}>
             <Input placeholder="100001" />
           </Form.Item>
-          <Form.Item name="status" label="状态" rules={[{ required: true }]}>
+          <Form.Item name="status" label={t('common.status')} rules={[{ required: true }]}>
             <Select
               options={[
-                { value: 'ACTIVE', label: '启用' },
-                { value: 'INACTIVE', label: '停用' },
+                { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
+                { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
               ]}
             />
           </Form.Item>
-          <Form.Item name="sortOrder" label="排序">
+          <Form.Item name="sortOrder" label={t('pages.logisticsCarriers.sortOrder')}>
             <InputNumber min={0} precision={0} style={{ width: '100%' }} />
           </Form.Item>
         </Form>

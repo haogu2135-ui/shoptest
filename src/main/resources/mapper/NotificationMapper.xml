@@ -16,6 +16,10 @@
         SELECT * FROM notifications WHERE user_id = #{userId} ORDER BY created_at DESC
     </select>
 
+    <select id="findById" resultMap="notificationMap">
+        SELECT * FROM notifications WHERE id = #{id}
+    </select>
+
     <select id="countUnread" resultType="int">
         SELECT COUNT(*) FROM notifications WHERE user_id = #{userId} AND is_read = FALSE
     </select>

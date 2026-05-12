@@ -56,6 +56,16 @@
   border: 0;
 }
 
+.product-rich-detail__video-link {
+  display: block;
+  padding: 18px;
+  color: #124734;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  background: #f3f7f4;
+}
+
 .product-rich-detail__figure figcaption {
   margin-top: 8px;
   color: #777;

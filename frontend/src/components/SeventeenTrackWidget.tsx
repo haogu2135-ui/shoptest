@@ -33,7 +33,7 @@ type SeventeenTrackWidgetProps = {
 };
 
 const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNumber = '', height = 560 }) => {
-  const { language } = useLanguage();
+  const { t, language } = useLanguage();
   const [value, setValue] = useState(trackingNumber);
   const [scriptReady, setScriptReady] = useState(Boolean(window.YQV5?.trackSingle));
   const containerId = useMemo(() => `YQContainer-${Math.random().toString(36).slice(2)}`, []);
@@ -50,7 +50,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
 
     let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
     const handleLoad = () => setScriptReady(true);
-    const handleError = () => message.error('17TRACK plugin failed to load');
+    const handleError = () => message.error(t('pages.orderTracking.trackingFailed'));
 
     if (!script) {
       script = document.createElement('script');
@@ -67,16 +67,16 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
       script?.removeEventListener('load', handleLoad);
       script?.removeEventListener('error', handleError);
     };
-  }, []);
+  }, [t]);
 
   const runTrack = () => {
     const num = value.trim();
     if (!num) {
-      message.warning('Enter a tracking number');
+      message.warning(t('pages.adminOrders.noTrackingNumber'));
       return;
     }
     if (!window.YQV5?.trackSingle) {
-      message.warning('17TRACK plugin is still loading');
+      message.warning(t('common.loading'));
       return;
     }
 
@@ -90,21 +90,22 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
   };
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Space.Compact style={{ width: '100%' }}>
+    <Space className="seventeen-track-widget" direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space.Compact className="seventeen-track-widget__search" style={{ width: '100%' }}>
         <Input
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onPressEnter={runTrack}
-          placeholder="Tracking number"
+          placeholder={t('pages.orderTracking.trackingNumber')}
           autoComplete="off"
         />
         <Button type="primary" icon={<SearchOutlined />} loading={!scriptReady} onClick={runTrack}>
-          Track
+          {t('pages.adminOrders.track')}
         </Button>
       </Space.Compact>
       <div
         id={containerId}
+        className="seventeen-track-widget__results"
         style={{
           minHeight: 280,
           width: '100%',
@@ -114,7 +115,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
         }}
       >
         <Typography.Text type="secondary" style={{ display: 'block', padding: 24, textAlign: 'center' }}>
-          17TRACK results will appear here.
+          {t('pages.orderTracking.noTrackingData')}
         </Typography.Text>
       </div>
     </Space>

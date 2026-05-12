@@ -1,0 +1,138 @@
+.checkout-page {
+  width: min(860px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 24px 0 36px;
+}
+
+.checkout-page--result {
+  width: min(820px, calc(100% - 24px));
+}
+
+.checkout-page--loading,
+.checkout-page--empty {
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.checkout-page__itemsCard .ant-list-item-meta-title {
+  margin-bottom: 4px;
+  line-height: 20px;
+}
+
+.checkout-page__paymentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.checkout-page__paymentMethod {
+  min-height: 96px;
+  border: 1px solid #ececec;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+  color: #333333;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.checkout-page__paymentMethod:hover,
+.checkout-page__paymentMethod:focus-visible {
+  border-color: #ee4d2d;
+  box-shadow: 0 8px 20px rgba(238, 77, 45, 0.12);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.checkout-page__paymentMethodTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.checkout-page__paymentMethod span:last-child {
+  display: block;
+  color: #666666;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.checkout-page__paymentUrl {
+  overflow-wrap: anywhere;
+}
+
+.checkout-page__item {
+  gap: 12px;
+}
+
+.checkout-page__itemImage {
+  width: 54px;
+  height: 54px;
+  display: block;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f7f4ee;
+}
+
+.checkout-page__itemTotal {
+  flex: 0 0 auto;
+  color: #ee4d2d;
+  overflow-wrap: anywhere;
+}
+
+.checkout-page__summaryLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+  text-align: right;
+}
+
+.checkout-page__summaryTotal {
+  color: #ee4d2d;
+  font-size: 24px;
+}
+
+@media (max-width: 560px) {
+  .checkout-page {
+    width: min(100% - 16px, 860px);
+    padding: 14px 0 24px;
+  }
+
+  .checkout-page h2.ant-typography {
+    font-size: 24px;
+  }
+
+  .checkout-page .ant-card-body {
+    padding: 14px;
+  }
+
+  .checkout-page__paymentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-page__item {
+    align-items: flex-start;
+  }
+
+  .checkout-page__item .ant-list-item-meta {
+    min-width: 0;
+  }
+
+  .checkout-page__itemTotal {
+    max-width: 96px;
+    text-align: right;
+  }
+
+  .checkout-page__summaryLine {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .checkout-page__summaryTotal {
+    font-size: 22px;
+  }
+}

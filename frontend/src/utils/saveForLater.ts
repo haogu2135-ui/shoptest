@@ -1,4 +1,5 @@
 import type { CartItem } from '../types';
+import { createLocalId } from './localIds';
 
 const SAVE_FOR_LATER_KEY = 'shop-save-for-later';
 
@@ -30,7 +31,7 @@ export const saveCartItemForLater = (item: CartItem) => {
   );
   const savedItem: SavedForLaterItem = {
     ...item,
-    id: -Date.now(),
+    id: createLocalId(items.map((savedItem) => savedItem.id)),
     quantity: Math.max(1, item.quantity),
     savedAt: Date.now(),
     sourceCartItemId: item.id,

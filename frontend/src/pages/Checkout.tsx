@@ -1,17 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Cascader, Divider, Empty, Form, Input, List, message, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { addressApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
+import { addressApi, apiBaseUrl, appConfigApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
 import type { CartItem, CouponQuote, Order, Payment, UserAddress, UserCoupon } from '../types';
 import { regionData } from '../regionData';
 import { useLanguage } from '../i18n';
-import { createPaymentMethodOptions, paymentMethodLabel } from '../utils/paymentMethods';
+import { createPaymentMethodOptions, mexicoPaymentMethodDetails, paymentMethodLabel, paymentSimulationEnabledFallback } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
 import { navigateToSafeUrl } from '../utils/safeUrl';
+import './Checkout.css';
 
 const { Text, Title } = Typography;
+const checkoutImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+
+const resolveCheckoutImage = (imageUrl?: string) => {
+  if (!imageUrl) return checkoutImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
+
 const isPurchasable = (item: CartItem) =>
   (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock >= item.quantity);
 
@@ -26,6 +37,10 @@ const Checkout: React.FC = () => {
   const [selectedAddressId, setSelectedAddressId] = useState<number | 'new'>('new');
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
+  const [guestPaymentEmail, setGuestPaymentEmail] = useState<string | undefined>();
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>('STRIPE');
+  const [paymentCreateError, setPaymentCreateError] = useState<string | null>(null);
+  const [paymentSimulationEnabled, setPaymentSimulationEnabled] = useState(paymentSimulationEnabledFallback);
   const [simulatingCallback, setSimulatingCallback] = useState(false);
   const [couponQuote, setCouponQuote] = useState<CouponQuote | null>(null);
   const [selectedUserCouponId, setSelectedUserCouponId] = useState<number | null>(null);
@@ -33,6 +48,12 @@ const Checkout: React.FC = () => {
   const paymentOptions = useMemo(() => createPaymentMethodOptions(t), [t]);
   const { market, formatMoney } = useMarket();
   const isGuestCheckout = !localStorage.getItem('token') || !localStorage.getItem('userId');
+
+  useEffect(() => {
+    appConfigApi.get()
+      .then((res) => setPaymentSimulationEnabled(Boolean(res.data.paymentSimulationEnabled)))
+      .catch(() => setPaymentSimulationEnabled(paymentSimulationEnabledFallback));
+  }, []);
 
   const selectedCartItemIds = useMemo(() => {
     try {
@@ -71,7 +92,9 @@ const Checkout: React.FC = () => {
           cartApi.getItems(Number(userId)),
           addressApi.getByUser(Number(userId)).catch(() => ({ data: [] as UserAddress[] })),
         ]);
-        const selectedItems = cartRes.data.filter((item) => selectedCartItemIds.includes(item.id));
+        const selectedItems = selectedCartItemIds.length === 0
+          ? cartRes.data
+          : cartRes.data.filter((item) => selectedCartItemIds.includes(item.id));
         const purchasableItems = selectedItems.filter(isPurchasable);
         if (purchasableItems.length !== selectedItems.length) {
           message.warning(t('pages.checkout.unavailableSelected'));
@@ -147,7 +170,9 @@ const Checkout: React.FC = () => {
     [couponQuote?.availableCoupons, selectedUserCouponId],
   );
   const freeShippingRemaining = Math.max(0, market.freeShippingThreshold - cartTotal);
-  const freeShippingPercent = Math.min(100, Math.round((cartTotal / market.freeShippingThreshold) * 100));
+  const freeShippingPercent = market.freeShippingThreshold > 0
+    ? Math.min(100, Math.round((cartTotal / market.freeShippingThreshold) * 100))
+    : 100;
 
   const calculateCouponDiscount = (coupon: UserCoupon) => {
     if (cartTotal < Number(coupon.thresholdAmount || 0)) {
@@ -219,17 +244,33 @@ const Checkout: React.FC = () => {
               selectedSpecs: item.selectedSpecs,
             })),
           });
-      const paymentRes = await paymentApi.create(orderRes.data.id, values.paymentMethod);
       sessionStorage.removeItem('checkoutCartItemIds');
       sessionStorage.removeItem('checkoutPaymentMethod');
       if (!token || !userId) {
         removeGuestCartItems(cartItems.map((item) => item.id));
-        window.dispatchEvent(new Event('shop:cart-updated'));
       }
+      window.dispatchEvent(new Event('shop:cart-updated'));
+      window.dispatchEvent(new Event('shop:coupons-updated'));
       setCreatedOrder(orderRes.data);
+      setPendingPaymentMethod(values.paymentMethod);
+      setGuestPaymentEmail(token && userId ? undefined : values.guestEmail);
+      setPaymentCreateError(null);
+      let paymentRes;
+      try {
+        paymentRes = await paymentApi.create(
+          orderRes.data.id,
+          values.paymentMethod,
+          token && userId ? undefined : values.guestEmail,
+        );
+      } catch (paymentError: any) {
+        setPayment(null);
+        setPaymentCreateError(paymentError?.response?.data?.error || t('pages.payment.createFailed'));
+        message.warning(t('pages.checkout.orderCreatedPaymentPending'));
+        return;
+      }
       setPayment(paymentRes.data);
       message.success(t('pages.checkout.orderCreated'));
-      if (paymentRes.data.channel === 'STRIPE' && paymentRes.data.paymentUrl) {
+      if (paymentRes.data.paymentUrl) {
         if (!navigateToSafeUrl(paymentRes.data.paymentUrl)) {
           message.error(t('pages.payment.failed'));
         }
@@ -245,12 +286,31 @@ const Checkout: React.FC = () => {
     if (!payment) return;
     setPaying(true);
     try {
-      const paidRes = await paymentApi.simulatePaid(payment.id);
+      const paidRes = await paymentApi.simulatePaid(payment.id, guestPaymentEmail);
       setPayment(paidRes.data);
       setCreatedOrder((order) => order ? { ...order, status: 'PENDING_SHIPMENT' } : order);
       message.success(t('pages.checkout.paid'));
     } catch (error: any) {
       message.error(error?.response?.data?.error || t('pages.checkout.payFailed'));
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const retryCreatePayment = async () => {
+    if (!createdOrder) return;
+    setPaying(true);
+    try {
+      const paymentRes = await paymentApi.create(createdOrder.id, pendingPaymentMethod, guestPaymentEmail);
+      setPayment(paymentRes.data);
+      setPaymentCreateError(null);
+      message.success(t('pages.checkout.paymentReady'));
+      if (paymentRes.data.paymentUrl && !navigateToSafeUrl(paymentRes.data.paymentUrl)) {
+        message.error(t('pages.payment.failed'));
+      }
+    } catch (error: any) {
+      setPaymentCreateError(error?.response?.data?.error || t('pages.payment.createFailed'));
+      message.error(error?.response?.data?.error || t('pages.payment.createFailed'));
     } finally {
       setPaying(false);
     }
@@ -266,7 +326,7 @@ const Checkout: React.FC = () => {
     if (!payment) return;
     setSimulatingCallback(true);
     try {
-      const callbackRes = await paymentApi.simulateCallback(payment.id);
+      const callbackRes = await paymentApi.simulateCallback(payment.id, guestPaymentEmail);
       setPayment(callbackRes.data);
       setCreatedOrder((order) => order ? { ...order, status: 'PENDING_SHIPMENT' } : order);
       message.success(t('pages.checkout.paid'));
@@ -278,29 +338,50 @@ const Checkout: React.FC = () => {
   };
 
   if (loading) {
-    return <div style={{ padding: 80, textAlign: 'center' }}><Spin size="large" /></div>;
+    return <div className="checkout-page checkout-page--loading"><Spin size="large" /></div>;
+  }
+
+  if (createdOrder && !payment) {
+    return (
+      <div className="checkout-page checkout-page--result">
+        <Result
+          status="warning"
+          title={t('pages.checkout.orderCreatedPaymentPending')}
+          subTitle={t('pages.checkout.paymentPendingSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
+          extra={[
+            <Button type="primary" key="retry" loading={paying} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>,
+            <Button key="profile" onClick={() => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
+            <Button key="track" onClick={() => navigate('/track-order')}>{t('pages.orderTracking.title')}</Button>,
+            <Button key="home" onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
+          ]}
+        />
+        {paymentCreateError ? (
+          <Alert type="warning" showIcon message={t('pages.checkout.paymentCreateWarning')} description={paymentCreateError} />
+        ) : null}
+      </div>
+    );
   }
 
   if (createdOrder && payment) {
     const paid = payment.status === 'PAID';
     return (
-      <div className="checkout-page" style={{ padding: '24px', maxWidth: 820, margin: '0 auto' }}>
+      <div className="checkout-page checkout-page--result">
         <Result
           status={paid ? 'success' : 'info'}
           title={paid ? t('pages.checkout.paidTitle') : t('pages.checkout.pendingTitle')}
           subTitle={t('pages.checkout.resultSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
           extra={[
-            !paid && (
-              <Button type="primary" key="pay" loading={paying} onClick={payment.channel === 'STRIPE' ? openPaymentUrl : simulatePay}>
-                {payment.channel === 'STRIPE' ? t('pages.checkout.openPayment') : t('pages.checkout.simulatePay')}
+            !paid && (payment.paymentUrl || paymentSimulationEnabled) && (
+              <Button type="primary" key="pay" loading={paying} onClick={payment.paymentUrl ? openPaymentUrl : simulatePay}>
+                {payment.paymentUrl ? t('pages.checkout.openPayment') : t('pages.checkout.simulatePay')}
               </Button>
             ),
-            !paid && payment.channel !== 'STRIPE' && (
+            !paid && paymentSimulationEnabled && (
               <Button key="callback" loading={simulatingCallback} onClick={simulateCallback}>
                 {t('pages.checkout.simulateCallback')}
               </Button>
             ),
-            <Button key="profile" onClick={() => navigate('/profile')}>{t('pages.checkout.viewOrder')}</Button>,
+            <Button key="profile" onClick={() => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
             <Button key="track" onClick={() => navigate('/track-order')}>{t('pages.orderTracking.title')}</Button>,
             <Button key="home" onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
           ].filter(Boolean)}
@@ -310,9 +391,9 @@ const Checkout: React.FC = () => {
             <Text>{t('pages.checkout.channel')}: {paymentMethodLabel(payment.channel, t)}</Text>
             {createdOrder.originalAmount ? <Text>{t('common.subtotal')}: {formatMoney(createdOrder.originalAmount)}</Text> : null}
             {createdOrder.discountAmount && createdOrder.discountAmount > 0 ? <Text>{t('pages.checkout.coupon')}: -{formatMoney(createdOrder.discountAmount)} {createdOrder.couponName ? `(${createdOrder.couponName})` : ''}</Text> : null}
-            <Text>Shipping: {formatMoney(createdOrder.shippingFee)}</Text>
+            <Text>{t('pages.checkout.shippingFee')}: {formatMoney(createdOrder.shippingFee)}</Text>
             <Text>{t('pages.checkout.paymentStatus')}: <Tag color={paid ? 'green' : 'orange'}>{t(`status.${payment.status}`)}</Tag></Text>
-            <Text>{t('pages.checkout.paymentLink')}: {payment.paymentUrl}</Text>
+            <Text className="checkout-page__paymentUrl">{t('pages.checkout.paymentLink')}: {payment.paymentUrl || '-'}</Text>
             {payment.expiresAt && <Text>{t('pages.checkout.paymentExpiresAt')}: {new Date(payment.expiresAt).toLocaleString()}</Text>}
             {payment.transactionId && <Text>{t('pages.checkout.transactionId')}: {payment.transactionId}</Text>}
           </Space>
@@ -323,7 +404,7 @@ const Checkout: React.FC = () => {
 
   if (cartItems.length === 0) {
     return (
-      <div style={{ padding: '80px 24px', textAlign: 'center' }}>
+      <div className="checkout-page checkout-page--empty">
         <Empty description={t('pages.checkout.emptySelected')} />
         <Button type="primary" style={{ marginTop: 16 }} onClick={() => navigate('/cart')}>{t('pages.checkout.backCart')}</Button>
       </div>
@@ -331,16 +412,26 @@ const Checkout: React.FC = () => {
   }
 
   return (
-    <div className="checkout-page" style={{ padding: '24px', maxWidth: 860, margin: '0 auto' }}>
+    <div className="checkout-page">
       <Title level={2}>{t('pages.checkout.title')}</Title>
 
       <Card title={t('pages.checkout.expressCheckout')} style={{ marginBottom: 16 }}>
-        <Space.Compact block>
-          <Button onClick={() => form.setFieldsValue({ paymentMethod: 'STRIPE' })}>Stripe</Button>
-          <Button onClick={() => form.setFieldsValue({ paymentMethod: 'OXXO' })}>OXXO</Button>
-          <Button onClick={() => form.setFieldsValue({ paymentMethod: 'SPEI' })}>SPEI</Button>
-          <Button onClick={() => form.setFieldsValue({ paymentMethod: 'APPLE_PAY' })}>Apple Pay</Button>
-        </Space.Compact>
+        <div className="checkout-page__paymentGrid">
+          {mexicoPaymentMethodDetails.map((method) => (
+            <button
+              type="button"
+              key={method.value}
+              className="checkout-page__paymentMethod"
+              onClick={() => form.setFieldsValue({ paymentMethod: method.value })}
+            >
+              <span className="checkout-page__paymentMethodTop">
+                <strong>{method.title}</strong>
+                <Tag color={method.value === 'OXXO' ? 'orange' : method.value === 'SPEI' ? 'blue' : 'green'}>{t(method.badgeKey)}</Tag>
+              </span>
+              <span>{t(method.descriptionKey)}</span>
+            </button>
+          ))}
+        </div>
         <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
           {t('pages.checkout.expressHint')}
         </Text>
@@ -361,13 +452,24 @@ const Checkout: React.FC = () => {
         </div>
       </Card>
 
-      <Card title={t('pages.checkout.itemList')} style={{ marginBottom: 16 }}>
+      <Card title={t('pages.checkout.itemList')} style={{ marginBottom: 16 }} className="checkout-page__itemsCard">
         <List
           dataSource={cartItems}
           renderItem={(item) => (
-            <List.Item>
+            <List.Item className="checkout-page__item">
               <List.Item.Meta
-                avatar={<img src={item.imageUrl} alt={item.productName} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4 }} />}
+                avatar={
+                  <img
+                    src={resolveCheckoutImage(item.imageUrl)}
+                    alt={item.productName}
+                    className="checkout-page__itemImage"
+                    onError={(event) => {
+                      if (event.currentTarget.src !== checkoutImageFallback) {
+                        event.currentTarget.src = checkoutImageFallback;
+                      }
+                    }}
+                  />
+                }
                 title={item.productName}
                 description={
                   <Space direction="vertical" size={0}>
@@ -376,14 +478,14 @@ const Checkout: React.FC = () => {
                   </Space>
                 }
               />
-              <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(item.price * item.quantity)}</Text>
+              <Text strong className="checkout-page__itemTotal">{formatMoney(item.price * item.quantity)}</Text>
             </List.Item>
           )}
         />
         <Divider />
-        <div style={{ textAlign: 'right' }}>
+        <div className="checkout-page__summaryLine">
           <Text>{t('pages.checkout.itemSummary', { count: cartItems.reduce((sum, item) => sum + item.quantity, 0) })}</Text>
-          <Text strong style={{ color: '#ee4d2d', fontSize: 24 }}> {formatMoney(cartTotal)}</Text>
+          <Text strong className="checkout-page__summaryTotal"> {formatMoney(cartTotal)}</Text>
         </div>
       </Card>
 
@@ -446,7 +548,7 @@ const Checkout: React.FC = () => {
               return {
                 value: coupon.id,
                 label: couponDiscount > 0
-                  ? `${describeCoupon(coupon)} · ${t('pages.checkout.couponSaveAmount', { amount: formatMoney(couponDiscount) })}`
+                  ? `${describeCoupon(coupon)} - ${t('pages.checkout.couponSaveAmount', { amount: formatMoney(couponDiscount) })}`
                   : describeCoupon(coupon),
                 disabled: couponDiscount <= 0,
               };
@@ -470,14 +572,14 @@ const Checkout: React.FC = () => {
           <div style={{ marginTop: 12, textAlign: 'right' }}>
             <div><Text>{t('common.subtotal')}: {formatMoney(cartTotal)}</Text></div>
             {discountAmount > 0 ? <div><Text type="success">{t('pages.checkout.couponDiscount')}: -{formatMoney(discountAmount)}</Text></div> : null}
-            <div><Text>Shipping: {formatMoney(shippingFee)}</Text></div>
+            <div><Text>{t('pages.checkout.shippingFee')}: {formatMoney(shippingFee)}</Text></div>
             <div><Text strong style={{ color: '#ee4d2d', fontSize: 22 }}>{t('pages.checkout.payable')}: {formatMoney(payableAmount)}</Text></div>
           </div>
         </Card> : (
           <Card title={t('pages.checkout.orderSummary')} style={{ marginBottom: 16 }}>
             <div style={{ textAlign: 'right' }}>
               <div><Text>{t('common.subtotal')}: {formatMoney(cartTotal)}</Text></div>
-              <div><Text>Shipping: {formatMoney(shippingFee)}</Text></div>
+              <div><Text>{t('pages.checkout.shippingFee')}: {formatMoney(shippingFee)}</Text></div>
               <div><Text strong style={{ color: '#ee4d2d', fontSize: 22 }}>{t('pages.checkout.payable')}: {formatMoney(payableAmount)}</Text></div>
             </div>
           </Card>

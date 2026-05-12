@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons';
 import type { ProductDetailBlock } from '../types';
 import { useLanguage } from '../i18n';
-import { isDirectVideo, isHttpMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
+import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -35,6 +35,13 @@ const compactBlocks = (blocks: ProductDetailBlock[]) =>
 const RichVideoPreview: React.FC<{ block: ProductDetailBlock; index: number }> = ({ block, index }) => {
   if (!isHttpMediaUrl(block.url)) return null;
   const videoUrl = toEmbeddableVideoUrl(block.url);
+  if (!canEmbedVideoUrl(block.url)) {
+    return (
+      <a href={block.url} target="_blank" rel="noopener noreferrer">
+        {block.caption || block.url}
+      </a>
+    );
+  }
 
   return (
     <div style={{ width: 280, maxWidth: '100%', aspectRatio: '16 / 9', overflow: 'hidden', borderRadius: 6, background: '#111' }}>

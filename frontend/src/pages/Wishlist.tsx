@@ -2,12 +2,23 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Row, Col, Button, Empty, Spin, Typography, message, Popconfirm, Tag, Space } from 'antd';
 import { ShoppingCartOutlined, DeleteOutlined, HeartFilled, SettingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { wishlistApi, cartApi } from '../api';
+import { apiBaseUrl, wishlistApi, cartApi } from '../api';
 import type { WishlistItem } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
+import './Wishlist.css';
 
 const { Text, Title } = Typography;
+const wishlistImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+
+const resolveWishlistImage = (imageUrl?: string) => {
+  if (!imageUrl) return wishlistImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
+
 const isPurchasable = (item: WishlistItem) =>
   (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock > 0);
 
@@ -46,7 +57,8 @@ const Wishlist: React.FC = () => {
   const handleRemove = async (productId: number) => {
     try {
       await wishlistApi.remove(userId, productId);
-      setItems(items.filter(item => item.productId !== productId));
+      setItems((current) => current.filter(item => item.productId !== productId));
+      window.dispatchEvent(new Event('shop:wishlist-updated'));
       message.success(t('pages.wishlist.removed'));
     } catch {
       message.error(t('messages.operationFailed'));
@@ -93,7 +105,8 @@ const Wishlist: React.FC = () => {
         <Button
           type="primary"
           icon={<SettingOutlined />}
-          size="small"
+          className="wishlist-page__primaryAction"
+          block
           disabled={!isPurchasable(item)}
           onClick={() => navigate(`/products/${item.productId}`)}
         >
@@ -105,7 +118,8 @@ const Wishlist: React.FC = () => {
       <Button
         type="primary"
         icon={<ShoppingCartOutlined />}
-        size="small"
+        className="wishlist-page__primaryAction"
+        block
         disabled={!isPurchasable(item)}
         onClick={() => handleAddToCart(item.productId)}
       >
@@ -120,7 +134,7 @@ const Wishlist: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <div style={{ padding: '80px 24px', textAlign: 'center' }}>
+      <div className="wishlist-page wishlist-page--empty">
         <Empty description={t('pages.wishlist.empty')} />
         <Button type="primary" style={{ marginTop: 16 }} onClick={() => navigate('/products')}>{t('pages.wishlist.browse')}</Button>
       </div>
@@ -128,13 +142,13 @@ const Wishlist: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+    <div className="wishlist-page">
+      <div className="wishlist-page__header">
         <Space align="center">
           <HeartFilled style={{ color: '#ee4d2d', fontSize: 24 }} />
           <Title level={3} style={{ margin: 0 }}>{t('pages.wishlist.title', { count: items.length })}</Title>
         </Space>
-        <Button type="primary" disabled={directAddItems.length === 0} onClick={handleAddAllToCart}>
+        <Button type="primary" icon={<ShoppingCartOutlined />} disabled={directAddItems.length === 0} onClick={handleAddAllToCart}>
           {t('pages.wishlist.addAllToCart')}
         </Button>
       </div>
@@ -142,31 +156,48 @@ const Wishlist: React.FC = () => {
         {items.map(item => (
           <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
             <Card
+              className="wishlist-page__card"
               hoverable
               cover={
-                <img
-                  alt={item.productName}
-                  src={item.imageUrl}
-                  style={{ height: 200, objectFit: 'cover' }}
+                <button
+                  type="button"
+                  className="wishlist-page__imageButton"
                   onClick={() => navigate(`/products/${item.productId}`)}
-                />
+                  aria-label={item.productName}
+                >
+                  <img
+                    alt={item.productName}
+                    src={resolveWishlistImage(item.imageUrl)}
+                    className="wishlist-page__image"
+                    onError={(event) => {
+                      if (event.currentTarget.src !== wishlistImageFallback) {
+                        event.currentTarget.src = wishlistImageFallback;
+                      }
+                    }}
+                  />
+                </button>
               }
-              actions={[
-                primaryAction(item),
-                <Popconfirm title={t('pages.wishlist.removeConfirm')} onConfirm={() => handleRemove(item.productId)}>
-                  <Button danger icon={<DeleteOutlined />} size="small">{t('pages.wishlist.remove')}</Button>
-                </Popconfirm>,
-              ]}
             >
-              <Card.Meta
-                title={<Text ellipsis={{ tooltip: item.productName }}>{item.productName}</Text>}
-                description={
-                  <>
-                    <Text style={{ color: '#ee4d2d', fontWeight: 600, fontSize: 16 }}>{formatMoney(item.productPrice)}</Text>
-                    {!isPurchasable(item) && <div style={{ marginTop: 8 }}><Tag color="red">Out of stock</Tag></div>}
-                  </>
-                }
-              />
+              <button
+                type="button"
+                className="wishlist-page__productName"
+                onClick={() => navigate(`/products/${item.productId}`)}
+                title={item.productName}
+              >
+                {item.productName}
+              </button>
+              <div className="wishlist-page__meta">
+                <Text className="wishlist-page__price">{formatMoney(item.productPrice)}</Text>
+                {!isPurchasable(item) && <Tag color="red">{t('pages.wishlist.outOfStock')}</Tag>}
+              </div>
+              <div className="wishlist-page__actions">
+                {primaryAction(item)}
+                <Popconfirm title={t('pages.wishlist.removeConfirm')} onConfirm={() => handleRemove(item.productId)}>
+                  <Button danger icon={<DeleteOutlined />} className="wishlist-page__removeAction" block>
+                    {t('pages.wishlist.remove')}
+                  </Button>
+                </Popconfirm>
+              </div>
             </Card>
           </Col>
         ))}

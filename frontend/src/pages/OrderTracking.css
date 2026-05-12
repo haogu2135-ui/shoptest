@@ -1,0 +1,56 @@
+.order-tracking-page {
+  width: min(960px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 24px 0 36px;
+}
+
+.order-tracking-page__amount,
+.order-tracking-page__itemTotal {
+  color: #ee4d2d;
+  overflow-wrap: anywhere;
+}
+
+.order-tracking-page__item {
+  gap: 12px;
+}
+
+.order-tracking-page__image {
+  width: 56px;
+  height: 56px;
+  display: block;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f7f4ee;
+}
+
+.order-tracking-page__item .ant-list-item-meta-title {
+  line-height: 20px;
+}
+
+@media (max-width: 560px) {
+  .order-tracking-page {
+    width: min(100% - 16px, 960px);
+    padding: 14px 0 24px;
+  }
+
+  .order-tracking-page h2.ant-typography {
+    font-size: 24px;
+  }
+
+  .order-tracking-page .ant-card-body {
+    padding: 14px;
+  }
+
+  .order-tracking-page__item {
+    align-items: flex-start;
+  }
+
+  .order-tracking-page__item .ant-list-item-meta {
+    min-width: 0;
+  }
+
+  .order-tracking-page__itemTotal {
+    max-width: 92px;
+    text-align: right;
+  }
+}

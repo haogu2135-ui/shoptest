@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const logout = () => {
+        userApi.logout().catch(() => undefined);
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('userId');

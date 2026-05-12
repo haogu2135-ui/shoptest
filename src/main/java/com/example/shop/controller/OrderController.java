@@ -5,15 +5,20 @@ import com.example.shop.dto.GuestCheckoutRequest;
 import com.example.shop.dto.OrderTrackResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
+import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
+import com.example.shop.service.SecurityAuditLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.validation.Valid;
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -23,19 +28,24 @@ import java.util.Map;
 public class OrderController {
     private final OrderService orderService;
     private final OrderItemService orderItemService;
+    private final SecurityAuditLogService auditLogService;
 
     @PostMapping
-    public ResponseEntity<Order> createOrder(@Valid @RequestBody Order order) {
+    public ResponseEntity<Order> createOrder(@Valid @RequestBody Order order, Authentication authentication) {
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        if (!SecurityUtils.isAdmin(userDetails)) {
+            order.setUserId(userDetails.getId());
+        } else if (order.getUserId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
+        }
         return ResponseEntity.ok(orderService.createOrder(order));
     }
 
     @PostMapping("/checkout")
     public ResponseEntity<?> checkout(@Valid @RequestBody CheckoutRequest request, Authentication authentication) {
         try {
-            if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
-                UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-                request.setUserId(userDetails.getId());
-            }
+            UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+            request.setUserId(userDetails.getId());
             return ResponseEntity.ok(orderService.checkout(request));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -71,46 +81,52 @@ public class OrderController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Order>> getUserOrders(@PathVariable Long userId) {
+    public ResponseEntity<List<Order>> getUserOrders(@PathVariable Long userId, Authentication authentication) {
+        SecurityUtils.assertSelfOrAdmin(authentication, userId);
         return ResponseEntity.ok(orderService.getOrdersByUserId(userId));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrder(@PathVariable Long id) {
-        Order order = orderService.getOrderById(id);
-        return order != null ? ResponseEntity.ok(order) : ResponseEntity.notFound().build();
+    public ResponseEntity<Order> getOrder(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(requireVisibleOrder(id, authentication));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Boolean> updateOrder(@PathVariable Long id, @Valid @RequestBody Order order) {
+    public ResponseEntity<Boolean> updateOrder(@PathVariable Long id, @Valid @RequestBody Order order, Authentication authentication) {
+        SecurityUtils.assertAdmin(authentication);
         order.setId(id);
         return ResponseEntity.ok(orderService.updateOrder(order));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Boolean> deleteOrder(@PathVariable Long id) {
+    public ResponseEntity<Boolean> deleteOrder(@PathVariable Long id, Authentication authentication) {
+        SecurityUtils.assertAdmin(authentication);
         return ResponseEntity.ok(orderService.deleteOrder(id));
     }
 
     @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders() {
+    public ResponseEntity<List<Order>> getAllOrders(Authentication authentication) {
+        SecurityUtils.assertAdmin(authentication);
         return ResponseEntity.ok(orderService.getAllOrders());
     }
 
     @GetMapping("/{id}/items")
-    public ResponseEntity<List<OrderItem>> getOrderItems(@PathVariable Long id) {
+    public ResponseEntity<List<OrderItem>> getOrderItems(@PathVariable Long id, Authentication authentication) {
+        requireVisibleOrder(id, authentication);
         return ResponseEntity.ok(orderItemService.getOrderItemsByOrderId(id));
     }
 
     @PostMapping("/{id}/items")
-    public ResponseEntity<OrderItem> addOrderItem(@PathVariable Long id, @RequestBody OrderItem item) {
+    public ResponseEntity<OrderItem> addOrderItem(@PathVariable Long id, @RequestBody OrderItem item, Authentication authentication) {
+        SecurityUtils.assertAdmin(authentication);
         item.setOrderId(id);
         return ResponseEntity.ok(orderItemService.addOrderItem(item));
     }
 
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<?> cancelOrder(@PathVariable Long id) {
+    public ResponseEntity<?> cancelOrder(@PathVariable Long id, Authentication authentication) {
         try {
+            requireVisibleOrder(id, authentication);
             orderService.cancelOrder(id);
             return ResponseEntity.ok(Map.of("message", "Order cancelled"));
         } catch (IllegalStateException e) {
@@ -119,8 +135,9 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/pay")
-    public ResponseEntity<?> payOrder(@PathVariable Long id) {
+    public ResponseEntity<?> payOrder(@PathVariable Long id, Authentication authentication) {
         try {
+            SecurityUtils.assertAdmin(authentication);
             orderService.updateOrderStatus(id, "PENDING_SHIPMENT");
             return ResponseEntity.ok(Map.of("message", "Payment confirmed"));
         } catch (IllegalStateException e) {
@@ -129,8 +146,9 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/ship")
-    public ResponseEntity<?> shipOrder(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+    public ResponseEntity<?> shipOrder(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, Authentication authentication) {
         try {
+            SecurityUtils.assertAdmin(authentication);
             String trackingNumber = body != null ? body.get("trackingNumber") : null;
             String trackingCarrierCode = body != null ? body.get("trackingCarrierCode") : null;
             orderService.shipOrder(id, trackingNumber, trackingCarrierCode);
@@ -143,8 +161,9 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/confirm")
-    public ResponseEntity<?> confirmReceipt(@PathVariable Long id) {
+    public ResponseEntity<?> confirmReceipt(@PathVariable Long id, Authentication authentication) {
         try {
+            requireVisibleOrder(id, authentication);
             orderService.updateOrderStatus(id, "COMPLETED");
             return ResponseEntity.ok(Map.of("message", "Order completed"));
         } catch (IllegalStateException e) {
@@ -153,24 +172,63 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/return")
-    public ResponseEntity<?> returnOrder(@PathVariable Long id) {
+    public ResponseEntity<?> returnOrder(@PathVariable Long id,
+                                         @RequestBody(required = false) Map<String, String> body,
+                                         Authentication authentication,
+                                         HttpServletRequest request) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
+            auditLogService.record("RETURN_REQUEST", "FAILURE", authentication, "ORDER", id, request,
+                    "Authentication required", null);
+            return ResponseEntity.status(401).build();
+        }
+        String reason = body != null ? body.get("reason") : null;
         try {
-            orderService.requestReturn(id);
+            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            orderService.requestReturn(id, userDetails.getId(), reason);
+            auditLogService.record("RETURN_REQUEST", "SUCCESS", authentication, "ORDER", id, request,
+                    "Return requested", reason == null ? null : "reason=" + reason);
             return ResponseEntity.ok(Map.of("message", "Return requested"));
-        } catch (IllegalStateException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            auditLogService.record("RETURN_REQUEST", "FAILURE", authentication, "ORDER", id, request,
+                    e.getMessage(), reason == null ? null : "reason=" + reason);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @PutMapping("/{id}/return-shipment")
-    public ResponseEntity<?> submitReturnShipment(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> submitReturnShipment(@PathVariable Long id,
+                                                  @RequestBody Map<String, String> body,
+                                                  Authentication authentication,
+                                                  HttpServletRequest request) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
+            auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
+                    "Authentication required", null);
+            return ResponseEntity.status(401).build();
+        }
+        String returnTrackingNumber = body != null ? body.get("returnTrackingNumber") : null;
         try {
-            orderService.submitReturnShipment(id, body != null ? body.get("returnTrackingNumber") : null);
+            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            orderService.submitReturnShipment(id, userDetails.getId(), returnTrackingNumber);
+            auditLogService.record("RETURN_SHIPMENT_SUBMIT", "SUCCESS", authentication, "ORDER", id, request,
+                    "Return shipment submitted", "returnTrackingNumber=" + returnTrackingNumber);
             return ResponseEntity.ok(Map.of("message", "Return shipment submitted"));
         } catch (IllegalArgumentException e) {
+            auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
+                    e.getMessage(), "returnTrackingNumber=" + returnTrackingNumber);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {
+            auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
+                    e.getMessage(), "returnTrackingNumber=" + returnTrackingNumber);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    private Order requireVisibleOrder(Long id, Authentication authentication) {
+        Order order = orderService.getOrderById(id);
+        if (order == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
+        return order;
     }
 }

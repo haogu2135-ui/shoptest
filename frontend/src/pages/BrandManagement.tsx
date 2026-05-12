@@ -16,12 +16,22 @@ import {
   Typography,
 } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { brandApi } from '../api';
+import { apiBaseUrl, brandApi } from '../api';
 import type { Brand } from '../types';
 import { useLanguage } from '../i18n';
+import './BrandManagement.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+const brandImageFallback = 'https://via.placeholder.com/80?text=LOGO';
+
+const resolveBrandImage = (imageUrl?: string) => {
+  if (!imageUrl) return brandImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
 
 const statusColors: Record<string, string> = {
   ACTIVE: 'green',
@@ -112,7 +122,7 @@ const BrandManagement: React.FC = () => {
       width: 88,
       render: (url?: string) =>
         url ? (
-          <Image src={url} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} />
+          <Image src={resolveBrandImage(url)} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
         ) : (
           <div style={{ width: 56, height: 56, borderRadius: 6, background: '#f2f3f5' }} />
         ),
@@ -168,15 +178,15 @@ const BrandManagement: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '32px 24px' }}>
+    <div className="brand-management-page">
       <Title level={3} style={{ marginBottom: 0 }}>{t('pages.brandAdmin.title')}</Title>
       <Divider />
 
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()} style={{ marginBottom: 16 }}>
+      <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()} className="brand-management-page__add">
         {t('pages.brandAdmin.addBrand')}
       </Button>
 
-      <Table columns={columns} dataSource={brands} rowKey="id" loading={loading} bordered size="middle" />
+      <Table columns={columns} dataSource={brands} rowKey="id" loading={loading} bordered size="middle" scroll={{ x: 860 }} />
 
       <Modal
         title={editingBrand ? t('pages.brandAdmin.editTitle') : t('pages.brandAdmin.addTitle')}
@@ -196,7 +206,7 @@ const BrandManagement: React.FC = () => {
 
           {logoPreviewUrl ? (
             <div style={{ marginBottom: 16, textAlign: 'center' }}>
-              <Image src={logoPreviewUrl} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} />
+              <Image src={resolveBrandImage(logoPreviewUrl)} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
             </div>
           ) : null}
 

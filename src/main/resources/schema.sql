@@ -111,7 +111,15 @@ CREATE TABLE IF NOT EXISTS orders (
     tracking_carrier_code VARCHAR(80),
     tracking_carrier_name VARCHAR(100),
     return_tracking_number VARCHAR(100),
+    return_reason TEXT,
+    return_requested_at TIMESTAMP NULL,
+    return_approved_at TIMESTAMP NULL,
+    return_rejected_at TIMESTAMP NULL,
+    return_shipped_at TIMESTAMP NULL,
+    returned_at TIMESTAMP NULL,
+    refunded_at TIMESTAMP NULL,
     shipped_at TIMESTAMP NULL,
+    completed_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -184,6 +192,38 @@ CREATE TABLE IF NOT EXISTS pet_profiles (
     INDEX idx_pet_profiles_user (user_id)
 );
 
+CREATE TABLE IF NOT EXISTS pet_gallery_photos (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT,
+    username VARCHAR(80) NOT NULL,
+    image_url VARCHAR(500) NOT NULL,
+    original_filename VARCHAR(255),
+    content_type VARCHAR(100) NOT NULL,
+    file_size BIGINT NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    source VARCHAR(20) NOT NULL DEFAULT 'USER_UPLOAD',
+    like_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_pet_gallery_status_created (status, like_count, created_at),
+    INDEX idx_pet_gallery_user (user_id),
+    INDEX idx_pet_gallery_ip (ip_address)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pet_gallery_photo_likes (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    photo_id BIGINT NOT NULL,
+    user_id BIGINT,
+    ip_address VARCHAR(45) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (photo_id) REFERENCES pet_gallery_photos(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_pet_gallery_like_photo (photo_id),
+    INDEX idx_pet_gallery_like_user (user_id),
+    INDEX idx_pet_gallery_like_ip (ip_address)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS payments (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     order_id BIGINT NOT NULL,
@@ -200,6 +240,26 @@ CREATE TABLE IF NOT EXISTS payments (
     FOREIGN KEY (order_id) REFERENCES orders(id),
     UNIQUE KEY uk_payment_order_channel (order_id, channel)
 );
+
+CREATE TABLE IF NOT EXISTS security_audit_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    action VARCHAR(50) NOT NULL,
+    result VARCHAR(20) NOT NULL,
+    actor_user_id BIGINT,
+    actor_username VARCHAR(100),
+    actor_role VARCHAR(30),
+    resource_type VARCHAR(50),
+    resource_id VARCHAR(100),
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    message VARCHAR(1000),
+    metadata TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_created (created_at),
+    INDEX idx_audit_action_created (action, created_at),
+    INDEX idx_audit_actor_created (actor_username, created_at),
+    INDEX idx_audit_resource (resource_type, resource_id)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS coupons (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -329,7 +389,14 @@ ALTER TABLE orders ADD COLUMN tracking_number VARCHAR(100);
 ALTER TABLE orders ADD COLUMN tracking_carrier_code VARCHAR(80);
 ALTER TABLE orders ADD COLUMN tracking_carrier_name VARCHAR(100);
 ALTER TABLE orders ADD COLUMN return_tracking_number VARCHAR(100);
+ALTER TABLE orders ADD COLUMN return_reason TEXT;
+ALTER TABLE orders ADD COLUMN return_requested_at TIMESTAMP NULL;
+ALTER TABLE orders ADD COLUMN return_approved_at TIMESTAMP NULL;
+ALTER TABLE orders ADD COLUMN return_rejected_at TIMESTAMP NULL;
+ALTER TABLE orders ADD COLUMN return_shipped_at TIMESTAMP NULL;
+ALTER TABLE orders ADD COLUMN returned_at TIMESTAMP NULL;
 ALTER TABLE orders ADD COLUMN shipped_at TIMESTAMP NULL;
+ALTER TABLE orders ADD COLUMN completed_at TIMESTAMP NULL;
 ALTER TABLE orders ADD COLUMN original_amount DECIMAL(10,2);
 UPDATE orders SET original_amount = total_amount WHERE original_amount IS NULL;
 ALTER TABLE orders ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0.00;
@@ -340,18 +407,43 @@ ALTER TABLE orders ADD COLUMN coupon_name VARCHAR(100);
 ALTER TABLE notifications ADD COLUMN content_format VARCHAR(20) NOT NULL DEFAULT 'TEXT';
 ALTER TABLE payments ADD COLUMN expires_at TIMESTAMP NULL;
 ALTER TABLE payments ADD INDEX idx_payments_status_expires (status, expires_at);
+CREATE TABLE IF NOT EXISTS security_audit_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    action VARCHAR(50) NOT NULL,
+    result VARCHAR(20) NOT NULL,
+    actor_user_id BIGINT,
+    actor_username VARCHAR(100),
+    actor_role VARCHAR(30),
+    resource_type VARCHAR(50),
+    resource_id VARCHAR(100),
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    message VARCHAR(1000),
+    metadata TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_created (created_at),
+    INDEX idx_audit_action_created (action, created_at),
+    INDEX idx_audit_actor_created (actor_username, created_at),
+    INDEX idx_audit_resource (resource_type, resource_id)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ALTER TABLE reviews ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'PENDING';
 UPDATE reviews SET status = 'APPROVED' WHERE status IS NULL OR status = '';
 ALTER TABLE order_items ADD COLUMN product_name_snapshot VARCHAR(100);
 ALTER TABLE order_items ADD COLUMN image_url_snapshot TEXT;
 ALTER TABLE order_items ADD COLUMN selected_specs TEXT;
+ALTER TABLE pet_gallery_photos MODIFY COLUMN user_id BIGINT NULL;
+ALTER TABLE pet_gallery_photos ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'USER_UPLOAD';
+ALTER TABLE pet_gallery_photos ADD COLUMN like_count INT NOT NULL DEFAULT 0;
 UPDATE order_items oi
 LEFT JOIN products p ON oi.product_id = p.id
 SET oi.product_name_snapshot = COALESCE(oi.product_name_snapshot, p.name, CONCAT('#', oi.product_id)),
     oi.image_url_snapshot = COALESCE(oi.image_url_snapshot, p.image_url)
 WHERE oi.product_name_snapshot IS NULL OR oi.image_url_snapshot IS NULL;
+ALTER TABLE orders ADD COLUMN refunded_at TIMESTAMP NULL;
+UPDATE orders SET completed_at = updated_at WHERE completed_at IS NULL AND status IN ('COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURNED');
+UPDATE orders SET returned_at = updated_at, refunded_at = COALESCE(refunded_at, updated_at) WHERE status = 'RETURNED' AND returned_at IS NULL;
 
-INSERT INTO brands (id, name, description, logo_url, website_url, status, sort_order) VALUES
+INSERT IGNORE INTO brands (id, name, description, logo_url, website_url, status, sort_order) VALUES
 (1, 'PawPilot', 'Smart feeding and connected pet care devices.', 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=240&q=80', 'https://pawpilot.example.com', 'ACTIVE', 10),
 (2, 'HydraWhisk', 'Quiet hydration products for cats and small pets.', 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=240&q=80', 'https://hydrawhisk.example.com', 'ACTIVE', 20),
 (3, 'TrailTails', 'Walking, travel and safety gear for daily adventures.', 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=240&q=80', 'https://trailtails.example.com', 'ACTIVE', 30),
@@ -359,41 +451,19 @@ INSERT INTO brands (id, name, description, logo_url, website_url, status, sort_o
 (5, 'BrightBite', 'Dental toys and enrichment for healthy play.', 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=240&q=80', 'https://brightbite.example.com', 'ACTIVE', 50),
 (6, 'PurePaws', 'Gentle grooming and hygiene essentials.', 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=240&q=80', 'https://purepaws.example.com', 'ACTIVE', 60),
 (7, 'NutriTail', 'Balanced nutrition for cats and dogs.', 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=240&q=80', 'https://nutritail.example.com', 'ACTIVE', 70),
-(8, 'CanineCore', 'Training treats and puppy care basics.', 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=240&q=80', 'https://caninecore.example.com', 'ACTIVE', 80)
-ON DUPLICATE KEY UPDATE
-name = VALUES(name),
-description = VALUES(description),
-logo_url = VALUES(logo_url),
-website_url = VALUES(website_url),
-status = VALUES(status),
-sort_order = VALUES(sort_order);
+(8, 'CanineCore', 'Training treats and puppy care basics.', 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=240&q=80', 'https://caninecore.example.com', 'ACTIVE', 80);
 
-INSERT INTO logistics_carriers (id, name, tracking_code, status, sort_order) VALUES
+INSERT IGNORE INTO logistics_carriers (id, name, tracking_code, status, sort_order) VALUES
 (1, 'DHL', '100001', 'ACTIVE', 10),
 (2, 'FedEx', '100003', 'ACTIVE', 20),
 (3, 'UPS', '100002', 'ACTIVE', 30),
 (4, 'USPS', '21051', 'ACTIVE', 40),
 (5, 'Mexico Post', '13141', 'ACTIVE', 50),
 (6, 'YunExpress', '190008', 'ACTIVE', 60),
-(7, 'YTO Express', '190157', 'ACTIVE', 70)
-ON DUPLICATE KEY UPDATE
-name = VALUES(name),
-tracking_code = VALUES(tracking_code),
-status = VALUES(status),
-sort_order = VALUES(sort_order);
+(7, 'YTO Express', '190157', 'ACTIVE', 70);
 
-SET FOREIGN_KEY_CHECKS = 0;
-
-DELETE FROM product_questions;
-DELETE FROM reviews;
-DELETE FROM wishlist;
-DELETE FROM cart_items;
-DELETE FROM products;
-DELETE FROM categories;
-
-SET FOREIGN_KEY_CHECKS = 1;
-
-INSERT INTO categories (id, name, description, parent_id, level, image_url) VALUES
+-- Default catalog seed is intentionally non-destructive: existing rows are left intact.
+INSERT IGNORE INTO categories (id, name, description, parent_id, level, image_url) VALUES
 (1, 'Pet Supplies', 'English default catalog root for pet-only test data.', NULL, 1, 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=900&q=80'),
 (2, 'Pet Food', 'Dry food, wet food, treats and supplements for dogs and cats.', 1, 2, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80'),
 (3, 'Bowls, Feeders & Waterers', 'Automatic feeders, slow feeders, bowls and fountains.', 1, 2, 'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80'),
@@ -408,7 +478,7 @@ INSERT INTO categories (id, name, description, parent_id, level, image_url) VALU
 (12, 'Interactive Toys', 'Puzzle toys and active play for pets.', 5, 3, 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80'),
 (13, 'Harnesses & Leashes', 'Adjustable walking sets and safety gear.', 7, 3, 'https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80');
 
-INSERT INTO products (
+INSERT IGNORE INTO products (
     id, name, description, price, stock, category_id, image_url, status, brand,
     original_price, discount, limited_time_price, limited_time_start_at, limited_time_end_at,
     tag, images, specifications, detail_content, warranty, shipping, free_shipping,

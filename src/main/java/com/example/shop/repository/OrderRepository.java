@@ -18,11 +18,17 @@ public interface OrderRepository {
     int update(Order order);
     int updateStatus(@Param("id") Long id, @Param("status") String status);
     int updateStatusIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus, @Param("status") String status);
+    int requestReturnIfCurrent(@Param("id") Long id,
+                               @Param("currentStatus") String currentStatus,
+                               @Param("reason") String reason);
+    int approveReturnIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus);
+    int rejectReturnIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus);
     int updateShipping(@Param("id") Long id,
                        @Param("status") String status,
                        @Param("trackingNumber") String trackingNumber,
                        @Param("trackingCarrierCode") String trackingCarrierCode,
                        @Param("trackingCarrierName") String trackingCarrierName);
     int updateReturnTracking(@Param("id") Long id, @Param("status") String status, @Param("returnTrackingNumber") String returnTrackingNumber);
+    int completeReturnAndRefundIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus);
     int deleteById(Long id);
 } 

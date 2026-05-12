@@ -1,0 +1,82 @@
+.order-management-page {
+  min-width: 0;
+}
+
+.order-management-page__toolbar .ant-space {
+  width: 100%;
+}
+
+.order-management-page__table {
+  overflow-x: auto;
+}
+
+.order-management-page__summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.order-management-page__summaryCard .ant-card-body {
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.order-management-page__summaryCard span {
+  color: #666666;
+  font-size: 13px;
+}
+
+.order-management-page__summaryCard strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.order-management-page__amount {
+  color: #ff5722;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.order-management-page__linkButton {
+  height: auto;
+  padding: 0;
+}
+
+.order-management-page__completed {
+  color: #999;
+}
+
+.order-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .order-management-page .ant-divider {
+    margin: 12px 0;
+  }
+
+  .order-management-page__summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .order-management-page__summaryCard .ant-card-body {
+    min-height: 72px;
+    padding: 12px;
+  }
+
+  .order-management-page__summaryCard strong {
+    font-size: 24px;
+  }
+
+  .order-management-page__toolbar .ant-space-item,
+  .order-management-page__toolbar .ant-select,
+  .order-management-page__toolbar .ant-input-search,
+  .order-management-page__toolbar .ant-btn {
+    width: 100% !important;
+  }
+}

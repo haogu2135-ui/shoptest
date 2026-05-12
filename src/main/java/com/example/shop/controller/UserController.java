@@ -2,6 +2,7 @@ package com.example.shop.controller;
 
 import com.example.shop.entity.User;
 import com.example.shop.service.UserService;
+import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -27,14 +28,21 @@ public class UserController {
     }
     
     @PutMapping("/profile")
-    public void updateProfile(@RequestBody User user) {
+    public void updateProfile(@RequestBody User user, Authentication authentication) {
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        user.setId(userDetails.getId());
+        user.setRole(null);
+        user.setStatus(null);
+        user.setPassword(null);
         userService.update(user);
     }
     
     @PutMapping("/password")
     public void updatePassword(@RequestParam Long userId,
                              @RequestParam String oldPassword,
-                             @RequestParam String newPassword) {
+                             @RequestParam String newPassword,
+                             Authentication authentication) {
+        SecurityUtils.assertSelfOrAdmin(authentication, userId);
         userService.updatePassword(userId, oldPassword, newPassword);
     }
     

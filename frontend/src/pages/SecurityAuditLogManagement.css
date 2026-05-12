@@ -1,0 +1,25 @@
+.audit-log-page {
+  min-width: 0;
+}
+
+.audit-log-page__toolbar {
+  margin-bottom: 16px;
+}
+
+.audit-log-page__toolbar .ant-space {
+  width: 100%;
+}
+
+.audit-log-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .audit-log-page__toolbar .ant-space-item,
+  .audit-log-page__toolbar .ant-select,
+  .audit-log-page__toolbar .ant-picker,
+  .audit-log-page__toolbar .ant-input-affix-wrapper,
+  .audit-log-page__toolbar .ant-btn {
+    width: 100% !important;
+  }
+}

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Dropdown, Input, Select } from 'antd';
+import { Badge, Dropdown, Input, Select, Tooltip } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
+  AlertOutlined,
   BellOutlined,
   BarChartOutlined,
   CheckOutlined,
@@ -12,11 +13,12 @@ import {
   LogoutOutlined,
   SearchOutlined,
   SettingOutlined,
+  ShoppingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { cartApi, couponApi, notificationApi, wishlistApi } from '../api';
+import { cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { Language, useLanguage } from '../i18n';
 import { CurrencyCode, markets } from '../utils/market';
 import { useMarket } from '../hooks/useMarket';
@@ -40,10 +42,11 @@ const Navbar: React.FC = () => {
   const [couponCount, setCouponCount] = useState(0);
   const [compareCount, setCompareCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
+  const [savedAlertCount, setSavedAlertCount] = useState(0);
   const { language, setLanguage, t } = useLanguage();
   const { currency, setCurrency, market, formatMoney } = useMarket();
   const languageOptions = [
-    { value: 'es', label: 'Espanol' },
+    { value: 'es', label: 'Español' },
     { value: 'zh', label: '中文' },
     { value: 'en', label: 'English' },
   ];
@@ -61,7 +64,28 @@ const Navbar: React.FC = () => {
 
   useEffect(() => {
     const refreshCompareCount = () => setCompareCount(readCompareProductIds().length);
-    const refreshAlertCount = () => setAlertCount(readStockAlerts().length);
+    let disposed = false;
+    const refreshAlertCount = () => {
+      const alerts = readStockAlerts();
+      setSavedAlertCount(alerts.length);
+      if (alerts.length === 0) {
+        setAlertCount(0);
+        return;
+      }
+      Promise.allSettled(alerts.map((alert) => productApi.getById(alert.productId)))
+        .then((responses) => {
+          if (disposed) return;
+          const readyCount = responses.filter((result) => {
+            if (result.status !== 'fulfilled') return false;
+            const stock = result.value.data.stock;
+            return stock === undefined || stock > 0;
+          }).length;
+          setAlertCount(readyCount);
+        })
+        .catch(() => {
+          if (!disposed) setAlertCount(0);
+        });
+    };
     const refreshGuestCartCount = () => {
       const count = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
       setCartCount(count);
@@ -78,35 +102,70 @@ const Navbar: React.FC = () => {
         refreshGuestCartCount();
       }
     };
+    const refreshUnreadCount = () => {
+      if (!token || !userId) {
+        setUnreadCount(0);
+        return;
+      }
+      notificationApi.getUnreadCount(Number(userId))
+        .then((res) => {
+          if (!disposed) setUnreadCount(res.data.count);
+        })
+        .catch(() => {
+          if (!disposed) setUnreadCount(0);
+        });
+    };
+    const refreshWishlistCount = () => {
+      if (!token || !userId) {
+        setWishlistCount(0);
+        return;
+      }
+      wishlistApi.getCount(Number(userId))
+        .then((res) => {
+          if (!disposed) setWishlistCount(res.data.count);
+        })
+        .catch(() => {
+          if (!disposed) setWishlistCount(0);
+        });
+    };
+    const refreshCouponCount = () => {
+      if (!token || !userId) {
+        setCouponCount(0);
+        return;
+      }
+      couponApi.getAvailableByUser(Number(userId))
+        .then((res) => {
+          if (!disposed) setCouponCount(res.data.length);
+        })
+        .catch(() => {
+          if (!disposed) setCouponCount(0);
+        });
+    };
     refreshCompareCount();
     refreshAlertCount();
     refreshCartCount();
-    if (token && userId) {
-      notificationApi.getUnreadCount(Number(userId))
-        .then((res) => setUnreadCount(res.data.count))
-        .catch(() => setUnreadCount(0));
-      wishlistApi.getCount(Number(userId))
-        .then((res) => setWishlistCount(res.data.count))
-        .catch(() => setWishlistCount(0));
-      couponApi.getAvailableByUser(Number(userId))
-        .then((res) => setCouponCount(res.data.length))
-        .catch(() => setCouponCount(0));
-    } else {
-      setUnreadCount(0);
-      setWishlistCount(0);
-      setCouponCount(0);
-    }
+    refreshUnreadCount();
+    refreshWishlistCount();
+    refreshCouponCount();
     window.addEventListener('shop:cart-updated', refreshCartCount);
     window.addEventListener('shop:compare-updated', refreshCompareCount);
     window.addEventListener('shop:stock-alerts-updated', refreshAlertCount);
+    window.addEventListener('shop:notifications-updated', refreshUnreadCount);
+    window.addEventListener('shop:wishlist-updated', refreshWishlistCount);
+    window.addEventListener('shop:coupons-updated', refreshCouponCount);
     return () => {
+      disposed = true;
       window.removeEventListener('shop:cart-updated', refreshCartCount);
       window.removeEventListener('shop:compare-updated', refreshCompareCount);
       window.removeEventListener('shop:stock-alerts-updated', refreshAlertCount);
+      window.removeEventListener('shop:notifications-updated', refreshUnreadCount);
+      window.removeEventListener('shop:wishlist-updated', refreshWishlistCount);
+      window.removeEventListener('shop:coupons-updated', refreshCouponCount);
     };
   }, [token, userId, location.pathname]);
 
   const handleLogout = () => {
+    userApi.logout().catch(() => undefined);
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('role');
@@ -126,6 +185,10 @@ const Navbar: React.FC = () => {
     navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
   };
 
+  const searchByKeyword = (keyword: string) => {
+    navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
+  };
+
   return (
     <header className="shop-nav">
       <div className="shop-nav__announcement">
@@ -140,11 +203,11 @@ const Navbar: React.FC = () => {
           <div className="shop-nav__links">
             <Link to={role && role.toUpperCase() === 'ADMIN' ? '/admin/dashboard' : '/products'}>{t('nav.sell')}</Link>
             <Link to="/pet-finder">{t('nav.petFinder')}</Link>
+            <Link to="/pet-gallery">{t('nav.petGallery')}</Link>
             <Link to="/coupons">{t('nav.download')}</Link>
             <Link to="/products?keyword=deal">{t('nav.followDeals')}</Link>
           </div>
           <div className="shop-nav__links shop-nav__links--right">
-            <Link to="/notifications">{t('nav.notifications')}</Link>
             <Link to="/track-order">{t('nav.trackOrder')}</Link>
             <button type="button" onClick={openSupport}>{t('nav.help')}</button>
             <Select
@@ -237,31 +300,31 @@ const Navbar: React.FC = () => {
             <Dropdown
               menu={{
                 items: [
-                  { key: 'dog-toys', label: <button onClick={() => navigate('/products?keyword=dog toys')}>Dog toys</button> },
-                  { key: 'dog-walking', label: <button onClick={() => navigate('/products?keyword=dog leash')}>Leashes and harnesses</button> },
-                  { key: 'dog-beds', label: <button onClick={() => navigate('/products?keyword=dog bed')}>Beds and blankets</button> },
+                  { key: 'dog-toys', label: <button type="button" onClick={() => searchByKeyword('dog toys')}>{t('nav.petNav.dogToys')}</button> },
+                  { key: 'dog-walking', label: <button type="button" onClick={() => searchByKeyword('dog leash')}>{t('nav.petNav.dogWalking')}</button> },
+                  { key: 'dog-beds', label: <button type="button" onClick={() => searchByKeyword('dog bed')}>{t('nav.petNav.dogBeds')}</button> },
                 ],
               }}
             >
-              <button type="button">Dog</button>
+              <button type="button">{t('nav.petNav.dog')}</button>
             </Dropdown>
             <Dropdown
               menu={{
                 items: [
-                  { key: 'cat-toys', label: <button onClick={() => navigate('/products?keyword=cat toys')}>Cat toys</button> },
-                  { key: 'cat-sleeping', label: <button onClick={() => navigate('/products?keyword=cat bed')}>Cat beds</button> },
-                  { key: 'cat-smart', label: <button onClick={() => navigate('/products?keyword=smart cat')}>Smart cat devices</button> },
+                  { key: 'cat-toys', label: <button type="button" onClick={() => searchByKeyword('cat toys')}>{t('nav.petNav.catToys')}</button> },
+                  { key: 'cat-sleeping', label: <button type="button" onClick={() => searchByKeyword('cat bed')}>{t('nav.petNav.catBeds')}</button> },
+                  { key: 'cat-smart', label: <button type="button" onClick={() => navigate('/products?collection=smart-devices&keyword=cat')}>{t('nav.petNav.catSmart')}</button> },
                 ],
               }}
             >
-              <button type="button">Cat</button>
+              <button type="button">{t('nav.petNav.cat')}</button>
             </Dropdown>
-            <button type="button" onClick={() => navigate('/products?keyword=small pets')}>Small Pets</button>
-            <button type="button" onClick={() => navigate('/products?keyword=walking')}>Walking</button>
-            <button type="button" onClick={() => navigate('/products?keyword=sleeping')}>Sleeping</button>
-            <button type="button" onClick={() => navigate('/products?keyword=smart devices')}>Smart Devices</button>
+            <button type="button" onClick={() => searchByKeyword('small pets')}>{t('nav.petNav.smallPets')}</button>
+            <button type="button" onClick={() => searchByKeyword('walking')}>{t('nav.petNav.walking')}</button>
+            <button type="button" onClick={() => searchByKeyword('sleeping')}>{t('nav.petNav.sleeping')}</button>
+            <button type="button" onClick={() => navigate('/products?collection=smart-devices')}>{t('nav.petNav.smartDevices')}</button>
             <button type="button" onClick={() => navigate('/pet-finder')}>{t('nav.petFinder')}</button>
-            <button type="button" onClick={() => navigate('/history')}>{t('nav.history')}</button>
+            <button type="button" onClick={() => navigate('/pet-gallery')}>{t('nav.petGallery')}</button>
           </nav>
 
           <div className="shop-nav__actions">
@@ -292,6 +355,9 @@ const Navbar: React.FC = () => {
             </Dropdown>
             {token ? (
               <>
+                <button className="shop-nav__mobile-orders" onClick={() => navigate('/profile?tab=orders')} aria-label={t('pages.profile.allOrders')}>
+                  <ShoppingOutlined />
+                </button>
                 <Link to="/profile" className="shop-nav__mobile-auth">{t('nav.account')}</Link>
                 <button className="shop-nav__secondary-action" onClick={() => navigate('/wishlist')} aria-label={t('nav.ariaFavorites')}>
                   <Badge count={wishlistCount} size="small">
@@ -312,14 +378,18 @@ const Navbar: React.FC = () => {
                   <HistoryOutlined />
                 </button>
                 <button className="shop-nav__secondary-action" onClick={() => navigate('/stock-alerts')} aria-label={t('nav.ariaStockAlerts')}>
-                  <Badge count={alertCount} size="small">
-                    <BellOutlined />
-                  </Badge>
+                  <Tooltip title={t('nav.ariaStockAlerts')}>
+                    <Badge count={alertCount} size="small" showZero={savedAlertCount > 0}>
+                      <AlertOutlined />
+                    </Badge>
+                  </Tooltip>
                 </button>
                 <button className="shop-nav__secondary-action" onClick={() => navigate('/notifications')} aria-label={t('nav.ariaNotifications')}>
-                  <Badge count={unreadCount} size="small">
-                    <BellOutlined />
-                  </Badge>
+                  <Tooltip title={t('nav.ariaNotifications')}>
+                    <Badge count={unreadCount} size="small">
+                      <BellOutlined />
+                    </Badge>
+                  </Tooltip>
                 </button>
                 <button onClick={() => window.dispatchEvent(new Event('shop:open-cart'))} aria-label={t('nav.ariaCart')}>
                   <Badge count={cartCount} size="small">
@@ -348,9 +418,11 @@ const Navbar: React.FC = () => {
                   <HistoryOutlined />
                 </button>
                 <button className="shop-nav__secondary-action" onClick={() => navigate('/stock-alerts')} aria-label={t('nav.ariaStockAlerts')}>
-                  <Badge count={alertCount} size="small">
-                    <BellOutlined />
-                  </Badge>
+                  <Tooltip title={t('nav.ariaStockAlerts')}>
+                    <Badge count={alertCount} size="small" showZero={savedAlertCount > 0}>
+                      <AlertOutlined />
+                    </Badge>
+                  </Tooltip>
                 </button>
                 <button onClick={() => window.dispatchEvent(new Event('shop:open-cart'))} aria-label={t('nav.ariaCart')}>
                   <Badge count={cartCount} size="small">

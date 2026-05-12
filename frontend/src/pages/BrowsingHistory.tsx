@@ -140,18 +140,20 @@ const BrowsingHistory: React.FC = () => {
             const viewedAt = viewedAtById.get(product.id);
             return (
               <article className="browsing-history__item" key={product.id}>
-                <button className="browsing-history__image" onClick={() => navigate(`/products/${product.id}`)}>
+                <button type="button" className="browsing-history__image" onClick={() => navigate(`/products/${product.id}`)}>
                   <img
                     src={product.imageUrl || fallbackImage}
                     alt={product.name}
                     onError={(event) => {
-                      event.currentTarget.src = fallbackImage;
+                      if (event.currentTarget.src !== fallbackImage) {
+                        event.currentTarget.src = fallbackImage;
+                      }
                     }}
                   />
                 </button>
                 <div className="browsing-history__content">
                   <div>
-                    <button className="browsing-history__name" onClick={() => navigate(`/products/${product.id}`)}>
+                    <button type="button" className="browsing-history__name" onClick={() => navigate(`/products/${product.id}`)}>
                       {product.name}
                     </button>
                     <div className="browsing-history__meta">

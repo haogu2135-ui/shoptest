@@ -10,6 +10,8 @@ public interface NotificationMapper {
 
     List<Notification> findByUserId(Long userId);
 
+    Notification findById(Long id);
+
     int countUnread(Long userId);
 
     int insert(Notification notification);

@@ -64,6 +64,7 @@ public class UserService {
     
     @Transactional
     public void update(User user) {
+        user.setUpdatedAt(LocalDateTime.now());
         userMapper.update(user);
     }
     

@@ -1,0 +1,25 @@
+.category-management-page {
+  padding: 32px 24px;
+}
+
+.category-management-page__add {
+  margin-bottom: 16px;
+}
+
+.category-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .category-management-page {
+    padding: 16px 12px;
+  }
+
+  .category-management-page h3.ant-typography {
+    font-size: 22px;
+  }
+
+  .category-management-page__add {
+    width: 100%;
+  }
+}

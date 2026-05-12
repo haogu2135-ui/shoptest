@@ -1,16 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Empty, Image, List, Popconfirm, Space, Typography, message } from 'antd';
+import { Button, Card, Empty, Image, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
 import { BellOutlined, DeleteOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { cartApi, productApi } from '../api';
+import { apiBaseUrl, cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import type { Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
 import { clearStockAlerts, readStockAlerts, removeStockAlert, type StockAlertItem } from '../utils/stockAlerts';
 import { localizeProduct } from '../utils/localizedProduct';
+import './StockAlerts.css';
 
 const { Title, Text } = Typography;
+const stockAlertImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+
+const resolveStockAlertImage = (imageUrl?: string) => {
+  if (!imageUrl) return stockAlertImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
+
+const isBackInStock = (product?: Product) => Boolean(product && (product.stock === undefined || product.stock > 0));
 
 const StockAlerts: React.FC = () => {
   const navigate = useNavigate();
@@ -74,7 +86,7 @@ const StockAlerts: React.FC = () => {
       if (token && userId) {
         await cartApi.addItem(Number(userId), product.id, 1);
       } else {
-        addGuestCartItem(product, 1, undefined, product.effectivePrice ?? product.price);
+        addGuestCartItem({ ...product, imageUrl: resolveStockAlertImage(product.imageUrl) }, 1, undefined, product.effectivePrice ?? product.price);
       }
       message.success(t('messages.addCartSuccess'));
       window.dispatchEvent(new Event('shop:cart-updated'));
@@ -88,16 +100,19 @@ const StockAlerts: React.FC = () => {
     ...alert,
     product: products[alert.productId],
   }));
+  const backInStockItems = items.filter((item) => isBackInStock(item.product));
 
   return (
-    <div style={{ width: 'min(1200px, calc(100% - 24px))', margin: '0 auto', padding: '24px 0' }}>
+    <div className="stock-alerts">
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
+        <div className="stock-alerts__header">
           <div>
             <Title level={2} style={{ margin: 0 }}>
               <BellOutlined /> {t('pages.stockAlerts.title')}
             </Title>
-            <Text type="secondary">{t('pages.stockAlerts.subtitle', { count: alerts.length })}</Text>
+            <Text type="secondary">
+              {t('pages.stockAlerts.subtitle', { count: loading ? 0 : backInStockItems.length, saved: alerts.length })}
+            </Text>
           </div>
           <Space wrap>
             <Button onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
@@ -115,11 +130,20 @@ const StockAlerts: React.FC = () => {
             dataSource={items}
             renderItem={(item) => {
               const product = item.product;
+              const ready = isBackInStock(product);
               return (
                 <List.Item
+                  className={ready ? 'stock-alerts__item' : 'stock-alerts__item stock-alerts__item--waiting'}
                   actions={[
-                    <Button key="add" type="primary" icon={<ShoppingCartOutlined />} onClick={() => product && addToCart(product)} disabled={!product || (product.stock !== undefined && product.stock <= 0)}>
-                      {t('pages.stockAlerts.addToCart')}
+                    <Button
+                      key="add"
+                      type="primary"
+                      icon={<ShoppingCartOutlined />}
+                      className={ready ? undefined : 'stock-alerts__soldoutButton'}
+                      onClick={() => product && addToCart(product)}
+                      disabled={!ready}
+                    >
+                      {ready ? t('pages.stockAlerts.addToCart') : t('pages.productList.soldOut')}
                     </Button>,
                     <Popconfirm
                       key="remove"
@@ -134,7 +158,8 @@ const StockAlerts: React.FC = () => {
                     avatar={
                       <Link to={`/products/${item.productId}`}>
                         <Image
-                          src={product?.imageUrl || item.imageUrl}
+                          src={resolveStockAlertImage(product?.imageUrl || item.imageUrl)}
+                          fallback={stockAlertImageFallback}
                           width={72}
                           height={72}
                           preview={false}
@@ -142,12 +167,17 @@ const StockAlerts: React.FC = () => {
                         />
                       </Link>
                     }
-                    title={<Link to={`/products/${item.productId}`}>{item.productName}</Link>}
+                    title={<Link to={`/products/${item.productId}`}>{product?.name || item.productName}</Link>}
                     description={
-                      <Space direction="vertical" size={0}>
+                      <Space direction="vertical" size={4}>
                         <Text type="secondary">{t('pages.stockAlerts.createdAt', { time: new Date(item.createdAt).toLocaleString() })}</Text>
                         {product ? (
-                          <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(product.effectivePrice ?? product.price)}</Text>
+                          <>
+                            <Text strong className="stock-alerts__price">{formatMoney(product.effectivePrice ?? product.price)}</Text>
+                            <Tag color={ready ? 'green' : 'default'}>
+                              {ready ? t('pages.productDetail.enough') : t('pages.productList.soldOut')}
+                            </Tag>
+                          </>
                         ) : null}
                       </Space>
                     }

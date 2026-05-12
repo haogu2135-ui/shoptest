@@ -15,6 +15,16 @@ type NeedType = 'all' | 'play' | 'walk' | 'sleep' | 'smart' | 'groom' | 'food';
 type Priority = 'best' | 'rating' | 'deal' | 'budget';
 
 const FINDER_STORAGE_KEY = 'shop-pet-finder-preferences';
+const DEFAULT_BUDGET: [number, number] = [0, 500];
+
+const normalizeBudget = (value: unknown, maxBudget = DEFAULT_BUDGET[1]): [number, number] => {
+  if (!Array.isArray(value)) {
+    return DEFAULT_BUDGET;
+  }
+  const lower = Math.max(0, Math.min(Number(value[0]) || 0, maxBudget));
+  const upper = Math.max(0, Math.min(Number(value[1]) || DEFAULT_BUDGET[1], maxBudget));
+  return lower <= upper ? [lower, upper] : [upper, lower];
+};
 
 const keywordMap: Record<Exclude<PetType, 'all'> | Exclude<NeedType, 'all'>, string[]> = {
   dog: ['dog', 'puppy', 'canine', 'leash', 'harness', 'collar'],
@@ -35,10 +45,10 @@ const readPreferences = () => {
       petType: (parsed.petType || 'all') as PetType,
       need: (parsed.need || 'all') as NeedType,
       priority: (parsed.priority || 'best') as Priority,
-      budget: Array.isArray(parsed.budget) ? parsed.budget as [number, number] : [0, 500] as [number, number],
+      budget: normalizeBudget(parsed.budget),
     };
   } catch {
-    return { petType: 'all' as PetType, need: 'all' as NeedType, priority: 'best' as Priority, budget: [0, 500] as [number, number] };
+    return { petType: 'all' as PetType, need: 'all' as NeedType, priority: 'best' as Priority, budget: DEFAULT_BUDGET };
   }
 };
 
@@ -65,6 +75,10 @@ const PetFinder: React.FC = () => {
   const [need, setNeed] = useState<NeedType>(stored.need);
   const [budget, setBudget] = useState<[number, number]>(stored.budget);
   const [priority, setPriority] = useState<Priority>(stored.priority);
+  const maxBudget = useMemo(() => {
+    const highestPrice = products.reduce((max, product) => Math.max(max, productPrice(product)), DEFAULT_BUDGET[1]);
+    return Math.max(DEFAULT_BUDGET[1], Math.ceil(highestPrice / 50) * 50);
+  }, [products]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -84,6 +98,10 @@ const PetFinder: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(FINDER_STORAGE_KEY, JSON.stringify({ petType, need, budget, priority }));
   }, [budget, need, petType, priority]);
+
+  useEffect(() => {
+    setBudget((current) => normalizeBudget(current, maxBudget));
+  }, [maxBudget]);
 
   const matches = useMemo(() => {
     const selectedKeywords = [
@@ -106,7 +124,7 @@ const PetFinder: React.FC = () => {
       return { product, score, keywordHits, budgetFit };
     });
     return scored
-      .filter((item) => item.budgetFit || item.keywordHits > 0)
+      .filter((item) => item.budgetFit && (selectedKeywords.length === 0 || item.keywordHits > 0))
       .sort((a, b) => b.score - a.score)
       .slice(0, 12);
   }, [budget, need, petType, priority, products]);
@@ -154,7 +172,14 @@ const PetFinder: React.FC = () => {
                 </Col>
                 <Col xs={24} sm={12}>
                   <Text strong>{t('pages.petFinder.budget')}</Text>
-                  <Slider range min={0} max={500} value={budget} onChange={(value) => setBudget(value as [number, number])} />
+                  <Slider
+                    range
+                    min={0}
+                    max={maxBudget}
+                    step={maxBudget > 1000 ? 50 : 10}
+                    value={budget}
+                    onChange={(value) => setBudget(normalizeBudget(value, maxBudget))}
+                  />
                   <Text type="secondary">{formatMoney(budget[0])} - {formatMoney(budget[1])}</Text>
                 </Col>
                 <Col xs={24} sm={12}>

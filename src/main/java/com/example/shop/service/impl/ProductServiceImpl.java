@@ -1,8 +1,11 @@
 package com.example.shop.service.impl;
 
 import com.example.shop.dto.ProductImportResult;
+import com.example.shop.entity.Category;
+import com.example.shop.entity.PetProfile;
 import com.example.shop.entity.Product;
 import com.example.shop.repository.CategoryRepository;
+import com.example.shop.repository.PetProfileMapper;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.ReviewRepository;
 import com.example.shop.service.ProductService;
@@ -17,9 +20,20 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.Period;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,6 +47,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ReviewRepository reviewRepository;
+
+    @Autowired
+    private PetProfileMapper petProfileMapper;
 
     @Override
     public List<Product> findAll() {
@@ -63,25 +80,51 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> search(String keyword, Long categoryId) {
-        List<Long> categoryIds = categoryId == null ? null : collectCategoryIds(categoryId);
-        if (categoryId != null && keyword != null && !keyword.isEmpty()) {
-            return enrichReviewStats(productRepository.findByCategoryIdIn(categoryIds).stream()
-                    .filter(p -> p.getName().toLowerCase().contains(keyword.toLowerCase()))
-                    .collect(Collectors.toList()));
-        }
+        List<Product> candidates;
         if (categoryId != null) {
-            return enrichReviewStats(productRepository.findByCategoryIdIn(categoryIds));
+            candidates = productRepository.findByCategoryIdIn(collectCategoryIds(categoryId));
+        } else {
+            candidates = productRepository.findAll();
         }
-        if (keyword != null && !keyword.isEmpty()) {
-            return enrichReviewStats(productRepository.findByNameContainingIgnoreCase(keyword));
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return enrichReviewStats(candidates);
         }
-        return enrichReviewStats(productRepository.findAll());
+        return enrichReviewStats(candidates.stream()
+                .filter(product -> matchesKeyword(product, keyword))
+                .collect(Collectors.toList()));
     }
 
     public List<Product> findRelatedProducts(Long productId, Long categoryId) {
         return enrichReviewStats(productRepository.findByCategoryId(categoryId).stream()
                 .filter(p -> !p.getId().equals(productId))
                 .limit(8)
+                .collect(Collectors.toList()));
+    }
+
+    @Override
+    public List<Product> findPersonalizedRecommendations(Long userId) {
+        if (userId == null) {
+            return List.of();
+        }
+        List<PetProfile> pets = petProfileMapper.findByUserId(userId);
+        if (pets == null || pets.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Category> categories = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getId, category -> category));
+        List<Product> products = productRepository.findAll().stream()
+                .filter(product -> product.getStatus() == null || "ACTIVE".equalsIgnoreCase(product.getStatus()))
+                .collect(Collectors.toList());
+
+        return enrichReviewStats(products.stream()
+                .map(product -> new ProductScore(product, scoreForPets(product, categories, pets)))
+                .filter(entry -> entry.score > 0)
+                .sorted(Comparator
+                        .comparingInt((ProductScore entry) -> entry.score).reversed()
+                        .thenComparing(entry -> entry.product.getReviewCount() == null ? 0L : entry.product.getReviewCount(), Comparator.reverseOrder())
+                        .thenComparing(entry -> entry.product.getId()))
+                .limit(12)
+                .map(entry -> entry.product)
                 .collect(Collectors.toList()));
     }
 
@@ -255,9 +298,262 @@ public class ProductServiceImpl implements ProductService {
         return ids;
     }
 
+    private int scoreForPets(Product product, Map<Long, Category> categories, List<PetProfile> pets) {
+        String haystack = searchableText(product, categories);
+        int bestScore = 0;
+        for (PetProfile pet : pets) {
+            int score = 0;
+            String petType = normalize(pet.getPetType());
+            if ("DOG".equals(petType)) {
+                score += containsAny(haystack, "dog", "dogs", "perro", "canine", "puppy") ? 45 : 0;
+                score -= containsAny(haystack, "cat", "cats", "gato", "feline") ? 12 : 0;
+            } else if ("CAT".equals(petType)) {
+                score += containsAny(haystack, "cat", "cats", "gato", "feline", "kitten") ? 45 : 0;
+                score -= containsAny(haystack, "dog", "dogs", "perro", "canine") ? 12 : 0;
+            } else if ("SMALL_PET".equals(petType)) {
+                score += containsAny(haystack, "small pet", "hamster", "rabbit", "guinea", "small animal") ? 45 : 0;
+            }
+
+            String size = normalize(pet.getSize());
+            if (!size.isEmpty()) {
+                score += containsAny(haystack, size.toLowerCase(Locale.ROOT), petSizeLabel(size)) ? 18 : 0;
+            }
+
+            String breed = normalize(pet.getBreed()).toLowerCase(Locale.ROOT);
+            if (!breed.isEmpty() && haystack.contains(breed)) {
+                score += 10;
+            }
+
+            if (isYoungPet(pet)) {
+                score += containsAny(haystack, "puppy", "kitten", "junior", "training", "starter") ? 16 : 0;
+            } else {
+                score += containsAny(haystack, "adult", "orthopedic", "calming", "daily") ? 6 : 0;
+            }
+
+            if (containsAny(haystack, "food", "feeder", "fountain", "water", "bed", "toy", "groom", "harness", "leash")) {
+                score += 4;
+            }
+            if (Boolean.TRUE.equals(product.getIsFeatured())) {
+                score += 3;
+            }
+            bestScore = Math.max(bestScore, score);
+        }
+        return bestScore;
+    }
+
+    private String searchableText(Product product, Map<Long, Category> categories) {
+        List<String> parts = new ArrayList<>();
+        parts.add(product.getName());
+        parts.add(product.getDescription());
+        parts.add(product.getBrand());
+        parts.add(product.getTag());
+        parts.add(product.getSpecifications());
+        Category category = categories.get(product.getCategoryId());
+        while (category != null) {
+            parts.add(category.getName());
+            parts.add(category.getDescription());
+            category = category.getParentId() == null ? null : categories.get(category.getParentId());
+        }
+        return parts.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .collect(Collectors.joining(" "));
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (keyword != null && !keyword.isBlank() && text.contains(keyword.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String petSizeLabel(String size) {
+        if ("SMALL".equals(size)) return "small";
+        if ("MEDIUM".equals(size)) return "medium";
+        if ("LARGE".equals(size)) return "large";
+        return size.toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isYoungPet(PetProfile pet) {
+        LocalDate birthday = pet.getBirthday();
+        if (birthday == null || birthday.isAfter(LocalDate.now())) {
+            return false;
+        }
+        return Period.between(birthday, LocalDate.now()).getYears() < 1;
+    }
+
+    private static class ProductScore {
+        private final Product product;
+        private final int score;
+
+        private ProductScore(Product product, int score) {
+            this.product = product;
+            this.score = score;
+        }
+    }
+
     private void collectCategoryIds(Long id, List<Long> ids) {
         ids.add(id);
         categoryRepository.findByParentId(id).forEach(child -> collectCategoryIds(child.getId(), ids));
+    }
+
+    private boolean matchesKeyword(Product product, String keyword) {
+        String normalizedKeyword = normalizeSearchText(keyword);
+        if (normalizedKeyword.isEmpty()) {
+            return true;
+        }
+        String searchable = productSearchText(product);
+        if (searchable.contains(normalizedKeyword)) {
+            return true;
+        }
+        List<String> tokens = Arrays.stream(normalizedKeyword.split("\\s+"))
+                .filter(token -> token.length() > 1)
+                .collect(Collectors.toList());
+        List<String> intentTokens = tokens.stream()
+                .filter(token -> !isPetContextToken(token))
+                .collect(Collectors.toList());
+        if (!intentTokens.isEmpty()) {
+            return intentTokens.stream().allMatch(token -> matchesSearchToken(searchable, token));
+        }
+        return tokens.stream().anyMatch(token -> matchesSearchToken(searchable, token));
+    }
+
+    private boolean matchesSearchToken(String searchable, String token) {
+        return expandSearchToken(token).stream().anyMatch(searchable::contains);
+    }
+
+    private boolean isPetContextToken(String token) {
+        return "dog".equals(token)
+                || "dogs".equals(token)
+                || "puppy".equals(token)
+                || "cat".equals(token)
+                || "cats".equals(token)
+                || "kitten".equals(token)
+                || "pet".equals(token)
+                || "pets".equals(token)
+                || "small".equals(token);
+    }
+
+    private String productSearchText(Product product) {
+        StringBuilder builder = new StringBuilder();
+        appendSearchText(builder, product.getName());
+        appendSearchText(builder, product.getDescription());
+        appendSearchText(builder, product.getBrand());
+        appendSearchText(builder, product.getTag());
+        appendCategorySearchText(builder, product.getCategoryId());
+        Map<String, String> specifications = product.getSpecificationsMap();
+        if (specifications != null) {
+            specifications.forEach((key, value) -> {
+                appendSearchText(builder, key);
+                appendSearchText(builder, value);
+            });
+        }
+        return normalizeSearchText(builder.toString());
+    }
+
+    private void appendSearchText(StringBuilder builder, String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            builder.append(' ').append(value);
+        }
+    }
+
+    private void appendCategorySearchText(StringBuilder builder, Long categoryId) {
+        Set<Long> visitedIds = new HashSet<>();
+        Long currentId = categoryId;
+        while (currentId != null && visitedIds.add(currentId)) {
+            Optional<Category> categoryOptional = categoryRepository.findById(currentId);
+            if (categoryOptional.isEmpty()) {
+                return;
+            }
+            Category category = categoryOptional.get();
+            appendSearchText(builder, category.getName());
+            appendSearchText(builder, category.getDescription());
+            Map<String, Map<String, String>> localizedContent = category.getLocalizedContentMap();
+            if (localizedContent != null) {
+                localizedContent.values().forEach(fields ->
+                        fields.values().forEach(value -> appendSearchText(builder, value)));
+            }
+            currentId = category.getParentId();
+        }
+    }
+
+    private String normalizeSearchText(String value) {
+        return value == null
+                ? ""
+                : value.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
+    }
+
+    private String singularize(String token) {
+        if (token.endsWith("ies") && token.length() > 4) {
+            return token.substring(0, token.length() - 3) + "y";
+        }
+        if (token.endsWith("es") && token.length() > 4) {
+            return token.substring(0, token.length() - 2);
+        }
+        return token.endsWith("s") && token.length() > 3 ? token.substring(0, token.length() - 1) : token;
+    }
+
+    private List<String> expandSearchToken(String token) {
+        Set<String> terms = new LinkedHashSet<>();
+        terms.add(token);
+        terms.add(singularize(token));
+        switch (singularize(token)) {
+            case "bed":
+            case "sleep":
+            case "sleeping":
+            case "nap":
+            case "napping":
+            case "rest":
+            case "resting":
+                terms.addAll(Arrays.asList("bed", "beds", "sleep", "rest", "nap", "comfort", "calming", "furniture"));
+                break;
+            case "leash":
+            case "walk":
+            case "walking":
+            case "harness":
+                terms.addAll(Arrays.asList("leash", "leashes", "harness", "harnesses", "walk", "walking", "collar", "travel"));
+                break;
+            case "toy":
+            case "play":
+                terms.addAll(Arrays.asList("toy", "toys", "play", "chew", "puzzle", "enrichment"));
+                break;
+            case "smart":
+            case "device":
+                terms.addAll(Arrays.asList("smart", "device", "devices", "automatic", "programmable", "connected", "feeder", "fountain"));
+                break;
+            case "water":
+            case "waterer":
+            case "fountain":
+                terms.addAll(Arrays.asList("water", "waterer", "waterers", "fountain", "fountains", "drink", "drinking"));
+                break;
+            case "food":
+            case "feed":
+            case "feeding":
+            case "treat":
+                terms.addAll(Arrays.asList("food", "feed", "feeding", "feeder", "treat", "treats", "nutrition"));
+                break;
+            case "litter":
+            case "hygiene":
+                terms.addAll(Arrays.asList("litter", "hygiene", "clean", "cleaning", "pad", "pads"));
+                break;
+            case "groom":
+            case "grooming":
+            case "shampoo":
+                terms.addAll(Arrays.asList("groom", "grooming", "shampoo", "brush", "hygiene", "clean"));
+                break;
+            default:
+                break;
+        }
+        return terms.stream()
+                .map(this::normalizeSearchText)
+                .filter(term -> !term.isEmpty())
+                .collect(Collectors.toList());
     }
 
     private List<Product> enrichReviewStats(List<Product> products) {

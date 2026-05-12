@@ -8,6 +8,7 @@ import type { DashboardStats } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
+import { paymentMethodLabel } from '../utils/paymentMethods';
 
 const { Title } = Typography;
 
@@ -21,23 +22,24 @@ const statusColors: Record<string, string> = {
   RETURN_APPROVED: 'geekblue',
   RETURN_SHIPPED: 'cyan',
   RETURNED: 'purple',
-};
-
-const paymentLabels: Record<string, string> = {
-  VISA: 'VISA',
-  MX_LOCAL_CARD: 'Tarjeta local MX',
-  SPEI: 'SPEI',
-  OXXO: 'OXXO Pay',
-  ALIPAY: 'Alipay',
-  WECHAT: 'WeChat',
+  REFUNDED: 'purple',
 };
 
 const TrendChart: React.FC<{
   data: Array<{ date: string; orders: number; revenue: number }>;
   formatMoney: (value: number) => string;
-}> = ({ data, formatMoney }) => {
+  labels: {
+    noTrendData: string;
+    salesTrendChart: string;
+    orders: string;
+    revenue: string;
+    orderUnit: string;
+  };
+}> = ({ data, formatMoney, labels }) => {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
   if (!data.length) {
-    return <div style={{ color: '#999', textAlign: 'center', padding: 48 }}>No trend data</div>;
+    return <div style={{ color: '#999', textAlign: 'center', padding: 48 }}>{labels.noTrendData}</div>;
   }
 
   const width = 720;
@@ -55,10 +57,17 @@ const TrendChart: React.FC<{
     return { x, y, item };
   });
   const path = revenuePoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const hoveredPoint = hoveredIndex === null ? null : revenuePoints[hoveredIndex];
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Sales trend chart" style={{ width: '100%', minWidth: 560 }}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={labels.salesTrendChart}
+        style={{ width: '100%', minWidth: 560 }}
+        onMouseLeave={() => setHoveredIndex(null)}
+      >
         <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + chartHeight} stroke="#e8e8e8" />
         <line x1={padding.left} y1={padding.top + chartHeight} x2={padding.left + chartWidth} y2={padding.top + chartHeight} stroke="#e8e8e8" />
         {[0, 0.5, 1].map((ratio) => {
@@ -95,22 +104,87 @@ const TrendChart: React.FC<{
         {revenuePoints.map((point) => (
           <g key={point.item.date}>
             <circle cx={point.x} cy={point.y} r={4} fill="#ee4d2d" />
-            <title>{`${point.item.date}: ${formatMoney(Number(point.item.revenue || 0))} / ${point.item.orders} orders`}</title>
+            <title>{`${point.item.date}: ${formatMoney(Number(point.item.revenue || 0))} / ${point.item.orders} ${labels.orderUnit}`}</title>
           </g>
+        ))}
+        {hoveredPoint ? (
+          <g pointerEvents="none">
+            <line
+              x1={hoveredPoint.x}
+              y1={padding.top}
+              x2={hoveredPoint.x}
+              y2={padding.top + chartHeight}
+              stroke="#8c8c8c"
+              strokeDasharray="4 4"
+            />
+            <circle cx={hoveredPoint.x} cy={hoveredPoint.y} r={6} fill="#fff" stroke="#ee4d2d" strokeWidth="3" />
+            {(() => {
+              const tooltipWidth = 184;
+              const tooltipHeight = 76;
+              const tooltipX = Math.min(Math.max(hoveredPoint.x - tooltipWidth / 2, padding.left), width - tooltipWidth - 8);
+              const tooltipY = Math.max(8, hoveredPoint.y - tooltipHeight - 14);
+              return (
+                <g>
+                  <rect
+                    x={tooltipX}
+                    y={tooltipY}
+                    width={tooltipWidth}
+                    height={tooltipHeight}
+                    rx={8}
+                    fill="#ffffff"
+                    stroke="#eee4d3"
+                    filter="drop-shadow(0 4px 10px rgba(0,0,0,0.12))"
+                  />
+                  <text x={tooltipX + 12} y={tooltipY + 22} fontSize="12" fontWeight="700" fill="#173f2b">
+                    {hoveredPoint.item.date}
+                  </text>
+                  <text x={tooltipX + 12} y={tooltipY + 44} fontSize="12" fill="#ee4d2d">
+                    {labels.revenue}: {formatMoney(Number(hoveredPoint.item.revenue || 0))}
+                  </text>
+                  <text x={tooltipX + 12} y={tooltipY + 64} fontSize="12" fill="#1677ff">
+                    {labels.orders}: {hoveredPoint.item.orders} {labels.orderUnit}
+                  </text>
+                </g>
+              );
+            })()}
+          </g>
+        ) : null}
+        {revenuePoints.map((point, index) => (
+          <rect
+            key={`hit-${point.item.date}`}
+            x={point.x - Math.max(step / 2, 26)}
+            y={padding.top}
+            width={Math.max(step, 52)}
+            height={chartHeight}
+            fill="transparent"
+            tabIndex={0}
+            role="button"
+            aria-label={`${point.item.date}: ${formatMoney(Number(point.item.revenue || 0))}, ${point.item.orders} ${labels.orderUnit}`}
+            onMouseEnter={() => setHoveredIndex(index)}
+            onFocus={() => setHoveredIndex(index)}
+            onBlur={() => setHoveredIndex(null)}
+          />
         ))}
       </svg>
       <Space size="large" style={{ marginTop: 8 }}>
-        <Space><span style={{ width: 20, height: 10, display: 'inline-block', background: '#91caff', borderRadius: 3 }} />Orders</Space>
-        <Space><span style={{ width: 20, height: 3, display: 'inline-block', background: '#ee4d2d', borderRadius: 3 }} />Revenue</Space>
+        <Space><span style={{ width: 20, height: 10, display: 'inline-block', background: '#91caff', borderRadius: 3 }} />{labels.orders}</Space>
+        <Space><span style={{ width: 20, height: 3, display: 'inline-block', background: '#ee4d2d', borderRadius: 3 }} />{labels.revenue}</Space>
       </Space>
     </div>
   );
 };
 
-const DonutChart: React.FC<{ data: Array<{ label: string; value: number; color: string }> }> = ({ data }) => {
+const DonutChart: React.FC<{
+  data: Array<{ label: string; value: number; color: string }>;
+  labels: {
+    noOrderData: string;
+    orderStatusChart: string;
+    orderUnit: string;
+  };
+}> = ({ data, labels }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   if (!total) {
-    return <div style={{ color: '#999', textAlign: 'center', padding: 32 }}>No order data</div>;
+    return <div style={{ color: '#999', textAlign: 'center', padding: 32 }}>{labels.noOrderData}</div>;
   }
   const radius = 44;
   const circumference = 2 * Math.PI * radius;
@@ -118,7 +192,7 @@ const DonutChart: React.FC<{ data: Array<{ label: string; value: number; color: 
 
   return (
     <Space align="center" style={{ width: '100%', justifyContent: 'space-around' }}>
-      <svg width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Order status breakdown">
+      <svg width="128" height="128" viewBox="0 0 128 128" role="img" aria-label={labels.orderStatusChart}>
         <circle cx="64" cy="64" r={radius} fill="none" stroke="#f0f0f0" strokeWidth="18" />
         {data.filter((item) => item.value > 0).map((item) => {
           const dash = (item.value / total) * circumference;
@@ -141,7 +215,7 @@ const DonutChart: React.FC<{ data: Array<{ label: string; value: number; color: 
           return circle;
         })}
         <text x="64" y="60" textAnchor="middle" fontSize="20" fontWeight="700" fill="#222">{total}</text>
-        <text x="64" y="78" textAnchor="middle" fontSize="11" fill="#888">orders</text>
+        <text x="64" y="78" textAnchor="middle" fontSize="11" fill="#888">{labels.orderUnit}</text>
       </svg>
       <Space direction="vertical" size={6}>
         {data.map((item) => (
@@ -292,32 +366,39 @@ const AdminDashboard: React.FC = () => {
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={8}>
-          <Card title="Order status">
-            <DonutChart data={statusChartData} />
+          <Card title={t('pages.adminDashboard.orderStatus')}>
+            <DonutChart
+              data={statusChartData}
+              labels={{
+                noOrderData: t('pages.adminDashboard.noOrderData'),
+                orderStatusChart: t('pages.adminDashboard.orderStatusChart'),
+                orderUnit: t('pages.adminDashboard.orderUnit'),
+              }}
+            />
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title="Logistics health">
-            <Statistic title="Tracking coverage" value={trackingCoverage} suffix="%" prefix={<TruckOutlined />} />
+          <Card title={t('pages.adminDashboard.logisticsHealth')}>
+            <Statistic title={t('pages.adminDashboard.trackingCoverage')} value={trackingCoverage} suffix="%" prefix={<TruckOutlined />} />
             <Progress percent={trackingCoverage} strokeColor={trackingCoverage < 80 ? '#faad14' : '#52c41a'} />
             <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Shipped orders</span>
+                <span>{t('pages.adminDashboard.shippedOrders')}</span>
                 <strong>{shippedOrders}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>With tracking</span>
+                <span>{t('pages.adminDashboard.withTracking')}</span>
                 <strong>{ordersWithTracking}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Missing tracking</span>
+                <span>{t('pages.adminDashboard.missingTracking')}</span>
                 <strong>{stats.ordersWithoutTracking || 0}</strong>
               </div>
             </Space>
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title="Track shipment">
+          <Card title={t('pages.adminDashboard.trackShipment')}>
             <SeventeenTrackWidget height={420} />
           </Card>
         </Col>
@@ -326,7 +407,17 @@ const AdminDashboard: React.FC = () => {
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={16}>
           <Card title={t('pages.adminDashboard.salesTrend')}>
-            <TrendChart data={stats.salesTrend || []} formatMoney={formatMoney} />
+            <TrendChart
+              data={stats.salesTrend || []}
+              formatMoney={formatMoney}
+              labels={{
+                noTrendData: t('pages.adminDashboard.noTrendData'),
+                salesTrendChart: t('pages.adminDashboard.salesTrendChart'),
+                orders: t('pages.adminDashboard.orders'),
+                revenue: t('pages.adminDashboard.revenue'),
+                orderUnit: t('pages.adminDashboard.orderUnit'),
+              }}
+            />
           </Card>
         </Col>
         <Col xs={24} lg={8}>
@@ -335,7 +426,7 @@ const AdminDashboard: React.FC = () => {
               {Object.entries(stats.paymentMethodBreakdown || {}).map(([method, count]) => (
                 <div key={method}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span>{paymentLabels[method] || method}</span>
+                    <span>{paymentMethodLabel(method, t)}</span>
                     <strong>{count}</strong>
                   </div>
                   <Progress percent={Math.round((count / maxPaymentCount) * 100)} showInfo={false} strokeColor="#52c41a" />

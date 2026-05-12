@@ -14,11 +14,13 @@ public interface PaymentRepository {
     Payment findByOrderIdAndChannel(@Param("orderId") Long orderId, @Param("channel") String channel);
     Payment findPendingByOrderId(Long orderId);
     Payment findLatestByOrderId(Long orderId);
+    Payment findLatestPaidByOrderId(Long orderId);
     List<Payment> findByOrderId(Long orderId);
     List<Payment> findExpiredPending();
     int insert(Payment payment);
     int update(Payment payment);
     int markPaid(@Param("id") Long id, @Param("transactionId") String transactionId);
+    int markRefunded(@Param("id") Long id);
     int markFailed(@Param("id") Long id);
     int markExpired(@Param("id") Long id);
 }

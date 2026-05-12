@@ -5,6 +5,7 @@ import {
   ShoppingOutlined, TeamOutlined, StarOutlined,
   ArrowLeftOutlined, LogoutOutlined, CustomerServiceOutlined, GiftOutlined,
   NotificationOutlined, TagsOutlined, TruckOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { adminSupportApi, userApi } from '../api';
@@ -27,11 +28,12 @@ const AdminLayout: React.FC = () => {
     { key: '/admin/brands', icon: <TagsOutlined />, label: t('adminLayout.brands') },
     { key: '/admin/categories', icon: <AppstoreOutlined />, label: t('adminLayout.categories') },
     { key: '/admin/orders', icon: <ShoppingOutlined />, label: t('adminLayout.orders') },
-    { key: '/admin/logistics-carriers', icon: <TruckOutlined />, label: '快递公司' },
+    { key: '/admin/logistics-carriers', icon: <TruckOutlined />, label: t('adminLayout.logisticsCarriers') },
     { key: '/admin/users', icon: <TeamOutlined />, label: t('adminLayout.users') },
     { key: '/admin/reviews', icon: <StarOutlined />, label: t('adminLayout.reviews') },
     { key: '/admin/coupons', icon: <GiftOutlined />, label: t('adminLayout.coupons') },
     { key: '/admin/notifications', icon: <NotificationOutlined />, label: t('adminLayout.notifications') },
+    { key: '/admin/audit-logs', icon: <SafetyCertificateOutlined />, label: t('adminLayout.auditLogs') },
     {
       key: '/admin/support',
       icon: <CustomerServiceOutlined />,
@@ -81,6 +83,7 @@ const AdminLayout: React.FC = () => {
   }, [checking, location.pathname]);
 
   const handleLogout = () => {
+    userApi.logout().catch(() => undefined);
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('username');

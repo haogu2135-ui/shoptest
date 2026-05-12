@@ -6,6 +6,7 @@ import { adminApi } from '../api';
 import type { Coupon, User } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
+import './CouponManagement.css';
 
 const { Title } = Typography;
 
@@ -15,6 +16,8 @@ const CouponManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [birthdayCouponLoading, setBirthdayCouponLoading] = useState(false);
+  const [couponSubmitting, setCouponSubmitting] = useState(false);
+  const [grantSubmitting, setGrantSubmitting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [grantVisible, setGrantVisible] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
@@ -69,6 +72,7 @@ const CouponManagement: React.FC = () => {
   const submitCoupon = async () => {
     try {
       const values = await form.validateFields();
+      setCouponSubmitting(true);
       const payload = {
         ...values,
         startAt: values.validRange?.[0] ? values.validRange[0].format('YYYY-MM-DDTHH:mm:ss') : null,
@@ -91,9 +95,14 @@ const CouponManagement: React.FC = () => {
       setModalVisible(false);
       await loadCoupons();
     } catch (error: any) {
+      if (error?.errorFields) return;
       if (error?.response?.data?.error) {
         message.error(error.response.data.error);
+      } else {
+        message.error(t('messages.operationFailed'));
       }
+    } finally {
+      setCouponSubmitting(false);
     }
   };
 
@@ -117,12 +126,16 @@ const CouponManagement: React.FC = () => {
     if (!grantCoupon) return;
     try {
       const values = await grantForm.validateFields();
+      setGrantSubmitting(true);
       const res = await adminApi.grantCoupon(grantCoupon.id, values.userIds);
       message.success(t('pages.adminCoupons.granted', { count: res.data.granted }));
       setGrantVisible(false);
       await loadCoupons();
     } catch (error: any) {
+      if (error?.errorFields) return;
       message.error(error?.response?.data?.error || t('pages.adminCoupons.grantFailed'));
+    } finally {
+      setGrantSubmitting(false);
     }
   };
 
@@ -177,20 +190,20 @@ const CouponManagement: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '32px 24px' }}>
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
+    <div className="coupon-management-page">
+      <div className="coupon-management-page__header">
         <Title level={3} style={{ margin: 0 }}><GiftOutlined /> {t('pages.adminCoupons.title')}</Title>
-        <Space>
+        <Space wrap className="coupon-management-page__actions">
           <Button icon={<GiftOutlined />} loading={birthdayCouponLoading} onClick={runPetBirthdayCoupons}>
             {t('pages.adminCoupons.runPetBirthdayCoupons')}
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</Button>
         </Space>
-      </Space>
+      </div>
 
-      <Table columns={columns} dataSource={coupons} rowKey="id" loading={loading} bordered />
+      <Table columns={columns} dataSource={coupons} rowKey="id" loading={loading} bordered scroll={{ x: 980 }} pagination={{ pageSize: 10 }} />
 
-      <Modal title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')} open={modalVisible} onOk={submitCoupon} onCancel={() => setModalVisible(false)} width={720}>
+      <Modal title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')} open={modalVisible} onOk={submitCoupon} onCancel={() => setModalVisible(false)} confirmLoading={couponSubmitting} width={720}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.adminCoupons.name')} rules={[{ required: true, message: t('pages.adminCoupons.nameRequired') }]}>
             <Input />
@@ -204,30 +217,30 @@ const CouponManagement: React.FC = () => {
               ]}
             />
           </Form.Item>
-          <Space style={{ width: '100%' }} size="large">
-            <Form.Item name="thresholdAmount" label={t('pages.adminCoupons.minimumSpend')} style={{ flex: 1 }} rules={[{ required: true, message: t('pages.adminCoupons.minimumSpendRequired') }]}>
-              <InputNumber min={0} precision={2} style={{ width: 180 }} prefix={t('common.currencySymbol')} />
+          <div className="coupon-management-page__formRow">
+            <Form.Item name="thresholdAmount" label={t('pages.adminCoupons.minimumSpend')} rules={[{ required: true, message: t('pages.adminCoupons.minimumSpendRequired') }]}>
+              <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} />
             </Form.Item>
             {couponType === 'DISCOUNT' ? (
-              <Form.Item name="discountPercent" label={t('pages.adminCoupons.discountPayablePercent')} style={{ flex: 1 }} rules={[{ required: true, message: t('pages.adminCoupons.discountPercentRequired') }]}>
-                <InputNumber min={1} max={99} style={{ width: 180 }} suffix="%" placeholder={t('pages.adminCoupons.discountPlaceholder')} />
+              <Form.Item name="discountPercent" label={t('pages.adminCoupons.discountPayablePercent')} rules={[{ required: true, message: t('pages.adminCoupons.discountPercentRequired') }]}>
+                <InputNumber min={1} max={99} suffix="%" placeholder={t('pages.adminCoupons.discountPlaceholder')} />
               </Form.Item>
             ) : (
-              <Form.Item name="reductionAmount" label={t('pages.adminCoupons.reductionAmount')} style={{ flex: 1 }} rules={[{ required: true, message: t('pages.adminCoupons.reductionAmountRequired') }]}>
-                <InputNumber min={0.01} precision={2} style={{ width: 180 }} prefix={t('common.currencySymbol')} />
+              <Form.Item name="reductionAmount" label={t('pages.adminCoupons.reductionAmount')} rules={[{ required: true, message: t('pages.adminCoupons.reductionAmountRequired') }]}>
+                <InputNumber min={0.01} precision={2} prefix={t('common.currencySymbol')} />
               </Form.Item>
             )}
-          </Space>
-          <Space style={{ width: '100%' }} size="large">
+          </div>
+          <div className="coupon-management-page__formRow">
             {couponType === 'DISCOUNT' ? (
-              <Form.Item name="maxDiscountAmount" label={t('pages.adminCoupons.maxDiscountLabel')} style={{ flex: 1 }}>
-                <InputNumber min={0} precision={2} style={{ width: 180 }} prefix={t('common.currencySymbol')} />
+              <Form.Item name="maxDiscountAmount" label={t('pages.adminCoupons.maxDiscountLabel')}>
+                <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} />
               </Form.Item>
             ) : null}
-            <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')} style={{ flex: 1 }}>
-              <InputNumber min={1} style={{ width: 180 }} />
+            <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')}>
+              <InputNumber min={1} />
             </Form.Item>
-          </Space>
+          </div>
           <Form.Item name="scope" label={t('pages.adminCoupons.scope')}>
             <Select options={[{ value: 'PUBLIC', label: t('pages.adminCoupons.publicClaim') }, { value: 'ASSIGNED', label: t('pages.adminCoupons.adminAssigned') }]} />
           </Form.Item>
@@ -243,7 +256,7 @@ const CouponManagement: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal title={grantCoupon ? t('pages.adminCoupons.grantCouponWithName', { name: grantCoupon.name }) : t('pages.adminCoupons.grantCoupon')} open={grantVisible} onOk={submitGrant} onCancel={() => setGrantVisible(false)}>
+      <Modal title={grantCoupon ? t('pages.adminCoupons.grantCouponWithName', { name: grantCoupon.name }) : t('pages.adminCoupons.grantCoupon')} open={grantVisible} onOk={submitGrant} onCancel={() => setGrantVisible(false)} confirmLoading={grantSubmitting}>
         <Form form={grantForm} layout="vertical">
           <Form.Item name="userIds" label={t('pages.adminCoupons.users')} rules={[{ required: true, message: t('pages.adminCoupons.selectUsers') }]}>
             <Select

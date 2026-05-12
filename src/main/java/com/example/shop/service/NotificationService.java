@@ -22,6 +22,10 @@ public class NotificationService {
         return notificationMapper.findByUserId(userId);
     }
 
+    public Notification getNotification(Long id) {
+        return notificationMapper.findById(id);
+    }
+
     public int getUnreadCount(Long userId) {
         return notificationMapper.countUnread(userId);
     }

@@ -19,7 +19,15 @@
         <result property="trackingCarrierCode" column="tracking_carrier_code"/>
         <result property="trackingCarrierName" column="tracking_carrier_name"/>
         <result property="returnTrackingNumber" column="return_tracking_number"/>
+        <result property="returnReason" column="return_reason"/>
+        <result property="returnRequestedAt" column="return_requested_at"/>
+        <result property="returnApprovedAt" column="return_approved_at"/>
+        <result property="returnRejectedAt" column="return_rejected_at"/>
+        <result property="returnShippedAt" column="return_shipped_at"/>
+        <result property="returnedAt" column="returned_at"/>
+        <result property="refundedAt" column="refunded_at"/>
         <result property="shippedAt" column="shipped_at"/>
+        <result property="completedAt" column="completed_at"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
@@ -57,8 +65,8 @@
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.Order" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO orders (order_no, user_id, original_amount, discount_amount, shipping_fee, total_amount, user_coupon_id, coupon_id, coupon_name, status, shipping_address, payment_method, tracking_number, tracking_carrier_code, tracking_carrier_name, return_tracking_number, shipped_at, created_at, updated_at)
-        VALUES (#{orderNo}, #{userId}, #{originalAmount}, #{discountAmount}, #{shippingFee}, #{totalAmount}, #{userCouponId}, #{couponId}, #{couponName}, #{status}, #{shippingAddress}, #{paymentMethod}, #{trackingNumber}, #{trackingCarrierCode}, #{trackingCarrierName}, #{returnTrackingNumber}, #{shippedAt}, #{createdAt}, #{updatedAt})
+        INSERT INTO orders (order_no, user_id, original_amount, discount_amount, shipping_fee, total_amount, user_coupon_id, coupon_id, coupon_name, status, shipping_address, payment_method, tracking_number, tracking_carrier_code, tracking_carrier_name, return_tracking_number, return_reason, return_requested_at, return_approved_at, return_rejected_at, return_shipped_at, returned_at, refunded_at, shipped_at, completed_at, created_at, updated_at)
+        VALUES (#{orderNo}, #{userId}, #{originalAmount}, #{discountAmount}, #{shippingFee}, #{totalAmount}, #{userCouponId}, #{couponId}, #{couponName}, #{status}, #{shippingAddress}, #{paymentMethod}, #{trackingNumber}, #{trackingCarrierCode}, #{trackingCarrierName}, #{returnTrackingNumber}, #{returnReason}, #{returnRequestedAt}, #{returnApprovedAt}, #{returnRejectedAt}, #{returnShippedAt}, #{returnedAt}, #{refundedAt}, #{shippedAt}, #{completedAt}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.example.shop.entity.Order">
@@ -79,18 +87,67 @@
             tracking_carrier_code = #{trackingCarrierCode},
             tracking_carrier_name = #{trackingCarrierName},
             return_tracking_number = #{returnTrackingNumber},
+            return_reason = #{returnReason},
+            return_requested_at = #{returnRequestedAt},
+            return_approved_at = #{returnApprovedAt},
+            return_rejected_at = #{returnRejectedAt},
+            return_shipped_at = #{returnShippedAt},
+            returned_at = #{returnedAt},
+            refunded_at = #{refundedAt},
             shipped_at = #{shippedAt},
+            completed_at = #{completedAt},
             updated_at = #{updatedAt}
         WHERE id = #{id}
     </update>
 
     <update id="updateStatus">
-        UPDATE orders SET status = #{status}, updated_at = NOW() WHERE id = #{id}
+        UPDATE orders
+        SET status = #{status},
+            completed_at = CASE
+                WHEN #{status} = 'COMPLETED' THEN COALESCE(completed_at, NOW())
+                ELSE completed_at
+            END,
+            updated_at = NOW()
+        WHERE id = #{id}
     </update>
 
     <update id="updateStatusIfCurrent">
         UPDATE orders
         SET status = #{status},
+            completed_at = CASE
+                WHEN #{status} = 'COMPLETED' THEN COALESCE(completed_at, NOW())
+                ELSE completed_at
+            END,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND status = #{currentStatus}
+    </update>
+
+    <update id="requestReturnIfCurrent">
+        UPDATE orders
+        SET status = 'RETURN_REQUESTED',
+            return_reason = #{reason},
+            return_requested_at = NOW(),
+            return_rejected_at = NULL,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND status = #{currentStatus}
+    </update>
+
+    <update id="approveReturnIfCurrent">
+        UPDATE orders
+        SET status = 'RETURN_APPROVED',
+            return_approved_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND status = #{currentStatus}
+    </update>
+
+    <update id="rejectReturnIfCurrent">
+        UPDATE orders
+        SET status = 'COMPLETED',
+            return_rejected_at = NOW(),
+            completed_at = COALESCE(completed_at, NOW()),
             updated_at = NOW()
         WHERE id = #{id}
           AND status = #{currentStatus}
@@ -111,8 +168,19 @@
         UPDATE orders
         SET status = #{status},
             return_tracking_number = #{returnTrackingNumber},
+            return_shipped_at = NOW(),
             updated_at = NOW()
         WHERE id = #{id}
+    </update>
+
+    <update id="completeReturnAndRefundIfCurrent">
+        UPDATE orders
+        SET status = 'RETURNED',
+            returned_at = NOW(),
+            refunded_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND status = #{currentStatus}
     </update>
 
     <delete id="deleteById">

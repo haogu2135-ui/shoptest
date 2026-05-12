@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Row, Col, Card, Button, Tag, Divider, Typography, Spin, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented } from 'antd';
+import { Row, Col, Card, Button, Tag, Divider, Typography, Spin, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Empty } from 'antd';
 import { HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined } from '@ant-design/icons';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
@@ -20,11 +20,6 @@ import './ProductDetail.css';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
-const subscriptionOptions = [
-  { label: 'Every 2 weeks', value: '2w' },
-  { label: 'Every month', value: '4w' },
-  { label: 'Every 2 months', value: '8w' },
-];
 
 interface Review {
   id: number;
@@ -57,7 +52,10 @@ const normalizeProductImages = (product: any) => {
   const images = [product?.imageUrl, ...rawImages]
     .map((image) => String(image || '').trim())
     .filter(Boolean);
-  return Array.from(new Set(images)).concat(fallbackProductImage);
+  const uniqueImages = Array.from(new Set(images));
+  return uniqueImages.length > 0
+    ? uniqueImages.concat(fallbackProductImage)
+    : [fallbackProductImage, fallbackProductImage];
 };
 
 const handleGalleryZoomMove = (event: React.MouseEvent<HTMLImageElement>) => {
@@ -139,13 +137,46 @@ const ProductDetail: React.FC = () => {
   const [isAlerted, setIsAlerted] = useState(false);
   const mobileGalleryRef = useRef<HTMLDivElement | null>(null);
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
+  const imageResumeTimerRef = useRef<number | null>(null);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const subscriptionOptions = useMemo(() => [
+    { label: t('subscription.interval2w'), value: '2w' },
+    { label: t('subscription.interval4w'), value: '4w' },
+    { label: t('subscription.interval8w'), value: '8w' },
+  ], [t]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  const clearImageResumeTimer = useCallback(() => {
+    if (imageResumeTimerRef.current !== null) {
+      window.clearTimeout(imageResumeTimerRef.current);
+      imageResumeTimerRef.current = null;
+    }
+  }, []);
+
+  const pauseImageRotation = useCallback(() => {
+    clearImageResumeTimer();
+    setImagePaused(true);
+  }, [clearImageResumeTimer]);
+
+  const resumeImageRotation = useCallback(() => {
+    clearImageResumeTimer();
+    setImagePaused(false);
+  }, [clearImageResumeTimer]);
+
+  const scheduleImageRotationResume = useCallback((delay = 2600) => {
+    clearImageResumeTimer();
+    imageResumeTimerRef.current = window.setTimeout(() => {
+      setImagePaused(false);
+      imageResumeTimerRef.current = null;
+    }, delay);
+  }, [clearImageResumeTimer]);
+
+  useEffect(() => clearImageResumeTimer, [clearImageResumeTimer]);
 
   const productImages = useMemo(() => product ? normalizeProductImages(product) : [], [product]);
   const galleryImages = useMemo(() => productImages.slice(0, -1), [productImages]);
@@ -156,6 +187,7 @@ const ProductDetail: React.FC = () => {
     if (!variants.length) return undefined;
     return variants.find((variant) => Object.entries(variant.options || {}).every(([key, value]) => selectedOptions[key] === value));
   }, [selectedOptions, variants]);
+  const currentStock = selectedVariant?.stock ?? product?.stock;
   const selectedSpecsPayload = useMemo(() => JSON.stringify({
     ...selectedOptions,
     ...(selectedVariant?.sku ? { _variantSku: selectedVariant.sku } : {}),
@@ -200,6 +232,14 @@ const ProductDetail: React.FC = () => {
     }, 3200);
     return () => window.clearInterval(timer);
   }, [galleryImages, imagePaused, isModalVisible, loading, product]);
+
+  useEffect(() => {
+    if (currentStock === undefined || quantity <= currentStock) return;
+    const nextQuantity = Math.max(1, currentStock);
+    if (quantity !== nextQuantity) {
+      setQuantity(nextQuantity);
+    }
+  }, [currentStock, quantity]);
 
   const fetchReviews = useCallback(async () => {
     try {
@@ -268,16 +308,22 @@ const ProductDetail: React.FC = () => {
     setIsAlerted(hasStockAlert(Number(id)));
   }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews, id, language]);
 
+  useEffect(() => {
+    const syncStockAlert = () => setIsAlerted(hasStockAlert(Number(id)));
+    window.addEventListener('shop:stock-alerts-updated', syncStockAlert);
+    window.addEventListener('storage', syncStockAlert);
+    return () => {
+      window.removeEventListener('shop:stock-alerts-updated', syncStockAlert);
+      window.removeEventListener('storage', syncStockAlert);
+    };
+  }, [id]);
+
   const handleAddToCart = async () => {
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     try {
       if (!validateOptions()) return;
-      if (product.stock === undefined || product.stock < quantity) {
-        message.error(t('pages.productDetail.insufficientStock'));
-        return;
-      }
-      if (selectedVariant && selectedVariant.stock !== undefined && selectedVariant.stock < quantity) {
+      if (selectedStock !== undefined && selectedStock < quantity) {
         message.error(t('pages.productDetail.insufficientStock'));
         return;
       }
@@ -285,7 +331,7 @@ const ProductDetail: React.FC = () => {
       if (token && userId) {
         await cartApi.addItem(Number(userId), Number(id), quantity, specs);
       } else {
-        addGuestCartItem(product, quantity, specs, displayPrice);
+        addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
       }
       message.success(t('messages.addCartSuccess'));
       window.dispatchEvent(new Event('shop:cart-updated'));
@@ -300,11 +346,7 @@ const ProductDetail: React.FC = () => {
     const userId = localStorage.getItem('userId');
     try {
       if (!validateOptions()) return;
-      if (product.stock === undefined || product.stock < quantity) {
-        message.error(t('pages.productDetail.insufficientStock'));
-        return;
-      }
-      if (selectedVariant && selectedVariant.stock !== undefined && selectedVariant.stock < quantity) {
+      if (selectedStock !== undefined && selectedStock < quantity) {
         message.error(t('pages.productDetail.insufficientStock'));
         return;
       }
@@ -315,11 +357,15 @@ const ProductDetail: React.FC = () => {
         const cartItem = cartRes.data.find((item: any) => item.productId === Number(id) && (optionGroups.length || purchaseMode !== 'once' ? item.selectedSpecs === selectedSpecsPayload : !item.selectedSpecs));
         if (cartItem) {
           sessionStorage.setItem('checkoutCartItemIds', JSON.stringify([cartItem.id]));
+        } else {
+          message.error(t('messages.operationFailed'));
+          return;
         }
       } else {
-        const cartItem = addGuestCartItem(product, quantity, specs, displayPrice);
+        const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
         sessionStorage.setItem('checkoutCartItemIds', JSON.stringify([cartItem.id]));
       }
+      sessionStorage.removeItem('checkoutPaymentMethod');
       navigate('/checkout');
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.operationFailed'));
@@ -337,6 +383,7 @@ const ProductDetail: React.FC = () => {
     try {
       const res = await wishlistApi.toggle(Number(userId), Number(id));
       setIsWishlisted(res.data.wishlisted);
+      window.dispatchEvent(new Event('shop:wishlist-updated'));
       message.success(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
     } catch {
       message.error(t('messages.operationFailed'));
@@ -351,7 +398,7 @@ const ProductDetail: React.FC = () => {
       return;
     }
     const result = addStockAlert(product);
-    setIsAlerted(result.status !== 'exists');
+    setIsAlerted(true);
     message.success(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'));
   };
 
@@ -421,11 +468,18 @@ const ProductDetail: React.FC = () => {
   }
 
   if (!product) {
-    return <div>{t('pages.productDetail.notFound')}</div>;
+    return (
+      <div className="product-detail-empty">
+        <Empty description={t('pages.productDetail.notFound')}>
+          <Button type="primary" onClick={() => navigate('/products')}>{t('pages.productList.title')}</Button>
+        </Empty>
+      </div>
+    );
   }
 
-  const selectedStock = selectedVariant?.stock ?? product.stock;
+  const selectedStock = currentStock;
   const isOutOfStock = selectedStock !== undefined && selectedStock <= 0;
+  const stockLabel = selectedStock !== undefined ? selectedStock : t('pages.productDetail.enough');
   const displayedRating = Number(averageRating || product.rating || 0);
   const activePrice = selectedVariant?.price ?? product.effectivePrice ?? product.price;
   const subscribePrice = Math.round(activePrice * 80) / 100;
@@ -446,10 +500,19 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleQuantityChange = (value: number) => {
-    if (value > 0 && value <= (product.stock || 999)) {
+    const maxQuantity = selectedStock !== undefined ? selectedStock : 999;
+    if (value > 0 && value <= maxQuantity) {
       setQuantity(value);
     }
   };
+
+  const buildCartProductSnapshot = () => ({
+    ...product,
+    stock: selectedStock,
+    price: displayPrice,
+    effectivePrice: displayPrice,
+    imageUrl: selectedVariant?.imageUrl || product.imageUrl,
+  });
 
   const selectGalleryImage = (image: string, index: number) => {
     setSelectedImage(image);
@@ -506,17 +569,23 @@ const ProductDetail: React.FC = () => {
     if (!pinchStartRef.current && !pinchZoom.active) return;
     pinchStartRef.current = null;
     setPinchZoom((current) => ({ ...current, active: false, scale: 1 }));
-    window.setTimeout(() => setImagePaused(false), 2600);
+    scheduleImageRotationResume();
   };
 
   return (
     <div className="product-detail-page" style={{ background: '#f7f4ee', minHeight: '100vh', padding: '24px' }}>
       <div className="product-detail-shell" style={{ maxWidth: 1200, margin: '0 auto' }}>
         <Breadcrumb style={{ marginBottom: 24 }}>
-          <Breadcrumb.Item href="/">
-            <HomeOutlined />
+          <Breadcrumb.Item>
+            <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/')}>
+              <HomeOutlined />
+            </button>
           </Breadcrumb.Item>
-          <Breadcrumb.Item href="/products">{t('pages.productDetail.product')}</Breadcrumb.Item>
+          <Breadcrumb.Item>
+            <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/products')}>
+              {t('pages.productDetail.product')}
+            </button>
+          </Breadcrumb.Item>
           <Breadcrumb.Item>{product.name}</Breadcrumb.Item>
         </Breadcrumb>
 
@@ -526,16 +595,16 @@ const ProductDetail: React.FC = () => {
             <Card className="product-gallery-card">
               <div
                 className="product-detail-main-image"
-                onMouseEnter={() => setImagePaused(true)}
-                onMouseLeave={() => setImagePaused(false)}
+                onMouseEnter={pauseImageRotation}
+                onMouseLeave={resumeImageRotation}
               >
                 <div
                   ref={mobileGalleryRef}
                   className="product-mobile-gallery"
                   onScroll={handleMobileGalleryScroll}
-                  onPointerDown={() => setImagePaused(true)}
-                  onPointerUp={() => window.setTimeout(() => setImagePaused(false), 2600)}
-                  onPointerCancel={() => window.setTimeout(() => setImagePaused(false), 2600)}
+                  onPointerDown={pauseImageRotation}
+                  onPointerUp={() => scheduleImageRotationResume()}
+                  onPointerCancel={() => scheduleImageRotationResume()}
                   onTouchStart={handleGalleryTouchStart}
                   onTouchMove={handleGalleryTouchMove}
                   onTouchEnd={resetGalleryPinch}
@@ -599,8 +668,8 @@ const ProductDetail: React.FC = () => {
                           className={`product-detail-thumbs__img${selectedImage === image ? ' product-detail-thumbs__img--active' : ''}`}
                           onClick={() => {
                             selectGalleryImage(image, index);
-                            setImagePaused(true);
-                            window.setTimeout(() => setImagePaused(false), 5000);
+                            pauseImageRotation();
+                            scheduleImageRotationResume(5000);
                           }}
                           onError={(event) => {
                             event.currentTarget.src = productImages[productImages.length - 1];
@@ -670,7 +739,7 @@ const ProductDetail: React.FC = () => {
                   <div className="product-mobile-promo">
                     <span>{limitedTimeRemaining > 0 ? t('pages.productDetail.limitedTimeCountdown') : t('pages.productDetail.freeShipping')}</span>
                     <strong>{limitedTimeRemaining > 0 ? formatCountdown(limitedTimeRemaining) : t('pages.productDetail.authentic')}</strong>
-                    <span>{t('pages.productDetail.stock')}: {selectedStock || t('pages.productDetail.enough')}</span>
+                    <span>{t('pages.productDetail.stock')}: {stockLabel}</span>
                   </div>
                   {limitedTimeRemaining > 0 && (
                     <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 4, background: '#fff7e6', color: '#124734', fontWeight: 600 }}>
@@ -762,12 +831,12 @@ const ProductDetail: React.FC = () => {
                   <Text strong style={{ fontSize: 16 }}>{t('pages.productDetail.quantity')}</Text>
                   <div style={{ marginTop: 8 }}>
                     <Button.Group>
-                      <Button onClick={() => handleQuantityChange(quantity - 1)}>-</Button>
-                      <Button>{quantity}</Button>
-                      <Button onClick={() => handleQuantityChange(quantity + 1)}>+</Button>
+                      <Button onClick={() => handleQuantityChange(quantity - 1)} disabled={quantity <= 1}>-</Button>
+                      <Button className="product-quantity__value">{quantity}</Button>
+                      <Button onClick={() => handleQuantityChange(quantity + 1)} disabled={selectedStock !== undefined && quantity >= selectedStock}>+</Button>
                     </Button.Group>
                     <Text type="secondary" style={{ marginLeft: 16 }}>
-                      {t('pages.productDetail.stock')}: {selectedStock || t('pages.productDetail.enough')}
+                      {t('pages.productDetail.stock')}: {stockLabel}
                     </Text>
                   </div>
                 </div>
@@ -780,11 +849,26 @@ const ProductDetail: React.FC = () => {
                     </Button>
                   </Space>
                 )}
-                <Space size="middle" className="product-actions">
-                  <Button type="primary" size="large" icon={<ShoppingCartOutlined />} onClick={handleAddToCart} disabled={isOutOfStock}>
-                    {t('pages.productDetail.addCart')}
+                <Space size="middle" wrap className="product-actions">
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<ShoppingCartOutlined />}
+                    className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
+                    onClick={handleAddToCart}
+                    disabled={isOutOfStock}
+                  >
+                    {isOutOfStock ? t('pages.productDetail.soldOut') : t('pages.productDetail.addCart')}
                   </Button>
-                  <Button type="primary" size="large" icon={<ThunderboltOutlined />} onClick={handleBuyNow} disabled={isOutOfStock} ghost>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<ThunderboltOutlined />}
+                    className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
+                    onClick={handleBuyNow}
+                    disabled={isOutOfStock}
+                    ghost
+                  >
                     {t('pages.productDetail.buyNow')}
                   </Button>
                   {isOutOfStock ? (
@@ -918,9 +1002,18 @@ const ProductDetail: React.FC = () => {
 
         {/* 相关推荐 */}
         {recommendations.length > 0 && (
-          <div style={{ marginTop: 24 }}>
+          <div className="product-recommendations" style={{ marginTop: 24 }}>
             <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
-            <Carousel slidesToShow={4} dots={false} arrows>
+            <Carousel
+              slidesToShow={4}
+              dots={false}
+              arrows
+              responsive={[
+                { breakpoint: 1024, settings: { slidesToShow: 3 } },
+                { breakpoint: 768, settings: { slidesToShow: 2 } },
+                { breakpoint: 520, settings: { slidesToShow: 1 } },
+              ]}
+            >
               {recommendations.map((rec: any) => (
                 <div key={rec.id} style={{ padding: '0 8px' }}>
                   <Card
@@ -928,12 +1021,17 @@ const ProductDetail: React.FC = () => {
                     cover={
                       <img
                         alt={rec.name}
-                        src={rec.imageUrl}
-                        style={{ height: 180, objectFit: 'cover', borderRadius: 8 }}
+                        src={rec.imageUrl || fallbackProductImage}
+                        className="product-recommendations__image"
                         onClick={() => navigate(`/products/${rec.id}`)}
+                        onError={(event) => {
+                          if (event.currentTarget.src !== fallbackProductImage) {
+                            event.currentTarget.src = fallbackProductImage;
+                          }
+                        }}
                       />
                     }
-                    style={{ width: 260, margin: '0 auto' }}
+                    className="product-recommendations__card"
                     onClick={() => navigate(`/products/${rec.id}`)}
                   >
                     <Card.Meta
@@ -989,23 +1087,23 @@ const ProductDetail: React.FC = () => {
       </Modal>
 
       <Modal
-        title="Pet size guide"
+        title={t('pages.productDetail.sizeGuideTitle')}
         open={sizeGuideOpen}
         onCancel={() => setSizeGuideOpen(false)}
-        footer={<Button type="primary" onClick={() => setSizeGuideOpen(false)}>Got it</Button>}
+        footer={<Button type="primary" onClick={() => setSizeGuideOpen(false)}>{t('pages.productDetail.sizeGuideGotIt')}</Button>}
       >
         <div className="pet-size-guide">
           <div>
-            <strong>Neck</strong>
-            <span>Measure where the collar naturally sits. Leave two fingers of room.</span>
+            <strong>{t('pages.productDetail.sizeGuideNeck')}</strong>
+            <span>{t('pages.productDetail.sizeGuideNeckText')}</span>
           </div>
           <div>
-            <strong>Chest</strong>
-            <span>Measure the widest part behind the front legs for harnesses and apparel.</span>
+            <strong>{t('pages.productDetail.sizeGuideChest')}</strong>
+            <span>{t('pages.productDetail.sizeGuideChestText')}</span>
           </div>
           <div>
-            <strong>Back length</strong>
-            <span>Measure from the base of the neck to the base of the tail for coats and pajamas.</span>
+            <strong>{t('pages.productDetail.sizeGuideBack')}</strong>
+            <span>{t('pages.productDetail.sizeGuideBackText')}</span>
           </div>
         </div>
       </Modal>

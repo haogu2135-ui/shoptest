@@ -16,7 +16,7 @@ import {
   Typography,
 } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { categoryApi } from '../api';
+import { apiBaseUrl, categoryApi } from '../api';
 import type { Category } from '../types';
 import {
   buildCategoryTree,
@@ -26,9 +26,19 @@ import {
   toTreeOptions,
 } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
+import './CategoryManagement.css';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+const categoryImageFallback = 'https://via.placeholder.com/80?text=CAT';
+
+const resolveCategoryImage = (imageUrl?: string) => {
+  if (!imageUrl) return categoryImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
 
 const CategoryManagement: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -146,7 +156,7 @@ const CategoryManagement: React.FC = () => {
       width: 88,
       render: (url?: string) =>
         url ? (
-          <Image src={url} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} />
+          <Image src={resolveCategoryImage(url)} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={categoryImageFallback} />
         ) : (
           <div style={{ width: 56, height: 56, borderRadius: 6, background: '#f2f3f5' }} />
         ),
@@ -214,13 +224,13 @@ const CategoryManagement: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '32px 24px' }}>
+    <div className="category-management-page">
       <Title level={3} style={{ marginBottom: 0 }}>
         {t('pages.categoryAdmin.title')}
       </Title>
       <Divider />
 
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()} style={{ marginBottom: 16 }}>
+      <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()} className="category-management-page__add">
         {t('pages.categoryAdmin.addRoot')}
       </Button>
 
@@ -309,7 +319,7 @@ const CategoryManagement: React.FC = () => {
 
           {imagePreviewUrl ? (
             <div style={{ marginBottom: 16, textAlign: 'center' }}>
-              <Image src={imagePreviewUrl} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} />
+              <Image src={resolveCategoryImage(imagePreviewUrl)} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={categoryImageFallback} />
             </div>
           ) : null}
 

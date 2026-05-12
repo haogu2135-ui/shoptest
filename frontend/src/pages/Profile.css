@@ -6,6 +6,10 @@
   display: none;
 }
 
+.profile-mobile-entry {
+  display: none;
+}
+
 .profile-orders__tabs {
   display: flex;
   gap: 28px;
@@ -128,6 +132,24 @@
   color: #ff4d00;
 }
 
+.profile-order-item__main,
+.profile-order-card__top,
+.profile-order-card__paid,
+.profile-order-card__amount,
+.profile-order-detail__title,
+.profile-page .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
+}
+
+.profile-order-detail__image {
+  width: 48px;
+  height: 48px;
+  display: block;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #f5f5f5;
+}
+
 .profile-order-card__amount,
 .profile-order-card__paid,
 .profile-order-card__actions {
@@ -154,6 +176,23 @@
   height: auto;
 }
 
+.profile-payment-method-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  line-height: 1.45;
+}
+
+.profile-payment-link {
+  height: auto;
+  max-width: 100%;
+  padding: 0;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .profile-page {
     padding: 14px !important;
@@ -170,6 +209,39 @@
 
   .profile-page .ant-tabs-tab {
     padding: 10px 0;
+  }
+
+  .profile-page > .ant-tabs > .ant-tabs-nav {
+    display: none;
+  }
+
+  .profile-mobile-entry {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .profile-mobile-entry__item {
+    min-height: 44px;
+    border: 1px solid #eeeeee;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #333333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 10px;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .profile-mobile-entry__item--active {
+    border-color: #ff4d00;
+    background: #fff4ef;
+    color: #ff4d00;
+    font-weight: 700;
   }
 
   .profile-page .ant-descriptions-item-label,

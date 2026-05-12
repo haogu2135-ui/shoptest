@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier } from '../types';
+import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog } from '../types';
 
 const resolveApiBaseUrl = () => {
     const configured = process.env.REACT_APP_API_BASE_URL;
@@ -23,6 +23,10 @@ export const supportWebSocketUrl = (token: string) => {
     base.pathname = '/ws/support';
     base.search = `token=${encodeURIComponent(token)}`;
     return base.toString();
+};
+
+export const appConfigApi = {
+    get: () => api.get<AppConfig>('/app/config'),
 };
 
 // 请求拦截器
@@ -61,6 +65,7 @@ export const userApi = {
     register: (user: Partial<User>) => api.post('/auth/register', user),
     login: (username: string, password: string) =>
         api.post('/auth/login', { username, password }),
+    logout: () => api.post('/auth/logout'),
     forgotPassword: (payload: { login: string; email: string; newPassword: string }) =>
         api.post('/auth/forgot-password', payload),
     getProfile: () => api.get<User>('/users/profile'),
@@ -80,6 +85,7 @@ export const productApi = {
     },
     getById: (id: number) => api.get<Product>(`/products/${id}`),
     getFeatured: () => api.get<Product[]>('/products/featured'),
+    getPersonalizedRecommendations: () => api.get<Product[]>('/products/personalized-recommendations'),
     create: (product: Partial<Product>) => api.post<Product>('/products', product),
     update: (id: number, product: Partial<Product>) => api.put<Product>(`/products/${id}`, product),
     delete: (id: number) => api.delete(`/products/${id}`),
@@ -120,7 +126,7 @@ export const orderApi = {
     delete: (id: number) => api.delete(`/orders/${id}`),
     cancel: (id: number) => api.put(`/orders/${id}/cancel`),
     confirm: (id: number) => api.put(`/orders/${id}/confirm`),
-    returnOrder: (id: number) => api.put(`/orders/${id}/return`),
+    returnOrder: (id: number, reason?: string) => api.put(`/orders/${id}/return`, { reason }),
     submitReturnShipment: (id: number, returnTrackingNumber: string) =>
         api.put(`/orders/${id}/return-shipment`, { returnTrackingNumber }),
     pay: (id: number) => api.put(`/orders/${id}/pay`),
@@ -139,9 +145,9 @@ export const couponApi = {
 };
 
 export const paymentApi = {
-    create: (orderId: number, channel: string) => api.post<Payment>('/payments', { orderId, channel }),
-    simulatePaid: (paymentId: number) => api.post<Payment>(`/payments/${paymentId}/simulate-paid`),
-    simulateCallback: (paymentId: number) => api.post<Payment>(`/payments/${paymentId}/simulate-callback`),
+    create: (orderId: number, channel: string, guestEmail?: string) => api.post<Payment>('/payments', { orderId, channel, guestEmail }),
+    simulatePaid: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${paymentId}/simulate-paid`, guestEmail ? { guestEmail } : undefined),
+    simulateCallback: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${paymentId}/simulate-callback`, guestEmail ? { guestEmail } : undefined),
     callback: (payload: {
         orderNo: string;
         channel: string;
@@ -193,6 +199,11 @@ export const adminApi = {
     getOrders: (status?: string) => api.get<Order[]>(`/admin/orders${status ? '?status=' + status : ''}`),
     exportOrders: (status?: string) => api.get('/admin/orders/export', {
         params: status ? { status } : undefined,
+        responseType: 'blob',
+    }),
+    getAuditLogs: (params?: Record<string, unknown>) => api.get<SecurityAuditLog[]>('/admin/audit-logs', { params }),
+    exportAuditLogs: (params?: Record<string, unknown>) => api.get('/admin/audit-logs/export', {
+        params,
         responseType: 'blob',
     }),
     updateOrderStatus: (id: number, status: string, trackingNumber?: string, trackingCarrierCode?: string) =>
@@ -262,6 +273,20 @@ export const petProfileApi = {
     create: (payload: Partial<PetProfile>) => api.post<PetProfile>('/pet-profiles', payload),
     update: (id: number, payload: Partial<PetProfile>) => api.put<PetProfile>(`/pet-profiles/${id}`, payload),
     delete: (id: number) => api.delete(`/pet-profiles/${id}`),
+};
+
+export const petGalleryApi = {
+    getAll: () => api.get<PetGalleryPhoto[]>('/pet-gallery'),
+    getQuota: () => api.get<PetGalleryQuota>('/pet-gallery/quota'),
+    like: (id: number) => api.post<PetGalleryPhoto>(`/pet-gallery/${id}/like`),
+    delete: (id: number) => api.delete(`/pet-gallery/${id}`),
+    upload: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post<PetGalleryPhoto>('/pet-gallery', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
 };
 
 export const logisticsApi = {

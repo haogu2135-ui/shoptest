@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.SecurityAuditLogMapper">
+    <resultMap id="securityAuditLogMap" type="com.example.shop.entity.SecurityAuditLog">
+        <id property="id" column="id"/>
+        <result property="action" column="action"/>
+        <result property="result" column="result"/>
+        <result property="actorUserId" column="actor_user_id"/>
+        <result property="actorUsername" column="actor_username"/>
+        <result property="actorRole" column="actor_role"/>
+        <result property="resourceType" column="resource_type"/>
+        <result property="resourceId" column="resource_id"/>
+        <result property="ipAddress" column="ip_address"/>
+        <result property="userAgent" column="user_agent"/>
+        <result property="message" column="message"/>
+        <result property="metadata" column="metadata"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.shop.entity.SecurityAuditLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO security_audit_logs (
+            action, result, actor_user_id, actor_username, actor_role,
+            resource_type, resource_id, ip_address, user_agent, message, metadata, created_at
+        )
+        VALUES (
+            #{action}, #{result}, #{actorUserId}, #{actorUsername}, #{actorRole},
+            #{resourceType}, #{resourceId}, #{ipAddress}, #{userAgent}, #{message}, #{metadata}, #{createdAt}
+        )
+    </insert>
+
+    <select id="search" resultMap="securityAuditLogMap">
+        SELECT *
+        FROM security_audit_logs
+        <where>
+            <if test="action != null and action != ''">
+                AND action = #{action}
+            </if>
+            <if test="result != null and result != ''">
+                AND result = #{result}
+            </if>
+            <if test="actorUsername != null and actorUsername != ''">
+                AND actor_username LIKE CONCAT('%', #{actorUsername}, '%')
+            </if>
+            <if test="resourceType != null and resourceType != ''">
+                AND resource_type = #{resourceType}
+            </if>
+            <if test="startAt != null">
+                AND created_at &gt;= #{startAt}
+            </if>
+            <if test="endAt != null">
+                AND created_at &lt;= #{endAt}
+            </if>
+        </where>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

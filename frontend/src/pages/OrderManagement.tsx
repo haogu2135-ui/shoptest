@@ -7,6 +7,7 @@ import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
+import './OrderManagement.css';
 
 const { Title } = Typography;
 
@@ -47,6 +48,7 @@ const OrderManagement: React.FC = () => {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState<React.Key[]>([]);
+  const [searchText, setSearchText] = useState('');
   const [batchShipOpen, setBatchShipOpen] = useState(false);
   const [batchTrackingPrefix, setBatchTrackingPrefix] = useState('BATCH');
   const [batchTrackingCarrierCode, setBatchTrackingCarrierCode] = useState<string | undefined>();
@@ -81,6 +83,11 @@ const OrderManagement: React.FC = () => {
       .catch(() => setCarriers([]));
   }, []);
 
+  useEffect(() => {
+    const shippableIds = new Set(orders.filter((order) => order.status === 'PENDING_SHIPMENT').map((order) => order.id));
+    setSelectedOrderIds((current) => current.filter((id) => shippableIds.has(Number(id))));
+  }, [orders]);
+
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
       await adminApi.updateOrderStatus(orderId, newStatus);
@@ -104,6 +111,21 @@ const OrderManagement: React.FC = () => {
     carriers.find((carrier) => carrier.trackingCode === carrierCode)?.name;
 
   const buildShippingLabelHtml = (order: Order, items: OrderItem[]) => {
+    const labelCopy = {
+      shippingLabel: t('pages.adminOrders.shippingLabel'),
+      order: t('pages.adminOrders.orderLabel'),
+      carrierAuto: t('pages.adminOrders.carrierAuto'),
+      trackingNumber: t('pages.adminOrders.trackingNumberLabel'),
+      shipTo: t('pages.adminOrders.shipTo'),
+      payment: t('pages.adminOrders.paymentLabel'),
+      created: t('pages.adminOrders.createdLabel'),
+      items: t('pages.adminOrders.items'),
+      product: t('pages.adminOrders.product'),
+      specs: t('pages.adminOrders.specs'),
+      qty: t('pages.adminOrders.qty'),
+      noItemData: t('pages.adminOrders.noItemData'),
+      generatedBy: t('pages.adminOrders.generatedBy'),
+    };
     const itemRows = items.length
       ? items.map((item) => `
           <tr>
@@ -112,13 +134,13 @@ const OrderManagement: React.FC = () => {
             <td class="qty">${escapeHtml(item.quantity)}</td>
           </tr>
         `).join('')
-      : '<tr><td colspan="3" class="muted">No item data</td></tr>';
+      : `<tr><td colspan="3" class="muted">${escapeHtml(labelCopy.noItemData)}</td></tr>`;
 
     return `<!doctype html>
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Shipping Label ${escapeHtml(order.orderNo || order.id)}</title>
+          <title>${escapeHtml(labelCopy.shippingLabel)} ${escapeHtml(order.orderNo || order.id)}</title>
           <style>
             @page { size: 100mm 150mm; margin: 6mm; }
             * { box-sizing: border-box; }
@@ -147,35 +169,35 @@ const OrderManagement: React.FC = () => {
           <div class="label">
             <div class="header">
               <div>
-                <div class="title">SHIPPING LABEL</div>
-                <div>Order: ${escapeHtml(order.orderNo || order.id)}</div>
+                <div class="title">${escapeHtml(labelCopy.shippingLabel)}</div>
+                <div>${escapeHtml(labelCopy.order)}: ${escapeHtml(order.orderNo || order.id)}</div>
               </div>
               <div class="carrier">
-                <strong>${escapeHtml(order.trackingCarrierName || 'Carrier auto')}</strong><br />
+                <strong>${escapeHtml(order.trackingCarrierName || labelCopy.carrierAuto)}</strong><br />
                 ${escapeHtml(order.trackingCarrierCode || '')}
               </div>
             </div>
             <div class="tracking">
-              <div class="label-text">Tracking Number</div>
+              <div class="label-text">${escapeHtml(labelCopy.trackingNumber)}</div>
               <div class="tracking-number">${escapeHtml(order.trackingNumber || '-')}</div>
               <div class="barcode">*${escapeHtml(order.trackingNumber || order.orderNo || order.id)}*</div>
             </div>
             <div class="section">
-              <div class="label-text">Ship To</div>
+              <div class="label-text">${escapeHtml(labelCopy.shipTo)}</div>
               <div class="address">${escapeHtml(order.shippingAddress || '-')}</div>
             </div>
             <div class="section meta">
-              <div><div class="label-text">Payment</div>${escapeHtml(order.paymentMethod || '-')}</div>
-              <div><div class="label-text">Created</div>${escapeHtml(order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '-')}</div>
+              <div><div class="label-text">${escapeHtml(labelCopy.payment)}</div>${escapeHtml(order.paymentMethod || '-')}</div>
+              <div><div class="label-text">${escapeHtml(labelCopy.created)}</div>${escapeHtml(order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '-')}</div>
             </div>
             <div class="section">
-              <div class="label-text">Items</div>
+              <div class="label-text">${escapeHtml(labelCopy.items)}</div>
               <table>
-                <thead><tr><th>Product</th><th>Specs</th><th class="qty">Qty</th></tr></thead>
+                <thead><tr><th>${escapeHtml(labelCopy.product)}</th><th>${escapeHtml(labelCopy.specs)}</th><th class="qty">${escapeHtml(labelCopy.qty)}</th></tr></thead>
                 <tbody>${itemRows}</tbody>
               </table>
             </div>
-            <div class="footer">Generated by Shop Admin</div>
+            <div class="footer">${escapeHtml(labelCopy.generatedBy)}</div>
           </div>
           <script>
             window.onload = function () {
@@ -190,7 +212,7 @@ const OrderManagement: React.FC = () => {
   const printShippingLabel = async (order: Order, existingWindow?: Window | null) => {
     const printWindow = existingWindow || window.open('', '_blank', 'width=480,height=760');
     if (!printWindow) {
-      message.warning('浏览器阻止了打印窗口，请允许弹窗后重试');
+      message.warning(t('pages.adminOrders.printBlocked'));
       return;
     }
 
@@ -307,6 +329,59 @@ const OrderManagement: React.FC = () => {
     value: carrier.trackingCode,
     label: `${carrier.name} (${carrier.trackingCode})`,
   }));
+  const normalizedSearchText = searchText.trim().toLowerCase();
+  const filteredOrders = normalizedSearchText
+    ? orders.filter((order) => [
+        order.id,
+        order.orderNo,
+        order.userId,
+        order.status,
+        order.shippingAddress,
+        order.paymentMethod,
+        order.trackingNumber,
+        order.trackingCarrierName,
+        order.returnTrackingNumber,
+        order.returnReason,
+      ].some((value) => String(value || '').toLowerCase().includes(normalizedSearchText)))
+    : orders;
+  const orderSummaryCards = [
+    {
+      key: 'pendingShipment',
+      label: t('status.PENDING_SHIPMENT'),
+      value: orders.filter((order) => order.status === 'PENDING_SHIPMENT').length,
+      color: '#1677ff',
+    },
+    {
+      key: 'returnRequested',
+      label: t('status.RETURN_REQUESTED'),
+      value: orders.filter((order) => order.status === 'RETURN_REQUESTED').length,
+      color: '#d48806',
+    },
+    {
+      key: 'returnShipped',
+      label: t('status.RETURN_SHIPPED'),
+      value: orders.filter((order) => order.status === 'RETURN_SHIPPED').length,
+      color: '#08979c',
+    },
+    {
+      key: 'refunded',
+      label: t('status.REFUNDED'),
+      value: orders.filter((order) => order.status === 'RETURNED' || order.refundedAt).length,
+      color: '#722ed1',
+    },
+  ];
+  const transitionLabel = (currentStatus: string, nextStatus: string) => {
+    if (currentStatus === 'RETURN_REQUESTED' && nextStatus === 'RETURN_APPROVED') {
+      return t('pages.adminOrders.approveReturn');
+    }
+    if (currentStatus === 'RETURN_REQUESTED' && nextStatus === 'COMPLETED') {
+      return t('pages.adminOrders.rejectReturn');
+    }
+    if (currentStatus === 'RETURN_SHIPPED' && nextStatus === 'RETURNED') {
+      return t('pages.adminOrders.confirmReturnReceivedAndRefund');
+    }
+    return t(`status.${nextStatus}`);
+  };
 
   const columns = [
     { title: t('pages.adminOrders.orderId'), dataIndex: 'id', key: 'id', width: 80 },
@@ -316,7 +391,7 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'totalAmount',
       key: 'totalAmount',
       width: 110,
-      render: (v: number) => <span style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(v)}</span>,
+      render: (v: number) => <span className="order-management-page__amount">{formatMoney(v)}</span>,
     },
     {
       title: t('common.status'),
@@ -324,6 +399,14 @@ const OrderManagement: React.FC = () => {
       key: 'status',
       width: 120,
       render: (s: string) => <Tag color={statusColors[s]}>{t(`status.${s}`)}</Tag>,
+    },
+    {
+      title: t('pages.adminOrders.returnReason'),
+      dataIndex: 'returnReason',
+      key: 'returnReason',
+      width: 160,
+      ellipsis: true,
+      render: (v: string) => v || '-',
     },
     {
       title: t('pages.adminOrders.address'),
@@ -349,8 +432,8 @@ const OrderManagement: React.FC = () => {
           <span>{v}</span>
           {record.trackingCarrierName ? <Typography.Text type="secondary">{record.trackingCarrierName}</Typography.Text> : null}
           <Space size={8}>
-            <Button size="small" type="link" style={{ padding: 0 }} onClick={() => handleTrackShipment(v, record.trackingCarrierCode)}>{t('pages.adminOrders.track')}</Button>
-            <Button size="small" type="link" style={{ padding: 0 }} onClick={() => printShippingLabel(record)}>打印面单</Button>
+            <Button size="small" type="link" className="order-management-page__linkButton" onClick={() => handleTrackShipment(v, record.trackingCarrierCode)}>{t('pages.adminOrders.track')}</Button>
+            <Button size="small" type="link" className="order-management-page__linkButton" onClick={() => printShippingLabel(record)}>{t('pages.adminOrders.printLabel')}</Button>
           </Space>
         </Space>
       ) : '-',
@@ -361,6 +444,13 @@ const OrderManagement: React.FC = () => {
       key: 'returnTrackingNumber',
       width: 150,
       render: (v: string) => v || '-',
+    },
+    {
+      title: t('pages.adminOrders.refundedAt'),
+      dataIndex: 'refundedAt',
+      key: 'refundedAt',
+      width: 170,
+      render: (v: string) => v ? new Date(v).toLocaleString(dateLocale) : '-',
     },
     {
       title: t('pages.adminOrders.createdAt'),
@@ -381,7 +471,7 @@ const OrderManagement: React.FC = () => {
               {t('pages.adminOrders.items')}
             </Button>
             {transitions.length === 0 ? (
-              <span style={{ color: '#999' }}>{t('common.completed')}</span>
+              <span className="order-management-page__completed">{t('common.completed')}</span>
             ) : (
               <Select
                 size="small"
@@ -394,11 +484,21 @@ const OrderManagement: React.FC = () => {
                     setTrackingCarrierCode(record.trackingCarrierCode);
                     return;
                   }
+                  if (record.status === 'RETURN_SHIPPED' && val === 'RETURNED') {
+                    Modal.confirm({
+                      title: t('pages.adminOrders.confirmReturnRefundTitle'),
+                      content: t('pages.adminOrders.confirmReturnRefundContent'),
+                      okText: t('pages.adminOrders.confirmReturnReceivedAndRefund'),
+                      cancelText: t('common.cancel'),
+                      onOk: () => handleStatusChange(record.id, val),
+                    });
+                    return;
+                  }
                   handleStatusChange(record.id, val);
                 }}
                 options={transitions.map((s) => ({
                   value: s,
-                  label: t(`status.${s}`),
+                  label: transitionLabel(record.status, s),
                 }))}
               />
             )}
@@ -409,10 +509,18 @@ const OrderManagement: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div className="order-management-page">
       <Title level={4}>{t('pages.adminOrders.title')}</Title>
       <Divider />
-      <Card style={{ marginBottom: 16 }}>
+      <div className="order-management-page__summaryGrid">
+        {orderSummaryCards.map((item) => (
+          <Card key={item.key} className="order-management-page__summaryCard">
+            <span>{item.label}</span>
+            <strong style={{ color: item.color }}>{item.value}</strong>
+          </Card>
+        ))}
+      </div>
+      <Card className="order-management-page__toolbar" style={{ marginBottom: 16 }}>
         <Space wrap>
           <span>{t('pages.adminOrders.filter')}</span>
           <Select
@@ -433,6 +541,13 @@ const OrderManagement: React.FC = () => {
               { value: 'CANCELLED', label: t('status.CANCELLED') },
             ]}
           />
+          <Input.Search
+            allowClear
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder={t('pages.adminOrders.searchPlaceholder')}
+            style={{ width: 260 }}
+          />
           <Button icon={<DownloadOutlined />} onClick={handleExport}>
             {t('pages.adminOrders.exportOrders')}
           </Button>
@@ -445,23 +560,25 @@ const OrderManagement: React.FC = () => {
           </Button>
         </Space>
       </Card>
-      <Table
-        columns={columns}
-        dataSource={orders}
-        rowKey="id"
-        rowSelection={{
-          selectedRowKeys: selectedOrderIds,
-          onChange: setSelectedOrderIds,
-          getCheckboxProps: (record) => ({
-            disabled: record.status !== 'PENDING_SHIPMENT',
-          }),
-        }}
-        loading={loading}
-        pagination={{ pageSize: 10, showTotal: (total) => t('pages.adminOrders.total', { count: total }) }}
-        bordered
-        size="middle"
-        scroll={{ x: 1180 }}
-      />
+      <div className="order-management-page__table">
+        <Table
+          columns={columns}
+          dataSource={filteredOrders}
+          rowKey="id"
+          rowSelection={{
+            selectedRowKeys: selectedOrderIds,
+            onChange: setSelectedOrderIds,
+            getCheckboxProps: (record) => ({
+              disabled: record.status !== 'PENDING_SHIPMENT',
+            }),
+          }}
+          loading={loading}
+          pagination={{ pageSize: 10, showTotal: (total) => t('pages.adminOrders.total', { count: total }) }}
+          bordered
+          size="middle"
+          scroll={{ x: 1510 }}
+        />
+      </div>
       <Modal
         title={t('pages.adminOrders.enterTracking')}
         open={!!shippingOrder}
@@ -479,7 +596,7 @@ const OrderManagement: React.FC = () => {
             showSearch
             value={trackingCarrierCode}
             onChange={setTrackingCarrierCode}
-            placeholder="选择快递公司"
+            placeholder={t('pages.adminOrders.selectCarrier')}
             options={carrierOptions}
             optionFilterProp="label"
           />
@@ -490,7 +607,7 @@ const OrderManagement: React.FC = () => {
             maxLength={100}
           />
           <Checkbox checked={autoPrintLabel} onChange={(e) => setAutoPrintLabel(e.target.checked)}>
-            发货后自动打印面单
+            {t('pages.adminOrders.autoPrintLabel')}
           </Checkbox>
         </Space>
       </Modal>
@@ -513,7 +630,7 @@ const OrderManagement: React.FC = () => {
           showSearch
           value={batchTrackingCarrierCode}
           onChange={setBatchTrackingCarrierCode}
-          placeholder="选择快递公司"
+          placeholder={t('pages.adminOrders.selectCarrier')}
           options={carrierOptions}
           optionFilterProp="label"
           style={{ width: '100%', marginTop: 12 }}

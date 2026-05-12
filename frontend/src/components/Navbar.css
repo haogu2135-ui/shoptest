@@ -31,6 +31,15 @@
   to { transform: translateX(-100%); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .shop-nav__ticker {
+    width: auto;
+    flex-wrap: wrap;
+    animation: none;
+    transform: none;
+  }
+}
+
 .shop-nav__inner {
   width: min(1200px, calc(100% - 24px));
   margin: 0 auto;
@@ -73,6 +82,12 @@
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.shop-nav a:focus-visible,
+.shop-nav button:focus-visible {
+  outline: 2px solid rgba(247, 201, 72, 0.9);
+  outline-offset: 3px;
 }
 
 .shop-nav__links a,
@@ -213,6 +228,10 @@
 }
 
 .shop-nav__mobile-logout {
+  display: none !important;
+}
+
+.shop-nav__mobile-orders {
   display: none !important;
 }
 
@@ -369,6 +388,10 @@
   }
 
   .shop-nav__mobile-logout {
+    display: inline-flex !important;
+  }
+
+  .shop-nav__mobile-orders {
     display: inline-flex !important;
   }
 

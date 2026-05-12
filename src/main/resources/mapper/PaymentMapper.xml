@@ -49,6 +49,12 @@
         LIMIT 1
     </select>
 
+    <select id="findLatestPaidByOrderId" resultMap="paymentMap">
+        SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'PAID'
+        ORDER BY paid_at DESC, id DESC
+        LIMIT 1
+    </select>
+
     <select id="findPendingByOrderId" resultMap="paymentMap">
         SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'PENDING'
         ORDER BY id DESC
@@ -84,6 +90,13 @@
             paid_at = NOW(),
             updated_at = NOW()
         WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
+    <update id="markRefunded">
+        UPDATE payments
+        SET status = 'REFUNDED',
+            updated_at = NOW()
+        WHERE id = #{id} AND status = 'PAID'
     </update>
 
     <update id="markFailed">

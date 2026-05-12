@@ -18,8 +18,15 @@ public class BackupAndApplyPetCatalog {
     private static final String URL = "jdbc:mysql://localhost:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
     private static final String USER = "root";
     private static final String PASSWORD = "84813378";
+    private static final String APPLY_CONFIRMATION = "--apply-missing-pet-catalog";
 
     public static void main(String[] args) throws Exception {
+        if (args.length == 0 || !APPLY_CONFIRMATION.equals(args[0])) {
+            System.err.println("Refusing to run without confirmation: this script backs up categories/products, then inserts missing pet catalog seed rows.");
+            System.err.println("Run with " + APPLY_CONFIRMATION + " only when you intentionally want to add any missing demo pet catalog rows.");
+            System.exit(2);
+        }
+
         Path backupDir = Path.of("backups");
         Files.createDirectories(backupDir);
         String stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(LocalDateTime.now());

@@ -26,7 +26,17 @@ public class Order implements Serializable {
     private String trackingCarrierCode;
     private String trackingCarrierName;
     private String returnTrackingNumber;
+    private String returnReason;
+    private LocalDateTime returnRequestedAt;
+    private LocalDateTime returnApprovedAt;
+    private LocalDateTime returnRejectedAt;
+    private LocalDateTime returnShippedAt;
+    private LocalDateTime returnedAt;
+    private Boolean returnable;
+    private LocalDateTime returnDeadline;
+    private LocalDateTime refundedAt;
     private LocalDateTime shippedAt;
+    private LocalDateTime completedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -167,12 +177,92 @@ public class Order implements Serializable {
         this.returnTrackingNumber = returnTrackingNumber;
     }
 
+    public String getReturnReason() {
+        return returnReason;
+    }
+
+    public void setReturnReason(String returnReason) {
+        this.returnReason = returnReason;
+    }
+
+    public LocalDateTime getReturnRequestedAt() {
+        return returnRequestedAt;
+    }
+
+    public void setReturnRequestedAt(LocalDateTime returnRequestedAt) {
+        this.returnRequestedAt = returnRequestedAt;
+    }
+
+    public LocalDateTime getReturnApprovedAt() {
+        return returnApprovedAt;
+    }
+
+    public void setReturnApprovedAt(LocalDateTime returnApprovedAt) {
+        this.returnApprovedAt = returnApprovedAt;
+    }
+
+    public LocalDateTime getReturnRejectedAt() {
+        return returnRejectedAt;
+    }
+
+    public void setReturnRejectedAt(LocalDateTime returnRejectedAt) {
+        this.returnRejectedAt = returnRejectedAt;
+    }
+
+    public LocalDateTime getReturnShippedAt() {
+        return returnShippedAt;
+    }
+
+    public void setReturnShippedAt(LocalDateTime returnShippedAt) {
+        this.returnShippedAt = returnShippedAt;
+    }
+
+    public LocalDateTime getReturnedAt() {
+        return returnedAt;
+    }
+
+    public void setReturnedAt(LocalDateTime returnedAt) {
+        this.returnedAt = returnedAt;
+    }
+
+    public Boolean getReturnable() {
+        return returnable;
+    }
+
+    public void setReturnable(Boolean returnable) {
+        this.returnable = returnable;
+    }
+
+    public LocalDateTime getReturnDeadline() {
+        return returnDeadline;
+    }
+
+    public void setReturnDeadline(LocalDateTime returnDeadline) {
+        this.returnDeadline = returnDeadline;
+    }
+
+    public LocalDateTime getRefundedAt() {
+        return refundedAt;
+    }
+
+    public void setRefundedAt(LocalDateTime refundedAt) {
+        this.refundedAt = refundedAt;
+    }
+
     public LocalDateTime getShippedAt() {
         return shippedAt;
     }
 
     public void setShippedAt(LocalDateTime shippedAt) {
         this.shippedAt = shippedAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
     }
 
     public LocalDateTime getCreatedAt() {

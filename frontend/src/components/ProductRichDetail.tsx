@@ -32,19 +32,24 @@ export const parseDetailContent = (value?: ProductRichDetailProps['detailContent
   }
 };
 
+export const isDirectVideo = (value: string) => /\.(mp4|webm|ogg)(\?.*)?$/i.test(value);
+
 export const toEmbeddableVideoUrl = (value: string) => {
   try {
     const url = new URL(value);
-    if (url.hostname.includes('youtube.com')) {
-      const videoId = url.searchParams.get('v');
+    const hostname = url.hostname.replace(/^www\./, '').toLowerCase();
+    if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) {
+      const parts = url.pathname.split('/').filter(Boolean);
+      const videoId = url.searchParams.get('v') || (['embed', 'shorts'].includes(parts[0]) ? parts[1] : undefined);
       return videoId ? `https://www.youtube.com/embed/${videoId}` : value;
     }
-    if (url.hostname.includes('youtu.be')) {
+    if (hostname === 'youtu.be') {
       const videoId = url.pathname.replace('/', '');
       return videoId ? `https://www.youtube.com/embed/${videoId}` : value;
     }
-    if (url.hostname.includes('vimeo.com')) {
-      const videoId = url.pathname.split('/').filter(Boolean)[0];
+    if (hostname === 'vimeo.com' || hostname.endsWith('.vimeo.com')) {
+      const parts = url.pathname.split('/').filter(Boolean);
+      const videoId = hostname === 'player.vimeo.com' && parts[0] === 'video' ? parts[1] : parts[0];
       return videoId ? `https://player.vimeo.com/video/${videoId}` : value;
     }
     return value;
@@ -53,7 +58,10 @@ export const toEmbeddableVideoUrl = (value: string) => {
   }
 };
 
-export const isDirectVideo = (value: string) => /\.(mp4|webm|ogg)(\?.*)?$/i.test(value);
+export const canEmbedVideoUrl = (value: string) => {
+  const embeddableUrl = toEmbeddableVideoUrl(value);
+  return embeddableUrl !== value || isDirectVideo(value);
+};
 
 const handleImageZoomMove = (event: React.MouseEvent<HTMLImageElement>) => {
   const rect = event.currentTarget.getBoundingClientRect();
@@ -106,13 +114,19 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
           const videoUrl = toEmbeddableVideoUrl(block.url);
           return (
             <figure key={index} className="product-rich-detail__figure">
-              <div className="product-rich-detail__video">
-                {isDirectVideo(videoUrl) ? (
-                  <video src={videoUrl} controls preload="metadata" />
-                ) : (
-                  <iframe src={videoUrl} title={block.caption || `Product video ${index + 1}`} allowFullScreen />
-                )}
-              </div>
+              {canEmbedVideoUrl(block.url) ? (
+                <div className="product-rich-detail__video">
+                  {isDirectVideo(videoUrl) ? (
+                    <video src={videoUrl} controls preload="metadata" />
+                  ) : (
+                    <iframe src={videoUrl} title={block.caption || `Product video ${index + 1}`} allowFullScreen />
+                  )}
+                </div>
+              ) : (
+                <a className="product-rich-detail__video-link" href={block.url} target="_blank" rel="noopener noreferrer">
+                  {block.caption || 'Open product video'}
+                </a>
+              )}
               {block.caption ? <figcaption>{block.caption}</figcaption> : null}
             </figure>
           );

@@ -57,12 +57,20 @@ public class OrderService {
     private ProductVariantService productVariantService;
     @Autowired
     private LogisticsCarrierService logisticsCarrierService;
+    @Autowired
+    private RefundService refundService;
 
     @Value("${order.unpaid-timeout-minutes:30}")
     private long unpaidTimeoutMinutes;
 
     @Value("${order.default-shipping-fee:30.00}")
     private BigDecimal defaultShippingFee;
+
+    @Value("${order.free-shipping-threshold:899.00}")
+    private BigDecimal freeShippingThreshold;
+
+    @Value("${order.return-window-days:7}")
+    private long returnWindowDays;
 
     /**
      * 创建新订单
@@ -262,7 +270,11 @@ public class OrderService {
         String email = request.getGuestEmail().trim().toLowerCase();
         Optional<User> existing = userRepository.findByEmail(email);
         if (existing.isPresent()) {
-            return existing.get().getId();
+            User user = existing.get();
+            if (!"GUEST".equals(user.getStatus())) {
+                throw new IllegalArgumentException("This email is already registered. Please sign in before checkout.");
+            }
+            return user.getId();
         }
         User user = new User();
         String usernameSeed = "guest_" + email.replaceAll("[^a-z0-9]+", "_");
@@ -283,6 +295,14 @@ public class OrderService {
 
     private BigDecimal calculateShippingFee(List<CartItem> items) {
         if (items == null || items.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal subtotal = items.stream()
+                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (freeShippingThreshold != null
+                && freeShippingThreshold.compareTo(BigDecimal.ZERO) > 0
+                && subtotal.compareTo(freeShippingThreshold) >= 0) {
             return BigDecimal.ZERO;
         }
         boolean allItemsFreeShipping = true;
@@ -306,14 +326,16 @@ public class OrderService {
      * 获取所有订单
      */
     public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+        return orderRepository.findAll().stream()
+                .map(this::enrichReturnInfo)
+                .collect(Collectors.toList());
     }
 
     /**
      * 根据ID获取订单
      */
     public Order getOrderById(Long id) {
-        return orderRepository.findById(id);
+        return enrichReturnInfo(orderRepository.findById(id));
     }
 
     public OrderTrackResponse trackOrder(String orderNo, String email) {
@@ -327,6 +349,7 @@ public class OrderService {
         if (order == null) {
             throw new IllegalArgumentException("Order not found");
         }
+        enrichReturnInfo(order);
         return new OrderTrackResponse(order, orderItemRepository.findByOrderId(order.getId()));
     }
 
@@ -350,7 +373,9 @@ public class OrderService {
      * 根据用户ID获取订单列表
      */
     public List<Order> getOrdersByUserId(Long userId) {
-        return orderRepository.findByUserId(userId);
+        return orderRepository.findByUserId(userId).stream()
+                .map(this::enrichReturnInfo)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -365,7 +390,7 @@ public class OrderService {
 
     @Transactional
     public boolean cancelOrder(Long id) {
-        Order order = getOrderById(id);
+        Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
         }
@@ -398,46 +423,60 @@ public class OrderService {
     }
 
     @Transactional
-    public boolean requestReturn(Long id) {
-        Order order = getOrderById(id);
+    public boolean requestReturn(Long id, Long userId, String reason) {
+        Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
+        }
+        if (userId != null && !userId.equals(order.getUserId())) {
+            throw new IllegalStateException("Order does not belong to this user");
         }
         if (!"COMPLETED".equals(order.getStatus())) {
             throw new IllegalStateException("Only completed orders can request return");
         }
-        return orderRepository.updateStatus(id, "RETURN_REQUESTED") > 0;
+        LocalDateTime deadline = calculateReturnDeadline(order);
+        if (deadline == null || LocalDateTime.now().isAfter(deadline)) {
+            throw new IllegalStateException("Return window has expired");
+        }
+        String cleanedReason = reason == null ? "" : reason.trim();
+        if (cleanedReason.length() > 500) {
+            throw new IllegalArgumentException("Return reason must be 500 characters or less");
+        }
+        return orderRepository.requestReturnIfCurrent(id, "COMPLETED", cleanedReason) > 0;
     }
 
     @Transactional
     public boolean approveReturn(Long id) {
-        Order order = getOrderById(id);
+        Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
         }
         if (!"RETURN_REQUESTED".equals(order.getStatus())) {
             throw new IllegalStateException("Only return-requested orders can be approved");
         }
-        return orderRepository.updateStatus(id, "RETURN_APPROVED") > 0;
+        return orderRepository.approveReturnIfCurrent(id, "RETURN_REQUESTED") > 0;
     }
 
     @Transactional
     public boolean rejectReturn(Long id) {
-        Order order = getOrderById(id);
+        Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
         }
         if (!"RETURN_REQUESTED".equals(order.getStatus())) {
             throw new IllegalStateException("Only return-requested orders can be rejected");
         }
-        return orderRepository.updateStatus(id, "COMPLETED") > 0;
+        return orderRepository.rejectReturnIfCurrent(id, "RETURN_REQUESTED") > 0;
     }
 
     @Transactional
-    public boolean submitReturnShipment(Long id, String returnTrackingNumber) {
-        Order order = getOrderById(id);
+    public boolean submitReturnShipment(Long id, Long userId, String returnTrackingNumber) {
+        Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
+        }
+        if (userId != null && !userId.equals(order.getUserId())) {
+            throw new IllegalStateException("Order does not belong to this user");
         }
         if (!"RETURN_APPROVED".equals(order.getStatus())) {
             throw new IllegalStateException("Only approved return orders can submit return shipment");
@@ -450,18 +489,23 @@ public class OrderService {
 
     @Transactional
     public boolean completeReturn(Long id) {
-        Order order = getOrderById(id);
+        Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
         }
         if (!"RETURN_SHIPPED".equals(order.getStatus())) {
             throw new IllegalStateException("Only return-shipped orders can be completed");
         }
+        refundService.refundPaidPayment(order);
+        int updated = orderRepository.completeReturnAndRefundIfCurrent(id, "RETURN_SHIPPED");
+        if (updated == 0) {
+            return false;
+        }
         List<OrderItem> items = orderItemRepository.findByOrderId(id);
         for (OrderItem item : items) {
             restoreStock(item);
         }
-        return orderRepository.updateStatus(id, "RETURNED") > 0;
+        return true;
     }
 
     private void restoreStock(OrderItem item) {
@@ -482,7 +526,7 @@ public class OrderService {
 
     @Transactional
     public boolean shipOrder(Long id, String trackingNumber, String trackingCarrierCode) {
-        Order order = getOrderById(id);
+        Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
         }
@@ -544,5 +588,32 @@ public class OrderService {
     public Map<String, Long> getStatusBreakdown() {
         return orderRepository.findAll().stream()
                 .collect(Collectors.groupingBy(Order::getStatus, LinkedHashMap::new, Collectors.counting()));
+    }
+
+    private Order enrichReturnInfo(Order order) {
+        if (order == null) {
+            return null;
+        }
+        LocalDateTime deadline = calculateReturnDeadline(order);
+        order.setReturnDeadline(deadline);
+        order.setReturnable("COMPLETED".equals(order.getStatus())
+                && deadline != null
+                && !LocalDateTime.now().isAfter(deadline));
+        return order;
+    }
+
+    private LocalDateTime calculateReturnDeadline(Order order) {
+        if (order == null || returnWindowDays <= 0) {
+            return null;
+        }
+        LocalDateTime completedAt = resolveCompletedAt(order);
+        return completedAt == null ? null : completedAt.plusDays(returnWindowDays);
+    }
+
+    private LocalDateTime resolveCompletedAt(Order order) {
+        if (order.getCompletedAt() != null) {
+            return order.getCompletedAt();
+        }
+        return order.getUpdatedAt() != null ? order.getUpdatedAt() : order.getCreatedAt();
     }
 } 

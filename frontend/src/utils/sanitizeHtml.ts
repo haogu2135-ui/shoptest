@@ -1,4 +1,4 @@
-const blockedTags = 'script, iframe, object, embed, link, meta, style, form, input, button';
+const blockedTags = 'script, iframe, object, embed, link, meta, style, form, input, button, svg, math, frame, frameset, base';
 const urlAttributes = new Set(['href', 'src', 'xlink:href', 'action', 'formaction']);
 
 const isAllowedUrl = (value: string) => {
@@ -20,7 +20,7 @@ export const stripUnsafeHtml = (html: string) => {
     Array.from(node.attributes).forEach((attr) => {
       const name = attr.name.toLowerCase();
       const value = attr.value;
-      if (name.startsWith('on') || name === 'srcdoc') {
+      if (name.startsWith('on') || name === 'srcdoc' || name === 'style') {
         node.removeAttribute(attr.name);
         return;
       }
@@ -28,6 +28,9 @@ export const stripUnsafeHtml = (html: string) => {
         node.removeAttribute(attr.name);
       }
     });
+    if (node.tagName.toLowerCase() === 'a' && node.getAttribute('target') === '_blank') {
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
   });
   return template.innerHTML;
 };

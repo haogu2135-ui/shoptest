@@ -4,6 +4,7 @@ import { NotificationOutlined, SendOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
+import './NotificationManagement.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -17,6 +18,7 @@ const NotificationManagement: React.FC = () => {
   const [sending, setSending] = useState(false);
   const { t } = useLanguage();
   const contentFormat = Form.useWatch('contentFormat', form) || 'HTML';
+  const notificationTitle = Form.useWatch('title', form) || '';
   const messageContent = Form.useWatch('message', form) || '';
 
   const previewHtml = useMemo(() => stripUnsafeHtml(messageContent), [messageContent]);
@@ -31,6 +33,7 @@ const NotificationManagement: React.FC = () => {
       };
       const res = await adminApi.broadcastNotification(payload);
       message.success(t('pages.notificationAdmin.sent', { count: res.data.sent }));
+      window.dispatchEvent(new Event('shop:notifications-updated'));
       form.resetFields();
       form.setFieldsValue({ type: 'PROMOTION', contentFormat: 'HTML' });
     } catch (error: any) {
@@ -51,14 +54,14 @@ const NotificationManagement: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '32px 24px' }}>
+    <div className="notification-management-page">
       <Space align="center">
         <NotificationOutlined style={{ fontSize: 24 }} />
         <Title level={3} style={{ margin: 0 }}>{t('pages.notificationAdmin.title')}</Title>
       </Space>
       <Divider />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1fr) minmax(320px, 0.9fr)', gap: 24 }}>
+      <div className="notification-management-page__grid">
         <Card title={t('pages.notificationAdmin.compose')}>
           <Alert
             type="info"
@@ -96,7 +99,7 @@ const NotificationManagement: React.FC = () => {
                 placeholder={contentFormat === 'HTML' ? t('pages.notificationAdmin.htmlPlaceholder') : t('pages.notificationAdmin.textPlaceholder')}
               />
             </Form.Item>
-            <Space>
+            <Space wrap>
               <Button onClick={insertSample}>{t('pages.notificationAdmin.useSample')}</Button>
               <Button type="primary" icon={<SendOutlined />} loading={sending} onClick={handleSend}>
                 {t('pages.notificationAdmin.sendAll')}
@@ -106,8 +109,8 @@ const NotificationManagement: React.FC = () => {
         </Card>
 
         <Card title={t('pages.notificationAdmin.preview')}>
-          <Text strong>{form.getFieldValue('title') || t('pages.notificationAdmin.previewTitle')}</Text>
-          <div style={{ marginTop: 12, padding: 16, border: '1px solid #f0f0f0', borderRadius: 6, background: '#fff' }}>
+          <Text strong>{notificationTitle || t('pages.notificationAdmin.previewTitle')}</Text>
+          <div className="notification-management-page__preview">
             {contentFormat === 'HTML' ? (
               <div className="notification-rich-content" dangerouslySetInnerHTML={{ __html: previewHtml || `<p>${t('pages.notificationAdmin.richPreview')}</p>` }} />
             ) : (

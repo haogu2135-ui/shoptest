@@ -1,15 +1,5 @@
-SET FOREIGN_KEY_CHECKS = 0;
-
-DELETE FROM product_questions;
-DELETE FROM reviews;
-DELETE FROM wishlist;
-DELETE FROM cart_items;
-DELETE FROM products;
-DELETE FROM categories;
-
-SET FOREIGN_KEY_CHECKS = 1;
-
-INSERT INTO brands (id, name, description, logo_url, website_url, status, sort_order) VALUES
+-- Non-destructive pet catalog seed. Existing rows are left intact.
+INSERT IGNORE INTO brands (id, name, description, logo_url, website_url, status, sort_order) VALUES
 (1, 'PawPilot', 'Smart feeding and connected pet care devices.', 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=240&q=80', 'https://pawpilot.example.com', 'ACTIVE', 10),
 (2, 'HydraWhisk', 'Quiet hydration products for cats and small pets.', 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=240&q=80', 'https://hydrawhisk.example.com', 'ACTIVE', 20),
 (3, 'TrailTails', 'Walking, travel and safety gear for daily adventures.', 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=240&q=80', 'https://trailtails.example.com', 'ACTIVE', 30),
@@ -17,16 +7,9 @@ INSERT INTO brands (id, name, description, logo_url, website_url, status, sort_o
 (5, 'BrightBite', 'Dental toys and enrichment for healthy play.', 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=240&q=80', 'https://brightbite.example.com', 'ACTIVE', 50),
 (6, 'PurePaws', 'Gentle grooming and hygiene essentials.', 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=240&q=80', 'https://purepaws.example.com', 'ACTIVE', 60),
 (7, 'NutriTail', 'Balanced nutrition for cats and dogs.', 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=240&q=80', 'https://nutritail.example.com', 'ACTIVE', 70),
-(8, 'CanineCore', 'Training treats and puppy care basics.', 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=240&q=80', 'https://caninecore.example.com', 'ACTIVE', 80)
-ON DUPLICATE KEY UPDATE
-name = VALUES(name),
-description = VALUES(description),
-logo_url = VALUES(logo_url),
-website_url = VALUES(website_url),
-status = VALUES(status),
-sort_order = VALUES(sort_order);
+(8, 'CanineCore', 'Training treats and puppy care basics.', 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=240&q=80', 'https://caninecore.example.com', 'ACTIVE', 80);
 
-INSERT INTO categories (id, name, description, parent_id, level, image_url) VALUES
+INSERT IGNORE INTO categories (id, name, description, parent_id, level, image_url) VALUES
 (1, 'Pet Supplies', 'English default catalog root for pet-only test data.', NULL, 1, 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=900&q=80'),
 (2, 'Pet Food', 'Dry food, wet food, treats and supplements for dogs and cats.', 1, 2, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80'),
 (3, 'Bowls, Feeders & Waterers', 'Automatic feeders, slow feeders, bowls and fountains.', 1, 2, 'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80'),
@@ -41,7 +24,7 @@ INSERT INTO categories (id, name, description, parent_id, level, image_url) VALU
 (12, 'Interactive Toys', 'Puzzle toys and active play for pets.', 5, 3, 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80'),
 (13, 'Harnesses & Leashes', 'Adjustable walking sets and safety gear.', 7, 3, 'https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80');
 
-INSERT INTO products (
+INSERT IGNORE INTO products (
     id, name, description, price, stock, category_id, image_url, status, brand,
     original_price, discount, limited_time_price, limited_time_start_at, limited_time_end_at,
     tag, images, specifications, detail_content, warranty, shipping, free_shipping,

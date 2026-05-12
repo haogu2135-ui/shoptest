@@ -1,0 +1,71 @@
+.stock-alerts {
+  width: min(1200px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.stock-alerts__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.stock-alerts__item {
+  border-radius: 8px;
+  padding-inline: 12px !important;
+  transition: background 0.18s ease, opacity 0.18s ease;
+}
+
+.stock-alerts__item .ant-list-item-meta-title,
+.stock-alerts__item .ant-list-item-meta-description {
+  overflow-wrap: anywhere;
+}
+
+.stock-alerts__item--waiting {
+  background: #f5f3ef;
+}
+
+.stock-alerts__item--waiting .ant-list-item-meta-avatar,
+.stock-alerts__item--waiting .ant-list-item-meta-title,
+.stock-alerts__item--waiting .ant-list-item-meta-description {
+  opacity: 0.58;
+  filter: grayscale(1);
+}
+
+.stock-alerts__price {
+  color: #ee4d2d;
+}
+
+.stock-alerts__item--waiting .stock-alerts__price {
+  color: #6f675d;
+}
+
+.stock-alerts__soldoutButton,
+.stock-alerts__soldoutButton:disabled,
+.stock-alerts__soldoutButton[disabled],
+.stock-alerts__soldoutButton.ant-btn-disabled {
+  opacity: 1 !important;
+  border-color: #b8afa2 !important;
+  background: #f4f1ea !important;
+  color: #51483d !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 640px) {
+  .stock-alerts {
+    width: min(100% - 16px, 1200px);
+    padding: 14px 0;
+  }
+
+  .stock-alerts__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .stock-alerts__header .ant-space,
+  .stock-alerts__header .ant-btn {
+    width: 100%;
+  }
+}

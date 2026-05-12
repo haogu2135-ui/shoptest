@@ -1,0 +1,94 @@
+.notifications-page {
+  width: min(800px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 24px 0 36px;
+}
+
+.notifications-page--loading {
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.notifications-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.notifications-page__title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notifications-page__title .anticon {
+  flex: 0 0 auto;
+  color: #124734;
+  font-size: 24px;
+}
+
+.notifications-page__title h3.ant-typography {
+  margin: 0;
+}
+
+.notifications-page__item {
+  margin-bottom: 10px;
+  padding: 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.notifications-page__item--unread {
+  border-color: #ffd8c9;
+  background: #fff8f0;
+}
+
+.notifications-page__item .ant-list-item-meta-title {
+  line-height: 22px;
+}
+
+.notifications-page__item .ant-list-item-meta-description {
+  overflow-wrap: anywhere;
+}
+
+.notifications-page__plainText {
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 560px) {
+  .notifications-page {
+    width: min(100% - 16px, 800px);
+    padding: 14px 0 24px;
+  }
+
+  .notifications-page__header {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 14px;
+  }
+
+  .notifications-page__header .ant-btn {
+    width: 100%;
+  }
+
+  .notifications-page__title h3.ant-typography {
+    font-size: 22px;
+  }
+
+  .notifications-page__item {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .notifications-page__item .ant-list-item-action {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+}

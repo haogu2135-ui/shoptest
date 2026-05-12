@@ -1,10 +1,12 @@
 package com.example.shop.controller;
 
 import com.example.shop.entity.Product;
+import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,6 +38,15 @@ public class ProductController {
     @GetMapping("/featured")
     public ResponseEntity<List<Product>> getFeaturedProducts() {
         return ResponseEntity.ok(productService.findByIsFeaturedTrueOrderByIdAsc());
+    }
+
+    @GetMapping("/personalized-recommendations")
+    public ResponseEntity<List<Product>> getPersonalizedRecommendations(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
+            return ResponseEntity.ok(List.of());
+        }
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        return ResponseEntity.ok(productService.findPersonalizedRecommendations(userDetails.getId()));
     }
 
     @GetMapping("/{id}/recommendations")

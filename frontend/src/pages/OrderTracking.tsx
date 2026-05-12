@@ -1,15 +1,25 @@
 import React, { useState } from 'react';
 import { Button, Card, Descriptions, Empty, Form, Input, List, Space, Tag, Typography, message } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import { orderApi } from '../api';
+import { apiBaseUrl, orderApi } from '../api';
 import type { Order, OrderItem } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
+import './OrderTracking.css';
 
 const { Text, Title } = Typography;
+const orderTrackingImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+
+const resolveOrderTrackingImage = (imageUrl?: string) => {
+  if (!imageUrl) return orderTrackingImageFallback;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
 
 const statusColor: Record<string, string> = {
   PENDING_PAYMENT: 'orange',
@@ -47,7 +57,7 @@ const OrderTracking: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
+    <div className="order-tracking-page">
       <Title level={2}>{t('pages.orderTracking.title')}</Title>
       <Card style={{ marginBottom: 16 }}>
         <Form layout="vertical" onFinish={onFinish}>
@@ -74,7 +84,7 @@ const OrderTracking: React.FC = () => {
                 <Tag color={statusColor[order.status] || 'default'}>{t(`status.${order.status}`)}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('common.amount')}>
-                <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(order.totalAmount)}</Text>
+                <Text strong className="order-tracking-page__amount">{formatMoney(order.totalAmount)}</Text>
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
                 {order.paymentMethod ? paymentMethodLabel(order.paymentMethod, t) : '-'}
@@ -99,9 +109,20 @@ const OrderTracking: React.FC = () => {
               dataSource={items}
               locale={{ emptyText: t('pages.profile.noOrderItems') }}
               renderItem={(item) => (
-                <List.Item>
+                <List.Item className="order-tracking-page__item">
                   <List.Item.Meta
-                    avatar={item.imageUrl ? <img src={item.imageUrl} alt={item.productName} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6 }} /> : undefined}
+                    avatar={
+                      <img
+                        src={resolveOrderTrackingImage(item.imageUrl)}
+                        alt={item.productName}
+                        className="order-tracking-page__image"
+                        onError={(event) => {
+                          if (event.currentTarget.src !== orderTrackingImageFallback) {
+                            event.currentTarget.src = orderTrackingImageFallback;
+                          }
+                        }}
+                      />
+                    }
                     title={item.productName || t('pages.profile.productFallback', { id: item.productId })}
                     description={
                       <Space direction="vertical" size={0}>
@@ -110,14 +131,18 @@ const OrderTracking: React.FC = () => {
                       </Space>
                     }
                   />
-                  <Text strong>{formatMoney(item.price * item.quantity)}</Text>
+                  <Text strong className="order-tracking-page__itemTotal">{formatMoney(item.price * item.quantity)}</Text>
                 </List.Item>
               )}
             />
           </Card>
 
           <Card title={t('pages.orderTracking.logistics')}>
-            <SeventeenTrackWidget trackingNumber={order.trackingNumber || ''} carrierCode={order.trackingCarrierCode} />
+            {order.trackingNumber ? (
+              <SeventeenTrackWidget trackingNumber={order.trackingNumber} carrierCode={order.trackingCarrierCode} />
+            ) : (
+              <Empty description={t('pages.orderTracking.notShipped')} />
+            )}
           </Card>
         </Space>
       )}

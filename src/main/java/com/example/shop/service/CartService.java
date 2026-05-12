@@ -25,6 +25,10 @@ public class CartService {
         return items;
     }
 
+    public CartItem getCartItem(Long cartItemId) {
+        return cartItemMapper.findById(cartItemId);
+    }
+
     @Transactional
     public void addToCart(Long userId, Long productId, Integer quantity, String selectedSpecs) {
         Product product = requirePurchasableProduct(productId, quantity);

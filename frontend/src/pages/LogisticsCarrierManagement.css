@@ -1,0 +1,28 @@
+.logistics-carrier-page {
+  min-width: 0;
+}
+
+.logistics-carrier-page__intro {
+  margin-bottom: 16px;
+}
+
+.logistics-carrier-page__intro .ant-space {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.logistics-carrier-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .logistics-carrier-page h4.ant-typography {
+    font-size: 22px;
+  }
+
+  .logistics-carrier-page__intro .ant-space,
+  .logistics-carrier-page__intro .ant-space-item,
+  .logistics-carrier-page__intro .ant-btn {
+    width: 100%;
+  }
+}
