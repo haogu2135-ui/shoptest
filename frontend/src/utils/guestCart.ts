@@ -19,6 +19,8 @@ export const getGuestCartItems = () => readGuestCart();
 
 export const clearGuestCart = () => writeGuestCart([]);
 
+export const replaceGuestCartItems = (items: CartItem[]) => writeGuestCart(items);
+
 export const addGuestCartItem = (product: Product | any, quantity = 1, selectedSpecs?: string, price?: number) => {
   const items = readGuestCart();
   const existing = items.find((item) => item.productId === product.id && (item.selectedSpecs || '') === (selectedSpecs || ''));
@@ -54,6 +56,13 @@ export const updateGuestCartQuantity = (itemId: number, quantity: number) => {
 
 export const removeGuestCartItem = (itemId: number) => {
   const items = readGuestCart().filter((item) => item.id !== itemId);
+  writeGuestCart(items);
+  return items;
+};
+
+export const removeGuestCartItems = (itemIds: number[]) => {
+  const targetIds = new Set(itemIds);
+  const items = readGuestCart().filter((item) => !targetIds.has(item.id));
   writeGuestCart(items);
   return items;
 };

@@ -14,6 +14,7 @@ const CouponManagement: React.FC = () => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [birthdayCouponLoading, setBirthdayCouponLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [grantVisible, setGrantVisible] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
@@ -125,6 +126,19 @@ const CouponManagement: React.FC = () => {
     }
   };
 
+  const runPetBirthdayCoupons = async () => {
+    setBirthdayCouponLoading(true);
+    try {
+      const res = await adminApi.runPetBirthdayCoupons();
+      message.success(t('pages.adminCoupons.petBirthdayGranted', { count: res.data.granted }));
+      await loadCoupons();
+    } catch (error: any) {
+      message.error(error?.response?.data?.error || t('pages.adminCoupons.petBirthdayFailed'));
+    } finally {
+      setBirthdayCouponLoading(false);
+    }
+  };
+
   const columns = [
     { title: t('pages.adminCoupons.name'), dataIndex: 'name', key: 'name' },
     {
@@ -166,7 +180,12 @@ const CouponManagement: React.FC = () => {
     <div style={{ padding: '32px 24px' }}>
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}><GiftOutlined /> {t('pages.adminCoupons.title')}</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</Button>
+        <Space>
+          <Button icon={<GiftOutlined />} loading={birthdayCouponLoading} onClick={runPetBirthdayCoupons}>
+            {t('pages.adminCoupons.runPetBirthdayCoupons')}
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</Button>
+        </Space>
       </Space>
 
       <Table columns={columns} dataSource={coupons} rowKey="id" loading={loading} bordered />

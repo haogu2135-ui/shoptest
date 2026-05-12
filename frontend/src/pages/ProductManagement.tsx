@@ -66,6 +66,29 @@ const specOptionsToFormRows = (specs: Record<string, string>) =>
       values: String(value || '').split(',').map(item => item.trim()).filter(Boolean).join(', '),
     }));
 
+const bundleItemsToFormRows = (value?: string) => {
+  if (!value) return [{ name: '', quantity: 1 }];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      const rows = parsed
+        .map((item) => ({
+          name: String(item?.name || '').trim(),
+          quantity: Number(item?.quantity || 1),
+        }))
+        .filter((item) => item.name);
+      return rows.length > 0 ? rows : [{ name: '', quantity: 1 }];
+    }
+  } catch {
+    // Fall through to plain text parsing.
+  }
+  const rows = value
+    .split(/[+,，、]/)
+    .map((name) => ({ name: name.trim(), quantity: 1 }))
+    .filter((item) => item.name);
+  return rows.length > 0 ? rows : [{ name: '', quantity: 1 }];
+};
+
 const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -169,6 +192,8 @@ const ProductManagement: React.FC = () => {
       optionGroups: [{ name: 'Size', values: '' }, { name: 'Color', values: '' }],
       variants: [],
       detailContent: [emptyDetailBlock],
+      bundleEnabled: false,
+      bundleItems: [{ name: '', quantity: 1 }],
       status: 'ACTIVE',
       freeShipping: false,
     });
@@ -199,6 +224,13 @@ const ProductManagement: React.FC = () => {
     Object.keys(specsObj).forEach((key) => {
       if (key.startsWith('options.')) delete specsObj[key];
     });
+    const bundleEnabled = specsObj['bundle.enabled'] === 'true';
+    const bundleTitle = specsObj['bundle.title'];
+    const bundlePrice = specsObj['bundle.price'] ? Number(specsObj['bundle.price']) : undefined;
+    const bundleItems = bundleItemsToFormRows(specsObj['bundle.items']);
+    Object.keys(specsObj).forEach((key) => {
+      if (key.startsWith('bundle.')) delete specsObj[key];
+    });
     const detailContent = parseJsonArray(record.detailContent);
     const variants = parseJsonArray(record.variants).map((variant: any) => ({
       sku: variant.sku,
@@ -216,6 +248,10 @@ const ProductManagement: React.FC = () => {
       specifications: specs,
       optionGroups: optionRows.length > 0 ? optionRows : [{ name: 'Size', values: '' }, { name: 'Color', values: '' }],
       variants,
+      bundleEnabled,
+      bundleTitle,
+      bundlePrice,
+      bundleItems,
       localizedContent,
       detailContent: detailContent.length > 0 ? detailContent : [emptyDetailBlock],
       limitedTimeRange: record.limitedTimeStartAt && record.limitedTimeEndAt
@@ -333,6 +369,20 @@ const ProductManagement: React.FC = () => {
           if (options.length) specs[`options.${name}`] = options.join(',');
         }
       });
+      if (values.bundleEnabled) {
+        const bundleItems = (values.bundleItems || [])
+          .map((item: any) => ({
+            name: String(item?.name || '').trim(),
+            quantity: Number(item?.quantity || 1),
+          }))
+          .filter((item: any) => item.name && item.quantity > 0);
+        if (bundleItems.length > 0 && Number(values.bundlePrice || 0) > 0) {
+          specs['bundle.enabled'] = 'true';
+          specs['bundle.title'] = String(values.bundleTitle || values.name || '').trim();
+          specs['bundle.price'] = String(Number(values.bundlePrice).toFixed(2));
+          specs['bundle.items'] = JSON.stringify(bundleItems);
+        }
+      }
       const variants = (values.variants || [])
         .map((variant: any) => {
           const optionText = String(variant?.optionText || '').trim();
@@ -352,7 +402,20 @@ const ProductManagement: React.FC = () => {
           };
         })
         .filter((variant: any) => Object.keys(variant.options).length > 0 && variant.price > 0);
-      const { specifications: _specs, images: _images, detailContent: _detailContent, localizedContent: _localizedContent, optionGroups: _optionGroups, variants: _variants, limitedTimeRange, ...rest } = values;
+      const {
+        specifications: _specs,
+        images: _images,
+        detailContent: _detailContent,
+        localizedContent: _localizedContent,
+        optionGroups: _optionGroups,
+        variants: _variants,
+        bundleEnabled: _bundleEnabled,
+        bundleTitle: _bundleTitle,
+        bundlePrice: _bundlePrice,
+        bundleItems: _bundleItems,
+        limitedTimeRange,
+        ...rest
+      } = values;
       const payload: any = {
         ...rest,
         specifications: Object.keys(specs).length > 0 ? specs : null,
@@ -689,7 +752,7 @@ const ProductManagement: React.FC = () => {
         className="shopify-product-modal"
         okText={editingProduct ? t('pages.productAdmin.saveProduct') : t('pages.productAdmin.addProduct')}
       >
-        <Form form={form} layout="vertical" initialValues={{ images: [], specifications: [{}], optionGroups: [{ name: 'Size', values: '' }, { name: 'Color', values: '' }], detailContent: [emptyDetailBlock], freeShipping: false }}>
+        <Form form={form} layout="vertical" initialValues={{ images: [], specifications: [{}], optionGroups: [{ name: 'Size', values: '' }, { name: 'Color', values: '' }], detailContent: [emptyDetailBlock], bundleEnabled: false, bundleItems: [{ name: '', quantity: 1 }], freeShipping: false }}>
           <div className="shopify-product-editor">
             <div className="shopify-product-editor__main">
               <section className="shopify-card">
@@ -802,6 +865,43 @@ const ProductManagement: React.FC = () => {
                     <InputNumber min={0} max={100} suffix="%" placeholder={t('pages.productAdmin.discount')} />
                   </Form.Item>
                 </div>
+              </section>
+
+              <section className="shopify-card">
+                <div className="shopify-card__header">
+                  <h3>{t('bundle.bundleDeal')}</h3>
+                  <Form.Item name="bundleEnabled" valuePropName="checked" style={{ marginBottom: 0 }}>
+                    <Switch checkedChildren={t('pages.productAdmin.on')} unCheckedChildren={t('pages.productAdmin.off')} />
+                  </Form.Item>
+                </div>
+                <div className="shopify-two-col">
+                  <Form.Item name="bundleTitle" label={t('bundle.bundleTitle')}>
+                    <Input placeholder="Walking starter kit" />
+                  </Form.Item>
+                  <Form.Item name="bundlePrice" label={t('bundle.bundlePrice')}>
+                    <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="0.00" />
+                  </Form.Item>
+                </div>
+                <Form.List name="bundleItems">
+                  {(fields, { add, remove }) => (
+                    <div className="shopify-option-list">
+                      {fields.map(({ key, name, ...restField }) => (
+                        <div key={key} className="shopify-option-row">
+                          <Form.Item {...restField} name={[name, 'name']} style={{ marginBottom: 0 }}>
+                            <Input placeholder={t('bundle.bundleItemName')} />
+                          </Form.Item>
+                          <Form.Item {...restField} name={[name, 'quantity']} style={{ marginBottom: 0 }}>
+                            <InputNumber min={1} placeholder={t('common.quantity')} />
+                          </Form.Item>
+                          <Button type="text" danger icon={<MinusCircleOutlined />} onClick={() => remove(name)} />
+                        </div>
+                      ))}
+                      <button type="button" className="shopify-link-button" onClick={() => add({ quantity: 1 })}>
+                        <PlusOutlined /> {t('bundle.addBundleItem')}
+                      </button>
+                    </div>
+                  )}
+                </Form.List>
               </section>
 
               <section className="shopify-card">

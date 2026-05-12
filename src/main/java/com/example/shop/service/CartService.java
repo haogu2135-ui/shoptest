@@ -20,13 +20,16 @@ public class CartService {
     private final ProductVariantService productVariantService;
 
     public List<CartItem> getCartItems(Long userId) {
-        return cartItemMapper.findByUserId(userId);
+        List<CartItem> items = cartItemMapper.findByUserId(userId);
+        items.forEach(this::refreshCartItemSnapshot);
+        return items;
     }
 
     @Transactional
     public void addToCart(Long userId, Long productId, Integer quantity, String selectedSpecs) {
         Product product = requirePurchasableProduct(productId, quantity);
         String normalizedSpecs = productVariantService.normalizeSpecs(selectedSpecs);
+        productVariantService.validateSelection(product, normalizedSpecs);
         if (productVariantService.resolvePrice(product, normalizedSpecs) == null) {
             throw new IllegalStateException("Invalid product price");
         }
@@ -61,6 +64,7 @@ public class CartService {
         CartItem cartItem = cartItemMapper.findById(cartItemId);
         if (cartItem != null) {
             Product product = requirePurchasableProduct(cartItem.getProductId(), quantity);
+            productVariantService.validateSelection(product, cartItem.getSelectedSpecs());
             Integer availableStock = productVariantService.resolveStock(product, cartItem.getSelectedSpecs());
             if (availableStock == null || availableStock < quantity) {
                 throw new IllegalStateException("Insufficient stock for product: " + product.getName());
@@ -83,10 +87,29 @@ public class CartService {
     }
 
     public double calculateTotal(Long userId) {
-        List<CartItem> items = cartItemMapper.findByUserId(userId);
+        List<CartItem> items = getCartItems(userId);
         return items.stream()
                 .mapToDouble(item -> item.getQuantity() * item.getPrice().doubleValue())
                 .sum();
+    }
+
+    private void refreshCartItemSnapshot(CartItem item) {
+        Optional<Product> productOpt = productRepository.findById(item.getProductId());
+        if (!productOpt.isPresent()) {
+            item.setProductStatus("INACTIVE");
+            item.setStock(0);
+            return;
+        }
+        Product product = productOpt.get();
+        item.setProductStatus(product.getStatus());
+        try {
+            productVariantService.validateSelection(product, item.getSelectedSpecs());
+            item.setPrice(productVariantService.resolvePrice(product, item.getSelectedSpecs()));
+            item.setStock(productVariantService.resolveStock(product, item.getSelectedSpecs()));
+        } catch (RuntimeException ex) {
+            item.setProductStatus("INACTIVE");
+            item.setStock(0);
+        }
     }
 
     private Product requirePurchasableProduct(Long productId, Integer quantity) {

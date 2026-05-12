@@ -2,14 +2,38 @@ import React, { useState } from 'react';
 import { Form, Input, Button, message } from 'antd';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { userApi } from '../api';
+import { cartApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
+import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import './Login.css';
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
+
+  const mergeGuestCart = async (userId: number) => {
+    const guestItems = getGuestCartItems();
+    if (guestItems.length === 0) return;
+
+    const failedItems = [];
+    let mergedCount = 0;
+    for (const item of guestItems) {
+      try {
+        await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
+        mergedCount += item.quantity;
+      } catch {
+        failedItems.push(item);
+      }
+    }
+    replaceGuestCartItems(failedItems);
+    window.dispatchEvent(new Event('shop:cart-updated'));
+    if (mergedCount > 0 && failedItems.length === 0) {
+      message.success(t('pages.auth.cartMerged', { count: mergedCount }));
+    } else if (mergedCount > 0) {
+      message.warning(t('pages.auth.cartMergePartial', { count: mergedCount }));
+    }
+  };
 
   const onFinish = async (values: any) => {
     setLoading(true);
@@ -20,6 +44,7 @@ const Login: React.FC = () => {
       localStorage.setItem('userId', id);
       localStorage.setItem('username', username);
       localStorage.setItem('role', role);
+      await mergeGuestCart(Number(id));
       message.success(t('pages.auth.loginSuccess'));
       navigate('/');
     } catch {

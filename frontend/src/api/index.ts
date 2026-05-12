@@ -219,6 +219,7 @@ export const adminApi = {
     updateCoupon: (id: number, coupon: Partial<Coupon>) => api.put<Coupon>(`/admin/coupons/${id}`, coupon),
     deleteCoupon: (id: number) => api.delete(`/admin/coupons/${id}`),
     grantCoupon: (id: number, userIds: number[]) => api.post<{ granted: number }>(`/admin/coupons/${id}/grant`, { userIds }),
+    runPetBirthdayCoupons: () => api.post<{ granted: number }>('/admin/pet-birthday-coupons/run'),
     broadcastNotification: (payload: { type: string; title: string; message: string; contentFormat: 'TEXT' | 'HTML' }) =>
         api.post<{ sent: number }>('/admin/notifications/broadcast', payload),
 };

@@ -3,30 +3,14 @@ import { Alert, Button, Card, Divider, Form, Input, message, Radio, Select, Spac
 import { NotificationOutlined, SendOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
+import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-const stripUnsafeHtml = (html: string) => {
-  const scriptProtocol = ['java', 'script:'].join('');
-  const template = document.createElement('template');
-  template.innerHTML = html;
-  template.content.querySelectorAll('script, iframe, object, embed, link, meta, style').forEach((node) => node.remove());
-  template.content.querySelectorAll('*').forEach((node) => {
-    Array.from(node.attributes).forEach((attr) => {
-      const name = attr.name.toLowerCase();
-      const value = attr.value.trim().toLowerCase();
-      if (name.startsWith('on') || value.startsWith(scriptProtocol)) {
-        node.removeAttribute(attr.name);
-      }
-    });
-  });
-  return template.innerHTML;
-};
-
-const samplePromotionHtml = `<p><strong>限时优惠</strong>：全场精选商品满 $299 包邮。</p>
-<p>使用优惠券 <strong>SHOPMX20</strong> 可享额外折扣。</p>
-<p><a href="/coupons">立即领取优惠券</a></p>`;
+const samplePromotionHtml = `<p><strong>Limited-time offer</strong>: free shipping on selected orders over $299.</p>
+<p>Use coupon <strong>SHOPMX20</strong> for an extra discount.</p>
+<p><a href="/coupons">Claim coupons now</a></p>`;
 
 const NotificationManagement: React.FC = () => {
   const [form] = Form.useForm();
@@ -41,7 +25,11 @@ const NotificationManagement: React.FC = () => {
     try {
       const values = await form.validateFields();
       setSending(true);
-      const res = await adminApi.broadcastNotification(values);
+      const payload = {
+        ...values,
+        message: values.contentFormat === 'HTML' ? stripUnsafeHtml(values.message || '') : values.message,
+      };
+      const res = await adminApi.broadcastNotification(payload);
       message.success(t('pages.notificationAdmin.sent', { count: res.data.sent }));
       form.resetFields();
       form.setFieldsValue({ type: 'PROMOTION', contentFormat: 'HTML' });
@@ -56,7 +44,7 @@ const NotificationManagement: React.FC = () => {
   const insertSample = () => {
     form.setFieldsValue({
       type: 'PROMOTION',
-      title: 'ShopMX 限时优惠',
+      title: 'ShopMX limited-time offer',
       contentFormat: 'HTML',
       message: samplePromotionHtml,
     });

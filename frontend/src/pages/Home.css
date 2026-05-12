@@ -159,6 +159,21 @@
   font-size: 14px;
 }
 
+.shopee-section__header--with-actions {
+  gap: 12px;
+}
+
+.shopee-section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.shopee-section__actions button + button {
+  color: #8b5e34;
+}
+
 .shopee-home-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -374,6 +389,15 @@
   text-decoration: line-through;
 }
 
+.shopee-product__lastViewed {
+  display: block;
+  min-height: 16px;
+  margin-top: 6px;
+  color: #6c6a62;
+  font-size: 12px;
+  line-height: 16px;
+}
+
 .shopee-load-more {
   display: flex;
   justify-content: center;
@@ -457,6 +481,15 @@
 
   .shopee-section__header--accent button {
     display: none;
+  }
+
+  .shopee-section__header--with-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .shopee-section__actions {
+    justify-content: flex-start;
   }
 
   .shopee-home-actions {

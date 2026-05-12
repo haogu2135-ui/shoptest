@@ -38,4 +38,7 @@ public class Wishlist implements Serializable {
 
     @Transient
     private String productStatus;
+
+    @Transient
+    private Boolean requiresSelection;
 }

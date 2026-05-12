@@ -4,6 +4,7 @@ import { Layout } from 'antd';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLayout from './components/AdminLayout';
 import BrandManagement from './pages/BrandManagement';
+import BrowsingHistory from './pages/BrowsingHistory';
 import Cart from './pages/Cart';
 import CartDrawer from './components/CartDrawer';
 import CategoryManagement from './pages/CategoryManagement';
@@ -20,8 +21,11 @@ import Notifications from './pages/Notifications';
 import NotificationManagement from './pages/NotificationManagement';
 import OrderTracking from './pages/OrderTracking';
 import OrderManagement from './pages/OrderManagement';
+import PetFinder from './pages/PetFinder';
 import ProductDetail from './pages/ProductDetail';
+import ProductCompare from './pages/ProductCompare';
 import ProductList from './pages/ProductList';
+import StockAlerts from './pages/StockAlerts';
 import ProductManagement from './pages/ProductManagement';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
@@ -48,12 +52,16 @@ const App: React.FC = () => {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/products" element={<ProductList />} />
+                  <Route path="/pet-finder" element={<PetFinder />} />
+                  <Route path="/compare" element={<ProductCompare />} />
                   <Route path="/products/:id" element={<ProductDetail />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/coupons" element={<CouponCenter />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/wishlist" element={<Wishlist />} />
+                  <Route path="/history" element={<BrowsingHistory />} />
+                  <Route path="/stock-alerts" element={<StockAlerts />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/track-order" element={<OrderTracking />} />
                   <Route path="/login" element={<Login />} />

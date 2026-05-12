@@ -1,23 +1,31 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Checkbox, Empty, InputNumber, message, Popconfirm, Progress, Space, Table, Typography } from 'antd';
-import { DeleteOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, DeleteOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
 import type { CartItem } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
-import { getGuestCartItems, removeGuestCartItem, updateGuestCartQuantity } from '../utils/guestCart';
+import { addGuestCartItem, getGuestCartItems, removeGuestCartItem, removeGuestCartItems, updateGuestCartQuantity } from '../utils/guestCart';
+import {
+  getSavedForLaterItems,
+  removeSavedForLaterProduct,
+  removeSavedForLaterItem,
+  saveCartItemForLater,
+  type SavedForLaterItem,
+} from '../utils/saveForLater';
 
 const { Title, Text } = Typography;
 const isAvailable = (item: CartItem) =>
-  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock ?? 0) > 0;
+  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock > 0);
 const canCheckout = (item: CartItem) =>
-  isAvailable(item) && (item.stock ?? 0) >= item.quantity;
+  isAvailable(item) && (item.stock === undefined || item.stock >= item.quantity);
 
 const Cart: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [savedItems, setSavedItems] = useState<SavedForLaterItem[]>(() => getSavedForLaterItems());
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -78,11 +86,83 @@ const Cart: React.FC = () => {
     }
   };
 
+  const saveForLater = async (item: CartItem) => {
+    try {
+      if (localStorage.getItem('token') && localStorage.getItem('userId')) {
+        await cartApi.removeItem(item.id);
+        saveCartItemForLater(item);
+        setCartItems((items) => items.filter((cartItem) => cartItem.id !== item.id));
+      } else {
+        saveCartItemForLater(item);
+        setCartItems(removeGuestCartItem(item.id));
+      }
+      setSelectedIds((ids) => ids.filter((id) => id !== item.id));
+      setSavedItems(getSavedForLaterItems());
+      message.success(t('pages.cart.savedForLater'));
+      window.dispatchEvent(new Event('shop:cart-updated'));
+    } catch {
+      message.error(t('messages.operationFailed'));
+    }
+  };
+
+  const moveSavedItemToCart = async (item: SavedForLaterItem) => {
+    try {
+      if (localStorage.getItem('token') && localStorage.getItem('userId')) {
+        await cartApi.addItem(Number(localStorage.getItem('userId')), item.productId, item.quantity, item.selectedSpecs);
+        const response = await cartApi.getItems(Number(localStorage.getItem('userId')));
+        setCartItems(response.data);
+        setSelectedIds(response.data.filter(canCheckout).map((cartItem) => cartItem.id));
+      } else {
+        addGuestCartItem(
+          {
+            ...item,
+            id: item.productId,
+            name: item.productName,
+            status: item.productStatus,
+          },
+          item.quantity,
+          item.selectedSpecs,
+          item.price,
+        );
+        setCartItems(getGuestCartItems());
+      }
+      removeSavedForLaterProduct(item.productId, item.selectedSpecs);
+      setSavedItems(getSavedForLaterItems());
+      message.success(t('pages.cart.movedToCart'));
+      window.dispatchEvent(new Event('shop:cart-updated'));
+    } catch {
+      message.error(t('messages.operationFailed'));
+    }
+  };
+
+  const removeSavedItem = (itemId: number) => {
+    setSavedItems(removeSavedForLaterItem(itemId));
+    message.success(t('messages.deleteSuccess'));
+  };
+
+  const removeItems = async (itemIds: number[], successMessage: string) => {
+    if (itemIds.length === 0) return;
+    try {
+      if (localStorage.getItem('token') && localStorage.getItem('userId')) {
+        await Promise.all(itemIds.map((itemId) => cartApi.removeItem(itemId)));
+        setCartItems((items) => items.filter((item) => !itemIds.includes(item.id)));
+      } else {
+        setCartItems(removeGuestCartItems(itemIds));
+      }
+      setSelectedIds((ids) => ids.filter((id) => !itemIds.includes(id)));
+      message.success(successMessage);
+      window.dispatchEvent(new Event('shop:cart-updated'));
+    } catch {
+      message.error(t('messages.deleteFailed'));
+    }
+  };
+
   const selectedItems = useMemo(
     () => cartItems.filter((item) => selectedIds.includes(item.id)),
     [cartItems, selectedIds],
   );
   const purchasableItems = useMemo(() => cartItems.filter(canCheckout), [cartItems]);
+  const unavailableItems = useMemo(() => cartItems.filter((item) => !canCheckout(item)), [cartItems]);
 
   const selectedTotal = selectedItems.reduce((total, item) => total + item.price * item.quantity, 0);
   const freeShippingThreshold = market.freeShippingThreshold;
@@ -110,6 +190,14 @@ const Cart: React.FC = () => {
     }
     sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(selectedIds));
     navigate('/checkout');
+  };
+
+  const removeSelectedItems = () => {
+    removeItems(selectedIds, t('pages.cart.removedSelected', { count: selectedIds.length }));
+  };
+
+  const clearUnavailableItems = () => {
+    removeItems(unavailableItems.map((item) => item.id), t('pages.cart.clearedUnavailable', { count: unavailableItems.length }));
   };
 
   const columns = [
@@ -171,21 +259,26 @@ const Cart: React.FC = () => {
       title: t('common.subtotal'),
       key: 'subtotal',
       width: 120,
-      render: (record: CartItem) => <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(record.price * record.quantity)}</Text>,
+      render: (_: unknown, record: CartItem) => <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(record.price * record.quantity)}</Text>,
     },
     {
       title: t('common.actions'),
       key: 'action',
-      width: 90,
+      width: 150,
       render: (_: unknown, record: CartItem) => (
-        <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(record.id)}>
-          <Button type="text" danger icon={<DeleteOutlined />} size="small">{t('common.delete')}</Button>
-        </Popconfirm>
+        <Space direction="vertical" size={2}>
+          <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(record)}>
+            {t('pages.cart.saveForLater')}
+          </Button>
+          <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(record.id)}>
+            <Button type="text" danger icon={<DeleteOutlined />} size="small">{t('common.delete')}</Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
 
-  if (!loading && cartItems.length === 0) {
+  if (!loading && cartItems.length === 0 && savedItems.length === 0) {
     return (
       <div style={{ padding: '80px 24px', textAlign: 'center' }}>
         <Empty image={<ShoppingOutlined style={{ fontSize: 64, color: '#ccc' }} />} description={t('pages.cart.empty')}>
@@ -198,6 +291,29 @@ const Cart: React.FC = () => {
   return (
     <div className="cart-page" style={{ padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
       <Title level={2}>{t('pages.cart.title')}</Title>
+      <Card size="small" style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Popconfirm
+            title={t('pages.cart.deleteSelectedConfirm', { count: selectedIds.length })}
+            disabled={selectedIds.length === 0}
+            onConfirm={removeSelectedItems}
+          >
+            <Button danger icon={<DeleteOutlined />} disabled={selectedIds.length === 0}>
+              {t('pages.cart.deleteSelected')}
+            </Button>
+          </Popconfirm>
+          <Popconfirm
+            title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
+            disabled={unavailableItems.length === 0}
+            onConfirm={clearUnavailableItems}
+          >
+            <Button disabled={unavailableItems.length === 0}>
+              {t('pages.cart.clearUnavailable')}
+            </Button>
+          </Popconfirm>
+          <Text type="secondary">{t('pages.cart.unavailableSummary', { count: unavailableItems.length })}</Text>
+        </Space>
+      </Card>
       <div className="cart-page__table">
         <Table columns={columns} dataSource={cartItems} rowKey="id" loading={loading} pagination={false} />
       </div>
@@ -228,6 +344,9 @@ const Cart: React.FC = () => {
                 onChange={(value) => updateQuantity(item.id, value || 1)}
               />
               <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(item.price * item.quantity)}</Text>
+              <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)}>
+                {t('pages.cart.saveForLaterShort')}
+              </Button>
               <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(item.id)}>
                 <Button type="text" danger icon={<DeleteOutlined />} size="small" />
               </Popconfirm>
@@ -255,6 +374,38 @@ const Cart: React.FC = () => {
             {t('pages.cart.checkout')}
           </Button>
         </div>
+      </Card>
+      <Card
+        title={`${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`}
+        style={{ marginTop: 16 }}
+      >
+        {savedItems.length === 0 ? (
+          <Empty description={t('pages.cart.saveForLaterEmpty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <div className="cart-page__savedGrid">
+            {savedItems.map((item) => (
+              <div className="cart-page__savedItem" key={item.id}>
+                <Link to={`/products/${item.productId}`}>
+                  <img src={item.imageUrl} alt={item.productName} />
+                </Link>
+                <div className="cart-page__savedInfo">
+                  <Link to={`/products/${item.productId}`}><Text strong>{item.productName}</Text></Link>
+                  {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
+                  <Text type="secondary">{t('common.quantity')}: {item.quantity}</Text>
+                  <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(item.price)}</Text>
+                </div>
+                <Space className="cart-page__savedActions">
+                  <Button icon={<ShoppingCartOutlined />} onClick={() => moveSavedItemToCart(item)}>
+                    {t('pages.cart.moveToCart')}
+                  </Button>
+                  <Popconfirm title={t('pages.cart.deleteSavedConfirm')} onConfirm={() => removeSavedItem(item.id)}>
+                    <Button danger type="text" icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                </Space>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );

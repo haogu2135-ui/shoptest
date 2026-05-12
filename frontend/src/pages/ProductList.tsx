@@ -1,16 +1,77 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Spin, Typography, Slider, Checkbox, Modal, Space } from 'antd';
-import { ShoppingCartOutlined } from '@ant-design/icons';
+import { BarChartOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi } from '../api';
-import type { Product, Category } from '../types';
+import type { Product, Category, ProductVariant } from '../types';
 import { buildCategoryTree, flattenCategoryTree, getLocalizedCategoryValue } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { addGuestCartItem } from '../utils/guestCart';
+import { buildBundleSpecs, getBundleInfo } from '../utils/bundle';
+import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
 
 const { Text } = Typography;
+const SEARCH_HISTORY_KEY = 'shop-product-search-history';
+const MAX_SEARCH_HISTORY = 6;
+const DEFAULT_PRICE_RANGE: [number, number] = [0, 10000];
+
+type OptionGroup = {
+  name: string;
+  values: string[];
+};
+
+const splitOptionValues = (value: unknown) =>
+  String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const getProductOptionGroups = (product?: Product | null): OptionGroup[] => {
+  if (!product) return [];
+  const specs = product.specifications || {};
+  const configured = Object.entries(specs)
+    .filter(([key]) => key.startsWith('options.'))
+    .map(([key, value]) => ({
+      name: key.replace(/^options\./, ''),
+      values: splitOptionValues(value),
+    }))
+    .filter((group) => group.name && group.values.length > 0);
+
+  if (configured.length > 0) return configured;
+
+  const fallback: OptionGroup[] = [];
+  if (Array.isArray(product.sizes) && product.sizes.length > 0) fallback.push({ name: 'Size', values: product.sizes });
+  if (Array.isArray(product.colors) && product.colors.length > 0) fallback.push({ name: 'Color', values: product.colors });
+  return fallback;
+};
+
+const getProductVariants = (product?: Product | null): ProductVariant[] => {
+  if (!product) return [];
+  const rawVariants = (product as any).variants;
+  if (Array.isArray(rawVariants)) return rawVariants;
+  if (typeof rawVariants !== 'string' || !rawVariants.trim()) return [];
+  try {
+    const parsed = JSON.parse(rawVariants);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const readSearchHistory = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean).slice(0, MAX_SEARCH_HISTORY) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeSearchHistory = (history: string[]) => {
+  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_SEARCH_HISTORY)));
+};
 
 const ProductList: React.FC = () => {
   const navigate = useNavigate();
@@ -23,12 +84,13 @@ const ProductList: React.FC = () => {
     searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined
   );
   const [sortBy, setSortBy] = useState<string>('default');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [priceRange, setPriceRange] = useState<[number, number]>(DEFAULT_PRICE_RANGE);
   const [petSizes, setPetSizes] = useState<string[]>([]);
   const [materials, setMaterials] = useState<string[]>([]);
   const [colors, setColors] = useState<string[]>([]);
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
-  const [quickAddOptions, setQuickAddOptions] = useState({ size: '', color: '' });
+  const [quickAddOptions, setQuickAddOptions] = useState<Record<string, string>>({});
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => readSearchHistory());
   const [currentPage, setCurrentPage] = useState(1);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
@@ -36,6 +98,12 @@ const ProductList: React.FC = () => {
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const getPositiveRate = (product: Product) => product.positiveRate ?? 0;
+  const activeFilterCount = [
+    priceRange[0] !== DEFAULT_PRICE_RANGE[0] || priceRange[1] !== DEFAULT_PRICE_RANGE[1],
+    petSizes.length > 0,
+    materials.length > 0,
+    colors.length > 0,
+  ].filter(Boolean).length;
 
   useEffect(() => {
     categoryApi.getAll().then(res => setCategories(res.data)).catch(() => {});
@@ -43,6 +111,15 @@ const ProductList: React.FC = () => {
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const categoryRows = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
+  const quickAddOptionGroups = useMemo(() => getProductOptionGroups(quickAddProduct), [quickAddProduct]);
+  const quickAddVariants = useMemo(() => getProductVariants(quickAddProduct), [quickAddProduct]);
+  const quickAddBundleInfo = useMemo(() => getBundleInfo(quickAddProduct), [quickAddProduct]);
+  const quickAddVariant = useMemo(() => {
+    if (!quickAddVariants.length) return undefined;
+    return quickAddVariants.find((variant) =>
+      Object.entries(variant.options || {}).every(([key, value]) => quickAddOptions[key] === value),
+    );
+  }, [quickAddOptions, quickAddVariants]);
 
   const fetchProducts = useCallback(async (kw?: string, cid?: number) => {
     try {
@@ -66,10 +143,40 @@ const ProductList: React.FC = () => {
   }, [fetchProducts, searchParams, language]);
 
   const handleSearch = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed) {
+      const nextHistory = [trimmed, ...searchHistory.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())].slice(0, MAX_SEARCH_HISTORY);
+      setSearchHistory(nextHistory);
+      writeSearchHistory(nextHistory);
+    }
     const params = new URLSearchParams();
-    if (value.trim()) params.set('keyword', value.trim());
+    if (trimmed) params.set('keyword', trimmed);
     if (categoryId) params.set('categoryId', categoryId.toString());
     navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
+  };
+
+  const clearSearchHistory = () => {
+    setSearchHistory([]);
+    writeSearchHistory([]);
+  };
+
+  const handleCompare = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    const result = addCompareProduct(product);
+    if (result.status === 'full') {
+      message.warning(t('pages.productList.compareFull', { count: MAX_COMPARE_ITEMS }));
+      return;
+    }
+    message.success(result.status === 'exists' ? t('pages.productList.compareExists') : t('pages.productList.compareAdded'));
+    navigate('/compare');
+  };
+
+  const resetFilters = () => {
+    setPriceRange(DEFAULT_PRICE_RANGE);
+    setPetSizes([]);
+    setMaterials([]);
+    setColors([]);
+    setCurrentPage(1);
   };
 
   const handleCategoryChange = (cid: number | undefined) => {
@@ -83,18 +190,59 @@ const ProductList: React.FC = () => {
   const openQuickAdd = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
     setQuickAddProduct(product);
-    setQuickAddOptions({ size: '', color: '' });
+    setQuickAddOptions({});
   };
 
   const submitQuickAdd = async () => {
     if (!quickAddProduct) return;
+    const missingOption = quickAddOptionGroups.find((group) => !quickAddOptions[group.name]);
+    if (missingOption) {
+      message.warning(t('pages.productDetail.selectOption', { option: missingOption.name }));
+      return;
+    }
+    if (quickAddVariants.length > 0 && !quickAddVariant) {
+      message.warning(t('pages.productDetail.variantUnavailable'));
+      return;
+    }
+    const selectedStock = quickAddVariant?.stock ?? quickAddProduct.stock;
+    if (selectedStock !== undefined && selectedStock <= 0) {
+      message.error(t('pages.productDetail.insufficientStock'));
+      return;
+    }
+    const bundleInfo = getBundleInfo(quickAddProduct);
+    if (bundleInfo) {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      const selectedSpecs = buildBundleSpecs(quickAddProduct, quickAddOptions, quickAddVariant?.sku);
+      try {
+        if (token && userId) {
+          await cartApi.addItem(Number(userId), quickAddProduct.id, 1, selectedSpecs);
+        } else {
+          addGuestCartItem(quickAddProduct, 1, selectedSpecs, bundleInfo.price);
+        }
+        message.success(t('messages.addCartSuccess'));
+        setQuickAddProduct(null);
+        window.dispatchEvent(new Event('shop:cart-updated'));
+        window.dispatchEvent(new Event('shop:open-cart'));
+      } catch {
+        message.error(t('messages.addFailed'));
+      }
+      return;
+    }
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
+    const selectedSpecs = quickAddOptionGroups.length
+      ? JSON.stringify({
+        ...quickAddOptions,
+        ...(quickAddVariant?.sku ? { _variantSku: quickAddVariant.sku } : {}),
+      })
+      : undefined;
+    const selectedPrice = quickAddVariant?.price ?? getPrice(quickAddProduct);
     try {
       if (token && userId) {
-        await cartApi.addItem(Number(userId), quickAddProduct.id, 1);
+        await cartApi.addItem(Number(userId), quickAddProduct.id, 1, selectedSpecs);
       } else {
-        addGuestCartItem(quickAddProduct, 1);
+        addGuestCartItem(quickAddProduct, 1, selectedSpecs, selectedPrice);
       }
       message.success(t('messages.addCartSuccess'));
       setQuickAddProduct(null);
@@ -109,7 +257,8 @@ const ProductList: React.FC = () => {
     const price = getPrice(product);
     const specs = product.specifications || {};
     const specText = Object.values(specs).join(' ').toLowerCase();
-    const matchPrice = price >= priceRange[0] && price <= priceRange[1];
+    const priceFilterActive = priceRange[0] !== DEFAULT_PRICE_RANGE[0] || priceRange[1] !== DEFAULT_PRICE_RANGE[1];
+    const matchPrice = !priceFilterActive || (price >= priceRange[0] && price <= priceRange[1]);
     const matchSize = petSizes.length === 0 || petSizes.some((size) => specText.includes(size.toLowerCase()));
     const matchMaterial = materials.length === 0 || materials.some((material) => specText.includes(material.toLowerCase()));
     const matchColor = colors.length === 0 || colors.some((color) => specText.includes(color.toLowerCase()) || product.name.toLowerCase().includes(color.toLowerCase()));
@@ -162,11 +311,24 @@ const ProductList: React.FC = () => {
               ))}
             </div>
           </Card>
-          <Card title={t('pages.productList.filters')} size="small">
+          <Card
+            title={
+              <Space>
+                <span>{t('pages.productList.filters')}</span>
+                {activeFilterCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeFilterCount })}</Tag> : null}
+              </Space>
+            }
+            size="small"
+            extra={
+              <Button type="link" size="small" disabled={activeFilterCount === 0} onClick={resetFilters}>
+                {t('pages.productList.resetFilters')}
+              </Button>
+            }
+          >
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               <div>
                 <Text strong>{t('pages.productList.price')}</Text>
-                <Slider range min={0} max={500} value={priceRange} onChange={(value) => setPriceRange(value as [number, number])} />
+                <Slider range min={0} max={10000} step={50} value={priceRange} onChange={(value) => setPriceRange(value as [number, number])} />
                 <Text type="secondary">{formatMoney(priceRange[0])} - {formatMoney(priceRange[1])}</Text>
               </div>
               <Checkbox.Group
@@ -207,6 +369,19 @@ const ProductList: React.FC = () => {
               </Col>
               <Col xs={8} sm={3} md={4}><Text type="secondary">{t('pages.productList.count', { count: filteredProducts.length })}</Text></Col>
             </Row>
+            {searchHistory.length > 0 && (
+              <Space wrap size={[8, 8]} style={{ marginTop: 12 }}>
+                <Text type="secondary">{t('pages.productList.recentSearches')}</Text>
+                {searchHistory.map((term) => (
+                  <Tag key={term} style={{ cursor: 'pointer' }} onClick={() => handleSearch(term)}>
+                    {term}
+                  </Tag>
+                ))}
+                <Button type="link" size="small" onClick={clearSearchHistory}>
+                  {t('pages.productList.clearSearches')}
+                </Button>
+              </Space>
+            )}
           </Card>
           {loading ? (
             <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
@@ -237,7 +412,10 @@ const ProductList: React.FC = () => {
                         <Button type="primary" icon={<ShoppingCartOutlined />} size="small"
                           disabled={product.stock !== undefined && product.stock <= 0}
                           onClick={(e) => openQuickAdd(e, product)}>
-                          Quick Add
+                          {t('pages.productList.quickAdd')}
+                        </Button>,
+                        <Button icon={<BarChartOutlined />} size="small" onClick={(e) => handleCompare(e, product)}>
+                          {isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
                         </Button>,
                       ]}
                     >
@@ -275,26 +453,62 @@ const ProductList: React.FC = () => {
         </Col>
       </Row>
       <Modal
-        title={quickAddProduct ? `Quick Add: ${quickAddProduct.name}` : 'Quick Add'}
+        title={quickAddProduct ? t('pages.productList.quickAddTitle', { name: quickAddProduct.name }) : t('pages.productList.quickAdd')}
         open={!!quickAddProduct}
         onCancel={() => setQuickAddProduct(null)}
         onOk={submitQuickAdd}
-        okText="Add to cart"
+        okText={t('pages.productList.addToCart')}
+        cancelText={t('common.cancel')}
       >
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Text>Select preferred options before adding. Variant-specific inventory can be connected later through SKU management.</Text>
-          <Select
-            placeholder="Size"
-            value={quickAddOptions.size || undefined}
-            onChange={(size) => setQuickAddOptions((current) => ({ ...current, size }))}
-            options={['Small', 'Medium', 'Large'].map((size) => ({ value: size, label: size }))}
-          />
-          <Select
-            placeholder="Color"
-            value={quickAddOptions.color || undefined}
-            onChange={(color) => setQuickAddOptions((current) => ({ ...current, color }))}
-            options={['Black', 'Blue', 'Green', 'Pink'].map((color) => ({ value: color, label: color }))}
-          />
+          {quickAddBundleInfo ? (
+            <>
+              {quickAddOptionGroups.length > 0 ? (
+                <>
+                  <Text type="secondary">{t('pages.productList.quickAddHint')}</Text>
+                  {quickAddOptionGroups.map((group) => (
+                    <Select
+                      key={group.name}
+                      placeholder={group.name}
+                      value={quickAddOptions[group.name] || undefined}
+                      onChange={(value) => setQuickAddOptions((current) => ({ ...current, [group.name]: value }))}
+                      options={group.values.map((value) => ({ value, label: value }))}
+                      style={{ width: '100%' }}
+                    />
+                  ))}
+                </>
+              ) : null}
+              <Text type="secondary">{t('bundle.includes')}</Text>
+              <Space wrap size={[6, 6]}>
+                {quickAddBundleInfo.items.map((item) => (
+                  <Tag key={item.name}>{item.name} x{item.quantity || 1}</Tag>
+                ))}
+              </Space>
+              <Text>{t('pages.productList.quickAddPrice')}: {formatMoney(quickAddBundleInfo.price)}</Text>
+            </>
+          ) : quickAddOptionGroups.length > 0 ? (
+            <>
+              <Text type="secondary">{t('pages.productList.quickAddHint')}</Text>
+              {quickAddOptionGroups.map((group) => (
+                <Select
+                  key={group.name}
+                  placeholder={group.name}
+                  value={quickAddOptions[group.name] || undefined}
+                  onChange={(value) => setQuickAddOptions((current) => ({ ...current, [group.name]: value }))}
+                  options={group.values.map((value) => ({ value, label: value }))}
+                  style={{ width: '100%' }}
+                />
+              ))}
+              <Text>
+                {t('pages.productList.quickAddPrice')}: {formatMoney(quickAddVariant?.price ?? (quickAddProduct ? getPrice(quickAddProduct) : 0))}
+              </Text>
+              {quickAddVariant?.stock !== undefined && (
+                <Text type="secondary">{t('pages.productDetail.stock')}: {quickAddVariant.stock}</Text>
+              )}
+            </>
+          ) : (
+            <Text type="secondary">{t('pages.productList.quickAddNoOptions')}</Text>
+          )}
         </Space>
       </Modal>
     </div>

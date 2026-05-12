@@ -74,6 +74,12 @@ export interface Product {
     shipping?: string;
 }
 
+export interface ProductBundleItem {
+    name: string;
+    quantity?: number;
+    productId?: number;
+}
+
 export interface ProductVariant {
     sku?: string;
     options: Record<string, string>;
@@ -259,6 +265,7 @@ export interface WishlistItem {
     productPrice: number;
     stock?: number;
     productStatus?: string;
+    requiresSelection?: boolean;
     createdAt?: string;
 }
 

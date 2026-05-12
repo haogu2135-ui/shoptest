@@ -12,7 +12,7 @@ import { getGuestCartItems, removeGuestCartItem, updateGuestCartQuantity } from 
 const { Text } = Typography;
 
 const canCheckout = (item: CartItem) =>
-  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock ?? 0) > 0 && (item.stock ?? 0) >= item.quantity;
+  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock >= item.quantity);
 
 const CartDrawer: React.FC = () => {
   const [open, setOpen] = useState(false);

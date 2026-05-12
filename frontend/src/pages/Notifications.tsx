@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
+import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 
 const { Text, Title } = Typography;
 
@@ -13,23 +14,6 @@ const typeColors: Record<string, string> = {
   PROMOTION: 'orange',
   SYSTEM: 'default',
   DELIVERY: 'green',
-};
-
-const stripUnsafeHtml = (html: string) => {
-  const scriptProtocol = ['java', 'script:'].join('');
-  const template = document.createElement('template');
-  template.innerHTML = html;
-  template.content.querySelectorAll('script, iframe, object, embed, link, meta, style').forEach((node) => node.remove());
-  template.content.querySelectorAll('*').forEach((node) => {
-    Array.from(node.attributes).forEach((attr) => {
-      const name = attr.name.toLowerCase();
-      const value = attr.value.trim().toLowerCase();
-      if (name.startsWith('on') || value.startsWith(scriptProtocol)) {
-        node.removeAttribute(attr.name);
-      }
-    });
-  });
-  return template.innerHTML;
 };
 
 const Notifications: React.FC = () => {

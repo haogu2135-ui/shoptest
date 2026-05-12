@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Cascader, Divider, Empty, Form, Input, List, message, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Cascader, Divider, Empty, Form, Input, List, message, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { addressApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
 import type { CartItem, CouponQuote, Order, Payment, UserAddress, UserCoupon } from '../types';
@@ -8,11 +8,12 @@ import { useLanguage } from '../i18n';
 import { createPaymentMethodOptions, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
-import { clearGuestCart, getGuestCartItems } from '../utils/guestCart';
+import { getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
+import { navigateToSafeUrl } from '../utils/safeUrl';
 
 const { Text, Title } = Typography;
 const isPurchasable = (item: CartItem) =>
-  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock ?? 0) > 0 && (item.stock ?? 0) >= item.quantity;
+  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock >= item.quantity);
 
 const Checkout: React.FC = () => {
   const [form] = Form.useForm();
@@ -141,6 +142,10 @@ const Checkout: React.FC = () => {
   const shippingFee = couponQuote?.shippingFee ?? (isGuestCheckout ? guestShippingFee : 0);
   const payableAmount = couponQuote?.payableAmount ?? (cartTotal + shippingFee);
   const discountAmount = couponQuote?.discountAmount ?? 0;
+  const selectedCoupon = useMemo(
+    () => couponQuote?.availableCoupons.find((coupon) => coupon.id === selectedUserCouponId),
+    [couponQuote?.availableCoupons, selectedUserCouponId],
+  );
   const freeShippingRemaining = Math.max(0, market.freeShippingThreshold - cartTotal);
   const freeShippingPercent = Math.min(100, Math.round((cartTotal / market.freeShippingThreshold) * 100));
 
@@ -218,14 +223,16 @@ const Checkout: React.FC = () => {
       sessionStorage.removeItem('checkoutCartItemIds');
       sessionStorage.removeItem('checkoutPaymentMethod');
       if (!token || !userId) {
-        clearGuestCart();
+        removeGuestCartItems(cartItems.map((item) => item.id));
         window.dispatchEvent(new Event('shop:cart-updated'));
       }
       setCreatedOrder(orderRes.data);
       setPayment(paymentRes.data);
       message.success(t('pages.checkout.orderCreated'));
       if (paymentRes.data.channel === 'STRIPE' && paymentRes.data.paymentUrl) {
-        window.location.href = paymentRes.data.paymentUrl;
+        if (!navigateToSafeUrl(paymentRes.data.paymentUrl)) {
+          message.error(t('pages.payment.failed'));
+        }
       }
     } catch (error: any) {
       message.error(error?.response?.data?.error || t('pages.checkout.orderCreateFailed'));
@@ -250,8 +257,8 @@ const Checkout: React.FC = () => {
   };
 
   const openPaymentUrl = () => {
-    if (payment?.paymentUrl) {
-      window.location.href = payment.paymentUrl;
+    if (payment?.paymentUrl && !navigateToSafeUrl(payment.paymentUrl)) {
+      message.error(t('pages.payment.failed'));
     }
   };
 
@@ -434,13 +441,27 @@ const Checkout: React.FC = () => {
             placeholder={t('pages.checkout.selectCoupon')}
             value={selectedUserCouponId ?? undefined}
             onChange={(value) => setSelectedUserCouponId(value ?? null)}
-            options={(couponQuote?.availableCoupons || []).map((coupon) => ({
-              value: coupon.id,
-              label: describeCoupon(coupon),
-              disabled: calculateCouponDiscount(coupon) <= 0,
-            }))}
+            options={(couponQuote?.availableCoupons || []).map((coupon) => {
+              const couponDiscount = calculateCouponDiscount(coupon);
+              return {
+                value: coupon.id,
+                label: couponDiscount > 0
+                  ? `${describeCoupon(coupon)} · ${t('pages.checkout.couponSaveAmount', { amount: formatMoney(couponDiscount) })}`
+                  : describeCoupon(coupon),
+                disabled: couponDiscount <= 0,
+              };
+            })}
             notFoundContent={t('pages.checkout.noValidCoupons')}
           />
+          {selectedCoupon && discountAmount > 0 ? (
+            <Alert
+              type="success"
+              showIcon
+              style={{ marginTop: 12 }}
+              message={t('pages.checkout.couponAutoApplied', { name: selectedCoupon.couponName })}
+              description={t('pages.checkout.couponSavings', { amount: formatMoney(discountAmount) })}
+            />
+          ) : null}
           {couponQuote && couponQuote.availableCoupons.length > 0 && !couponQuote.availableCoupons.some((coupon) => calculateCouponDiscount(coupon) > 0) ? (
             <div style={{ marginTop: 8 }}>
               <Text type="secondary">{t('pages.checkout.couponRulesNotMet')}</Text>

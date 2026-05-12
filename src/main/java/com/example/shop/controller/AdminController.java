@@ -14,6 +14,7 @@ import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.CouponService;
 import com.example.shop.service.NotificationService;
+import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.ReviewService;
 import com.example.shop.service.UserService;
@@ -68,6 +69,7 @@ public class AdminController {
     private final ReviewService reviewService;
     private final CouponService couponService;
     private final NotificationService notificationService;
+    private final PetBirthdayCouponService petBirthdayCouponService;
     private final LogisticsCarrierService logisticsCarrierService;
 
     // ==================== Dashboard ====================
@@ -262,6 +264,12 @@ public class AdminController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @PostMapping("/pet-birthday-coupons/run")
+    public ResponseEntity<?> runPetBirthdayCoupons() {
+        int granted = petBirthdayCouponService.grantBirthdayCoupons(LocalDate.now());
+        return ResponseEntity.ok(Map.of("granted", granted));
     }
 
     // ==================== Notification Management ====================

@@ -198,6 +198,7 @@ public class OrderService {
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
                 throw new IllegalArgumentException("Invalid quantity");
             }
+            productVariantService.validateSelection(product, item.getSelectedSpecs());
             Integer availableStock = productVariantService.resolveStock(product, item.getSelectedSpecs());
             if (availableStock == null || availableStock < item.getQuantity()) {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
@@ -230,6 +231,7 @@ public class OrderService {
                 throw new IllegalArgumentException("Invalid quantity");
             }
             String normalizedSpecs = productVariantService.normalizeSpecs(requestItem.getSelectedSpecs());
+            productVariantService.validateSelection(product, normalizedSpecs);
             Integer availableStock = productVariantService.resolveStock(product, normalizedSpecs);
             if (availableStock == null || availableStock < requestItem.getQuantity()) {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());

@@ -8,14 +8,17 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductVariantService {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final BigDecimal SUBSCRIBE_AND_SAVE_RATE = new BigDecimal("0.80");
+    private static final String PURCHASE_MODE_BUNDLE = "bundle";
 
     public Optional<Map<String, Object>> findSelectedVariant(Product product, String selectedSpecs) {
         List<Map<String, Object>> variants = product.getVariantsList();
@@ -36,6 +39,10 @@ public class ProductVariantService {
     }
 
     public BigDecimal resolvePrice(Product product, String selectedSpecs) {
+        BigDecimal bundlePrice = resolveBundlePrice(product, selectedSpecs);
+        if (bundlePrice != null) {
+            return bundlePrice;
+        }
         BigDecimal price = findSelectedVariant(product, selectedSpecs)
                 .map(variant -> decimalValue(variant.get("price")))
                 .filter(resolvedPrice -> resolvedPrice.compareTo(BigDecimal.ZERO) > 0)
@@ -47,6 +54,24 @@ public class ProductVariantService {
         return findSelectedVariant(product, selectedSpecs)
                 .map(variant -> integerValue(variant.get("stock")))
                 .orElse(product.getStock());
+    }
+
+    public void validateSelection(Product product, String selectedSpecs) {
+        Map<String, String> selected = parseSelectedSpecs(selectedSpecs);
+        for (String optionName : requiredOptionNames(product)) {
+            if (selected.get(optionName) == null || selected.get(optionName).trim().isEmpty()) {
+                throw new IllegalArgumentException("Please select " + optionName);
+            }
+        }
+
+        List<Map<String, Object>> variants = product.getVariantsList();
+        if (variants != null && !variants.isEmpty() && !findSelectedVariant(variants, selectedSpecs).isPresent()) {
+            throw new IllegalArgumentException("Selected product variant is unavailable");
+        }
+
+        if (PURCHASE_MODE_BUNDLE.equals(selected.get("_purchaseMode")) && resolveBundlePrice(product, selectedSpecs) == null) {
+            throw new IllegalArgumentException("Selected bundle is unavailable");
+        }
     }
 
     public boolean decreaseVariantStock(Product product, String selectedSpecs, Integer quantity) {
@@ -103,6 +128,18 @@ public class ProductVariantService {
         return "subscribe".equals(parseSelectedSpecs(selectedSpecs).get("_purchaseMode"));
     }
 
+    private BigDecimal resolveBundlePrice(Product product, String selectedSpecs) {
+        if (!PURCHASE_MODE_BUNDLE.equals(parseSelectedSpecs(selectedSpecs).get("_purchaseMode"))) {
+            return null;
+        }
+        Map<String, String> specs = product.getSpecificationsMap();
+        if (specs == null || !"true".equalsIgnoreCase(specs.getOrDefault("bundle.enabled", "false"))) {
+            return null;
+        }
+        BigDecimal bundlePrice = decimalValue(specs.get("bundle.price"));
+        return bundlePrice.compareTo(BigDecimal.ZERO) > 0 ? bundlePrice : null;
+    }
+
     private BigDecimal applyPurchaseModeDiscount(BigDecimal price, String selectedSpecs) {
         if (price == null || !isSubscribeAndSave(selectedSpecs)) {
             return price;
@@ -127,6 +164,19 @@ public class ProductVariantService {
             }
         }
         return true;
+    }
+
+    private List<String> requiredOptionNames(Product product) {
+        Map<String, String> specs = product.getSpecificationsMap();
+        if (specs == null || specs.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return specs.entrySet().stream()
+                .filter(entry -> entry.getKey() != null && entry.getKey().startsWith("options."))
+                .filter(entry -> entry.getValue() != null && !entry.getValue().trim().isEmpty())
+                .map(entry -> entry.getKey().replaceFirst("^options\\.", ""))
+                .filter(name -> !name.trim().isEmpty())
+                .collect(Collectors.toList());
     }
 
     private Optional<Map<String, Object>> findSelectedVariant(List<Map<String, Object>> variants, String selectedSpecs) {

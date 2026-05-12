@@ -21,10 +21,10 @@ import type { Category, Product } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getLocalizedCategoryValue } from '../utils/categoryTree';
+import { clearProductViewHistory, loadProductViewPreferences } from '../utils/productViewPreferences';
 import './Home.css';
 
 const { Text } = Typography;
-const VIEW_PREFERENCES_KEY = 'shop-product-view-preferences';
 const DISCOVERY_BATCH_SIZE = 12;
 
 const fallbackImages = [
@@ -64,26 +64,13 @@ const normalizeProductImages = (product: Product, index: number) => {
   return Array.from(new Set(images)).concat(fallbackImages[index % fallbackImages.length]).slice(0, 6);
 };
 
-const loadViewPreferences = () => {
-  try {
-    const preferences = JSON.parse(localStorage.getItem(VIEW_PREFERENCES_KEY) || '{}');
-    return {
-      categories: preferences.categories || {},
-      brands: preferences.brands || {},
-      tags: preferences.tags || {},
-      recent: Array.isArray(preferences.recent) ? preferences.recent : [],
-    };
-  } catch {
-    return { categories: {}, brands: {}, tags: {}, recent: [] };
-  }
-};
-
 const Home: React.FC = () => {
   const [featured, setFeatured] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(DISCOVERY_BATCH_SIZE);
+  const [viewPreferences, setViewPreferences] = useState(() => loadProductViewPreferences());
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { formatMoney: formatPrice, market } = useMarket();
@@ -91,6 +78,16 @@ const Home: React.FC = () => {
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
 
   const searchKeyword = (keyword: string) => navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
+
+  const formatViewedAt = (viewedAt?: number) => {
+    if (!viewedAt) return '';
+    return new Date(viewedAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   useEffect(() => {
     const fetchHome = async () => {
@@ -117,6 +114,16 @@ const Home: React.FC = () => {
     fetchHome();
   }, [language]);
 
+  useEffect(() => {
+    const handlePreferencesUpdated = () => setViewPreferences(loadProductViewPreferences());
+    window.addEventListener('shop:product-view-preferences-updated', handlePreferencesUpdated);
+    window.addEventListener('storage', handlePreferencesUpdated);
+    return () => {
+      window.removeEventListener('shop:product-view-preferences-updated', handlePreferencesUpdated);
+      window.removeEventListener('storage', handlePreferencesUpdated);
+    };
+  }, []);
+
   const promoProducts = useMemo(
     () =>
       products
@@ -138,25 +145,36 @@ const Home: React.FC = () => {
     [products],
   );
 
+  const recentlyViewedProducts = useMemo(() => {
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const viewedAtById = new Map(viewPreferences.recentEntries.map((entry) => [entry.productId, entry.viewedAt]));
+    return viewPreferences.recent
+      .map((productId: number) => {
+        const product = productById.get(productId);
+        return product ? { product, viewedAt: viewedAtById.get(productId) } : undefined;
+      })
+      .filter(Boolean)
+      .slice(0, 8) as Array<{ product: Product; viewedAt?: number }>;
+  }, [products, viewPreferences]);
+
   const discoveryProducts = useMemo(() => {
     const merged = [...featured, ...products];
     const uniqueProducts = Array.from(new Map(merged.map((product) => [product.id, product])).values());
-    const preferences = loadViewPreferences();
-    const recentSet = new Set(preferences.recent);
+    const recentSet = new Set(viewPreferences.recent);
     return uniqueProducts
       .map((product, index) => ({
         product,
         index,
         score:
-          (preferences.categories[String(product.categoryId)] || 0) * 8 +
-          (product.brand ? (preferences.brands[String(product.brand)] || 0) * 4 : 0) +
-          (product.tag ? (preferences.tags[String(product.tag)] || 0) * 3 : 0) +
+          (viewPreferences.categories[String(product.categoryId)] || 0) * 8 +
+          (product.brand ? (viewPreferences.brands[String(product.brand)] || 0) * 4 : 0) +
+          (product.tag ? (viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
           (recentSet.has(product.id) ? 2 : 0) +
           (product.isFeatured ? 1 : 0),
       }))
       .sort((left, right) => right.score - left.score || left.index - right.index)
       .map((entry) => entry.product);
-  }, [featured, products]);
+  }, [featured, products, viewPreferences]);
 
   const visibleDiscoveryProducts = discoveryProducts.slice(0, visibleCount);
   const hasMoreDiscoveryProducts = visibleCount < discoveryProducts.length;
@@ -175,10 +193,11 @@ const Home: React.FC = () => {
 
   const categoryTiles = categories.slice(0, 8);
 
-  const ProductTile: React.FC<{ product: Product; index: number; compact?: boolean }> = ({
+  const ProductTile: React.FC<{ product: Product; index: number; compact?: boolean; viewedAt?: number }> = ({
     product,
     index,
     compact = false,
+    viewedAt,
   }) => {
     const images = normalizeProductImages(product, index);
     const isSoldOut = product.stock !== undefined && product.stock <= 0;
@@ -223,6 +242,9 @@ const Home: React.FC = () => {
         </span>
         {product.originalPrice && product.originalPrice > getPrice(product) ? (
           <span className="shopee-product__original">{formatPrice(product.originalPrice)}</span>
+        ) : null}
+        {viewedAt ? (
+          <span className="shopee-product__lastViewed">{t('home.viewedAt', { time: formatViewedAt(viewedAt) })}</span>
         ) : null}
       </span>
     </button>
@@ -326,6 +348,32 @@ const Home: React.FC = () => {
             <Empty description={t('home.noCategories')} />
           )}
         </section>
+
+        {recentlyViewedProducts.length ? (
+          <section className="shopee-section shopee-promo-products">
+            <div className="shopee-section__header shopee-section__header--with-actions">
+              <h2>{t('home.recentlyViewed')}</h2>
+              <div className="shopee-section__actions">
+                <button onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
+                <button
+                  onClick={() => {
+                    clearProductViewHistory();
+                    setViewPreferences(loadProductViewPreferences());
+                  }}
+                >
+                  {t('home.clearRecentlyViewed')}
+                </button>
+              </div>
+            </div>
+            <Row gutter={[12, 12]}>
+              {recentlyViewedProducts.map(({ product, viewedAt }, index) => (
+                <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
+                  <ProductTile product={product} index={index} compact viewedAt={viewedAt} />
+                </Col>
+              ))}
+            </Row>
+          </section>
+        ) : null}
 
         {promoProducts.length ? (
           <section className="shopee-section shopee-promo-products">

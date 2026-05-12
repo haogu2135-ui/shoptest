@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Row, Col, Card, Button, Tag, Divider, Typography, Spin, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented } from 'antd';
-import { HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined } from '@ant-design/icons';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { ProductReview } from '../components/ProductReview';
@@ -13,6 +13,9 @@ import { useMarket } from '../hooks/useMarket';
 import ProductRichDetail from '../components/ProductRichDetail';
 import { localizeProduct } from '../utils/localizedProduct';
 import { addGuestCartItem } from '../utils/guestCart';
+import { getBundleInfo } from '../utils/bundle';
+import { recordProductView } from '../utils/productViewPreferences';
+import { addStockAlert, hasStockAlert, removeStockAlert } from '../utils/stockAlerts';
 import './ProductDetail.css';
 
 const { Title, Text } = Typography;
@@ -80,30 +83,6 @@ const getTouchPair = (touches: React.TouchList) => {
   return { first, second };
 };
 
-const recordProductView = (product: any) => {
-  const key = 'shop-product-view-preferences';
-  try {
-    const preferences = JSON.parse(localStorage.getItem(key) || '{"categories":{},"brands":{},"tags":{},"recent":[]}');
-    const bump = (bucket: Record<string, number>, value?: string | number) => {
-      if (value === undefined || value === null || value === '') return;
-      const id = String(value);
-      bucket[id] = (bucket[id] || 0) + 1;
-    };
-    preferences.categories = preferences.categories || {};
-    preferences.brands = preferences.brands || {};
-    preferences.tags = preferences.tags || {};
-    preferences.recent = Array.isArray(preferences.recent) ? preferences.recent : [];
-    bump(preferences.categories, product.categoryId);
-    bump(preferences.brands, product.brand);
-    bump(preferences.tags, product.tag);
-    preferences.recent = [product.id, ...preferences.recent.filter((id: number) => id !== product.id)].slice(0, 30);
-    preferences.updatedAt = Date.now();
-    localStorage.setItem(key, JSON.stringify(preferences));
-  } catch {
-    // Preference tracking is best-effort only.
-  }
-};
-
 const getProductOptionGroups = (product: any): Array<{ name: string; values: string[] }> => {
   const specs = product?.specifications || {};
   const configured = Object.entries(specs)
@@ -154,9 +133,10 @@ const ProductDetail: React.FC = () => {
   const [now, setNow] = useState(() => Date.now());
   const [imagePaused, setImagePaused] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
-  const [purchaseMode, setPurchaseMode] = useState<'once' | 'subscribe'>('once');
+  const [purchaseMode, setPurchaseMode] = useState<'once' | 'subscribe' | 'bundle'>('once');
   const [subscriptionInterval, setSubscriptionInterval] = useState('4w');
   const [pinchZoom, setPinchZoom] = useState({ active: false, scale: 1, originX: 50, originY: 50 });
+  const [isAlerted, setIsAlerted] = useState(false);
   const mobileGalleryRef = useRef<HTMLDivElement | null>(null);
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
   const { t, language } = useLanguage();
@@ -171,6 +151,7 @@ const ProductDetail: React.FC = () => {
   const galleryImages = useMemo(() => productImages.slice(0, -1), [productImages]);
   const optionGroups = useMemo(() => getProductOptionGroups(product), [product]);
   const variants = useMemo(() => getProductVariants(product), [product]);
+  const bundleInfo = useMemo(() => getBundleInfo(product), [product]);
   const selectedVariant = useMemo(() => {
     if (!variants.length) return undefined;
     return variants.find((variant) => Object.entries(variant.options || {}).every(([key, value]) => selectedOptions[key] === value));
@@ -183,7 +164,12 @@ const ProductDetail: React.FC = () => {
       _subscriptionInterval: subscriptionInterval,
       _subscriptionDiscountPercent: '20',
     } : {}),
-  }), [purchaseMode, selectedOptions, selectedVariant, subscriptionInterval]);
+    ...(purchaseMode === 'bundle' && bundleInfo ? {
+      _purchaseMode: 'bundle',
+      _bundleTitle: bundleInfo.title,
+      _bundleItems: bundleInfo.items.map((item) => `${item.name} x${item.quantity || 1}`).join(', '),
+    } : {}),
+  }), [bundleInfo, purchaseMode, selectedOptions, selectedVariant, subscriptionInterval]);
 
   const validateOptions = () => {
     const missing = optionGroups.find((group) => !selectedOptions[group.name]);
@@ -279,6 +265,7 @@ const ProductDetail: React.FC = () => {
         .catch(() => {});
       fetchReviewableOrders();
     }
+    setIsAlerted(hasStockAlert(Number(id)));
   }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews, id, language]);
 
   const handleAddToCart = async () => {
@@ -294,7 +281,7 @@ const ProductDetail: React.FC = () => {
         message.error(t('pages.productDetail.insufficientStock'));
         return;
       }
-      const specs = optionGroups.length || purchaseMode === 'subscribe' ? selectedSpecsPayload : undefined;
+      const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
       if (token && userId) {
         await cartApi.addItem(Number(userId), Number(id), quantity, specs);
       } else {
@@ -321,11 +308,11 @@ const ProductDetail: React.FC = () => {
         message.error(t('pages.productDetail.insufficientStock'));
         return;
       }
-      const specs = optionGroups.length || purchaseMode === 'subscribe' ? selectedSpecsPayload : undefined;
+      const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
       if (token && userId) {
         await cartApi.addItem(Number(userId), Number(id), quantity, specs);
         const cartRes = await cartApi.getItems(Number(userId));
-        const cartItem = cartRes.data.find((item: any) => item.productId === Number(id) && (optionGroups.length || purchaseMode === 'subscribe' ? item.selectedSpecs === selectedSpecsPayload : !item.selectedSpecs));
+        const cartItem = cartRes.data.find((item: any) => item.productId === Number(id) && (optionGroups.length || purchaseMode !== 'once' ? item.selectedSpecs === selectedSpecsPayload : !item.selectedSpecs));
         if (cartItem) {
           sessionStorage.setItem('checkoutCartItemIds', JSON.stringify([cartItem.id]));
         }
@@ -354,6 +341,18 @@ const ProductDetail: React.FC = () => {
     } catch {
       message.error(t('messages.operationFailed'));
     }
+  };
+
+  const handleStockAlert = () => {
+    if (isAlerted) {
+      removeStockAlert(Number(id));
+      setIsAlerted(false);
+      message.success(t('pages.stockAlerts.removed'));
+      return;
+    }
+    const result = addStockAlert(product);
+    setIsAlerted(result.status !== 'exists');
+    message.success(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'));
   };
 
   const handleAddReview = async (orderId: number, rating: number, comment: string) => {
@@ -430,8 +429,9 @@ const ProductDetail: React.FC = () => {
   const displayedRating = Number(averageRating || product.rating || 0);
   const activePrice = selectedVariant?.price ?? product.effectivePrice ?? product.price;
   const subscribePrice = Math.round(activePrice * 80) / 100;
-  const displayPrice = purchaseMode === 'subscribe' ? subscribePrice : activePrice;
+  const displayPrice = purchaseMode === 'bundle' && bundleInfo ? bundleInfo.price : purchaseMode === 'subscribe' ? subscribePrice : activePrice;
   const subscriptionSavings = Math.max(0, activePrice - subscribePrice);
+  const bundleSavings = bundleInfo ? Math.max(0, activePrice - bundleInfo.price) : 0;
   const discountPercent = product.effectiveDiscountPercent || product.discount || 0;
   const limitedTimeEnd = product.limitedTimeEndAt ? new Date(product.limitedTimeEndAt).getTime() : 0;
   const limitedTimeRemaining = product.activeLimitedTimeDiscount && limitedTimeEnd > now ? limitedTimeEnd - now : 0;
@@ -716,10 +716,11 @@ const ProductDetail: React.FC = () => {
                   <Segmented
                     block
                     value={purchaseMode}
-                    onChange={(value) => setPurchaseMode(value as 'once' | 'subscribe')}
+                    onChange={(value) => setPurchaseMode(value as 'once' | 'subscribe' | 'bundle')}
                     options={[
                       { label: t('pages.productDetail.oneTimePurchase'), value: 'once' },
                       { label: t('subscription.subscribeSave'), value: 'subscribe' },
+                      ...(bundleInfo ? [{ label: t('bundle.bundleDeal'), value: 'bundle' }] : []),
                     ]}
                   />
                   {purchaseMode === 'subscribe' ? (
@@ -734,6 +735,22 @@ const ProductDetail: React.FC = () => {
                       <div className="product-purchase-mode__summary">
                         <Text strong>{t('pages.productDetail.subscriptionSavings', { amount: formatMoney(subscriptionSavings) })}</Text>
                         <Text type="secondary">{t('pages.productDetail.subscriptionHint')}</Text>
+                      </div>
+                    </div>
+                  ) : purchaseMode === 'bundle' && bundleInfo ? (
+                    <div className="product-purchase-mode__details">
+                      <div className="product-purchase-mode__summary">
+                        <Text strong>{t('bundle.includes')}</Text>
+                        <Space wrap size={[6, 6]}>
+                          {bundleInfo.items.map((item) => (
+                            <Tag key={item.name}>{item.name} x{item.quantity || 1}</Tag>
+                          ))}
+                        </Space>
+                        <Text type="secondary">
+                          {bundleSavings > 0
+                            ? t('bundle.saveWithBundle', { amount: formatMoney(bundleSavings) })
+                            : t('bundle.bundleHint')}
+                        </Text>
                       </div>
                     </div>
                   ) : (
@@ -756,7 +773,12 @@ const ProductDetail: React.FC = () => {
                 </div>
 
                 {isOutOfStock && (
-                  <Tag color="red" style={{ fontSize: 16, padding: '4px 12px' }}>{t('pages.productDetail.soldOut')}</Tag>
+                  <Space wrap>
+                    <Tag color="red" style={{ fontSize: 16, padding: '4px 12px' }}>{t('pages.productDetail.soldOut')}</Tag>
+                    <Button icon={<BellOutlined />} onClick={handleStockAlert}>
+                      {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
+                    </Button>
+                  </Space>
                 )}
                 <Space size="middle" className="product-actions">
                   <Button type="primary" size="large" icon={<ShoppingCartOutlined />} onClick={handleAddToCart} disabled={isOutOfStock}>
@@ -765,6 +787,11 @@ const ProductDetail: React.FC = () => {
                   <Button type="primary" size="large" icon={<ThunderboltOutlined />} onClick={handleBuyNow} disabled={isOutOfStock} ghost>
                     {t('pages.productDetail.buyNow')}
                   </Button>
+                  {isOutOfStock ? (
+                    <Button size="large" icon={<BellOutlined />} onClick={handleStockAlert}>
+                      {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
+                    </Button>
+                  ) : null}
                   <Button size="large" icon={isWishlisted ? <HeartFilled style={{ color: '#ee4d2d' }} /> : <HeartOutlined />} onClick={handleFavorite}>
                     {isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
                   </Button>
@@ -804,7 +831,7 @@ const ProductDetail: React.FC = () => {
             <TabPane tab={t('pages.productDetail.specs')} key="2">
               <div style={{ padding: '24px 0' }}>
                 {product.specifications && Object.entries(product.specifications)
-                  .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.'))
+                  .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.') && !key.startsWith('bundle.'))
                   .map(([key, value]) => (
                   <div key={key} style={{ marginBottom: 16 }}>
                     <Text strong>{key}: </Text>
@@ -934,8 +961,12 @@ const ProductDetail: React.FC = () => {
           {isWishlisted ? <HeartFilled /> : <HeartOutlined />}
           <span>{isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}</span>
         </button>
-        <Button className="product-mobile-buybar__cart" icon={<ShoppingCartOutlined />} onClick={handleAddToCart} disabled={isOutOfStock}>
-          {t('pages.productDetail.addCart')}
+        <Button
+          className="product-mobile-buybar__cart"
+          icon={isOutOfStock ? <BellOutlined /> : <ShoppingCartOutlined />}
+          onClick={isOutOfStock ? handleStockAlert : handleAddToCart}
+        >
+          {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
         </Button>
         <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} onClick={handleBuyNow} disabled={isOutOfStock}>
           {t('pages.productDetail.buyNow')}

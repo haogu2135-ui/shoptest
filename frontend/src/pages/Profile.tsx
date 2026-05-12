@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Cascader, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Select, Space, Tabs, Tag, Typography } from 'antd';
-import { DeleteOutlined, EditOutlined, LockOutlined, PlusOutlined, StarFilled, StarOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, LockOutlined, PlusOutlined, ShoppingCartOutlined, StarFilled, StarOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { addressApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
+import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { Order, OrderItem, Payment, PetProfile, User, UserAddress } from '../types';
 import { findRegionPath, regionData } from '../regionData';
 import { useLanguage } from '../i18n';
@@ -11,6 +11,7 @@ import { useMarket } from '../hooks/useMarket';
 import './Profile.css';
 import dayjs from 'dayjs';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
+import { navigateToSafeUrl } from '../utils/safeUrl';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 
 const { Title, Text } = Typography;
@@ -58,6 +59,7 @@ const Profile: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [orderItemsByOrderId, setOrderItemsByOrderId] = useState<Record<number, OrderItem[]>>({});
+  const [reordering, setReordering] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('STRIPE');
@@ -200,6 +202,36 @@ const Profile: React.FC = () => {
   const openProductDetail = (productId: number) => {
     setOrderDetailVisible(false);
     navigate(`/products/${productId}`);
+  };
+
+  const handleReorder = async () => {
+    const userId = Number(localStorage.getItem('userId'));
+    if (!userId || orderItems.length === 0) return;
+    setReordering(true);
+    let added = 0;
+    try {
+      for (const item of orderItems) {
+        try {
+          await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
+          added += item.quantity;
+        } catch {
+          // Keep trying the remaining order items.
+        }
+      }
+      if (added === 0) {
+        message.error(t('pages.profile.reorderFailed'));
+        return;
+      }
+      message.success(
+        added === orderItems.reduce((sum, item) => sum + item.quantity, 0)
+          ? t('pages.profile.reordered', { count: added })
+          : t('pages.profile.reorderPartial', { count: added }),
+      );
+      window.dispatchEvent(new Event('shop:cart-updated'));
+      window.dispatchEvent(new Event('shop:open-cart'));
+    } finally {
+      setReordering(false);
+    }
   };
 
   const handleCancelOrder = async (orderId: number) => {
@@ -443,7 +475,7 @@ const Profile: React.FC = () => {
         message.success(t('messages.updateSuccess'));
       } else {
         await petProfileApi.create(payload);
-        message.success('Pet profile added');
+        message.success(t('pages.profile.petAdded'));
       }
       setPetModalVisible(false);
       setEditingPet(null);
@@ -703,14 +735,20 @@ const Profile: React.FC = () => {
           },
           {
             key: 'pets',
-            label: `Pets (${petProfiles.length})`,
+            label: t('pages.profile.pets', { count: petProfiles.length }),
             children: (
               <div>
+                <Card style={{ marginBottom: 16 }}>
+                  <Space direction="vertical" size={4}>
+                    <Text strong>{t('pages.profile.petBirthdayPerkTitle')}</Text>
+                    <Text type="secondary">{t('pages.profile.petBirthdayPerkText')}</Text>
+                  </Space>
+                </Card>
                 <Button type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openPetModal()}>
-                  Add pet profile
+                  {t('pages.profile.addPet')}
                 </Button>
                 {petProfiles.length === 0 ? (
-                  <Empty description="Add your pet profile for size help, birthday offers, and better recommendations." />
+                  <Empty description={t('pages.profile.noPets')} />
                 ) : (
                   <List
                     grid={{ gutter: 16, xs: 1, sm: 2, md: 2 }}
@@ -721,17 +759,18 @@ const Profile: React.FC = () => {
                           title={pet.name}
                           extra={<Tag color="green">{pet.petType.replace('_', ' ')}</Tag>}
                           actions={[
-                            <Button type="link" icon={<EditOutlined />} onClick={() => openPetModal(pet)}>Edit</Button>,
-                            <Popconfirm title="Delete this pet profile?" onConfirm={() => handleDeletePet(pet.id)}>
-                              <Button type="link" danger icon={<DeleteOutlined />}>Delete</Button>
+                            <Button type="link" icon={<EditOutlined />} onClick={() => openPetModal(pet)}>{t('common.edit')}</Button>,
+                            <Popconfirm title={t('pages.profile.deletePetConfirm')} onConfirm={() => handleDeletePet(pet.id)}>
+                              <Button type="link" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
                             </Popconfirm>,
                           ]}
                         >
                           <Space direction="vertical">
-                            <Text>Breed: {pet.breed || t('common.unset')}</Text>
-                            <Text>Birthday: {pet.birthday || t('common.unset')}</Text>
-                            <Text>Weight: {pet.weight ? `${pet.weight} kg` : t('common.unset')}</Text>
-                            <Text>Size: {pet.size || t('common.unset')}</Text>
+                            <Text>{t('pages.profile.petBreed')}: {pet.breed || t('common.unset')}</Text>
+                            <Text>{t('pages.profile.petBirthday')}: {pet.birthday || t('common.unset')}</Text>
+                            <Text>{t('pages.profile.petWeight')}: {pet.weight ? `${pet.weight} kg` : t('common.unset')}</Text>
+                            <Text>{t('pages.profile.petSize')}: {pet.size || t('common.unset')}</Text>
+                            {pet.birthday ? <Tag color="gold">{t('pages.profile.birthdayCouponEnabled')}</Tag> : null}
                           </Space>
                         </Card>
                       </List.Item>
@@ -806,34 +845,34 @@ const Profile: React.FC = () => {
       </Modal>
 
       <Modal
-        title={editingPet ? 'Edit pet profile' : 'Add pet profile'}
+        title={editingPet ? t('pages.profile.editPet') : t('pages.profile.addPet')}
         open={petModalVisible}
         onOk={handleSavePet}
         onCancel={() => { setPetModalVisible(false); setEditingPet(null); petForm.resetFields(); }}
       >
         <Form form={petForm} layout="vertical">
-          <Form.Item name="name" label="Pet name" rules={[{ required: true, message: 'Pet name is required' }]}>
+          <Form.Item name="name" label={t('pages.profile.petName')} rules={[{ required: true, message: t('pages.profile.petNameRequired') }]}>
             <Input placeholder="Milo" />
           </Form.Item>
-          <Form.Item name="petType" label="Pet type" rules={[{ required: true }]}>
+          <Form.Item name="petType" label={t('pages.profile.petType')} rules={[{ required: true }]}>
             <Select
               options={[
-                { value: 'DOG', label: 'Dog' },
-                { value: 'CAT', label: 'Cat' },
-                { value: 'SMALL_PET', label: 'Small Pet' },
+                { value: 'DOG', label: t('pages.profile.petDog') },
+                { value: 'CAT', label: t('pages.profile.petCat') },
+                { value: 'SMALL_PET', label: t('pages.profile.petSmall') },
               ]}
             />
           </Form.Item>
-          <Form.Item name="breed" label="Breed">
+          <Form.Item name="breed" label={t('pages.profile.petBreed')}>
             <Input placeholder="Golden Retriever" />
           </Form.Item>
-          <Form.Item name="birthday" label="Birthday">
+          <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="weight" label="Weight (kg)">
+          <Form.Item name="weight" label={t('pages.profile.petWeightKg')}>
             <InputNumber min={0} precision={2} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="size" label="Size">
+          <Form.Item name="size" label={t('pages.profile.petSize')}>
             <Select
               allowClear
               options={[
@@ -871,7 +910,12 @@ const Profile: React.FC = () => {
               <Descriptions.Item label="Shipped at">{selectedOrder.shippedAt ? new Date(selectedOrder.shippedAt).toLocaleString(dateLocale) : '-'}</Descriptions.Item>
               <Descriptions.Item label={t('pages.adminOrders.createdAt')}>{selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString(dateLocale) : '-'}</Descriptions.Item>
             </Descriptions>
-            <Title level={5}>{t('pages.profile.orderItems')}</Title>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+              <Title level={5} style={{ margin: 0 }}>{t('pages.profile.orderItems')}</Title>
+              <Button icon={<ShoppingCartOutlined />} loading={reordering} disabled={orderItems.length === 0} onClick={handleReorder}>
+                {t('pages.profile.reorder')}
+              </Button>
+            </div>
             {orderItems.length > 0 ? (
               <List
                 dataSource={orderItems}
@@ -949,7 +993,11 @@ const Profile: React.FC = () => {
               key="pay"
               type="primary"
               loading={simulatingPayment}
-              onClick={selectedPayment.channel === 'STRIPE' && selectedPayment.paymentUrl ? () => { window.location.href = selectedPayment.paymentUrl!; } : handleSimulatePayment}
+              onClick={selectedPayment.channel === 'STRIPE' && selectedPayment.paymentUrl ? () => {
+                if (!navigateToSafeUrl(selectedPayment.paymentUrl)) {
+                  message.error(t('pages.payment.failed'));
+                }
+              } : handleSimulatePayment}
             >
               {selectedPayment.channel === 'STRIPE' ? t('pages.checkout.openPayment') : t('pages.checkout.simulatePay')}
             </Button>

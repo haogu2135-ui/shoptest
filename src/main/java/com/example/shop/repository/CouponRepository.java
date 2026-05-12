@@ -7,11 +7,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CouponRepository extends JpaRepository<Coupon, Long> {
     List<Coupon> findByStatusOrderByIdDesc(String status);
     List<Coupon> findByScopeAndStatusOrderByIdDesc(String scope, String status);
+    Optional<Coupon> findFirstByNameOrderByIdDesc(String name);
 
     @Modifying
     @Query("update Coupon c set c.claimedQuantity = coalesce(c.claimedQuantity, 0) + 1, " +

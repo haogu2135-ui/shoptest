@@ -3,10 +3,12 @@ import { Badge, Dropdown, Input, Select } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   BellOutlined,
+  BarChartOutlined,
   CheckOutlined,
   GiftOutlined,
   GlobalOutlined,
   HeartOutlined,
+  HistoryOutlined,
   LogoutOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -19,6 +21,8 @@ import { Language, useLanguage } from '../i18n';
 import { CurrencyCode, markets } from '../utils/market';
 import { useMarket } from '../hooks/useMarket';
 import { getGuestCartItems } from '../utils/guestCart';
+import { readCompareProductIds } from '../utils/productCompare';
+import { readStockAlerts } from '../utils/stockAlerts';
 import './Navbar.css';
 
 const { Search } = Input;
@@ -34,6 +38,8 @@ const Navbar: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [couponCount, setCouponCount] = useState(0);
+  const [compareCount, setCompareCount] = useState(0);
+  const [alertCount, setAlertCount] = useState(0);
   const { language, setLanguage, t } = useLanguage();
   const { currency, setCurrency, market, formatMoney } = useMarket();
   const languageOptions = [
@@ -54,17 +60,28 @@ const Navbar: React.FC = () => {
   };
 
   useEffect(() => {
+    const refreshCompareCount = () => setCompareCount(readCompareProductIds().length);
+    const refreshAlertCount = () => setAlertCount(readStockAlerts().length);
     const refreshGuestCartCount = () => {
       const count = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
       setCartCount(count);
     };
+    const refreshCartCount = () => {
+      if (token && userId) {
+        cartApi.getItems(Number(userId))
+          .then((res) => {
+            const count = res.data.reduce((sum: number, item: any) => sum + item.quantity, 0);
+            setCartCount(count);
+          })
+          .catch(() => setCartCount(0));
+      } else {
+        refreshGuestCartCount();
+      }
+    };
+    refreshCompareCount();
+    refreshAlertCount();
+    refreshCartCount();
     if (token && userId) {
-      cartApi.getItems(Number(userId))
-        .then((res) => {
-          const count = res.data.reduce((sum: number, item: any) => sum + item.quantity, 0);
-          setCartCount(count);
-        })
-        .catch(() => setCartCount(0));
       notificationApi.getUnreadCount(Number(userId))
         .then((res) => setUnreadCount(res.data.count))
         .catch(() => setUnreadCount(0));
@@ -75,13 +92,18 @@ const Navbar: React.FC = () => {
         .then((res) => setCouponCount(res.data.length))
         .catch(() => setCouponCount(0));
     } else {
-      refreshGuestCartCount();
       setUnreadCount(0);
       setWishlistCount(0);
       setCouponCount(0);
     }
-    window.addEventListener('shop:cart-updated', refreshGuestCartCount);
-    return () => window.removeEventListener('shop:cart-updated', refreshGuestCartCount);
+    window.addEventListener('shop:cart-updated', refreshCartCount);
+    window.addEventListener('shop:compare-updated', refreshCompareCount);
+    window.addEventListener('shop:stock-alerts-updated', refreshAlertCount);
+    return () => {
+      window.removeEventListener('shop:cart-updated', refreshCartCount);
+      window.removeEventListener('shop:compare-updated', refreshCompareCount);
+      window.removeEventListener('shop:stock-alerts-updated', refreshAlertCount);
+    };
   }, [token, userId, location.pathname]);
 
   const handleLogout = () => {
@@ -117,6 +139,7 @@ const Navbar: React.FC = () => {
         <div className="shop-nav__inner">
           <div className="shop-nav__links">
             <Link to={role && role.toUpperCase() === 'ADMIN' ? '/admin/dashboard' : '/products'}>{t('nav.sell')}</Link>
+            <Link to="/pet-finder">{t('nav.petFinder')}</Link>
             <Link to="/coupons">{t('nav.download')}</Link>
             <Link to="/products?keyword=deal">{t('nav.followDeals')}</Link>
           </div>
@@ -237,6 +260,8 @@ const Navbar: React.FC = () => {
             <button type="button" onClick={() => navigate('/products?keyword=walking')}>Walking</button>
             <button type="button" onClick={() => navigate('/products?keyword=sleeping')}>Sleeping</button>
             <button type="button" onClick={() => navigate('/products?keyword=smart devices')}>Smart Devices</button>
+            <button type="button" onClick={() => navigate('/pet-finder')}>{t('nav.petFinder')}</button>
+            <button type="button" onClick={() => navigate('/history')}>{t('nav.history')}</button>
           </nav>
 
           <div className="shop-nav__actions">
@@ -278,6 +303,19 @@ const Navbar: React.FC = () => {
                     <GiftOutlined />
                   </Badge>
                 </button>
+                <button className="shop-nav__secondary-action" onClick={() => navigate('/compare')} aria-label={t('nav.ariaCompare')}>
+                  <Badge count={compareCount} size="small">
+                    <BarChartOutlined />
+                  </Badge>
+                </button>
+                <button className="shop-nav__secondary-action" onClick={() => navigate('/history')} aria-label={t('nav.ariaHistory')}>
+                  <HistoryOutlined />
+                </button>
+                <button className="shop-nav__secondary-action" onClick={() => navigate('/stock-alerts')} aria-label={t('nav.ariaStockAlerts')}>
+                  <Badge count={alertCount} size="small">
+                    <BellOutlined />
+                  </Badge>
+                </button>
                 <button className="shop-nav__secondary-action" onClick={() => navigate('/notifications')} aria-label={t('nav.ariaNotifications')}>
                   <Badge count={unreadCount} size="small">
                     <BellOutlined />
@@ -301,6 +339,19 @@ const Navbar: React.FC = () => {
               <>
                 <Link to="/register" className="shop-nav__mobile-auth">{t('nav.register')}</Link>
                 <Link to="/login" className="shop-nav__mobile-auth">{t('nav.login')}</Link>
+                <button className="shop-nav__secondary-action" onClick={() => navigate('/compare')} aria-label={t('nav.ariaCompare')}>
+                  <Badge count={compareCount} size="small">
+                    <BarChartOutlined />
+                  </Badge>
+                </button>
+                <button className="shop-nav__secondary-action" onClick={() => navigate('/history')} aria-label={t('nav.ariaHistory')}>
+                  <HistoryOutlined />
+                </button>
+                <button className="shop-nav__secondary-action" onClick={() => navigate('/stock-alerts')} aria-label={t('nav.ariaStockAlerts')}>
+                  <Badge count={alertCount} size="small">
+                    <BellOutlined />
+                  </Badge>
+                </button>
                 <button onClick={() => window.dispatchEvent(new Event('shop:open-cart'))} aria-label={t('nav.ariaCart')}>
                   <Badge count={cartCount} size="small">
                     <ShoppingCartOutlined />

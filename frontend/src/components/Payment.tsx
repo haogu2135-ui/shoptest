@@ -4,6 +4,7 @@ import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { createPaymentMethodOptions, PaymentMethod } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
+import { navigateToSafeUrl } from '../utils/safeUrl';
 
 interface PaymentProps {
     amount: number;
@@ -31,7 +32,10 @@ export const Payment: React.FC<PaymentProps> = ({
             const response = await paymentApi.create(orderId, paymentMethod);
             const payment = response.data;
             if (payment.paymentUrl) {
-                window.location.href = payment.paymentUrl;
+                if (!navigateToSafeUrl(payment.paymentUrl)) {
+                    message.error(t('pages.payment.failed'));
+                    return;
+                }
             }
             onSuccess();
         } catch (error: any) {

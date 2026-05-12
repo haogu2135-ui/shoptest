@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shop.repository.PetBirthdayCouponGrantMapper">
+    <select id="countByUserIdAndBirthdayYear" resultType="int">
+        SELECT COUNT(*)
+        FROM pet_birthday_coupon_grants
+        WHERE user_id = #{userId}
+          AND birthday_year = #{birthdayYear}
+    </select>
+
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO pet_birthday_coupon_grants (pet_id, user_id, coupon_id, birthday_year, granted_at)
+        VALUES (#{petId}, #{userId}, #{couponId}, #{birthdayYear}, NOW())
+    </insert>
+</mapper>

@@ -18,6 +18,7 @@ const CouponCenter: React.FC = () => {
   const [myCoupons, setMyCoupons] = useState<UserCoupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<number | null>(null);
+  const [claimingAll, setClaimingAll] = useState(false);
   const { formatMoney } = useMarket();
 
   const loadCoupons = useCallback(async () => {
@@ -43,6 +44,13 @@ const CouponCenter: React.FC = () => {
   }, [loadCoupons]);
 
   const ownedCouponIds = useMemo(() => new Set(myCoupons.map((item) => item.couponId)), [myCoupons]);
+  const claimableCoupons = useMemo(
+    () => publicCoupons.filter((coupon) => {
+      const remaining = coupon.totalQuantity == null ? null : Math.max(0, coupon.totalQuantity - (coupon.claimedQuantity || 0));
+      return !ownedCouponIds.has(coupon.id) && remaining !== 0;
+    }),
+    [ownedCouponIds, publicCoupons],
+  );
 
   const describeCoupon = (coupon: Pick<Coupon, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>) => {
     if (coupon.couponType === 'FULL_REDUCTION') {
@@ -70,6 +78,35 @@ const CouponCenter: React.FC = () => {
     }
   };
 
+  const claimAllCoupons = async () => {
+    if (!userId) {
+      message.warning(t('messages.loginRequired'));
+      navigate('/login');
+      return;
+    }
+    if (claimableCoupons.length === 0) {
+      message.info(t('pages.coupons.noClaimable'));
+      return;
+    }
+    setClaimingAll(true);
+    let claimed = 0;
+    for (const coupon of claimableCoupons) {
+      try {
+        await couponApi.claim(coupon.id, userId);
+        claimed += 1;
+      } catch {
+        // Other coupons can still be claimed if one is exhausted concurrently.
+      }
+    }
+    if (claimed > 0) {
+      message.success(t('pages.coupons.claimedAllSuccess', { count: claimed }));
+    } else {
+      message.error(t('pages.coupons.claimFailed'));
+    }
+    await loadCoupons();
+    setClaimingAll(false);
+  };
+
   if (loading) {
     return <div style={{ padding: 80, textAlign: 'center' }}><Spin size="large" /></div>;
   }
@@ -78,7 +115,17 @@ const CouponCenter: React.FC = () => {
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px' }}>
       <Title level={2}><GiftOutlined /> {t('pages.coupons.title')}</Title>
 
-      <Card title={t('pages.coupons.claimTitle')} style={{ marginBottom: 24 }}>
+      <Card
+        title={t('pages.coupons.claimTitle')}
+        style={{ marginBottom: 24 }}
+        extra={
+          publicCoupons.length > 0 ? (
+            <Button loading={claimingAll} disabled={claimableCoupons.length === 0} onClick={claimAllCoupons}>
+              {t('pages.coupons.claimAll')}
+            </Button>
+          ) : null
+        }
+      >
         {publicCoupons.length === 0 ? (
           <Empty description={t('pages.coupons.noPublic')} />
         ) : (
@@ -98,7 +145,7 @@ const CouponCenter: React.FC = () => {
                       {coupon.description ? <Text type="secondary">{coupon.description}</Text> : null}
                       {coupon.endAt ? <Text type="secondary">{t('pages.coupons.validUntil', { time: new Date(coupon.endAt).toLocaleString() })}</Text> : null}
                       {remaining !== null ? <Text type="secondary">{t('pages.coupons.remaining', { count: remaining })}</Text> : null}
-                      <Button type="primary" disabled={claimed || remaining === 0} loading={claimingId === coupon.id} onClick={() => claimCoupon(coupon.id)}>
+                      <Button type="primary" disabled={claimingAll || claimed || remaining === 0} loading={claimingId === coupon.id} onClick={() => claimCoupon(coupon.id)}>
                         {claimed ? t('pages.coupons.claimed') : t('pages.coupons.claim')}
                       </Button>
                     </Space>

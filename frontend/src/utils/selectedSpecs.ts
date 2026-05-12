@@ -11,6 +11,9 @@ export const parseSelectedSpecs = (value?: string | null): Record<string, string
 export const isSubscribeAndSave = (value?: string | null) =>
   parseSelectedSpecs(value)._purchaseMode === 'subscribe';
 
+export const isBundlePurchase = (value?: string | null) =>
+  parseSelectedSpecs(value)._purchaseMode === 'bundle';
+
 type Translate = (key: string, params?: Record<string, string | number>) => string;
 
 export const getSubscriptionIntervalLabel = (value?: string | null, t?: Translate) => {
@@ -27,6 +30,12 @@ export const formatSelectedSpecs = (value?: string | null, t?: Translate) =>
     .filter(([name]) => !name.startsWith('_'))
     .filter(([, option]) => option)
       .map(([name, option]) => `${name}: ${option}`),
+    ...(isBundlePurchase(value)
+      ? [
+        t ? t('bundle.bundleDeal') : 'Bundle deal',
+        parseSelectedSpecs(value)._bundleItems,
+      ].filter(Boolean)
+      : []),
     ...(isSubscribeAndSave(value) ? [t ? t('subscription.subscribeSave') : 'Subscribe & Save 20%', getSubscriptionIntervalLabel(value, t)] : []),
   ]
     .join(' / ');
