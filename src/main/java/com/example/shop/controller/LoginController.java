@@ -19,13 +19,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(originPatterns = {
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "http://10.*:*",
-        "http://172.*:*",
-        "http://192.168.*:*"
-})
 @RequiredArgsConstructor
 public class LoginController {
     private final AuthenticationManager authenticationManager;

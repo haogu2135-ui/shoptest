@@ -7,6 +7,7 @@ import type { Order, OrderItem, SupportMessage, SupportSession } from '../types'
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
+import { parseSupportSocketPayload, supportChatConfig } from '../utils/supportChatConfig';
 
 const { Text } = Typography;
 const ORDER_PREFIX = '[ORDER]';
@@ -62,6 +63,49 @@ const CustomerSupportWidget: React.FC = () => {
   const { formatMoney } = useMarket();
   const token = localStorage.getItem('token');
   const activeSessionId = session?.id;
+  const quickReplies = useMemo(() => [
+    t('pages.support.quickShipping'),
+    t('pages.support.quickPayment'),
+    t('pages.support.quickReturn'),
+  ], [t]);
+  const trimmedContent = content.trim();
+  const messageLength = trimmedContent.length;
+  const messageTooLong = messageLength > supportChatConfig.maxMessageChars;
+  const hasSharedOrder = useMemo(
+    () => messages.some((item) => item.senderRole === 'USER' && item.content.startsWith(ORDER_PREFIX)),
+    [messages]
+  );
+  const supportIntent = useMemo(() => {
+    const normalizedContent = trimmedContent.toLowerCase();
+    const matchedQuickReplyIndex = quickReplies.findIndex((reply) => normalizedContent.includes(reply.toLowerCase()));
+    if (matchedQuickReplyIndex === 0) {
+      return {
+        label: t('pages.support.triageDelivery'),
+        helper: hasSharedOrder ? t('pages.support.triageOrderShared') : t('pages.support.triageDeliveryHint'),
+      };
+    }
+    if (matchedQuickReplyIndex === 1) {
+      return {
+        label: t('pages.support.triagePayment'),
+        helper: hasSharedOrder ? t('pages.support.triageOrderShared') : t('pages.support.triagePaymentHint'),
+      };
+    }
+    if (matchedQuickReplyIndex === 2) {
+      return {
+        label: t('pages.support.triageReturn'),
+        helper: hasSharedOrder ? t('pages.support.triageOrderShared') : t('pages.support.triageReturnHint'),
+      };
+    }
+    return {
+      label: t('pages.support.triageGeneral'),
+      helper: hasSharedOrder ? t('pages.support.triageOrderShared') : t('pages.support.triageGeneralHint'),
+    };
+  }, [hasSharedOrder, quickReplies, t, trimmedContent]);
+  const messageQualityText = messageTooLong
+    ? t('pages.support.messageTooLongInline', { count: supportChatConfig.maxMessageChars })
+    : messageLength > 0
+      ? t('pages.support.messageReady')
+      : t('pages.support.messageDraftHint');
 
   const getDefaultButtonPosition = useCallback((): SupportButtonPosition => ({
     left: Math.max(SUPPORT_BUTTON_MARGIN, window.innerWidth - SUPPORT_BUTTON_SIZE - 24),
@@ -242,7 +286,11 @@ const CustomerSupportWidget: React.FC = () => {
       };
       socket.onerror = () => setConnected(false);
       socket.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
+        const payload = parseSupportSocketPayload(event.data);
+        if (payload.type === 'ERROR') {
+          message.warning(payload.message || t('pages.support.messageRejected'));
+          return;
+        }
         if (payload.type === 'MESSAGE') {
           setSession(payload.session);
           setMessages((items) => {
@@ -374,6 +422,10 @@ const CustomerSupportWidget: React.FC = () => {
   const send = async () => {
     const text = content.trim();
     if (!text) return;
+    if (text.length > supportChatConfig.maxMessageChars) {
+      message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
+      return;
+    }
     const activeSession = sessionRef.current;
     if (activeSession && activeSession.status !== 'OPEN') {
       setSession(null);
@@ -580,6 +632,34 @@ const CustomerSupportWidget: React.FC = () => {
           )}
 
           <div style={{ padding: 12, borderTop: '1px solid #eee', background: '#fff' }}>
+            <div style={{ border: '1px solid #d8eadf', background: '#f4fbf6', borderRadius: 8, padding: 10, marginBottom: 10 }}>
+              <Space style={{ width: '100%', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <Text strong style={{ color: '#124734', display: 'block' }}>{t('pages.support.triageTitle')}</Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>{supportIntent.helper}</Text>
+                </div>
+                <Tag color={connected ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
+                  {connected ? t('pages.support.connectedHint') : t('pages.support.reconnectingHint')}
+                </Tag>
+              </Space>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between', marginTop: 8, flexWrap: 'wrap' }}>
+                <Tag color="blue" style={{ marginInlineEnd: 0 }}>{supportIntent.label}</Tag>
+                <Text type={messageTooLong ? 'danger' : 'secondary'} style={{ fontSize: 12 }}>
+                  {messageQualityText}
+                </Text>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              {quickReplies.map((reply) => (
+                <Button
+                  key={reply}
+                  size="small"
+                  onClick={() => setContent((current) => current.trim() ? `${current.trim()}\n${reply}` : reply)}
+                >
+                  {reply}
+                </Button>
+              ))}
+            </div>
             <div style={{ marginBottom: 8 }}>
               <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                 <Text type="secondary">{t('pages.support.sendOrder')}</Text>
@@ -610,6 +690,8 @@ const CustomerSupportWidget: React.FC = () => {
             </div>
             <Input.TextArea
               value={content}
+              maxLength={supportChatConfig.maxMessageChars}
+              showCount
               onChange={(event) => setContent(event.target.value)}
               onPressEnter={(event) => {
                 if (!event.shiftKey) {
@@ -622,7 +704,7 @@ const CustomerSupportWidget: React.FC = () => {
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               <Button style={{ flex: '1 1 150px' }} disabled={!session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
-              <Button style={{ flex: '1 1 110px' }} type="primary" icon={<SendOutlined />} onClick={send}>{t('common.send')}</Button>
+              <Button style={{ flex: '1 1 110px' }} type="primary" icon={<SendOutlined />} disabled={messageTooLong || messageLength === 0} onClick={send}>{t('common.send')}</Button>
             </div>
           </div>
         </div>

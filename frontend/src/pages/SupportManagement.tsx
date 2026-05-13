@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
-import { CustomerServiceOutlined, SendOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { adminSupportApi, apiBaseUrl, orderApi, supportWebSocketUrl } from '../api';
 import type { Order, OrderItem, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
+import { parseSupportSocketPayload, supportChatConfig } from '../utils/supportChatConfig';
+import './SupportManagement.css';
 
 const { Text, Title } = Typography;
 const ORDER_PREFIX = '[ORDER]';
@@ -76,14 +78,27 @@ const SupportManagement: React.FC = () => {
     return order ? `${t('pages.support.order')} ${order.orderNo || `#${order.id}`}` : content;
   };
 
+  const sortSupportSessions = (items: SupportSession[]) =>
+    [...items].sort((left, right) => {
+      const unreadDelta = Number(right.unreadByAdmin || 0) - Number(left.unreadByAdmin || 0);
+      if (unreadDelta !== 0) return unreadDelta;
+      const leftOpen = left.status === 'OPEN' ? 1 : 0;
+      const rightOpen = right.status === 'OPEN' ? 1 : 0;
+      if (leftOpen !== rightOpen) return rightOpen - leftOpen;
+      const leftTime = left.updatedAt ? new Date(left.updatedAt).getTime() : 0;
+      const rightTime = right.updatedAt ? new Date(right.updatedAt).getTime() : 0;
+      return rightTime - leftTime || right.id - left.id;
+    });
+
   useEffect(() => {
     selectedSessionRef.current = selectedSession;
   }, [selectedSession]);
 
   const loadSessions = useCallback(async (status = filter) => {
     try {
-      const res = await adminSupportApi.getSessions(status);
-      setSessions(res.data);
+      const apiStatus = status === 'NEEDS_REPLY' ? 'OPEN' : status;
+      const res = await adminSupportApi.getSessions(apiStatus);
+      setSessions(sortSupportSessions(res.data));
       const currentSession = selectedSessionRef.current;
       if (currentSession) {
         const fresh = res.data.find((item) => item.id === currentSession.id);
@@ -126,9 +141,13 @@ const SupportManagement: React.FC = () => {
       };
       socket.onerror = () => setConnected(false);
       socket.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
+        const payload = parseSupportSocketPayload(event.data);
+        if (payload.type === 'ERROR') {
+          message.warning(payload.message || t('pages.support.messageRejected'));
+          return;
+        }
         if (payload.type === 'MESSAGE') {
-          setSessions((items) => [payload.session, ...items.filter((item) => item.id !== payload.session.id)]);
+          setSessions((items) => sortSupportSessions([payload.session, ...items.filter((item) => item.id !== payload.session.id)]));
           if (selectedSessionRef.current?.id === payload.message.sessionId) {
             setMessages((items) => {
               if (items.some((item) => item.id === payload.message.id)) {
@@ -160,7 +179,7 @@ const SupportManagement: React.FC = () => {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const timer = window.setInterval(async () => {
@@ -185,6 +204,10 @@ const SupportManagement: React.FC = () => {
   const send = async () => {
     const text = content.trim();
     if (!text || !selectedSession) return;
+    if (text.length > supportChatConfig.maxMessageChars) {
+      message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
+      return;
+    }
     if (selectedSession.status !== 'OPEN') {
       message.warning(t('pages.adminSupport.sessionClosed'));
       return;
@@ -234,10 +257,17 @@ const SupportManagement: React.FC = () => {
   };
 
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const openSessionCount = sessions.filter((item) => item.status === 'OPEN').length;
+  const closedSessionCount = sessions.filter((item) => item.status === 'CLOSED').length;
+  const unreadSessionCount = sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0).length;
+  const unreadMessageCount = sessions.reduce((sum, item) => sum + Number(item.unreadByAdmin || 0), 0);
+  const filteredQueueSessions = filter === 'NEEDS_REPLY'
+    ? sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0)
+    : sessions;
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+    <div className="support-management">
+      <div className="support-management__header">
         <Space>
           <CustomerServiceOutlined style={{ fontSize: 22, color: '#ee4d2d' }} />
           <Title level={4} style={{ margin: 0 }}>{t('pages.adminSupport.title')}</Title>
@@ -250,18 +280,42 @@ const SupportManagement: React.FC = () => {
           options={[
             { value: 'OPEN', label: t('status.OPEN') },
             { value: 'CLOSED', label: t('status.CLOSED') },
+            { value: 'NEEDS_REPLY', label: t('pages.adminSupport.needsReply') },
             { value: 'ALL', label: t('common.all') },
           ]}
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '320px minmax(0, 1fr)', gap: 16, minHeight: 620 }}>
+      <div className="support-management__insightBar" aria-label={t('pages.adminSupport.queueTitle')}>
+        <div className="support-management__insightIntro">
+          <ThunderboltOutlined />
+          <div>
+            <Text strong>{t('pages.adminSupport.queueTitle')}</Text>
+            <Text type="secondary">{t('pages.adminSupport.queueSubtitle')}</Text>
+          </div>
+        </div>
+        <div className="support-management__insightStats">
+          <Tag color={unreadMessageCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.unreadMessages', { count: unreadMessageCount })}</Tag>
+          <Tag color={openSessionCount > 0 ? 'green' : 'default'}>{t('pages.adminSupport.openSessions', { count: openSessionCount })}</Tag>
+          <Tag color="default">{t('pages.adminSupport.closedSessions', { count: closedSessionCount })}</Tag>
+        </div>
+        <div className="support-management__insightActions">
+          <Button size="small" icon={<AlertOutlined />} onClick={() => setFilter('NEEDS_REPLY')} disabled={unreadSessionCount === 0}>
+            {t('pages.adminSupport.showNeedsReply')}
+          </Button>
+          <Button size="small" icon={<CheckCircleOutlined />} onClick={() => setFilter('OPEN')}>
+            {t('pages.adminSupport.showOpen')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="support-management__layout">
         <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
-          {sessions.length === 0 ? (
+          {filteredQueueSessions.length === 0 ? (
             <Empty style={{ marginTop: 80 }} description={t('pages.adminSupport.noSessions')} />
           ) : (
             <List
-              dataSource={sessions}
+              dataSource={filteredQueueSessions}
               renderItem={(item) => (
                 <List.Item
                   onClick={() => loadMessages(item)}
@@ -356,6 +410,8 @@ const SupportManagement: React.FC = () => {
                 <Input.TextArea
                   value={content}
                   disabled={selectedSession.status !== 'OPEN'}
+                  maxLength={supportChatConfig.maxMessageChars}
+                  showCount
                   onChange={(event) => setContent(event.target.value)}
                   onPressEnter={(event) => {
                     if (!event.shiftKey) {

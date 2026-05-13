@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
-import { DeleteOutlined, EditOutlined, GiftOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api';
 import type { Coupon, User } from '../types';
@@ -26,6 +26,26 @@ const CouponManagement: React.FC = () => {
   const [grantForm] = Form.useForm();
   const couponType = Form.useWatch('couponType', form);
   const { formatMoney } = useMarket();
+  const couponOpsStats = useMemo(() => {
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    return coupons.reduce((stats, coupon) => {
+      const isActive = coupon.status === 'ACTIVE';
+      if (isActive) stats.active += 1;
+      if (coupon.scope === 'PUBLIC' && isActive) stats.publicActive += 1;
+      if (coupon.endAt) {
+        const endAt = new Date(coupon.endAt).getTime();
+        if (Number.isFinite(endAt) && endAt >= now && endAt - now <= sevenDaysMs) {
+          stats.expiringSoon += 1;
+        }
+      }
+      if (coupon.totalQuantity) {
+        const remaining = Math.max(0, coupon.totalQuantity - (coupon.claimedQuantity || 0));
+        if (remaining > 0 && remaining <= 10) stats.lowRemaining += 1;
+      }
+      return stats;
+    }, { active: 0, publicActive: 0, expiringSoon: 0, lowRemaining: 0 });
+  }, [coupons]);
 
   const loadCoupons = useCallback(async () => {
     setLoading(true);
@@ -200,6 +220,36 @@ const CouponManagement: React.FC = () => {
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</Button>
         </Space>
       </div>
+
+      <section className="coupon-management-insights">
+        <div className="coupon-management-insights__copy">
+          <span>{t('pages.adminCoupons.opsEyebrow')}</span>
+          <h2>{t('pages.adminCoupons.opsTitle')}</h2>
+          <p>{t('pages.adminCoupons.opsSubtitle')}</p>
+        </div>
+        <div className="coupon-management-insights__cards">
+          <div>
+            <ThunderboltOutlined />
+            <strong>{couponOpsStats.active}</strong>
+            <span>{t('pages.adminCoupons.activeCoupons')}</span>
+          </div>
+          <div>
+            <GiftOutlined />
+            <strong>{couponOpsStats.publicActive}</strong>
+            <span>{t('pages.adminCoupons.publicActiveCoupons')}</span>
+          </div>
+          <div>
+            <ClockCircleOutlined />
+            <strong>{couponOpsStats.expiringSoon}</strong>
+            <span>{t('pages.adminCoupons.expiringSoonCoupons')}</span>
+          </div>
+          <div>
+            <FireOutlined />
+            <strong>{couponOpsStats.lowRemaining}</strong>
+            <span>{t('pages.adminCoupons.lowRemainingCoupons')}</span>
+          </div>
+        </div>
+      </section>
 
       <Table columns={columns} dataSource={coupons} rowKey="id" loading={loading} bordered scroll={{ x: 980 }} pagination={{ pageSize: 10 }} />
 

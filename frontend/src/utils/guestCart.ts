@@ -14,6 +14,7 @@ const readGuestCart = (): CartItem[] => {
 
 const writeGuestCart = (items: CartItem[]) => {
   localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
+  window.dispatchEvent(new Event('shop:cart-updated'));
 };
 
 export const getGuestCartItems = () => readGuestCart();

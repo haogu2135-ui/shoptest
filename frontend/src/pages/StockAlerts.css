@@ -12,6 +12,116 @@
   margin-bottom: 18px;
 }
 
+.stock-alerts__assistant {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) minmax(260px, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid #f0e1cf;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fff8ed 0%, #f7fbf6 100%);
+}
+
+.stock-alerts__assistantCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stock-alerts__assistantCopy .ant-typography {
+  margin: 0;
+}
+
+.stock-alerts__eyebrow {
+  color: #a05a00;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.stock-alerts__signalGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stock-alerts__signal {
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #eadfce;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.stock-alerts__signal svg {
+  width: 18px;
+  height: 18px;
+  color: #a05a00;
+}
+
+.stock-alerts__signal strong {
+  color: #2f261d;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.stock-alerts__signal span {
+  color: #6b6259;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.stock-alerts__signal.is-ok svg {
+  color: #2f855a;
+}
+
+.stock-alerts__signal.is-risk {
+  border-color: #f5c2c2;
+  background: #fff7f7;
+}
+
+.stock-alerts__signal.is-risk svg {
+  color: #dc2626;
+}
+
+.stock-alerts__recovery {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid #d9eadf;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.07);
+}
+
+.stock-alerts__recovery .ant-typography {
+  margin: 0;
+}
+
+.stock-alerts__recovery h4.ant-typography {
+  margin: 4px 0;
+  color: #173f2b;
+}
+
+.stock-alerts__recoveryActions {
+  justify-content: flex-end;
+}
+
+.stock-alerts__recoveryActions .ant-btn {
+  min-height: 40px;
+  font-weight: 700;
+}
+
 .stock-alerts__item {
   border-radius: 8px;
   padding-inline: 12px !important;
@@ -67,5 +177,25 @@
   .stock-alerts__header .ant-space,
   .stock-alerts__header .ant-btn {
     width: 100%;
+  }
+
+  .stock-alerts__assistant {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .stock-alerts__recovery {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .stock-alerts__recoveryActions,
+  .stock-alerts__recoveryActions .ant-space-item,
+  .stock-alerts__recoveryActions .ant-btn {
+    width: 100%;
+  }
+
+  .stock-alerts__signalGrid {
+    grid-template-columns: 1fr;
   }
 }

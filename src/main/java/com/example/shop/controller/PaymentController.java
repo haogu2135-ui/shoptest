@@ -1,6 +1,8 @@
 package com.example.shop.controller;
 
+import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.PaymentCallbackRequest;
+import com.example.shop.dto.PaymentChannelResponse;
 import com.example.shop.dto.PaymentCreateRequest;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
@@ -20,6 +22,7 @@ import javax.validation.Valid;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/payments")
@@ -28,6 +31,14 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final OrderService orderService;
     private final SecurityAuditLogService auditLogService;
+    private final PaymentChannelConfig paymentChannelConfig;
+
+    @GetMapping("/channels")
+    public List<PaymentChannelResponse> channels() {
+        return paymentChannelConfig.enabledChannels().stream()
+                .map(PaymentChannelResponse::from)
+                .collect(Collectors.toList());
+    }
 
     @PostMapping
     public ResponseEntity<?> createPayment(@Valid @RequestBody PaymentCreateRequest request, Authentication authentication, HttpServletRequest httpRequest) {

@@ -10,21 +10,21 @@ import java.nio.file.Paths;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+    private final CorsOriginProperties corsOriginProperties;
+
     @Value("${pet-gallery.upload-dir:uploads/pet-gallery}")
     private String petGalleryUploadDir;
+
+    public WebConfig(CorsOriginProperties corsOriginProperties) {
+        this.corsOriginProperties = corsOriginProperties;
+    }
 
     // Spring Boot 会自动配置 Thymeleaf，无需手动配置视图解析器
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns(
-                        "http://localhost:*",
-                        "http://127.0.0.1:*",
-                        "http://10.*:*",
-                        "http://172.*:*",
-                        "http://192.168.*:*"
-                )
+                .allowedOriginPatterns(corsOriginProperties.getCorsAllowedOriginPatternArray())
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)

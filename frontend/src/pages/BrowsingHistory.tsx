@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Empty, Input, Popconfirm, Spin, Tag } from 'antd';
-import { DeleteOutlined, HistoryOutlined, SearchOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, DeleteOutlined, FireOutlined, HistoryOutlined, SearchOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import type { Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
+import { getLowStockCount } from '../utils/conversionConfig';
 import {
   clearProductViewHistory,
   loadProductViewPreferences,
@@ -15,11 +16,19 @@ import {
 import './BrowsingHistory.css';
 
 const fallbackImage = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+type HistoryQuickFilter = 'all' | 'recent' | 'deals' | 'lowStock';
+
+const isDealProduct = (product: Product) => {
+  const activePrice = Number(product.effectivePrice ?? product.price ?? 0);
+  const originalPrice = Number(product.originalPrice ?? 0);
+  return Number(product.discount || product.effectiveDiscountPercent || 0) > 0 || (originalPrice > activePrice && activePrice > 0);
+};
 
 const BrowsingHistory: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
+  const [quickFilter, setQuickFilter] = useState<HistoryQuickFilter>('all');
   const [preferences, setPreferences] = useState(() => loadProductViewPreferences());
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -28,6 +37,11 @@ const BrowsingHistory: React.FC = () => {
 
   useEffect(() => {
     const fetchProducts = async () => {
+      if (!hasHistory) {
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const response = await productApi.getAll();
@@ -39,7 +53,7 @@ const BrowsingHistory: React.FC = () => {
       }
     };
     fetchProducts();
-  }, [language]);
+  }, [hasHistory, language]);
 
   useEffect(() => {
     const syncPreferences = () => setPreferences(loadProductViewPreferences());
@@ -63,15 +77,49 @@ const BrowsingHistory: React.FC = () => {
       .filter(Boolean) as Product[];
   }, [preferences.recent, products]);
 
+  const historyInsights = useMemo(() => {
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const viewedToday = historyProducts.filter((product) => Number(viewedAtById.get(product.id) || 0) >= oneDayAgo).length;
+    const deals = historyProducts.filter(isDealProduct).length;
+    const lowStock = historyProducts.filter((product) => getLowStockCount(product.stock, 1) !== null).length;
+    const brandCounts = historyProducts.reduce<Record<string, number>>((result, product) => {
+      if (product.brand) result[product.brand] = (result[product.brand] || 0) + 1;
+      return result;
+    }, {});
+    const topBrand = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const bestRecovery = [...historyProducts]
+      .sort((a, b) => {
+        const score = (product: Product) => {
+          const viewedAt = Number(viewedAtById.get(product.id) || 0);
+          const recencyBoost = viewedAt >= oneDayAgo ? 28 : 0;
+          const dealBoost = isDealProduct(product) ? 24 : 0;
+          const stockBoost = getLowStockCount(product.stock, 1) !== null ? 18 : 0;
+          return recencyBoost + dealBoost + stockBoost + Math.min(Number(product.averageRating || product.rating || 0), 5) * 5;
+        };
+        return score(b) - score(a);
+      })[0];
+    return { viewedToday, deals, lowStock, topBrand, bestRecovery };
+  }, [historyProducts, viewedAtById]);
+
   const filteredProducts = useMemo(() => {
     const query = keyword.trim().toLowerCase();
-    if (!query) return historyProducts;
-    return historyProducts.filter((product) =>
+    const keywordMatched = !query ? historyProducts : historyProducts.filter((product) =>
       [product.name, product.brand, product.categoryName, product.description]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
     );
-  }, [historyProducts, keyword]);
+    if (quickFilter === 'recent') {
+      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      return keywordMatched.filter((product) => Number(viewedAtById.get(product.id) || 0) >= oneDayAgo);
+    }
+    if (quickFilter === 'deals') {
+      return keywordMatched.filter(isDealProduct);
+    }
+    if (quickFilter === 'lowStock') {
+      return keywordMatched.filter((product) => getLowStockCount(product.stock, 1) !== null);
+    }
+    return keywordMatched;
+  }, [historyProducts, keyword, quickFilter, viewedAtById]);
 
   const formatViewedAt = (value?: number) => {
     if (!value) return t('pages.browsingHistory.unknownTime');
@@ -132,6 +180,65 @@ const BrowsingHistory: React.FC = () => {
           </Popconfirm>
         </div>
       </section>
+
+      {hasHistory ? (
+        <section className="browsing-history__assistant">
+          <div className="browsing-history__assistant-copy">
+            <span>{t('pages.browsingHistory.assistantEyebrow')}</span>
+            <h2>{t('pages.browsingHistory.assistantTitle')}</h2>
+            <p>
+              {historyInsights.topBrand
+                ? t('pages.browsingHistory.assistantSubtitleBrand', { brand: historyInsights.topBrand })
+                : t('pages.browsingHistory.assistantSubtitle')}
+            </p>
+          </div>
+          <div className="browsing-history__assistant-actions">
+            <button type="button" className={quickFilter === 'all' ? 'is-active' : ''} onClick={() => setQuickFilter('all')}>
+              <HistoryOutlined />
+              <strong>{historyProducts.length}</strong>
+              <span>{t('pages.browsingHistory.allViewed')}</span>
+            </button>
+            <button type="button" className={quickFilter === 'recent' ? 'is-active' : ''} onClick={() => setQuickFilter('recent')}>
+              <ClockCircleOutlined />
+              <strong>{historyInsights.viewedToday}</strong>
+              <span>{t('pages.browsingHistory.viewedToday')}</span>
+            </button>
+            <button type="button" className={quickFilter === 'deals' ? 'is-active' : ''} onClick={() => setQuickFilter('deals')}>
+              <ThunderboltOutlined />
+              <strong>{historyInsights.deals}</strong>
+              <span>{t('pages.browsingHistory.dealWatch')}</span>
+            </button>
+            <button type="button" className={quickFilter === 'lowStock' ? 'is-active' : ''} onClick={() => setQuickFilter('lowStock')}>
+              <FireOutlined />
+              <strong>{historyInsights.lowStock}</strong>
+              <span>{t('pages.browsingHistory.lowStockWatch')}</span>
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {hasHistory && historyInsights.bestRecovery ? (
+        <section className="browsing-history__recovery" aria-label={t('pages.browsingHistory.recoveryTitle')}>
+          <div>
+            <span className="browsing-history__recovery-eyebrow">{t('pages.browsingHistory.recoveryEyebrow')}</span>
+            <h2>{t('pages.browsingHistory.recoveryTitle')}</h2>
+            <p>
+              {t('pages.browsingHistory.recoverySubtitle', {
+                name: historyInsights.bestRecovery.name,
+                price: formatMoney(historyInsights.bestRecovery.effectivePrice ?? historyInsights.bestRecovery.price),
+              })}
+            </p>
+          </div>
+          <div className="browsing-history__recovery-tags">
+            {isDealProduct(historyInsights.bestRecovery) ? <Tag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</Tag> : null}
+            {getLowStockCount(historyInsights.bestRecovery.stock, 1) !== null ? <Tag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</Tag> : null}
+            <Tag color="blue">{formatViewedAt(viewedAtById.get(historyInsights.bestRecovery.id))}</Tag>
+          </div>
+          <Button type="primary" icon={<ShoppingOutlined />} onClick={() => navigate(`/products/${historyInsights.bestRecovery!.id}`)}>
+            {t('pages.browsingHistory.resumeProduct')}
+          </Button>
+        </section>
+      ) : null}
 
       {filteredProducts.length ? (
         <section className="browsing-history__grid">

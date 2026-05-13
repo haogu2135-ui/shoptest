@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog } from '../types';
+import type { AxiosResponse } from 'axios';
+import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog } from '../types';
 
 const resolveApiBaseUrl = () => {
     const configured = process.env.REACT_APP_API_BASE_URL;
@@ -27,6 +28,55 @@ export const supportWebSocketUrl = (token: string) => {
 
 export const appConfigApi = {
     get: () => api.get<AppConfig>('/app/config'),
+};
+
+const PRODUCT_LIST_CACHE_MS = 30_000;
+const PRODUCT_DETAIL_CACHE_MS = 30_000;
+const ORDER_TRACK_CACHE_MS = 15_000;
+const PET_GALLERY_CACHE_MS = 20_000;
+const NOTIFICATION_CACHE_MS = 15_000;
+const productListCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
+const productListRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
+const productDetailCache = new Map<number, { expiresAt: number; response: AxiosResponse<Product> }>();
+const productDetailRequests = new Map<number, Promise<AxiosResponse<Product>>>();
+const orderTrackCache = new Map<string, { expiresAt: number; response: AxiosResponse<{ order: Order; items: OrderItem[] }> }>();
+const orderTrackRequests = new Map<string, Promise<AxiosResponse<{ order: Order; items: OrderItem[] }>>>();
+const petGalleryCache = new Map<string, { expiresAt: number; response: AxiosResponse<PetGalleryPhoto[]> | AxiosResponse<PetGalleryQuota> }>();
+const petGalleryRequests = new Map<string, Promise<AxiosResponse<PetGalleryPhoto[]> | AxiosResponse<PetGalleryQuota>>>();
+const notificationCache = new Map<string, { expiresAt: number; response: AxiosResponse<AppNotification[]> | AxiosResponse<{ count: number }> }>();
+const notificationRequests = new Map<string, Promise<AxiosResponse<AppNotification[]> | AxiosResponse<{ count: number }>>>();
+
+const clearProductListCache = () => {
+    productListCache.clear();
+    productListRequests.clear();
+};
+
+const clearProductCache = (id?: number) => {
+    clearProductListCache();
+    if (id === undefined) {
+        productDetailCache.clear();
+        productDetailRequests.clear();
+        return;
+    }
+    productDetailCache.delete(id);
+    productDetailRequests.delete(id);
+};
+
+const clearPetGalleryCache = () => {
+    petGalleryCache.clear();
+    petGalleryRequests.clear();
+};
+
+const clearNotificationCache = (userId?: number) => {
+    if (userId === undefined) {
+        notificationCache.clear();
+        notificationRequests.clear();
+        return;
+    }
+    [`list:${userId}`, `unread:${userId}`].forEach((key) => {
+        notificationCache.delete(key);
+        notificationRequests.delete(key);
+    });
 };
 
 // 请求拦截器
@@ -81,26 +131,66 @@ export const productApi = {
         if (keyword) params.append('keyword', keyword);
         if (categoryId) params.append('categoryId', categoryId.toString());
         const query = params.toString();
-        return api.get<Product[]>(`/products${query ? '?' + query : ''}`);
+        const cacheKey = query || '__all__';
+        const cached = productListCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return Promise.resolve(cached.response);
+        }
+        const pending = productListRequests.get(cacheKey);
+        if (pending) return pending;
+        const request = api.get<Product[]>('/products', {
+            params: {
+                ...(keyword ? { keyword } : {}),
+                ...(categoryId ? { categoryId } : {}),
+            },
+        })
+            .then((response) => {
+                productListCache.set(cacheKey, {
+                    response,
+                    expiresAt: Date.now() + PRODUCT_LIST_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => productListRequests.delete(cacheKey));
+        productListRequests.set(cacheKey, request);
+        return request;
     },
-    getById: (id: number) => api.get<Product>(`/products/${id}`),
+    getById: (id: number) => {
+        const cached = productDetailCache.get(id);
+        if (cached && cached.expiresAt > Date.now()) {
+            return Promise.resolve(cached.response);
+        }
+        const pending = productDetailRequests.get(id);
+        if (pending) return pending;
+        const request = api.get<Product>(`/products/${id}`)
+            .then((response) => {
+                productDetailCache.set(id, {
+                    response,
+                    expiresAt: Date.now() + PRODUCT_DETAIL_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => productDetailRequests.delete(id));
+        productDetailRequests.set(id, request);
+        return request;
+    },
     getFeatured: () => api.get<Product[]>('/products/featured'),
     getPersonalizedRecommendations: () => api.get<Product[]>('/products/personalized-recommendations'),
-    create: (product: Partial<Product>) => api.post<Product>('/products', product),
-    update: (id: number, product: Partial<Product>) => api.put<Product>(`/products/${id}`, product),
-    delete: (id: number) => api.delete(`/products/${id}`),
+    create: (product: Partial<Product>) => api.post<Product>('/products', product).finally(() => clearProductCache()),
+    update: (id: number, product: Partial<Product>) => api.put<Product>(`/products/${id}`, product).finally(() => clearProductCache(id)),
+    delete: (id: number) => api.delete(`/products/${id}`).finally(() => clearProductCache(id)),
     getRecommendations: (id: number) => api.get<Product[]>(`/products/${id}/recommendations`)
 };
 
 // 购物车相关 API
 export const cartApi = {
-    getItems: (userId: number) => api.get<CartItem[]>(`/cart?userId=${userId}`),
+    getItems: (userId: number) => api.get<CartItem[]>('/cart', { params: { userId } }),
     addItem: (userId: number, productId: number, quantity: number, selectedSpecs?: string) =>
         api.post('/cart/add', null, { params: { userId, productId, quantity, selectedSpecs } }),
     updateQuantity: (cartItemId: number, quantity: number) =>
-        api.put(`/cart/update?cartItemId=${cartItemId}&quantity=${quantity}`),
+        api.put('/cart/update', null, { params: { cartItemId, quantity } }),
     removeItem: (cartItemId: number) => api.delete(`/cart/remove/${cartItemId}`),
-    clear: (userId: number) => api.delete(`/cart/clear?userId=${userId}`)
+    clear: (userId: number) => api.delete('/cart/clear', { params: { userId } })
 };
 
 // 订单相关 API
@@ -109,8 +199,30 @@ export const orderApi = {
     getById: (id: number) => api.get<Order>(`/orders/${id}`),
     getByUser: (userId: number) => api.get<Order[]>(`/orders/user/${userId}`),
     getMine: () => api.get<Order[]>('/orders/me'),
-    track: (orderNo: string, email: string) =>
-        api.get<{ order: Order; items: OrderItem[] }>('/orders/track', { params: { orderNo, email } }),
+    track: (orderNo: string, email: string) => {
+        const normalizedOrderNo = orderNo.trim();
+        const normalizedEmail = email.trim().toLowerCase();
+        const cacheKey = `${normalizedOrderNo}:${normalizedEmail}`;
+        const cached = orderTrackCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return Promise.resolve(cached.response);
+        }
+        const pending = orderTrackRequests.get(cacheKey);
+        if (pending) return pending;
+        const request = api.get<{ order: Order; items: OrderItem[] }>('/orders/track', {
+            params: { orderNo: normalizedOrderNo, email: normalizedEmail },
+        })
+            .then((response) => {
+                orderTrackCache.set(cacheKey, {
+                    response,
+                    expiresAt: Date.now() + ORDER_TRACK_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => orderTrackRequests.delete(cacheKey));
+        orderTrackRequests.set(cacheKey, request);
+        return request;
+    },
     create: (order: Partial<Order>) => api.post<Order>('/orders', order),
     checkout: (payload: { userId: number; cartItemIds: number[]; shippingAddress: string; paymentMethod: string; userCouponId?: number | null }) =>
         api.post<Order>('/orders/checkout', payload),
@@ -145,6 +257,7 @@ export const couponApi = {
 };
 
 export const paymentApi = {
+    getChannels: () => api.get<PaymentChannel[]>('/payments/channels'),
     create: (orderId: number, channel: string, guestEmail?: string) => api.post<Payment>('/payments', { orderId, channel, guestEmail }),
     simulatePaid: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${paymentId}/simulate-paid`, guestEmail ? { guestEmail } : undefined),
     simulateCallback: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${paymentId}/simulate-callback`, guestEmail ? { guestEmail } : undefined),
@@ -196,7 +309,9 @@ export const adminApi = {
     getUsers: () => api.get<User[]>('/admin/users'),
     updateUser: (id: number, user: Partial<User>) => api.put(`/admin/users/${id}`, user),
     deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
-    getOrders: (status?: string) => api.get<Order[]>(`/admin/orders${status ? '?status=' + status : ''}`),
+    getOrders: (status?: string) => api.get<Order[]>('/admin/orders', {
+        params: status ? { status } : undefined,
+    }),
     exportOrders: (status?: string) => api.get('/admin/orders/export', {
         params: status ? { status } : undefined,
         responseType: 'blob',
@@ -243,29 +358,63 @@ export const logisticsCarrierApi = {
 };
 
 export const addressApi = {
-    getByUser: (userId: number) => api.get<UserAddress[]>(`/addresses?userId=${userId}`),
+    getByUser: (userId: number) => api.get<UserAddress[]>('/addresses', { params: { userId } }),
     getById: (id: number) => api.get<UserAddress>(`/addresses/${id}`),
-    getDefault: (userId: number) => api.get<UserAddress>(`/addresses/default?userId=${userId}`),
+    getDefault: (userId: number) => api.get<UserAddress>('/addresses/default', { params: { userId } }),
     create: (address: Partial<UserAddress>) => api.post<UserAddress>('/addresses', address),
     update: (id: number, address: Partial<UserAddress>) => api.put<UserAddress>(`/addresses/${id}`, address),
     delete: (id: number) => api.delete(`/addresses/${id}`),
-    setDefault: (id: number, userId: number) => api.put(`/addresses/${id}/default?userId=${userId}`),
+    setDefault: (id: number, userId: number) => api.put(`/addresses/${id}/default`, null, { params: { userId } }),
 };
 
 export const wishlistApi = {
-    getByUser: (userId: number) => api.get<WishlistItem[]>(`/wishlist?userId=${userId}`),
-    check: (userId: number, productId: number) => api.get<{ wishlisted: boolean }>(`/wishlist/check?userId=${userId}&productId=${productId}`),
-    getCount: (userId: number) => api.get<{ count: number }>(`/wishlist/count?userId=${userId}`),
-    toggle: (userId: number, productId: number) => api.post<{ wishlisted: boolean }>(`/wishlist/toggle?userId=${userId}&productId=${productId}`),
-    remove: (userId: number, productId: number) => api.delete(`/wishlist?userId=${userId}&productId=${productId}`),
+    getByUser: (userId: number) => api.get<WishlistItem[]>('/wishlist', { params: { userId } }),
+    check: (userId: number, productId: number) =>
+        api.get<{ wishlisted: boolean }>('/wishlist/check', { params: { userId, productId } }),
+    getCount: (userId: number) => api.get<{ count: number }>('/wishlist/count', { params: { userId } }),
+    toggle: (userId: number, productId: number) =>
+        api.post<{ wishlisted: boolean }>('/wishlist/toggle', null, { params: { userId, productId } }),
+    remove: (userId: number, productId: number) => api.delete('/wishlist', { params: { userId, productId } }),
 };
 
 export const notificationApi = {
-    getByUser: (userId: number) => api.get<AppNotification[]>(`/notifications?userId=${userId}`),
-    getUnreadCount: (userId: number) => api.get<{ count: number }>(`/notifications/unread-count?userId=${userId}`),
-    markAsRead: (id: number) => api.put(`/notifications/${id}/read`),
-    markAllAsRead: (userId: number) => api.put(`/notifications/read-all?userId=${userId}`),
-    delete: (id: number) => api.delete(`/notifications/${id}`),
+    getByUser: (userId: number, force = false) => {
+        const cacheKey = `list:${userId}`;
+        if (!force) {
+            const cached = notificationCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<AppNotification[]> } | undefined;
+            if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
+            const pending = notificationRequests.get(cacheKey) as Promise<AxiosResponse<AppNotification[]>> | undefined;
+            if (pending) return pending;
+        }
+        const request = api.get<AppNotification[]>('/notifications', { params: { userId } })
+            .then((response) => {
+                notificationCache.set(cacheKey, { response, expiresAt: Date.now() + NOTIFICATION_CACHE_MS });
+                return response;
+            })
+            .finally(() => notificationRequests.delete(cacheKey));
+        notificationRequests.set(cacheKey, request);
+        return request;
+    },
+    getUnreadCount: (userId: number, force = false) => {
+        const cacheKey = `unread:${userId}`;
+        if (!force) {
+            const cached = notificationCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<{ count: number }> } | undefined;
+            if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
+            const pending = notificationRequests.get(cacheKey) as Promise<AxiosResponse<{ count: number }>> | undefined;
+            if (pending) return pending;
+        }
+        const request = api.get<{ count: number }>('/notifications/unread-count', { params: { userId } })
+            .then((response) => {
+                notificationCache.set(cacheKey, { response, expiresAt: Date.now() + NOTIFICATION_CACHE_MS });
+                return response;
+            })
+            .finally(() => notificationRequests.delete(cacheKey));
+        notificationRequests.set(cacheKey, request);
+        return request;
+    },
+    markAsRead: (id: number, userId?: number) => api.put(`/notifications/${id}/read`).finally(() => clearNotificationCache(userId)),
+    markAllAsRead: (userId: number) => api.put('/notifications/read-all', null, { params: { userId } }).finally(() => clearNotificationCache(userId)),
+    delete: (id: number, userId?: number) => api.delete(`/notifications/${id}`).finally(() => clearNotificationCache(userId)),
 };
 
 export const petProfileApi = {
@@ -276,16 +425,58 @@ export const petProfileApi = {
 };
 
 export const petGalleryApi = {
-    getAll: () => api.get<PetGalleryPhoto[]>('/pet-gallery'),
-    getQuota: () => api.get<PetGalleryQuota>('/pet-gallery/quota'),
-    like: (id: number) => api.post<PetGalleryPhoto>(`/pet-gallery/${id}/like`),
-    delete: (id: number) => api.delete(`/pet-gallery/${id}`),
+    getAll: (force = false) => {
+        const cacheKey = 'photos';
+        if (!force) {
+            const cached = petGalleryCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<PetGalleryPhoto[]> } | undefined;
+            if (cached && cached.expiresAt > Date.now()) {
+                return Promise.resolve(cached.response);
+            }
+            const pending = petGalleryRequests.get(cacheKey) as Promise<AxiosResponse<PetGalleryPhoto[]>> | undefined;
+            if (pending) return pending;
+        }
+        const request = api.get<PetGalleryPhoto[]>('/pet-gallery')
+            .then((response) => {
+                petGalleryCache.set(cacheKey, {
+                    response,
+                    expiresAt: Date.now() + PET_GALLERY_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => petGalleryRequests.delete(cacheKey));
+        petGalleryRequests.set(cacheKey, request);
+        return request;
+    },
+    getQuota: (force = false) => {
+        const cacheKey = 'quota';
+        if (!force) {
+            const cached = petGalleryCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<PetGalleryQuota> } | undefined;
+            if (cached && cached.expiresAt > Date.now()) {
+                return Promise.resolve(cached.response);
+            }
+            const pending = petGalleryRequests.get(cacheKey) as Promise<AxiosResponse<PetGalleryQuota>> | undefined;
+            if (pending) return pending;
+        }
+        const request = api.get<PetGalleryQuota>('/pet-gallery/quota')
+            .then((response) => {
+                petGalleryCache.set(cacheKey, {
+                    response,
+                    expiresAt: Date.now() + PET_GALLERY_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => petGalleryRequests.delete(cacheKey));
+        petGalleryRequests.set(cacheKey, request);
+        return request;
+    },
+    like: (id: number) => api.post<PetGalleryPhoto>(`/pet-gallery/${id}/like`).finally(clearPetGalleryCache),
+    delete: (id: number) => api.delete(`/pet-gallery/${id}`).finally(clearPetGalleryCache),
     upload: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
         return api.post<PetGalleryPhoto>('/pet-gallery', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        }).finally(clearPetGalleryCache);
     },
 };
 

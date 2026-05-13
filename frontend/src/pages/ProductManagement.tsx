@@ -115,6 +115,55 @@ const createSkuFromOptions = (options: Record<string, string>, index: number) =>
 
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
+type ListingQualityIssue = 'image' | 'content' | 'stock' | 'localized' | 'commercialHook';
+type ListingQualityFilter = ListingQualityIssue | 'ready';
+
+const hasMeaningfulText = (value: unknown, minLength = 12) =>
+  typeof value === 'string' && value.trim().length >= minLength;
+
+const hasProductImage = (product: Product) => {
+  const gallery = parseJsonArray(product.images);
+  return Boolean(product.imageUrl || gallery.some((image) => typeof image === 'string' && image.trim()));
+};
+
+const hasRichProductContent = (product: Product) => {
+  const detailBlocks = parseJsonArray(product.detailContent);
+  const hasDetailBlock = detailBlocks.some((block: any) =>
+    hasMeaningfulText(block?.content, 24) || hasMeaningfulText(block?.url, 8)
+  );
+  return hasMeaningfulText(product.description, 36) || hasDetailBlock;
+};
+
+const hasLocalizedContent = (product: Product) => {
+  const specs = parseJsonObject(product.specifications);
+  return ['es', 'zh'].every((locale) =>
+    hasMeaningfulText(specs[`i18n.${locale}.name`], 4) && hasMeaningfulText(specs[`i18n.${locale}.description`], 16)
+  );
+};
+
+const hasCommercialHook = (product: Product) => {
+  const price = Number(product.effectivePrice ?? product.price ?? 0);
+  const originalPrice = Number(product.originalPrice ?? 0);
+  return Boolean(
+    product.isFeatured ||
+    product.freeShipping ||
+    product.tag ||
+    product.activeLimitedTimeDiscount ||
+    Number(product.discount || product.effectiveDiscountPercent || 0) > 0 ||
+    (originalPrice > price && price > 0)
+  );
+};
+
+const getListingQualityIssues = (product: Product): ListingQualityIssue[] => {
+  const issues: ListingQualityIssue[] = [];
+  if (!hasProductImage(product)) issues.push('image');
+  if (!hasRichProductContent(product)) issues.push('content');
+  if (Number(product.stock || 0) <= 0 || Number(product.stock || 0) < 10) issues.push('stock');
+  if (!hasLocalizedContent(product)) issues.push('localized');
+  if (!hasCommercialHook(product)) issues.push('commercialHook');
+  return issues;
+};
+
 const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -128,6 +177,7 @@ const ProductManagement: React.FC = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filterCategory, setFilterCategory] = useState<number | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [listingQualityFilter, setListingQualityFilter] = useState<ListingQualityFilter | undefined>();
   const [selectedProductIds, setSelectedProductIds] = useState<React.Key[]>([]);
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const { t, language } = useLanguage();
@@ -214,7 +264,7 @@ const ProductManagement: React.FC = () => {
     fetchBrands();
   }, [fetchProducts, fetchCategories, fetchBrands]);
 
-  const filteredProducts = useMemo(() => {
+  const baseFilteredProducts = useMemo(() => {
     return products.filter(p => {
       const matchKeyword = !searchKeyword || p.name.toLowerCase().includes(searchKeyword.toLowerCase());
       const matchCategory = !selectedCategoryIds || selectedCategoryIds.has(p.categoryId);
@@ -222,6 +272,38 @@ const ProductManagement: React.FC = () => {
       return matchKeyword && matchCategory && matchStatus;
     });
   }, [products, searchKeyword, selectedCategoryIds, filterStatus]);
+
+  const listingQualityStats = useMemo(() => {
+    const initial = {
+      total: baseFilteredProducts.length,
+      ready: 0,
+      image: 0,
+      content: 0,
+      stock: 0,
+      localized: 0,
+      commercialHook: 0,
+      active: 0,
+      featured: 0,
+    };
+    return baseFilteredProducts.reduce((stats, product) => {
+      const issues = getListingQualityIssues(product);
+      if (issues.length === 0) stats.ready += 1;
+      issues.forEach((issue) => {
+        stats[issue] += 1;
+      });
+      if ((product.status || 'ACTIVE') === 'ACTIVE') stats.active += 1;
+      if (product.isFeatured) stats.featured += 1;
+      return stats;
+    }, initial);
+  }, [baseFilteredProducts]);
+
+  const filteredProducts = useMemo(() => {
+    if (!listingQualityFilter) return baseFilteredProducts;
+    return baseFilteredProducts.filter((product) => {
+      const issues = getListingQualityIssues(product);
+      return listingQualityFilter === 'ready' ? issues.length === 0 : issues.includes(listingQualityFilter);
+    });
+  }, [baseFilteredProducts, listingQualityFilter]);
 
   const handleAdd = () => {
     setEditingProduct(null);
@@ -765,6 +847,25 @@ const ProductManagement: React.FC = () => {
       render: (v: boolean) => v ? <Tag color="gold" icon={<StarFilled />}>{t('pages.productAdmin.featuredYes')}</Tag> : <Tag icon={<StarOutlined />}>{t('pages.productAdmin.featuredNo')}</Tag>,
     },
     {
+      title: t('pages.productAdmin.listingQualityColumn'),
+      key: 'listingQuality',
+      width: 180,
+      render: (_: any, record: Product) => {
+        const issues = getListingQualityIssues(record);
+        if (issues.length === 0) {
+          return <Tag color="green">{t('pages.productAdmin.listingReady')}</Tag>;
+        }
+        return (
+          <Space size={[0, 4]} wrap>
+            {issues.slice(0, 2).map((issue) => (
+              <Tag key={issue} color="orange">{t(`pages.productAdmin.listingIssue.${issue}`)}</Tag>
+            ))}
+            {issues.length > 2 ? <Tag>{t('pages.productAdmin.moreIssues', { count: issues.length - 2 })}</Tag> : null}
+          </Space>
+        );
+      },
+    },
+    {
       title: t('common.actions'),
       key: 'action',
       width: 340,
@@ -859,6 +960,87 @@ const ProductManagement: React.FC = () => {
         </Space>
       </div>
 
+      <section className="product-listing-quality" aria-label={t('pages.productAdmin.listingQualityTitle')}>
+        <div className="product-listing-quality__summary">
+          <div>
+            <Text type="secondary">{t('pages.productAdmin.listingQualityEyebrow')}</Text>
+            <h3>{t('pages.productAdmin.listingQualityTitle')}</h3>
+            <p>{t('pages.productAdmin.listingQualitySubtitle')}</p>
+          </div>
+          <div className="product-listing-quality__score">
+            <strong>{listingQualityStats.ready}/{listingQualityStats.total || 0}</strong>
+            <span>{t('pages.productAdmin.readyToSell')}</span>
+          </div>
+        </div>
+        <div className="product-listing-quality__metrics">
+          <button
+            type="button"
+            className={!listingQualityFilter ? 'is-active' : ''}
+            onClick={() => setListingQualityFilter(undefined)}
+          >
+            <span>{listingQualityStats.total}</span>
+            {t('pages.productAdmin.allListings')}
+          </button>
+          <button
+            type="button"
+            className={listingQualityFilter === 'ready' ? 'is-active' : ''}
+            onClick={() => setListingQualityFilter('ready')}
+          >
+            <span>{listingQualityStats.ready}</span>
+            {t('pages.productAdmin.listingReady')}
+          </button>
+          <button
+            type="button"
+            className={listingQualityFilter === 'image' ? 'is-active' : ''}
+            onClick={() => setListingQualityFilter('image')}
+          >
+            <span>{listingQualityStats.image}</span>
+            {t('pages.productAdmin.missingImages')}
+          </button>
+          <button
+            type="button"
+            className={listingQualityFilter === 'content' ? 'is-active' : ''}
+            onClick={() => setListingQualityFilter('content')}
+          >
+            <span>{listingQualityStats.content}</span>
+            {t('pages.productAdmin.weakContent')}
+          </button>
+          <button
+            type="button"
+            className={listingQualityFilter === 'stock' ? 'is-active' : ''}
+            onClick={() => setListingQualityFilter('stock')}
+          >
+            <span>{listingQualityStats.stock}</span>
+            {t('pages.productAdmin.stockRisk')}
+          </button>
+          <button
+            type="button"
+            className={listingQualityFilter === 'localized' ? 'is-active' : ''}
+            onClick={() => setListingQualityFilter('localized')}
+          >
+            <span>{listingQualityStats.localized}</span>
+            {t('pages.productAdmin.localizationGaps')}
+          </button>
+          <button
+            type="button"
+            className={listingQualityFilter === 'commercialHook' ? 'is-active' : ''}
+            onClick={() => setListingQualityFilter('commercialHook')}
+          >
+            <span>{listingQualityStats.commercialHook}</span>
+            {t('pages.productAdmin.missingCommercialHook')}
+          </button>
+        </div>
+        <div className="product-listing-quality__footer">
+          <span>{t('pages.productAdmin.activeListings', { count: listingQualityStats.active })}</span>
+          <span>{t('pages.productAdmin.featuredListings', { count: listingQualityStats.featured })}</span>
+          {listingQualityFilter ? (
+            <Button size="small" onClick={() => setListingQualityFilter(undefined)}>
+              {t('pages.productAdmin.clearQualityFilter')}
+            </Button>
+          ) : null}
+        </div>
+      </section>
+
       <Table
         columns={columns}
         dataSource={filteredProducts}
@@ -871,7 +1053,7 @@ const ProductManagement: React.FC = () => {
         pagination={{ pageSize: 10, showTotal: (total) => t('pages.productAdmin.tableTotal', { count: total }) }}
         bordered
         size="middle"
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1240 }}
       />
 
       <Modal

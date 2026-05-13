@@ -1,0 +1,106 @@
+.admin-dashboard__actionBar {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.8fr);
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 24px;
+  padding: 14px 16px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f7fff8 0%, #fff7f0 100%);
+}
+
+.admin-dashboard__actionIntro {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-dashboard__actionIntro > .anticon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #124734;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.admin-dashboard__actionIntro > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.admin-dashboard__actionGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-dashboard__actionCard {
+  min-height: 96px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e7eadf;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.admin-dashboard__actionCard--warning {
+  border-color: #ffe0b8;
+  background: #fff8ef;
+}
+
+.admin-dashboard__actionCard--danger {
+  border-color: #ffccc7;
+  background: #fff5f3;
+}
+
+.admin-dashboard__actionCard--info {
+  border-color: #b7ebff;
+  background: #f0fbff;
+}
+
+.admin-dashboard__actionCard--calm {
+  border-color: #dce9df;
+  background: #f8fcf9;
+}
+
+.admin-dashboard__actionCard strong {
+  color: #111111;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.admin-dashboard__actionCard span {
+  color: #173f2b;
+  font-weight: 700;
+}
+
+.admin-dashboard__actionCard .ant-typography {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .admin-dashboard__actionBar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-dashboard__actionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-dashboard__actionGrid {
+    grid-template-columns: 1fr;
+  }
+}

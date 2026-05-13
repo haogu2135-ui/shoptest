@@ -10,6 +10,7 @@ import com.example.shop.service.SupportService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -33,6 +34,9 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
 
     private final Map<Long, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
     private final Set<WebSocketSession> adminSessions = ConcurrentHashMap.newKeySet();
+
+    @Value("${support.websocket.max-message-chars:1200}")
+    private int maxMessageChars;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -59,6 +63,16 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession socket, TextMessage textMessage) throws Exception {
+        try {
+            handleSupportMessage(socket, textMessage);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            sendError(socket, e.getMessage());
+        } catch (Exception e) {
+            sendError(socket, "Unable to process support message");
+        }
+    }
+
+    private void handleSupportMessage(WebSocketSession socket, TextMessage textMessage) throws Exception {
         Map<String, Object> payload = objectMapper.readValue(textMessage.getPayload(), new TypeReference<Map<String, Object>>() {});
         String type = String.valueOf(payload.getOrDefault("type", "SEND"));
         Long userId = (Long) socket.getAttributes().get("userId");
@@ -84,6 +98,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         }
 
         String content = payload.get("content") == null ? "" : String.valueOf(payload.get("content"));
+        content = normalizeContent(content);
         Long sessionId = toLong(payload.get("sessionId"));
         SupportSession session;
         if ("ADMIN".equals(role)) {
@@ -156,19 +171,39 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void broadcastSession(SupportSession session) throws IOException {
+    private void broadcastSession(SupportSession session) {
         broadcast(Map.of("type", "SESSION_UPDATED", "session", session), session.getUserId());
     }
 
-    private void broadcast(Map<String, Object> payload, Long userId) throws IOException {
+    private void broadcast(Map<String, Object> payload, Long userId) {
         Set<WebSocketSession> sockets = userSessions.get(userId);
         if (sockets != null) {
             for (WebSocketSession socket : sockets) {
-                sendJson(socket, payload);
+                sendJsonQuietly(socket, payload);
             }
         }
         for (WebSocketSession adminSocket : adminSessions) {
-            sendJson(adminSocket, payload);
+            sendJsonQuietly(adminSocket, payload);
+        }
+    }
+
+    private String normalizeContent(String content) {
+        String normalized = content == null ? "" : content.trim();
+        if (normalized.length() > maxMessageChars) {
+            throw new IllegalArgumentException("Message is too long");
+        }
+        return normalized;
+    }
+
+    private void sendError(WebSocketSession socket, String message) throws IOException {
+        sendJson(socket, Map.of("type", "ERROR", "message", message));
+    }
+
+    private void sendJsonQuietly(WebSocketSession socket, Object payload) {
+        try {
+            sendJson(socket, payload);
+        } catch (IOException e) {
+            removeSession(socket);
         }
     }
 

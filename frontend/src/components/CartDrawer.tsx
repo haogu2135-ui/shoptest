@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Drawer, Empty, InputNumber, List, message, Progress, Space, Tag, Typography } from 'antd';
-import { AppleOutlined, ClockCircleOutlined, GoogleOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, GoogleOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { apiBaseUrl, cartApi } from '../api';
-import type { CartItem } from '../types';
+import type { CartItem, Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
-import { getGuestCartItems, removeGuestCartItem, updateGuestCartQuantity } from '../utils/guestCart';
+import { addGuestCartItem, getGuestCartItems, removeGuestCartItem, updateGuestCartQuantity } from '../utils/guestCart';
 import { saveCartItemForLater } from '../utils/saveForLater';
+import { getLowStockCount } from '../utils/conversionConfig';
+import AddOnAssistant from './AddOnAssistant';
 import './CartDrawer.css';
 
 const { Text } = Typography;
@@ -27,6 +29,8 @@ const isAvailable = (item: CartItem) =>
 
 const canCheckout = (item: CartItem) =>
   isAvailable(item) && (item.stock === undefined || item.stock >= item.quantity);
+
+const getCartItemLowStockCount = (item: CartItem) => getLowStockCount(item.stock, item.quantity);
 
 const CartDrawer: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -62,31 +66,48 @@ const CartDrawer: React.FC = () => {
     const refreshCart = () => {
       loadCart();
     };
+    const refreshGuestCartFromStorage = (event: StorageEvent) => {
+      if (event.key === 'shop-guest-cart' && !localStorage.getItem('token')) {
+        loadCart();
+      }
+    };
     window.addEventListener('shop:open-cart', openCart);
     window.addEventListener('shop:cart-updated', refreshCart);
+    window.addEventListener('storage', refreshGuestCartFromStorage);
     return () => {
       window.removeEventListener('shop:open-cart', openCart);
       window.removeEventListener('shop:cart-updated', refreshCart);
+      window.removeEventListener('storage', refreshGuestCartFromStorage);
     };
   }, [loadCart]);
 
   const checkoutItems = useMemo(() => items.filter(canCheckout), [items]);
   const subtotal = useMemo(() => checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [checkoutItems]);
+  const blockedCount = items.length - checkoutItems.length;
+  const checkoutUnitCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
+  const lowStockCount = checkoutItems.filter((item) => getCartItemLowStockCount(item) !== null).length;
   const freeShippingThreshold = market.freeShippingThreshold;
   const remaining = Math.max(0, freeShippingThreshold - subtotal);
   const progress = freeShippingThreshold > 0
     ? Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100))
     : 100;
+  const drawerReady = checkoutItems.length > 0 && blockedCount === 0;
+  const expressHint = checkoutItems.length === 0
+    ? t('pages.cart.drawerExpressEmpty')
+    : remaining > 0
+      ? t('pages.cart.drawerExpressAddOnHint', { amount: formatMoney(remaining) })
+      : t('pages.cart.drawerExpressReadyHint');
 
   const updateQuantity = async (item: CartItem, quantity: number) => {
     try {
-      if (localStorage.getItem('token') && localStorage.getItem('userId')) {
+      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
+      if (isAuthenticated) {
         await cartApi.updateQuantity(item.id, quantity);
         setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, quantity } : entry));
       } else {
         setItems(updateGuestCartQuantity(item.id, quantity));
       }
-      window.dispatchEvent(new Event('shop:cart-updated'));
+      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('pages.cart.quantityFailed'));
     }
@@ -94,13 +115,14 @@ const CartDrawer: React.FC = () => {
 
   const removeItem = async (item: CartItem) => {
     try {
-      if (localStorage.getItem('token') && localStorage.getItem('userId')) {
+      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
+      if (isAuthenticated) {
         await cartApi.removeItem(item.id);
         setItems((current) => current.filter((entry) => entry.id !== item.id));
       } else {
         setItems(removeGuestCartItem(item.id));
       }
-      window.dispatchEvent(new Event('shop:cart-updated'));
+      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.deleteFailed'));
     }
@@ -109,14 +131,15 @@ const CartDrawer: React.FC = () => {
   const saveForLater = async (item: CartItem) => {
     try {
       saveCartItemForLater(item);
-      if (localStorage.getItem('token') && localStorage.getItem('userId')) {
+      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
+      if (isAuthenticated) {
         await cartApi.removeItem(item.id);
         setItems((current) => current.filter((entry) => entry.id !== item.id));
       } else {
         setItems(removeGuestCartItem(item.id));
       }
       message.success(t('pages.cart.savedForLater'));
-      window.dispatchEvent(new Event('shop:cart-updated'));
+      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -137,6 +160,19 @@ const CartDrawer: React.FC = () => {
     navigate('/checkout');
   };
 
+  const addSuggestedProduct = async (product: Product) => {
+    const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
+    const userId = Number(localStorage.getItem('userId') || 0);
+    if (isAuthenticated) {
+      await cartApi.addItem(userId, product.id, 1);
+      await loadCart();
+      window.dispatchEvent(new Event('shop:cart-updated'));
+      return;
+    }
+    addGuestCartItem(product, 1);
+    setItems(getGuestCartItems());
+  };
+
   return (
     <Drawer
       title={t('pages.cart.yourCart')}
@@ -155,19 +191,41 @@ const CartDrawer: React.FC = () => {
         <Progress percent={progress} showInfo={false} strokeColor="#124734" style={{ marginTop: 8 }} />
       </div>
 
+      <div className={drawerReady ? 'cart-drawer__status cart-drawer__status--ready' : 'cart-drawer__status'}>
+        <CheckCircleOutlined />
+        <div>
+          <Text strong>{drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle')}</Text>
+          <Text type="secondary">
+            {t('pages.cart.drawerReadyText', { count: checkoutUnitCount, blocked: blockedCount, low: lowStockCount })}
+          </Text>
+        </div>
+      </div>
+
       {items.length > 0 ? (
-        <Space.Compact block className="cart-drawer__express" style={{ marginBottom: 16 }}>
-          <Button disabled={checkoutItems.length === 0} onClick={() => goCheckout('SHOP_PAY')}>Shop Pay</Button>
-          <Button disabled={checkoutItems.length === 0} onClick={() => goCheckout('PAYPAL')}>PayPal</Button>
-          <Button disabled={checkoutItems.length === 0} icon={<AppleOutlined />} onClick={() => goCheckout('APPLE_PAY')}>Pay</Button>
-          <Button disabled={checkoutItems.length === 0} icon={<GoogleOutlined />} onClick={() => goCheckout('GOOGLE_PAY')}>Pay</Button>
-        </Space.Compact>
+        <div className="cart-drawer__expressWrap">
+          <Text type="secondary">{expressHint}</Text>
+          <Space.Compact block className="cart-drawer__express">
+            <Button disabled={checkoutItems.length === 0} onClick={() => goCheckout('SHOP_PAY')}>Shop Pay</Button>
+            <Button disabled={checkoutItems.length === 0} onClick={() => goCheckout('PAYPAL')}>PayPal</Button>
+            <Button disabled={checkoutItems.length === 0} icon={<AppleOutlined />} onClick={() => goCheckout('APPLE_PAY')}>Pay</Button>
+            <Button disabled={checkoutItems.length === 0} icon={<GoogleOutlined />} onClick={() => goCheckout('GOOGLE_PAY')}>Pay</Button>
+          </Space.Compact>
+        </div>
       ) : null}
 
-      {items.length > checkoutItems.length ? (
+      {blockedCount > 0 ? (
         <Text type="secondary" className="cart-drawer__unavailable">
-          {t('pages.cart.unavailableSummary', { count: items.length - checkoutItems.length })}
+          {t('pages.cart.unavailableSummary', { count: blockedCount })}
         </Text>
+      ) : null}
+
+      {checkoutItems.length > 0 ? (
+        <AddOnAssistant
+          cartProductIds={checkoutItems.map((item) => item.productId)}
+          remainingAmount={remaining}
+          reason="shipping"
+          onAdd={addSuggestedProduct}
+        />
       ) : null}
 
       {items.length === 0 ? (
@@ -207,6 +265,11 @@ const CartDrawer: React.FC = () => {
                   <Space direction="vertical" size={4}>
                     {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
                     {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
+                    {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
+                      <Tag color="orange" className="cart-drawer__urgency">
+                        {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
+                      </Tag>
+                    ) : null}
                     <Text>{formatMoney(item.price)}</Text>
                     <InputNumber
                       min={1}
@@ -233,6 +296,9 @@ const CartDrawer: React.FC = () => {
           <Button type="primary" block size="large" onClick={() => goCheckout()} disabled={checkoutItems.length === 0}>
             {t('pages.cart.checkout')}
           </Button>
+          <Text type="secondary" className="cart-drawer__footerHint">
+            {t('pages.cart.drawerFooterHint')}
+          </Text>
           <Button block onClick={() => { setOpen(false); navigate('/cart'); }}>
             {t('pages.cart.viewFullCart')}
           </Button>

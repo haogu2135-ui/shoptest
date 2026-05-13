@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Row, Col, Button, Empty, Spin, Typography, message, Popconfirm, Tag, Space } from 'antd';
-import { ShoppingCartOutlined, DeleteOutlined, HeartFilled, SettingOutlined } from '@ant-design/icons';
+import { ShoppingCartOutlined, DeleteOutlined, HeartFilled, SettingOutlined, ThunderboltOutlined, CheckCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { apiBaseUrl, wishlistApi, cartApi } from '../api';
 import type { WishlistItem } from '../types';
@@ -22,6 +22,9 @@ const resolveWishlistImage = (imageUrl?: string) => {
 const isPurchasable = (item: WishlistItem) =>
   (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock > 0);
 
+const getLowStockCount = (item: WishlistItem) =>
+  item.stock !== undefined && item.stock > 0 && item.stock <= 5 ? item.stock : undefined;
+
 const Wishlist: React.FC = () => {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +36,32 @@ const Wishlist: React.FC = () => {
     () => items.filter((item) => isPurchasable(item) && !item.requiresSelection),
     [items],
   );
+  const wishlistStats = useMemo(() => {
+    const optionCount = items.filter((item) => item.requiresSelection && isPurchasable(item)).length;
+    const lowStockCount = items.filter((item) => getLowStockCount(item) !== undefined).length;
+    const unavailableCount = items.filter((item) => !isPurchasable(item)).length;
+    return { optionCount, lowStockCount, unavailableCount };
+  }, [items]);
+  const featuredWishlistItem = useMemo(() => {
+    return [...items]
+      .filter(isPurchasable)
+      .sort((a, b) => {
+        const score = (item: WishlistItem) => {
+          const lowStockBoost = getLowStockCount(item) !== undefined ? 48 : 0;
+          const readyBoost = item.requiresSelection ? 12 : 36;
+          const priceBoost = Math.min(Number(item.productPrice) || 0, 120) / 4;
+          return lowStockBoost + readyBoost + priceBoost;
+        };
+        return score(b) - score(a);
+      })[0];
+  }, [items]);
+  const recoveryText = directAddItems.length > 0
+    ? t('pages.wishlist.recoveryDirectText', { count: directAddItems.length })
+    : wishlistStats.optionCount > 0
+      ? t('pages.wishlist.recoveryOptionsText', { count: wishlistStats.optionCount })
+      : wishlistStats.unavailableCount > 0
+        ? t('pages.wishlist.recoveryUnavailableText')
+        : t('pages.wishlist.recoveryBrowseText');
 
   const fetchWishlist = useCallback(async () => {
     try {
@@ -81,15 +110,10 @@ const Wishlist: React.FC = () => {
       message.info(t('pages.wishlist.noDirectAdd'));
       return;
     }
-    let added = 0;
-    for (const item of directAddItems) {
-      try {
-        await cartApi.addItem(userId, item.productId, 1);
-        added += 1;
-      } catch {
-        // Continue with the rest of the wishlist items.
-      }
-    }
+    const results = await Promise.allSettled(
+      directAddItems.map((item) => cartApi.addItem(userId, item.productId, 1)),
+    );
+    const added = results.filter((result) => result.status === 'fulfilled').length;
     if (added > 0) {
       message.success(t('pages.wishlist.addedAllToCart', { count: added }));
       window.dispatchEvent(new Event('shop:cart-updated'));
@@ -97,6 +121,25 @@ const Wishlist: React.FC = () => {
     } else {
       message.error(t('messages.addFailed'));
     }
+  };
+
+  const recoveryAction = directAddItems.length > 0
+    ? { label: t('pages.wishlist.addAllToCart'), action: handleAddAllToCart, disabled: false }
+    : wishlistStats.optionCount > 0
+      ? { label: t('pages.wishlist.resolveOptions'), action: () => {
+        const nextItem = items.find((item) => item.requiresSelection && isPurchasable(item));
+        if (nextItem) navigate(`/products/${nextItem.productId}`);
+      }, disabled: false }
+      : { label: t('pages.wishlist.browse'), action: () => navigate('/products'), disabled: false };
+
+  const getFeaturedReason = (item: WishlistItem) => {
+    const lowStockCount = getLowStockCount(item);
+    if (lowStockCount !== undefined) {
+      return t('pages.wishlist.bestPickLowStock', { count: lowStockCount });
+    }
+    return item.requiresSelection
+      ? t('pages.wishlist.bestPickOptions')
+      : t('pages.wishlist.bestPickReady');
   };
 
   const primaryAction = (item: WishlistItem) => {
@@ -127,6 +170,25 @@ const Wishlist: React.FC = () => {
       </Button>
     );
   };
+  const renderReadiness = (item: WishlistItem) => {
+    const purchasable = isPurchasable(item);
+    const lowStockCount = getLowStockCount(item);
+    const ready = purchasable && !item.requiresSelection;
+    return (
+      <div className="wishlist-page__readiness">
+        <span className={ready ? 'wishlist-page__readinessPill wishlist-page__readinessPill--ready' : 'wishlist-page__readinessPill'}>
+          <CheckCircleOutlined />
+          {ready ? t('pages.wishlist.cardReady') : item.requiresSelection ? t('pages.wishlist.cardNeedsOptions') : t('pages.wishlist.cardUnavailable')}
+        </span>
+        {lowStockCount !== undefined ? (
+          <span className="wishlist-page__readinessPill wishlist-page__readinessPill--alert">
+            <ThunderboltOutlined />
+            {t('pages.wishlist.lowStockLeft', { count: lowStockCount })}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
@@ -152,8 +214,84 @@ const Wishlist: React.FC = () => {
           {t('pages.wishlist.addAllToCart')}
         </Button>
       </div>
+      <div className="wishlist-page__insightBar" aria-label={t('pages.wishlist.insightTitle')}>
+        <div className="wishlist-page__insightIntro">
+          <ThunderboltOutlined />
+          <div>
+            <Text strong>{t('pages.wishlist.insightTitle')}</Text>
+            <Text type="secondary">{t('pages.wishlist.insightSubtitle')}</Text>
+          </div>
+        </div>
+        <div className="wishlist-page__insightStats">
+          <Tag color="green">{t('pages.wishlist.readyToCart', { count: directAddItems.length })}</Tag>
+          <Tag color="blue">{t('pages.wishlist.needOptions', { count: wishlistStats.optionCount })}</Tag>
+          <Tag color="orange">{t('pages.wishlist.lowStockItems', { count: wishlistStats.lowStockCount })}</Tag>
+          {wishlistStats.unavailableCount > 0 ? (
+            <Tag color="red">{t('pages.wishlist.unavailableItems', { count: wishlistStats.unavailableCount })}</Tag>
+          ) : null}
+        </div>
+      </div>
+      <div className="wishlist-page__recovery">
+        <div>
+          <Text strong>{t('pages.wishlist.recoveryTitle')}</Text>
+          <Text type="secondary">{recoveryText}</Text>
+        </div>
+        <Button type="primary" icon={<ShoppingCartOutlined />} disabled={recoveryAction.disabled} onClick={recoveryAction.action}>
+          {recoveryAction.label}
+        </Button>
+      </div>
+      {featuredWishlistItem ? (
+        <div className="wishlist-page__bestPick">
+          <button
+            type="button"
+            className="wishlist-page__bestPickImageButton"
+            onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}
+            aria-label={featuredWishlistItem.productName}
+          >
+            <img
+              alt={featuredWishlistItem.productName}
+              src={resolveWishlistImage(featuredWishlistItem.imageUrl)}
+              className="wishlist-page__bestPickImage"
+              onError={(event) => {
+                if (event.currentTarget.src !== wishlistImageFallback) {
+                  event.currentTarget.src = wishlistImageFallback;
+                }
+              }}
+            />
+          </button>
+          <div className="wishlist-page__bestPickBody">
+            <Text className="wishlist-page__bestPickEyebrow">
+              <FireOutlined /> {t('pages.wishlist.bestPickEyebrow')}
+            </Text>
+            <button
+              type="button"
+              className="wishlist-page__bestPickName"
+              onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}
+              title={featuredWishlistItem.productName}
+            >
+              {featuredWishlistItem.productName}
+            </button>
+            <Text type="secondary">{getFeaturedReason(featuredWishlistItem)}</Text>
+            {renderReadiness(featuredWishlistItem)}
+          </div>
+          <div className="wishlist-page__bestPickAction">
+            <Text className="wishlist-page__price">{formatMoney(featuredWishlistItem.productPrice)}</Text>
+            {featuredWishlistItem.requiresSelection ? (
+              <Button type="primary" icon={<SettingOutlined />} onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}>
+                {t('pages.wishlist.selectOptions')}
+              </Button>
+            ) : (
+              <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => handleAddToCart(featuredWishlistItem.productId)}>
+                {t('pages.productList.addToCart')}
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : null}
       <Row gutter={[16, 16]}>
-        {items.map(item => (
+        {items.map(item => {
+          const lowStockCount = getLowStockCount(item);
+          return (
           <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
             <Card
               className="wishlist-page__card"
@@ -188,8 +326,14 @@ const Wishlist: React.FC = () => {
               </button>
               <div className="wishlist-page__meta">
                 <Text className="wishlist-page__price">{formatMoney(item.productPrice)}</Text>
-                {!isPurchasable(item) && <Tag color="red">{t('pages.wishlist.outOfStock')}</Tag>}
+                <Space size={4} wrap>
+                  {lowStockCount !== undefined ? (
+                    <Tag color="orange">{t('pages.wishlist.lowStockLeft', { count: lowStockCount })}</Tag>
+                  ) : null}
+                  {!isPurchasable(item) && <Tag color="red">{t('pages.wishlist.outOfStock')}</Tag>}
+                </Space>
               </div>
+              {renderReadiness(item)}
               <div className="wishlist-page__actions">
                 {primaryAction(item)}
                 <Popconfirm title={t('pages.wishlist.removeConfirm')} onConfirm={() => handleRemove(item.productId)}>
@@ -200,7 +344,8 @@ const Wishlist: React.FC = () => {
               </div>
             </Card>
           </Col>
-        ))}
+          );
+        })}
       </Row>
     </div>
   );

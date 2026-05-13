@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
 import com.example.shop.repository.PaymentRepository;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Service;
 public class RefundService {
     @Autowired
     private PaymentRepository paymentRepository;
+    @Autowired
+    private PaymentChannelConfig paymentChannelConfig;
 
     @Value("${stripe.secret-key:}")
     private String stripeSecretKey;
@@ -25,10 +28,20 @@ public class RefundService {
         if (payment == null) {
             return;
         }
-        if ("STRIPE".equals(payment.getChannel())) {
+        PaymentChannelConfig.Channel channel = paymentChannelConfig.findEnabled(payment.getChannel()).orElse(null);
+        if (shouldRefundViaStripe(payment, channel)) {
             refundStripePayment(order, payment);
         }
         paymentRepository.markRefunded(payment.getId());
+    }
+
+    private boolean shouldRefundViaStripe(Payment payment, PaymentChannelConfig.Channel channel) {
+        if (channel == null) {
+            return "STRIPE".equals(payment.getChannel());
+        }
+        return "STRIPE".equals(channel.getCode())
+                || "STRIPE".equalsIgnoreCase(channel.getProvider())
+                || "STRIPE".equalsIgnoreCase(channel.getRefundMode());
     }
 
     private void refundStripePayment(Order order, Payment payment) {

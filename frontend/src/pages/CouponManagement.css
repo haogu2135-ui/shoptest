@@ -18,6 +18,76 @@
   overflow-wrap: anywhere;
 }
 
+.coupon-management-insights {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.45fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #dfe7dc;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 184, 77, 0.14), rgba(18, 71, 52, 0.08)), #fffdf8;
+}
+
+.coupon-management-insights__copy {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+}
+
+.coupon-management-insights__copy span {
+  color: #124734;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.coupon-management-insights__copy h2 {
+  margin: 0;
+  color: #173f2b;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.coupon-management-insights__copy p {
+  margin: 0;
+  color: #667064;
+}
+
+.coupon-management-insights__cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coupon-management-insights__cards div {
+  display: grid;
+  gap: 5px;
+  min-height: 92px;
+  padding: 12px;
+  border: 1px solid #e5dfd3;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.coupon-management-insights__cards .anticon {
+  color: #124734;
+  font-size: 18px;
+}
+
+.coupon-management-insights__cards strong {
+  color: #173f2b;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.coupon-management-insights__cards span {
+  color: #667064;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .coupon-management-page__formRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -45,6 +115,15 @@
   .coupon-management-page__actions,
   .coupon-management-page__actions .ant-btn {
     width: 100%;
+  }
+
+  .coupon-management-insights,
+  .coupon-management-insights__cards {
+    grid-template-columns: 1fr;
+  }
+
+  .coupon-management-insights {
+    padding: 14px;
   }
 
   .coupon-management-page__formRow {

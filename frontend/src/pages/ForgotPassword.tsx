@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Form, Input, message } from 'antd';
-import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -42,6 +42,20 @@ const ForgotPassword: React.FC = () => {
         <div className="shopee-login-brand">
           <div className="shopee-login-mark">ShopMX</div>
           <div className="shopee-login-subtitle">{t('pages.auth.resetPasswordTitle')}</div>
+        </div>
+        <div className="shopee-login-reset-guide" aria-label={t('pages.auth.resetGuideTitle')}>
+          <div className="shopee-login-reset-guide__item">
+            <MailOutlined />
+            <span>{t('pages.auth.resetGuideEmail')}</span>
+          </div>
+          <div className="shopee-login-reset-guide__item">
+            <SafetyCertificateOutlined />
+            <span>{t('pages.auth.resetGuideVerify')}</span>
+          </div>
+          <div className="shopee-login-reset-guide__item">
+            <CheckCircleOutlined />
+            <span>{t('pages.auth.resetGuideLogin')}</span>
+          </div>
         </div>
 
         <Form name="forgotPassword" onFinish={onFinish} layout="vertical" className="shopee-login-form">

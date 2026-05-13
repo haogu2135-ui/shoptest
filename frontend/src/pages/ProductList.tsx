@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Spin, Typography, Slider, Checkbox, Modal, Space, Drawer } from 'antd';
-import { BarChartOutlined, BellOutlined, FilterOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { Badge, Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Spin, Typography, Slider, Checkbox, Modal, Space, Drawer } from 'antd';
+import { BarChartOutlined, BellOutlined, CheckCircleOutlined, FireOutlined, FilterOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiBaseUrl, productApi, cartApi, categoryApi } from '../api';
 import type { Product, Category, ProductVariant } from '../types';
@@ -12,6 +12,7 @@ import { addGuestCartItem } from '../utils/guestCart';
 import { buildBundleSpecs, getBundleInfo } from '../utils/bundle';
 import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
 import { addStockAlert, readStockAlerts, removeStockAlert } from '../utils/stockAlerts';
+import { conversionConfig, getLowStockCount } from '../utils/conversionConfig';
 import './ProductList.css';
 
 const { Text } = Typography;
@@ -132,23 +133,34 @@ const ProductList: React.FC = () => {
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const getPositiveRate = (product: Product) => product.positiveRate ?? 0;
-  const petSizeOptions = [
+  const getSavingsAmount = (product: Product) => Math.max(0, Number(product.originalPrice || 0) - getPrice(product));
+  const isProductSoldOut = (product: Product) => product.stock !== undefined && product.stock <= 0;
+  const isQuickAddReady = (product: Product) =>
+    !isProductSoldOut(product) && getProductOptionGroups(product).length === 0 && getProductVariants(product).length === 0;
+  const isBestValueProduct = (product: Product) => {
+    const config = conversionConfig.productValueBadge;
+    if (!config.enabled) return false;
+    return getDiscountPercent(product) >= config.minDiscountPercent
+      && getPositiveRate(product) >= config.minPositiveRate
+      && Number(product.reviewCount || 0) >= config.minReviewCount;
+  };
+  const petSizeOptions = useMemo(() => [
     { label: t('pages.profile.petSizeSmall'), value: 'Small' },
     { label: t('pages.profile.petSizeMedium'), value: 'Medium' },
     { label: t('pages.profile.petSizeLarge'), value: 'Large' },
-  ];
-  const materialOptions = [
+  ], [t]);
+  const materialOptions = useMemo(() => [
     { label: t('pages.productList.materialCotton'), value: 'Cotton' },
     { label: t('pages.productList.materialNylon'), value: 'Nylon' },
     { label: t('pages.productList.materialSilicone'), value: 'Silicone' },
     { label: t('pages.productList.materialWood'), value: 'Wood' },
-  ];
-  const colorOptions = [
+  ], [t]);
+  const colorOptions = useMemo(() => [
     { label: t('pages.productList.colorBlack'), value: 'Black' },
     { label: t('pages.productList.colorBlue'), value: 'Blue' },
     { label: t('pages.productList.colorGreen'), value: 'Green' },
     { label: t('pages.productList.colorPink'), value: 'Pink' },
-  ];
+  ], [t]);
   useEffect(() => {
     categoryApi.getAll().then(res => setCategories(res.data)).catch(() => {});
   }, []);
@@ -199,6 +211,7 @@ const ProductList: React.FC = () => {
     materials.length > 0,
     colors.length > 0,
   ].filter(Boolean).length;
+  const activeRefinementCount = activeFilterCount + (categoryId ? 1 : 0);
 
   useEffect(() => {
     setPriceRange((currentRange) => {
@@ -240,6 +253,81 @@ const ProductList: React.FC = () => {
   }, [categories, categoryId, collection, collectionProducts, keyword]);
   const categoryTree = useMemo(() => buildCategoryTree(visibleCategories), [visibleCategories]);
   const categoryRows = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
+  const selectedCategory = useMemo(
+    () => categoryRows.find((category) => category.id === categoryId),
+    [categoryId, categoryRows],
+  );
+  const activeRefinementTags = useMemo(() => {
+    const tags: Array<{ key: string; label: string; onClose: () => void }> = [];
+    if (selectedCategory) {
+      tags.push({
+        key: `category-${selectedCategory.id}`,
+        label: getLocalizedCategoryValue(selectedCategory, language, 'name'),
+        onClose: () => {
+          setCategoryId(undefined);
+          setCurrentPage(1);
+          const params = new URLSearchParams();
+          if (collection) params.set('collection', collection);
+          if (keyword) params.set('keyword', keyword);
+          navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
+          setFilterDrawerOpen(false);
+        },
+      });
+    }
+    if (priceFilterActive) {
+      tags.push({
+        key: 'price',
+        label: `${t('pages.productList.price')}: ${formatMoney(displayedPriceRange[0])} - ${formatMoney(displayedPriceRange[1])}`,
+        onClose: () => {
+          setPriceRange([0, maxCatalogPrice]);
+          setCurrentPage(1);
+        },
+      });
+    }
+    const optionLabels = new Map([...petSizeOptions, ...materialOptions, ...colorOptions].map((option) => [option.value, option.label]));
+    petSizes.forEach((value) => tags.push({
+      key: `size-${value}`,
+      label: `${t('pages.productList.filterSize')}: ${optionLabels.get(value) || value}`,
+      onClose: () => {
+        setPetSizes((current) => current.filter((item) => item !== value));
+        setCurrentPage(1);
+      },
+    }));
+    materials.forEach((value) => tags.push({
+      key: `material-${value}`,
+      label: `${t('pages.productList.filterMaterial')}: ${optionLabels.get(value) || value}`,
+      onClose: () => {
+        setMaterials((current) => current.filter((item) => item !== value));
+        setCurrentPage(1);
+      },
+    }));
+    colors.forEach((value) => tags.push({
+      key: `color-${value}`,
+      label: `${t('pages.productList.filterColor')}: ${optionLabels.get(value) || value}`,
+      onClose: () => {
+        setColors((current) => current.filter((item) => item !== value));
+        setCurrentPage(1);
+      },
+    }));
+    return tags;
+  }, [
+    colorOptions,
+    colors,
+    collection,
+    displayedPriceRange,
+    formatMoney,
+    keyword,
+    language,
+    materialOptions,
+    materials,
+    maxCatalogPrice,
+    navigate,
+    petSizeOptions,
+    petSizes,
+    priceFilterActive,
+    selectedCategory,
+    t,
+  ]);
   const quickAddOptionGroups = useMemo(() => getProductOptionGroups(quickAddProduct), [quickAddProduct]);
   const quickAddVariants = useMemo(() => getProductVariants(quickAddProduct), [quickAddProduct]);
   const quickAddBundleInfo = useMemo(() => getBundleInfo(quickAddProduct), [quickAddProduct]);
@@ -377,12 +465,12 @@ const ProductList: React.FC = () => {
       try {
         if (token && userId) {
           await cartApi.addItem(Number(userId), quickAddProduct.id, 1, selectedSpecs);
+          window.dispatchEvent(new Event('shop:cart-updated'));
         } else if (snapshot) {
           addGuestCartItem(snapshot, 1, selectedSpecs, bundleInfo.price);
         }
         message.success(t('messages.addCartSuccess'));
         setQuickAddProduct(null);
-        window.dispatchEvent(new Event('shop:cart-updated'));
         window.dispatchEvent(new Event('shop:open-cart'));
       } catch {
         message.error(t('messages.addFailed'));
@@ -402,12 +490,12 @@ const ProductList: React.FC = () => {
     try {
       if (token && userId) {
         await cartApi.addItem(Number(userId), quickAddProduct.id, 1, selectedSpecs);
+        window.dispatchEvent(new Event('shop:cart-updated'));
       } else if (snapshot) {
         addGuestCartItem(snapshot, 1, selectedSpecs, selectedPrice);
       }
       message.success(t('messages.addCartSuccess'));
       setQuickAddProduct(null);
-      window.dispatchEvent(new Event('shop:cart-updated'));
       window.dispatchEvent(new Event('shop:open-cart'));
     } catch {
       message.error(t('messages.addFailed'));
@@ -438,6 +526,50 @@ const ProductList: React.FC = () => {
     return 0;
   });
 
+  const productListInsights = {
+    bestValueCount: filteredProducts.filter(isBestValueProduct).length,
+    lowStockCount: filteredProducts.filter((product) => getLowStockCount(product.stock) !== null && !isProductSoldOut(product)).length,
+    quickAddReadyCount: filteredProducts.filter(isQuickAddReady).length,
+    averageSavings: filteredProducts.length > 0
+      ? filteredProducts.reduce((sum, product) => sum + getSavingsAmount(product), 0) / filteredProducts.length
+      : 0,
+  };
+  const shoppingGuideText = productListInsights.bestValueCount > 0
+    ? t('pages.productList.guideBestValue', { count: productListInsights.bestValueCount })
+    : productListInsights.quickAddReadyCount > 0
+      ? t('pages.productList.guideQuickAdd', { count: productListInsights.quickAddReadyCount })
+      : activeRefinementCount > 0
+        ? t('pages.productList.guideRefineResults')
+        : t('pages.productList.guideStart');
+  const shoppingGuideAction = productListInsights.bestValueCount > 0
+    ? { label: t('pages.productList.shopBestDeals'), action: () => setSortBy('discount-desc') }
+    : productListInsights.quickAddReadyCount > 0
+      ? { label: t('pages.productList.shopQuickAdd'), action: () => setSortBy('default') }
+      : activeRefinementCount > 0
+        ? { label: t('pages.productList.resetFilters'), action: resetFilters }
+        : { label: t('pages.productList.shopTopRated'), action: () => setSortBy('positive-rate-desc') };
+  const recommendedProduct = filteredProducts
+    .filter((product) => !isProductSoldOut(product))
+    .map((product, index) => ({
+      product,
+      index,
+      score:
+        (isBestValueProduct(product) ? 34 : 0) +
+        (isQuickAddReady(product) ? 18 : 0) +
+        Math.min(18, getDiscountPercent(product)) +
+        Math.min(14, getPositiveRate(product) / 8) +
+        Math.min(10, Number(product.reviewCount || 0) / 2) +
+        (getLowStockCount(product.stock) !== null ? 4 : 0),
+    }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.product || null;
+  const recommendedProductPrice = recommendedProduct ? getPrice(recommendedProduct) : 0;
+  const recommendedProductReasons = recommendedProduct ? [
+    isBestValueProduct(recommendedProduct) ? t('pages.productList.pickBestValue') : null,
+    isQuickAddReady(recommendedProduct) ? t('pages.productList.pickQuickAdd') : null,
+    getDiscountPercent(recommendedProduct) > 0 ? t('pages.productList.pickDeal', { percent: getDiscountPercent(recommendedProduct) }) : null,
+    getLowStockCount(recommendedProduct.stock) !== null ? t('pages.productList.pickLowStock', { count: getLowStockCount(recommendedProduct.stock) || 0 }) : null,
+  ].filter(Boolean) as string[] : [];
+
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
     if (currentPage > totalPages) {
@@ -449,10 +581,11 @@ const ProductList: React.FC = () => {
 
   const renderBadges = (product: Product) => {
     const badges: Array<{ label: string; color: string }> = [];
+    if (isBestValueProduct(product)) badges.push({ label: t('pages.productList.bestValue'), color: 'green' });
     if (getDiscountPercent(product) > 0) badges.push({ label: t('pages.productList.sale'), color: 'volcano' });
     if (product.tag === 'new') badges.push({ label: t('pages.productList.new'), color: 'blue' });
     if (product.isFeatured) badges.push({ label: t('pages.productList.bestSeller'), color: 'gold' });
-    if ((product.stock || 0) > 0 && (product.stock || 0) <= 5) badges.push({ label: t('pages.productList.runningLow'), color: 'red' });
+    if (getLowStockCount(product.stock) !== null && (product.stock || 0) > 0) badges.push({ label: t('pages.productList.runningLow'), color: 'red' });
     return badges;
   };
 
@@ -483,6 +616,22 @@ const ProductList: React.FC = () => {
       >
         {t('pages.productList.quickAdd')}
       </Button>
+    );
+  };
+  const renderConfidenceStrip = (product: Product) => {
+    const quickReady = isQuickAddReady(product);
+    const lowStock = getLowStockCount(product.stock);
+    return (
+      <div className="product-list__confidenceStrip">
+        <span className={quickReady ? 'product-list__confidencePill product-list__confidencePill--ready' : 'product-list__confidencePill'}>
+          <CheckCircleOutlined />
+          {quickReady ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded')}
+        </span>
+        <span className={lowStock !== null ? 'product-list__confidencePill product-list__confidencePill--alert' : 'product-list__confidencePill product-list__confidencePill--ready'}>
+          <FireOutlined />
+          {lowStock !== null ? t('pages.productList.cardLowStock', { count: lowStock }) : t('pages.productList.cardStockReady')}
+        </span>
+      </div>
     );
   };
 
@@ -585,12 +734,33 @@ const ProductList: React.FC = () => {
               <Col xs={12} sm={7} md={4}>
                 <div className="product-list__toolbarMeta">
                   <Text type="secondary">{t('pages.productList.count', { count: filteredProducts.length })}</Text>
-                  <Button className="product-list__filterButton" icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
-                    {t('pages.productList.filters')}
-                  </Button>
+                  <Badge count={activeRefinementCount} size="small" overflowCount={99}>
+                    <Button className="product-list__filterButton" icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
+                      {t('pages.productList.filters')}
+                    </Button>
+                  </Badge>
                 </div>
               </Col>
             </Row>
+            {activeRefinementTags.length > 0 ? (
+              <div className="product-list__refinementChips">
+                {activeRefinementTags.map((tag) => (
+                  <Tag
+                    key={tag.key}
+                    closable
+                    onClose={(event) => {
+                      event.preventDefault();
+                      tag.onClose();
+                    }}
+                  >
+                    {tag.label}
+                  </Tag>
+                ))}
+                <Button type="link" size="small" onClick={resetFilters}>
+                  {t('pages.productList.resetFilters')}
+                </Button>
+              </div>
+            ) : null}
             {searchHistory.length > 0 && (
               <Space wrap size={[8, 8]} style={{ marginTop: 12 }}>
                 <Text type="secondary">{t('pages.productList.recentSearches')}</Text>
@@ -605,6 +775,81 @@ const ProductList: React.FC = () => {
               </Space>
             )}
           </Card>
+          <div className="product-list__insightBar" aria-label={t('pages.productList.insightTitle')}>
+            <div className="product-list__insightIntro">
+              <ThunderboltOutlined />
+              <div>
+                <Text strong>{t('pages.productList.insightTitle')}</Text>
+                <Text type="secondary">{t('pages.productList.insightSubtitle')}</Text>
+              </div>
+            </div>
+            <div className="product-list__insightStats">
+              <Tag color="green">{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</Tag>
+              <Tag color="gold">{t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}</Tag>
+              <Tag color="red">{t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount })}</Tag>
+              {productListInsights.averageSavings > 0 ? (
+                <Tag color="volcano">{t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) })}</Tag>
+              ) : null}
+            </div>
+            <div className="product-list__insightActions">
+              <Button size="small" icon={<FireOutlined />} onClick={() => setSortBy('positive-rate-desc')}>
+                {t('pages.productList.shopTopRated')}
+              </Button>
+              <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => setSortBy('discount-desc')}>
+                {t('pages.productList.shopBestDeals')}
+              </Button>
+            </div>
+          </div>
+          <div className="product-list__shoppingGuide">
+            <div>
+              <Text strong>{t('pages.productList.guideTitle')}</Text>
+              <Text type="secondary">{shoppingGuideText}</Text>
+            </div>
+            <Button size="small" type="primary" onClick={shoppingGuideAction.action}>
+              {shoppingGuideAction.label}
+            </Button>
+          </div>
+          {recommendedProduct ? (
+            <div className="product-list__recommendedPick">
+              <img
+                src={resolveProductListImage(recommendedProduct.imageUrl)}
+                alt={recommendedProduct.name}
+                onError={(event) => {
+                  if (event.currentTarget.src !== productImageFallback) {
+                    event.currentTarget.src = productImageFallback;
+                  }
+                }}
+              />
+              <div className="product-list__recommendedPickBody">
+                <Text type="secondary">{t('pages.productList.pickEyebrow')}</Text>
+                <Text strong>{t('pages.productList.pickTitle', { name: recommendedProduct.name })}</Text>
+                <Text type="secondary">
+                  {t('pages.productList.pickSubtitle', {
+                    price: formatMoney(recommendedProductPrice),
+                    rating: getPositiveRate(recommendedProduct) ? `${getPositiveRate(recommendedProduct)}%` : t('common.unset'),
+                  })}
+                </Text>
+                <Space wrap size={[6, 6]}>
+                  {recommendedProductReasons.slice(0, 3).map((reason) => (
+                    <Tag key={reason} color="green">{reason}</Tag>
+                  ))}
+                </Space>
+              </div>
+              <Space wrap className="product-list__recommendedPickActions">
+                <Button onClick={() => openProductDetail(recommendedProduct.id)}>
+                  {t('pages.productList.viewPick')}
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<ShoppingCartOutlined />}
+                  disabled={isProductSoldOut(recommendedProduct)}
+                  onClick={(event) => openQuickAdd(event, recommendedProduct)}
+                >
+                  {isQuickAddReady(recommendedProduct) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions')}
+                </Button>
+              </Space>
+            </div>
+          ) : null}
           {loading ? (
             <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
           ) : paginatedProducts.length === 0 ? (
@@ -678,12 +923,20 @@ const ProductList: React.FC = () => {
                               )}
                               {product.activeLimitedTimeDiscount && <Tag color="red" className="product-list__priceTag">{t('pages.productList.limitedTime')}</Tag>}
                             </div>
+                            {isBestValueProduct(product) && getSavingsAmount(product) > 0 ? (
+                              <div className="product-list__valueLine">
+                                <Text type="success">
+                                  {t('pages.productList.bestValueSavings', { amount: formatMoney(getSavingsAmount(product)) })}
+                                </Text>
+                              </div>
+                            ) : null}
                             <div className="product-list__ratingLine">
                               <Text type="secondary">
                                 {t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })}
                               </Text>
                             </div>
                             {product.brand && <Text type="secondary" className="product-list__brand">{product.brand}</Text>}
+                            {renderConfidenceStrip(product)}
                           </div>
                         }
                       />

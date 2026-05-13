@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Table, Button, Popconfirm, Rate, message, Typography, Divider, Input, Modal, Select, Space, Tag } from 'antd';
-import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, StarOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { Review } from '../types';
 import { useLanguage } from '../i18n';
+import './ReviewManagement.css';
 
 const { Title, Paragraph } = Typography;
 
@@ -21,6 +22,17 @@ const ReviewManagement: React.FC = () => {
     APPROVED: 'green',
     HIDDEN: 'default',
   };
+
+  const reviewStats = useMemo(() => {
+    const pending = reviews.filter((review) => (review.status || 'PENDING') === 'PENDING').length;
+    const lowRating = reviews.filter((review) => Number(review.rating || 0) <= 3).length;
+    const needsReply = reviews.filter((review) => !String(review.adminReply || '').trim()).length;
+    const approved = reviews.filter((review) => (review.status || 'PENDING') === 'APPROVED').length;
+    const averageRating = reviews.length
+      ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length
+      : 0;
+    return { pending, lowRating, needsReply, approved, averageRating };
+  }, [reviews]);
 
   const filteredReviews = statusFilter ? reviews.filter((review) => (review.status || 'PENDING') === statusFilter) : reviews;
 
@@ -109,7 +121,7 @@ const ReviewManagement: React.FC = () => {
       width: 110,
       render: (status: string) => {
         const value = status || 'PENDING';
-        return <Tag color={statusColors[value]}>{value}</Tag>;
+        return <Tag color={statusColors[value]}>{t(`pages.adminReviews.status.${value}`)}</Tag>;
       },
     },
     {
@@ -141,12 +153,12 @@ const ReviewManagement: React.FC = () => {
         <Space size="small" wrap>
           {(record.status || 'PENDING') !== 'APPROVED' && (
             <Button size="small" icon={<CheckOutlined />} onClick={() => handleStatus(record, 'APPROVED')}>
-              Approve
+              {t('pages.adminReviews.approve')}
             </Button>
           )}
           {(record.status || 'PENDING') !== 'HIDDEN' && (
             <Button size="small" icon={<EyeInvisibleOutlined />} onClick={() => handleStatus(record, 'HIDDEN')}>
-              Hide
+              {t('pages.adminReviews.hide')}
             </Button>
           )}
           <Button size="small" style={{ marginRight: 8 }} onClick={() => openReply(record)}>
@@ -161,20 +173,49 @@ const ReviewManagement: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div className="review-management-page">
       <Title level={4}>{t('pages.adminReviews.title')}</Title>
       <Divider />
-      <Space style={{ marginBottom: 16 }}>
+      <section className="review-ops-panel">
+        <div className="review-ops-panel__copy">
+          <span>{t('pages.adminReviews.opsEyebrow')}</span>
+          <h2>{t('pages.adminReviews.opsTitle')}</h2>
+          <p>{t('pages.adminReviews.opsSubtitle')}</p>
+        </div>
+        <div className="review-ops-panel__metrics">
+          <div>
+            <StarOutlined />
+            <strong>{reviewStats.averageRating.toFixed(1)}</strong>
+            <span>{t('pages.adminReviews.averageRating')}</span>
+          </div>
+          <div>
+            <WarningOutlined />
+            <strong>{reviewStats.lowRating}</strong>
+            <span>{t('pages.adminReviews.lowRating')}</span>
+          </div>
+          <div>
+            <MessageOutlined />
+            <strong>{reviewStats.needsReply}</strong>
+            <span>{t('pages.adminReviews.needsReply')}</span>
+          </div>
+          <div>
+            <CheckOutlined />
+            <strong>{reviewStats.approved}</strong>
+            <span>{t('pages.adminReviews.approvedReviews')}</span>
+          </div>
+        </div>
+      </section>
+      <Space className="review-management-page__toolbar">
         <Select
           allowClear
-          placeholder="Status"
+          placeholder={t('pages.adminReviews.statusFilter')}
           style={{ width: 180 }}
           value={statusFilter}
           onChange={setStatusFilter}
           options={[
-            { value: 'PENDING', label: 'Pending' },
-            { value: 'APPROVED', label: 'Approved' },
-            { value: 'HIDDEN', label: 'Hidden' },
+            { value: 'PENDING', label: t('pages.adminReviews.status.PENDING') },
+            { value: 'APPROVED', label: t('pages.adminReviews.status.APPROVED') },
+            { value: 'HIDDEN', label: t('pages.adminReviews.status.HIDDEN') },
           ]}
         />
       </Space>

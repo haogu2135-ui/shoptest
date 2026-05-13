@@ -34,6 +34,43 @@
   font-size: 14px;
 }
 
+.shopee-login-trust,
+.shopee-login-reset-guide {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 1px solid #f0e1cf;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fff8ed 0%, #f7fbf6 100%);
+}
+
+.shopee-login-trust {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.shopee-login-reset-guide {
+  grid-template-columns: 1fr;
+}
+
+.shopee-login-trust__item,
+.shopee-login-reset-guide__item {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #3b4a40;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.shopee-login-trust__item .anticon,
+.shopee-login-reset-guide__item .anticon {
+  flex: 0 0 auto;
+  color: #2f855a;
+}
+
 .shopee-login-form {
   width: 100%;
 }
@@ -75,6 +112,10 @@
 
   .shopee-login-card {
     padding: 24px 18px 20px;
+  }
+
+  .shopee-login-trust {
+    grid-template-columns: 1fr;
   }
 
   .shopee-login-links {

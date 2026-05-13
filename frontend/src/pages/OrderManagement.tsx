@@ -5,40 +5,27 @@ import { adminApi, logisticsCarrierApi, orderApi } from '../api';
 import type { LogisticsCarrier, Order, OrderItem } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
+import {
+  isOrderNeedsAction,
+  isOrderRefunded,
+  isOrderShippable,
+  getOrderSlaState,
+  orderNextActionByStatus,
+  orderPriority,
+  orderStatusColors,
+  orderValidTransitions,
+} from '../utils/orderOperationsConfig';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderManagement.css';
 
 const { Title } = Typography;
 
-const statusColors: Record<string, string> = {
-  PENDING_PAYMENT: 'orange',
-  PENDING_SHIPMENT: 'blue',
-  SHIPPED: 'cyan',
-  COMPLETED: 'green',
-  CANCELLED: 'red',
-  RETURN_REQUESTED: 'gold',
-  RETURN_APPROVED: 'geekblue',
-  RETURN_SHIPPED: 'cyan',
-  RETURNED: 'purple',
-};
-
-const validTransitions: Record<string, string[]> = {
-  PENDING_PAYMENT: ['CANCELLED'],
-  PENDING_SHIPMENT: ['SHIPPED'],
-  SHIPPED: ['COMPLETED'],
-  COMPLETED: [],
-  RETURN_REQUESTED: ['RETURN_APPROVED', 'COMPLETED'],
-  RETURN_APPROVED: [],
-  RETURN_SHIPPED: ['RETURNED'],
-  CANCELLED: [],
-  RETURNED: [],
-};
-
 const OrderManagement: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [quickFilter, setQuickFilter] = useState<string | undefined>();
   const [shippingOrder, setShippingOrder] = useState<Order | null>(null);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingCarrierCode, setTrackingCarrierCode] = useState<string | undefined>();
@@ -78,13 +65,21 @@ const OrderManagement: React.FC = () => {
   }, [fetchOrders, filterStatus]);
 
   useEffect(() => {
+    setQuickFilter(undefined);
+  }, [filterStatus]);
+
+  useEffect(() => {
+    setSelectedOrderIds([]);
+  }, [filterStatus, quickFilter, searchText]);
+
+  useEffect(() => {
     logisticsCarrierApi.getAll(true)
       .then((res) => setCarriers(res.data || []))
       .catch(() => setCarriers([]));
   }, []);
 
   useEffect(() => {
-    const shippableIds = new Set(orders.filter((order) => order.status === 'PENDING_SHIPMENT').map((order) => order.id));
+    const shippableIds = new Set(orders.filter(isOrderShippable).map((order) => order.id));
     setSelectedOrderIds((current) => current.filter((id) => shippableIds.has(Number(id))));
   }, [orders]);
 
@@ -279,16 +274,13 @@ const OrderManagement: React.FC = () => {
   };
 
   const handleBatchShip = async () => {
-    const shippableIds = orders
-      .filter((order) => selectedOrderIds.includes(order.id) && order.status === 'PENDING_SHIPMENT')
-      .map((order) => order.id);
-    if (shippableIds.length === 0) {
+    if (selectedVisibleShippableIds.length === 0) {
       message.error(t('pages.adminOrders.selectPendingShipment'));
       return;
     }
     try {
       setBatchShipping(true);
-      const res = await adminApi.batchShipOrders(shippableIds, batchTrackingPrefix.trim() || 'BATCH', batchTrackingCarrierCode);
+      const res = await adminApi.batchShipOrders(selectedVisibleShippableIds, batchTrackingPrefix.trim() || 'BATCH', batchTrackingCarrierCode);
       message.success(t('pages.adminOrders.batchShipResult', { success: res.data.success, failed: res.data.failed }));
       setBatchShipOpen(false);
       setSelectedOrderIds([]);
@@ -302,6 +294,10 @@ const OrderManagement: React.FC = () => {
 
   const handleExport = async () => {
     try {
+      if (quickFilter || normalizedSearchText) {
+        exportVisibleOrders();
+        return;
+      }
       const res = await adminApi.exportOrders(filterStatus);
       const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -313,6 +309,46 @@ const OrderManagement: React.FC = () => {
     } catch {
       message.error(t('pages.adminOrders.exportFailed'));
     }
+  };
+
+  const escapeCsv = (value: unknown) => {
+    const text = String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const exportVisibleOrders = () => {
+    const header = [
+      t('pages.adminOrders.orderId'),
+      t('common.userId'),
+      t('common.status'),
+      t('common.amount'),
+      t('pages.adminOrders.paymentMethod'),
+      t('pages.adminOrders.tracking'),
+      t('pages.adminOrders.returnTracking'),
+      t('pages.adminOrders.returnReason'),
+      t('pages.adminOrders.address'),
+      t('pages.adminOrders.createdAt'),
+    ];
+    const rows = sortedFilteredOrders.map((order) => [
+      order.orderNo || order.id,
+      order.userId,
+      t(`status.${order.status}`),
+      order.totalAmount,
+      order.paymentMethod || '',
+      order.trackingNumber || '',
+      order.returnTrackingNumber || '',
+      order.returnReason || '',
+      order.shippingAddress || '',
+      order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '',
+    ]);
+    const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `orders-visible-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleTrackShipment = (trackingNo?: string, carrierCode?: string) => {
@@ -329,9 +365,44 @@ const OrderManagement: React.FC = () => {
     value: carrier.trackingCode,
     label: `${carrier.name} (${carrier.trackingCode})`,
   }));
+  const formatHours = (hours: number) => {
+    if (hours < 24) {
+      return t('pages.adminOrders.slaHours', { count: Math.max(1, Math.ceil(hours)) });
+    }
+    return t('pages.adminOrders.slaDays', { count: Math.max(1, Math.ceil(hours / 24)) });
+  };
+
+  const getOrderSla = (order: Order) => {
+    const sla = getOrderSlaState(order);
+    if (!sla) return null;
+    return {
+      ...sla,
+      label: sla.overdue
+        ? t('pages.adminOrders.slaOverdue', { time: formatHours(sla.diffHours) })
+        : t('pages.adminOrders.slaRemaining', { time: formatHours(sla.diffHours) }),
+    };
+  };
+
+  const matchesQuickFilter = (order: Order, filter?: string) => {
+    if (!filter) return true;
+    if (filter === 'NEEDS_ACTION') {
+      return isOrderNeedsAction(order);
+    }
+    if (filter === 'SLA_OVERDUE') {
+      return Boolean(getOrderSla(order)?.overdue);
+    }
+    if (filter === 'SLA_DUE_SOON') {
+      return Boolean(getOrderSla(order)?.dueSoon);
+    }
+    if (filter === 'REFUNDED') {
+      return isOrderRefunded(order);
+    }
+    return order.status === filter;
+  };
   const normalizedSearchText = searchText.trim().toLowerCase();
+  const quickFilteredOrders = orders.filter((order) => matchesQuickFilter(order, quickFilter));
   const filteredOrders = normalizedSearchText
-    ? orders.filter((order) => [
+    ? quickFilteredOrders.filter((order) => [
         order.id,
         order.orderNo,
         order.userId,
@@ -343,33 +414,69 @@ const OrderManagement: React.FC = () => {
         order.returnTrackingNumber,
         order.returnReason,
       ].some((value) => String(value || '').toLowerCase().includes(normalizedSearchText)))
-    : orders;
+    : quickFilteredOrders;
+  const sortedFilteredOrders = [...filteredOrders].sort((left, right) => {
+    const priorityDelta = (orderPriority[left.status] ?? 99) - (orderPriority[right.status] ?? 99);
+    if (priorityDelta !== 0) return priorityDelta;
+    const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
+    const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+    return rightTime - leftTime || right.id - left.id;
+  });
+  const selectedVisibleShippableIds = sortedFilteredOrders
+    .filter((order) => selectedOrderIds.includes(order.id) && isOrderShippable(order))
+    .map((order) => order.id);
   const orderSummaryCards = [
+    {
+      key: 'needsAction',
+      label: t('pages.adminOrders.needsAction'),
+      value: orders.filter(isOrderNeedsAction).length,
+      color: '#cf1322',
+      filter: 'NEEDS_ACTION',
+    },
+    {
+      key: 'slaOverdue',
+      label: t('pages.adminOrders.slaOverdueCard'),
+      value: orders.filter((order) => getOrderSla(order)?.overdue).length,
+      color: '#a8071a',
+      filter: 'SLA_OVERDUE',
+    },
+    {
+      key: 'slaDueSoon',
+      label: t('pages.adminOrders.slaDueSoonCard'),
+      value: orders.filter((order) => getOrderSla(order)?.dueSoon).length,
+      color: '#fa8c16',
+      filter: 'SLA_DUE_SOON',
+    },
     {
       key: 'pendingShipment',
       label: t('status.PENDING_SHIPMENT'),
-      value: orders.filter((order) => order.status === 'PENDING_SHIPMENT').length,
+      value: orders.filter(isOrderShippable).length,
       color: '#1677ff',
+      filter: 'PENDING_SHIPMENT',
     },
     {
       key: 'returnRequested',
       label: t('status.RETURN_REQUESTED'),
       value: orders.filter((order) => order.status === 'RETURN_REQUESTED').length,
       color: '#d48806',
+      filter: 'RETURN_REQUESTED',
     },
     {
       key: 'returnShipped',
       label: t('status.RETURN_SHIPPED'),
       value: orders.filter((order) => order.status === 'RETURN_SHIPPED').length,
       color: '#08979c',
+      filter: 'RETURN_SHIPPED',
     },
     {
       key: 'refunded',
       label: t('status.REFUNDED'),
-      value: orders.filter((order) => order.status === 'RETURNED' || order.refundedAt).length,
+      value: orders.filter(isOrderRefunded).length,
       color: '#722ed1',
+      filter: 'REFUNDED',
     },
   ];
+  const activeQuickFilterLabel = orderSummaryCards.find((item) => item.filter === quickFilter)?.label;
   const transitionLabel = (currentStatus: string, nextStatus: string) => {
     if (currentStatus === 'RETURN_REQUESTED' && nextStatus === 'RETURN_APPROVED') {
       return t('pages.adminOrders.approveReturn');
@@ -382,6 +489,22 @@ const OrderManagement: React.FC = () => {
     }
     return t(`status.${nextStatus}`);
   };
+  const renderNextAction = (order: Order) => {
+    const action = orderNextActionByStatus[order.status] || orderNextActionByStatus.COMPLETED;
+    const sla = getOrderSla(order);
+    return (
+      <div className={`order-management-page__nextAction order-management-page__nextAction--${action.tone}`}>
+        <Typography.Text strong>{t(action.titleKey)}</Typography.Text>
+        <Typography.Text type="secondary">{t(action.textKey)}</Typography.Text>
+        {sla ? (
+          <Tag color={sla.overdue ? 'red' : sla.dueSoon ? 'orange' : 'green'} className="order-management-page__slaTag">
+            {sla.label}
+          </Tag>
+        ) : null}
+      </div>
+    );
+  };
+
 
   const columns = [
     { title: t('pages.adminOrders.orderId'), dataIndex: 'id', key: 'id', width: 80 },
@@ -398,7 +521,13 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (s: string) => <Tag color={statusColors[s]}>{t(`status.${s}`)}</Tag>,
+      render: (s: string) => <Tag color={orderStatusColors[s]}>{t(`status.${s}`)}</Tag>,
+    },
+    {
+      title: t('pages.adminOrders.nextAction'),
+      key: 'nextAction',
+      width: 190,
+      render: (_: any, record: Order) => renderNextAction(record),
     },
     {
       title: t('pages.adminOrders.returnReason'),
@@ -464,7 +593,7 @@ const OrderManagement: React.FC = () => {
       key: 'action',
       width: 230,
       render: (_: any, record: Order) => {
-        const transitions = validTransitions[record.status] || [];
+        const transitions = orderValidTransitions[record.status] || [];
         return (
           <Space wrap>
             <Button size="small" onClick={() => handleViewItems(record)}>
@@ -514,10 +643,16 @@ const OrderManagement: React.FC = () => {
       <Divider />
       <div className="order-management-page__summaryGrid">
         {orderSummaryCards.map((item) => (
-          <Card key={item.key} className="order-management-page__summaryCard">
+          <button
+            key={item.key}
+            type="button"
+            className={quickFilter === item.filter ? 'order-management-page__summaryCard order-management-page__summaryCard--active' : 'order-management-page__summaryCard'}
+            aria-pressed={quickFilter === item.filter}
+            onClick={() => setQuickFilter((current) => current === item.filter ? undefined : item.filter)}
+          >
             <span>{item.label}</span>
             <strong style={{ color: item.color }}>{item.value}</strong>
-          </Card>
+          </button>
         ))}
       </div>
       <Card className="order-management-page__toolbar" style={{ marginBottom: 16 }}>
@@ -549,34 +684,46 @@ const OrderManagement: React.FC = () => {
             style={{ width: 260 }}
           />
           <Button icon={<DownloadOutlined />} onClick={handleExport}>
-            {t('pages.adminOrders.exportOrders')}
+            {quickFilter || normalizedSearchText ? t('pages.adminOrders.exportVisibleOrders') : t('pages.adminOrders.exportOrders')}
           </Button>
           <Button
             type="primary"
-            disabled={selectedOrderIds.length === 0}
+            disabled={selectedVisibleShippableIds.length === 0}
             onClick={() => setBatchShipOpen(true)}
           >
             {t('pages.adminOrders.batchShip')}
           </Button>
+          {activeQuickFilterLabel ? (
+            <Tag
+              closable
+              color="orange"
+              onClose={(event) => {
+                event.preventDefault();
+                setQuickFilter(undefined);
+              }}
+            >
+              {t('pages.adminOrders.quickFilterActive', { filter: activeQuickFilterLabel })}
+            </Tag>
+          ) : null}
         </Space>
       </Card>
       <div className="order-management-page__table">
         <Table
           columns={columns}
-          dataSource={filteredOrders}
+          dataSource={sortedFilteredOrders}
           rowKey="id"
           rowSelection={{
             selectedRowKeys: selectedOrderIds,
             onChange: setSelectedOrderIds,
             getCheckboxProps: (record) => ({
-              disabled: record.status !== 'PENDING_SHIPMENT',
+              disabled: !isOrderShippable(record),
             }),
           }}
           loading={loading}
           pagination={{ pageSize: 10, showTotal: (total) => t('pages.adminOrders.total', { count: total }) }}
           bordered
           size="middle"
-          scroll={{ x: 1510 }}
+          scroll={{ x: 1700 }}
         />
       </div>
       <Modal

@@ -1,0 +1,92 @@
+.support-management__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.support-management__insightBar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1.2fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f7fff8 0%, #fff7f0 100%);
+}
+
+.support-management__insightIntro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.support-management__insightIntro > .anticon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #124734;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.support-management__insightIntro > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.support-management__insightStats,
+.support-management__insightActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.support-management__insightStats .ant-tag {
+  margin: 0;
+}
+
+.support-management__insightActions {
+  justify-content: flex-end;
+}
+
+.support-management__layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 620px;
+}
+
+@media (max-width: 900px) {
+  .support-management__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .support-management__header .ant-select {
+    width: 100% !important;
+  }
+
+  .support-management__insightBar,
+  .support-management__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .support-management__insightActions {
+    justify-content: flex-start;
+  }
+
+  .support-management__insightActions .ant-btn {
+    flex: 1 1 150px;
+  }
+}

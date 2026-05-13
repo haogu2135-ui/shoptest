@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
+  Card,
   Divider,
   Form,
   Image,
@@ -8,6 +9,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Progress,
   Space,
   Table,
   Tag,
@@ -15,7 +17,7 @@ import {
   TreeSelect,
   Typography,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { BranchesOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
 import { apiBaseUrl, categoryApi } from '../api';
 import type { Category } from '../types';
 import {
@@ -52,11 +54,37 @@ const CategoryManagement: React.FC = () => {
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const byId = useMemo(() => new Map(flatCategories.map((category) => [category.id, category])), [flatCategories]);
+  const categoryHealth = useMemo(() => {
+    const rootCategories = flatCategories.filter((category) => !category.parentId).length;
+    const leafCategories = flatCategories.filter((category) => !category.children?.length).length;
+    const missingImages = flatCategories.filter((category) => !category.imageUrl?.trim()).length;
+    const missingEnglish = flatCategories.filter((category) => !category.localizedContent?.en?.name?.trim()).length;
+    const missingSpanish = flatCategories.filter((category) => !category.localizedContent?.es?.name?.trim()).length;
+    const shallowRoots = flatCategories.filter((category) => !category.parentId && !category.children?.length).length;
+    const localizationGaps = missingEnglish + missingSpanish;
+    const score = Math.max(0, 100 - missingImages * 10 - localizationGaps * 7 - shallowRoots * 14);
+
+    return {
+      rootCategories,
+      leafCategories,
+      missingImages,
+      localizationGaps,
+      score,
+    };
+  }, [flatCategories]);
 
   const parentOptions = useMemo(() => {
     const blockedIds = editingCategory ? descendantIdSet(editingCategory) : new Set<number>();
     return toTreeOptions(categoryTree, (category) => category.level === 3 || blockedIds.has(category.id), language);
   }, [categoryTree, editingCategory, language]);
+
+  const getCategoryReadiness = (category: Category) => [
+    category.name?.trim(),
+    category.imageUrl?.trim(),
+    category.localizedContent?.en?.name?.trim(),
+    category.localizedContent?.es?.name?.trim(),
+    category.description?.trim() || category.localizedContent?.en?.description?.trim(),
+  ].filter(Boolean).length;
 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
@@ -200,6 +228,19 @@ const CategoryManagement: React.FC = () => {
       render: (description: string, record: Category) => record.localizedContent?.[language]?.description || record.localizedContent?.en?.description || description,
     },
     {
+      title: t('pages.categoryAdmin.readiness'),
+      key: 'readiness',
+      width: 140,
+      render: (_: unknown, record: Category) => {
+        const readySignals = getCategoryReadiness(record);
+        return (
+          <Tag color={readySignals >= 5 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
+            {t('pages.categoryAdmin.readySignals', { count: readySignals })}
+          </Tag>
+        );
+      },
+    },
+    {
       title: t('common.actions'),
       key: 'action',
       width: 280,
@@ -230,9 +271,54 @@ const CategoryManagement: React.FC = () => {
       </Title>
       <Divider />
 
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()} className="category-management-page__add">
-        {t('pages.categoryAdmin.addRoot')}
-      </Button>
+      <Card className="category-management-page__toolbar">
+        <Space wrap>
+          <Text type="secondary">{t('pages.categoryAdmin.healthSubtitle')}</Text>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+            {t('pages.categoryAdmin.addRoot')}
+          </Button>
+        </Space>
+      </Card>
+
+      <section className="category-management-page__health" aria-label={t('pages.categoryAdmin.healthTitle')}>
+        <div className="category-management-page__healthCopy">
+          <Text className="category-management-page__eyebrow">{t('pages.categoryAdmin.healthEyebrow')}</Text>
+          <Title level={5}>{t('pages.categoryAdmin.healthTitle')}</Title>
+          <Text type="secondary">{t('pages.categoryAdmin.healthDescription')}</Text>
+        </div>
+        <div className="category-management-page__score">
+          <Progress
+            type="circle"
+            percent={categoryHealth.score}
+            width={86}
+            strokeColor={categoryHealth.score >= 80 ? '#2f855a' : categoryHealth.score >= 60 ? '#d97706' : '#dc2626'}
+            format={(value) => `${value || 0}`}
+          />
+          <Text type="secondary">{t('pages.categoryAdmin.healthScore')}</Text>
+        </div>
+        <div className="category-management-page__healthGrid">
+          <div className="category-management-page__healthItem is-ok">
+            <BranchesOutlined />
+            <strong>{categoryHealth.rootCategories}</strong>
+            <span>{t('pages.categoryAdmin.rootCount')}</span>
+          </div>
+          <div className="category-management-page__healthItem is-ok">
+            <BranchesOutlined />
+            <strong>{categoryHealth.leafCategories}</strong>
+            <span>{t('pages.categoryAdmin.leafCount')}</span>
+          </div>
+          <div className={`category-management-page__healthItem ${categoryHealth.missingImages ? 'is-risk' : 'is-ok'}`}>
+            <PictureOutlined />
+            <strong>{categoryHealth.missingImages}</strong>
+            <span>{t('pages.categoryAdmin.missingImages')}</span>
+          </div>
+          <div className={`category-management-page__healthItem ${categoryHealth.localizationGaps ? 'is-risk' : 'is-ok'}`}>
+            <GlobalOutlined />
+            <strong>{categoryHealth.localizationGaps}</strong>
+            <span>{t('pages.categoryAdmin.localizationGaps')}</span>
+          </div>
+        </div>
+      </section>
 
       <Table
         columns={columns}

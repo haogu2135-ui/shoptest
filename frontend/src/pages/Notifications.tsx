@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { List, Typography, Tag, Button, Empty, Spin, message, Popconfirm, Space } from 'antd';
-import { BellOutlined, CheckOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { BellOutlined, CheckOutlined, DeleteOutlined, CheckCircleOutlined, GiftOutlined, ShoppingOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
@@ -32,6 +32,7 @@ const sortNotifications = (items: AppNotification[]) =>
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quickFilter, setQuickFilter] = useState<'ALL' | 'UNREAD' | 'PROMOTION' | 'ORDER' | 'DELIVERY'>('ALL');
   const navigate = useNavigate();
   const userId = Number(localStorage.getItem('userId'));
   const { t, language } = useLanguage();
@@ -58,7 +59,7 @@ const Notifications: React.FC = () => {
 
   const handleMarkAsRead = async (id: number) => {
     try {
-      await notificationApi.markAsRead(id);
+      await notificationApi.markAsRead(id, userId);
       setNotifications((current) => current.map(n => n.id === id ? { ...n, isRead: true } : n));
       notifyNavbarChanged();
     } catch {
@@ -79,7 +80,7 @@ const Notifications: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await notificationApi.delete(id);
+      await notificationApi.delete(id, userId);
       setNotifications((current) => current.filter(n => n.id !== id));
       notifyNavbarChanged();
       message.success(t('messages.deleteSuccess'));
@@ -100,6 +101,61 @@ const Notifications: React.FC = () => {
     return <div className="notifications-page__plainText">{item.message}</div>;
   };
 
+  const notificationInsights = useMemo(() => {
+    const unread = notifications.filter((item) => !item.isRead).length;
+    const promotions = notifications.filter((item) => item.type === 'PROMOTION').length;
+    const orders = notifications.filter((item) => item.type === 'ORDER').length;
+    const deliveries = notifications.filter((item) => item.type === 'DELIVERY').length;
+    return { unread, promotions, orders, deliveries };
+  }, [notifications]);
+
+  const actionPlan = useMemo(() => {
+    if (notificationInsights.unread > 0) {
+      return {
+        title: t('pages.notifications.actionUnreadTitle'),
+        text: t('pages.notifications.actionUnreadText', { count: notificationInsights.unread }),
+        label: t('pages.notifications.actionReviewUnread'),
+        onClick: () => setQuickFilter('UNREAD' as const),
+      };
+    }
+    if (notificationInsights.promotions > 0) {
+      return {
+        title: t('pages.notifications.actionPromotionTitle'),
+        text: t('pages.notifications.actionPromotionText', { count: notificationInsights.promotions }),
+        label: t('pages.notifications.actionOpenCoupons'),
+        onClick: () => navigate('/coupons'),
+      };
+    }
+    if (notificationInsights.deliveries > 0) {
+      return {
+        title: t('pages.notifications.actionDeliveryTitle'),
+        text: t('pages.notifications.actionDeliveryText', { count: notificationInsights.deliveries }),
+        label: t('pages.notifications.actionTrackOrder'),
+        onClick: () => navigate('/track-order'),
+      };
+    }
+    if (notificationInsights.orders > 0) {
+      return {
+        title: t('pages.notifications.actionOrderTitle'),
+        text: t('pages.notifications.actionOrderText', { count: notificationInsights.orders }),
+        label: t('pages.notifications.actionOpenOrders'),
+        onClick: () => navigate('/profile?tab=orders'),
+      };
+    }
+    return {
+      title: t('pages.notifications.actionBrowseTitle'),
+      text: t('pages.notifications.actionBrowseText'),
+      label: t('pages.notifications.actionBrowseProducts'),
+      onClick: () => navigate('/products'),
+    };
+  }, [navigate, notificationInsights, t]);
+
+  const filteredNotifications = useMemo(() => {
+    if (quickFilter === 'UNREAD') return notifications.filter((item) => !item.isRead);
+    if (quickFilter === 'ALL') return notifications;
+    return notifications.filter((item) => item.type === quickFilter);
+  }, [notifications, quickFilter]);
+
   if (loading) {
     return <div className="notifications-page notifications-page--loading"><Spin size="large" /></div>;
   }
@@ -115,11 +171,61 @@ const Notifications: React.FC = () => {
           <Button icon={<CheckOutlined />} onClick={handleMarkAllAsRead}>{t('pages.notifications.markAll')}</Button>
         )}
       </div>
+      {notifications.length > 0 ? (
+        <section className="notifications-page__assistant" aria-label={t('pages.notifications.assistantTitle')}>
+          <div className="notifications-page__assistantCopy">
+            <Text className="notifications-page__eyebrow">{t('pages.notifications.assistantEyebrow')}</Text>
+            <Title level={4}>{t('pages.notifications.assistantTitle')}</Title>
+            <Text type="secondary">{t('pages.notifications.assistantSubtitle')}</Text>
+          </div>
+          <div className="notifications-page__signalGrid">
+            <button type="button" className={`notifications-page__signal ${quickFilter === 'UNREAD' ? 'is-active' : ''}`} onClick={() => setQuickFilter('UNREAD')}>
+              <BellOutlined />
+              <strong>{notificationInsights.unread}</strong>
+              <span>{t('pages.notifications.unreadCount')}</span>
+            </button>
+            <button type="button" className={`notifications-page__signal ${quickFilter === 'PROMOTION' ? 'is-active' : ''}`} onClick={() => setQuickFilter('PROMOTION')}>
+              <GiftOutlined />
+              <strong>{notificationInsights.promotions}</strong>
+              <span>{t('pages.notifications.promotionCount')}</span>
+            </button>
+            <button type="button" className={`notifications-page__signal ${quickFilter === 'ORDER' ? 'is-active' : ''}`} onClick={() => setQuickFilter('ORDER')}>
+              <ShoppingOutlined />
+              <strong>{notificationInsights.orders}</strong>
+              <span>{t('pages.notifications.orderCount')}</span>
+            </button>
+            <button type="button" className={`notifications-page__signal ${quickFilter === 'DELIVERY' ? 'is-active' : ''}`} onClick={() => setQuickFilter('DELIVERY')}>
+              <TruckOutlined />
+              <strong>{notificationInsights.deliveries}</strong>
+              <span>{t('pages.notifications.deliveryCount')}</span>
+            </button>
+          </div>
+          {quickFilter !== 'ALL' ? (
+            <Button size="small" onClick={() => setQuickFilter('ALL')}>{t('pages.notifications.clearFilter')}</Button>
+          ) : null}
+        </section>
+      ) : null}
+      {notifications.length > 0 ? (
+        <section className="notifications-page__actionPlan" aria-label={t('pages.notifications.actionPlanTitle')}>
+          <div>
+            <Text className="notifications-page__eyebrow">{t('pages.notifications.actionPlanEyebrow')}</Text>
+            <Title level={4}>{actionPlan.title}</Title>
+            <Text type="secondary">{actionPlan.text}</Text>
+          </div>
+          <div className="notifications-page__actionSignals">
+            <span><BellOutlined /> {t('pages.notifications.actionSignalUnread', { count: notificationInsights.unread })}</span>
+            <span><GiftOutlined /> {t('pages.notifications.actionSignalOffers', { count: notificationInsights.promotions })}</span>
+            <span><TruckOutlined /> {t('pages.notifications.actionSignalDelivery', { count: notificationInsights.deliveries })}</span>
+          </div>
+          <Button type="primary" onClick={actionPlan.onClick}>{actionPlan.label}</Button>
+        </section>
+      ) : null}
       {notifications.length === 0 ? (
         <Empty description={t('pages.notifications.empty')} />
       ) : (
         <List
-          dataSource={notifications}
+          dataSource={filteredNotifications}
+          locale={{ emptyText: t('pages.notifications.noFilterResults') }}
           renderItem={item => (
             <List.Item
               className={item.isRead ? 'notifications-page__item' : 'notifications-page__item notifications-page__item--unread'}

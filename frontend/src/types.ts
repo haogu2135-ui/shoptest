@@ -368,6 +368,19 @@ export interface Payment {
     createdAt: string;
 }
 
+export interface PaymentChannel {
+    code: string;
+    displayName: string;
+    labelKey?: string;
+    descriptionKey?: string;
+    market?: 'CN' | 'MX' | 'GLOBAL' | string;
+    currency?: string;
+    provider?: string;
+    refundMode?: string;
+    badgeKey?: string;
+    sortOrder?: number;
+}
+
 export interface AppConfig {
     runtimeMode: 'production' | 'debug' | 'dev' | 'test' | string;
     paymentSimulationEnabled: boolean;

@@ -56,7 +56,27 @@ public class UserService {
 
     @Transactional
     public void registerAdmin(User user) {
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            throw new IllegalArgumentException("Admin username is required");
+        }
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Admin email is required");
+        }
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("Admin password is required");
+        }
+        user.setUsername(user.getUsername().trim());
+        user.setEmail(user.getEmail().trim());
+        if (userMapper.findByUsername(user.getUsername()) != null) {
+            throw new IllegalArgumentException("Username already registered");
+        }
+        User existingEmail = userMapper.findByUsernameOrPhoneOrEmail(user.getEmail());
+        if (existingEmail != null) {
+            throw new IllegalArgumentException("Email already registered");
+        }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setRole("ADMIN");
+        user.setStatus("ACTIVE");
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.insert(user);

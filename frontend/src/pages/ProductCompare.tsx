@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, Image, message, Rate, Space, Spin, Switch, Table, Tag, Typography } from 'antd';
-import { DeleteOutlined, SettingOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, FireOutlined, SettingOutlined, ShoppingCartOutlined, StarOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiBaseUrl, cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -125,9 +125,56 @@ const ProductCompare: React.FC = () => {
 
   useEffect(() => {
     fetchComparedProducts();
+    const refreshComparedProducts = () => fetchComparedProducts();
+    const refreshComparedProductsFromStorage = (event: StorageEvent) => {
+      if (event.key === 'shop-product-compare') {
+        fetchComparedProducts();
+      }
+    };
+    window.addEventListener('shop:compare-updated', refreshComparedProducts);
+    window.addEventListener('storage', refreshComparedProductsFromStorage);
+    return () => {
+      window.removeEventListener('shop:compare-updated', refreshComparedProducts);
+      window.removeEventListener('storage', refreshComparedProductsFromStorage);
+    };
   }, [fetchComparedProducts]);
 
   const comparedIds = useMemo(() => products.map((product) => product.id), [products]);
+  const compareDecision = useMemo(() => {
+    const readyProducts = products.filter((product) => product.stock === undefined || product.stock > 0);
+    const bestValue = readyProducts
+      .slice()
+      .sort((left, right) => getPrice(left) - getPrice(right))[0];
+    const topRated = readyProducts
+      .slice()
+      .sort((left, right) => Number(right.averageRating || right.rating || 0) - Number(left.averageRating || left.rating || 0))[0];
+    const lowStock = readyProducts.filter((product) => product.stock !== undefined && product.stock > 0 && product.stock <= 5).length;
+    const needsSelection = readyProducts.filter(productRequiresSelection).length;
+    const priceSpread = readyProducts.length > 1
+      ? Math.max(...readyProducts.map(getPrice)) - Math.min(...readyProducts.map(getPrice))
+      : 0;
+    const recommended = readyProducts
+      .slice()
+      .sort((left, right) => {
+        const ratingDelta = Number(right.averageRating || right.rating || 0) - Number(left.averageRating || left.rating || 0);
+        const priceDelta = getPrice(left) - getPrice(right);
+        const stockDelta = (right.stock ?? 999) - (left.stock ?? 999);
+        return ratingDelta * 8 + priceDelta * 0.08 + stockDelta * 0.01;
+      })[0];
+    const recommendedNeedsSelection = recommended ? productRequiresSelection(recommended) : false;
+    const recommendedLowStock = recommended?.stock !== undefined && recommended.stock > 0 && recommended.stock <= 5;
+    return {
+      readyCount: readyProducts.length,
+      bestValue,
+      topRated,
+      lowStock,
+      needsSelection,
+      priceSpread,
+      recommended,
+      recommendedNeedsSelection,
+      recommendedLowStock,
+    };
+  }, [products]);
 
   const removeProduct = (productId: number) => {
     removeCompareProduct(productId);
@@ -149,11 +196,11 @@ const ProductCompare: React.FC = () => {
     try {
       if (token && userId) {
         await cartApi.addItem(Number(userId), product.id, 1);
+        window.dispatchEvent(new Event('shop:cart-updated'));
       } else {
         addGuestCartItem({ ...product, imageUrl: resolveCompareImage(product.imageUrl) }, 1, undefined, getPrice(product));
       }
       message.success(t('messages.addCartSuccess'));
-      window.dispatchEvent(new Event('shop:cart-updated'));
       window.dispatchEvent(new Event('shop:open-cart'));
     } catch {
       message.error(t('messages.addFailed'));
@@ -404,6 +451,116 @@ const ProductCompare: React.FC = () => {
                 <Switch checked={showOnlyDifferences} onChange={setShowOnlyDifferences} />
               </Space>
             </div>
+            <section className="product-compare__decision" aria-label={t('pages.compare.decisionTitle')}>
+              <div className="product-compare__decisionCopy">
+                <Text className="product-compare__eyebrow">{t('pages.compare.decisionEyebrow')}</Text>
+                <Title level={4}>{t('pages.compare.decisionTitle')}</Title>
+                <Text type="secondary">
+                  {compareDecision.bestValue
+                    ? t('pages.compare.decisionSubtitleBest', { name: compareDecision.bestValue.name })
+                    : t('pages.compare.decisionSubtitle')}
+                </Text>
+              </div>
+              <div className="product-compare__decisionGrid">
+                <div className="product-compare__decisionItem is-ok">
+                  <CheckCircleOutlined />
+                  <strong>{compareDecision.readyCount}</strong>
+                  <span>{t('pages.compare.readyToBuy')}</span>
+                </div>
+                <div className="product-compare__decisionItem is-warm">
+                  <FireOutlined />
+                  <strong>{compareDecision.bestValue ? formatMoney(getPrice(compareDecision.bestValue)) : '-'}</strong>
+                  <span>{t('pages.compare.bestValue')}</span>
+                </div>
+                <div className="product-compare__decisionItem is-ok">
+                  <StarOutlined />
+                  <strong>{compareDecision.topRated ? Number(compareDecision.topRated.averageRating || compareDecision.topRated.rating || 0).toFixed(1) : '-'}</strong>
+                  <span>{t('pages.compare.topRated')}</span>
+                </div>
+                <div className={`product-compare__decisionItem ${compareDecision.lowStock ? 'is-risk' : 'is-ok'}`}>
+                  <FireOutlined />
+                  <strong>{compareDecision.lowStock}</strong>
+                  <span>{t('pages.compare.lowStock')}</span>
+                </div>
+              </div>
+            </section>
+            <section className="product-compare__recommendation" aria-label={t('pages.compare.recommendationTitle')}>
+              <div className="product-compare__recommendationMain">
+                <Text className="product-compare__eyebrow">{t('pages.compare.recommendationEyebrow')}</Text>
+                <Title level={4}>
+                  {compareDecision.recommended
+                    ? t('pages.compare.recommendationTitleWithName', { name: compareDecision.recommended.name })
+                    : t('pages.compare.recommendationTitle')}
+                </Title>
+                <Text type="secondary">
+                  {compareDecision.recommended
+                    ? t('pages.compare.recommendationSubtitle', {
+                      price: formatMoney(getPrice(compareDecision.recommended)),
+                      rating: Number(compareDecision.recommended.averageRating || compareDecision.recommended.rating || 0).toFixed(1),
+                    })
+                    : t('pages.compare.recommendationEmpty')}
+                </Text>
+                <Space wrap>
+                  {compareDecision.recommended ? (
+                    productRequiresSelection(compareDecision.recommended) ? (
+                      <Button type="primary" icon={<SettingOutlined />} onClick={() => navigate(`/products/${compareDecision.recommended!.id}`)}>
+                        {t('pages.wishlist.selectOptions')}
+                      </Button>
+                    ) : (
+                      <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => addToCart(compareDecision.recommended!)}>
+                        {t('pages.compare.addRecommended')}
+                      </Button>
+                    )
+                  ) : null}
+                  <Button onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
+                </Space>
+              </div>
+              <div className="product-compare__riskGrid">
+                <div>
+                  <strong>{formatMoney(compareDecision.priceSpread)}</strong>
+                  <span>{t('pages.compare.priceSpread')}</span>
+                </div>
+                <div>
+                  <strong>{compareDecision.needsSelection}</strong>
+                  <span>{t('pages.compare.needsOptions')}</span>
+                </div>
+                <div className={compareDecision.lowStock ? 'is-risk' : ''}>
+                  <strong>{compareDecision.lowStock}</strong>
+                  <span>{t('pages.compare.lowStockRisk')}</span>
+                </div>
+              </div>
+            </section>
+            {compareDecision.recommended ? (
+              <section className="product-compare__checkoutPath" aria-label={t('pages.compare.checkoutPathTitle')}>
+                <div className="product-compare__checkoutCopy">
+                  <Text className="product-compare__eyebrow">{t('pages.compare.checkoutPathEyebrow')}</Text>
+                  <Title level={4}>{t('pages.compare.checkoutPathTitle')}</Title>
+                  <Text type="secondary">
+                    {t('pages.compare.checkoutPathSubtitle', { name: compareDecision.recommended.name })}
+                  </Text>
+                </div>
+                <div className="product-compare__checkoutSteps">
+                  <span className="is-ready"><CheckCircleOutlined /> {t('pages.compare.checkoutStepAvailable')}</span>
+                  <span className={compareDecision.recommendedNeedsSelection ? 'is-warm' : 'is-ready'}>
+                    {compareDecision.recommendedNeedsSelection ? <SettingOutlined /> : <CheckCircleOutlined />}
+                    {compareDecision.recommendedNeedsSelection ? t('pages.compare.checkoutStepOptions') : t('pages.compare.checkoutStepNoOptions')}
+                  </span>
+                  <span className={compareDecision.recommendedLowStock ? 'is-risk' : 'is-ready'}>
+                    {compareDecision.recommendedLowStock ? <FireOutlined /> : <CheckCircleOutlined />}
+                    {compareDecision.recommendedLowStock ? t('pages.compare.checkoutStepLowStock') : t('pages.compare.checkoutStepStock')}
+                  </span>
+                </div>
+                {compareDecision.recommendedNeedsSelection ? (
+                  <Button type="primary" icon={<SettingOutlined />} onClick={() => navigate(`/products/${compareDecision.recommended!.id}`)}>
+                    {t('pages.wishlist.selectOptions')}
+                  </Button>
+                ) : (
+                  <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => addToCart(compareDecision.recommended!)}>
+                    {t('pages.compare.checkoutPathCta')}
+                  </Button>
+                )}
+              </section>
+            ) : null}
             <Table
               bordered
               pagination={false}

@@ -1,0 +1,157 @@
+.pet-finder-page {
+  width: min(1200px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.pet-finder-page__layout {
+  display: grid;
+  gap: 18px;
+}
+
+.pet-finder-page__insights {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.25fr) minmax(280px, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid #f0e1cf;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fff8ed 0%, #f7fbf6 100%);
+}
+
+.pet-finder-page__insightCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pet-finder-page__insightCopy .ant-typography {
+  margin: 0;
+}
+
+.pet-finder-page__eyebrow {
+  color: #a05a00;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.pet-finder-page__signalGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pet-finder-page__signal {
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #eadfce;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.pet-finder-page__signal svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pet-finder-page__signal strong {
+  color: #2f261d;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.pet-finder-page__signal span {
+  color: #6b6259;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.pet-finder-page__signal.is-ok svg {
+  color: #2f855a;
+}
+
+.pet-finder-page__signal.is-warm svg {
+  color: #d97706;
+}
+
+.pet-finder-page__nextStep {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid #d9eadf;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.07);
+}
+
+.pet-finder-page__nextStepCopy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.pet-finder-page__nextStepCopy .ant-typography {
+  margin: 0;
+}
+
+.pet-finder-page__nextStepMeta {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pet-finder-page__nextStepActions {
+  justify-content: flex-end;
+}
+
+.pet-finder-page__nextStepActions .ant-btn {
+  min-height: 38px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .pet-finder-page {
+    width: min(100% - 16px, 1200px);
+    padding: 14px 0;
+  }
+
+  .pet-finder-page h2.ant-typography {
+    font-size: 22px;
+  }
+
+  .pet-finder-page__insights {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .pet-finder-page__signalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-finder-page__nextStep {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-finder-page__nextStepMeta,
+  .pet-finder-page__nextStepActions {
+    justify-content: flex-start;
+  }
+
+  .pet-finder-page__nextStepActions,
+  .pet-finder-page__nextStepActions .ant-space-item,
+  .pet-finder-page__nextStepActions .ant-btn {
+    width: 100%;
+  }
+}

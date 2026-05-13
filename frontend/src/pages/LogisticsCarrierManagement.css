@@ -11,6 +11,91 @@
   justify-content: space-between;
 }
 
+.logistics-carrier-page__health {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) 116px minmax(320px, 1.8fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid #d8eadf;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f7fbf6 0%, #fff8ed 100%);
+}
+
+.logistics-carrier-page__healthCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.logistics-carrier-page__healthCopy .ant-typography {
+  margin: 0;
+}
+
+.logistics-carrier-page__eyebrow {
+  color: #2f855a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.logistics-carrier-page__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.logistics-carrier-page__healthGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.logistics-carrier-page__healthItem {
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #dfe8dc;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.logistics-carrier-page__healthItem svg {
+  width: 18px;
+  height: 18px;
+}
+
+.logistics-carrier-page__healthItem strong {
+  color: #263327;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.logistics-carrier-page__healthItem span {
+  color: #5f6b5f;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.logistics-carrier-page__healthItem.is-ok svg {
+  color: #2f855a;
+}
+
+.logistics-carrier-page__healthItem.is-risk {
+  border-color: #f5c2c2;
+  background: #fff7f7;
+}
+
+.logistics-carrier-page__healthItem.is-risk svg {
+  color: #dc2626;
+}
+
 .logistics-carrier-page .ant-table-cell {
   overflow-wrap: anywhere;
 }
@@ -18,6 +103,15 @@
 @media (max-width: 640px) {
   .logistics-carrier-page h4.ant-typography {
     font-size: 22px;
+  }
+
+  .logistics-carrier-page__health {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .logistics-carrier-page__healthGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .logistics-carrier-page__intro .ant-space,

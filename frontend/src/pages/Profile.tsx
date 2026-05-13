@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Cascader, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Select, Space, Tabs, Tag, Typography } from 'antd';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, Card, Cascader, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Tabs, Tag, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, PlusOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, apiBaseUrl, appConfigApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
@@ -59,6 +59,14 @@ const sortOrdersNewestFirst = (items: Order[]) =>
 
 const normalizeProfileTab = (value: string | null) =>
   value === 'info' || value === 'addresses' || value === 'orders' || value === 'pets' ? value : null;
+
+type OrderActionHintTone = 'pay' | 'wait' | 'ship' | 'return' | 'done' | 'neutral';
+
+type OrderActionHint = {
+  tone: OrderActionHintTone;
+  title: string;
+  text: string;
+};
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -447,6 +455,10 @@ const Profile: React.FC = () => {
     setTrackingVisible(true);
   };
 
+  const openSupport = () => {
+    window.dispatchEvent(new Event('shop:open-support'));
+  };
+
   const handleSaveAddress = async () => {
     try {
       const values = await addressForm.validateFields();
@@ -599,6 +611,71 @@ const Profile: React.FC = () => {
   const { formatMoney } = useMarket();
   const paymentOptions = createPaymentMethodOptions(t);
   const selectedPaymentMethodDetail = mexicoPaymentMethodDetails.find((method) => method.value === selectedPaymentMethod);
+  const pendingPaymentCount = orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
+  const inTransitCount = orders.filter((order) => order.status === 'SHIPPED').length;
+  const afterSaleCount = orders.filter((order) => afterSaleStatuses.includes(order.status)).length;
+  const returnableOrdersCount = orders.filter((order) => order.returnable).length;
+  const returnApprovedCount = orders.filter((order) => order.status === 'RETURN_APPROVED').length;
+  const returnShippedCount = orders.filter((order) => order.status === 'RETURN_SHIPPED').length;
+  const defaultAddressReady = addresses.some((address) => address.isDefault);
+  const completedPetProfiles = petProfiles.filter((pet) => pet.name && pet.petType && pet.size && pet.weight && pet.birthday).length;
+  const petProfileProgress = petProfiles.length > 0 ? Math.round((completedPetProfiles / petProfiles.length) * 100) : 0;
+  const petsMissingBirthdayCount = petProfiles.filter((pet) => !pet.birthday).length;
+  const petsMissingFitCount = petProfiles.filter((pet) => !pet.weight || !pet.size).length;
+  const completeAddressCount = addresses.filter((address) => address.recipientName && address.phone && address.address).length;
+  const addressesMissingPhoneCount = addresses.filter((address) => !address.phone).length;
+  const addressesMissingDetailCount = addresses.filter((address) => !address.address || address.address.trim().length < 8).length;
+  const addressReadinessProgress = addresses.length > 0
+    ? Math.round(((completeAddressCount + (defaultAddressReady ? 1 : 0)) / (addresses.length + 1)) * 100)
+    : 0;
+  const accountHealthSignals = [
+    Boolean(user?.email),
+    Boolean(user?.phone),
+    defaultAddressReady,
+    petProfiles.length > 0,
+  ];
+  const accountHealthScore = Math.round((accountHealthSignals.filter(Boolean).length / accountHealthSignals.length) * 100);
+  const nextReturnDeadline = useMemo(() => {
+    const deadlines = orders
+      .filter((order) => order.returnable && order.returnDeadline)
+      .map((order) => new Date(order.returnDeadline as string))
+      .filter((date) => !Number.isNaN(date.getTime()))
+      .sort((left, right) => left.getTime() - right.getTime());
+    return deadlines[0] ? deadlines[0].toLocaleDateString(dateLocale) : '';
+  }, [dateLocale, orders]);
+  const afterSaleFocusText = returnApprovedCount > 0
+    ? t('pages.profile.afterSaleFocusShipment', { count: returnApprovedCount })
+    : returnShippedCount > 0
+      ? t('pages.profile.afterSaleFocusRefund', { count: returnShippedCount })
+      : returnableOrdersCount > 0
+        ? nextReturnDeadline
+          ? t('pages.profile.afterSaleFocusWindowWithDate', { count: returnableOrdersCount, date: nextReturnDeadline })
+          : t('pages.profile.afterSaleFocusWindow', { count: returnableOrdersCount })
+        : t('pages.profile.afterSaleFocusHealthy');
+  const petCompletenessText = petProfiles.length === 0
+    ? t('pages.profile.petCompletenessEmpty')
+    : petProfileProgress === 100
+      ? t('pages.profile.petCompletenessReady')
+      : t('pages.profile.petCompletenessImprove', { count: petProfiles.length - completedPetProfiles });
+  const petProfileFocus = petProfiles.find((pet) => !pet.birthday || !pet.weight || !pet.size || !pet.breed) || null;
+  const petProfileFocusText = petProfiles.length === 0
+    ? t('pages.profile.petProfileActionEmpty')
+    : petProfileFocus
+      ? t('pages.profile.petProfileActionImprove', {
+        name: petProfileFocus.name || t('pages.profile.petName'),
+        fields: [
+          !petProfileFocus.birthday ? t('pages.profile.petBirthday') : null,
+          !petProfileFocus.weight ? t('pages.profile.petWeight') : null,
+          !petProfileFocus.size ? t('pages.profile.petSize') : null,
+          !petProfileFocus.breed ? t('pages.profile.petBreed') : null,
+        ].filter(Boolean).join(', '),
+      })
+      : t('pages.profile.petProfileActionReady');
+  const addressReadinessText = addresses.length === 0
+    ? t('pages.profile.addressReadinessEmpty')
+    : addressReadinessProgress === 100
+      ? t('pages.profile.addressReadinessReady')
+      : t('pages.profile.addressReadinessImprove');
   const petTypeLabel = (value?: string) => {
     if (value === 'DOG') return t('pages.profile.petDog');
     if (value === 'CAT') return t('pages.profile.petCat');
@@ -611,11 +688,99 @@ const Profile: React.FC = () => {
     if (value === 'LARGE') return t('pages.profile.petSizeLarge');
     return value || t('common.unset');
   };
+  const getOrderActionHint = (order: Order): OrderActionHint => {
+    const returnDeadline = order.returnDeadline ? new Date(order.returnDeadline).toLocaleDateString(dateLocale) : '';
+    if (order.status === 'PENDING_PAYMENT') {
+      return {
+        tone: 'pay',
+        title: t('pages.profile.nextPayTitle'),
+        text: t('pages.profile.nextPayText'),
+      };
+    }
+    if (order.status === 'PENDING_SHIPMENT') {
+      return {
+        tone: 'wait',
+        title: t('pages.profile.nextShipTitle'),
+        text: t('pages.profile.nextShipText'),
+      };
+    }
+    if (order.status === 'SHIPPED') {
+      return {
+        tone: 'ship',
+        title: t('pages.profile.nextReceiveTitle'),
+        text: order.trackingNumber
+          ? t('pages.profile.nextReceiveWithTrackingText', { number: order.trackingNumber })
+          : t('pages.profile.nextReceiveText'),
+      };
+    }
+    if (order.returnable) {
+      return {
+        tone: 'return',
+        title: t('pages.profile.nextReturnWindowTitle'),
+        text: returnDeadline
+          ? t('pages.profile.nextReturnWindowText', { date: returnDeadline })
+          : t('pages.profile.nextReturnWindowNoDateText'),
+      };
+    }
+    if (order.status === 'RETURN_REQUESTED') {
+      return {
+        tone: 'return',
+        title: t('pages.profile.nextReturnReviewTitle'),
+        text: t('pages.profile.nextReturnReviewText'),
+      };
+    }
+    if (order.status === 'RETURN_APPROVED') {
+      return {
+        tone: 'return',
+        title: t('pages.profile.nextReturnShipTitle'),
+        text: t('pages.profile.nextReturnShipText'),
+      };
+    }
+    if (order.status === 'RETURN_SHIPPED') {
+      return {
+        tone: 'return',
+        title: t('pages.profile.nextRefundTitle'),
+        text: t('pages.profile.nextRefundText'),
+      };
+    }
+    if (order.status === 'RETURNED') {
+      return {
+        tone: 'done',
+        title: t('pages.profile.nextReturnedTitle'),
+        text: order.refundedAt
+          ? t('pages.profile.nextReturnedWithRefundText', { date: new Date(order.refundedAt).toLocaleDateString(dateLocale) })
+          : t('pages.profile.nextReturnedText'),
+      };
+    }
+    if (order.status === 'COMPLETED') {
+      return {
+        tone: 'done',
+        title: t('pages.profile.nextCompletedTitle'),
+        text: t('pages.profile.nextCompletedText'),
+      };
+    }
+    if (order.status === 'CANCELLED') {
+      return {
+        tone: 'neutral',
+        title: t('pages.profile.nextCancelledTitle'),
+        text: t('pages.profile.nextCancelledText'),
+      };
+    }
+    return {
+      tone: 'neutral',
+      title: t('pages.profile.nextOrderTitle'),
+      text: t('pages.profile.nextOrderText'),
+    };
+  };
   const openProfileTab = (tabKey: string) => {
     setProfileActiveTab(tabKey);
     if (tabKey === 'orders') {
       setOrderStatusFilter('all');
     }
+  };
+  const openOrdersWithFilter = (filter: string) => {
+    setProfileActiveTab('orders');
+    setOrderStatusFilter(filter);
   };
 
   if (loading || !user) {
@@ -625,6 +790,46 @@ const Profile: React.FC = () => {
   return (
     <div className="profile-page" style={{ padding: '24px', maxWidth: 1000, margin: '0 auto' }}>
       <Title level={2}>{t('pages.profile.title')}</Title>
+
+      <div className="profile-action-center" aria-label={t('pages.profile.actionCenterTitle')}>
+        <div className="profile-action-center__intro">
+          <UserOutlined />
+          <div>
+            <Text strong>{t('pages.profile.actionCenterTitle')}</Text>
+            <Text type="secondary">{t('pages.profile.actionCenterSubtitle')}</Text>
+          </div>
+        </div>
+        <div className="profile-action-center__cards">
+          <button type="button" className="profile-action-center__card profile-action-center__card--pay" onClick={() => openOrdersWithFilter('PENDING_PAYMENT')}>
+            <ShoppingCartOutlined />
+            <span>
+              <strong>{pendingPaymentCount}</strong>
+              <Text>{t('pages.profile.actionPendingPay')}</Text>
+            </span>
+          </button>
+          <button type="button" className="profile-action-center__card" onClick={() => openOrdersWithFilter('SHIPPED')}>
+            <EnvironmentOutlined />
+            <span>
+              <strong>{inTransitCount}</strong>
+              <Text>{t('pages.profile.actionInTransit')}</Text>
+            </span>
+          </button>
+          <button type="button" className="profile-action-center__card profile-action-center__card--return" onClick={() => openOrdersWithFilter('AFTER_SALE')}>
+            <HeartOutlined />
+            <span>
+              <strong>{afterSaleCount}</strong>
+              <Text>{t('pages.profile.actionAfterSale')}</Text>
+            </span>
+          </button>
+          <button type="button" className="profile-action-center__card" onClick={() => setProfileActiveTab(defaultAddressReady ? 'pets' : 'addresses')}>
+            {defaultAddressReady ? <HeartOutlined /> : <EnvironmentOutlined />}
+            <span>
+              <strong>{defaultAddressReady ? `${petProfileProgress}%` : '!'}</strong>
+              <Text>{defaultAddressReady ? t('pages.profile.actionPetProfile') : t('pages.profile.actionDefaultAddress')}</Text>
+            </span>
+          </button>
+        </div>
+      </div>
 
       <div className="profile-mobile-entry">
         <button type="button" className={profileActiveTab === 'orders' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'} onClick={() => openProfileTab('orders')}>
@@ -654,6 +859,19 @@ const Profile: React.FC = () => {
             label: t('pages.profile.info'),
             children: (
               <Card>
+                <div className="profile-health-panel">
+                  <div>
+                    <Text strong>{t('pages.profile.accountHealthTitle')}</Text>
+                    <Text type="secondary">{t('pages.profile.accountHealthText')}</Text>
+                  </div>
+                  <Progress type="circle" percent={accountHealthScore} size={72} strokeColor="#124734" />
+                  <div className="profile-health-panel__chips">
+                    <Tag color={user.email ? 'green' : 'gold'}>{t('pages.profile.accountHealthEmail')}</Tag>
+                    <Tag color={user.phone ? 'green' : 'gold'}>{t('pages.profile.accountHealthPhone')}</Tag>
+                    <Tag color={defaultAddressReady ? 'green' : 'gold'}>{t('pages.profile.accountHealthDefaultAddress')}</Tag>
+                    <Tag color={petProfiles.length > 0 ? 'green' : 'gold'}>{t('pages.profile.accountHealthPet')}</Tag>
+                  </div>
+                </div>
                 <Descriptions column={1} bordered>
                   <Descriptions.Item label={t('pages.profile.username')}>{user.username}</Descriptions.Item>
                   <Descriptions.Item label={t('pages.profile.email')}>{user.email || t('common.unset')}</Descriptions.Item>
@@ -672,6 +890,27 @@ const Profile: React.FC = () => {
             label: t('pages.profile.addresses', { count: addresses.length }),
             children: (
               <div>
+                <div className="profile-address-readiness">
+                  <div className="profile-address-readiness__copy">
+                    <Text strong>{t('pages.profile.addressReadinessTitle')}</Text>
+                    <Text type="secondary">{addressReadinessText}</Text>
+                    <Progress percent={addressReadinessProgress} size="small" strokeColor="#124734" />
+                  </div>
+                  <div className="profile-address-readiness__stats">
+                    <span>
+                      <strong>{defaultAddressReady ? 1 : 0}</strong>
+                      <Text type="secondary">{t('pages.profile.addressDefaultReady')}</Text>
+                    </span>
+                    <span>
+                      <strong>{addressesMissingPhoneCount}</strong>
+                      <Text type="secondary">{t('pages.profile.addressMissingPhone')}</Text>
+                    </span>
+                    <span>
+                      <strong>{addressesMissingDetailCount}</strong>
+                      <Text type="secondary">{t('pages.profile.addressMissingDetail')}</Text>
+                    </span>
+                  </div>
+                </div>
                 <Button type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openAddressModal()}>
                   {t('pages.profile.addAddress')}
                 </Button>
@@ -719,6 +958,26 @@ const Profile: React.FC = () => {
               </Empty>
             ) : (
               <div className="profile-orders">
+                <div className="profile-after-sale-panel">
+                  <div className="profile-after-sale-panel__main">
+                    <Text strong>{t('pages.profile.afterSaleAssistantTitle')}</Text>
+                    <Text type="secondary">{afterSaleFocusText}</Text>
+                  </div>
+                  <div className="profile-after-sale-panel__metrics">
+                    <button type="button" onClick={() => setOrderStatusFilter('all')}>
+                      <strong>{returnableOrdersCount}</strong>
+                      <span>{t('pages.profile.afterSaleReturnable')}</span>
+                    </button>
+                    <button type="button" onClick={() => setOrderStatusFilter('AFTER_SALE')}>
+                      <strong>{afterSaleCount}</strong>
+                      <span>{t('pages.profile.afterSaleActiveCases')}</span>
+                    </button>
+                    <button type="button" onClick={() => setOrderStatusFilter('AFTER_SALE')}>
+                      <strong>{returnApprovedCount}</strong>
+                      <span>{t('pages.profile.afterSaleNeedShipment')}</span>
+                    </button>
+                  </div>
+                </div>
                 <div className="profile-orders__tabs">
                   {orderStatusTabs.map((tab) => {
                     const count = tab.key === 'all'
@@ -758,6 +1017,7 @@ const Profile: React.FC = () => {
                   filteredOrders.map((order) => {
                     const items = orderItemsByOrderId[order.id] || [];
                     const primaryItem = items[0];
+                    const actionHint = getOrderActionHint(order);
                     return (
                       <div className="profile-order-card" key={order.id}>
                         <div className="profile-order-card__top">
@@ -815,6 +1075,10 @@ const Profile: React.FC = () => {
                             <Tag>{t('pages.profile.onlineOrder')}</Tag>
                           </div>
                           <div className="profile-order-card__actions">
+                            <div className={`profile-order-card__next profile-order-card__next--${actionHint.tone}`}>
+                              <Text strong>{actionHint.title}</Text>
+                              <Text type="secondary">{actionHint.text}</Text>
+                            </div>
                             {order.status === 'PENDING_PAYMENT' && (
                               <Button type="primary" loading={payingOrderId === order.id} onClick={() => handleContinuePayment(order)}>
                                 {t('pages.profile.continuePay')}
@@ -837,6 +1101,9 @@ const Profile: React.FC = () => {
                             {order.status === 'RETURN_SHIPPED' && (
                               <Tag color="cyan">{t('status.RETURN_SHIPPED')}</Tag>
                             )}
+                            {(order.returnable || afterSaleStatuses.includes(order.status)) && (
+                              <Button type="link" onClick={openSupport}>{t('pages.profile.contactSupport')}</Button>
+                            )}
                             <Button type="link" onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</Button>
                             {order.trackingNumber ? <Button type="link" onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode)}>{t('pages.orderTracking.trackShipment')}</Button> : null}
                             {order.status === 'PENDING_PAYMENT' && (
@@ -858,12 +1125,37 @@ const Profile: React.FC = () => {
             label: t('pages.profile.pets', { count: petProfiles.length }),
             children: (
               <div>
-                <Card style={{ marginBottom: 16 }}>
-                  <Space direction="vertical" size={4}>
-                    <Text strong>{t('pages.profile.petBirthdayPerkTitle')}</Text>
-                    <Text type="secondary">{t('pages.profile.petBirthdayPerkText')}</Text>
-                  </Space>
-                </Card>
+                <div className="profile-pet-insights">
+                  <Card className="profile-pet-insights__card">
+                    <Space direction="vertical" size={8}>
+                      <Text strong>{t('pages.profile.petCompletenessTitle')}</Text>
+                      <Text type="secondary">{petCompletenessText}</Text>
+                      <Progress percent={petProfileProgress} size="small" strokeColor="#ff4d00" />
+                    </Space>
+                  </Card>
+                  <Card className="profile-pet-insights__card">
+                    <Space direction="vertical" size={8}>
+                      <Text strong>{t('pages.profile.petBirthdayPerkTitle')}</Text>
+                      <Text type="secondary">{t('pages.profile.petBirthdayPerkText')}</Text>
+                      <Space wrap>
+                        <Tag color={petsMissingBirthdayCount > 0 ? 'gold' : 'green'}>{t('pages.profile.petMissingBirthday', { count: petsMissingBirthdayCount })}</Tag>
+                        <Tag color={petsMissingFitCount > 0 ? 'orange' : 'green'}>{t('pages.profile.petMissingFit', { count: petsMissingFitCount })}</Tag>
+                      </Space>
+                    </Space>
+                  </Card>
+                </div>
+                <div className="profile-pet-next-step">
+                  <div>
+                    <Text strong>{t('pages.profile.petProfileActionTitle')}</Text>
+                    <Text type="secondary">{petProfileFocusText}</Text>
+                  </div>
+                  <Button
+                    type="primary"
+                    onClick={() => petProfileFocus ? openPetModal(petProfileFocus) : openPetModal()}
+                  >
+                    {petProfileFocus ? t('pages.profile.completePetProfile') : t('pages.profile.addPet')}
+                  </Button>
+                </div>
                 <Button type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openPetModal()}>
                   {t('pages.profile.addPet')}
                 </Button>

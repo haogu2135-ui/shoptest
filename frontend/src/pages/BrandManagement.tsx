@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
+  Card,
   Divider,
   Form,
   Image,
@@ -9,13 +10,14 @@ import {
   message,
   Modal,
   Popconfirm,
+  Progress,
   Select,
   Space,
   Table,
   Tag,
   Typography,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
 import { apiBaseUrl, brandApi } from '../api';
 import type { Brand } from '../types';
 import { useLanguage } from '../i18n';
@@ -46,6 +48,36 @@ const BrandManagement: React.FC = () => {
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
   const [form] = Form.useForm();
   const { t } = useLanguage();
+
+  const brandHealth = useMemo(() => {
+    const active = brands.filter((brand) => (brand.status || 'ACTIVE') === 'ACTIVE').length;
+    const missingLogo = brands.filter((brand) => !brand.logoUrl?.trim()).length;
+    const missingWebsite = brands.filter((brand) => !brand.websiteUrl?.trim()).length;
+    const weakDescription = brands.filter((brand) => (brand.description?.trim().length || 0) < 24).length;
+    const duplicateSortKeys = brands.reduce<Record<string, number>>((acc, brand) => {
+      const key = String(brand.sortOrder ?? 0);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const sortConflicts = Object.values(duplicateSortKeys).filter((count) => count > 1).length;
+    const score = Math.max(0, 100 - missingLogo * 18 - missingWebsite * 12 - weakDescription * 10 - sortConflicts * 8);
+
+    return {
+      active,
+      missingLogo,
+      missingWebsite,
+      weakDescription,
+      score,
+    };
+  }, [brands]);
+
+  const getBrandReadiness = (brand: Brand) => [
+    brand.name?.trim(),
+    brand.logoUrl?.trim(),
+    brand.websiteUrl?.trim(),
+    (brand.description?.trim().length || 0) >= 24,
+    (brand.status || 'ACTIVE') === 'ACTIVE',
+  ].filter(Boolean).length;
 
   const fetchBrands = useCallback(async () => {
     setLoading(true);
@@ -153,6 +185,19 @@ const BrandManagement: React.FC = () => {
       render: (status = 'ACTIVE') => <Tag color={statusColors[status]}>{t(`status.${status}`)}</Tag>,
     },
     {
+      title: t('pages.brandAdmin.readiness'),
+      key: 'readiness',
+      width: 140,
+      render: (_: unknown, record: Brand) => {
+        const readySignals = getBrandReadiness(record);
+        return (
+          <Tag color={readySignals >= 5 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
+            {t('pages.brandAdmin.readySignals', { count: readySignals })}
+          </Tag>
+        );
+      },
+    },
+    {
       title: t('pages.brandAdmin.sortOrder'),
       dataIndex: 'sortOrder',
       key: 'sortOrder',
@@ -182,9 +227,54 @@ const BrandManagement: React.FC = () => {
       <Title level={3} style={{ marginBottom: 0 }}>{t('pages.brandAdmin.title')}</Title>
       <Divider />
 
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()} className="brand-management-page__add">
-        {t('pages.brandAdmin.addBrand')}
-      </Button>
+      <Card className="brand-management-page__toolbar">
+        <Space wrap>
+          <Text type="secondary">{t('pages.brandAdmin.healthSubtitle')}</Text>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+            {t('pages.brandAdmin.addBrand')}
+          </Button>
+        </Space>
+      </Card>
+
+      <section className="brand-management-page__health" aria-label={t('pages.brandAdmin.healthTitle')}>
+        <div className="brand-management-page__healthCopy">
+          <Text className="brand-management-page__eyebrow">{t('pages.brandAdmin.healthEyebrow')}</Text>
+          <Title level={5}>{t('pages.brandAdmin.healthTitle')}</Title>
+          <Text type="secondary">{t('pages.brandAdmin.healthDescription')}</Text>
+        </div>
+        <div className="brand-management-page__score">
+          <Progress
+            type="circle"
+            percent={brandHealth.score}
+            width={86}
+            strokeColor={brandHealth.score >= 80 ? '#2f855a' : brandHealth.score >= 60 ? '#d97706' : '#dc2626'}
+            format={(value) => `${value || 0}`}
+          />
+          <Text type="secondary">{t('pages.brandAdmin.healthScore')}</Text>
+        </div>
+        <div className="brand-management-page__healthGrid">
+          <div className="brand-management-page__healthItem is-ok">
+            <CheckCircleOutlined />
+            <strong>{brandHealth.active}</strong>
+            <span>{t('pages.brandAdmin.activeBrands')}</span>
+          </div>
+          <div className={`brand-management-page__healthItem ${brandHealth.missingLogo ? 'is-risk' : 'is-ok'}`}>
+            <PictureOutlined />
+            <strong>{brandHealth.missingLogo}</strong>
+            <span>{t('pages.brandAdmin.missingLogo')}</span>
+          </div>
+          <div className={`brand-management-page__healthItem ${brandHealth.missingWebsite ? 'is-risk' : 'is-ok'}`}>
+            <GlobalOutlined />
+            <strong>{brandHealth.missingWebsite}</strong>
+            <span>{t('pages.brandAdmin.missingWebsite')}</span>
+          </div>
+          <div className={`brand-management-page__healthItem ${brandHealth.weakDescription ? 'is-risk' : 'is-ok'}`}>
+            <EditOutlined />
+            <strong>{brandHealth.weakDescription}</strong>
+            <span>{t('pages.brandAdmin.weakDescription')}</span>
+          </div>
+        </div>
+      </section>
 
       <Table columns={columns} dataSource={brands} rowKey="id" loading={loading} bordered size="middle" scroll={{ x: 860 }} />
 

@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, PlusOutlined, WarningOutlined } from '@ant-design/icons';
 import { logisticsCarrierApi } from '../api';
 import type { LogisticsCarrier } from '../types';
 import { useLanguage } from '../i18n';
@@ -16,6 +16,47 @@ const LogisticsCarrierManagement: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
   const { t } = useLanguage();
+
+  const carrierHealth = useMemo(() => {
+    const active = carriers.filter((carrier) => carrier.status === 'ACTIVE').length;
+    const inactive = carriers.length - active;
+    const missingCodes = carriers.filter((carrier) => !carrier.trackingCode?.trim()).length;
+    const duplicateCodeKeys = carriers.reduce<Record<string, number>>((acc, carrier) => {
+      const key = carrier.trackingCode?.trim().toLowerCase();
+      if (!key) return acc;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const duplicateCodes = Object.values(duplicateCodeKeys).filter((count) => count > 1).length;
+    const duplicateSortKeys = carriers.reduce<Record<string, number>>((acc, carrier) => {
+      const key = String(carrier.sortOrder ?? 0);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const duplicateSortOrders = Object.values(duplicateSortKeys).filter((count) => count > 1).length;
+    const ready = active > 0 && missingCodes === 0 && duplicateCodes === 0;
+    const score = Math.max(0, 100 - inactive * 8 - missingCodes * 25 - duplicateCodes * 20 - duplicateSortOrders * 6);
+
+    return {
+      active,
+      inactive,
+      missingCodes,
+      duplicateCodes,
+      duplicateSortOrders,
+      ready,
+      score,
+    };
+  }, [carriers]);
+
+  const getCarrierReadiness = (carrier: LogisticsCarrier) => {
+    const signals = [
+      carrier.name?.trim(),
+      carrier.trackingCode?.trim(),
+      carrier.status === 'ACTIVE',
+      carrier.sortOrder !== undefined && carrier.sortOrder !== null,
+    ];
+    return signals.filter(Boolean).length;
+  };
 
   const fetchCarriers = useCallback(async () => {
     setLoading(true);
@@ -82,6 +123,45 @@ const LogisticsCarrierManagement: React.FC = () => {
           </Button>
         </Space>
       </Card>
+      <section className="logistics-carrier-page__health" aria-label={t('pages.logisticsCarriers.healthTitle')}>
+        <div className="logistics-carrier-page__healthCopy">
+          <Text className="logistics-carrier-page__eyebrow">{t('pages.logisticsCarriers.healthEyebrow')}</Text>
+          <Title level={5}>{t('pages.logisticsCarriers.healthTitle')}</Title>
+          <Text type="secondary">{t('pages.logisticsCarriers.healthSubtitle')}</Text>
+        </div>
+        <div className="logistics-carrier-page__score">
+          <Progress
+            type="circle"
+            percent={carrierHealth.score}
+            width={86}
+            strokeColor={carrierHealth.ready ? '#2f855a' : '#d97706'}
+            format={(value) => `${value || 0}`}
+          />
+          <Text type="secondary">{t('pages.logisticsCarriers.healthScore')}</Text>
+        </div>
+        <div className="logistics-carrier-page__healthGrid">
+          <div className="logistics-carrier-page__healthItem is-ok">
+            <CheckCircleOutlined />
+            <strong>{carrierHealth.active}</strong>
+            <span>{t('pages.logisticsCarriers.activeCarriers')}</span>
+          </div>
+          <div className={`logistics-carrier-page__healthItem ${carrierHealth.missingCodes ? 'is-risk' : 'is-ok'}`}>
+            <WarningOutlined />
+            <strong>{carrierHealth.missingCodes}</strong>
+            <span>{t('pages.logisticsCarriers.missingCodes')}</span>
+          </div>
+          <div className={`logistics-carrier-page__healthItem ${carrierHealth.duplicateCodes ? 'is-risk' : 'is-ok'}`}>
+            <WarningOutlined />
+            <strong>{carrierHealth.duplicateCodes}</strong>
+            <span>{t('pages.logisticsCarriers.duplicateCodes')}</span>
+          </div>
+          <div className={`logistics-carrier-page__healthItem ${carrierHealth.duplicateSortOrders ? 'is-risk' : 'is-ok'}`}>
+            <WarningOutlined />
+            <strong>{carrierHealth.duplicateSortOrders}</strong>
+            <span>{t('pages.logisticsCarriers.sortConflicts')}</span>
+          </div>
+        </div>
+      </section>
       <Table
         rowKey="id"
         loading={loading}
@@ -90,7 +170,7 @@ const LogisticsCarrierManagement: React.FC = () => {
         scroll={{ x: 640 }}
         columns={[
           { title: t('pages.logisticsCarriers.name'), dataIndex: 'name', key: 'name' },
-          { title: '17TRACK Code', dataIndex: 'trackingCode', key: 'trackingCode', width: 180 },
+          { title: t('pages.logisticsCarriers.trackingCode'), dataIndex: 'trackingCode', key: 'trackingCode', width: 180 },
           {
             title: t('common.status'),
             dataIndex: 'status',
@@ -101,6 +181,19 @@ const LogisticsCarrierManagement: React.FC = () => {
                 {status === 'ACTIVE' ? t('pages.logisticsCarriers.active') : t('pages.logisticsCarriers.inactive')}
               </Tag>
             ),
+          },
+          {
+            title: t('pages.logisticsCarriers.readiness'),
+            key: 'readiness',
+            width: 150,
+            render: (_: unknown, carrier: LogisticsCarrier) => {
+              const readySignals = getCarrierReadiness(carrier);
+              return (
+                <Tag color={readySignals >= 4 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
+                  {t('pages.logisticsCarriers.readySignals', { count: readySignals })}
+                </Tag>
+              );
+            },
           },
           { title: t('pages.logisticsCarriers.sortOrder'), dataIndex: 'sortOrder', key: 'sortOrder', width: 100 },
           {
@@ -134,7 +227,7 @@ const LogisticsCarrierManagement: React.FC = () => {
           <Form.Item name="name" label={t('pages.logisticsCarriers.name')} rules={[{ required: true, message: t('pages.logisticsCarriers.nameRequired') }]}>
             <Input placeholder="DHL Express" />
           </Form.Item>
-          <Form.Item name="trackingCode" label="17TRACK Code" rules={[{ required: true, message: t('pages.logisticsCarriers.codeRequired') }]}>
+          <Form.Item name="trackingCode" label={t('pages.logisticsCarriers.trackingCode')} rules={[{ required: true, message: t('pages.logisticsCarriers.codeRequired') }]}>
             <Input placeholder="100001" />
           </Form.Item>
           <Form.Item name="status" label={t('common.status')} rules={[{ required: true }]}>

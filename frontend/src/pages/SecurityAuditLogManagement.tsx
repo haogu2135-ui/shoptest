@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Input, Select, Space, Table, Tag, Typography, message } from 'antd';
-import { DownloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { Button, Card, DatePicker, Input, Progress, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { AlertOutlined, DownloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { SecurityAuditLog } from '../types';
 import { useLanguage } from '../i18n';
@@ -24,6 +24,35 @@ const actionColors: Record<string, string> = {
   AUDIT_LOG_EXPORT: 'volcano',
 };
 
+const auditActionOptions = [
+  'LOGIN',
+  'LOGOUT',
+  'PAYMENT_CREATE',
+  'PAYMENT_CALLBACK',
+  'PAYMENT_SIMULATE_PAID',
+  'PAYMENT_SIMULATE_CALLBACK',
+  'STRIPE_WEBHOOK',
+  'RETURN_REQUEST',
+  'RETURN_APPROVE',
+  'RETURN_REJECT',
+  'RETURN_SHIPMENT_SUBMIT',
+  'REFUND_COMPLETE',
+  'ORDER_STATUS_UPDATE',
+  'ORDER_BATCH_SHIP',
+  'ORDER_EXPORT',
+  'AUDIT_LOG_EXPORT',
+];
+
+const highRiskActions = new Set([
+  'AUDIT_LOG_EXPORT',
+  'ORDER_EXPORT',
+  'ORDER_BATCH_SHIP',
+  'REFUND_COMPLETE',
+  'STRIPE_WEBHOOK',
+  'PAYMENT_SIMULATE_CALLBACK',
+  'PAYMENT_SIMULATE_PAID',
+]);
+
 const SecurityAuditLogManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const [logs, setLogs] = useState<SecurityAuditLog[]>([]);
@@ -45,6 +74,38 @@ const SecurityAuditLogManagement: React.FC = () => {
     if (range?.[1]) params.endAt = range[1].format('YYYY-MM-DDTHH:mm:ss');
     return params;
   }, [action, actorUsername, range, resourceType, result]);
+
+  const auditInsights = useMemo(() => {
+    const total = logs.length;
+    const failures = logs.filter((log) => log.result === 'FAILURE').length;
+    const failureRate = total ? Math.round((failures / total) * 100) : 0;
+    const sensitiveActions = logs.filter((log) => highRiskActions.has(log.action)).length;
+    const exports = logs.filter((log) => log.action.includes('EXPORT')).length;
+    const paymentFailures = logs.filter((log) => (
+      log.result === 'FAILURE' && (log.action.startsWith('PAYMENT') || log.action.includes('STRIPE'))
+    )).length;
+
+    const failedActorCounts = logs.reduce<Record<string, number>>((acc, log) => {
+      if (log.result !== 'FAILURE') return acc;
+      const key = log.actorUsername || log.ipAddress || (log.actorUserId ? String(log.actorUserId) : '');
+      if (!key) return acc;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const repeatedFailures = Object.values(failedActorCounts).filter((count) => count >= 3).length;
+    const healthScore = Math.max(0, 100 - failureRate - repeatedFailures * 12 - paymentFailures * 8 - Math.max(0, exports - 2) * 5);
+
+    return {
+      total,
+      failures,
+      failureRate,
+      sensitiveActions,
+      exports,
+      paymentFailures,
+      repeatedFailures,
+      healthScore,
+    };
+  }, [logs]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -81,6 +142,48 @@ const SecurityAuditLogManagement: React.FC = () => {
   return (
     <div className="audit-log-page">
       <Title level={4}>{t('pages.auditLogs.title')}</Title>
+      <section className="audit-log-page__insights" aria-label={t('pages.auditLogs.insightTitle')}>
+        <div className="audit-log-page__insightCopy">
+          <Text className="audit-log-page__eyebrow">{t('pages.auditLogs.insightEyebrow')}</Text>
+          <Title level={5}>{t('pages.auditLogs.insightTitle')}</Title>
+          <Text type="secondary">{t('pages.auditLogs.insightSubtitle')}</Text>
+          <Text type="secondary" className="audit-log-page__insightMeta">
+            {t('pages.auditLogs.insightMeta', { total: auditInsights.total, sensitive: auditInsights.sensitiveActions })}
+          </Text>
+        </div>
+        <div className="audit-log-page__score">
+          <Progress
+            type="circle"
+            percent={auditInsights.healthScore}
+            width={92}
+            strokeColor={auditInsights.healthScore >= 80 ? '#2f855a' : auditInsights.healthScore >= 60 ? '#d97706' : '#dc2626'}
+            format={(value) => `${value || 0}`}
+          />
+          <Text type="secondary">{t('pages.auditLogs.securityScore')}</Text>
+        </div>
+        <div className="audit-log-page__signalGrid">
+          <div className={`audit-log-page__signal ${auditInsights.failureRate > 12 ? 'is-risk' : 'is-ok'}`}>
+            <AlertOutlined />
+            <strong>{auditInsights.failureRate}%</strong>
+            <span>{t('pages.auditLogs.failureRate')}</span>
+          </div>
+          <div className={`audit-log-page__signal ${auditInsights.repeatedFailures > 0 ? 'is-risk' : 'is-ok'}`}>
+            <SafetyCertificateOutlined />
+            <strong>{auditInsights.repeatedFailures}</strong>
+            <span>{t('pages.auditLogs.repeatFailures')}</span>
+          </div>
+          <div className={`audit-log-page__signal ${auditInsights.paymentFailures > 0 ? 'is-risk' : 'is-ok'}`}>
+            <AlertOutlined />
+            <strong>{auditInsights.paymentFailures}</strong>
+            <span>{t('pages.auditLogs.paymentFailures')}</span>
+          </div>
+          <div className={`audit-log-page__signal ${auditInsights.exports > 2 ? 'is-risk' : 'is-ok'}`}>
+            <DownloadOutlined />
+            <strong>{auditInsights.exports}</strong>
+            <span>{t('pages.auditLogs.exportEvents')}</span>
+          </div>
+        </div>
+      </section>
       <Card className="audit-log-page__toolbar">
         <Space wrap>
           <Select
@@ -89,24 +192,7 @@ const SecurityAuditLogManagement: React.FC = () => {
             onChange={setAction}
             placeholder={t('pages.auditLogs.action')}
             style={{ width: 210 }}
-            options={[
-              'LOGIN',
-              'LOGOUT',
-              'PAYMENT_CREATE',
-              'PAYMENT_CALLBACK',
-              'PAYMENT_SIMULATE_PAID',
-              'PAYMENT_SIMULATE_CALLBACK',
-              'STRIPE_WEBHOOK',
-              'RETURN_REQUEST',
-              'RETURN_APPROVE',
-              'RETURN_REJECT',
-              'RETURN_SHIPMENT_SUBMIT',
-              'REFUND_COMPLETE',
-              'ORDER_STATUS_UPDATE',
-              'ORDER_BATCH_SHIP',
-              'ORDER_EXPORT',
-              'AUDIT_LOG_EXPORT',
-            ].map((value) => ({ value, label: value }))}
+            options={auditActionOptions.map((value) => ({ value, label: value }))}
           />
           <Select
             allowClear

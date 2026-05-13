@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
-import { Button, Modal, Radio, Space, message } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Button, Modal, Radio, Space, Tag, Typography, message } from 'antd';
+import { SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
-import { createPaymentMethodOptions, PaymentMethod } from '../utils/paymentMethods';
+import { createPaymentMethodOptions, fallbackPaymentChannels, PaymentMethod } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { navigateToSafeUrl } from '../utils/safeUrl';
+import type { PaymentChannel } from '../types';
+import './Payment.css';
+
+const { Text, Title } = Typography;
 
 interface PaymentProps {
     amount: number;
@@ -20,11 +25,29 @@ export const Payment: React.FC<PaymentProps> = ({
     onCancel,
 }) => {
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VISA');
+    const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>(fallbackPaymentChannels);
     const [loading, setLoading] = useState(false);
     const { t } = useLanguage();
     const { formatMoney } = useMarket();
-    const paymentOptions = createPaymentMethodOptions(t);
+    const paymentOptions = useMemo(() => createPaymentMethodOptions(t, paymentChannels), [paymentChannels, t]);
+    const selectedChannel = useMemo(
+        () => paymentChannels.find((channel) => channel.code === paymentMethod),
+        [paymentChannels, paymentMethod],
+    );
+    const activeMarkets = useMemo(() => Array.from(new Set(paymentChannels
+        .map((channel) => String(channel.market || '').toUpperCase())
+        .filter(Boolean))), [paymentChannels]);
     const formattedAmount = formatMoney(amount);
+
+    useEffect(() => {
+        paymentApi.getChannels()
+            .then((res) => {
+                const channels = res.data.length > 0 ? res.data : fallbackPaymentChannels;
+                setPaymentChannels(channels);
+                setPaymentMethod((current) => channels.some((channel) => channel.code === current) ? current : channels[0]?.code || 'STRIPE');
+            })
+            .catch(() => setPaymentChannels(fallbackPaymentChannels));
+    }, []);
 
     const handlePayment = async () => {
         setLoading(true);
@@ -51,10 +74,20 @@ export const Payment: React.FC<PaymentProps> = ({
             open={true}
             onCancel={onCancel}
             footer={null}
+            className="payment-modal"
         >
-            <Space direction="vertical" style={{ width: '100%' }}>
-                <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                    <h2>{t('pages.payment.amount', { amount: formattedAmount })}</h2>
+            <Space direction="vertical" className="payment-modal__content">
+                <div className="payment-modal__summary">
+                    <Text className="payment-modal__eyebrow">{t('pages.payment.secureEyebrow')}</Text>
+                    <Title level={3}>{t('pages.payment.amount', { amount: formattedAmount })}</Title>
+                    <Text type="secondary">{t('pages.payment.secureSubtitle')}</Text>
+                    <div className="payment-modal__badges">
+                        <Tag icon={<SafetyCertificateOutlined />} color="green">{t('pages.payment.encrypted')}</Tag>
+                        <Tag icon={<ThunderboltOutlined />} color="orange">{t('pages.payment.localMethods')}</Tag>
+                        {activeMarkets.slice(0, 3).map((market) => (
+                            <Tag key={market}>{market}</Tag>
+                        ))}
+                    </div>
                 </div>
                 <Radio.Group
                     value={paymentMethod}
@@ -63,18 +96,26 @@ export const Payment: React.FC<PaymentProps> = ({
                 >
                     <Space direction="vertical" style={{ width: '100%' }}>
                         {paymentOptions.map((option) => (
-                            <Radio.Button key={option.value} value={option.value} style={{ width: '100%', height: 40 }}>
+                            <Radio.Button key={option.value} value={option.value} className="payment-modal__method">
                                 <Space>{option.label}</Space>
                             </Radio.Button>
                         ))}
                     </Space>
                 </Radio.Group>
+                {selectedChannel ? (
+                    <div className="payment-modal__channelNote">
+                        <Text strong>{selectedChannel.displayName}</Text>
+                        <Text type="secondary">
+                            {selectedChannel.descriptionKey ? t(selectedChannel.descriptionKey) : t('pages.payment.channelFallback')}
+                        </Text>
+                    </div>
+                ) : null}
                 <Button
                     type="primary"
                     block
                     onClick={handlePayment}
                     loading={loading}
-                    style={{ marginTop: 24 }}
+                    className="payment-modal__confirm"
                 >
                     {t('pages.payment.confirm')}
                 </Button>

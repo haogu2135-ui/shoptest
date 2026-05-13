@@ -11,13 +11,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/brands")
-@CrossOrigin(originPatterns = {
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "http://10.*:*",
-        "http://172.*:*",
-        "http://192.168.*:*"
-})
 public class BrandController {
     private final BrandService brandService;
 

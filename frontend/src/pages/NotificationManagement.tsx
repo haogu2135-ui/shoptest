@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Form, Input, message, Radio, Select, Space, Typography } from 'antd';
-import { NotificationOutlined, SendOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Divider, Form, Input, message, Radio, Select, Space, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
@@ -22,6 +22,16 @@ const NotificationManagement: React.FC = () => {
   const messageContent = Form.useWatch('message', form) || '';
 
   const previewHtml = useMemo(() => stripUnsafeHtml(messageContent), [messageContent]);
+  const plainContent = useMemo(() => messageContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), [messageContent]);
+  const readinessSignals = useMemo(() => {
+    const normalized = `${notificationTitle} ${plainContent}`.toLowerCase();
+    const hasTitle = notificationTitle.trim().length >= 6 && notificationTitle.trim().length <= 80;
+    const hasContent = plainContent.length >= 30;
+    const hasLink = /href=|https?:\/\/|\/(products|coupons|cart|checkout)/i.test(messageContent);
+    const hasConversionHook = /(coupon|discount|offer|shipping|birthday|limited|bundle|save|优惠|折扣|券|包邮|生日|限时|套装|ahorro|oferta|cupon|envio)/i.test(normalized);
+    const readyCount = [hasTitle, hasContent, hasLink, hasConversionHook].filter(Boolean).length;
+    return { hasTitle, hasContent, hasLink, hasConversionHook, readyCount };
+  }, [messageContent, notificationTitle, plainContent]);
 
   const handleSend = async () => {
     try {
@@ -60,6 +70,32 @@ const NotificationManagement: React.FC = () => {
         <Title level={3} style={{ margin: 0 }}>{t('pages.notificationAdmin.title')}</Title>
       </Space>
       <Divider />
+
+      <section className="notification-readiness">
+        <div className="notification-readiness__copy">
+          <span>{t('pages.notificationAdmin.readinessEyebrow')}</span>
+          <h2>{t('pages.notificationAdmin.readinessTitle')}</h2>
+          <p>{t('pages.notificationAdmin.readinessSubtitle')}</p>
+        </div>
+        <div className="notification-readiness__score">
+          <strong>{readinessSignals.readyCount}/4</strong>
+          <span>{t('pages.notificationAdmin.readySignals')}</span>
+        </div>
+        <div className="notification-readiness__checks">
+          <Tag color={readinessSignals.hasTitle ? 'green' : 'orange'} icon={<CheckCircleOutlined />}>
+            {t('pages.notificationAdmin.checkTitle')}
+          </Tag>
+          <Tag color={readinessSignals.hasContent ? 'green' : 'orange'} icon={<NotificationOutlined />}>
+            {t('pages.notificationAdmin.checkContent')}
+          </Tag>
+          <Tag color={readinessSignals.hasLink ? 'green' : 'orange'} icon={<LinkOutlined />}>
+            {t('pages.notificationAdmin.checkLink')}
+          </Tag>
+          <Tag color={readinessSignals.hasConversionHook ? 'green' : 'orange'} icon={<ThunderboltOutlined />}>
+            {t('pages.notificationAdmin.checkHook')}
+          </Tag>
+        </div>
+      </section>
 
       <div className="notification-management-page__grid">
         <Card title={t('pages.notificationAdmin.compose')}>

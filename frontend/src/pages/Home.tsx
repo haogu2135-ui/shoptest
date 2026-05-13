@@ -31,6 +31,7 @@ import { localizeProduct } from '../utils/localizedProduct';
 import { getLocalizedCategoryValue } from '../utils/categoryTree';
 import { clearProductViewHistory, loadProductViewPreferences } from '../utils/productViewPreferences';
 import { addGuestCartItem } from '../utils/guestCart';
+import SocialProofToast from '../components/SocialProofToast';
 import './Home.css';
 
 const { Text } = Typography;
@@ -311,10 +312,10 @@ const Home: React.FC = () => {
     try {
       if (isAuthenticated) {
         await cartApi.addItem(currentUserId, product.id, 1);
+        window.dispatchEvent(new Event('shop:cart-updated'));
       } else {
         addGuestCartItem(product, 1);
       }
-      window.dispatchEvent(new Event('shop:cart-updated'));
       window.dispatchEvent(new Event('shop:open-cart'));
       message.success(t('messages.addCartSuccess'));
     } catch (error) {
@@ -456,6 +457,40 @@ const Home: React.FC = () => {
       .sort((left, right) => right.score - left.score || left.index - right.index)
       .map((entry) => entry.product);
   }, [featured, products, viewPreferences]);
+
+  const localPersonalizedProducts = useMemo(() => {
+    const recentSet = new Set(viewPreferences.recent);
+    return products
+      .map((product, index) => ({
+        product,
+        index,
+        score:
+          (viewPreferences.categories[String(product.categoryId)] || 0) * 8 +
+          (product.brand ? (viewPreferences.brands[String(product.brand)] || 0) * 4 : 0) +
+          (product.tag ? (viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
+          (getDiscountPercent(product) > 0 ? 1 : 0),
+      }))
+      .filter((entry) => entry.score > 0 && !recentSet.has(entry.product.id) && (entry.product.status || 'ACTIVE') === 'ACTIVE')
+      .sort((left, right) => right.score - left.score || left.index - right.index)
+      .map((entry) => entry.product)
+      .slice(0, 8);
+  }, [products, viewPreferences]);
+
+  const personalizedDisplayProducts = personalizedProducts.length > 0 ? personalizedProducts : localPersonalizedProducts;
+  const personalizedRecommendationSource = personalizedProducts.length > 0 ? 'petProfile' : 'recentViews';
+  const personalizedReadyCount = personalizedDisplayProducts.filter((product) => !productNeedsOptionSelection(product) && product.stock !== 0).length;
+  const personalizedDealCount = personalizedDisplayProducts.filter((product) => getDiscountPercent(product) > 0 || product.activeLimitedTimeDiscount).length;
+  const personalizedPreferenceLabel = useMemo(() => {
+    const topCategory = Object.entries(viewPreferences.categories).sort((left, right) => right[1] - left[1])[0];
+    if (topCategory) {
+      const category = categories.find((item) => String(item.id) === topCategory[0]);
+      if (category) return getLocalizedCategoryValue(category, language, 'name');
+    }
+    const topBrand = Object.entries(viewPreferences.brands).sort((left, right) => right[1] - left[1])[0];
+    if (topBrand) return topBrand[0];
+    const topTag = Object.entries(viewPreferences.tags).sort((left, right) => right[1] - left[1])[0];
+    return topTag?.[0] || '';
+  }, [categories, language, viewPreferences]);
 
   const visibleDiscoveryProducts = discoveryProducts.slice(0, visibleCount);
   const hasMoreDiscoveryProducts = visibleCount < discoveryProducts.length;
@@ -683,7 +718,7 @@ const Home: React.FC = () => {
           </section>
         ) : null}
 
-        {personalizedProducts.length ? (
+        {personalizedDisplayProducts.length ? (
           <section className="shopee-section shopee-promo-products shopee-personalized-products">
             <div className="shopee-section__header">
               <h2>
@@ -691,9 +726,24 @@ const Home: React.FC = () => {
               </h2>
               <button onClick={() => navigate('/profile?tab=pets')}>{t('home.managePetProfiles')}</button>
             </div>
-            <p className="shopee-section__hint">{t('home.petRecommendationsHint')}</p>
+            <div className="shopee-personalized-insight">
+              <div>
+                <Text strong>{t('home.petRecommendationInsightTitle')}</Text>
+                <Text type="secondary">
+                  {personalizedRecommendationSource === 'petProfile'
+                    ? t('home.petRecommendationInsightPetProfile')
+                    : personalizedPreferenceLabel
+                      ? t('home.petRecommendationInsightPreference', { value: personalizedPreferenceLabel })
+                      : t('home.petRecommendationsHint')}
+                </Text>
+              </div>
+              <div className="shopee-personalized-insight__stats">
+                <span>{t('home.petRecommendationReady', { count: personalizedReadyCount })}</span>
+                <span>{t('home.petRecommendationDeals', { count: personalizedDealCount })}</span>
+              </div>
+            </div>
             <Row gutter={[12, 12]}>
-              {personalizedProducts.slice(0, 8).map((product, index) => (
+              {personalizedDisplayProducts.slice(0, 8).map((product, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
                   <ProductTile product={product} index={index} compact />
                 </Col>
@@ -882,6 +932,7 @@ const Home: React.FC = () => {
           </figure>
         ) : null}
       </Modal>
+      <SocialProofToast />
     </main>
   );
 };

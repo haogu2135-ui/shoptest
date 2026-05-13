@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, message } from 'antd';
-import { LockOutlined, UserOutlined } from '@ant-design/icons';
+import { LockOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -27,7 +27,6 @@ const Login: React.FC = () => {
       }
     }
     replaceGuestCartItems(failedItems);
-    window.dispatchEvent(new Event('shop:cart-updated'));
     if (mergedCount > 0 && failedItems.length === 0) {
       message.success(t('pages.auth.cartMerged', { count: mergedCount }));
     } else if (mergedCount > 0) {
@@ -60,6 +59,20 @@ const Login: React.FC = () => {
         <div className="shopee-login-brand">
           <div className="shopee-login-mark">ShopMX</div>
           <div className="shopee-login-subtitle">{t('pages.auth.loginTitle')}</div>
+        </div>
+        <div className="shopee-login-trust" aria-label={t('pages.auth.loginTrustTitle')}>
+          <div className="shopee-login-trust__item">
+            <ShoppingCartOutlined />
+            <span>{t('pages.auth.loginTrustCart')}</span>
+          </div>
+          <div className="shopee-login-trust__item">
+            <TruckOutlined />
+            <span>{t('pages.auth.loginTrustTracking')}</span>
+          </div>
+          <div className="shopee-login-trust__item">
+            <SafetyCertificateOutlined />
+            <span>{t('pages.auth.loginTrustSecure')}</span>
+          </div>
         </div>
 
         <Form name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">

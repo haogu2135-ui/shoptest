@@ -2,6 +2,95 @@
   min-width: 0;
 }
 
+.audit-log-page__insights {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) 120px minmax(320px, 1.8fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid #f0e1cf;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fffaf4 0%, #f7fbf6 100%);
+}
+
+.audit-log-page__insightCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.audit-log-page__insightCopy .ant-typography {
+  margin: 0;
+}
+
+.audit-log-page__eyebrow {
+  color: #a05a00;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.audit-log-page__insightMeta {
+  margin-top: 4px;
+}
+
+.audit-log-page__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.audit-log-page__signalGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.audit-log-page__signal {
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #eadfce;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.audit-log-page__signal svg {
+  width: 18px;
+  height: 18px;
+}
+
+.audit-log-page__signal strong {
+  color: #2f261d;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.audit-log-page__signal span {
+  color: #6b6259;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.audit-log-page__signal.is-ok svg {
+  color: #2f855a;
+}
+
+.audit-log-page__signal.is-risk {
+  border-color: #f5c2c2;
+  background: #fff7f7;
+}
+
+.audit-log-page__signal.is-risk svg {
+  color: #dc2626;
+}
+
 .audit-log-page__toolbar {
   margin-bottom: 16px;
 }
@@ -15,6 +104,15 @@
 }
 
 @media (max-width: 720px) {
+  .audit-log-page__insights {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .audit-log-page__signalGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .audit-log-page__toolbar .ant-space-item,
   .audit-log-page__toolbar .ant-select,
   .audit-log-page__toolbar .ant-picker,

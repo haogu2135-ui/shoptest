@@ -11,6 +11,7 @@ import com.example.shop.repository.ReviewRepository;
 import com.example.shop.service.ProductService;
 import com.example.shop.util.CsvUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,6 +35,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,9 +54,17 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private PetProfileMapper petProfileMapper;
 
+    @Value("${product.search-cache-ttl-ms:30000}")
+    private long searchCacheTtlMs;
+
+    @Value("${product.search-cache-max-entries:80}")
+    private int searchCacheMaxEntries;
+
+    private final ConcurrentMap<String, ProductSearchCacheEntry> productSearchCache = new ConcurrentHashMap<>();
+
     @Override
     public List<Product> findAll() {
-        return enrichReviewStats(productRepository.findAll());
+        return getCachedProducts("all", () -> enrichReviewStats(productRepository.findAll()));
     }
 
     @Override
@@ -64,13 +75,16 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public Product save(Product product) {
-        return productRepository.save(product);
+        Product saved = productRepository.save(product);
+        clearProductSearchCache();
+        return saved;
     }
 
     @Override
     @Transactional
     public void deleteById(Long id) {
         productRepository.deleteById(id);
+        clearProductSearchCache();
     }
 
     @Override
@@ -80,17 +94,23 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> search(String keyword, Long categoryId) {
+        String normalizedKeyword = normalizeSearchText(keyword);
+        String cacheKey = "search:" + (categoryId == null ? "all" : categoryId) + ":" + normalizedKeyword;
+        return getCachedProducts(cacheKey, () -> searchUncached(normalizedKeyword, categoryId));
+    }
+
+    private List<Product> searchUncached(String normalizedKeyword, Long categoryId) {
         List<Product> candidates;
         if (categoryId != null) {
             candidates = productRepository.findByCategoryIdIn(collectCategoryIds(categoryId));
         } else {
             candidates = productRepository.findAll();
         }
-        if (keyword == null || keyword.trim().isEmpty()) {
+        if (normalizedKeyword.isEmpty()) {
             return enrichReviewStats(candidates);
         }
         return enrichReviewStats(candidates.stream()
-                .filter(product -> matchesKeyword(product, keyword))
+                .filter(product -> matchesNormalizedKeyword(product, normalizedKeyword))
                 .collect(Collectors.toList()));
     }
 
@@ -168,6 +188,9 @@ public class ProductServiceImpl implements ProductService {
             }
         } catch (Exception ex) {
             result.addError(0, "Failed to read CSV: " + ex.getMessage());
+        }
+        if (result.getCreated() > 0 || result.getUpdated() > 0) {
+            clearProductSearchCache();
         }
         return result;
     }
@@ -403,8 +426,7 @@ public class ProductServiceImpl implements ProductService {
         categoryRepository.findByParentId(id).forEach(child -> collectCategoryIds(child.getId(), ids));
     }
 
-    private boolean matchesKeyword(Product product, String keyword) {
-        String normalizedKeyword = normalizeSearchText(keyword);
+    private boolean matchesNormalizedKeyword(Product product, String normalizedKeyword) {
         if (normalizedKeyword.isEmpty()) {
             return true;
         }
@@ -487,6 +509,41 @@ public class ProductServiceImpl implements ProductService {
         return value == null
                 ? ""
                 : value.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
+    }
+
+    private List<Product> getCachedProducts(String cacheKey, ProductSearchLoader loader) {
+        long now = System.currentTimeMillis();
+        ProductSearchCacheEntry cached = productSearchCache.get(cacheKey);
+        if (cached != null && now - cached.createdAt <= Math.max(0, searchCacheTtlMs)) {
+            return new ArrayList<>(cached.products);
+        }
+        List<Product> products = loader.load();
+        if (searchCacheTtlMs > 0) {
+            if (productSearchCache.size() >= Math.max(1, searchCacheMaxEntries)) {
+                productSearchCache.clear();
+            }
+            productSearchCache.put(cacheKey, new ProductSearchCacheEntry(now, new ArrayList<>(products)));
+        }
+        return products;
+    }
+
+    private void clearProductSearchCache() {
+        productSearchCache.clear();
+    }
+
+    @FunctionalInterface
+    private interface ProductSearchLoader {
+        List<Product> load();
+    }
+
+    private static class ProductSearchCacheEntry {
+        private final long createdAt;
+        private final List<Product> products;
+
+        private ProductSearchCacheEntry(long createdAt, List<Product> products) {
+            this.createdAt = createdAt;
+            this.products = products;
+        }
     }
 
     private String singularize(String token) {

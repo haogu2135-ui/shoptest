@@ -2,8 +2,98 @@
   padding: 32px 24px;
 }
 
-.category-management-page__add {
+.category-management-page__toolbar {
   margin-bottom: 16px;
+}
+
+.category-management-page__toolbar .ant-space {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.category-management-page__health {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) 116px minmax(320px, 1.8fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid #d8eadf;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f7fbf6 0%, #fff8ed 100%);
+}
+
+.category-management-page__healthCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-management-page__healthCopy .ant-typography {
+  margin: 0;
+}
+
+.category-management-page__eyebrow {
+  color: #2f855a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.category-management-page__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.category-management-page__healthGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.category-management-page__healthItem {
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #dfe8dc;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.category-management-page__healthItem svg {
+  width: 18px;
+  height: 18px;
+}
+
+.category-management-page__healthItem strong {
+  color: #263327;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.category-management-page__healthItem span {
+  color: #5f6b5f;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.category-management-page__healthItem.is-ok svg {
+  color: #2f855a;
+}
+
+.category-management-page__healthItem.is-risk {
+  border-color: #f5c2c2;
+  background: #fff7f7;
+}
+
+.category-management-page__healthItem.is-risk svg {
+  color: #dc2626;
 }
 
 .category-management-page .ant-table-cell {
@@ -19,7 +109,18 @@
     font-size: 22px;
   }
 
-  .category-management-page__add {
+  .category-management-page__toolbar .ant-space,
+  .category-management-page__toolbar .ant-space-item,
+  .category-management-page__toolbar .ant-btn {
     width: 100%;
+  }
+
+  .category-management-page__health {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .category-management-page__healthGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

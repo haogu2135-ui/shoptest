@@ -5,6 +5,7 @@ import {
   DeleteOutlined,
   HeartFilled,
   HeartOutlined,
+  RiseOutlined,
   ReloadOutlined,
   ShopOutlined,
   UploadOutlined,
@@ -88,12 +89,12 @@ const PetGallery: React.FC = () => {
   const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
   const currentUserId = Number(localStorage.getItem('userId') || 0);
 
-  const refreshGallery = useCallback(async () => {
+  const refreshGallery = useCallback(async (force = false) => {
     try {
       setLoading(true);
       const [photosRes, quotaRes] = await Promise.all([
-        petGalleryApi.getAll(),
-        isAuthenticated ? petGalleryApi.getQuota().catch(() => null) : Promise.resolve(null),
+        petGalleryApi.getAll(force),
+        isAuthenticated ? petGalleryApi.getQuota(force).catch(() => null) : Promise.resolve(null),
       ]);
       setPhotos(photosRes.data);
       setQuota(quotaRes?.data || null);
@@ -139,6 +140,13 @@ const PetGallery: React.FC = () => {
 
   const userUploadCount = photos.filter((photo) => photo.source !== 'SEED').length;
   const remainingUploads = quota ? Math.max(0, quota.remaining) : 3;
+  const galleryInsights = useMemo(() => {
+    const totalLikes = items.reduce((sum, item) => sum + item.likeCount, 0);
+    const likedByMe = items.filter((item) => item.likedByMe).length;
+    const topMoment = items[0];
+    const communityMoments = items.filter((item) => item.photo?.source !== 'SEED').length;
+    return { totalLikes, likedByMe, topMoment, communityMoments };
+  }, [items]);
   const lastUpdated = useMemo(() => lastUpdatedAt.toLocaleTimeString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -148,7 +156,7 @@ const PetGallery: React.FC = () => {
     [items, previewItem],
   );
 
-  const handleUploadClick = () => {
+  const handleUploadClick = useCallback(() => {
     if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
@@ -159,7 +167,32 @@ const PetGallery: React.FC = () => {
       return;
     }
     uploadInputRef.current?.click();
-  };
+  }, [isAuthenticated, navigate, quota, t]);
+
+  const uploadReadiness = useMemo(() => {
+    if (!isAuthenticated) {
+      return {
+        title: t('pages.petGallery.uploadLoginTitle'),
+        text: t('pages.petGallery.uploadLoginText'),
+        action: t('pages.petGallery.loginToUpload'),
+        onClick: () => navigate('/login'),
+      };
+    }
+    if (quota && !quota.canUpload) {
+      return {
+        title: t('pages.petGallery.uploadLimitTitle'),
+        text: t('pages.petGallery.uploadLimitText'),
+        action: t('home.petUgcShopFeed'),
+        onClick: () => navigate('/products?keyword=pet'),
+      };
+    }
+    return {
+      title: t('pages.petGallery.uploadReadyTitle', { count: remainingUploads }),
+      text: t('pages.petGallery.uploadReadyText'),
+      action: t('home.petUgcUploadRemaining', { count: remainingUploads }),
+      onClick: handleUploadClick,
+    };
+  }, [handleUploadClick, isAuthenticated, navigate, quota, remainingUploads, t]);
 
   const handleSelectedPhoto: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
     const file = event.target.files?.[0];
@@ -183,7 +216,7 @@ const PetGallery: React.FC = () => {
       const response = await petGalleryApi.upload(file);
       setPhotos((current) => [response.data, ...current.filter((photo) => photo.id !== response.data.id)].slice(0, 24));
       message.success(t('home.petUgcUploadSuccess'));
-      await refreshGallery();
+      await refreshGallery(true);
     } catch (error) {
       message.error(getApiErrorMessage(error, t('home.petUgcUploadFailed')));
     } finally {
@@ -221,7 +254,7 @@ const PetGallery: React.FC = () => {
       await petGalleryApi.delete(photo.id);
       setPhotos((current) => current.filter((item) => item.id !== photo.id));
       message.success(t('home.petUgcDeleted'));
-      await refreshGallery();
+      await refreshGallery(true);
     } catch (error) {
       message.error(getApiErrorMessage(error, t('home.petUgcDeleteFailed')));
     }
@@ -268,11 +301,105 @@ const PetGallery: React.FC = () => {
               {t('pages.petGallery.loginToUpload')}
             </Button>
           ) : null}
-          <Button icon={<ReloadOutlined />} onClick={refreshGallery}>
+          <Button icon={<ReloadOutlined />} onClick={() => refreshGallery(true)}>
             {t('common.refresh')}
           </Button>
         </Space>
       </section>
+
+      {!loading && items.length > 0 ? (
+        <section className="pet-gallery-insights" aria-label={t('pages.petGallery.insightTitle')}>
+          <div className="pet-gallery-insights__copy">
+            <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.insightEyebrow')}</Text>
+            <Title level={4}>{t('pages.petGallery.insightTitle')}</Title>
+            <Text type="secondary">
+              {galleryInsights.topMoment
+                ? t('pages.petGallery.insightBest', { name: galleryInsights.topMoment.label })
+                : t('pages.petGallery.insightSubtitle')}
+            </Text>
+          </div>
+          <div className="pet-gallery-insights__grid">
+            <div className="pet-gallery-insights__item is-ok">
+              <HeartFilled />
+              <strong>{galleryInsights.totalLikes}</strong>
+              <span>{t('pages.petGallery.totalLikes')}</span>
+            </div>
+            <div className="pet-gallery-insights__item is-warm">
+              <RiseOutlined />
+              <strong>{galleryInsights.likedByMe}</strong>
+              <span>{t('pages.petGallery.savedMoments')}</span>
+            </div>
+            <div className="pet-gallery-insights__item is-ok">
+              <CameraOutlined />
+              <strong>{remainingUploads}</strong>
+              <span>{t('pages.petGallery.uploadSlots')}</span>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!loading ? (
+        <section className="pet-gallery-actions" aria-label={t('pages.petGallery.actionTitle')}>
+          <div className="pet-gallery-action-card">
+            <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.uploadPlanEyebrow')}</Text>
+            <Title level={4}>{uploadReadiness.title}</Title>
+            <Text type="secondary">{uploadReadiness.text}</Text>
+            <Button type="primary" icon={<UploadOutlined />} loading={uploading} onClick={uploadReadiness.onClick}>
+              {uploadReadiness.action}
+            </Button>
+          </div>
+          <div className="pet-gallery-action-card pet-gallery-action-card--shop">
+            <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.shopMomentEyebrow')}</Text>
+            <Title level={4}>
+              {galleryInsights.topMoment
+                ? t('pages.petGallery.shopMomentTitleWithName', { name: galleryInsights.topMoment.label })
+                : t('pages.petGallery.shopMomentTitle')}
+            </Title>
+            <Text type="secondary">
+              {t('pages.petGallery.shopMomentText', { count: galleryInsights.communityMoments })}
+            </Text>
+            <Space wrap>
+              <Button icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
+                {t('home.petUgcShopFeed')}
+              </Button>
+              {galleryInsights.topMoment ? (
+                <Button onClick={() => setPreviewItem(galleryInsights.topMoment)}>
+                  {t('pages.petGallery.previewTop')}
+                </Button>
+              ) : null}
+            </Space>
+          </div>
+        </section>
+      ) : null}
+
+      {!loading && items.length > 0 ? (
+        <section className="pet-gallery-conversion" aria-label={t('pages.petGallery.conversionTitle')}>
+          <div>
+            <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.conversionEyebrow')}</Text>
+            <Title level={4}>{t('pages.petGallery.conversionTitle')}</Title>
+            <Text type="secondary">
+              {galleryInsights.topMoment
+                ? t('pages.petGallery.conversionSubtitleTop', { name: galleryInsights.topMoment.label })
+                : t('pages.petGallery.conversionSubtitle')}
+            </Text>
+          </div>
+          <div className="pet-gallery-conversion__signals">
+            <span><HeartFilled /> {t('pages.petGallery.conversionLikes', { count: galleryInsights.totalLikes })}</span>
+            <span><CameraOutlined /> {t('pages.petGallery.conversionMoments', { count: items.length })}</span>
+            <span><RiseOutlined /> {t('pages.petGallery.conversionCommunity', { count: galleryInsights.communityMoments })}</span>
+          </div>
+          <Space wrap className="pet-gallery-conversion__actions">
+            <Button type="primary" icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
+              {t('pages.petGallery.shopInspired')}
+            </Button>
+            {galleryInsights.topMoment ? (
+              <Button onClick={() => setPreviewItem(galleryInsights.topMoment)}>
+                {t('pages.petGallery.previewTop')}
+              </Button>
+            ) : null}
+          </Space>
+        </section>
+      ) : null}
 
       {loading ? (
         <div className="pet-gallery-grid">
@@ -338,9 +465,14 @@ const PetGallery: React.FC = () => {
             <img src={activePreviewItem.image} alt={activePreviewItem.label} onError={usePetGalleryImageFallback} />
             <figcaption>
               <span>{activePreviewItem.label}</span>
-              <Button type="primary" icon={activePreviewItem.likedByMe ? <HeartFilled /> : <HeartOutlined />} onClick={() => handleLike(activePreviewItem)}>
-                {t('home.petUgcLikes', { count: activePreviewItem.likeCount })}
-              </Button>
+              <Space wrap>
+                <Button icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
+                  {t('home.petUgcShopFeed')}
+                </Button>
+                <Button type="primary" icon={activePreviewItem.likedByMe ? <HeartFilled /> : <HeartOutlined />} onClick={() => handleLike(activePreviewItem)}>
+                  {t('home.petUgcLikes', { count: activePreviewItem.likeCount })}
+                </Button>
+              </Space>
             </figcaption>
           </figure>
         ) : null}

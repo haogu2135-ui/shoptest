@@ -141,6 +141,11 @@ const Navbar: React.FC = () => {
           if (!disposed) setCouponCount(0);
         });
     };
+    const refreshLocalCountsFromStorage = (event: StorageEvent) => {
+      if (event.key === 'shop-product-compare') refreshCompareCount();
+      if (event.key === 'shop-stock-alerts') refreshAlertCount();
+      if (event.key === 'shop-guest-cart') refreshCartCount();
+    };
     refreshCompareCount();
     refreshAlertCount();
     refreshCartCount();
@@ -153,6 +158,7 @@ const Navbar: React.FC = () => {
     window.addEventListener('shop:notifications-updated', refreshUnreadCount);
     window.addEventListener('shop:wishlist-updated', refreshWishlistCount);
     window.addEventListener('shop:coupons-updated', refreshCouponCount);
+    window.addEventListener('storage', refreshLocalCountsFromStorage);
     return () => {
       disposed = true;
       window.removeEventListener('shop:cart-updated', refreshCartCount);
@@ -161,6 +167,7 @@ const Navbar: React.FC = () => {
       window.removeEventListener('shop:notifications-updated', refreshUnreadCount);
       window.removeEventListener('shop:wishlist-updated', refreshWishlistCount);
       window.removeEventListener('shop:coupons-updated', refreshCouponCount);
+      window.removeEventListener('storage', refreshLocalCountsFromStorage);
     };
   }, [token, userId, location.pathname]);
 

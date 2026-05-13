@@ -1,19 +1,29 @@
 # ShopMX Production Payment And Refund Guide
 
-This guide is the production checklist for Mexico checkout, payment confirmation, and return refunds.
+This guide is the production checklist for China/Mexico checkout, payment confirmation, returns, and refunds. Payment methods are configuration-driven: the frontend reads `GET /payments/channels`, and the backend validates and creates payments from the same `payment.channels[...]` properties.
 
 ## Supported Channels
 
-- `STRIPE`: recommended production gateway for cards, Apple Pay and Google Pay.
-- `OXXO`: cash payment voucher flow. Use Stripe OXXO or another Mexican payment aggregator in production.
-- `SPEI`: bank transfer reference flow. Use a Mexican payment aggregator or bank integration in production.
-- `MX_LOCAL_CARD`: reserve for a local card acquirer or aggregator that is not Stripe.
+- Mexico: `STRIPE`, `MERCADO_PAGO`, `OXXO`, `SPEI`, `CODI`, `MX_LOCAL_CARD`.
+- China: `ALIPAY`, `WECHAT_PAY`, `UNIONPAY`.
+- Global wallets/cards: `PAYPAL`, `APPLE_PAY`, `GOOGLE_PAY`, `VISA`, `SHOP_PAY`.
 
 Keep only channels you can actually settle in production:
 
 ```properties
-payment.supported-channels=STRIPE,OXXO,SPEI,MX_LOCAL_CARD
+payment.channels[0].code=STRIPE
+payment.channels[0].enabled=true
+payment.channels[0].provider=STRIPE
+payment.channels[0].refund-mode=STRIPE
+
+payment.channels[1].code=OXXO
+payment.channels[1].enabled=true
+payment.channels[1].provider=GENERIC_REDIRECT
+payment.channels[1].checkout-url=https://your-provider.example.com/checkout
+payment.channels[1].refund-mode=MANUAL
 ```
+
+Set `enabled=false` to hide a channel without code changes. Set `checkout-url` per channel to override the global `PAYMENT_CHECKOUT_BASE_URL`.
 
 ## Stripe Setup
 
@@ -39,12 +49,13 @@ Enable at least these webhook events:
 
 Refunds are created through Stripe when an admin completes a returned order. The code uses the paid Stripe payment intent and an idempotency key based on the order and payment id.
 
-## OXXO And SPEI Production Options
+## Non-Stripe Gateway Options
 
-The current local implementation can create pending payment records and simulate callbacks for development. For production, connect one of these paths:
+The generic implementation can create pending payment records, generate a provider checkout/reference URL, and accept signed asynchronous callbacks. For production, connect one of these paths:
 
 - Stripe Mexico payment methods where available in your Stripe account.
-- Mercado Pago, Conekta, Openpay, Clip, or another Mexico-focused gateway that supports OXXO and SPEI.
+- Mercado Pago, Conekta, Openpay, Clip, or another Mexico-focused gateway that supports OXXO, SPEI, CoDi and cards.
+- Alipay, WeChat Pay and UnionPay through a China-capable payment service provider.
 - A bank or acquirer API that can return voucher/reference data and asynchronous status callbacks.
 
 The callback must update `/payments/callback` with:
@@ -69,7 +80,32 @@ $env:PAYMENT_SIMULATION_ENABLED="false"
 $env:APP_RUNTIME_MODE="production"
 ```
 
+Lock browser access to the deployed storefront and admin domains:
+
+```powershell
+$env:CORS_ALLOWED_ORIGIN_PATTERNS="https://your-domain.com,https://admin.your-domain.com"
+$env:WEBSOCKET_ALLOWED_ORIGIN_PATTERNS="https://your-domain.com,https://admin.your-domain.com"
+$env:SUPPORT_WEBSOCKET_MAX_MESSAGE_CHARS="1200"
+```
+
+Localhost is the only default browser origin. Add LAN or preview domains explicitly for QA environments.
+
 `PAYMENT_CHECKOUT_BASE_URL` is used for non-Stripe payment records. The backend appends `/{orderNo}?channel=...&expiresAt=...`, so point it to the hosted checkout or reference-generation entry for your provider.
+
+Per-channel checkout URLs are also supported:
+
+```properties
+payment.channels[6].code=ALIPAY
+payment.channels[6].checkout-url=https://china-provider.example.com/alipay
+payment.channels[6].enabled=true
+```
+
+Refund behavior is controlled by `refund-mode`:
+
+- `STRIPE`: call Stripe Refund API, then mark the payment `REFUNDED`.
+- `MANUAL`: mark the payment `REFUNDED` after the admin completes the return; use this when the external gateway refund is handled in its dashboard or back office.
+
+When you add a custom provider integration later, keep the public channel code stable and change only `provider`, `checkout-url`, and `refund-mode` while preserving the callback payload contract.
 
 The simulation endpoints are for local testing only. Code defaults to production mode when `app.runtime-mode` is absent. In `application.properties`, set:
 

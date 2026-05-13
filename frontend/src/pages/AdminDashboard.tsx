@@ -9,6 +9,7 @@ import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import { paymentMethodLabel } from '../utils/paymentMethods';
+import './AdminDashboard.css';
 
 const { Title } = Typography;
 
@@ -287,6 +288,40 @@ const AdminDashboard: React.FC = () => {
   const shippedOrders = Number(stats.shippedOrders || 0);
   const ordersWithTracking = Number(stats.ordersWithTracking || 0);
   const trackingCoverage = shippedOrders ? Math.round((ordersWithTracking / shippedOrders) * 100) : 0;
+  const pendingShipmentOrders = Number(stats.pendingShipmentOrders || 0);
+  const pendingPaymentOrders = Number(stats.pendingPaymentOrders || 0);
+  const lowStockProducts = Number(stats.lowStockProducts || 0);
+  const missingTrackingOrders = Number(stats.ordersWithoutTracking || 0);
+  const operationalActions = [
+    {
+      key: 'payment',
+      value: pendingPaymentOrders,
+      title: t('pages.adminDashboard.actionPendingPayment'),
+      text: t('pages.adminDashboard.actionPendingPaymentText'),
+      tone: pendingPaymentOrders > 0 ? 'warning' : 'calm',
+    },
+    {
+      key: 'shipment',
+      value: pendingShipmentOrders,
+      title: t('pages.adminDashboard.actionPendingShipment'),
+      text: t('pages.adminDashboard.actionPendingShipmentText'),
+      tone: pendingShipmentOrders > 0 ? 'info' : 'calm',
+    },
+    {
+      key: 'stock',
+      value: lowStockProducts,
+      title: t('pages.adminDashboard.actionLowStock'),
+      text: t('pages.adminDashboard.actionLowStockText'),
+      tone: lowStockProducts > 0 ? 'danger' : 'calm',
+    },
+    {
+      key: 'tracking',
+      value: missingTrackingOrders,
+      title: t('pages.adminDashboard.actionMissingTracking'),
+      text: t('pages.adminDashboard.actionMissingTrackingText'),
+      tone: missingTrackingOrders > 0 ? 'warning' : 'calm',
+    },
+  ];
   const statusChartData = [
     { label: t('status.PENDING_PAYMENT'), value: Number(stats.pendingPaymentOrders || 0), color: '#faad14' },
     { label: t('status.PENDING_SHIPMENT'), value: Number(stats.pendingShipmentOrders || 0), color: '#1677ff' },
@@ -314,9 +349,28 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div className="admin-dashboard">
       <Title level={4}>{t('pages.adminDashboard.title')}</Title>
       <Divider />
+
+      <div className="admin-dashboard__actionBar" aria-label={t('pages.adminDashboard.actionCenterTitle')}>
+        <div className="admin-dashboard__actionIntro">
+          <WarningOutlined />
+          <div>
+            <Typography.Text strong>{t('pages.adminDashboard.actionCenterTitle')}</Typography.Text>
+            <Typography.Text type="secondary">{t('pages.adminDashboard.actionCenterSubtitle')}</Typography.Text>
+          </div>
+        </div>
+        <div className="admin-dashboard__actionGrid">
+          {operationalActions.map((item) => (
+            <div key={item.key} className={`admin-dashboard__actionCard admin-dashboard__actionCard--${item.tone}`}>
+              <strong>{item.value}</strong>
+              <span>{item.title}</span>
+              <Typography.Text type="secondary">{item.text}</Typography.Text>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>

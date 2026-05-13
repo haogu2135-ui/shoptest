@@ -12,16 +12,11 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketConfigurer {
     private final SupportWebSocketHandler supportWebSocketHandler;
+    private final CorsOriginProperties corsOriginProperties;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(supportWebSocketHandler, "/ws/support")
-                .setAllowedOriginPatterns(
-                        "http://localhost:*",
-                        "http://127.0.0.1:*",
-                        "http://10.*:*",
-                        "http://172.*:*",
-                        "http://192.168.*:*"
-                );
+                .setAllowedOriginPatterns(corsOriginProperties.getWebSocketAllowedOriginPatternArray());
     }
 }

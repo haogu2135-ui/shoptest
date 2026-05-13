@@ -9,6 +9,8 @@ build/
 dist/
 */dist/
 uploads/
+mysql-data-dev/
+.mysql-data/
 
 .env
 .env.*

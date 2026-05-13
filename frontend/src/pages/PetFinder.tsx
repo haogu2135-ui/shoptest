@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Col, Empty, Image, Row, Select, Slider, Space, Spin, Tag, Typography, message } from 'antd';
-import { GiftOutlined, SearchOutlined } from '@ant-design/icons';
+import { FireOutlined, GiftOutlined, SearchOutlined, StarOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import type { Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
+import './PetFinder.css';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -129,6 +130,27 @@ const PetFinder: React.FC = () => {
       .slice(0, 12);
   }, [budget, need, petType, priority, products]);
 
+  const finderInsights = useMemo(() => {
+    const readyMatches = matches.filter(({ product }) => isInStock(product)).length;
+    const dealMatches = matches.filter(({ product }) => (product.effectiveDiscountPercent || product.discount || 0) > 0).length;
+    const topRatedMatches = matches.filter(({ product }) => Number(product.averageRating || product.rating || 0) >= 4.5).length;
+    const bestMatch = matches[0]?.product;
+    const bestMatchPrice = bestMatch ? productPrice(bestMatch) : 0;
+    const nextAction = bestMatch
+      ? isInStock(bestMatch)
+        ? 'view'
+        : 'search'
+      : 'search';
+    return {
+      readyMatches,
+      dealMatches,
+      topRatedMatches,
+      bestMatch,
+      bestMatchPrice,
+      nextAction,
+    };
+  }, [matches]);
+
   const applyAsSearch = () => {
     const terms = [
       petType !== 'all' ? t(`pages.petFinder.petTypes.${petType}`) : '',
@@ -138,8 +160,8 @@ const PetFinder: React.FC = () => {
   };
 
   return (
-    <div style={{ width: 'min(1200px, calc(100% - 24px))', margin: '0 auto', padding: '24px 0' }}>
-      <div style={{ display: 'grid', gap: 18 }}>
+    <div className="pet-finder-page">
+      <div className="pet-finder-page__layout">
         <Card>
           <Row gutter={[20, 20]} align="middle">
             <Col xs={24} md={9}>
@@ -200,6 +222,67 @@ const PetFinder: React.FC = () => {
           title={t('pages.petFinder.results', { count: matches.length })}
           extra={<Button icon={<SearchOutlined />} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>}
         >
+          {!loading && matches.length > 0 ? (
+            <section className="pet-finder-page__insights" aria-label={t('pages.petFinder.insightTitle')}>
+              <div className="pet-finder-page__insightCopy">
+                <Text className="pet-finder-page__eyebrow">{t('pages.petFinder.insightEyebrow')}</Text>
+                <Title level={4}>{t('pages.petFinder.insightTitle')}</Title>
+                <Text type="secondary">
+                  {finderInsights.bestMatch
+                    ? t('pages.petFinder.insightBest', { name: finderInsights.bestMatch.name })
+                    : t('pages.petFinder.insightSubtitle')}
+                </Text>
+              </div>
+              <div className="pet-finder-page__signalGrid">
+                <div className="pet-finder-page__signal is-ok">
+                  <ThunderboltOutlined />
+                  <strong>{finderInsights.readyMatches}</strong>
+                  <span>{t('pages.petFinder.readyMatches')}</span>
+                </div>
+                <div className={`pet-finder-page__signal ${finderInsights.dealMatches ? 'is-warm' : 'is-ok'}`}>
+                  <FireOutlined />
+                  <strong>{finderInsights.dealMatches}</strong>
+                  <span>{t('pages.petFinder.dealMatches')}</span>
+                </div>
+                <div className="pet-finder-page__signal is-ok">
+                  <StarOutlined />
+                  <strong>{finderInsights.topRatedMatches}</strong>
+                  <span>{t('pages.petFinder.topRatedMatches')}</span>
+                </div>
+              </div>
+            </section>
+          ) : null}
+          {!loading && matches.length > 0 ? (
+            <section className="pet-finder-page__nextStep" aria-label={t('pages.petFinder.nextStepTitle')}>
+              <div className="pet-finder-page__nextStepCopy">
+                <Text className="pet-finder-page__eyebrow">{t('pages.petFinder.nextStepEyebrow')}</Text>
+                <Title level={4}>{t('pages.petFinder.nextStepTitle')}</Title>
+                <Text type="secondary">
+                  {finderInsights.bestMatch
+                    ? t('pages.petFinder.nextStepBest', {
+                      name: finderInsights.bestMatch.name,
+                      price: formatMoney(finderInsights.bestMatchPrice),
+                    })
+                    : t('pages.petFinder.nextStepSearch')}
+                </Text>
+              </div>
+              <div className="pet-finder-page__nextStepMeta">
+                <Tag color="blue">{t(`pages.petFinder.petTypes.${petType}`)}</Tag>
+                <Tag color="green">{t(`pages.petFinder.needs.${need}`)}</Tag>
+                <Tag color="orange">{formatMoney(budget[0])} - {formatMoney(budget[1])}</Tag>
+              </div>
+              <Space wrap className="pet-finder-page__nextStepActions">
+                {finderInsights.bestMatch && finderInsights.nextAction === 'view' ? (
+                  <Button type="primary" onClick={() => navigate(`/products/${finderInsights.bestMatch!.id}`)}>
+                    {t('pages.petFinder.viewBest')}
+                  </Button>
+                ) : null}
+                <Button icon={<SearchOutlined />} onClick={applyAsSearch}>
+                  {t('pages.petFinder.searchAll')}
+                </Button>
+              </Space>
+            </section>
+          ) : null}
           {loading ? (
             <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
           ) : matches.length === 0 ? (

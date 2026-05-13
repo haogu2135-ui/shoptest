@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.PaymentCallbackRequest;
 import com.example.shop.dto.PaymentCreateRequest;
 import com.example.shop.entity.Order;
@@ -18,19 +19,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -44,6 +43,8 @@ public class PaymentService {
     private PaymentRepository paymentRepository;
     @Autowired
     private OrderService orderService;
+    @Autowired
+    private PaymentChannelConfig paymentChannelConfig;
 
     @Value("${payment.timeout-minutes:30}")
     private long timeoutMinutes;
@@ -51,17 +52,14 @@ public class PaymentService {
     @Value("${payment.callback-secret:dev-payment-secret}")
     private String callbackSecret;
 
-    @Value("${payment.supported-channels:VISA,MX_LOCAL_CARD,SPEI,OXXO,ALIPAY,WECHAT}")
-    private String supportedChannels;
-
-    @Value("${payment.checkout-base-url:https://pay.example.local/checkout}")
-    private String paymentCheckoutBaseUrl;
-
     @Value("${app.runtime-mode:production}")
     private String runtimeMode;
 
     @Value("${payment.simulation-enabled:}")
     private String paymentSimulationEnabled;
+
+    @Value("${payment.simulation-allow-production:false}")
+    private boolean paymentSimulationAllowProduction;
 
     @Value("${stripe.secret-key:}")
     private String stripeSecretKey;
@@ -88,7 +86,8 @@ public class PaymentService {
             throw new IllegalStateException("Only pending-payment orders can create payment");
         }
 
-        String channel = normalizeChannel(request.getChannel());
+        PaymentChannelConfig.Channel channelConfig = paymentChannelConfig.requireEnabled(request.getChannel());
+        String channel = channelConfig.getCode();
         Payment existingForChannel = paymentRepository.findByOrderIdAndChannel(order.getId(), channel);
         if (existingForChannel != null) {
             if (PAID.equals(existingForChannel.getStatus())) {
@@ -106,8 +105,8 @@ public class PaymentService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        if ("STRIPE".equals(channel)) {
-            return createStripePayment(order, now);
+        if (isStripeChannel(channelConfig)) {
+            return createStripePayment(order, now, channelConfig);
         }
         Payment payment = new Payment();
         payment.setOrderId(order.getId());
@@ -115,8 +114,8 @@ public class PaymentService {
         payment.setAmount(order.getTotalAmount());
         payment.setChannel(channel);
         payment.setStatus(PENDING);
-        payment.setExpiresAt(now.plusMinutes(timeoutMinutes));
-        payment.setPaymentUrl(buildPaymentUrl(order.getOrderNo(), channel, payment.getExpiresAt()));
+        payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig)));
+        payment.setPaymentUrl(buildPaymentUrl(order, channelConfig, payment.getExpiresAt()));
         payment.setCreatedAt(now);
         payment.setUpdatedAt(now);
         paymentRepository.insert(payment);
@@ -282,36 +281,36 @@ public class PaymentService {
 
     private Payment refreshPayment(Payment payment, Order order, String channel) {
         LocalDateTime now = LocalDateTime.now();
-        if ("STRIPE".equals(channel)) {
-            paymentRepository.markExpired(payment.getId());
-            return createStripePayment(order, now);
+        PaymentChannelConfig.Channel channelConfig = paymentChannelConfig.requireEnabled(channel);
+        if (isStripeChannel(channelConfig)) {
+            return refreshStripePayment(payment, order, now, channelConfig);
         }
         payment.setAmount(order.getTotalAmount());
         payment.setStatus(PENDING);
         payment.setTransactionId(null);
         payment.setPaidAt(null);
-        payment.setExpiresAt(now.plusMinutes(timeoutMinutes));
-        payment.setPaymentUrl(buildPaymentUrl(order.getOrderNo(), channel, payment.getExpiresAt()));
+        payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig)));
+        payment.setPaymentUrl(buildPaymentUrl(order, channelConfig, payment.getExpiresAt()));
         payment.setUpdatedAt(now);
         paymentRepository.update(payment);
         return paymentRepository.findById(payment.getId());
     }
 
-    private Payment createStripePayment(Order order, LocalDateTime now) {
+    private Payment createStripePayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
         if (isBlank(stripeSecretKey)) {
             throw new IllegalStateException("Stripe secret key is not configured");
         }
         try {
             Stripe.apiKey = stripeSecretKey;
-            Session session = Session.create(buildStripeCheckoutSession(order));
+            Session session = Session.create(buildStripeCheckoutSession(order, channelConfig));
             Payment payment = new Payment();
             payment.setOrderId(order.getId());
             payment.setOrderNo(order.getOrderNo());
             payment.setAmount(order.getTotalAmount());
-            payment.setChannel("STRIPE");
+            payment.setChannel(channelConfig.getCode());
             payment.setStatus(PENDING);
             payment.setTransactionId(session.getId());
-            payment.setExpiresAt(now.plusMinutes(stripeCheckoutExpireMinutes));
+            payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig, stripeCheckoutExpireMinutes)));
             payment.setPaymentUrl(session.getUrl());
             payment.setCreatedAt(now);
             payment.setUpdatedAt(now);
@@ -322,8 +321,8 @@ public class PaymentService {
         }
     }
 
-    private SessionCreateParams buildStripeCheckoutSession(Order order) {
-        long amountInCents = order.getTotalAmount().multiply(BigDecimal.valueOf(100)).setScale(0, BigDecimal.ROUND_HALF_UP).longValue();
+    private SessionCreateParams buildStripeCheckoutSession(Order order, PaymentChannelConfig.Channel channelConfig) {
+        long amountInCents = order.getTotalAmount().multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValue();
         Map<String, String> metadata = new HashMap<>();
         metadata.put("orderId", String.valueOf(order.getId()));
         metadata.put("orderNo", order.getOrderNo());
@@ -338,7 +337,7 @@ public class PaymentService {
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency("mxn")
+                                .setCurrency(resolveCurrency(channelConfig).toLowerCase(Locale.ROOT))
                                 .setUnitAmount(amountInCents)
                                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                         .setName("ShopMX order " + order.getOrderNo())
@@ -363,27 +362,68 @@ public class PaymentService {
         if (channel == null || channel.trim().isEmpty()) {
             throw new IllegalArgumentException("Payment channel is required");
         }
-        String normalized = channel.trim().toUpperCase(Locale.ROOT);
-        if (!supportedChannelSet().contains(normalized)) {
-            throw new IllegalArgumentException("Unsupported payment channel: " + channel);
+        return paymentChannelConfig.requireEnabled(channel).getCode();
+    }
+
+    private Payment refreshStripePayment(Payment payment, Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
+        if (isBlank(stripeSecretKey)) {
+            throw new IllegalStateException("Stripe secret key is not configured");
         }
-        return normalized;
+        try {
+            Stripe.apiKey = stripeSecretKey;
+            Session session = Session.create(buildStripeCheckoutSession(order, channelConfig));
+            payment.setAmount(order.getTotalAmount());
+            payment.setChannel(channelConfig.getCode());
+            payment.setStatus(PENDING);
+            payment.setTransactionId(session.getId());
+            payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig, stripeCheckoutExpireMinutes)));
+            payment.setPaymentUrl(session.getUrl());
+            payment.setPaidAt(null);
+            payment.setUpdatedAt(now);
+            paymentRepository.update(payment);
+            return paymentRepository.findById(payment.getId());
+        } catch (StripeException e) {
+            throw new IllegalStateException("Failed to create Stripe Checkout session: " + e.getMessage());
+        }
     }
 
-    private Set<String> supportedChannelSet() {
-        return Arrays.stream(supportedChannels.split(","))
-                .map(item -> item.trim().toUpperCase(Locale.ROOT))
-                .filter(item -> !item.isEmpty())
-                .collect(Collectors.toSet());
-    }
-
-    private String buildPaymentUrl(String orderNo, String channel, LocalDateTime expiresAt) {
-        String baseUrl = isBlank(paymentCheckoutBaseUrl)
+    private String buildPaymentUrl(Order order, PaymentChannelConfig.Channel channel, LocalDateTime expiresAt) {
+        String configuredUrl = firstNonBlank(channel.getCheckoutUrl(), paymentChannelConfig.getCheckoutBaseUrl());
+        String baseUrl = isBlank(configuredUrl)
                 ? "https://pay.example.local/checkout"
-                : paymentCheckoutBaseUrl.trim().replaceAll("/+$", "");
-        return baseUrl + "/" + urlEncode(orderNo)
-                + "?channel=" + urlEncode(channel)
+                : configuredUrl.trim().replaceAll("/+$", "");
+        return baseUrl + "/" + urlEncode(order.getOrderNo())
+                + "?channel=" + urlEncode(channel.getCode())
+                + "&amount=" + urlEncode(order.getTotalAmount().stripTrailingZeros().toPlainString())
+                + "&currency=" + urlEncode(resolveCurrency(channel))
                 + "&expiresAt=" + urlEncode(expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+    }
+
+    private boolean isStripeChannel(PaymentChannelConfig.Channel channel) {
+        return "STRIPE".equals(channel.getCode()) || "STRIPE".equalsIgnoreCase(channel.getProvider());
+    }
+
+    private long resolveTimeoutMinutes(PaymentChannelConfig.Channel channel) {
+        return resolveTimeoutMinutes(channel, timeoutMinutes);
+    }
+
+    private long resolveTimeoutMinutes(PaymentChannelConfig.Channel channel, long defaultValue) {
+        return channel.getExpiresMinutes() != null && channel.getExpiresMinutes() > 0
+                ? channel.getExpiresMinutes()
+                : defaultValue;
+    }
+
+    private String resolveCurrency(PaymentChannelConfig.Channel channel) {
+        return firstNonBlank(channel.getCurrency(), paymentChannelConfig.getDefaultCurrency(), "MXN").toUpperCase(Locale.ROOT);
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (!isBlank(value)) {
+                return value;
+            }
+        }
+        return "";
     }
 
     private boolean isBlank(String value) {
@@ -397,10 +437,14 @@ public class PaymentService {
     }
 
     public boolean isPaymentSimulationEnabled() {
+        String mode = runtimeMode == null ? "production" : runtimeMode.trim().toLowerCase(Locale.ROOT);
+        boolean productionMode = "production".equals(mode) || "prod".equals(mode);
+        if (productionMode && !paymentSimulationAllowProduction) {
+            return false;
+        }
         if (!isBlank(paymentSimulationEnabled)) {
             return Boolean.parseBoolean(paymentSimulationEnabled.trim());
         }
-        String mode = runtimeMode == null ? "production" : runtimeMode.trim().toLowerCase(Locale.ROOT);
         return "debug".equals(mode) || "dev".equals(mode) || "test".equals(mode);
     }
 

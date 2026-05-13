@@ -1,11 +1,12 @@
 import React from 'react';
-import { Form, Input, Button, Card, Typography, message } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useLanguage } from '../i18n';
+import './Register.css';
 
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 interface RegisterForm {
   username: string;
@@ -14,6 +15,8 @@ interface RegisterForm {
   email: string;
   phone: string;
 }
+
+const phonePattern = /^(\+?\d[\d\s().-]{7,20})$/;
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -37,17 +40,21 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      minHeight: 'calc(100vh - 64px)',
-      background: '#f0f2f5',
-      padding: '16px',
-      width: '100%'
-    }}>
-      <Card style={{ width: '100%', maxWidth: 400 }}>
-        <Title level={2} style={{ textAlign: 'center', marginBottom: '24px' }}>
+    <div className="register-page">
+      <section className="register-page__panel">
+        <div className="register-page__copy">
+          <Text className="register-page__eyebrow">{t('pages.auth.registerEyebrow')}</Text>
+          <Title level={1}>{t('pages.auth.registerHeroTitle')}</Title>
+          <Text>{t('pages.auth.registerHeroSubtitle')}</Text>
+          <div className="register-page__trustGrid">
+            <Tag icon={<SafetyCertificateOutlined />} color="green">{t('pages.auth.registerTrustSecure')}</Tag>
+            <Tag icon={<GiftOutlined />} color="orange">{t('pages.auth.registerTrustPerks')}</Tag>
+            <Tag icon={<TruckOutlined />} color="blue">{t('pages.auth.registerTrustTracking')}</Tag>
+          </div>
+        </div>
+      </section>
+      <Card className="register-page__card">
+        <Title level={2} className="register-page__title">
           {t('pages.auth.registerTitle')}
         </Title>
         <Form
@@ -119,12 +126,12 @@ const Register: React.FC = () => {
             name="phone"
             rules={[
               { required: true, message: t('pages.auth.phoneRequired') },
-              { pattern: /^1[3-9]\d{9}$/, message: t('pages.auth.phoneInvalid') }
+              { pattern: phonePattern, message: t('pages.auth.phoneInvalid') }
             ]}
           >
             <Input 
               prefix={<PhoneOutlined />} 
-              placeholder={t('pages.auth.phone')} 
+              placeholder={t('pages.auth.phonePlaceholder')} 
             />
           </Form.Item>
 
@@ -134,9 +141,12 @@ const Register: React.FC = () => {
             </Button>
           </Form.Item>
 
-          <div style={{ textAlign: 'center' }}>
+          <Space direction="vertical" className="register-page__footer">
+            <Text type="secondary">{t('pages.auth.registerPrivacyHint')}</Text>
+            <div>
             {t('pages.auth.alreadyAccount')}<Link to="/login">{t('pages.auth.loginNow')}</Link>
-          </div>
+            </div>
+          </Space>
         </Form>
       </Card>
     </div>

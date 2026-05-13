@@ -184,6 +184,43 @@
   border-top: 3px solid #124734;
 }
 
+.shopee-personalized-insight {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin: -2px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: #f7fbf8;
+}
+
+.shopee-personalized-insight .ant-typography {
+  display: block;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.shopee-personalized-insight__stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.shopee-personalized-insight__stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #124734;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .shopee-home-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -832,6 +869,14 @@
 
   .shopee-home-actions {
     grid-template-columns: 1fr;
+  }
+
+  .shopee-personalized-insight {
+    grid-template-columns: 1fr;
+  }
+
+  .shopee-personalized-insight__stats {
+    justify-content: flex-start;
   }
 
   .pet-trust-strip {
