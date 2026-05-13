@@ -9,6 +9,7 @@ import type { Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
 import { localizeProduct } from '../utils/localizedProduct';
 import { clearCompareProducts, readCompareProductIds, removeCompareProduct } from '../utils/productCompare';
+import { needsOptionSelection } from '../utils/productOptions';
 import './ProductCompare.css';
 
 const { Title, Text } = Typography;
@@ -70,17 +71,6 @@ const getSpecValue = (product: Product, specKey: string) => {
   return matchedEntry ? String(matchedEntry[1] || '').trim() : '';
 };
 
-const productRequiresSelection = (product: Product) => {
-  const specs = product.specifications || {};
-  const hasConfiguredOptions = Object.keys(specs).some((key) => key.startsWith('options.'));
-  const hasLegacyOptions = (Array.isArray(product.sizes) && product.sizes.length > 0) || (Array.isArray(product.colors) && product.colors.length > 0);
-  const rawVariants = (product as any).variants;
-  const hasVariants = Array.isArray(rawVariants)
-    ? rawVariants.length > 0
-    : typeof rawVariants === 'string' && rawVariants.trim().length > 0;
-  return hasConfiguredOptions || hasLegacyOptions || hasVariants;
-};
-
 const ProductCompare: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -105,13 +95,8 @@ const ProductCompare: React.FC = () => {
     }
     try {
       setLoading(true);
-      const responses = await Promise.allSettled(ids.map((id) => productApi.getById(id)));
-      const nextProducts = responses.reduce<Product[]>((acc, result) => {
-        if (result.status === 'fulfilled') {
-          acc.push(localizeProduct(result.value.data, language));
-        }
-        return acc;
-      }, []);
+      const response = await productApi.getByIds(ids);
+      const nextProducts = response.data.map((product) => localizeProduct(product, language));
       ids
         .filter((id) => !nextProducts.some((product) => product.id === id))
         .forEach((id) => removeCompareProduct(id));
@@ -140,6 +125,10 @@ const ProductCompare: React.FC = () => {
   }, [fetchComparedProducts]);
 
   const comparedIds = useMemo(() => products.map((product) => product.id), [products]);
+  const directReadyProducts = useMemo(
+    () => products.filter((product) => (product.stock === undefined || product.stock > 0) && !needsOptionSelection(product)),
+    [products],
+  );
   const compareDecision = useMemo(() => {
     const readyProducts = products.filter((product) => product.stock === undefined || product.stock > 0);
     const bestValue = readyProducts
@@ -149,7 +138,7 @@ const ProductCompare: React.FC = () => {
       .slice()
       .sort((left, right) => Number(right.averageRating || right.rating || 0) - Number(left.averageRating || left.rating || 0))[0];
     const lowStock = readyProducts.filter((product) => product.stock !== undefined && product.stock > 0 && product.stock <= 5).length;
-    const needsSelection = readyProducts.filter(productRequiresSelection).length;
+    const needsSelection = readyProducts.filter(needsOptionSelection).length;
     const priceSpread = readyProducts.length > 1
       ? Math.max(...readyProducts.map(getPrice)) - Math.min(...readyProducts.map(getPrice))
       : 0;
@@ -161,7 +150,7 @@ const ProductCompare: React.FC = () => {
         const stockDelta = (right.stock ?? 999) - (left.stock ?? 999);
         return ratingDelta * 8 + priceDelta * 0.08 + stockDelta * 0.01;
       })[0];
-    const recommendedNeedsSelection = recommended ? productRequiresSelection(recommended) : false;
+    const recommendedNeedsSelection = recommended ? needsOptionSelection(recommended) : false;
     const recommendedLowStock = recommended?.stock !== undefined && recommended.stock > 0 && recommended.stock <= 5;
     return {
       readyCount: readyProducts.length,
@@ -201,6 +190,29 @@ const ProductCompare: React.FC = () => {
         addGuestCartItem({ ...product, imageUrl: resolveCompareImage(product.imageUrl) }, 1, undefined, getPrice(product));
       }
       message.success(t('messages.addCartSuccess'));
+      window.dispatchEvent(new Event('shop:open-cart'));
+    } catch {
+      message.error(t('messages.addFailed'));
+    }
+  };
+
+  const addDirectReadyProductsToCart = async () => {
+    if (directReadyProducts.length === 0) {
+      message.info(t('pages.compare.recommendationEmpty'));
+      return;
+    }
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    try {
+      if (token && userId) {
+        await Promise.all(directReadyProducts.map((product) => cartApi.addItem(Number(userId), product.id, 1)));
+        window.dispatchEvent(new Event('shop:cart-updated'));
+      } else {
+        directReadyProducts.forEach((product) => {
+          addGuestCartItem({ ...product, imageUrl: resolveCompareImage(product.imageUrl) }, 1, undefined, getPrice(product));
+        });
+      }
+      message.success(t('pages.wishlist.addedAllToCart', { count: directReadyProducts.length }));
       window.dispatchEvent(new Event('shop:open-cart'));
     } catch {
       message.error(t('messages.addFailed'));
@@ -347,7 +359,7 @@ const ProductCompare: React.FC = () => {
       alwaysVisible: true,
       render: (product: Product) => {
         const isSoldOut = product.stock !== undefined && product.stock <= 0;
-        const needsSelection = productRequiresSelection(product);
+        const needsSelection = needsOptionSelection(product);
         return (
           <Space direction="vertical">
             {needsSelection && !isSoldOut ? (
@@ -420,6 +432,14 @@ const ProductCompare: React.FC = () => {
             <Text type="secondary">{t('pages.compare.subtitle', { count: comparedIds.length })}</Text>
           </div>
           <Space wrap>
+            <Button
+              type="primary"
+              icon={<ShoppingCartOutlined />}
+              disabled={directReadyProducts.length === 0}
+              onClick={addDirectReadyProductsToCart}
+            >
+              {t('pages.wishlist.addAllToCart')}
+            </Button>
             <Button onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
             <Button danger disabled={products.length === 0} onClick={clearAll}>{t('pages.compare.clear')}</Button>
           </Space>
@@ -502,7 +522,7 @@ const ProductCompare: React.FC = () => {
                 </Text>
                 <Space wrap>
                   {compareDecision.recommended ? (
-                    productRequiresSelection(compareDecision.recommended) ? (
+                    needsOptionSelection(compareDecision.recommended) ? (
                       <Button type="primary" icon={<SettingOutlined />} onClick={() => navigate(`/products/${compareDecision.recommended!.id}`)}>
                         {t('pages.wishlist.selectOptions')}
                       </Button>
@@ -511,6 +531,11 @@ const ProductCompare: React.FC = () => {
                         {t('pages.compare.addRecommended')}
                       </Button>
                     )
+                  ) : null}
+                  {directReadyProducts.length > 1 ? (
+                    <Button icon={<ShoppingCartOutlined />} onClick={addDirectReadyProductsToCart}>
+                      {t('pages.wishlist.addAllToCart')}
+                    </Button>
                   ) : null}
                   <Button onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
                 </Space>

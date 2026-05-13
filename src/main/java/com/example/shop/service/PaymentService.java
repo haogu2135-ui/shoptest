@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -254,11 +255,23 @@ public class PaymentService {
     }
 
     @Scheduled(fixedDelayString = "${payment.expiry-scan-ms:60000}")
-    @Transactional
     public void expirePendingPayments() {
         for (Payment payment : paymentRepository.findExpiredPending()) {
-            expirePayment(payment);
+            try {
+                expireSinglePendingPayment(payment.getId());
+            } catch (RuntimeException ignored) {
+                // Keep scheduler healthy; single-row conflicts should not fail the whole batch.
+            }
         }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void expireSinglePendingPayment(Long paymentId) {
+        Payment payment = paymentRepository.findById(paymentId);
+        if (payment == null || !PENDING.equals(payment.getStatus()) || !isExpired(payment)) {
+            return;
+        }
+        expirePayment(payment);
     }
 
     public String expectedSignature(PaymentCallbackRequest request) {

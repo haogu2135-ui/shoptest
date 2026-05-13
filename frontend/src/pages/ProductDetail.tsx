@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Row, Col, Card, Button, Tag, Divider, Typography, Spin, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Empty, Alert } from 'antd';
+import { Row, Col, Card, Button, Tag, Typography, Spin, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Empty, Alert } from 'antd';
 import { HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined } from '@ant-design/icons';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { ProductReview } from '../components/ProductReview';
 import { useLanguage } from '../i18n';
-import type { Order, Product } from '../types';
-import type { ProductVariant } from '../types';
+import type { CartItem, Order, Product } from '../types';
 import type { ProductQuestion } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import ProductRichDetail from '../components/ProductRichDetail';
@@ -17,6 +16,8 @@ import { getBundleInfo } from '../utils/bundle';
 import { recordProductView } from '../utils/productViewPreferences';
 import { addStockAlert, hasStockAlert, removeStockAlert } from '../utils/stockAlerts';
 import { conversionConfig, estimatePetSize, getDeliveryPromise } from '../utils/conversionConfig';
+import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueHasVariant, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
+import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import './ProductDetail.css';
 
 const { Title, Text } = Typography;
@@ -82,33 +83,6 @@ const getTouchPair = (touches: React.TouchList) => {
   return { first, second };
 };
 
-const getProductOptionGroups = (product: any): Array<{ name: string; values: string[] }> => {
-  const specs = product?.specifications || {};
-  const configured = Object.entries(specs)
-    .filter(([key]) => key.startsWith('options.'))
-    .map(([key, value]) => ({
-      name: key.replace(/^options\./, ''),
-      values: String(value || '').split(',').map((item) => item.trim()).filter(Boolean),
-    }))
-    .filter((group) => group.name && group.values.length > 0);
-  if (configured.length > 0) return configured;
-  const fallback = [];
-  if (Array.isArray(product?.sizes) && product.sizes.length > 0) fallback.push({ name: 'Size', values: product.sizes });
-  if (Array.isArray(product?.colors) && product.colors.length > 0) fallback.push({ name: 'Color', values: product.colors });
-  return fallback;
-};
-
-const getProductVariants = (product: any): ProductVariant[] => {
-  if (Array.isArray(product?.variants)) return product.variants;
-  if (typeof product?.variants !== 'string' || !product.variants.trim()) return [];
-  try {
-    const parsed = JSON.parse(product.variants);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
 const renderTrustIcon = (icon: string) => {
   switch (icon) {
     case 'truck':
@@ -149,9 +123,12 @@ const ProductDetail: React.FC = () => {
   const [sizeCalculatorWeight, setSizeCalculatorWeight] = useState('');
   const [purchaseMode, setPurchaseMode] = useState<'once' | 'subscribe' | 'bundle'>('once');
   const [subscriptionInterval, setSubscriptionInterval] = useState(conversionConfig.subscription.defaultInterval);
+  const [purchaseSubmitting, setPurchaseSubmitting] = useState<'cart' | 'buy' | null>(null);
   const [pinchZoom, setPinchZoom] = useState({ active: false, scale: 1, originX: 50, originY: 50 });
   const [isAlerted, setIsAlerted] = useState(false);
   const mobileGalleryRef = useRef<HTMLDivElement | null>(null);
+  const detailContentRef = useRef<HTMLDivElement | null>(null);
+  const nonCriticalLoadedRef = useRef(false);
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
   const imageResumeTimerRef = useRef<number | null>(null);
   const { t, language } = useLanguage();
@@ -299,7 +276,28 @@ const ProductDetail: React.FC = () => {
     }
   }, [id]);
 
+  const warmNonCriticalContent = useCallback(() => {
+    if (nonCriticalLoadedRef.current) return;
+    nonCriticalLoadedRef.current = true;
+    const token = localStorage.getItem('token');
+    const uid = localStorage.getItem('userId');
+    fetchReviews();
+    fetchQuestions();
+    fetchRecommendations();
+    if (token && uid) {
+      fetchReviewableOrders();
+    }
+  }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews]);
+
   useEffect(() => {
+    nonCriticalLoadedRef.current = false;
+    setReviews([]);
+    setQuestions([]);
+    setRecommendations([]);
+    setReviewableOrders([]);
+    setAverageRating(0);
+    const token = localStorage.getItem('token');
+    const uid = localStorage.getItem('userId');
     const fetchProduct = async () => {
       setLoading(true);
       try {
@@ -315,19 +313,46 @@ const ProductDetail: React.FC = () => {
       }
     };
     fetchProduct();
-    fetchReviews();
-    fetchQuestions();
-    fetchRecommendations();
-    const token = localStorage.getItem('token');
-    const uid = localStorage.getItem('userId');
     if (token && uid) {
       wishlistApi.check(Number(uid), Number(id))
         .then(res => setIsWishlisted(res.data.wishlisted))
         .catch(() => {});
-      fetchReviewableOrders();
     }
     setIsAlerted(hasStockAlert(Number(id)));
-  }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews, id, language]);
+
+    const fallbackTimer = window.setTimeout(warmNonCriticalContent, 1800);
+    const target = detailContentRef.current;
+    let observer: IntersectionObserver | null = null;
+    if (target && 'IntersectionObserver' in window) {
+      observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          warmNonCriticalContent();
+          observer?.disconnect();
+        }
+      }, { rootMargin: '520px 0px' });
+      observer.observe(target);
+    } else {
+      const scrollWarmup = () => {
+        const nextTarget = detailContentRef.current;
+        if (!nextTarget || nextTarget.getBoundingClientRect().top < window.innerHeight + 520) {
+          warmNonCriticalContent();
+          window.removeEventListener('scroll', scrollWarmup);
+        }
+      };
+      window.addEventListener('scroll', scrollWarmup, { passive: true });
+      scrollWarmup();
+      return () => {
+        window.clearTimeout(fallbackTimer);
+        window.removeEventListener('scroll', scrollWarmup);
+        observer?.disconnect();
+      }
+    }
+
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      observer?.disconnect();
+    };
+  }, [id, language, warmNonCriticalContent]);
 
   useEffect(() => {
     const syncStockAlert = () => setIsAlerted(hasStockAlert(Number(id)));
@@ -340,6 +365,7 @@ const ProductDetail: React.FC = () => {
   }, [id]);
 
   const handleAddToCart = async () => {
+    if (purchaseSubmitting) return;
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     try {
@@ -348,6 +374,7 @@ const ProductDetail: React.FC = () => {
         message.error(t('pages.productDetail.insufficientStock'));
         return;
       }
+      setPurchaseSubmitting('cart');
       const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
       if (token && userId) {
         await cartApi.addItem(Number(userId), Number(id), quantity, specs);
@@ -359,10 +386,20 @@ const ProductDetail: React.FC = () => {
       window.dispatchEvent(new Event('shop:open-cart'));
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.addFailed'));
+    } finally {
+      setPurchaseSubmitting(null);
     }
   };
 
+  const findCheckoutCartItem = (items: CartItem[], specs?: string) => {
+    const normalizedSpecs = specs || '';
+    return [...items]
+      .filter((item) => item.productId === Number(id) && (item.selectedSpecs || '') === normalizedSpecs)
+      .sort((left, right) => Number(right.id || 0) - Number(left.id || 0))[0];
+  };
+
   const handleBuyNow = async () => {
+    if (purchaseSubmitting) return;
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     try {
@@ -371,26 +408,30 @@ const ProductDetail: React.FC = () => {
         message.error(t('pages.productDetail.insufficientStock'));
         return;
       }
+      setPurchaseSubmitting('buy');
       const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
       if (token && userId) {
         await cartApi.addItem(Number(userId), Number(id), quantity, specs);
         window.dispatchEvent(new Event('shop:cart-updated'));
         const cartRes = await cartApi.getItems(Number(userId));
-        const cartItem = cartRes.data.find((item: any) => item.productId === Number(id) && (optionGroups.length || purchaseMode !== 'once' ? item.selectedSpecs === selectedSpecsPayload : !item.selectedSpecs));
+        const cartItem = findCheckoutCartItem(cartRes.data, specs);
         if (cartItem) {
-          sessionStorage.setItem('checkoutCartItemIds', JSON.stringify([cartItem.id]));
+          syncCheckoutCartItemIds([cartItem]);
         } else {
+          clearCheckoutCartItemIds();
           message.error(t('messages.operationFailed'));
           return;
         }
       } else {
         const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
-        sessionStorage.setItem('checkoutCartItemIds', JSON.stringify([cartItem.id]));
+        syncCheckoutCartItemIds([cartItem]);
       }
       sessionStorage.removeItem('checkoutPaymentMethod');
       navigate('/checkout');
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.operationFailed'));
+    } finally {
+      setPurchaseSubmitting(null);
     }
   };
 
@@ -547,12 +588,20 @@ const ProductDetail: React.FC = () => {
         ? t('pages.productDetail.fitConfidenceSelected')
         : t('pages.productDetail.fitConfidenceNeedSize')
     : t('pages.productDetail.fitConfidenceNoSize');
-  const optionValueHasVariant = (groupName: string, value: string) => {
-    if (!variants.length) return true;
-    const nextOptions = { ...selectedOptions, [groupName]: value };
-    return variants.some((variant) =>
-      Object.entries(nextOptions).every(([key, selectedValue]) => !selectedValue || variant.options?.[key] === selectedValue),
-    );
+  const selectOptionValue = (groupName: string, value: string) => {
+    const nextOptions = selectCompatibleProductOption(optionGroups, variants, selectedOptions, groupName, value);
+    setSelectedOptions(nextOptions);
+    const variantImage = variants.find((variant) =>
+      variantMatchesSelectedOptions([variant], nextOptions),
+    )?.imageUrl;
+    if (variantImage) {
+      const imageIndex = galleryImages.indexOf(variantImage);
+      if (imageIndex >= 0) {
+        selectGalleryImage(variantImage, imageIndex);
+      } else {
+        setSelectedImage(variantImage);
+      }
+    }
   };
   const formatCountdown = (milliseconds: number) => {
     const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
@@ -644,9 +693,6 @@ const ProductDetail: React.FC = () => {
     imageUrl: selectedVariant?.imageUrl || product.imageUrl,
   });
 
-  const recommendationNeedsOptionSelection = (item: Product | any) =>
-    getProductOptionGroups(item).length > 0 || getProductVariants(item).length > 0;
-
   const isRecommendationUnavailable = (item: Product | any) => {
     const hasStockValue = item.stock !== undefined && item.stock !== null;
     const isInactive = item.status && item.status !== 'ACTIVE';
@@ -659,7 +705,7 @@ const ProductDetail: React.FC = () => {
       message.warning(t('pages.productDetail.soldOut'));
       return;
     }
-    if (recommendationNeedsOptionSelection(item)) {
+    if (needsOptionSelection(item)) {
       message.info(t('pages.wishlist.selectOptions'));
       navigate(`/products/${item.id}`);
       return;
@@ -917,6 +963,11 @@ const ProductDetail: React.FC = () => {
                       <span>{formatCountdown(limitedTimeRemaining)}</span>
                     </div>
                   )}
+                  <div className="product-compact-signals">
+                    <span>{t('pages.productDetail.stock')}: {stockLabel}</span>
+                    {deliveryPromise.enabled ? <span>{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</span> : null}
+                    {purchaseSavings > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: {formatMoney(purchaseSavings)}</span> : null}
+                  </div>
                 </div>
 
                 {optionGroups.map((group) => (
@@ -929,23 +980,11 @@ const ProductDetail: React.FC = () => {
                     </div>
                     <Radio.Group
                       value={selectedOptions[group.name]}
-                      onChange={e => {
-                        const next = { ...selectedOptions, [group.name]: e.target.value };
-                        setSelectedOptions(next);
-                        const variantImage = variants.find((variant) => Object.entries(variant.options || {}).every(([key, value]) => next[key] === value))?.imageUrl;
-                        if (variantImage) {
-                          const imageIndex = galleryImages.indexOf(variantImage);
-                          if (imageIndex >= 0) {
-                            selectGalleryImage(variantImage, imageIndex);
-                          } else {
-                            setSelectedImage(variantImage);
-                          }
-                        }
-                      }}
+                      onChange={e => selectOptionValue(group.name, e.target.value)}
                       style={{ marginTop: 8 }}
                     >
                       {group.values.map((value) => {
-                        const disabled = !optionValueHasVariant(group.name, value);
+                        const disabled = !optionValueHasVariant(variants, group.name, value);
                         return (
                           <Radio.Button key={value} value={value} disabled={disabled}>
                             {value}
@@ -960,13 +999,20 @@ const ProductDetail: React.FC = () => {
                   <div className={`product-selected-summary${hasUnavailableSelectedVariant ? ' product-selected-summary--warning' : ''}`}>
                     <div className="product-selected-summary__header">
                       <Text strong>{t('pages.productDetail.selectedOptionsTitle')}</Text>
-                      <Text type={hasUnavailableSelectedVariant ? 'danger' : 'secondary'}>
-                        {hasUnavailableSelectedVariant
-                          ? t('pages.productDetail.selectedVariantUnavailable')
-                          : hasCompleteOptions
-                            ? t('pages.productDetail.selectedVariantStock', { stock: stockLabel })
-                            : t('pages.productDetail.selectedOptionsEmpty')}
-                      </Text>
+                      <Space size={8} wrap>
+                        <Text type={hasUnavailableSelectedVariant ? 'danger' : 'secondary'}>
+                          {hasUnavailableSelectedVariant
+                            ? t('pages.productDetail.selectedVariantUnavailable')
+                            : hasCompleteOptions
+                              ? t('pages.productDetail.selectedVariantStock', { stock: stockLabel })
+                              : t('pages.productDetail.selectedOptionsEmpty')}
+                        </Text>
+                        {selectedOptionTags.length > 0 ? (
+                          <Button size="small" type="link" onClick={() => setSelectedOptions({})}>
+                            {t('pages.productList.resetFilters')}
+                          </Button>
+                        ) : null}
+                      </Space>
                     </div>
                     <Space wrap size={[6, 6]}>
                       {selectedOptionTags.length > 0 ? selectedOptionTags.map((item) => (
@@ -983,7 +1029,12 @@ const ProductDetail: React.FC = () => {
                 )}
 
                 {sizeOptionGroup ? (
-                  <div className="product-size-calculator">
+                  <details className="product-detail-disclosure">
+                    <summary>
+                      <span>{t('pages.productDetail.sizeCalculatorTitle')}</span>
+                      <Text type="secondary">{fitConfidenceText}</Text>
+                    </summary>
+                    <div className="product-size-calculator">
                     <div className="product-size-calculator__header">
                       <Text strong>{t('pages.productDetail.sizeCalculatorTitle')}</Text>
                       <Button size="small" type="link" onClick={() => setSizeGuideOpen(true)}>{t('pages.productDetail.sizeGuide')}</Button>
@@ -1014,7 +1065,7 @@ const ProductDetail: React.FC = () => {
                           <Button
                             size="small"
                             type="primary"
-                            onClick={() => setSelectedOptions((current) => ({ ...current, [sizeOptionGroup.name]: recommendedSizeValue }))}
+                            onClick={() => selectOptionValue(sizeOptionGroup.name, recommendedSizeValue)}
                           >
                             {t('pages.productDetail.sizeCalculatorApply')}
                           </Button>
@@ -1023,8 +1074,24 @@ const ProductDetail: React.FC = () => {
                     ) : (
                       <Text type="secondary">{t('pages.productDetail.sizeCalculatorHint')}</Text>
                     )}
-                  </div>
+                    </div>
+                  </details>
                 ) : null}
+
+                <div className="product-value-callout">
+                  <span className="product-value-callout__icon"><ThunderboltOutlined /></span>
+                  <div className="product-value-callout__copy">
+                    <Text strong>{recommendedPathTitle}</Text>
+                    <Text type="secondary">{recommendedPathText}</Text>
+                  </div>
+                  {purchaseMode !== recommendedPurchaseMode ? (
+                    <Button size="small" type="primary" onClick={() => setPurchaseMode(recommendedPurchaseMode)}>
+                      {t('pages.productDetail.useRecommendedPath')}
+                    </Button>
+                  ) : (
+                    <Tag color="green">{t('pages.productDetail.decisionReady')}</Tag>
+                  )}
+                </div>
 
                 <div className="product-purchase-mode">
                   <Segmented
@@ -1115,85 +1182,45 @@ const ProductDetail: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="product-path-card">
-                  <div className="product-path-card__copy">
-                    <Text type="secondary">{t('pages.productDetail.pathEyebrow')}</Text>
-                    <Text strong>{recommendedPathTitle}</Text>
-                    <Text type="secondary">{recommendedPathText}</Text>
-                  </div>
-                  <Space wrap className="product-path-card__actions">
-                    <Button
-                      size="small"
-                      type={recommendedPurchaseMode === 'once' ? 'primary' : 'default'}
-                      ghost={recommendedPurchaseMode !== 'once'}
-                      onClick={() => setPurchaseMode('once')}
-                    >
-                      {t('pages.productDetail.oneTimePurchase')}
-                    </Button>
-                    {conversionConfig.subscription.enabled ? (
-                      <Button
-                        size="small"
-                        type={recommendedPurchaseMode === 'subscribe' ? 'primary' : 'default'}
-                        ghost={recommendedPurchaseMode !== 'subscribe'}
-                        onClick={() => setPurchaseMode('subscribe')}
-                      >
-                        {t('subscription.subscribeSave', { percent: subscriptionDiscountPercent })}
-                      </Button>
-                    ) : null}
-                    {bundleInfo ? (
-                      <Button
-                        size="small"
-                        type={recommendedPurchaseMode === 'bundle' ? 'primary' : 'default'}
-                        ghost={recommendedPurchaseMode !== 'bundle'}
-                        onClick={() => setPurchaseMode('bundle')}
-                      >
-                        {t('bundle.bundleDeal')}
-                      </Button>
-                    ) : null}
-                  </Space>
-                </div>
-
-                <div className="product-conversion-nudges">
-                  <div className="product-conversion-nudge">
-                    <span className="product-conversion-nudge__icon"><ThunderboltOutlined /></span>
-                    <span>
-                      <Text strong>{t('pages.productDetail.replenishmentTitle')}</Text>
-                      <Text type="secondary">{replenishmentNudgeText}</Text>
-                    </span>
-                  </div>
-                  <div className="product-conversion-nudge">
-                    <span className="product-conversion-nudge__icon"><SafetyCertificateOutlined /></span>
-                    <span>
-                      <Text strong>{t('pages.productDetail.fitConfidenceTitle')}</Text>
-                      <Text type="secondary">{fitConfidenceText}</Text>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="product-decision-card">
-                  <div className="product-decision-card__header">
-                    <div>
-                      <Text type="secondary">{t('pages.productDetail.decisionEyebrow')}</Text>
-                      <Text strong>{t('pages.productDetail.decisionTitle')}</Text>
-                    </div>
+                <details className="product-detail-disclosure">
+                  <summary>
+                    <span>{t('pages.productDetail.decisionTitle')}</span>
                     <Tag color={isOutOfStock || hasUnavailableSelectedVariant ? 'orange' : 'green'}>
                       {isOutOfStock || hasUnavailableSelectedVariant
                         ? t('pages.productDetail.decisionNeedsReview')
                         : t('pages.productDetail.decisionReady')}
                     </Tag>
+                  </summary>
+                  <div className="product-conversion-nudges">
+                    <div className="product-conversion-nudge">
+                      <span className="product-conversion-nudge__icon"><ThunderboltOutlined /></span>
+                      <span>
+                        <Text strong>{t('pages.productDetail.replenishmentTitle')}</Text>
+                        <Text type="secondary">{replenishmentNudgeText}</Text>
+                      </span>
+                    </div>
+                    <div className="product-conversion-nudge">
+                      <span className="product-conversion-nudge__icon"><SafetyCertificateOutlined /></span>
+                      <span>
+                        <Text strong>{t('pages.productDetail.fitConfidenceTitle')}</Text>
+                        <Text type="secondary">{fitConfidenceText}</Text>
+                      </span>
+                    </div>
                   </div>
-                  <div className="product-decision-card__grid">
-                    {decisionChecklist.map((item) => (
-                      <div className={`product-decision-item${item.ready ? ' product-decision-item--ready' : ' product-decision-item--pending'}`} key={item.key}>
-                        <span className="product-decision-item__icon">{item.icon}</span>
-                        <span>
-                          <Text strong>{item.title}</Text>
-                          <Text type="secondary">{item.text}</Text>
-                        </span>
-                      </div>
-                    ))}
+                  <div className="product-decision-card">
+                    <div className="product-decision-card__grid">
+                      {decisionChecklist.map((item) => (
+                        <div className={`product-decision-item${item.ready ? ' product-decision-item--ready' : ' product-decision-item--pending'}`} key={item.key}>
+                          <span className="product-decision-item__icon">{item.icon}</span>
+                          <span>
+                            <Text strong>{item.title}</Text>
+                            <Text type="secondary">{item.text}</Text>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </details>
 
                 {isOutOfStock && (
                   <Space wrap>
@@ -1210,7 +1237,8 @@ const ProductDetail: React.FC = () => {
                     icon={<ShoppingCartOutlined />}
                     className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
                     onClick={handleAddToCart}
-                    disabled={isOutOfStock}
+                    loading={purchaseSubmitting === 'cart'}
+                    disabled={isOutOfStock || purchaseSubmitting !== null}
                   >
                     {isOutOfStock ? t('pages.productDetail.soldOut') : t('pages.productDetail.addCart')}
                   </Button>
@@ -1220,7 +1248,8 @@ const ProductDetail: React.FC = () => {
                     icon={<ThunderboltOutlined />}
                     className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
                     onClick={handleBuyNow}
-                    disabled={isOutOfStock}
+                    loading={purchaseSubmitting === 'buy'}
+                    disabled={isOutOfStock || purchaseSubmitting !== null}
                     ghost
                   >
                     {t('pages.productDetail.buyNow')}
@@ -1235,9 +1264,12 @@ const ProductDetail: React.FC = () => {
                   </Button>
                 </Space>
 
-                <Divider style={{ margin: '16px 0' }} />
-
-                <div className="product-service-list">
+                <details className="product-detail-disclosure product-detail-disclosure--service">
+                  <summary>
+                    <span>{t('pages.productDetail.service')}</span>
+                    {deliveryPromise.enabled ? <Text type="secondary">{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</Text> : null}
+                  </summary>
+                  <div className="product-service-list">
                   <Space direction="vertical" size="middle">
                     {deliveryPromise.enabled ? (
                       <div className="product-delivery-promise">
@@ -1268,14 +1300,16 @@ const ProductDetail: React.FC = () => {
                       </div>
                     ) : null}
                   </Space>
-                </div>
+                  </div>
+                </details>
               </Space>
             </Card>
           </Col>
         </Row>
 
         {/* 商品详情和规格参数 */}
-        <Card className="product-tabs-card" style={{ marginTop: 24 }}>
+        <div ref={detailContentRef} className="product-detail-content-anchor" />
+        <Card className="product-tabs-card" id="product-service-tabs" style={{ marginTop: 24 }}>
           <Tabs defaultActiveKey="1">
             <TabPane tab={t('pages.productDetail.details')} key="1">
               <div style={{ padding: '24px 0' }}>
@@ -1310,7 +1344,7 @@ const ProductDetail: React.FC = () => {
         </Card>
 
         {/* 商品评价 */}
-        <Card className="product-review-card" style={{ marginTop: 24 }}>
+        <Card className="product-review-card" id="product-reviews-card" style={{ marginTop: 24 }}>
           <ProductReview
             productId={Number(id)}
             reviews={reviews}
@@ -1319,7 +1353,7 @@ const ProductDetail: React.FC = () => {
           />
         </Card>
 
-        <Card className="product-qa-card" style={{ marginTop: 24 }}>
+        <Card className="product-qa-card" id="product-qa-card" style={{ marginTop: 24 }}>
           <Title level={4} style={{ marginBottom: 16 }}>{t('pages.ask.title')}</Title>
           <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
             <Input.TextArea
@@ -1340,7 +1374,7 @@ const ProductDetail: React.FC = () => {
                 <div style={{ width: '100%' }}>
                   <div style={{ marginBottom: 8, fontWeight: 500 }}>{q.question}</div>
                   <div style={{ fontSize: 12, color: '#999', marginBottom: 10 }}>
-                    {q.username} · {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
+                    {q.username} - {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
                   </div>
                   {q.answer ? (
                     <div style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 6, padding: 10 }}>
@@ -1385,7 +1419,7 @@ const ProductDetail: React.FC = () => {
               ]}
             >
               {recommendations.map((rec: any) => {
-                const needsOptions = recommendationNeedsOptionSelection(rec);
+                const needsOptions = needsOptionSelection(rec);
                 const isRecommendationSoldOut = isRecommendationUnavailable(rec);
                 return (
                   <div key={rec.id} style={{ padding: '0 8px' }}>
@@ -1458,10 +1492,12 @@ const ProductDetail: React.FC = () => {
           className="product-mobile-buybar__cart"
           icon={isOutOfStock ? <BellOutlined /> : <ShoppingCartOutlined />}
           onClick={isOutOfStock ? handleStockAlert : handleAddToCart}
+          loading={purchaseSubmitting === 'cart'}
+          disabled={!isOutOfStock && purchaseSubmitting !== null}
         >
           {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
         </Button>
-        <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} onClick={handleBuyNow} disabled={isOutOfStock}>
+        <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={isOutOfStock || purchaseSubmitting !== null}>
           {t('pages.productDetail.buyNow')}
         </Button>
       </div>

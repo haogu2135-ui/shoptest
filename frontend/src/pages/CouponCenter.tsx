@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Col, Empty, List, message, Row, Space, Spin, Tag, Typography } from 'antd';
 import { ClockCircleOutlined, FireOutlined, GiftOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { couponApi } from '../api';
-import type { Coupon, UserCoupon } from '../types';
+import { cartApi, couponApi } from '../api';
+import type { CartItem, Coupon, UserCoupon } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
+import { getGuestCartItems } from '../utils/guestCart';
 import './CouponCenter.css';
 
 const { Text, Title } = Typography;
@@ -34,6 +35,9 @@ const getDaysUntilEnd = (endAt?: string) => {
 const getCouponDisplayName = (coupon: Coupon | UserCoupon) =>
   'couponName' in coupon ? coupon.couponName : coupon.name;
 
+const getCartSubtotal = (items: CartItem[]) =>
+  items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+
 const CouponCenter: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -44,17 +48,25 @@ const CouponCenter: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const [claimingAll, setClaimingAll] = useState(false);
+  const [cartSubtotal, setCartSubtotal] = useState(0);
+  const [cartItemCount, setCartItemCount] = useState(0);
   const { formatMoney } = useMarket();
 
   const loadCoupons = useCallback(async () => {
     setLoading(true);
     try {
-      const [publicRes, mineRes] = await Promise.all([
+      const cartPromise = userId
+        ? cartApi.getItems(userId).then((res) => res.data || []).catch(() => [] as CartItem[])
+        : Promise.resolve(getGuestCartItems());
+      const [publicRes, mineRes, cartItems] = await Promise.all([
         couponApi.getPublic(),
         userId ? couponApi.getByUser(userId) : Promise.resolve({ data: [] as UserCoupon[] }),
+        cartPromise,
       ]);
       setPublicCoupons(publicRes.data);
       setMyCoupons(mineRes.data);
+      setCartSubtotal(getCartSubtotal(cartItems));
+      setCartItemCount(cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
     } catch {
       message.error(t('pages.coupons.loadFailed'));
     } finally {
@@ -166,6 +178,63 @@ const CouponCenter: React.FC = () => {
       setClaimingAll(false);
     }
   };
+
+  const targetThreshold = Number(couponInsights.targetCoupon?.thresholdAmount || 0);
+  const couponCartGap = Math.max(0, targetThreshold - cartSubtotal);
+  const couponNextAction = (() => {
+    if (!userId && couponInsights.bestCoupon) {
+      return {
+        tone: 'warning',
+        title: t('pages.coupons.nextActionLoginTitle'),
+        text: t('pages.coupons.nextActionLoginText', { name: couponInsights.bestCoupon.name }),
+        label: t('nav.login'),
+        action: () => navigate('/login'),
+      };
+    }
+    if (couponInsights.bestCoupon && !couponInsights.nextToUse) {
+      return {
+        tone: 'claim',
+        title: t('pages.coupons.nextActionClaimTitle'),
+        text: t('pages.coupons.nextActionClaimText', {
+          name: couponInsights.bestCoupon.name,
+          value: formatMoney(getCouponEstimatedValue(couponInsights.bestCoupon)),
+        }),
+        label: t('pages.coupons.claimBest'),
+        action: () => claimCoupon(couponInsights.bestCoupon!.id),
+      };
+    }
+    if (couponInsights.nextToUse && couponCartGap <= 0) {
+      return {
+        tone: 'ready',
+        title: t('pages.coupons.nextActionCartReadyTitle'),
+        text: t('pages.coupons.nextActionCartReadyText', {
+          count: cartItemCount,
+          amount: formatMoney(cartSubtotal),
+        }),
+        label: t('pages.coupons.useNext'),
+        action: () => navigate('/cart'),
+      };
+    }
+    if (couponInsights.nextToUse && couponCartGap > 0) {
+      return {
+        tone: 'build',
+        title: t('pages.coupons.nextActionBuildTitle'),
+        text: t('pages.coupons.nextActionBuildText', {
+          amount: formatMoney(couponCartGap),
+          name: couponInsights.nextToUse.couponName,
+        }),
+        label: t('pages.coupons.nextActionBrowsePersonalized'),
+        action: () => navigate('/products?sort=personalized-desc'),
+      };
+    }
+    return {
+      tone: 'neutral',
+      title: t('pages.coupons.nextActionBrowseTitle'),
+      text: t('pages.coupons.nextActionBrowseText'),
+      label: t('pages.coupons.goShopping'),
+      action: () => navigate('/products?sort=personalized-desc'),
+    };
+  })();
 
   if (loading) {
     return <div style={{ padding: 80, textAlign: 'center' }}><Spin size="large" /></div>;
@@ -288,6 +357,32 @@ const CouponCenter: React.FC = () => {
           onClick={() => navigate(couponInsights.nextToUse ? '/cart' : '/products')}
         >
           {couponInsights.nextToUse ? t('pages.coupons.useNext') : t('pages.coupons.goShopping')}
+        </Button>
+      </section>
+
+      <section className={`coupon-next-action coupon-next-action--${couponNextAction.tone}`} aria-label={t('pages.coupons.nextActionEyebrow')}>
+        <div>
+          <Text type="secondary">{t('pages.coupons.nextActionEyebrow')}</Text>
+          <h3>{couponNextAction.title}</h3>
+          <p>{couponNextAction.text}</p>
+        </div>
+        <div className="coupon-next-action__meta">
+          <span>
+            <strong>{formatMoney(cartSubtotal)}</strong>
+            <Text type="secondary">{t('pages.coupons.currentCartValue')}</Text>
+          </span>
+          <span>
+            <strong>{couponCartGap > 0 ? formatMoney(couponCartGap) : formatMoney(0)}</strong>
+            <Text type="secondary">{t('pages.coupons.couponThresholdGap')}</Text>
+          </span>
+        </div>
+        <Button
+          type={couponNextAction.tone === 'ready' || couponNextAction.tone === 'claim' ? 'primary' : 'default'}
+          icon={<ShoppingOutlined />}
+          loading={couponInsights.bestCoupon ? claimingId === couponInsights.bestCoupon.id : false}
+          onClick={couponNextAction.action}
+        >
+          {couponNextAction.label}
         </Button>
       </section>
 

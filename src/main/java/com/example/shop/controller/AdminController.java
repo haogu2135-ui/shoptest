@@ -4,14 +4,17 @@ import com.example.shop.dto.CouponGrantRequest;
 import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.dto.ProductImportResult;
 import com.example.shop.entity.Coupon;
+import com.example.shop.entity.AdminRole;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.entity.Product;
 import com.example.shop.entity.Review;
 import com.example.shop.entity.SecurityAuditLog;
 import com.example.shop.entity.User;
+import com.example.shop.security.SecurityUtils;
 import com.example.shop.entity.LogisticsCarrier;
 import com.example.shop.service.OrderItemService;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.CouponService;
 import com.example.shop.service.NotificationService;
@@ -70,6 +73,7 @@ public class AdminController {
     private final PetBirthdayCouponService petBirthdayCouponService;
     private final LogisticsCarrierService logisticsCarrierService;
     private final SecurityAuditLogService auditLogService;
+    private final AdminRoleService adminRoleService;
 
     // ==================== Dashboard ====================
 
@@ -292,18 +296,103 @@ public class AdminController {
     // ==================== User Management ====================
 
     @GetMapping("/users")
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userService.findAll());
+    public ResponseEntity<List<User>> getAllUsers(@RequestParam(required = false) String keyword,
+                                                  @RequestParam(required = false) String role,
+                                                  @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(filterUsers(keyword, role, status));
+    }
+
+    @GetMapping("/users/export")
+    public ResponseEntity<byte[]> exportUsers(@RequestParam(required = false) String keyword,
+                                              @RequestParam(required = false) String role,
+                                              @RequestParam(required = false) String status) {
+        StringBuilder csv = new StringBuilder("\uFEFF");
+        csv.append(CsvUtils.row(Arrays.asList("id", "username", "email", "phone", "role", "roleCode", "status", "createdAt"))).append("\r\n");
+        for (User user : filterUsers(keyword, role, status)) {
+            csv.append(CsvUtils.row(Arrays.asList(
+                    user.getId(),
+                    user.getUsername(),
+                    user.getEmail(),
+                    user.getPhone(),
+                    user.getRole(),
+                    user.getRoleCode(),
+                    user.getStatus(),
+                    user.getCreatedAt()
+            ))).append("\r\n");
+        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=admin-users.csv")
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(csv.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    @GetMapping("/roles")
+    public ResponseEntity<List<AdminRole>> getRoles() {
+        return ResponseEntity.ok(adminRoleService.findAll());
+    }
+
+    @PostMapping("/roles")
+    public ResponseEntity<?> saveRole(@RequestBody AdminRole role, Authentication authentication) {
+        SecurityUtils.assertSuperAdmin(authentication);
+        try {
+            return ResponseEntity.ok(adminRoleService.save(role));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/users/{id}/role-code")
+    public ResponseEntity<?> assignRole(@PathVariable Long id, @RequestBody Map<String, String> body, Authentication authentication) {
+        SecurityUtils.assertSuperAdmin(authentication);
+        if (SecurityUtils.requireUser(authentication).getId().equals(id)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Cannot change current operator role"));
+        }
+        try {
+            adminRoleService.assignRole(id, body.get("roleCode"));
+            return ResponseEntity.ok(userService.findById(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/me/permissions")
+    public ResponseEntity<Map<String, Object>> getMyAdminPermissions(Authentication authentication) {
+        User current = userService.findById(SecurityUtils.requireUser(authentication).getId());
+        return ResponseEntity.ok(Map.of(
+                "role", current.getRole(),
+                "roleCode", current.getRoleCode() == null ? "" : current.getRoleCode(),
+                "permissions", adminRoleService.getPermissionsForUser(current)
+        ));
     }
 
     @PutMapping("/users/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user) {
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user, Authentication authentication) {
         User existing = userService.findById(id);
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
         if (user.getRole() != null) {
-            existing.setRole(user.getRole());
+            SecurityUtils.assertSuperAdmin(authentication);
+            if (SecurityUtils.requireUser(authentication).getId().equals(id)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Cannot change current operator role"));
+            }
+            String role = normalizeRole(user.getRole());
+            if (role == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid role"));
+            }
+            String roleCode = existing.getRoleCode();
+            if ("USER".equals(role)) {
+                roleCode = null;
+            } else if ("SUPER_ADMIN".equals(role)) {
+                roleCode = AdminRoleService.SUPER_ADMIN;
+            } else if (roleCode == null || roleCode.trim().isEmpty()) {
+                roleCode = AdminRoleService.ADMIN;
+            }
+            userService.updateRoleAccess(existing.getId(), role, roleCode);
+            existing = userService.findById(id);
+        }
+        if (existing == null) {
+            return ResponseEntity.notFound().build();
         }
         if (user.getStatus() != null) {
             existing.setStatus(user.getStatus());
@@ -322,7 +411,17 @@ public class AdminController {
     }
 
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<?> deleteUser(@PathVariable Long id, Authentication authentication) {
+        User existing = userService.findById(id);
+        if (existing == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (SecurityUtils.requireUser(authentication).getId().equals(id)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Cannot delete current operator"));
+        }
+        if ("ADMIN".equals(existing.getRole()) || "SUPER_ADMIN".equals(existing.getRole())) {
+            SecurityUtils.assertSuperAdmin(authentication);
+        }
         userService.deleteById(id);
         return ResponseEntity.ok().build();
     }
@@ -655,6 +754,18 @@ public class AdminController {
         } catch (DateTimeParseException e) {
             return null;
         }
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null) {
+            return null;
+        }
+        String normalized = role.trim().toUpperCase();
+        return Set.of("USER", "ADMIN", "SUPER_ADMIN").contains(normalized) ? normalized : null;
+    }
+
+    private List<User> filterUsers(String keyword, String role, String status) {
+        return userService.search(keyword, role, status);
     }
 
     // ==================== Review Management ====================

@@ -44,6 +44,7 @@ const OrderManagement: React.FC = () => {
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState('');
   const [selectedTrackingCarrierCode, setSelectedTrackingCarrierCode] = useState<string | undefined>();
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
+  const [statusUpdatingIds, setStatusUpdatingIds] = useState<React.Key[]>([]);
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const { formatMoney } = useMarket();
@@ -84,13 +85,19 @@ const OrderManagement: React.FC = () => {
   }, [orders]);
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
+    if (statusUpdatingIds.includes(orderId)) {
+      return;
+    }
     try {
+      setStatusUpdatingIds((current) => [...current, orderId]);
       await adminApi.updateOrderStatus(orderId, newStatus);
       message.success(t('pages.adminOrders.statusUpdated'));
       fetchOrders(filterStatus);
     } catch (err: any) {
       const msg = err.response?.data?.error || t('messages.updateFailed');
       message.error(msg);
+    } finally {
+      setStatusUpdatingIds((current) => current.filter((id) => id !== orderId));
     }
   };
 
@@ -104,6 +111,14 @@ const OrderManagement: React.FC = () => {
 
   const getCarrierName = (carrierCode?: string) =>
     carriers.find((carrier) => carrier.trackingCode === carrierCode)?.name;
+
+  const formatLabelSpecs = (selectedSpecs?: string | null) => {
+    try {
+      return selectedSpecs ? formatSelectedSpecs(selectedSpecs, t) : '';
+    } catch {
+      return selectedSpecs || '';
+    }
+  };
 
   const buildShippingLabelHtml = (order: Order, items: OrderItem[]) => {
     const labelCopy = {
@@ -125,7 +140,7 @@ const OrderManagement: React.FC = () => {
       ? items.map((item) => `
           <tr>
             <td>${escapeHtml(item.productName || `#${item.productId}`)}</td>
-            <td>${escapeHtml(item.selectedSpecs ? formatSelectedSpecs(item.selectedSpecs, t) : '')}</td>
+            <td>${escapeHtml(formatLabelSpecs(item.selectedSpecs))}</td>
             <td class="qty">${escapeHtml(item.quantity)}</td>
           </tr>
         `).join('')
@@ -219,9 +234,14 @@ const OrderManagement: React.FC = () => {
       items = [];
     }
 
-    printWindow.document.open();
-    printWindow.document.write(buildShippingLabelHtml(order, items));
-    printWindow.document.close();
+    try {
+      printWindow.document.open();
+      printWindow.document.write(buildShippingLabelHtml(order, items));
+      printWindow.document.close();
+    } catch {
+      printWindow.close();
+      message.error(t('pages.adminOrders.printFailed'));
+    }
   };
 
   const handleShip = async () => {
@@ -489,6 +509,40 @@ const OrderManagement: React.FC = () => {
     }
     return t(`status.${nextStatus}`);
   };
+  const confirmStatusChange = (record: Order, nextStatus: string) => {
+    if (record.status === 'RETURN_REQUESTED' && nextStatus === 'RETURN_APPROVED') {
+      Modal.confirm({
+        title: t('pages.adminOrders.confirmApproveReturnTitle'),
+        content: t('pages.adminOrders.confirmApproveReturnContent'),
+        okText: t('pages.adminOrders.approveReturn'),
+        cancelText: t('common.cancel'),
+        onOk: () => handleStatusChange(record.id, nextStatus),
+      });
+      return;
+    }
+    if (record.status === 'RETURN_REQUESTED' && nextStatus === 'COMPLETED') {
+      Modal.confirm({
+        title: t('pages.adminOrders.confirmRejectReturnTitle'),
+        content: t('pages.adminOrders.confirmRejectReturnContent'),
+        okText: t('pages.adminOrders.rejectReturn'),
+        okButtonProps: { danger: true },
+        cancelText: t('common.cancel'),
+        onOk: () => handleStatusChange(record.id, nextStatus),
+      });
+      return;
+    }
+    if (record.status === 'RETURN_SHIPPED' && nextStatus === 'RETURNED') {
+      Modal.confirm({
+        title: t('pages.adminOrders.confirmReturnRefundTitle'),
+        content: t('pages.adminOrders.confirmReturnRefundContent'),
+        okText: t('pages.adminOrders.confirmReturnReceivedAndRefund'),
+        cancelText: t('common.cancel'),
+        onOk: () => handleStatusChange(record.id, nextStatus),
+      });
+      return;
+    }
+    handleStatusChange(record.id, nextStatus);
+  };
   const renderNextAction = (order: Order) => {
     const action = orderNextActionByStatus[order.status] || orderNextActionByStatus.COMPLETED;
     const sla = getOrderSla(order);
@@ -507,58 +561,66 @@ const OrderManagement: React.FC = () => {
 
 
   const columns = [
-    { title: t('pages.adminOrders.orderId'), dataIndex: 'id', key: 'id', width: 80 },
-    { title: t('common.userId'), dataIndex: 'userId', key: 'userId', width: 80 },
+    { title: t('pages.adminOrders.orderId'), dataIndex: 'id', key: 'id', width: 76 },
+    { title: t('common.userId'), dataIndex: 'userId', key: 'userId', width: 72 },
     {
       title: t('common.amount'),
       dataIndex: 'totalAmount',
       key: 'totalAmount',
-      width: 110,
+      width: 100,
       render: (v: number) => <span className="order-management-page__amount">{formatMoney(v)}</span>,
     },
     {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
-      width: 120,
+      width: 112,
       render: (s: string) => <Tag color={orderStatusColors[s]}>{t(`status.${s}`)}</Tag>,
     },
     {
       title: t('pages.adminOrders.nextAction'),
       key: 'nextAction',
-      width: 190,
+      width: 170,
       render: (_: any, record: Order) => renderNextAction(record),
     },
     {
-      title: t('pages.adminOrders.returnReason'),
-      dataIndex: 'returnReason',
-      key: 'returnReason',
-      width: 160,
-      ellipsis: true,
-      render: (v: string) => v || '-',
+      title: t('pages.adminOrders.returnInfo'),
+      key: 'returnInfo',
+      width: 180,
+      render: (_: any, record: Order) => (
+        <Space direction="vertical" size={2} className="order-management-page__compactStack">
+          <Typography.Text>{record.returnReason || '-'}</Typography.Text>
+          {record.returnTrackingNumber ? (
+            <Typography.Text type="secondary">{record.returnTrackingNumber}</Typography.Text>
+          ) : null}
+          {record.refundedAt ? (
+            <Typography.Text type="secondary">{new Date(record.refundedAt).toLocaleString(dateLocale)}</Typography.Text>
+          ) : null}
+        </Space>
+      ),
     },
     {
       title: t('pages.adminOrders.address'),
       dataIndex: 'shippingAddress',
       key: 'shippingAddress',
-      ellipsis: true,
-      render: (v: string) => v || '-',
+      width: 220,
+      render: (v: string) => <span className="order-management-page__addressText">{v || '-'}</span>,
     },
     {
       title: t('pages.adminOrders.paymentMethod'),
       dataIndex: 'paymentMethod',
       key: 'paymentMethod',
-      width: 100,
+      width: 92,
       render: (v: string) => v || '-',
     },
     {
       title: t('pages.adminOrders.tracking'),
       dataIndex: 'trackingNumber',
       key: 'trackingNumber',
-      width: 140,
+      width: 150,
       render: (v: string, record: Order) => v ? (
-        <Space direction="vertical" size={0}>
-          <span>{v}</span>
+        <Space direction="vertical" size={0} className="order-management-page__compactStack">
+          <span className="order-management-page__trackingText">{v}</span>
           {record.trackingCarrierName ? <Typography.Text type="secondary">{record.trackingCarrierName}</Typography.Text> : null}
           <Space size={8}>
             <Button size="small" type="link" className="order-management-page__linkButton" onClick={() => handleTrackShipment(v, record.trackingCarrierCode)}>{t('pages.adminOrders.track')}</Button>
@@ -568,34 +630,21 @@ const OrderManagement: React.FC = () => {
       ) : '-',
     },
     {
-      title: t('pages.adminOrders.returnTracking'),
-      dataIndex: 'returnTrackingNumber',
-      key: 'returnTrackingNumber',
-      width: 150,
-      render: (v: string) => v || '-',
-    },
-    {
-      title: t('pages.adminOrders.refundedAt'),
-      dataIndex: 'refundedAt',
-      key: 'refundedAt',
-      width: 170,
-      render: (v: string) => v ? new Date(v).toLocaleString(dateLocale) : '-',
-    },
-    {
       title: t('pages.adminOrders.createdAt'),
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 170,
+      width: 145,
       render: (v: string) => v ? new Date(v).toLocaleString(dateLocale) : '-',
     },
     {
       title: t('common.actions'),
       key: 'action',
-      width: 230,
+      width: 180,
       render: (_: any, record: Order) => {
         const transitions = orderValidTransitions[record.status] || [];
+        const statusUpdating = statusUpdatingIds.includes(record.id);
         return (
-          <Space wrap>
+          <Space wrap size={[6, 6]} className="order-management-page__actions">
             <Button size="small" onClick={() => handleViewItems(record)}>
               {t('pages.adminOrders.items')}
             </Button>
@@ -604,7 +653,9 @@ const OrderManagement: React.FC = () => {
             ) : (
               <Select
                 size="small"
-                style={{ width: 130 }}
+                style={{ width: 116 }}
+                loading={statusUpdating}
+                disabled={statusUpdating}
                 placeholder={t('pages.adminOrders.changeStatus')}
                 onChange={(val) => {
                   if (val === 'SHIPPED') {
@@ -613,17 +664,7 @@ const OrderManagement: React.FC = () => {
                     setTrackingCarrierCode(record.trackingCarrierCode);
                     return;
                   }
-                  if (record.status === 'RETURN_SHIPPED' && val === 'RETURNED') {
-                    Modal.confirm({
-                      title: t('pages.adminOrders.confirmReturnRefundTitle'),
-                      content: t('pages.adminOrders.confirmReturnRefundContent'),
-                      okText: t('pages.adminOrders.confirmReturnReceivedAndRefund'),
-                      cancelText: t('common.cancel'),
-                      onOk: () => handleStatusChange(record.id, val),
-                    });
-                    return;
-                  }
-                  handleStatusChange(record.id, val);
+                  confirmStatusChange(record, val);
                 }}
                 options={transitions.map((s) => ({
                   value: s,
@@ -723,7 +764,8 @@ const OrderManagement: React.FC = () => {
           pagination={{ pageSize: 10, showTotal: (total) => t('pages.adminOrders.total', { count: total }) }}
           bordered
           size="middle"
-          scroll={{ x: 1700 }}
+          scroll={{ x: 1500 }}
+          tableLayout="fixed"
         />
       </div>
       <Modal

@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Empty, Input, Popconfirm, Spin, Tag } from 'antd';
-import { ClockCircleOutlined, DeleteOutlined, FireOutlined, HistoryOutlined, SearchOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Button, Empty, Input, message, Popconfirm, Spin, Tag } from 'antd';
+import { ClockCircleOutlined, DeleteOutlined, FireOutlined, HistoryOutlined, SearchOutlined, ShoppingCartOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { productApi } from '../api';
+import { apiBaseUrl, cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import type { Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getLowStockCount } from '../utils/conversionConfig';
+import { addGuestCartItem } from '../utils/guestCart';
+import { needsOptionSelection } from '../utils/productOptions';
 import {
   clearProductViewHistory,
   loadProductViewPreferences,
@@ -18,11 +20,20 @@ import './BrowsingHistory.css';
 const fallbackImage = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
 type HistoryQuickFilter = 'all' | 'recent' | 'deals' | 'lowStock';
 
+const resolveHistoryImage = (imageUrl?: string) => {
+  if (!imageUrl) return fallbackImage;
+  if (/^(https?:|data:|blob:)/i.test(imageUrl)) return imageUrl;
+  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
+
 const isDealProduct = (product: Product) => {
   const activePrice = Number(product.effectivePrice ?? product.price ?? 0);
   const originalPrice = Number(product.originalPrice ?? 0);
   return Number(product.discount || product.effectiveDiscountPercent || 0) > 0 || (originalPrice > activePrice && activePrice > 0);
 };
+
+const isPurchasable = (product: Product) =>
+  (product.status || 'ACTIVE') === 'ACTIVE' && (product.stock === undefined || product.stock > 0);
 
 const BrowsingHistory: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -44,7 +55,7 @@ const BrowsingHistory: React.FC = () => {
       }
       setLoading(true);
       try {
-        const response = await productApi.getAll();
+        const response = await productApi.getByIds(preferences.recent);
         setProducts(response.data.map((product) => localizeProduct(product, language)));
       } catch {
         setProducts([]);
@@ -53,7 +64,7 @@ const BrowsingHistory: React.FC = () => {
       }
     };
     fetchProducts();
-  }, [hasHistory, language]);
+  }, [hasHistory, language, preferences.recent]);
 
   useEffect(() => {
     const syncPreferences = () => setPreferences(loadProductViewPreferences());
@@ -82,6 +93,7 @@ const BrowsingHistory: React.FC = () => {
     const viewedToday = historyProducts.filter((product) => Number(viewedAtById.get(product.id) || 0) >= oneDayAgo).length;
     const deals = historyProducts.filter(isDealProduct).length;
     const lowStock = historyProducts.filter((product) => getLowStockCount(product.stock, 1) !== null).length;
+    const readyToCart = historyProducts.filter((product) => isPurchasable(product) && !needsOptionSelection(product)).length;
     const brandCounts = historyProducts.reduce<Record<string, number>>((result, product) => {
       if (product.brand) result[product.brand] = (result[product.brand] || 0) + 1;
       return result;
@@ -98,7 +110,7 @@ const BrowsingHistory: React.FC = () => {
         };
         return score(b) - score(a);
       })[0];
-    return { viewedToday, deals, lowStock, topBrand, bestRecovery };
+    return { viewedToday, deals, lowStock, readyToCart, topBrand, bestRecovery };
   }, [historyProducts, viewedAtById]);
 
   const filteredProducts = useMemo(() => {
@@ -140,6 +152,77 @@ const BrowsingHistory: React.FC = () => {
     removeProductViewHistoryItem(productId);
     setPreferences(loadProductViewPreferences());
   };
+
+  const addHistoryProductToCart = async (product: Product) => {
+    if (!isPurchasable(product)) {
+      message.warning(t('pages.browsingHistory.unavailable'));
+      return;
+    }
+    if (needsOptionSelection(product)) {
+      navigate(`/products/${product.id}`);
+      return;
+    }
+    const token = localStorage.getItem('token');
+    const userId = Number(localStorage.getItem('userId') || 0);
+    try {
+      if (token && userId) {
+        await cartApi.addItem(userId, product.id, 1);
+      } else {
+        addGuestCartItem(product, 1, undefined, product.effectivePrice ?? product.price);
+      }
+      message.success(t('messages.addCartSuccess'));
+      window.dispatchEvent(new Event('shop:cart-updated'));
+      window.dispatchEvent(new Event('shop:open-cart'));
+    } catch (err: any) {
+      message.error(err?.response?.data?.error || t('messages.addFailed'));
+    }
+  };
+
+  const historyNextAction = (() => {
+    if (!hasHistory) {
+      return {
+        tone: 'browse',
+        title: t('pages.browsingHistory.nextActionBrowseTitle'),
+        text: t('pages.browsingHistory.nextActionBrowseText'),
+        label: t('pages.browsingHistory.browsePersonalized'),
+        action: () => navigate('/products?sort=personalized-desc'),
+      };
+    }
+    if (historyInsights.bestRecovery && isPurchasable(historyInsights.bestRecovery) && !needsOptionSelection(historyInsights.bestRecovery)) {
+      return {
+        tone: 'ready',
+        title: t('pages.browsingHistory.nextActionAddTitle'),
+        text: t('pages.browsingHistory.nextActionAddText', { name: historyInsights.bestRecovery.name }),
+        label: t('pages.browsingHistory.addBestToCart'),
+        action: () => addHistoryProductToCart(historyInsights.bestRecovery!),
+      };
+    }
+    if (historyInsights.bestRecovery && needsOptionSelection(historyInsights.bestRecovery)) {
+      return {
+        tone: 'options',
+        title: t('pages.browsingHistory.nextActionOptionsTitle'),
+        text: t('pages.browsingHistory.nextActionOptionsText', { name: historyInsights.bestRecovery.name }),
+        label: t('pages.browsingHistory.resumeProduct'),
+        action: () => navigate(`/products/${historyInsights.bestRecovery!.id}`),
+      };
+    }
+    if (historyInsights.lowStock > 0) {
+      return {
+        tone: 'urgent',
+        title: t('pages.browsingHistory.nextActionLowStockTitle'),
+        text: t('pages.browsingHistory.nextActionLowStockText', { count: historyInsights.lowStock }),
+        label: t('pages.browsingHistory.filterLowStock'),
+        action: () => setQuickFilter('lowStock'),
+      };
+    }
+    return {
+      tone: 'browse',
+      title: t('pages.browsingHistory.nextActionBrowseTitle'),
+      text: t('pages.browsingHistory.nextActionBrowseText'),
+      label: t('pages.browsingHistory.browsePersonalized'),
+      action: () => navigate('/products?sort=personalized-desc'),
+    };
+  })();
 
   if (loading) {
     return (
@@ -240,6 +323,26 @@ const BrowsingHistory: React.FC = () => {
         </section>
       ) : null}
 
+      <section className={`browsing-history__nextAction browsing-history__nextAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>
+        <div>
+          <span>{t('pages.browsingHistory.nextActionEyebrow')}</span>
+          <h2>{historyNextAction.title}</h2>
+          <p>{historyNextAction.text}</p>
+        </div>
+        <div className="browsing-history__nextActionStats">
+          <Tag color="green">{t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}</Tag>
+          <Tag color={historyInsights.deals > 0 ? 'volcano' : 'default'}>{t('pages.browsingHistory.dealWatchCount', { count: historyInsights.deals })}</Tag>
+          <Tag color={historyInsights.lowStock > 0 ? 'orange' : 'default'}>{t('pages.browsingHistory.lowStockWatchCount', { count: historyInsights.lowStock })}</Tag>
+        </div>
+        <Button
+          type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
+          icon={historyNextAction.tone === 'ready' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}
+          onClick={historyNextAction.action}
+        >
+          {historyNextAction.label}
+        </Button>
+      </section>
+
       {filteredProducts.length ? (
         <section className="browsing-history__grid">
           {filteredProducts.map((product) => {
@@ -249,7 +352,7 @@ const BrowsingHistory: React.FC = () => {
               <article className="browsing-history__item" key={product.id}>
                 <button type="button" className="browsing-history__image" onClick={() => navigate(`/products/${product.id}`)}>
                   <img
-                    src={product.imageUrl || fallbackImage}
+                    src={resolveHistoryImage(product.imageUrl)}
                     alt={product.name}
                     onError={(event) => {
                       if (event.currentTarget.src !== fallbackImage) {
@@ -271,6 +374,11 @@ const BrowsingHistory: React.FC = () => {
                   <div className="browsing-history__footer">
                     <strong>{formatMoney(price)}</strong>
                     <div>
+                      {isPurchasable(product) && !needsOptionSelection(product) ? (
+                        <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => addHistoryProductToCart(product)}>
+                          {t('pages.browsingHistory.addToCart')}
+                        </Button>
+                      ) : null}
                       <Button icon={<ShoppingOutlined />} onClick={() => navigate(`/products/${product.id}`)}>
                         {t('pages.browsingHistory.viewProduct')}
                       </Button>

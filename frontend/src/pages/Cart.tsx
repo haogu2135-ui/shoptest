@@ -16,7 +16,11 @@ import {
   type SavedForLaterItem,
 } from '../utils/saveForLater';
 import { conversionConfig, getLowStockCount } from '../utils/conversionConfig';
+import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefits';
 import { loadProductViewPreferences } from '../utils/productViewPreferences';
+import { needsOptionSelection } from '../utils/productOptions';
+import { localizeProduct } from '../utils/localizedProduct';
+import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
 import AddOnAssistant from '../components/AddOnAssistant';
 import './Cart.css';
 
@@ -39,8 +43,6 @@ const getSavedAgeDays = (savedAt?: number) => {
   if (!savedAt) return 0;
   return Math.max(0, Math.floor((Date.now() - savedAt) / 86400000));
 };
-const needsOptionSelection = (product: Product) =>
-  Boolean((product.variants && product.variants.length > 0) || (product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0));
 
 const Cart: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -51,13 +53,12 @@ const Cart: React.FC = () => {
   const [restoringSaved, setRestoringSaved] = useState(false);
   const [addingRecentId, setAddingRecentId] = useState<number | null>(null);
   const navigate = useNavigate();
-  const { t } = useLanguage();
-  const { market, formatMoney } = useMarket();
+  const { t, language } = useLanguage();
+  const { currency, market, formatMoney } = useMarket();
 
   const fetchCartItems = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    if (!token || !userId) {
+    const userId = getAuthenticatedCartUserId();
+    if (!userId) {
       const guestItems = getGuestCartItems();
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
@@ -65,7 +66,7 @@ const Cart: React.FC = () => {
       return;
     }
     try {
-      const response = await cartApi.getItems(Number(userId));
+      const response = await cartApi.getItems(userId);
       setCartItems(response.data);
       setSelectedIds(response.data.filter(canCheckout).map((item) => item.id));
     } catch {
@@ -88,8 +89,8 @@ const Cart: React.FC = () => {
         return;
       }
       try {
-        const response = await productApi.getAll();
-        const productById = new Map(response.data.map((product) => [product.id, product]));
+        const response = await productApi.getByIds(preferences.recent.slice(0, conversionConfig.cartRecentlyViewed.maxItems * 2));
+        const productById = new Map(response.data.map((product) => [product.id, localizeProduct(product, language)]));
         setRecentProducts(
           preferences.recent
             .map((productId) => productById.get(productId))
@@ -104,7 +105,7 @@ const Cart: React.FC = () => {
     loadRecentlyViewedProducts();
     window.addEventListener('shop:product-view-preferences-updated', loadRecentlyViewedProducts);
     return () => window.removeEventListener('shop:product-view-preferences-updated', loadRecentlyViewedProducts);
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     const refreshSavedItems = () => setSavedItems(getSavedForLaterItems());
@@ -125,14 +126,14 @@ const Cart: React.FC = () => {
 
   const updateQuantity = async (itemId: number, quantity: number) => {
     try {
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await cartApi.updateQuantity(itemId, quantity);
         setCartItems((items) => items.map((item) => (item.id === itemId ? { ...item, quantity } : item)));
       } else {
         setCartItems(updateGuestCartQuantity(itemId, quantity));
       }
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch (err: any) {
       message.error(err.response?.data?.error || t('pages.cart.quantityFailed'));
     }
@@ -140,8 +141,8 @@ const Cart: React.FC = () => {
 
   const removeItem = async (itemId: number) => {
     try {
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await cartApi.removeItem(itemId);
         setCartItems((items) => items.filter((item) => item.id !== itemId));
       } else {
@@ -149,7 +150,7 @@ const Cart: React.FC = () => {
       }
       message.success(t('messages.deleteSuccess'));
       setSelectedIds((ids) => ids.filter((id) => id !== itemId));
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.deleteFailed'));
     }
@@ -157,8 +158,8 @@ const Cart: React.FC = () => {
 
   const saveForLater = async (item: CartItem) => {
     try {
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await cartApi.removeItem(item.id);
         saveCartItemForLater(item);
         setCartItems((items) => items.filter((cartItem) => cartItem.id !== item.id));
@@ -169,7 +170,7 @@ const Cart: React.FC = () => {
       setSelectedIds((ids) => ids.filter((id) => id !== item.id));
       setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.savedForLater'));
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -177,9 +178,8 @@ const Cart: React.FC = () => {
 
   const moveSavedItemToCart = async (item: SavedForLaterItem) => {
     try {
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
-        const userId = Number(localStorage.getItem('userId'));
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
         const response = await cartApi.getItems(userId);
         setCartItems(response.data);
@@ -203,7 +203,7 @@ const Cart: React.FC = () => {
       removeSavedForLaterProduct(item.productId, item.selectedSpecs);
       setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.movedToCart'));
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -214,9 +214,8 @@ const Cart: React.FC = () => {
     const targetItems = items.slice(0, conversionConfig.saveForLater.maxBulkRestoreItems);
     setRestoringSaved(true);
     try {
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
-        const userId = Number(localStorage.getItem('userId'));
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await Promise.all(targetItems.map((item) => cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs)));
         const response = await cartApi.getItems(userId);
         setCartItems(response.data);
@@ -242,7 +241,7 @@ const Cart: React.FC = () => {
       targetItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
       setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.movedSavedBatch', { count: targetItems.length }));
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.operationFailed'));
     } finally {
@@ -258,8 +257,8 @@ const Cart: React.FC = () => {
   const removeItems = async (itemIds: number[], successMessage: string) => {
     if (itemIds.length === 0) return;
     try {
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await Promise.all(itemIds.map((itemId) => cartApi.removeItem(itemId)));
         setCartItems((items) => items.filter((item) => !itemIds.includes(item.id)));
       } else {
@@ -267,7 +266,7 @@ const Cart: React.FC = () => {
       }
       setSelectedIds((ids) => ids.filter((id) => !itemIds.includes(id)));
       message.success(successMessage);
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.deleteFailed'));
     }
@@ -288,6 +287,8 @@ const Cart: React.FC = () => {
   const selectedTotal = selectedItems.reduce((total, item) => total + item.price * item.quantity, 0);
   const freeShippingThreshold = market.freeShippingThreshold;
   const freeShippingRemaining = Math.max(0, freeShippingThreshold - selectedTotal);
+  const benefitTarget = getNearestCartBenefitTarget(selectedTotal, freeShippingThreshold, currency);
+  const giftUnlocked = isGiftUnlocked(selectedTotal, currency);
   const freeShippingPercent = freeShippingThreshold > 0
     ? Math.min(100, Math.round((selectedTotal / freeShippingThreshold) * 100))
     : 100;
@@ -325,7 +326,7 @@ const Cart: React.FC = () => {
         : t('pages.cart.confidenceShippingGap', { amount: formatMoney(freeShippingRemaining) }),
     },
   ];
-
+  const checkoutConfidenceReadyCount = checkoutConfidenceItems.filter((item) => item.ready).length;
   const toggleAll = (checked: boolean) => {
     setSelectedIds(checked ? purchasableItems.map((item) => item.id) : []);
   };
@@ -335,15 +336,12 @@ const Cart: React.FC = () => {
   };
 
   const goCheckout = () => {
-    if (selectedIds.length === 0) {
+    const checkoutItems = selectedItems.filter(canCheckout);
+    if (checkoutItems.length === 0) {
       message.warning(t('pages.cart.chooseItems'));
       return;
     }
-    if (selectedItems.some((item) => !canCheckout(item))) {
-      message.warning(t('pages.cart.unavailableSelected'));
-      return;
-    }
-    sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(selectedIds));
+    syncCheckoutCartItemIds(checkoutItems);
     sessionStorage.removeItem('checkoutPaymentMethod');
     navigate('/checkout');
   };
@@ -356,10 +354,66 @@ const Cart: React.FC = () => {
     removeItems(unavailableItems.map((item) => item.id), t('pages.cart.clearedUnavailable', { count: unavailableItems.length }));
   };
 
+  const cartNextAction = (() => {
+    if (unavailableItems.length > 0) {
+      return {
+        key: 'clear',
+        tone: 'warning',
+        title: t('pages.cart.nextActionClearTitle'),
+        text: t('pages.cart.nextActionClearText', { count: unavailableItems.length }),
+        label: t('pages.cart.clearUnavailable'),
+        action: clearUnavailableItems,
+      };
+    }
+    if (selectedItems.length === 0 && purchasableItems.length > 0) {
+      return {
+        key: 'select',
+        tone: 'warning',
+        title: t('pages.cart.nextActionSelectTitle'),
+        text: t('pages.cart.nextActionSelectText', { count: purchasableItems.reduce((sum, item) => sum + item.quantity, 0) }),
+        label: t('pages.cart.selectCheckoutReady'),
+        action: () => toggleAll(true),
+      };
+    }
+    if (selectedItems.length > 0 && benefitTarget) {
+      return {
+        key: benefitTarget.reason,
+        tone: 'warm',
+        title: benefitTarget.reason === 'gift'
+          ? t('pages.cart.nextActionGiftTitle')
+          : t('pages.cart.nextActionShippingTitle'),
+        text: benefitTarget.reason === 'gift'
+          ? t('pages.cart.nextActionGiftText', { amount: formatMoney(benefitTarget.remainingAmount) })
+          : t('pages.cart.nextActionShippingText', { amount: formatMoney(benefitTarget.remainingAmount) }),
+        label: t('pages.cart.nextActionFindAddOn'),
+        action: () => {
+          document.getElementById('cart-add-on-assistant')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+      };
+    }
+    if (savedReminderItems.length > 0) {
+      return {
+        key: 'saved',
+        tone: 'warm',
+        title: t('pages.cart.nextActionSavedTitle'),
+        text: t('pages.cart.nextActionSavedText', { count: savedReminderItems.length }),
+        label: t('pages.cart.restoreReminder'),
+        action: () => moveSavedItemsToCart(savedReminderItems),
+      };
+    }
+    return {
+      key: 'checkout',
+      tone: 'ready',
+      title: t('pages.cart.nextActionCheckoutTitle'),
+      text: t('pages.cart.nextActionCheckoutText', { amount: formatMoney(selectedTotal) }),
+      label: t('pages.cart.checkout'),
+      action: goCheckout,
+    };
+  })();
+
   const addSuggestedProduct = async (product: Product) => {
-    const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-    if (isAuthenticated) {
-      const userId = Number(localStorage.getItem('userId'));
+    const userId = getAuthenticatedCartUserId();
+    if (userId) {
       await cartApi.addItem(userId, product.id, 1);
       const response = await cartApi.getItems(userId);
       setCartItems(response.data);
@@ -370,12 +424,13 @@ const Cart: React.FC = () => {
       window.dispatchEvent(new Event('shop:cart-updated'));
       return;
     }
-    const addedItem = addGuestCartItem(product, 1);
+    addGuestCartItem(product, 1);
     const nextItems = getGuestCartItems();
     setCartItems(nextItems);
-    if (canCheckout(addedItem)) {
-      setSelectedIds((ids) => Array.from(new Set([...ids, addedItem.id])));
-    }
+    const addedItemIds = nextItems
+      .filter((item) => item.productId === product.id && canCheckout(item))
+      .map((item) => item.id);
+    setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
   };
 
   const addRecentProduct = async (product: Product) => {
@@ -591,6 +646,9 @@ const Cart: React.FC = () => {
                   ? t('pages.cart.readinessFreeShippingGap', { amount: formatMoney(freeShippingRemaining) })
                   : t('pages.cart.freeShippingUnlocked')}
               </Tag>
+              {giftUnlocked ? (
+                <Tag color="green">{t('pages.cart.drawerGiftUnlocked')}</Tag>
+              ) : null}
             </div>
             <div className="cart-page__readinessActions">
               <Button size="small" onClick={() => toggleAll(true)} disabled={purchasableItems.length === 0 || allSelected}>
@@ -603,11 +661,16 @@ const Cart: React.FC = () => {
               ) : null}
             </div>
           </div>
-          <div className="cart-page__confidencePanel">
-            <div className="cart-page__confidenceIntro">
-              <Text strong>{t('pages.cart.confidenceTitle')}</Text>
-              <Text type="secondary">{t('pages.cart.confidenceSubtitle')}</Text>
-            </div>
+          <details className="cart-page__confidencePanel">
+            <summary>
+              <span className="cart-page__confidenceIntro">
+                <Text strong>{t('pages.cart.confidenceTitle')}</Text>
+                <Text type="secondary">{t('pages.cart.confidenceSubtitle')}</Text>
+              </span>
+              <Tag color={checkoutConfidenceReadyCount === checkoutConfidenceItems.length ? 'green' : 'orange'}>
+                {checkoutConfidenceReadyCount}/{checkoutConfidenceItems.length}
+              </Tag>
+            </summary>
             <div className="cart-page__confidenceGrid">
               {checkoutConfidenceItems.map((item) => (
                 <div className={item.ready ? 'cart-page__confidenceItem cart-page__confidenceItem--ready' : 'cart-page__confidenceItem'} key={item.key}>
@@ -619,6 +682,20 @@ const Cart: React.FC = () => {
                 </div>
               ))}
             </div>
+          </details>
+          <div className={`cart-page__nextAction cart-page__nextAction--${cartNextAction.tone}`}>
+            <span>
+              <Text type="secondary">{t('pages.cart.nextActionEyebrow')}</Text>
+              <Text strong>{cartNextAction.title}</Text>
+              <Text type="secondary">{cartNextAction.text}</Text>
+            </span>
+            <Button
+              type={cartNextAction.tone === 'ready' ? 'primary' : 'default'}
+              onClick={cartNextAction.action}
+              loading={cartNextAction.key === 'saved' && restoringSaved}
+            >
+              {cartNextAction.label}
+            </Button>
           </div>
           <div className="cart-page__table">
             <Table columns={columns} dataSource={cartItems} rowKey="id" loading={loading} pagination={false} />
@@ -697,13 +774,15 @@ const Cart: React.FC = () => {
             </div>
           </Card>
           {selectedItems.length > 0 ? (
-            <div className="cart-page__addOn">
-              <AddOnAssistant
-                cartProductIds={cartItems.map((item) => item.productId)}
-                remainingAmount={freeShippingRemaining}
-                reason="shipping"
-                onAdd={addSuggestedProduct}
-              />
+            <div className="cart-page__addOn" id="cart-add-on-assistant">
+              {benefitTarget ? (
+                <AddOnAssistant
+                  cartProductIds={cartItems.map((item) => item.productId)}
+                  remainingAmount={benefitTarget.remainingAmount}
+                  reason={benefitTarget.reason}
+                  onAdd={addSuggestedProduct}
+                />
+              ) : null}
             </div>
           ) : null}
         </>

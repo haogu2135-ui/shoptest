@@ -7,6 +7,7 @@ import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { conversionConfig } from '../utils/conversionConfig';
+import { needsOptionSelection } from '../utils/productOptions';
 import './AddOnAssistant.css';
 
 const { Text } = Typography;
@@ -16,6 +17,14 @@ const ADD_ON_PRODUCT_CACHE_MS = 60_000;
 let addOnProductCache: { products: Product[]; expiresAt: number } | null = null;
 let addOnProductRequest: Promise<Product[]> | null = null;
 
+const getAddOnPrice = (product: Product) => Number(product.effectivePrice ?? product.price ?? 0);
+
+const isReadyAddOnProduct = (product: Product) =>
+  (product.status || 'ACTIVE') === 'ACTIVE'
+  && (product.stock === undefined || product.stock > 0)
+  && !needsOptionSelection(product)
+  && getAddOnPrice(product) > 0;
+
 const loadAddOnProducts = async () => {
   const now = Date.now();
   if (addOnProductCache && addOnProductCache.expiresAt > now) {
@@ -24,11 +33,12 @@ const loadAddOnProducts = async () => {
   if (!addOnProductRequest) {
     addOnProductRequest = productApi.getAll()
       .then((response) => {
+        const products = response.data.filter(isReadyAddOnProduct);
         addOnProductCache = {
-          products: response.data,
+          products,
           expiresAt: Date.now() + ADD_ON_PRODUCT_CACHE_MS,
         };
-        return response.data;
+        return products;
       })
       .finally(() => {
         addOnProductRequest = null;
@@ -42,9 +52,6 @@ const resolveImage = (imageUrl?: string) => {
   if (/^(https?:|data:|blob:)/i.test(imageUrl)) return imageUrl;
   return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
 };
-
-const needsOptionSelection = (product: Product) =>
-  Boolean((product.variants && product.variants.length > 0) || (product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0));
 
 interface AddOnAssistantProps {
   cartProductIds: number[];
@@ -78,19 +85,22 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
       conversionConfig.addOnAssistant.priceCeilingMxn,
       remainingAmount * conversionConfig.addOnAssistant.priceCeilingRatio,
     );
-    return products
+    const cartFilteredProducts = products.filter((product) => !cartIds.has(product.id));
+    const targetWindowProducts = cartFilteredProducts
       .filter((product) => {
-        const price = product.effectivePrice ?? product.price;
-        return !cartIds.has(product.id)
-          && (product.status || 'ACTIVE') === 'ACTIVE'
-          && (product.stock === undefined || product.stock > 0)
-          && !needsOptionSelection(product)
-          && price >= floor
-          && price <= ceiling;
-      })
+        const price = getAddOnPrice(product);
+        return price >= floor && price <= ceiling;
+      });
+    const fallbackProducts = cartFilteredProducts
+      .filter((product) => getAddOnPrice(product) >= remainingAmount)
+      .sort((left, right) => getAddOnPrice(left) - getAddOnPrice(right))
+      .slice(0, conversionConfig.addOnAssistant.maxFallbackSuggestions || 1);
+    const uniqueProducts = [...targetWindowProducts, ...fallbackProducts]
+      .filter((product, index, list) => list.findIndex((item) => item.id === product.id) === index);
+    return uniqueProducts
       .sort((left, right) => {
-        const leftPrice = left.effectivePrice ?? left.price;
-        const rightPrice = right.effectivePrice ?? right.price;
+        const leftPrice = getAddOnPrice(left);
+        const rightPrice = getAddOnPrice(right);
         return Math.abs(leftPrice - remainingAmount) - Math.abs(rightPrice - remainingAmount)
           || (right.reviewCount || 0) - (left.reviewCount || 0)
           || leftPrice - rightPrice;
@@ -146,7 +156,10 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
             />
             <div className="add-on-assistant__body">
               <Text className="add-on-assistant__name">{product.name}</Text>
-              <Text strong className="add-on-assistant__price">{formatMoney(product.effectivePrice ?? product.price)}</Text>
+              <Text strong className="add-on-assistant__price">{formatMoney(getAddOnPrice(product))}</Text>
+              {getAddOnPrice(product) >= remainingAmount ? (
+                <Text className="add-on-assistant__fit">{t('pages.addOnAssistant.coversGap')}</Text>
+              ) : null}
             </div>
             <Button
               size="small"

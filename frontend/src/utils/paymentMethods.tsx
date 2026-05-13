@@ -73,7 +73,7 @@ export const createPaymentMethodOptions = (t: (key: string) => string, channels:
 
 export const createPaymentMethodDetails = (channels: PaymentChannel[]): PaymentMethodDetail[] =>
     channels
-        .filter((channel) => ['MX', 'CN'].includes(String(channel.market || '').toUpperCase()))
+        .filter((channel) => ['MX', 'CN', 'GLOBAL'].includes(String(channel.market || '').toUpperCase()))
         .sort((a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100))
         .map((channel) => ({
             value: channel.code,

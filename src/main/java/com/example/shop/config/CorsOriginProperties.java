@@ -9,16 +9,18 @@ import java.util.stream.Collectors;
 
 @Component
 public class CorsOriginProperties {
-    private static final String LOCALHOST_ORIGINS = "http://localhost:*,http://127.0.0.1:*";
+    private static final String LOCAL_DEVELOPMENT_ORIGINS =
+            "http://localhost:*,http://127.0.0.1:*,"
+                    + "http://10.*:*,http://172.*:*,http://192.168.*:*";
 
-    @Value("${app.cors.allowed-origin-patterns:" + LOCALHOST_ORIGINS + "}")
+    @Value("${app.cors.allowed-origin-patterns:" + LOCAL_DEVELOPMENT_ORIGINS + "}")
     private String corsAllowedOriginPatterns;
 
     @Value("${app.websocket.allowed-origin-patterns:}")
     private String webSocketAllowedOriginPatterns;
 
     public List<String> getCorsAllowedOriginPatterns() {
-        return parseOriginPatterns(corsAllowedOriginPatterns, LOCALHOST_ORIGINS);
+        return parseOriginPatterns(corsAllowedOriginPatterns, LOCAL_DEVELOPMENT_ORIGINS);
     }
 
     public String[] getCorsAllowedOriginPatternArray() {
@@ -39,7 +41,7 @@ public class CorsOriginProperties {
                 .collect(Collectors.toList());
 
         if (patterns.isEmpty()) {
-            return Arrays.asList(LOCALHOST_ORIGINS.split(","));
+            return Arrays.asList(LOCAL_DEVELOPMENT_ORIGINS.split(","));
         }
         return patterns;
     }

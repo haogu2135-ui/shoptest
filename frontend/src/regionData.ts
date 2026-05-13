@@ -46,7 +46,7 @@ const buildChinaRegionData = (): RegionOption => {
     ),
   );
 
-  return option('中国', provinces);
+  return option('\u4e2d\u56fd', provinces);
 };
 
 const streets = (names: string[]): RegionOption[] => names.map((name) => option(name));
@@ -66,7 +66,7 @@ const buildMexicoRegionData = (): RegionOption => {
       ),
     );
 
-  return option('墨西哥', states);
+  return option('\u58a8\u897f\u54e5', states);
 };
 
 export const regionData: RegionOption[] = [

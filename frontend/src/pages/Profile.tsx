@@ -580,17 +580,20 @@ const Profile: React.FC = () => {
   };
 
   const afterSaleStatuses = ['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURNED'];
+  const isReturnableOrder = (order: Order) => order.status === 'COMPLETED' && Boolean(order.returnable);
   const orderStatusTabs = [
     { key: 'all', label: t('pages.profile.allOrders') },
     { key: 'PENDING_PAYMENT', label: t('status.PENDING_PAYMENT'), statuses: ['PENDING_PAYMENT'] },
     { key: 'PENDING_SHIPMENT', label: t('status.PENDING_SHIPMENT'), statuses: ['PENDING_SHIPMENT'] },
     { key: 'SHIPPED', label: t('status.SHIPPED'), statuses: ['SHIPPED'] },
     { key: 'COMPLETED', label: t('status.COMPLETED'), statuses: ['COMPLETED'] },
+    { key: 'RETURNABLE', label: t('pages.profile.afterSaleReturnable') },
     { key: 'AFTER_SALE', label: t('pages.profile.afterSale'), statuses: afterSaleStatuses },
     { key: 'CANCELLED', label: t('status.CANCELLED'), statuses: ['CANCELLED'] },
   ];
   const matchesOrderFilter = (order: Order) => {
     if (orderStatusFilter === 'all') return true;
+    if (orderStatusFilter === 'RETURNABLE') return isReturnableOrder(order);
     const currentTab = orderStatusTabs.find((tab) => tab.key === orderStatusFilter);
     return currentTab?.statuses?.includes(order.status) || false;
   };
@@ -614,7 +617,7 @@ const Profile: React.FC = () => {
   const pendingPaymentCount = orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
   const inTransitCount = orders.filter((order) => order.status === 'SHIPPED').length;
   const afterSaleCount = orders.filter((order) => afterSaleStatuses.includes(order.status)).length;
-  const returnableOrdersCount = orders.filter((order) => order.returnable).length;
+  const returnableOrdersCount = orders.filter(isReturnableOrder).length;
   const returnApprovedCount = orders.filter((order) => order.status === 'RETURN_APPROVED').length;
   const returnShippedCount = orders.filter((order) => order.status === 'RETURN_SHIPPED').length;
   const defaultAddressReady = addresses.some((address) => address.isDefault);
@@ -637,7 +640,7 @@ const Profile: React.FC = () => {
   const accountHealthScore = Math.round((accountHealthSignals.filter(Boolean).length / accountHealthSignals.length) * 100);
   const nextReturnDeadline = useMemo(() => {
     const deadlines = orders
-      .filter((order) => order.returnable && order.returnDeadline)
+      .filter((order) => isReturnableOrder(order) && order.returnDeadline)
       .map((order) => new Date(order.returnDeadline as string))
       .filter((date) => !Number.isNaN(date.getTime()))
       .sort((left, right) => left.getTime() - right.getTime());
@@ -688,6 +691,30 @@ const Profile: React.FC = () => {
     if (value === 'LARGE') return t('pages.profile.petSizeLarge');
     return value || t('common.unset');
   };
+  const profilePetShoppingFocus = petProfiles.find((pet) => pet.petType && (pet.size || pet.breed)) || petProfiles[0] || null;
+  const petShoppingSizeValue = (value?: string) => {
+    if (value === 'SMALL') return 'Small';
+    if (value === 'MEDIUM') return 'Medium';
+    if (value === 'LARGE') return 'Large';
+    return '';
+  };
+  const petShoppingKeyword = (pet?: PetProfile | null) => {
+    if (!pet) return '';
+    if (pet.breed) return pet.breed;
+    if (pet.petType === 'DOG') return 'dog';
+    if (pet.petType === 'CAT') return 'cat';
+    return 'small pet';
+  };
+  const openPetShoppingPath = (pet?: PetProfile | null) => {
+    const targetPet = pet || profilePetShoppingFocus;
+    const params = new URLSearchParams();
+    const keywordValue = petShoppingKeyword(targetPet);
+    const sizeValue = petShoppingSizeValue(targetPet?.size);
+    if (keywordValue) params.set('keyword', keywordValue);
+    if (sizeValue) params.set('petSize', sizeValue);
+    params.set('sort', 'personalized-desc');
+    navigate(`/products?${params.toString()}`);
+  };
   const getOrderActionHint = (order: Order): OrderActionHint => {
     const returnDeadline = order.returnDeadline ? new Date(order.returnDeadline).toLocaleDateString(dateLocale) : '';
     if (order.status === 'PENDING_PAYMENT') {
@@ -713,7 +740,7 @@ const Profile: React.FC = () => {
           : t('pages.profile.nextReceiveText'),
       };
     }
-    if (order.returnable) {
+    if (isReturnableOrder(order)) {
       return {
         tone: 'return',
         title: t('pages.profile.nextReturnWindowTitle'),
@@ -964,7 +991,7 @@ const Profile: React.FC = () => {
                     <Text type="secondary">{afterSaleFocusText}</Text>
                   </div>
                   <div className="profile-after-sale-panel__metrics">
-                    <button type="button" onClick={() => setOrderStatusFilter('all')}>
+                    <button type="button" onClick={() => setOrderStatusFilter('RETURNABLE')}>
                       <strong>{returnableOrdersCount}</strong>
                       <span>{t('pages.profile.afterSaleReturnable')}</span>
                     </button>
@@ -982,7 +1009,9 @@ const Profile: React.FC = () => {
                   {orderStatusTabs.map((tab) => {
                     const count = tab.key === 'all'
                       ? orders.length
-                      : orders.filter((order) => tab.statuses?.includes(order.status)).length;
+                      : tab.key === 'RETURNABLE'
+                        ? returnableOrdersCount
+                        : orders.filter((order) => tab.statuses?.includes(order.status)).length;
                     return (
                       <button
                         key={tab.key}
@@ -1087,7 +1116,7 @@ const Profile: React.FC = () => {
                             {order.status === 'SHIPPED' && (
                               <Button type="primary" onClick={() => handleConfirmReceipt(order.id)}>{t('pages.profile.confirmReceipt')}</Button>
                             )}
-                            {order.returnable && (
+                            {isReturnableOrder(order) && (
                               <Button danger onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</Button>
                             )}
                             {order.status === 'RETURN_REQUESTED' && (
@@ -1101,7 +1130,7 @@ const Profile: React.FC = () => {
                             {order.status === 'RETURN_SHIPPED' && (
                               <Tag color="cyan">{t('status.RETURN_SHIPPED')}</Tag>
                             )}
-                            {(order.returnable || afterSaleStatuses.includes(order.status)) && (
+                            {(isReturnableOrder(order) || afterSaleStatuses.includes(order.status)) && (
                               <Button type="link" onClick={openSupport}>{t('pages.profile.contactSupport')}</Button>
                             )}
                             <Button type="link" onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</Button>
@@ -1156,6 +1185,37 @@ const Profile: React.FC = () => {
                     {petProfileFocus ? t('pages.profile.completePetProfile') : t('pages.profile.addPet')}
                   </Button>
                 </div>
+                <div className="profile-pet-shop-path">
+                  <div>
+                    <Text type="secondary">{t('pages.profile.petShopPathEyebrow')}</Text>
+                    <Text strong>
+                      {profilePetShoppingFocus
+                        ? t('pages.profile.petShopPathTitleWithName', { name: profilePetShoppingFocus.name })
+                        : t('pages.profile.petShopPathTitle')}
+                    </Text>
+                    <Text type="secondary">
+                      {profilePetShoppingFocus
+                        ? t('pages.profile.petShopPathText', {
+                          type: petTypeLabel(profilePetShoppingFocus.petType),
+                          size: petSizeLabel(profilePetShoppingFocus.size),
+                        })
+                        : t('pages.profile.petShopPathEmpty')}
+                    </Text>
+                  </div>
+                  <Space wrap className="profile-pet-shop-path__actions">
+                    {profilePetShoppingFocus ? (
+                      <Tag color="green">{t('pages.profile.petShopPathSignalReady')}</Tag>
+                    ) : (
+                      <Tag color="gold">{t('pages.profile.petShopPathNeedsProfile')}</Tag>
+                    )}
+                    <Button
+                      icon={<ShoppingCartOutlined />}
+                      onClick={() => profilePetShoppingFocus ? openPetShoppingPath(profilePetShoppingFocus) : openPetModal()}
+                    >
+                      {profilePetShoppingFocus ? t('pages.profile.shopForThisPet') : t('pages.profile.addPet')}
+                    </Button>
+                  </Space>
+                </div>
                 <Button type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openPetModal()}>
                   {t('pages.profile.addPet')}
                 </Button>
@@ -1183,6 +1243,9 @@ const Profile: React.FC = () => {
                             <Text>{t('pages.profile.petWeight')}: {pet.weight ? `${pet.weight} kg` : t('common.unset')}</Text>
                             <Text>{t('pages.profile.petSize')}: {petSizeLabel(pet.size)}</Text>
                             {pet.birthday ? <Tag color="gold">{t('pages.profile.birthdayCouponEnabled')}</Tag> : null}
+                            <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => openPetShoppingPath(pet)}>
+                              {t('pages.profile.shopForThisPet')}
+                            </Button>
                           </Space>
                         </Card>
                       </List.Item>

@@ -147,8 +147,8 @@
   height: 54px;
   display: block;
   border-radius: 6px;
-  object-fit: cover;
-  background: #f7f4ee;
+  object-fit: contain;
+  background: #ffffff;
 }
 
 .checkout-page__itemTotal {
@@ -175,55 +175,51 @@
   font-size: 24px;
 }
 
-.checkout-page__deliveryPromise .ant-card-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+.checkout-page__benefitStrip {
+  margin-bottom: 16px;
+  border-color: #dce9df;
+  background: #f8fcf9;
+}
+
+.checkout-page__benefitStrip .ant-card-body {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.checkout-page__benefitItem {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
   border: 1px solid #dce9df;
   border-radius: 8px;
+  background: #ffffff;
+}
+
+.checkout-page__benefitItem--ready {
+  border-color: #cfe4d4;
   background: #f6fbf7;
 }
 
-.checkout-page__deliveryIcon {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+.checkout-page__benefitItem .ant-typography {
+  display: block;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.checkout-page__benefitIcon {
+  width: 38px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: #124734;
   color: #ffffff;
-}
-
-.checkout-page__deliveryPromise .ant-typography {
-  display: block;
-}
-
-.checkout-page__gift {
-  border-color: #f3dca8;
-  background: #fffaf0;
-}
-
-.checkout-page__gift--unlocked {
-  border-color: #dfe9e2;
-  background: #f7fbf8;
-}
-
-.checkout-page__gift .ant-card-body {
-  display: grid;
-  gap: 10px;
-}
-
-.checkout-page__giftHeader {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-}
-
-.checkout-page__giftHeader .ant-typography {
-  display: block;
+  font-size: 18px;
 }
 
 .checkout-page__giftIcon {
@@ -238,17 +234,87 @@
   font-size: 20px;
 }
 
-.checkout-page__gift--unlocked .checkout-page__giftIcon {
-  background: #eaf4ef;
-  color: #124734;
-}
-
 .checkout-page__giftModal {
   width: 100%;
 }
 
 .checkout-page__giftModal .ant-typography {
   line-height: 22px;
+}
+
+#checkout-add-on-assistant {
+  scroll-margin-top: 24px;
+}
+
+.checkout-page__supportPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #eee4d3;
+  border-radius: 8px;
+  background: #fffaf4;
+}
+
+.checkout-page__supportPanel > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 54px;
+  padding: 12px 14px;
+  color: #173f2b;
+  cursor: pointer;
+  list-style: none;
+}
+
+.checkout-page__supportPanel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.checkout-page__supportPanel > summary::after {
+  content: '+';
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f4efe4;
+  color: #124734;
+  font-weight: 700;
+}
+
+.checkout-page__supportPanel[open] > summary::after {
+  content: '-';
+}
+
+.checkout-page__supportPanel > summary > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.checkout-page__supportPanel > summary .ant-typography {
+  display: block;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.checkout-page__supportPanel > summary .ant-tag {
+  justify-self: end;
+  margin-inline-end: 0;
+}
+
+.checkout-page__supportPanel[open] {
+  padding-bottom: 12px;
+}
+
+.checkout-page__supportPanel[open] > summary {
+  border-bottom: 1px solid #f1eadf;
+}
+
+.checkout-page__supportPanel > :not(summary) {
+  margin-right: 12px;
+  margin-left: 12px;
 }
 
 .checkout-page__savingsCoach {
@@ -319,6 +385,26 @@
   overflow-wrap: anywhere;
 }
 
+.checkout-page__couponOpportunity .ant-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #ffd8bf;
+  border-radius: 8px;
+  background: #fff9f4;
+}
+
+.checkout-page__couponOpportunity--ready .ant-card-body {
+  border-color: #d5e8d8;
+  background: #f8fcf9;
+}
+
+.checkout-page__couponOpportunity .ant-typography {
+  display: block;
+  line-height: 1.35;
+}
+
 .checkout-page__readiness {
   border-color: #dce9df;
   background: #fbfff8;
@@ -381,6 +467,35 @@
   overflow-wrap: anywhere;
 }
 
+.checkout-page__nextAction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #ffd8bf;
+  border-radius: 8px;
+  background: #fff9f4;
+}
+
+.checkout-page__nextAction--ready {
+  border-color: #d5e8d8;
+  background: #ffffff;
+}
+
+.checkout-page__nextAction > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.checkout-page__nextAction .ant-typography {
+  display: block;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .checkout-page__paymentConfidence {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
@@ -435,6 +550,18 @@
     grid-template-columns: 1fr;
   }
 
+  .checkout-page__benefitStrip .ant-card-body {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-page__benefitItem {
+    padding: 8px;
+  }
+
+  .checkout-page__supportPanel > summary {
+    padding: 10px 12px;
+  }
+
   .checkout-page__savingsCoachHeader,
   .checkout-page__savingsCoachGrid {
     grid-template-columns: 1fr;
@@ -450,6 +577,22 @@
 
   .checkout-page__readinessGrid {
     grid-template-columns: 1fr;
+  }
+
+  .checkout-page__nextAction {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-page__couponOpportunity .ant-card-body {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-page__couponOpportunity .ant-btn {
+    width: 100%;
+  }
+
+  .checkout-page__nextAction .ant-btn {
+    width: 100%;
   }
 
   .checkout-page__item {

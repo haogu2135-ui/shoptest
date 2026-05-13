@@ -122,6 +122,51 @@
   font-weight: 700;
 }
 
+.stock-alerts__nextAction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid #d9eadf;
+  border-radius: 8px;
+  background: #f7fbf8;
+}
+
+.stock-alerts__nextAction--options,
+.stock-alerts__nextAction--waiting {
+  border-color: #ffd8bf;
+  background: #fff7f0;
+}
+
+.stock-alerts__nextAction--browse {
+  border-color: #eee4d3;
+  background: #ffffff;
+}
+
+.stock-alerts__nextAction .ant-typography {
+  margin: 0;
+}
+
+.stock-alerts__nextAction h4.ant-typography {
+  margin: 4px 0;
+  color: #173f2b;
+}
+
+.stock-alerts__nextActionMeta {
+  justify-content: flex-end;
+}
+
+.stock-alerts__nextActionMeta .ant-tag {
+  margin: 0;
+}
+
+.stock-alerts__nextAction .ant-btn {
+  min-height: 40px;
+  font-weight: 700;
+}
+
 .stock-alerts__item {
   border-radius: 8px;
   padding-inline: 12px !important;
@@ -189,9 +234,17 @@
     padding: 14px;
   }
 
+  .stock-alerts__nextAction {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
   .stock-alerts__recoveryActions,
   .stock-alerts__recoveryActions .ant-space-item,
-  .stock-alerts__recoveryActions .ant-btn {
+  .stock-alerts__recoveryActions .ant-btn,
+  .stock-alerts__nextActionMeta,
+  .stock-alerts__nextActionMeta .ant-space-item,
+  .stock-alerts__nextAction .ant-btn {
     width: 100%;
   }
 

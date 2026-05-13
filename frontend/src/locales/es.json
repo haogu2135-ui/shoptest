@@ -29,7 +29,8 @@
     "itemsCount": "{count} articulos",
     "tableTotal": "Total: {count}",
     "send": "Enviar",
-    "refresh": "Actualizar"
+    "refresh": "Actualizar",
+    "reset": "Restablecer"
   },
   "status": {
     "PENDING_PAYMENT": "Pendiente de pago",
@@ -107,7 +108,8 @@
     "brands": "Marcas",
     "notifications": "Notificaciones",
     "logisticsCarriers": "Paqueterias",
-    "auditLogs": "Logs de seguridad"
+    "auditLogs": "Logs de seguridad",
+    "permissions": "Permisos"
   },
   "nav": {
     "sell": "Centro vendedor",
@@ -248,7 +250,9 @@
       "fountain": "una fuente silenciosa",
       "bed": "una cama ortopedica",
       "harness": "un arnes de paseo"
-    }
+    },
+    "inStock": "Disponible",
+    "stockAvailable": "{count} disponibles"
   },
   "footer": {
     "customerCare": "Atencion al cliente",
@@ -376,7 +380,21 @@
       "pathStepThreshold": "Arma carrito cerca de {amount}",
       "pathStepBrowse": "Encuentra esenciales para mascota",
       "pathStepUse": "Aplicalo en carrito",
-      "pathStepCheckout": "Paga con ahorro listo"
+      "pathStepCheckout": "Paga con ahorro listo",
+      "nextActionEyebrow": "Siguiente accion de ahorro",
+      "nextActionLoginTitle": "Inicia sesion para guardar el cupon",
+      "nextActionLoginText": "{name} vale la pena guardarlo en tu cuenta antes de comprar.",
+      "nextActionClaimTitle": "Toma primero el cupon mas fuerte",
+      "nextActionClaimText": "{name} puede aportar cerca de {value}. Tomalo antes de armar el carrito.",
+      "nextActionCartReadyTitle": "Tu carrito ya puede usar cupon",
+      "nextActionCartReadyText": "{count} articulo(s) por {amount} estan listos para revisar con tus cupones.",
+      "nextActionBuildTitle": "Arma el carrito para activar ahorro",
+      "nextActionBuildText": "Agrega {amount} mas para usar {name} con menos friccion en checkout.",
+      "nextActionBrowseTitle": "Empieza con picks personalizados",
+      "nextActionBrowseText": "Explora productos con ranking personalizado y vuelve con un carrito listo para cupon.",
+      "nextActionBrowsePersonalized": "Ver picks personales",
+      "currentCartValue": "Carrito actual",
+      "couponThresholdGap": "Falta para regla"
     },
     "adminCoupons": {
       "title": "Cupones",
@@ -469,6 +487,20 @@
       "confidenceShipping": "Beneficio de envio",
       "confidenceShippingReady": "Envio gratis desbloqueado.",
       "confidenceShippingGap": "Faltan {amount} para envio gratis.",
+      "nextActionEyebrow": "Siguiente mejor accion",
+      "nextActionClearTitle": "Quita bloqueos antes de pagar",
+      "nextActionClearText": "{count} articulo(s) no disponibles pueden bloquear el pago. Limpialos ahora.",
+      "nextActionSelectTitle": "Selecciona articulos listos",
+      "nextActionSelectText": "{count} articulo(s) disponibles pueden avanzar al checkout.",
+      "nextActionShippingTitle": "Agrega un extra para envio gratis",
+      "nextActionShippingText": "Faltan {amount} para activar el beneficio de envio.",
+      "nextActionGiftTitle": "Agrega un favorito para el regalo",
+      "nextActionGiftText": "Faltan {amount} para desbloquear el regalo de checkout.",
+      "nextActionFindAddOn": "Buscar extra",
+      "nextActionSavedTitle": "Recupera guardados",
+      "nextActionSavedText": "{count} articulo(s) guardados ya conviene revisar antes de pagar.",
+      "nextActionCheckoutTitle": "Carrito listo",
+      "nextActionCheckoutText": "El total seleccionado es {amount}. Puedes continuar al pago seguro.",
       "unavailable": "Sin inventario o no disponible",
       "unavailableSelected": "Algunos articulos seleccionados no tienen inventario o no estan disponibles",
       "lowStockLeft": "Solo quedan {count}",
@@ -496,16 +528,22 @@
       "drawerReadyText": "{count} articulo(s) pueden pagarse, {blocked} bloqueados, {low} bajo stock.",
       "drawerExpressReadyHint": "Envio gratis activo. Elige una billetera para avanzar rapido.",
       "drawerExpressAddOnHint": "Faltan {amount} para envio gratis. Agrega un extra o paga ahora.",
+      "drawerExpressGiftHint": "Faltan {amount} para el regalo de checkout. Agrega un extra o paga ahora.",
       "drawerExpressEmpty": "Agrega un articulo listo antes del pago express.",
+      "drawerGiftUnlocked": "Regalo de checkout desbloqueado",
       "drawerFooterHint": "El checkout seguro solo abre enlaces de pago configurados.",
-      "deleteSavedConfirm": "Quitar este articulo guardado?"
+      "deleteSavedConfirm": "Quitar este articulo guardado?",
+      "drawerExpressBlocked": "{count} articulo(s) bloqueados necesitan revision antes del pago express.",
+      "drawerClearBlocked": "Quitar bloqueados",
+      "drawerClearedBlocked": "Se quitaron {count} articulo(s) bloqueados."
     },
     "addOnAssistant": {
       "title": "Sugerencias para completar",
       "shippingHint": "Agrega {amount} mas para envio gratis. Estos extras cubren la diferencia.",
       "giftHint": "Agrega {amount} mas para desbloquear tu regalo. Suma un favorito pequeno.",
       "add": "Agregar",
-      "added": "Agregado al carrito"
+      "added": "Agregado al carrito",
+      "coversGap": "Cubre la diferencia"
     },
     "wishlist": {
       "title": "Mis favoritos ({count})",
@@ -539,7 +577,19 @@
       "bestPickEyebrow": "Mejor eleccion ahora",
       "bestPickReady": "Listo para agregar con la menor friccion.",
       "bestPickOptions": "Favorito prioritario. Elige opciones para moverlo al pago.",
-      "bestPickLowStock": "Quedan {count}; conviene decidir antes de que se agote."
+      "bestPickLowStock": "Quedan {count}; conviene decidir antes de que se agote.",
+      "nextActionEyebrow": "Siguiente accion de favoritos",
+      "nextActionReadyTitle": "Mueve favoritos listos al carrito",
+      "nextActionReadyText": "{count} favorito(s) listos por {amount} pueden moverse sin elegir opciones.",
+      "nextActionOptionsTitle": "Resuelve opciones pendientes",
+      "nextActionOptionsText": "{count} favorito(s) necesitan talla, color o variante antes de pagar.",
+      "nextActionLowStockTitle": "Decide antes de que se agote",
+      "nextActionLowStockText": "{name} es el favorito urgente que conviene revisar ahora.",
+      "nextActionBrowseTitle": "Arma una lista mas fuerte",
+      "nextActionBrowseText": "Usa el ranking personalizado para agregar productos mejor alineados a favoritos.",
+      "readyValue": "Valor listo {amount}",
+      "viewBestPick": "Ver mejor pick",
+      "browsePersonalized": "Ver picks personales"
     },
     "notifications": {
       "title": "Notificaciones",
@@ -711,7 +761,20 @@
       "pickQuickAdd": "Listo para agregar",
       "pickDeal": "{percent}% off",
       "pickLowStock": "{count} restantes",
-      "viewPick": "Ver opcion"
+      "pickPetProfile": "Coincide con perfil",
+      "pickPreference": "Coincide con tu navegacion",
+      "viewPick": "Ver opcion",
+      "personalizedSort": "Personalizados primero",
+      "personalGuideEyebrow": "Ruta personalizada",
+      "personalGuideTitle": "Compra con senales de tu mascota y navegacion",
+      "personalGuidePet": "{count} recomendaciones de perfil estan listas. Priorizamos productos que encajan mejor con tus mascotas guardadas.",
+      "personalGuidePreference": "Aun no hay recomendaciones de perfil, asi que esta pagina usa tu interes reciente en {value}.",
+      "personalGuideEmpty": "Agrega un perfil de mascota para activar recomendaciones mas precisas por tamano, etapa y especie.",
+      "personalGuideActive": "Perfil activo",
+      "personalGuideSetup": "Falta configurar",
+      "viewPersonalPicks": "Priorizar confiables",
+      "managePetProfile": "Gestionar perfil",
+      "noReviewsYet": "Producto nuevo - sin resenas aun"
     },
     "compare": {
       "title": "Comparacion de productos",
@@ -907,7 +970,24 @@
       "recoverySubtitle": "{name} aun vale revisarlo por {price}. Combina tu interes reciente con señales de conversion.",
       "recoveryDeal": "Oferta vista",
       "recoveryLowStock": "Bajo stock",
-      "resumeProduct": "Retomar producto"
+      "resumeProduct": "Retomar producto",
+      "nextActionEyebrow": "Siguiente accion de historial",
+      "nextActionAddTitle": "Agrega el producto visto mas fuerte",
+      "nextActionAddText": "{name} esta listo para pasar del historial al carrito.",
+      "nextActionOptionsTitle": "Termina la seleccion de opciones",
+      "nextActionOptionsText": "{name} necesita opciones antes de avanzar al pago.",
+      "nextActionLowStockTitle": "Revisa primero los vistos con bajo stock",
+      "nextActionLowStockText": "{count} producto(s) vistos recientemente tienen bajo stock.",
+      "nextActionBrowseTitle": "Renueva el descubrimiento personalizado",
+      "nextActionBrowseText": "Usa tus senales de navegacion para encontrar productos mejor ordenados.",
+      "addBestToCart": "Agregar mejor al carrito",
+      "addToCart": "Agregar al carrito",
+      "filterLowStock": "Ver bajo stock",
+      "browsePersonalized": "Ver picks personales",
+      "readyToCart": "{count} listos para carrito",
+      "dealWatchCount": "{count} ofertas vistas",
+      "lowStockWatchCount": "{count} bajo stock",
+      "unavailable": "Este producto no esta disponible"
     },
     "review": {
       "title": "Resenas de producto",
@@ -1084,6 +1164,14 @@
       "readinessSavings": "Ahorros",
       "readinessFreeShippingReady": "Envio gratis, cupon o regalo activo.",
       "readinessFreeShippingGap": "Faltan {amount} para envio gratis.",
+      "nextActionTitle": "Siguiente mejor accion",
+      "nextActionReadyTitle": "Checkout listo",
+      "nextActionReadyText": "Todo lo necesario para terminar la compra esta listo. Soporte sigue a un toque.",
+      "nextActionReviewCart": "Revisar carrito",
+      "nextActionAddress": "Completar direccion",
+      "nextActionPayment": "Elegir pago",
+      "nextActionSavings": "Activar ahorros",
+      "nextActionSupport": "Pedir ayuda",
       "paymentConfidenceTitle": "Confianza de pago",
       "paymentConfidenceSelected": "{method} usara la pasarela segura configurada para este mercado.",
       "paymentConfidenceDefault": "Elige un metodo local; solo se abriran enlaces seguros configurados.",
@@ -1091,7 +1179,13 @@
       "alipay": "Codigo QR Alipay",
       "wechat": "Codigo QR WeChat",
       "submit": "Crear pedido y pagar",
-      "submitWithAmount": "Crear pedido y pagar {amount}"
+      "submitWithAmount": "Crear pedido y pagar {amount}",
+      "couponOpportunityBestTitle": "El mejor cupon esta activo",
+      "couponOpportunityAppliedTitle": "Ahorro de cupon activo",
+      "couponOpportunityAppliedText": "{name} ahorra {amount} en este pedido.",
+      "couponOpportunityBuildTitle": "Hay un cupon mejor cerca",
+      "couponOpportunityBuildText": "Agrega {amount} mas para desbloquear aprox. {value} en cupon.",
+      "couponOpportunityReview": "Revisar cupon"
     },
     "orderTracking": {
       "title": "Rastrear pedido",
@@ -1214,7 +1308,11 @@
       "missingEmail": "Correos faltantes",
       "missingPhone": "Telefonos faltantes",
       "readiness": "Preparacion",
-      "readySignals": "{count}/4 listo"
+      "readySignals": "{count}/4 listo",
+      "exportFailed": "No se pudieron exportar los usuarios",
+      "export": "Exportar",
+      "searchPlaceholder": "Buscar usuario, correo o telefono",
+      "roleCode": "Rol operativo"
     },
     "adminOrders": {
       "title": "Pedidos",
@@ -1301,7 +1399,13 @@
       "rawTrackingData": "El proveedor devolvio datos de rastreo sin eventos.",
       "noTrackingData": "Sin datos de rastreo",
       "orderItemsTitle": "Articulos del pedido {id}",
-      "product": "Producto"
+      "product": "Producto",
+      "printFailed": "No se pudo abrir la etiqueta de envio. Intentalo de nuevo.",
+      "confirmApproveReturnTitle": "Aprobar esta solicitud de devolucion?",
+      "confirmApproveReturnContent": "El cliente podra enviar los productos devueltos para revision.",
+      "confirmRejectReturnTitle": "Rechazar esta solicitud de devolucion?",
+      "confirmRejectReturnContent": "El pedido volvera a estado completado y no se pedira al cliente enviar la devolucion.",
+      "returnInfo": "Datos de devolucion"
     },
     "logisticsCarriers": {
       "title": "Configuracion de paqueterias",
@@ -1724,7 +1828,8 @@
       "pathSubscribeTitle": "Suscribete para cuidado recurrente",
       "pathSubscribeText": "Entrega {interval} y ahorra aprox. {amount} en este pedido.",
       "pathOnceTitle": "Compra unica con control total",
-      "pathOnceText": "Ideal para regalos, primeras pruebas, juguetes, ropa y accesorios puntuales."
+      "pathOnceText": "Ideal para regalos, primeras pruebas, juguetes, ropa y accesorios puntuales.",
+      "useRecommendedPath": "Usar opcion recomendada"
     },
     "profile": {
       "fetchUserFailed": "No se pudo cargar la informacion del usuario",
@@ -1903,6 +2008,14 @@
       "petProfileActionEmpty": "Agrega la primera mascota para activar guia de talla y rutas personalizadas.",
       "petProfileActionImprove": "Completa {fields} de {name} para mejorar las recomendaciones.",
       "petProfileActionReady": "Los perfiles estan listos para recomendaciones, cumpleanos y ayuda de talla.",
+      "petShopPathEyebrow": "Ruta personalizada",
+      "petShopPathTitle": "Compra con senales del perfil",
+      "petShopPathTitleWithName": "Comprar para {name}",
+      "petShopPathText": "Abre productos filtrados para {type} y {size}, con sugerencias personalizadas primero.",
+      "petShopPathEmpty": "Agrega una mascota para abrir una ruta de compra mas precisa desde esta pagina.",
+      "petShopPathSignalReady": "Senales listas",
+      "petShopPathNeedsProfile": "Falta perfil",
+      "shopForThisPet": "Comprar para esta mascota",
       "completePetProfile": "Completar perfil",
       "deletePetConfirm": "Eliminar este perfil de mascota?",
       "petName": "Nombre de la mascota",
@@ -2009,6 +2122,31 @@
       "repeatFailures": "Operadores con fallos repetidos",
       "paymentFailures": "Fallos en callbacks de pago",
       "exportEvents": "Eventos de exportacion"
+    },
+    "permissions": {
+      "title": "Gestion de permisos",
+      "subtitle": "Controla los roles de operadores y limita permisos sensibles a responsables de confianza.",
+      "fetchFailed": "No se pudieron cargar usuarios de permisos",
+      "roleUpdated": "Rol de permiso actualizado",
+      "roleUpdateFailed": "No se pudo actualizar el rol",
+      "username": "Usuario",
+      "email": "Email",
+      "currentRole": "Rol actual",
+      "changeRole": "Cambiar rol",
+      "superAdmins": "Super admins",
+      "admins": "Admins",
+      "customers": "Clientes",
+      "guardTitle": "Proteccion de super admin activa",
+      "guardText": "Solo operadores SUPER_ADMIN pueden otorgar, quitar o cambiar roles del backend. Tu propio rol no se puede cambiar desde esta pantalla.",
+      "superAdminOnly": "Solo super admins pueden abrir gestion de permisos",
+      "searchPlaceholder": "Buscar codigo, nombre o descripcion del rol",
+      "newRole": "Nuevo rol",
+      "export": "Exportar",
+      "roleCode": "Codigo de rol",
+      "roleName": "Nombre del rol",
+      "description": "Descripcion",
+      "permissionPages": "Paginas permitidas",
+      "editRole": "Editar rol"
     }
   }
 }

@@ -478,6 +478,38 @@
   overflow-wrap: anywhere;
 }
 
+.profile-pet-shop-path {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #d5e8d8;
+  border-radius: 8px;
+  background: #f7fbf8;
+}
+
+.profile-pet-shop-path > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.profile-pet-shop-path .ant-typography {
+  display: block;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.profile-pet-shop-path__actions {
+  justify-content: flex-end;
+}
+
+.profile-pet-shop-path__actions .ant-tag {
+  margin: 0;
+}
+
 .profile-payment-method-hint {
   display: flex;
   align-items: flex-start;
@@ -566,6 +598,17 @@
   }
 
   .profile-pet-next-step .ant-btn {
+    width: 100%;
+  }
+
+  .profile-pet-shop-path {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .profile-pet-shop-path__actions,
+  .profile-pet-shop-path__actions .ant-space-item,
+  .profile-pet-shop-path__actions .ant-btn {
     width: 100%;
   }
 

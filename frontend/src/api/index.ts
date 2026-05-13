@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
-import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog } from '../types';
+import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole } from '../types';
 
 const resolveApiBaseUrl = () => {
     const configured = process.env.REACT_APP_API_BASE_URL;
@@ -26,15 +26,14 @@ export const supportWebSocketUrl = (token: string) => {
     return base.toString();
 };
 
-export const appConfigApi = {
-    get: () => api.get<AppConfig>('/app/config'),
-};
-
 const PRODUCT_LIST_CACHE_MS = 30_000;
 const PRODUCT_DETAIL_CACHE_MS = 30_000;
 const ORDER_TRACK_CACHE_MS = 15_000;
 const PET_GALLERY_CACHE_MS = 20_000;
 const NOTIFICATION_CACHE_MS = 15_000;
+const PERSONALIZED_RECOMMENDATION_CACHE_MS = 45_000;
+const APP_CONFIG_CACHE_MS = 60_000;
+const PAYMENT_CHANNEL_CACHE_MS = 60_000;
 const productListCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
 const productListRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
 const productDetailCache = new Map<number, { expiresAt: number; response: AxiosResponse<Product> }>();
@@ -45,6 +44,32 @@ const petGalleryCache = new Map<string, { expiresAt: number; response: AxiosResp
 const petGalleryRequests = new Map<string, Promise<AxiosResponse<PetGalleryPhoto[]> | AxiosResponse<PetGalleryQuota>>>();
 const notificationCache = new Map<string, { expiresAt: number; response: AxiosResponse<AppNotification[]> | AxiosResponse<{ count: number }> }>();
 const notificationRequests = new Map<string, Promise<AxiosResponse<AppNotification[]> | AxiosResponse<{ count: number }>>>();
+const personalizedRecommendationCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
+const personalizedRecommendationRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
+let appConfigCache: { expiresAt: number; response: AxiosResponse<AppConfig> } | null = null;
+let appConfigRequest: Promise<AxiosResponse<AppConfig>> | null = null;
+let paymentChannelCache: { expiresAt: number; response: AxiosResponse<PaymentChannel[]> } | null = null;
+let paymentChannelRequest: Promise<AxiosResponse<PaymentChannel[]>> | null = null;
+let adminPermissionsCache: { expiresAt: number; response: AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }> } | null = null;
+let adminPermissionsRequest: Promise<AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }>> | null = null;
+
+export const appConfigApi = {
+    get: () => {
+        if (appConfigCache && appConfigCache.expiresAt > Date.now()) {
+            return Promise.resolve(appConfigCache.response);
+        }
+        if (appConfigRequest) return appConfigRequest;
+        appConfigRequest = api.get<AppConfig>('/app/config')
+            .then((response) => {
+                appConfigCache = { response, expiresAt: Date.now() + APP_CONFIG_CACHE_MS };
+                return response;
+            })
+            .finally(() => {
+                appConfigRequest = null;
+            });
+        return appConfigRequest;
+    },
+};
 
 const clearProductListCache = () => {
     productListCache.clear();
@@ -53,6 +78,8 @@ const clearProductListCache = () => {
 
 const clearProductCache = (id?: number) => {
     clearProductListCache();
+    personalizedRecommendationCache.clear();
+    personalizedRecommendationRequests.clear();
     if (id === undefined) {
         productDetailCache.clear();
         productDetailRequests.clear();
@@ -67,6 +94,11 @@ const clearPetGalleryCache = () => {
     petGalleryRequests.clear();
 };
 
+const clearPersonalizedRecommendationCache = () => {
+    personalizedRecommendationCache.clear();
+    personalizedRecommendationRequests.clear();
+};
+
 const clearNotificationCache = (userId?: number) => {
     if (userId === undefined) {
         notificationCache.clear();
@@ -77,6 +109,11 @@ const clearNotificationCache = (userId?: number) => {
         notificationCache.delete(key);
         notificationRequests.delete(key);
     });
+};
+
+export const clearAdminPermissionsCache = () => {
+    adminPermissionsCache = null;
+    adminPermissionsRequest = null;
 };
 
 // 请求拦截器
@@ -102,6 +139,8 @@ api.interceptors.response.use(
             localStorage.removeItem('userId');
             localStorage.removeItem('username');
             localStorage.removeItem('role');
+            localStorage.removeItem('adminDefaultPath');
+            clearAdminPermissionsCache();
             if (window.location.pathname !== '/login') {
                 window.location.href = '/login';
             }
@@ -174,8 +213,37 @@ export const productApi = {
         productDetailRequests.set(id, request);
         return request;
     },
+    getByIds: (ids: number[]) => {
+        const uniqueIds = Array.from(new Set(ids.map(Number).filter(Boolean)));
+        return Promise.allSettled(uniqueIds.map((id) => productApi.getById(id)))
+            .then((results) => ({
+                data: results
+                    .filter((result): result is PromiseFulfilledResult<AxiosResponse<Product>> => result.status === 'fulfilled')
+                    .map((result) => result.value.data),
+            } as AxiosResponse<Product[]>));
+    },
     getFeatured: () => api.get<Product[]>('/products/featured'),
-    getPersonalizedRecommendations: () => api.get<Product[]>('/products/personalized-recommendations'),
+    getPersonalizedRecommendations: () => {
+        const userId = localStorage.getItem('userId') || 'guest';
+        const cacheKey = `personalized:${userId}`;
+        const cached = personalizedRecommendationCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return Promise.resolve(cached.response);
+        }
+        const pending = personalizedRecommendationRequests.get(cacheKey);
+        if (pending) return pending;
+        const request = api.get<Product[]>('/products/personalized-recommendations')
+            .then((response) => {
+                personalizedRecommendationCache.set(cacheKey, {
+                    response,
+                    expiresAt: Date.now() + PERSONALIZED_RECOMMENDATION_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => personalizedRecommendationRequests.delete(cacheKey));
+        personalizedRecommendationRequests.set(cacheKey, request);
+        return request;
+    },
     create: (product: Partial<Product>) => api.post<Product>('/products', product).finally(() => clearProductCache()),
     update: (id: number, product: Partial<Product>) => api.put<Product>(`/products/${id}`, product).finally(() => clearProductCache(id)),
     delete: (id: number) => api.delete(`/products/${id}`).finally(() => clearProductCache(id)),
@@ -257,7 +325,21 @@ export const couponApi = {
 };
 
 export const paymentApi = {
-    getChannels: () => api.get<PaymentChannel[]>('/payments/channels'),
+    getChannels: () => {
+        if (paymentChannelCache && paymentChannelCache.expiresAt > Date.now()) {
+            return Promise.resolve(paymentChannelCache.response);
+        }
+        if (paymentChannelRequest) return paymentChannelRequest;
+        paymentChannelRequest = api.get<PaymentChannel[]>('/payments/channels')
+            .then((response) => {
+                paymentChannelCache = { response, expiresAt: Date.now() + PAYMENT_CHANNEL_CACHE_MS };
+                return response;
+            })
+            .finally(() => {
+                paymentChannelRequest = null;
+            });
+        return paymentChannelRequest;
+    },
     create: (orderId: number, channel: string, guestEmail?: string) => api.post<Payment>('/payments', { orderId, channel, guestEmail }),
     simulatePaid: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${paymentId}/simulate-paid`, guestEmail ? { guestEmail } : undefined),
     simulateCallback: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${paymentId}/simulate-callback`, guestEmail ? { guestEmail } : undefined),
@@ -306,9 +388,45 @@ export const brandApi = {
 
 export const adminApi = {
     getDashboard: () => api.get<DashboardStats>('/admin/dashboard'),
-    getUsers: () => api.get<User[]>('/admin/users'),
-    updateUser: (id: number, user: Partial<User>) => api.put(`/admin/users/${id}`, user),
+    getUsers: (params?: { keyword?: string; role?: string; status?: string }) => api.get<User[]>('/admin/users', { params }),
+    exportUsers: (params?: { keyword?: string; role?: string; status?: string }) => api.get('/admin/users/export', { params, responseType: 'blob' }),
+    updateUser: (id: number, user: Partial<User>) => api.put(`/admin/users/${id}`, user)
+        .then((response) => {
+            if (user.role || user.roleCode || user.status) {
+                clearAdminPermissionsCache();
+                window.dispatchEvent(new Event('shop:admin-permissions-updated'));
+            }
+            return response;
+        }),
+    assignUserRole: (id: number, roleCode: string) => api.put<User>(`/admin/users/${id}/role-code`, { roleCode })
+        .then((response) => {
+            clearAdminPermissionsCache();
+            window.dispatchEvent(new Event('shop:admin-permissions-updated'));
+            return response;
+        }),
     deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
+    getRoles: () => api.get<AdminRole[]>('/admin/roles'),
+    saveRole: (role: Partial<AdminRole>) => api.post<AdminRole>('/admin/roles', role)
+        .then((response) => {
+            clearAdminPermissionsCache();
+            window.dispatchEvent(new Event('shop:admin-permissions-updated'));
+            return response;
+        }),
+    getMyPermissions: () => {
+        if (adminPermissionsCache && adminPermissionsCache.expiresAt > Date.now()) {
+            return Promise.resolve(adminPermissionsCache.response);
+        }
+        if (adminPermissionsRequest) return adminPermissionsRequest;
+        adminPermissionsRequest = api.get<{ role: string; roleCode?: string; permissions: string[] }>('/admin/me/permissions')
+            .then((response) => {
+                adminPermissionsCache = { response, expiresAt: Date.now() + 30_000 };
+                return response;
+            })
+            .finally(() => {
+                adminPermissionsRequest = null;
+            });
+        return adminPermissionsRequest;
+    },
     getOrders: (status?: string) => api.get<Order[]>('/admin/orders', {
         params: status ? { status } : undefined,
     }),
@@ -419,9 +537,9 @@ export const notificationApi = {
 
 export const petProfileApi = {
     getMine: () => api.get<PetProfile[]>('/pet-profiles'),
-    create: (payload: Partial<PetProfile>) => api.post<PetProfile>('/pet-profiles', payload),
-    update: (id: number, payload: Partial<PetProfile>) => api.put<PetProfile>(`/pet-profiles/${id}`, payload),
-    delete: (id: number) => api.delete(`/pet-profiles/${id}`),
+    create: (payload: Partial<PetProfile>) => api.post<PetProfile>('/pet-profiles', payload).finally(clearPersonalizedRecommendationCache),
+    update: (id: number, payload: Partial<PetProfile>) => api.put<PetProfile>(`/pet-profiles/${id}`, payload).finally(clearPersonalizedRecommendationCache),
+    delete: (id: number) => api.delete(`/pet-profiles/${id}`).finally(clearPersonalizedRecommendationCache),
 };
 
 export const petGalleryApi = {

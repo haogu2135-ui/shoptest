@@ -4,6 +4,7 @@
   z-index: 1000;
   background: #124734;
   color: #fff;
+  box-shadow: 0 6px 18px rgba(18, 71, 52, 0.18);
 }
 
 .shop-nav__announcement {
@@ -93,6 +94,9 @@
 .shop-nav__links a,
 .shop-nav__links button {
   opacity: 0.92;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .shop-nav__language,
@@ -159,9 +163,18 @@
 }
 
 .shop-nav__mega button {
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 3px 10px;
   white-space: nowrap;
   color: #fff;
   font-weight: 600;
+}
+
+.shop-nav__mega button:hover,
+.shop-nav__mega button:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  text-decoration: none;
 }
 
 .shop-nav__search {
@@ -205,6 +218,7 @@
 }
 
 .shop-nav__suggestions button {
+  min-height: 24px;
   padding: 0;
   font-size: 12px;
   opacity: 0.92;
@@ -240,6 +254,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-height: 32px;
 }
 
 .shop-nav__mobile-auth {
@@ -369,6 +384,8 @@
   }
 
   .shop-nav__mega button {
+    min-height: 32px;
+    padding-inline: 10px;
     font-size: 13px;
   }
 

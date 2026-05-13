@@ -5,9 +5,21 @@ export interface User {
     phone?: string;
     address?: string;
     role: string;
+    roleCode?: string;
     password?: string;
     status?: string;
     createdAt?: string;
+}
+
+export interface AdminRole {
+    id?: number;
+    code: string;
+    name: string;
+    description?: string;
+    status?: string;
+    permissions: string[];
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface DashboardStats {

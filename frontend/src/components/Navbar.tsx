@@ -18,12 +18,13 @@ import {
   ShoppingCartOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
+import { adminApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { Language, useLanguage } from '../i18n';
 import { CurrencyCode, markets } from '../utils/market';
 import { useMarket } from '../hooks/useMarket';
 import { getGuestCartItems } from '../utils/guestCart';
 import { readCompareProductIds } from '../utils/productCompare';
+import { getEffectiveRole, isAdminRole } from '../utils/roles';
 import { readStockAlerts } from '../utils/stockAlerts';
 import './Navbar.css';
 
@@ -33,9 +34,11 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
   const userId = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
+  const [navRole, setNavRole] = useState(localStorage.getItem('role') || '');
+  const [adminPath, setAdminPath] = useState(localStorage.getItem('adminDefaultPath') || '/admin');
+  const canAccessAdmin = isAdminRole(navRole);
   const [cartCount, setCartCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
@@ -61,6 +64,52 @@ const Navbar: React.FC = () => {
   const openSupport = () => {
     window.dispatchEvent(new Event('shop:open-support'));
   };
+
+  useEffect(() => {
+    if (!token) {
+      setNavRole('');
+      setAdminPath('/admin');
+      return;
+    }
+    let disposed = false;
+    const refreshAdminAccess = () => {
+      userApi.getProfile()
+        .then((profileRes) => {
+          if (disposed) return;
+          const effectiveRole = getEffectiveRole(profileRes.data.role, profileRes.data.roleCode);
+          localStorage.setItem('role', effectiveRole);
+          setNavRole(effectiveRole);
+          if (!isAdminRole(effectiveRole)) {
+            localStorage.removeItem('adminDefaultPath');
+            setAdminPath('/admin');
+            return null;
+          }
+          return adminApi.getMyPermissions();
+        })
+        .then((permissionsRes) => {
+          if (disposed || !permissionsRes) return;
+          const permissions = permissionsRes.data.permissions || [];
+          const effectiveRole = getEffectiveRole(permissionsRes.data.role, permissionsRes.data.roleCode);
+          localStorage.setItem('role', effectiveRole);
+          setNavRole(effectiveRole);
+          const nextDefault = permissions[0] ? `/admin/${permissions[0]}` : '/admin';
+          localStorage.setItem('adminDefaultPath', nextDefault);
+          setAdminPath(nextDefault);
+        })
+        .catch(() => {
+          if (disposed) return;
+          const localRole = localStorage.getItem('role') || '';
+          setNavRole(localRole);
+          setAdminPath(localStorage.getItem('adminDefaultPath') || '/admin');
+        });
+    };
+    refreshAdminAccess();
+    window.addEventListener('shop:admin-permissions-updated', refreshAdminAccess);
+    return () => {
+      disposed = true;
+      window.removeEventListener('shop:admin-permissions-updated', refreshAdminAccess);
+    };
+  }, [token]);
 
   useEffect(() => {
     const refreshCompareCount = () => setCompareCount(readCompareProductIds().length);
@@ -176,6 +225,7 @@ const Navbar: React.FC = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('role');
+    localStorage.removeItem('adminDefaultPath');
     localStorage.removeItem('userId');
     setCartCount(0);
     navigate('/login');
@@ -208,7 +258,7 @@ const Navbar: React.FC = () => {
       <div className="shop-nav__top">
         <div className="shop-nav__inner">
           <div className="shop-nav__links">
-            <Link to={role && role.toUpperCase() === 'ADMIN' ? '/admin/dashboard' : '/products'}>{t('nav.sell')}</Link>
+            <Link to={canAccessAdmin ? adminPath : '/products'}>{t('nav.sell')}</Link>
             <Link to="/pet-finder">{t('nav.petFinder')}</Link>
             <Link to="/pet-gallery">{t('nav.petGallery')}</Link>
             <Link to="/coupons">{t('nav.download')}</Link>
@@ -406,8 +456,8 @@ const Navbar: React.FC = () => {
                 <button className="shop-nav__mobile-logout" onClick={handleLogout} aria-label={t('nav.logout')}>
                   <LogoutOutlined />
                 </button>
-                {role && role.toUpperCase() === 'ADMIN' ? (
-                  <Link to="/admin/dashboard" className="shop-nav__admin">
+                {canAccessAdmin ? (
+                  <Link to={adminPath} className="shop-nav__admin">
                     <SettingOutlined /> {t('common.admin')}
                   </Link>
                 ) : null}

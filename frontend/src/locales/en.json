@@ -29,7 +29,8 @@
     "itemsCount": "{count} items",
     "tableTotal": "Total: {count}",
     "send": "Send",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "reset": "Reset"
   },
   "status": {
     "PENDING_PAYMENT": "Pending payment",
@@ -107,7 +108,8 @@
     "brands": "Brands",
     "notifications": "Notifications",
     "logisticsCarriers": "Carriers",
-    "auditLogs": "Security logs"
+    "auditLogs": "Security logs",
+    "permissions": "Permissions"
   },
   "nav": {
     "sell": "Seller center",
@@ -248,7 +250,9 @@
       "fountain": "a quiet water fountain",
       "bed": "an orthopedic calming bed",
       "harness": "a walking harness"
-    }
+    },
+    "inStock": "In stock",
+    "stockAvailable": "{count} available"
   },
   "footer": {
     "customerCare": "Customer care",
@@ -415,7 +419,21 @@
       "pathStepThreshold": "Build cart around {amount}",
       "pathStepBrowse": "Find useful pet essentials",
       "pathStepUse": "Apply it in cart",
-      "pathStepCheckout": "Checkout with savings ready"
+      "pathStepCheckout": "Checkout with savings ready",
+      "nextActionEyebrow": "Next best savings action",
+      "nextActionLoginTitle": "Log in to keep this coupon",
+      "nextActionLoginText": "{name} is worth saving to your account before you shop.",
+      "nextActionClaimTitle": "Claim the strongest coupon first",
+      "nextActionClaimText": "{name} can unlock about {value} in value. Claim it before building the cart.",
+      "nextActionCartReadyTitle": "Your cart can use a coupon now",
+      "nextActionCartReadyText": "{count} item(s) worth {amount} are ready to review with your coupon wallet.",
+      "nextActionBuildTitle": "Build the cart to unlock savings",
+      "nextActionBuildText": "Add {amount} more to make {name} easier to use at checkout.",
+      "nextActionBrowseTitle": "Start with personalized picks",
+      "nextActionBrowseText": "Browse products with personalized ranking, then come back with a coupon-ready cart.",
+      "nextActionBrowsePersonalized": "Browse personal picks",
+      "currentCartValue": "Current cart",
+      "couponThresholdGap": "Threshold gap"
     },
     "adminCoupons": {
       "title": "Coupons",
@@ -509,6 +527,20 @@
       "confidenceShipping": "Shipping perk",
       "confidenceShippingReady": "Free shipping is unlocked.",
       "confidenceShippingGap": "{amount} away from free shipping.",
+      "nextActionEyebrow": "Next best action",
+      "nextActionClearTitle": "Remove blockers before checkout",
+      "nextActionClearText": "{count} unavailable item(s) can block payment. Clear them now to keep the cart clean.",
+      "nextActionSelectTitle": "Select ready items",
+      "nextActionSelectText": "{count} available item(s) can move to checkout.",
+      "nextActionShippingTitle": "Add a small extra for free shipping",
+      "nextActionShippingText": "{amount} more unlocks the shipping perk.",
+      "nextActionGiftTitle": "Add a small favorite for the gift",
+      "nextActionGiftText": "{amount} more unlocks the checkout gift.",
+      "nextActionFindAddOn": "Find add-on",
+      "nextActionSavedTitle": "Bring back saved picks",
+      "nextActionSavedText": "{count} saved item(s) are old enough to revisit before checkout.",
+      "nextActionCheckoutTitle": "Cart is ready",
+      "nextActionCheckoutText": "Selected total is {amount}. You can continue to secure checkout.",
       "unavailable": "Out of stock or unavailable",
       "unavailableSelected": "Some selected items are out of stock or unavailable",
       "lowStockLeft": "Only {count} left",
@@ -535,16 +567,22 @@
       "drawerReadyText": "{count} item(s) can checkout, {blocked} blocked, {low} low stock.",
       "drawerExpressReadyHint": "Free shipping is active. Pick a wallet to move faster.",
       "drawerExpressAddOnHint": "{amount} away from free shipping. Add a small extra or checkout now.",
+      "drawerExpressGiftHint": "{amount} away from the checkout gift. Add a small extra or checkout now.",
       "drawerExpressEmpty": "Add a ready item before express checkout.",
+      "drawerGiftUnlocked": "Checkout gift unlocked",
       "drawerFooterHint": "Secure checkout opens only configured payment links.",
-      "deleteSavedConfirm": "Remove this saved item?"
+      "deleteSavedConfirm": "Remove this saved item?",
+      "drawerExpressBlocked": "{count} blocked item(s) need review before express checkout.",
+      "drawerClearBlocked": "Clear blocked items",
+      "drawerClearedBlocked": "Cleared {count} blocked item(s)."
     },
     "addOnAssistant": {
       "title": "Smart add-on picks",
       "shippingHint": "{amount} more unlocks free shipping. These small extras fit the gap.",
       "giftHint": "{amount} more unlocks your checkout gift. Add a small favorite.",
       "add": "Add",
-      "added": "Added to cart"
+      "added": "Added to cart",
+      "coversGap": "Covers the gap"
     },
     "wishlist": {
       "title": "My wishlist ({count})",
@@ -578,7 +616,19 @@
       "bestPickEyebrow": "Best pick now",
       "bestPickReady": "Ready to add with the least checkout friction.",
       "bestPickOptions": "High-priority favorite. Choose options now so it can move to checkout.",
-      "bestPickLowStock": "Only {count} left, worth deciding before it sells out."
+      "bestPickLowStock": "Only {count} left, worth deciding before it sells out.",
+      "nextActionEyebrow": "Next wishlist action",
+      "nextActionReadyTitle": "Move ready favorites to cart",
+      "nextActionReadyText": "{count} ready favorite(s) worth {amount} can move with no option friction.",
+      "nextActionOptionsTitle": "Resolve option blockers",
+      "nextActionOptionsText": "{count} favorite(s) need size, color, or variant selection before checkout.",
+      "nextActionLowStockTitle": "Decide before stock runs out",
+      "nextActionLowStockText": "{name} is the best urgent favorite to review now.",
+      "nextActionBrowseTitle": "Build a stronger shortlist",
+      "nextActionBrowseText": "Use personalized product ranking to add better-matched items to this wishlist.",
+      "readyValue": "Ready value {amount}",
+      "viewBestPick": "View best pick",
+      "browsePersonalized": "Browse personal picks"
     },
     "notifications": {
       "title": "Notifications",
@@ -793,6 +843,14 @@
       "readinessSavings": "Savings",
       "readinessFreeShippingReady": "Free shipping, coupon or gift benefit is active.",
       "readinessFreeShippingGap": "{amount} away from free shipping.",
+      "nextActionTitle": "Next best action",
+      "nextActionReadyTitle": "Checkout is ready",
+      "nextActionReadyText": "Everything needed for checkout is in place. Support is still one tap away.",
+      "nextActionReviewCart": "Review cart",
+      "nextActionAddress": "Complete address",
+      "nextActionPayment": "Choose payment",
+      "nextActionSavings": "Unlock savings",
+      "nextActionSupport": "Ask support",
       "paymentConfidenceTitle": "Payment confidence",
       "paymentConfidenceSelected": "{method} will use the configured secure gateway for this market.",
       "paymentConfidenceDefault": "Choose a local payment method; only configured secure links can open.",
@@ -800,7 +858,13 @@
       "alipay": "Alipay QR code",
       "wechat": "WeChat QR code",
       "submit": "Create order and pay",
-      "submitWithAmount": "Create order and pay {amount}"
+      "submitWithAmount": "Create order and pay {amount}",
+      "couponOpportunityBestTitle": "Best coupon is working",
+      "couponOpportunityAppliedTitle": "Coupon savings are active",
+      "couponOpportunityAppliedText": "{name} is saving {amount} on this order.",
+      "couponOpportunityBuildTitle": "A stronger coupon is close",
+      "couponOpportunityBuildText": "Add {amount} more to unlock about {value} in coupon value.",
+      "couponOpportunityReview": "Review coupon"
     },
     "orderTracking": {
       "title": "Track order",
@@ -923,7 +987,11 @@
       "missingEmail": "Missing emails",
       "missingPhone": "Missing phones",
       "readiness": "Readiness",
-      "readySignals": "{count}/4 ready"
+      "readySignals": "{count}/4 ready",
+      "exportFailed": "Failed to export users",
+      "export": "Export",
+      "searchPlaceholder": "Search username, email or phone",
+      "roleCode": "Operator role"
     },
     "adminReviews": {
       "title": "Reviews",
@@ -1149,6 +1217,14 @@
       "petProfileActionEmpty": "Add the first pet to unlock better fit guidance and personalized product paths.",
       "petProfileActionImprove": "Complete {fields} for {name} so recommendations can work harder.",
       "petProfileActionReady": "Pet profiles look ready for recommendations, birthday perks and fit support.",
+      "petShopPathEyebrow": "Personalized shopping path",
+      "petShopPathTitle": "Shop from pet profile signals",
+      "petShopPathTitleWithName": "Shop for {name}",
+      "petShopPathText": "Open products filtered for {type} and {size}, with personalized picks first.",
+      "petShopPathEmpty": "Add a pet profile to open a sharper shopping path from this page.",
+      "petShopPathSignalReady": "Signals ready",
+      "petShopPathNeedsProfile": "Profile needed",
+      "shopForThisPet": "Shop for this pet",
       "completePetProfile": "Complete profile",
       "deletePetConfirm": "Delete this pet profile?",
       "petName": "Pet name",
@@ -1319,7 +1395,13 @@
       "rawTrackingData": "Provider returned raw tracking data.",
       "noTrackingData": "No tracking data",
       "orderItemsTitle": "Order items {id}",
-      "product": "Product"
+      "product": "Product",
+      "printFailed": "Failed to open the shipping label. Please try again.",
+      "confirmApproveReturnTitle": "Approve this return request?",
+      "confirmApproveReturnContent": "The customer will be allowed to ship the returned goods back for review.",
+      "confirmRejectReturnTitle": "Reject this return request?",
+      "confirmRejectReturnContent": "The order will return to completed status and the customer will not be asked to ship the return.",
+      "returnInfo": "Return info"
     },
     "logisticsCarriers": {
       "title": "Carrier configuration",
@@ -1456,7 +1538,7 @@
       "mainImage": "Main image",
       "mainImageRequired": "Main image is required",
       "moreImages": "More images",
-      "imageUrl": "Image URL",
+      "imageUrl": "Image URL {index}",
       "addImage": "Add image",
       "salePrice": "Sale price",
       "priceRequired": "Price is required",
@@ -1501,9 +1583,9 @@
       "exportProducts": "Export products",
       "exportSuccess": "Exported {count} products",
       "exportEmpty": "No products match the current filters",
-      "importSuccess": "Imported {count} products",
+      "importSuccess": "Import completed: created {created}, updated {updated}",
       "importPartialTitle": "Import completed with errors",
-      "importSummary": "Total {total}, created {created}, updated {updated}, failed {failed}",
+      "importSummary": "Total: {totalRows}, created: {created}, updated: {updated}, failed: {failed}",
       "importFailed": "Import failed",
       "tableTotal": "Total: {count}",
       "editTitle": "Edit product",
@@ -1698,7 +1780,20 @@
       "pickQuickAdd": "Quick add ready",
       "pickDeal": "{percent}% off",
       "pickLowStock": "{count} left",
-      "viewPick": "View pick"
+      "pickPetProfile": "Pet profile match",
+      "pickPreference": "Matches your browsing",
+      "viewPick": "View pick",
+      "personalizedSort": "Personalized first",
+      "personalGuideEyebrow": "Personalized path",
+      "personalGuideTitle": "Shop from your pet and browsing signals",
+      "personalGuidePet": "{count} pet-profile picks are ready. We boost products that better match your saved pets.",
+      "personalGuidePreference": "No pet-profile picks yet, so this page is leaning on your recent interest in {value}.",
+      "personalGuideEmpty": "Add a pet profile to unlock sharper size, life-stage and species recommendations.",
+      "personalGuideActive": "Profile active",
+      "personalGuideSetup": "Setup needed",
+      "viewPersonalPicks": "Prioritize trusted picks",
+      "managePetProfile": "Manage pet profile",
+      "noReviewsYet": "New item - no reviews yet"
     },
     "compare": {
       "title": "Product comparison",
@@ -1894,7 +1989,24 @@
       "recoverySubtitle": "{name} is still worth a look at {price}. It combines your recent interest with conversion signals.",
       "recoveryDeal": "Deal watched",
       "recoveryLowStock": "Low stock",
-      "resumeProduct": "Resume product"
+      "resumeProduct": "Resume product",
+      "nextActionEyebrow": "Next browsing action",
+      "nextActionAddTitle": "Add the strongest viewed item",
+      "nextActionAddText": "{name} is ready to move from browsing history to cart.",
+      "nextActionOptionsTitle": "Finish option selection",
+      "nextActionOptionsText": "{name} needs options before it can move to checkout.",
+      "nextActionLowStockTitle": "Check low-stock views first",
+      "nextActionLowStockText": "{count} recently viewed item(s) are running low.",
+      "nextActionBrowseTitle": "Refresh personalized discovery",
+      "nextActionBrowseText": "Use your browsing signals to find better-ranked products.",
+      "addBestToCart": "Add best to cart",
+      "addToCart": "Add to cart",
+      "filterLowStock": "Show low stock",
+      "browsePersonalized": "Browse personal picks",
+      "readyToCart": "{count} ready to cart",
+      "dealWatchCount": "{count} deal watched",
+      "lowStockWatchCount": "{count} low stock",
+      "unavailable": "This product is unavailable"
     },
     "productDetail": {
       "notFound": "Product not found",
@@ -2008,7 +2120,33 @@
       "pathSubscribeTitle": "Subscribe for routine care",
       "pathSubscribeText": "Deliver {interval} and save about {amount} on this order.",
       "pathOnceTitle": "Buy once with full control",
-      "pathOnceText": "Best for gifts, first trials, toys, apparel and one-off accessories."
+      "pathOnceText": "Best for gifts, first trials, toys, apparel and one-off accessories.",
+      "useRecommendedPath": "Use recommended option"
+    },
+    "permissions": {
+      "title": "Permission management",
+      "subtitle": "Control operator roles and keep sensitive admin permissions limited to trusted owners.",
+      "fetchFailed": "Failed to load permission users",
+      "roleUpdated": "Permission role updated",
+      "roleUpdateFailed": "Failed to update permission role",
+      "username": "Username",
+      "email": "Email",
+      "currentRole": "Current role",
+      "changeRole": "Change role",
+      "superAdmins": "Super admins",
+      "admins": "Admins",
+      "customers": "Customers",
+      "guardTitle": "Super admin guard is active",
+      "guardText": "Only SUPER_ADMIN operators can grant, remove or change backend roles. Your own role cannot be changed from this screen.",
+      "superAdminOnly": "Only super admins can open permission management",
+      "searchPlaceholder": "Search role code, name or description",
+      "newRole": "New role",
+      "export": "Export",
+      "roleCode": "Role code",
+      "roleName": "Role name",
+      "description": "Description",
+      "permissionPages": "Allowed pages",
+      "editRole": "Edit role"
     }
   }
 }

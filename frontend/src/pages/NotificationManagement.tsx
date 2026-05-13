@@ -22,6 +22,10 @@ const NotificationManagement: React.FC = () => {
   const messageContent = Form.useWatch('message', form) || '';
 
   const previewHtml = useMemo(() => stripUnsafeHtml(messageContent), [messageContent]);
+  const safePreviewHtml = useMemo(
+    () => previewHtml || stripUnsafeHtml(`<p>${t('pages.notificationAdmin.richPreview')}</p>`),
+    [previewHtml, t],
+  );
   const plainContent = useMemo(() => messageContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), [messageContent]);
   const readinessSignals = useMemo(() => {
     const normalized = `${notificationTitle} ${plainContent}`.toLowerCase();
@@ -148,7 +152,7 @@ const NotificationManagement: React.FC = () => {
           <Text strong>{notificationTitle || t('pages.notificationAdmin.previewTitle')}</Text>
           <div className="notification-management-page__preview">
             {contentFormat === 'HTML' ? (
-              <div className="notification-rich-content" dangerouslySetInnerHTML={{ __html: previewHtml || `<p>${t('pages.notificationAdmin.richPreview')}</p>` }} />
+              <div className="notification-rich-content" dangerouslySetInnerHTML={{ __html: safePreviewHtml }} />
             ) : (
               <Text style={{ whiteSpace: 'pre-wrap' }}>{messageContent || t('pages.notificationAdmin.textPreview')}</Text>
             )}

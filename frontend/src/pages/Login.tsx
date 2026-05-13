@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
+import { getEffectiveRole } from '../utils/roles';
 import './Login.css';
 
 const Login: React.FC = () => {
@@ -38,11 +39,12 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       const response = await userApi.login(values.username, values.password);
-      const { token, id, username, role } = response.data;
+      const { token, id, username, role, roleCode } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('userId', id);
       localStorage.setItem('username', username);
-      localStorage.setItem('role', role);
+      localStorage.setItem('role', getEffectiveRole(role, roleCode));
+      localStorage.removeItem('adminDefaultPath');
       await mergeGuestCart(Number(id));
       message.success(t('pages.auth.loginSuccess'));
       navigate('/');

@@ -9,6 +9,7 @@ import type { Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
 import { clearStockAlerts, readStockAlerts, removeStockAlert, type StockAlertItem } from '../utils/stockAlerts';
 import { localizeProduct } from '../utils/localizedProduct';
+import { needsOptionSelection } from '../utils/productOptions';
 import './StockAlerts.css';
 
 const { Title, Text } = Typography;
@@ -81,6 +82,10 @@ const StockAlerts: React.FC = () => {
       message.error(t('pages.productDetail.insufficientStock'));
       return false;
     }
+    if (needsOptionSelection(product)) {
+      navigate(`/products/${product.id}`);
+      return false;
+    }
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     try {
@@ -107,6 +112,8 @@ const StockAlerts: React.FC = () => {
       product: products[alert.productId],
     }));
     const backInStockItems = items.filter((item) => isBackInStock(item.product));
+    const directAddItems = backInStockItems.filter((item) => item.product && !needsOptionSelection(item.product));
+    const optionItems = backInStockItems.filter((item) => item.product && needsOptionSelection(item.product));
     const waitingItems = items.length - backInStockItems.length;
     const urgentItems = backInStockItems.filter((item) => {
       const stock = item.product?.stock;
@@ -115,11 +122,11 @@ const StockAlerts: React.FC = () => {
     const bestReadyItem = backInStockItems
       .filter((item) => item.product)
       .sort((a, b) => (a.product?.effectivePrice ?? a.product?.price ?? 0) - (b.product?.effectivePrice ?? b.product?.price ?? 0))[0];
-    return { items, backInStockItems, waitingItems, urgentItems, bestReadyItem };
+    return { items, backInStockItems, directAddItems, optionItems, waitingItems, urgentItems, bestReadyItem };
   }, [alerts, products]);
 
   const addReadyItemsToCart = async () => {
-    const readyProducts = stockAlertInsights.backInStockItems
+    const readyProducts = stockAlertInsights.directAddItems
       .map((item) => item.product)
       .filter(Boolean) as Product[];
     if (readyProducts.length === 0) {
@@ -133,6 +140,44 @@ const StockAlerts: React.FC = () => {
       window.dispatchEvent(new Event('shop:open-cart'));
     }
   };
+
+  const restockNextAction = (() => {
+    if (stockAlertInsights.directAddItems.length > 0) {
+      return {
+        tone: 'ready',
+        title: t('pages.stockAlerts.nextActionReadyTitle'),
+        text: t('pages.stockAlerts.nextActionReadyText', { count: stockAlertInsights.directAddItems.length }),
+        label: t('pages.stockAlerts.addReadyToCart'),
+        action: addReadyItemsToCart,
+      };
+    }
+    if (stockAlertInsights.optionItems.length > 0) {
+      const nextItem = stockAlertInsights.optionItems[0];
+      return {
+        tone: 'options',
+        title: t('pages.stockAlerts.nextActionOptionsTitle'),
+        text: t('pages.stockAlerts.nextActionOptionsText', { name: nextItem.product?.name || nextItem.productName }),
+        label: t('pages.stockAlerts.selectOptions'),
+        action: () => navigate(`/products/${nextItem.productId}`),
+      };
+    }
+    if (stockAlertInsights.waitingItems > 0) {
+      return {
+        tone: 'waiting',
+        title: t('pages.stockAlerts.nextActionWaitingTitle'),
+        text: t('pages.stockAlerts.nextActionWaitingText', { count: stockAlertInsights.waitingItems }),
+        label: t('pages.stockAlerts.browsePersonalized'),
+        action: () => navigate('/products?sort=personalized-desc'),
+      };
+    }
+    return {
+      tone: 'browse',
+      title: t('pages.stockAlerts.nextActionBrowseTitle'),
+      text: t('pages.stockAlerts.nextActionBrowseText'),
+      label: t('pages.stockAlerts.browse'),
+      action: () => navigate('/products?sort=personalized-desc'),
+    };
+  })();
 
   return (
     <div className="stock-alerts">
@@ -210,6 +255,32 @@ const StockAlerts: React.FC = () => {
           </section>
         ) : null}
 
+        {alerts.length > 0 ? (
+          <section className={`stock-alerts__nextAction stock-alerts__nextAction--${restockNextAction.tone}`} aria-label={t('pages.stockAlerts.nextActionEyebrow')}>
+            <div>
+              <Text className="stock-alerts__eyebrow">{t('pages.stockAlerts.nextActionEyebrow')}</Text>
+              <Title level={4}>{restockNextAction.title}</Title>
+              <Text type="secondary">{restockNextAction.text}</Text>
+            </div>
+            <Space wrap className="stock-alerts__nextActionMeta">
+              <Tag color="green">{t('pages.stockAlerts.directReady', { count: stockAlertInsights.directAddItems.length })}</Tag>
+              <Tag color={stockAlertInsights.optionItems.length > 0 ? 'gold' : 'default'}>
+                {t('pages.stockAlerts.optionReady', { count: stockAlertInsights.optionItems.length })}
+              </Tag>
+              <Tag color={stockAlertInsights.waitingItems > 0 ? 'blue' : 'default'}>
+                {t('pages.stockAlerts.stillWatchingCount', { count: stockAlertInsights.waitingItems })}
+              </Tag>
+            </Space>
+            <Button
+              type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
+              icon={<ShoppingCartOutlined />}
+              onClick={restockNextAction.action}
+            >
+              {restockNextAction.label}
+            </Button>
+          </section>
+        ) : null}
+
         {alerts.length === 0 ? (
           <Empty description={t('pages.stockAlerts.empty')}>
             <Button type="primary" onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
@@ -233,7 +304,11 @@ const StockAlerts: React.FC = () => {
                       onClick={() => product && addToCart(product)}
                       disabled={!ready}
                     >
-                      {ready ? t('pages.stockAlerts.addToCart') : t('pages.productList.soldOut')}
+                      {ready
+                        ? needsOptionSelection(product)
+                          ? t('pages.stockAlerts.selectOptions')
+                          : t('pages.stockAlerts.addToCart')
+                        : t('pages.productList.soldOut')}
                     </Button>,
                     <Popconfirm
                       key="remove"

@@ -31,6 +31,7 @@ import { localizeProduct } from '../utils/localizedProduct';
 import { getLocalizedCategoryValue } from '../utils/categoryTree';
 import { clearProductViewHistory, loadProductViewPreferences } from '../utils/productViewPreferences';
 import { addGuestCartItem } from '../utils/guestCart';
+import { needsOptionSelection } from '../utils/productOptions';
 import SocialProofToast from '../components/SocialProofToast';
 import './Home.css';
 
@@ -125,13 +126,11 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
   return responseMessage?.error || responseMessage?.message || fallback;
 };
 
-const productNeedsOptionSelection = (product: Product) =>
-  Boolean((product.variants && product.variants.length > 0) || (product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0));
-
 const Home: React.FC = () => {
   const [featured, setFeatured] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [personalizedProducts, setPersonalizedProducts] = useState<Product[]>([]);
+  const [recentlyViewedDetails, setRecentlyViewedDetails] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(DISCOVERY_BATCH_SIZE);
@@ -303,7 +302,7 @@ const Home: React.FC = () => {
       message.warning(t('pages.productList.soldOut'));
       return;
     }
-    if (productNeedsOptionSelection(product)) {
+    if (needsOptionSelection(product)) {
       message.info(t('pages.wishlist.selectOptions'));
       openProduct(product.id);
       return;
@@ -406,6 +405,16 @@ const Home: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (viewPreferences.recent.length === 0) {
+      setRecentlyViewedDetails([]);
+      return;
+    }
+    productApi.getByIds(viewPreferences.recent.slice(0, 8))
+      .then((response) => setRecentlyViewedDetails(response.data.map((product) => localizeProduct(product, language))))
+      .catch(() => setRecentlyViewedDetails([]));
+  }, [language, viewPreferences.recent]);
+
   const promoProducts = useMemo(
     () =>
       products
@@ -428,7 +437,7 @@ const Home: React.FC = () => {
   );
 
   const recentlyViewedProducts = useMemo(() => {
-    const productById = new Map(products.map((product) => [product.id, product]));
+    const productById = new Map(recentlyViewedDetails.map((product) => [product.id, product]));
     const viewedAtById = new Map(viewPreferences.recentEntries.map((entry) => [entry.productId, entry.viewedAt]));
     return viewPreferences.recent
       .map((productId: number) => {
@@ -437,7 +446,7 @@ const Home: React.FC = () => {
       })
       .filter(Boolean)
       .slice(0, 8) as Array<{ product: Product; viewedAt?: number }>;
-  }, [products, viewPreferences]);
+  }, [recentlyViewedDetails, viewPreferences]);
 
   const discoveryProducts = useMemo(() => {
     const merged = [...featured, ...products];
@@ -478,7 +487,10 @@ const Home: React.FC = () => {
 
   const personalizedDisplayProducts = personalizedProducts.length > 0 ? personalizedProducts : localPersonalizedProducts;
   const personalizedRecommendationSource = personalizedProducts.length > 0 ? 'petProfile' : 'recentViews';
-  const personalizedReadyCount = personalizedDisplayProducts.filter((product) => !productNeedsOptionSelection(product) && product.stock !== 0).length;
+  const personalizedReadyProducts = personalizedDisplayProducts
+    .filter((product) => !needsOptionSelection(product) && (product.stock === undefined || product.stock > 0))
+    .slice(0, 4);
+  const personalizedReadyCount = personalizedReadyProducts.length;
   const personalizedDealCount = personalizedDisplayProducts.filter((product) => getDiscountPercent(product) > 0 || product.activeLimitedTimeDiscount).length;
   const personalizedPreferenceLabel = useMemo(() => {
     const topCategory = Object.entries(viewPreferences.categories).sort((left, right) => right[1] - left[1])[0];
@@ -547,6 +559,25 @@ const Home: React.FC = () => {
       .slice(0, 24);
   }, [currentUserId, localPetGalleryLikes, petGalleryPhotos]);
 
+  const addPersonalizedReadyProducts = async () => {
+    if (personalizedReadyProducts.length === 0) {
+      message.info(t('pages.compare.recommendationEmpty'));
+      return;
+    }
+    try {
+      if (isAuthenticated) {
+        await Promise.all(personalizedReadyProducts.map((product) => cartApi.addItem(currentUserId, product.id, 1)));
+        window.dispatchEvent(new Event('shop:cart-updated'));
+      } else {
+        personalizedReadyProducts.forEach((product) => addGuestCartItem(product, 1));
+      }
+      window.dispatchEvent(new Event('shop:open-cart'));
+      message.success(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }));
+    } catch (error) {
+      message.error(getApiErrorMessage(error, t('messages.addFailed')));
+    }
+  };
+
   const ProductTile: React.FC<{ product: Product; index: number; compact?: boolean; viewedAt?: number }> = ({
     product,
     index,
@@ -555,6 +586,11 @@ const Home: React.FC = () => {
   }) => {
     const images = normalizeProductImages(product, index);
     const isSoldOut = product.stock !== undefined && product.stock <= 0;
+    const stockBadgeText = product.stock !== undefined && product.stock > 0
+      ? product.stock <= 5
+        ? t('pages.cart.lowStockLeft', { count: product.stock })
+        : t('home.stockAvailable', { count: product.stock })
+      : t('home.inStock');
     return (
     <article
       className="shopee-product"
@@ -621,7 +657,7 @@ const Home: React.FC = () => {
         <span className="shopee-product__name">{product.name}</span>
         <span className="shopee-product__meta">
           <span className="shopee-product__price">{formatPrice(getPrice(product))}</span>
-          {!compact ? <span className="shopee-product__sold">{t('home.sold')} {Math.max(12, product.stock || 42)}</span> : null}
+          {!compact && !isSoldOut ? <span className="shopee-product__stock">{stockBadgeText}</span> : null}
         </span>
         {product.originalPrice && product.originalPrice > getPrice(product) ? (
           <span className="shopee-product__original">{formatPrice(product.originalPrice)}</span>
@@ -741,6 +777,14 @@ const Home: React.FC = () => {
                 <span>{t('home.petRecommendationReady', { count: personalizedReadyCount })}</span>
                 <span>{t('home.petRecommendationDeals', { count: personalizedDealCount })}</span>
               </div>
+              <Button
+                type="primary"
+                icon={<ShoppingCartOutlined />}
+                disabled={personalizedReadyProducts.length === 0}
+                onClick={addPersonalizedReadyProducts}
+              >
+                {t('pages.wishlist.addAllToCart')}
+              </Button>
             </div>
             <Row gutter={[12, 12]}>
               {personalizedDisplayProducts.slice(0, 8).map((product, index) => (

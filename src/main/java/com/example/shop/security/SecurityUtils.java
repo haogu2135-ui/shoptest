@@ -22,6 +22,11 @@ public final class SecurityUtils {
                 .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
+    public static boolean isSuperAdmin(UserDetailsImpl user) {
+        return user != null && user.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_SUPER_ADMIN".equals(authority.getAuthority()));
+    }
+
     public static void assertSelfOrAdmin(Authentication authentication, Long userId) {
         UserDetailsImpl user = requireUser(authentication);
         if (isAdmin(user)) {
@@ -36,6 +41,13 @@ public final class SecurityUtils {
         UserDetailsImpl user = requireUser(authentication);
         if (!isAdmin(user)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin permission required");
+        }
+    }
+
+    public static void assertSuperAdmin(Authentication authentication) {
+        UserDetailsImpl user = requireUser(authentication);
+        if (!isSuperAdmin(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Super admin permission required");
         }
     }
 }

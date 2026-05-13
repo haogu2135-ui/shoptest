@@ -32,16 +32,37 @@ const Wishlist: React.FC = () => {
   const userId = Number(localStorage.getItem('userId'));
   const { t } = useLanguage();
   const { formatMoney } = useMarket();
-  const directAddItems = useMemo(
-    () => items.filter((item) => isPurchasable(item) && !item.requiresSelection),
-    [items],
-  );
-  const wishlistStats = useMemo(() => {
-    const optionCount = items.filter((item) => item.requiresSelection && isPurchasable(item)).length;
-    const lowStockCount = items.filter((item) => getLowStockCount(item) !== undefined).length;
-    const unavailableCount = items.filter((item) => !isPurchasable(item)).length;
-    return { optionCount, lowStockCount, unavailableCount };
+  const wishlistGroups = useMemo(() => {
+    const directAddItems: WishlistItem[] = [];
+    const optionItems: WishlistItem[] = [];
+    const lowStockItems: WishlistItem[] = [];
+    const unavailableItems: WishlistItem[] = [];
+    let readyValue = 0;
+
+    items.forEach((item) => {
+      const purchasable = isPurchasable(item);
+      if (!purchasable) {
+        unavailableItems.push(item);
+        return;
+      }
+      if (getLowStockCount(item) !== undefined) lowStockItems.push(item);
+      if (item.requiresSelection) {
+        optionItems.push(item);
+      } else {
+        directAddItems.push(item);
+        readyValue += Number(item.productPrice || 0);
+      }
+    });
+
+    return { directAddItems, optionItems, lowStockItems, unavailableItems, readyValue };
   }, [items]);
+  const directAddItems = wishlistGroups.directAddItems;
+  const wishlistStats = {
+    optionCount: wishlistGroups.optionItems.length,
+    lowStockCount: wishlistGroups.lowStockItems.length,
+    unavailableCount: wishlistGroups.unavailableItems.length,
+    readyValue: wishlistGroups.readyValue,
+  };
   const featuredWishlistItem = useMemo(() => {
     return [...items]
       .filter(isPurchasable)
@@ -123,6 +144,25 @@ const Wishlist: React.FC = () => {
     }
   };
 
+  const clearUnavailableItems = async () => {
+    if (wishlistGroups.unavailableItems.length === 0) return;
+    const results = await Promise.allSettled(
+      wishlistGroups.unavailableItems.map((item) => wishlistApi.remove(userId, item.productId)),
+    );
+    const removedProductIds = new Set(
+      wishlistGroups.unavailableItems
+        .filter((_, index) => results[index]?.status === 'fulfilled')
+        .map((item) => item.productId),
+    );
+    if (removedProductIds.size > 0) {
+      setItems((current) => current.filter((item) => !removedProductIds.has(item.productId)));
+      window.dispatchEvent(new Event('shop:wishlist-updated'));
+      message.success(t('pages.cart.clearedUnavailable', { count: removedProductIds.size }));
+      return;
+    }
+    message.error(t('messages.operationFailed'));
+  };
+
   const recoveryAction = directAddItems.length > 0
     ? { label: t('pages.wishlist.addAllToCart'), action: handleAddAllToCart, disabled: false }
     : wishlistStats.optionCount > 0
@@ -131,6 +171,46 @@ const Wishlist: React.FC = () => {
         if (nextItem) navigate(`/products/${nextItem.productId}`);
       }, disabled: false }
       : { label: t('pages.wishlist.browse'), action: () => navigate('/products'), disabled: false };
+
+  const wishlistNextAction = (() => {
+    if (directAddItems.length > 0) {
+      return {
+        tone: 'ready',
+        title: t('pages.wishlist.nextActionReadyTitle'),
+        text: t('pages.wishlist.nextActionReadyText', {
+          count: directAddItems.length,
+          amount: formatMoney(wishlistStats.readyValue),
+        }),
+        label: t('pages.wishlist.addAllToCart'),
+        action: handleAddAllToCart,
+      };
+    }
+    if (wishlistStats.optionCount > 0) {
+      return {
+        tone: 'options',
+        title: t('pages.wishlist.nextActionOptionsTitle'),
+        text: t('pages.wishlist.nextActionOptionsText', { count: wishlistStats.optionCount }),
+        label: t('pages.wishlist.resolveOptions'),
+        action: recoveryAction.action,
+      };
+    }
+    if (wishlistStats.lowStockCount > 0 && featuredWishlistItem) {
+      return {
+        tone: 'urgent',
+        title: t('pages.wishlist.nextActionLowStockTitle'),
+        text: t('pages.wishlist.nextActionLowStockText', { name: featuredWishlistItem.productName }),
+        label: t('pages.wishlist.viewBestPick'),
+        action: () => navigate(`/products/${featuredWishlistItem.productId}`),
+      };
+    }
+    return {
+      tone: 'browse',
+      title: t('pages.wishlist.nextActionBrowseTitle'),
+      text: t('pages.wishlist.nextActionBrowseText'),
+      label: t('pages.wishlist.browsePersonalized'),
+      action: () => navigate('/products?sort=personalized-desc'),
+    };
+  })();
 
   const getFeaturedReason = (item: WishlistItem) => {
     const lowStockCount = getLowStockCount(item);
@@ -213,6 +293,16 @@ const Wishlist: React.FC = () => {
         <Button type="primary" icon={<ShoppingCartOutlined />} disabled={directAddItems.length === 0} onClick={handleAddAllToCart}>
           {t('pages.wishlist.addAllToCart')}
         </Button>
+        {wishlistStats.unavailableCount > 0 ? (
+          <Popconfirm
+            title={t('pages.cart.clearUnavailableConfirm', { count: wishlistStats.unavailableCount })}
+            onConfirm={clearUnavailableItems}
+          >
+            <Button danger icon={<DeleteOutlined />}>
+              {t('pages.cart.clearUnavailable')}
+            </Button>
+          </Popconfirm>
+        ) : null}
       </div>
       <div className="wishlist-page__insightBar" aria-label={t('pages.wishlist.insightTitle')}>
         <div className="wishlist-page__insightIntro">
@@ -238,6 +328,26 @@ const Wishlist: React.FC = () => {
         </div>
         <Button type="primary" icon={<ShoppingCartOutlined />} disabled={recoveryAction.disabled} onClick={recoveryAction.action}>
           {recoveryAction.label}
+        </Button>
+      </div>
+      <div className={`wishlist-page__nextAction wishlist-page__nextAction--${wishlistNextAction.tone}`}>
+        <div>
+          <Text type="secondary">{t('pages.wishlist.nextActionEyebrow')}</Text>
+          <Text strong>{wishlistNextAction.title}</Text>
+          <Text type="secondary">{wishlistNextAction.text}</Text>
+        </div>
+        <Space wrap className="wishlist-page__nextActionMeta">
+          <Tag color="green">{t('pages.wishlist.readyValue', { amount: formatMoney(wishlistStats.readyValue) })}</Tag>
+          <Tag color={wishlistStats.lowStockCount > 0 ? 'orange' : 'default'}>
+            {t('pages.wishlist.lowStockItems', { count: wishlistStats.lowStockCount })}
+          </Tag>
+        </Space>
+        <Button
+          type={wishlistNextAction.tone === 'ready' ? 'primary' : 'default'}
+          icon={wishlistNextAction.tone === 'options' ? <SettingOutlined /> : <ShoppingCartOutlined />}
+          onClick={wishlistNextAction.action}
+        >
+          {wishlistNextAction.label}
         </Button>
       </div>
       {featuredWishlistItem ? (

@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Drawer, Empty, InputNumber, List, message, Progress, Space, Tag, Typography } from 'antd';
-import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, GoogleOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, GoogleOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { apiBaseUrl, cartApi } from '../api';
 import type { CartItem, Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
-import { addGuestCartItem, getGuestCartItems, removeGuestCartItem, updateGuestCartQuantity } from '../utils/guestCart';
+import { addGuestCartItem, getGuestCartItems, removeGuestCartItem, removeGuestCartItems, updateGuestCartQuantity } from '../utils/guestCart';
 import { saveCartItemForLater } from '../utils/saveForLater';
 import { getLowStockCount } from '../utils/conversionConfig';
+import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefits';
+import { paymentMethodLabel } from '../utils/paymentMethods';
+import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
 import AddOnAssistant from './AddOnAssistant';
 import './CartDrawer.css';
 
@@ -32,24 +35,38 @@ const canCheckout = (item: CartItem) =>
 
 const getCartItemLowStockCount = (item: CartItem) => getLowStockCount(item.stock, item.quantity);
 
+const expressPaymentCodesByCurrency: Record<string, string[]> = {
+  MXN: ['MERCADO_PAGO', 'SPEI', 'OXXO', 'MX_LOCAL_CARD'],
+  USD: ['SHOP_PAY', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY'],
+  CAD: ['PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'STRIPE'],
+  EUR: ['PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'STRIPE'],
+  GBP: ['PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'STRIPE'],
+};
+
+const expressPaymentIcon = (code: string) => {
+  if (code === 'APPLE_PAY') return <AppleOutlined />;
+  if (code === 'GOOGLE_PAY') return <GoogleOutlined />;
+  if (code === 'STRIPE' || code === 'MX_LOCAL_CARD') return <CreditCardOutlined />;
+  return <WalletOutlined />;
+};
+
 const CartDrawer: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { market, formatMoney } = useMarket();
+  const { currency, market, formatMoney } = useMarket();
 
   const loadCart = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    if (!token || !userId) {
+    const userId = getAuthenticatedCartUserId();
+    if (!userId) {
       setItems(getGuestCartItems());
       return;
     }
     setLoading(true);
     try {
-      const res = await cartApi.getItems(Number(userId));
+      const res = await cartApi.getItems(userId);
       setItems(res.data);
     } catch {
       message.error(t('pages.cart.fetchFailed'));
@@ -82,32 +99,40 @@ const CartDrawer: React.FC = () => {
   }, [loadCart]);
 
   const checkoutItems = useMemo(() => items.filter(canCheckout), [items]);
+  const blockedItems = useMemo(() => items.filter((item) => !canCheckout(item)), [items]);
   const subtotal = useMemo(() => checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [checkoutItems]);
-  const blockedCount = items.length - checkoutItems.length;
+  const blockedCount = blockedItems.length;
   const checkoutUnitCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
   const lowStockCount = checkoutItems.filter((item) => getCartItemLowStockCount(item) !== null).length;
   const freeShippingThreshold = market.freeShippingThreshold;
   const remaining = Math.max(0, freeShippingThreshold - subtotal);
+  const benefitTarget = getNearestCartBenefitTarget(subtotal, freeShippingThreshold, currency);
+  const giftUnlocked = isGiftUnlocked(subtotal, currency);
   const progress = freeShippingThreshold > 0
     ? Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100))
     : 100;
   const drawerReady = checkoutItems.length > 0 && blockedCount === 0;
   const expressHint = checkoutItems.length === 0
     ? t('pages.cart.drawerExpressEmpty')
-    : remaining > 0
-      ? t('pages.cart.drawerExpressAddOnHint', { amount: formatMoney(remaining) })
+    : blockedCount > 0
+      ? t('pages.cart.drawerExpressBlocked', { count: blockedCount })
+      : benefitTarget
+      ? benefitTarget.reason === 'gift'
+        ? t('pages.cart.drawerExpressGiftHint', { amount: formatMoney(benefitTarget.remainingAmount) })
+        : t('pages.cart.drawerExpressAddOnHint', { amount: formatMoney(benefitTarget.remainingAmount) })
       : t('pages.cart.drawerExpressReadyHint');
+  const expressPaymentCodes = expressPaymentCodesByCurrency[currency] || expressPaymentCodesByCurrency.USD;
 
   const updateQuantity = async (item: CartItem, quantity: number) => {
     try {
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await cartApi.updateQuantity(item.id, quantity);
         setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, quantity } : entry));
       } else {
         setItems(updateGuestCartQuantity(item.id, quantity));
       }
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('pages.cart.quantityFailed'));
     }
@@ -115,14 +140,14 @@ const CartDrawer: React.FC = () => {
 
   const removeItem = async (item: CartItem) => {
     try {
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await cartApi.removeItem(item.id);
         setItems((current) => current.filter((entry) => entry.id !== item.id));
       } else {
         setItems(removeGuestCartItem(item.id));
       }
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.deleteFailed'));
     }
@@ -131,15 +156,15 @@ const CartDrawer: React.FC = () => {
   const saveForLater = async (item: CartItem) => {
     try {
       saveCartItemForLater(item);
-      const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-      if (isAuthenticated) {
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
         await cartApi.removeItem(item.id);
         setItems((current) => current.filter((entry) => entry.id !== item.id));
       } else {
         setItems(removeGuestCartItem(item.id));
       }
       message.success(t('pages.cart.savedForLater'));
-      if (isAuthenticated) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -150,7 +175,11 @@ const CartDrawer: React.FC = () => {
       message.warning(t('pages.cart.chooseItems'));
       return;
     }
-    sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(checkoutItems.map((item) => item.id)));
+    if (paymentMethod && !drawerReady) {
+      message.warning(t('pages.cart.drawerExpressBlocked', { count: blockedCount }));
+      return;
+    }
+    syncCheckoutCartItemIds(checkoutItems);
     if (paymentMethod) {
       sessionStorage.setItem('checkoutPaymentMethod', paymentMethod);
     } else {
@@ -160,12 +189,27 @@ const CartDrawer: React.FC = () => {
     navigate('/checkout');
   };
 
+  const clearBlockedItems = async () => {
+    if (blockedItems.length === 0) return;
+    try {
+      const userId = getAuthenticatedCartUserId();
+      if (userId) {
+        await Promise.all(blockedItems.map((item) => cartApi.removeItem(item.id)));
+        setItems((current) => current.filter(canCheckout));
+        window.dispatchEvent(new Event('shop:cart-updated'));
+      } else {
+        setItems(removeGuestCartItems(blockedItems.map((item) => item.id)));
+      }
+      message.success(t('pages.cart.drawerClearedBlocked', { count: blockedItems.length }));
+    } catch {
+      message.error(t('messages.operationFailed'));
+    }
+  };
+
   const addSuggestedProduct = async (product: Product) => {
-    const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-    const userId = Number(localStorage.getItem('userId') || 0);
-    if (isAuthenticated) {
+    const userId = getAuthenticatedCartUserId();
+    if (userId) {
       await cartApi.addItem(userId, product.id, 1);
-      await loadCart();
       window.dispatchEvent(new Event('shop:cart-updated'));
       return;
     }
@@ -188,6 +232,9 @@ const CartDrawer: React.FC = () => {
         <Text strong>
           {remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}
         </Text>
+        {giftUnlocked ? (
+          <Text type="secondary">{t('pages.cart.drawerGiftUnlocked')}</Text>
+        ) : null}
         <Progress percent={progress} showInfo={false} strokeColor="#124734" style={{ marginTop: 8 }} />
       </div>
 
@@ -201,31 +248,40 @@ const CartDrawer: React.FC = () => {
         </div>
       </div>
 
-      {items.length > 0 ? (
-        <div className="cart-drawer__expressWrap">
-          <Text type="secondary">{expressHint}</Text>
-          <Space.Compact block className="cart-drawer__express">
-            <Button disabled={checkoutItems.length === 0} onClick={() => goCheckout('SHOP_PAY')}>Shop Pay</Button>
-            <Button disabled={checkoutItems.length === 0} onClick={() => goCheckout('PAYPAL')}>PayPal</Button>
-            <Button disabled={checkoutItems.length === 0} icon={<AppleOutlined />} onClick={() => goCheckout('APPLE_PAY')}>Pay</Button>
-            <Button disabled={checkoutItems.length === 0} icon={<GoogleOutlined />} onClick={() => goCheckout('GOOGLE_PAY')}>Pay</Button>
-          </Space.Compact>
+      {blockedCount > 0 ? (
+        <div className="cart-drawer__unavailable">
+          <Text type="secondary">{t('pages.cart.unavailableSummary', { count: blockedCount })}</Text>
+          <Button size="small" onClick={clearBlockedItems}>{t('pages.cart.drawerClearBlocked')}</Button>
         </div>
       ) : null}
 
-      {blockedCount > 0 ? (
-        <Text type="secondary" className="cart-drawer__unavailable">
-          {t('pages.cart.unavailableSummary', { count: blockedCount })}
-        </Text>
-      ) : null}
-
-      {checkoutItems.length > 0 ? (
-        <AddOnAssistant
-          cartProductIds={checkoutItems.map((item) => item.productId)}
-          remainingAmount={remaining}
-          reason="shipping"
-          onAdd={addSuggestedProduct}
-        />
+      {items.length > 0 ? (
+        <details className="cart-drawer__boostPanel">
+          <summary>
+            <span>
+              <Text strong>{t('pages.checkout.expressCheckout')}</Text>
+              <Text type="secondary">{expressHint}</Text>
+            </span>
+            {benefitTarget ? <Tag color="orange">{t('pages.cart.nextActionFindAddOn')}</Tag> : null}
+          </summary>
+          <div className="cart-drawer__expressWrap">
+            <Space.Compact block className="cart-drawer__express">
+              {expressPaymentCodes.map((code) => (
+                <Button key={code} disabled={!drawerReady} icon={expressPaymentIcon(code)} onClick={() => goCheckout(code)}>
+                  {paymentMethodLabel(code, t)}
+                </Button>
+              ))}
+            </Space.Compact>
+          </div>
+          {checkoutItems.length > 0 && benefitTarget ? (
+            <AddOnAssistant
+              cartProductIds={checkoutItems.map((item) => item.productId)}
+              remainingAmount={benefitTarget.remainingAmount}
+              reason={benefitTarget.reason}
+              onAdd={addSuggestedProduct}
+            />
+          ) : null}
+        </details>
       ) : null}
 
       {items.length === 0 ? (

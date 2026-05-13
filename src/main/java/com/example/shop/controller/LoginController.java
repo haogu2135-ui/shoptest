@@ -49,6 +49,7 @@ public class LoginController {
             response.put("email", userDetails.getEmail());
             response.put("phone", user != null ? user.getPhone() : null);
             response.put("role", user != null ? user.getRole() : null);
+            response.put("roleCode", user != null ? user.getRoleCode() : null);
 
             auditLogService.record("LOGIN", "SUCCESS",
                     userDetails.getId(),

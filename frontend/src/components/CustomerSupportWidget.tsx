@@ -174,7 +174,9 @@ const CustomerSupportWidget: React.FC = () => {
           if (currentUserId) {
             localStorage.setItem('userId', String(currentUserId));
             if (profileRes.data.username) localStorage.setItem('username', profileRes.data.username);
-            if (profileRes.data.role) localStorage.setItem('role', profileRes.data.role);
+            if (profileRes.data.roleCode || profileRes.data.role) {
+              localStorage.setItem('role', profileRes.data.roleCode || profileRes.data.role);
+            }
           }
         }
         if (currentUserId) {

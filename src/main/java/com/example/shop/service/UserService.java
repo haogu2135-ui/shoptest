@@ -87,6 +87,11 @@ public class UserService {
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.update(user);
     }
+
+    @Transactional
+    public void updateRoleAccess(Long userId, String role, String roleCode) {
+        userMapper.updateRoleAccess(userId, role, roleCode, LocalDateTime.now());
+    }
     
     @Transactional
     public void updatePassword(Long userId, String oldPassword, String newPassword) {
@@ -111,6 +116,13 @@ public class UserService {
         return userMapper.findAll();
     }
 
+    public List<User> search(String keyword, String role, String status) {
+        return userMapper.search(
+                normalizeBlank(keyword),
+                normalizeBlank(role),
+                normalizeBlank(status));
+    }
+
     @Transactional
     public void deleteById(Long id) {
         userMapper.deleteById(id);
@@ -118,5 +130,12 @@ public class UserService {
 
     public long count() {
         return userMapper.findAll().size();
+    }
+
+    private String normalizeBlank(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
     }
 } 

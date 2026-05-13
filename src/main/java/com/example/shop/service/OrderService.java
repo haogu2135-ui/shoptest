@@ -21,8 +21,10 @@ import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.math.BigDecimal;
@@ -410,16 +412,34 @@ public class OrderService {
     }
 
     @Scheduled(fixedDelayString = "${order.expiry-scan-ms:60000}")
-    @Transactional
     public void cancelExpiredUnpaidOrders() {
         LocalDateTime cutoff = LocalDateTime.now().minusMinutes(unpaidTimeoutMinutes);
         for (Order order : orderRepository.findPendingPaymentBefore(cutoff)) {
-            Payment pendingPayment = paymentRepository.findPendingByOrderId(order.getId());
-            if (pendingPayment != null && pendingPayment.getExpiresAt() != null && pendingPayment.getExpiresAt().isAfter(LocalDateTime.now())) {
-                continue;
+            try {
+                self.cancelSingleExpiredOrder(order.getId());
+            } catch (RuntimeException ignored) {
+                // Keep scheduler healthy; a raced order status should not break the full scan cycle.
             }
-            cancelOrder(order.getId());
         }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void cancelSingleExpiredOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId);
+        if (order == null || !"PENDING_PAYMENT".equals(order.getStatus())) {
+            return;
+        }
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(unpaidTimeoutMinutes);
+        if (order.getCreatedAt() == null || !order.getCreatedAt().isBefore(cutoff)) {
+            return;
+        }
+        Payment pendingPayment = paymentRepository.findPendingByOrderId(order.getId());
+        if (pendingPayment != null
+                && pendingPayment.getExpiresAt() != null
+                && pendingPayment.getExpiresAt().isAfter(LocalDateTime.now())) {
+            return;
+        }
+        cancelOrder(order.getId());
     }
 
     @Transactional
@@ -617,3 +637,6 @@ public class OrderService {
         return order.getUpdatedAt() != null ? order.getUpdatedAt() : order.getCreatedAt();
     }
 } 
+    @Lazy
+    @Autowired
+    private OrderService self;

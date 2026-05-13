@@ -7,7 +7,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class UserDetailsImpl implements UserDetails {
@@ -16,30 +17,42 @@ public class UserDetailsImpl implements UserDetails {
     private Long id;
     private String username;
     private String email;
+    private String status;
 
     @JsonIgnore
     private String password;
 
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long id, String username, String email, String password,
+    public UserDetailsImpl(Long id, String username, String email, String status, String password,
             Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
         this.email = email;
+        this.status = status;
         this.password = password;
         this.authorities = authorities;
     }
 
     public static UserDetailsImpl build(User user) {
-        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole());
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        String role = user.getRole() == null ? "USER" : user.getRole().trim().toUpperCase();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+        String roleCode = user.getRoleCode() == null ? "" : user.getRoleCode().trim().toUpperCase();
+        if ("SUPER_ADMIN".equals(roleCode) && !"SUPER_ADMIN".equals(role)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"));
+        }
+        if ("ADMIN".equals(role) || "SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(roleCode)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
 
         return new UserDetailsImpl(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
+                user.getStatus(),
                 user.getPassword(),
-                Collections.singletonList(authority));
+                authorities);
     }
 
     @Override
@@ -82,7 +95,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return status == null || !"BANNED".equalsIgnoreCase(status);
     }
 
     @Override
@@ -94,4 +107,4 @@ public class UserDetailsImpl implements UserDetails {
         UserDetailsImpl user = (UserDetailsImpl) o;
         return Objects.equals(id, user.id);
     }
-} 
+}

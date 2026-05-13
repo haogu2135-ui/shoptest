@@ -29,7 +29,8 @@
     "itemsCount": "{count} 件商品",
     "tableTotal": "共 {count} 条",
     "send": "发送",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "reset": "重置"
   },
   "status": {
     "PENDING_PAYMENT": "待付款",
@@ -107,7 +108,8 @@
     "brands": "品牌",
     "notifications": "通知",
     "logisticsCarriers": "快递公司",
-    "auditLogs": "????"
+    "auditLogs": "安全日志",
+    "permissions": "权限管理"
   },
   "nav": {
     "sell": "卖家中心",
@@ -248,7 +250,9 @@
       "fountain": "静音饮水机",
       "bed": "护脊安睡窝",
       "harness": "日常遛弯胸背"
-    }
+    },
+    "inStock": "有货",
+    "stockAvailable": "库存 {count} 件"
   },
   "footer": {
     "customerCare": "客户服务",
@@ -376,7 +380,21 @@
       "pathStepThreshold": "围绕 {amount} 凑单",
       "pathStepBrowse": "挑选宠物刚需品",
       "pathStepUse": "在购物车使用",
-      "pathStepCheckout": "带着优惠结账"
+      "pathStepCheckout": "带着优惠结账",
+      "nextActionEyebrow": "下一步省钱动作",
+      "nextActionLoginTitle": "登录后保存这张券",
+      "nextActionLoginText": "{name} 值得先保存到账户，再继续选购。",
+      "nextActionClaimTitle": "先领取当前最强优惠券",
+      "nextActionClaimText": "{name} 预计可带来约 {value} 的权益，建议先领取再组购物车。",
+      "nextActionCartReadyTitle": "当前购物车已可用券",
+      "nextActionCartReadyText": "{count} 件商品合计 {amount}，可以去购物车检查可用优惠。",
+      "nextActionBuildTitle": "继续凑单解锁优惠",
+      "nextActionBuildText": "再加 {amount}，更容易在结账时用上 {name}。",
+      "nextActionBrowseTitle": "先从个性化推荐开始",
+      "nextActionBrowseText": "浏览个性化排序商品，带着更接近用券门槛的购物车回来。",
+      "nextActionBrowsePersonalized": "查看个性化推荐",
+      "currentCartValue": "当前购物车",
+      "couponThresholdGap": "门槛差额"
     },
     "adminCoupons": {
       "title": "优惠券",
@@ -469,6 +487,18 @@
       "confidenceShipping": "配送权益",
       "confidenceShippingReady": "已解锁免邮。",
       "confidenceShippingGap": "还差 {amount} 可免邮。",
+      "nextActionEyebrow": "下一步最佳动作",
+      "nextActionClearTitle": "先清理结账阻塞项",
+      "nextActionClearText": "{count} 件不可用商品可能阻塞支付，建议先清理购物车。",
+      "nextActionSelectTitle": "选择可结算商品",
+      "nextActionSelectText": "已有 {count} 件可用商品可以进入结账。",
+      "nextActionShippingTitle": "加一件小物解锁免邮",
+      "nextActionShippingText": "还差 {amount} 即可获得免邮权益。",
+      "nextActionFindAddOn": "查找凑单",
+      "nextActionSavedTitle": "找回稍后购买商品",
+      "nextActionSavedText": "{count} 件稍后购买商品值得在结账前重新确认。",
+      "nextActionCheckoutTitle": "购物车已准备好",
+      "nextActionCheckoutText": "已选合计 {amount}，可以继续安全结账。",
       "unavailable": "库存不足或不可购买",
       "unavailableSelected": "部分已选商品库存不足或不可购买",
       "lowStockLeft": "仅剩 {count} 件",
@@ -498,14 +528,22 @@
       "drawerExpressAddOnHint": "还差 {amount} 可免邮，可加一件小物或直接结账。",
       "drawerExpressEmpty": "请先加入可结账商品，再使用快捷支付。",
       "drawerFooterHint": "安全结账只会打开已配置的支付链接。",
-      "deleteSavedConfirm": "删除这个稍后购买商品？"
+      "deleteSavedConfirm": "删除这个稍后购买商品？",
+      "nextActionGiftTitle": "加一件爱用品解锁赠品",
+      "nextActionGiftText": "还差 {amount} 即可解锁结账赠品。",
+      "drawerExpressGiftHint": "还差 {amount} 可解锁结账赠品，可加一件小物或直接结账。",
+      "drawerGiftUnlocked": "已解锁结账赠品",
+      "drawerExpressBlocked": "{count} 件受阻商品需要先处理，才能使用快捷支付。",
+      "drawerClearBlocked": "清理受阻商品",
+      "drawerClearedBlocked": "已清理 {count} 件受阻商品。"
     },
     "addOnAssistant": {
       "title": "智能凑单推荐",
       "shippingHint": "再加 {amount} 即可包邮，这些小件刚好适合凑单。",
       "giftHint": "再加 {amount} 即可解锁赠品，顺手加一件宠物爱用品。",
       "add": "加入",
-      "added": "已加入购物车"
+      "added": "已加入购物车",
+      "coversGap": "可补齐差额"
     },
     "wishlist": {
       "title": "我的收藏（{count}）",
@@ -539,7 +577,19 @@
       "bestPickEyebrow": "当前优先推荐",
       "bestPickReady": "这件收藏可直接加购，结账阻力最低。",
       "bestPickOptions": "这件收藏优先级较高，先选规格即可推进结账。",
-      "bestPickLowStock": "仅剩 {count} 件，建议在售罄前决定。"
+      "bestPickLowStock": "仅剩 {count} 件，建议在售罄前决定。",
+      "nextActionEyebrow": "下一步收藏动作",
+      "nextActionReadyTitle": "把可加购收藏移入购物车",
+      "nextActionReadyText": "{count} 件可直接加购收藏合计 {amount}，无需再选规格。",
+      "nextActionOptionsTitle": "先处理规格阻塞",
+      "nextActionOptionsText": "{count} 件收藏需要选择尺码、颜色或规格后才能结账。",
+      "nextActionLowStockTitle": "库存售罄前尽快决策",
+      "nextActionLowStockText": "{name} 是当前最值得优先查看的紧急收藏。",
+      "nextActionBrowseTitle": "继续建立更强收藏清单",
+      "nextActionBrowseText": "使用个性化排序补充更匹配的商品到收藏夹。",
+      "readyValue": "可加购金额 {amount}",
+      "viewBestPick": "查看优先推荐",
+      "browsePersonalized": "查看个性化推荐"
     },
     "notifications": {
       "title": "通知",
@@ -711,7 +761,20 @@
       "pickQuickAdd": "可快捷加购",
       "pickDeal": "{percent}% 优惠",
       "pickLowStock": "仅剩 {count} 件",
-      "viewPick": "查看推荐"
+      "pickPetProfile": "匹配宠物档案",
+      "pickPreference": "匹配浏览偏好",
+      "viewPick": "查看推荐",
+      "personalizedSort": "个性化优先",
+      "personalGuideEyebrow": "个性化导购路径",
+      "personalGuideTitle": "结合宠物档案和浏览信号选购",
+      "personalGuidePet": "已有 {count} 个宠物档案推荐可用。系统会优先推荐更适合你家宠物的商品。",
+      "personalGuidePreference": "暂未命中宠物档案推荐，本页会优先参考你最近关注的 {value}。",
+      "personalGuideEmpty": "添加宠物档案后，可开启更精准的体型、成长阶段和宠物类型推荐。",
+      "personalGuideActive": "档案已启用",
+      "personalGuideSetup": "待完善档案",
+      "viewPersonalPicks": "优先可信推荐",
+      "managePetProfile": "管理宠物档案",
+      "noReviewsYet": "新品，暂无评价"
     },
     "compare": {
       "title": "商品对比",
@@ -913,6 +976,14 @@
       "readinessSavings": "权益",
       "readinessFreeShippingReady": "免邮、优惠券或赠品权益已生效。",
       "readinessFreeShippingGap": "还差 {amount} 可免邮。",
+      "nextActionTitle": "下一步最佳动作",
+      "nextActionReadyTitle": "结账已准备好",
+      "nextActionReadyText": "完成结账所需信息已就绪，如需帮助可随时联系在线客服。",
+      "nextActionReviewCart": "检查购物车",
+      "nextActionAddress": "完善地址",
+      "nextActionPayment": "选择支付",
+      "nextActionSavings": "解锁权益",
+      "nextActionSupport": "咨询客服",
       "paymentConfidenceTitle": "支付信心",
       "paymentConfidenceSelected": "{method} 将使用当前市场配置的安全网关。",
       "paymentConfidenceDefault": "请选择本地常用支付方式；系统只会打开已配置的安全支付链接。",
@@ -941,7 +1012,13 @@
       "paymentBank": "银行",
       "paymentWallet": "钱包",
       "paymentMexico": "墨西哥",
-      "paymentChina": "中国"
+      "paymentChina": "中国",
+      "couponOpportunityBestTitle": "最省优惠券已生效",
+      "couponOpportunityAppliedTitle": "优惠券省钱已生效",
+      "couponOpportunityAppliedText": "{name} 已为本单节省 {amount}。",
+      "couponOpportunityBuildTitle": "再凑一点可解锁更强优惠",
+      "couponOpportunityBuildText": "再加 {amount}，可解锁约 {value} 优惠。",
+      "couponOpportunityReview": "查看优惠券"
     },
     "orderTracking": {
       "title": "订单追踪",
@@ -1064,7 +1141,11 @@
       "missingEmail": "缺少邮箱",
       "missingPhone": "缺少手机号",
       "readiness": "准备度",
-      "readySignals": "{count}/4 就绪"
+      "readySignals": "{count}/4 就绪",
+      "exportFailed": "导出用户失败",
+      "export": "导出",
+      "searchPlaceholder": "搜索用户名、邮箱或手机",
+      "roleCode": "操作员角色"
     },
     "adminOrders": {
       "title": "订单",
@@ -1151,7 +1232,13 @@
       "rejectReturn": "拒绝退货",
       "confirmReturnReceivedAndRefund": "确认收货并退款",
       "confirmReturnRefundTitle": "确认已收到退货？",
-      "confirmReturnRefundContent": "确认后订单会变为已退货退款，并向客户完成退款。"
+      "confirmReturnRefundContent": "确认后订单会变为已退货退款，并向客户完成退款。",
+      "printFailed": "打开物流面单失败，请重试。",
+      "confirmApproveReturnTitle": "确认同意这个退货申请？",
+      "confirmApproveReturnContent": "同意后，客户可以寄回退货商品，等待平台收货后退款。",
+      "confirmRejectReturnTitle": "确认拒绝这个退货申请？",
+      "confirmRejectReturnContent": "拒绝后，订单将恢复为已完成状态，客户不会进入寄回流程。",
+      "returnInfo": "退货信息"
     },
     "logisticsCarriers": {
       "title": "快递公司配置",
@@ -1245,17 +1332,17 @@
       "spanishDescription": "西班牙语描述",
       "chineseName": "中文名称",
       "chineseDescription": "中文描述",
-      "healthEyebrow": "?????",
-      "healthTitle": "??????",
-      "healthSubtitle": "????????????????????????????",
-      "healthDescription": "??????????????????????????????????",
-      "healthScore": "????",
-      "rootCount": "???",
-      "leafCount": "?????",
-      "missingImages": "????",
-      "localizationGaps": "?????",
-      "readiness": "???",
-      "readySignals": "{count}/5 ??"
+      "healthEyebrow": "类目质量",
+      "healthTitle": "类目导航健康度",
+      "healthSubtitle": "检查图片、层级、翻译和排序，确保前台导航清晰可用。",
+      "healthDescription": "类目图片、名称和本地化信息越完整，用户越容易找到合适商品。",
+      "healthScore": "健康评分",
+      "rootCount": "一级类目",
+      "leafCount": "叶子类目",
+      "missingImages": "缺少图片",
+      "localizationGaps": "本地化缺口",
+      "readiness": "准备度",
+      "readySignals": "{count}/5 项就绪"
     },
     "productAdmin": {
       "title": "商品",
@@ -1574,7 +1661,8 @@
       "pathSubscribeTitle": "适合订阅补货",
       "pathSubscribeText": "按 {interval} 配送，本单预计可省 {amount}。",
       "pathOnceTitle": "单次购买更灵活",
-      "pathOnceText": "适合礼物、首次试用、玩具、服饰和一次性配件。"
+      "pathOnceText": "适合礼物、首次试用、玩具、服饰和一次性配件。",
+      "useRecommendedPath": "使用推荐方案"
     },
     "profile": {
       "fetchUserFailed": "用户信息加载失败",
@@ -1753,6 +1841,14 @@
       "petProfileActionEmpty": "添加第一只宠物后，可开启尺码建议和个性化选购路径。",
       "petProfileActionImprove": "为 {name} 补齐 {fields}，推荐会更精准。",
       "petProfileActionReady": "宠物档案已适合用于推荐、生日权益和尺码支持。",
+      "petShopPathEyebrow": "个性化选购路径",
+      "petShopPathTitle": "按宠物档案去选购",
+      "petShopPathTitleWithName": "为 {name} 选购",
+      "petShopPathText": "打开适合 {type}、{size} 的商品，并优先展示个性化推荐。",
+      "petShopPathEmpty": "添加宠物档案后，可从这里进入更精准的选购路径。",
+      "petShopPathSignalReady": "信号已就绪",
+      "petShopPathNeedsProfile": "需要宠物档案",
+      "shopForThisPet": "为这只宠物选购",
       "completePetProfile": "完善档案",
       "deletePetConfirm": "确定删除这个宠物档案？",
       "petName": "宠物名称",
@@ -1794,17 +1890,17 @@
       "description": "描述",
       "sortOrder": "排序",
       "descriptionPlaceholder": "品牌定位和备注",
-      "healthEyebrow": "????",
-      "healthTitle": "???????",
-      "healthSubtitle": "?????????????????????????",
-      "healthDescription": "Logo??????????????????????????",
-      "healthScore": "????",
-      "activeBrands": "????",
-      "missingLogo": "?? Logo",
-      "missingWebsite": "????",
-      "weakDescription": "????",
-      "readiness": "???",
-      "readySignals": "{count}/5 ??"
+      "healthEyebrow": "品牌质量",
+      "healthTitle": "品牌资料健康度",
+      "healthSubtitle": "检查 Logo、官网、描述和启用状态，提升品牌页可信度。",
+      "healthDescription": "Logo、官网和清晰描述能帮助用户更快建立品牌信任。",
+      "healthScore": "健康评分",
+      "activeBrands": "启用品牌",
+      "missingLogo": "缺少 Logo",
+      "missingWebsite": "缺少官网",
+      "weakDescription": "描述偏弱",
+      "readiness": "准备度",
+      "readySignals": "{count}/5 项就绪"
     },
     "browsingHistory": {
       "eyebrow": "最近浏览",
@@ -1831,7 +1927,24 @@
       "recoverySubtitle": "{name} 当前价格 {price}，结合了你的近期兴趣和转化信号，值得优先查看。",
       "recoveryDeal": "关注过优惠",
       "recoveryLowStock": "低库存",
-      "resumeProduct": "继续查看商品"
+      "resumeProduct": "继续查看商品",
+      "nextActionEyebrow": "下一步浏览动作",
+      "nextActionAddTitle": "把最强浏览商品加入购物车",
+      "nextActionAddText": "{name} 已适合从浏览历史推进到购物车。",
+      "nextActionOptionsTitle": "先完成规格选择",
+      "nextActionOptionsText": "{name} 需要先选择规格，之后才能推进结账。",
+      "nextActionLowStockTitle": "优先处理低库存浏览商品",
+      "nextActionLowStockText": "{count} 件最近浏览商品库存紧张。",
+      "nextActionBrowseTitle": "刷新个性化发现",
+      "nextActionBrowseText": "利用浏览信号继续发现排序更匹配的商品。",
+      "addBestToCart": "加入最佳商品",
+      "addToCart": "加入购物车",
+      "filterLowStock": "查看低库存",
+      "browsePersonalized": "查看个性化推荐",
+      "readyToCart": "{count} 件可加购",
+      "dealWatchCount": "{count} 件关注优惠",
+      "lowStockWatchCount": "{count} 件低库存",
+      "unavailable": "该商品暂不可购买"
     },
     "notificationAdmin": {
       "title": "通知群发",
@@ -2009,6 +2122,31 @@
       "repeatFailures": "重复失败对象",
       "paymentFailures": "支付回调失败",
       "exportEvents": "导出事件"
+    },
+    "permissions": {
+      "title": "权限管理",
+      "subtitle": "管理操作员角色，将敏感后台权限限制在可信负责人范围内。",
+      "fetchFailed": "权限用户加载失败",
+      "roleUpdated": "权限角色已更新",
+      "roleUpdateFailed": "权限角色更新失败",
+      "username": "用户名",
+      "email": "邮箱",
+      "currentRole": "当前角色",
+      "changeRole": "调整角色",
+      "superAdmins": "超级管理员",
+      "admins": "管理员",
+      "customers": "普通用户",
+      "guardTitle": "超级管理员保护已启用",
+      "guardText": "只有 SUPER_ADMIN 操作员可以授予、移除或变更后台角色。当前账号的角色不能在本页修改。",
+      "superAdminOnly": "只有超级管理员可以打开权限管理",
+      "searchPlaceholder": "搜索角色编码、名称或描述",
+      "newRole": "新建角色",
+      "export": "导出",
+      "roleCode": "角色编码",
+      "roleName": "角色名称",
+      "description": "描述",
+      "permissionPages": "可访问页面",
+      "editRole": "编辑角色"
     }
   }
 }

@@ -4,6 +4,7 @@ import com.example.shop.entity.SecurityAuditLog;
 import com.example.shop.repository.SecurityAuditLogMapper;
 import com.example.shop.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityAuditLogService {
     private final SecurityAuditLogMapper auditLogMapper;
 
@@ -26,20 +28,25 @@ public class SecurityAuditLogService {
                        HttpServletRequest request,
                        String message,
                        String metadata) {
-        SecurityAuditLog log = new SecurityAuditLog();
-        log.setAction(limit(action, 50));
-        log.setResult(limit(result, 20));
-        log.setActorUserId(actorUserId);
-        log.setActorUsername(limit(actorUsername, 100));
-        log.setActorRole(limit(actorRole, 30));
-        log.setResourceType(limit(resourceType, 50));
-        log.setResourceId(resourceId == null ? null : limit(String.valueOf(resourceId), 100));
-        log.setIpAddress(limit(resolveClientIp(request), 45));
-        log.setUserAgent(limit(request == null ? null : request.getHeader("User-Agent"), 500));
-        log.setMessage(limit(message, 1000));
-        log.setMetadata(limit(metadata, 2000));
-        log.setCreatedAt(LocalDateTime.now());
-        auditLogMapper.insert(log);
+        SecurityAuditLog auditLog = new SecurityAuditLog();
+        auditLog.setAction(limit(action, 50));
+        auditLog.setResult(limit(result, 20));
+        auditLog.setActorUserId(actorUserId);
+        auditLog.setActorUsername(limit(actorUsername, 100));
+        auditLog.setActorRole(limit(actorRole, 30));
+        auditLog.setResourceType(limit(resourceType, 50));
+        auditLog.setResourceId(resourceId == null ? null : limit(String.valueOf(resourceId), 100));
+        auditLog.setIpAddress(limit(resolveClientIp(request), 45));
+        auditLog.setUserAgent(limit(request == null ? null : request.getHeader("User-Agent"), 500));
+        auditLog.setMessage(limit(message, 1000));
+        auditLog.setMetadata(limit(metadata, 2000));
+        auditLog.setCreatedAt(LocalDateTime.now());
+        try {
+            auditLogMapper.insert(auditLog);
+        } catch (RuntimeException e) {
+            log.warn("Security audit log write failed. action={}, result={}, actor={}, resourceType={}, resourceId={}",
+                    action, result, actorUsername, resourceType, resourceId, e);
+        }
     }
 
     public void record(String action,

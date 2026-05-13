@@ -6,6 +6,7 @@ import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
 import com.example.shop.security.JwtService;
 import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.SupportService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SupportWebSocketHandler extends TextWebSocketHandler {
     private final JwtService jwtService;
     private final UserMapper userMapper;
+    private final AdminRoleService adminRoleService;
     private final SupportService supportService;
     private final ObjectMapper objectMapper;
 
@@ -46,10 +48,11 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         session.getAttributes().put("userId", user.getId());
-        session.getAttributes().put("role", user.getRole());
+        String socketRole = supportAdminRole(user);
+        session.getAttributes().put("role", socketRole);
         session.getAttributes().put("username", user.getUsername());
 
-        if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+        if (isAdminRole(socketRole)) {
             adminSessions.add(session);
         } else {
             userSessions.computeIfAbsent(user.getId(), key -> ConcurrentHashMap.newKeySet()).add(session);
@@ -57,7 +60,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         sendJson(session, Map.of(
                 "type", "CONNECTED",
                 "userId", user.getId(),
-                "role", user.getRole()
+                "role", socketRole
         ));
     }
 
@@ -101,7 +104,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         content = normalizeContent(content);
         Long sessionId = toLong(payload.get("sessionId"));
         SupportSession session;
-        if ("ADMIN".equals(role)) {
+        if (isAdminRole(role)) {
             session = supportService.getSession(sessionId);
             if (session == null) {
                 throw new IllegalArgumentException("Support session not found");
@@ -115,7 +118,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        SupportMessage message = "ADMIN".equals(role)
+        SupportMessage message = isAdminRole(role)
                 ? supportService.sendAdminMessage(userId, session.getId(), content)
                 : supportService.sendUserMessage(userId, session == null ? null : session.getId(), content);
         SupportSession updatedSession = supportService.getSession(message.getSessionId());
@@ -149,7 +152,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
             }
             String username = jwtService.extractUsername(token);
             User user = userMapper.findByUsernameOrPhone(username);
-            if (user == null || !jwtService.isTokenValid(token, UserDetailsImpl.build(user))) {
+            if (user == null || "BANNED".equalsIgnoreCase(user.getStatus()) || !jwtService.isTokenValid(token, UserDetailsImpl.build(user))) {
                 return null;
             }
             return user;
@@ -166,7 +169,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         if (session == null) {
             throw new IllegalArgumentException("Support session not found");
         }
-        if (!"ADMIN".equals(role) && !userId.equals(session.getUserId())) {
+        if (!isAdminRole(role) && !userId.equals(session.getUserId())) {
             throw new IllegalStateException("Forbidden");
         }
     }
@@ -218,7 +221,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
     private void removeSession(WebSocketSession session) {
         Object userIdValue = session.getAttributes().get("userId");
         Object roleValue = session.getAttributes().get("role");
-        if (roleValue != null && "ADMIN".equalsIgnoreCase(String.valueOf(roleValue))) {
+        if (roleValue != null && isAdminRole(String.valueOf(roleValue))) {
             adminSessions.remove(session);
         }
         if (userIdValue instanceof Long) {
@@ -241,5 +244,17 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         }
         String text = String.valueOf(value);
         return text.isBlank() ? null : Long.valueOf(text);
+    }
+
+    private boolean isAdminRole(String role) {
+        return "ADMIN".equalsIgnoreCase(role) || "SUPER_ADMIN".equalsIgnoreCase(role);
+    }
+
+    private String supportAdminRole(User user) {
+        String role = user.getRole() == null ? "USER" : user.getRole().trim().toUpperCase();
+        if (!isAdminRole(role)) {
+            return "USER";
+        }
+        return adminRoleService.canAccess(user.getId(), "/admin/support") ? role : "USER";
     }
 }

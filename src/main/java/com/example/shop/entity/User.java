@@ -33,6 +33,9 @@ public class User implements Serializable {
     @Column(nullable = false)
     private String role;
 
+    @Column(name = "role_code")
+    private String roleCode;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -52,4 +55,4 @@ public class User implements Serializable {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-} 
+}

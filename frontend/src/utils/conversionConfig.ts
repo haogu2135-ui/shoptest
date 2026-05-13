@@ -13,6 +13,7 @@ export const conversionConfig = {
   addOnAssistant: {
     enabled: true,
     maxSuggestions: 3,
+    maxFallbackSuggestions: 1,
     priceCeilingMxn: 260,
     priceCeilingRatio: 1.35,
     priceFloorRatio: 0.45,

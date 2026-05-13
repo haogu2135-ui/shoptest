@@ -9,6 +9,7 @@
         <result property="phone" column="phone"/>
         <result property="address" column="address"/>
         <result property="role" column="role"/>
+        <result property="roleCode" column="role_code"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="status" column="status"/>
@@ -38,9 +39,29 @@
         SELECT * FROM users
     </select>
 
+    <select id="search" resultMap="userMap">
+        SELECT * FROM users
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    LOWER(username) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    OR LOWER(email) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    OR LOWER(phone) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                )
+            </if>
+            <if test="role != null and role != ''">
+                AND (UPPER(role) = UPPER(#{role}) OR UPPER(role_code) = UPPER(#{role}))
+            </if>
+            <if test="status != null and status != ''">
+                AND UPPER(status) = UPPER(#{status})
+            </if>
+        </where>
+        ORDER BY created_at DESC, id DESC
+    </select>
+
     <insert id="insert" parameterType="com.example.shop.entity.User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (username, password, email, phone, address, role, created_at, updated_at, status)
-        VALUES (#{username}, #{password}, #{email}, #{phone}, #{address}, #{role}, #{createdAt}, #{updatedAt}, #{status})
+        INSERT INTO users (username, password, email, phone, address, role, role_code, created_at, updated_at, status)
+        VALUES (#{username}, #{password}, #{email}, #{phone}, #{address}, #{role}, #{roleCode}, #{createdAt}, #{updatedAt}, #{status})
     </insert>
 
     <update id="update" parameterType="com.example.shop.entity.User">
@@ -52,9 +73,16 @@
             <if test="phone != null">phone = #{phone},</if>
             <if test="address != null">address = #{address},</if>
             <if test="role != null">role = #{role},</if>
+            <if test="roleCode != null">role_code = #{roleCode},</if>
             <if test="status != null">status = #{status},</if>
             updated_at = #{updatedAt}
         </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateRoleAccess">
+        UPDATE users
+        SET role = #{role}, role_code = #{roleCode}, updated_at = #{updatedAt}
         WHERE id = #{id}
     </update>
 

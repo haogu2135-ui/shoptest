@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Cascader, Divider, Empty, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SafetyCertificateOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +12,8 @@ import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { addGuestCartItem, getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
 import { navigateToSafeUrl } from '../utils/safeUrl';
 import { conversionConfig, getDeliveryPromise, getLowStockCount } from '../utils/conversionConfig';
+import { getGiftThreshold, getNearestCartBenefitTarget } from '../utils/cartBenefits';
+import { clearCheckoutCartItemIds, readCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import AddOnAssistant from '../components/AddOnAssistant';
 import './Checkout.css';
 
@@ -29,6 +31,8 @@ const resolveCheckoutImage = (imageUrl?: string) => {
 const isPurchasable = (item: CartItem) =>
   (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock >= item.quantity);
 const getCartItemLowStockCount = (item: CartItem) => getLowStockCount(item.stock, item.quantity);
+const areSameIds = (left: number[], right: number[]) =>
+  left.length === right.length && left.every((id, index) => id === right[index]);
 const estimateCouponDiscount = (coupon: UserCoupon, cartTotal: number) => {
   if (cartTotal < Number(coupon.thresholdAmount || 0)) {
     return 0;
@@ -56,6 +60,17 @@ const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: strin
   return preferredCodes.find((code) => channels.some((channel) => channel.code === code)) || channels[0]?.code || null;
 };
 
+const resolveCheckoutPaymentMethod = (
+  candidate: string | null | undefined,
+  channels: PaymentChannel[],
+  currency: string,
+) => {
+  if (candidate && channels.some((channel) => channel.code === candidate)) {
+    return candidate;
+  }
+  return getRecommendedPaymentMethod(channels, currency) || channels[0]?.code || 'STRIPE';
+};
+
 const Checkout: React.FC = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -78,6 +93,7 @@ const Checkout: React.FC = () => {
   const [couponQuote, setCouponQuote] = useState<CouponQuote | null>(null);
   const [selectedUserCouponId, setSelectedUserCouponId] = useState<number | null>(null);
   const [couponManuallyChanged, setCouponManuallyChanged] = useState(false);
+  const [supportPanelOpen, setSupportPanelOpen] = useState(false);
   const { t } = useLanguage();
   const watchedPaymentMethod = Form.useWatch('paymentMethod', form);
   const watchedRecipientName = Form.useWatch('recipientName', form);
@@ -100,7 +116,7 @@ const Checkout: React.FC = () => {
         setPaymentChannels(channels);
         const current = form.getFieldValue('paymentMethod');
         if (!current || !channels.some((channel) => channel.code === current)) {
-          form.setFieldsValue({ paymentMethod: getRecommendedPaymentMethod(channels, currency) || channels[0]?.code || 'STRIPE' });
+          form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(current, channels, currency) });
         }
       }),
     ]).catch(() => {
@@ -110,13 +126,7 @@ const Checkout: React.FC = () => {
   }, [currency, form]);
 
   const selectedCartItemIds = useMemo(() => {
-    try {
-      const raw = sessionStorage.getItem('checkoutCartItemIds');
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.map(Number).filter(Boolean) : [];
-    } catch {
-      return [];
-    }
+    return readCheckoutCartItemIds();
   }, []);
 
   useEffect(() => {
@@ -125,15 +135,16 @@ const Checkout: React.FC = () => {
     if (!token || !userId) {
       const guestItems = getGuestCartItems().filter((item) => selectedCartItemIds.length === 0 || selectedCartItemIds.includes(item.id));
       const purchasableItems = guestItems.filter(isPurchasable);
-      if (purchasableItems.length !== guestItems.length) {
+      const purchasableIds = purchasableItems.map((item) => item.id);
+      if (purchasableItems.length !== guestItems.length || (selectedCartItemIds.length > 0 && !areSameIds(selectedCartItemIds, purchasableIds))) {
         message.warning(t('pages.checkout.unavailableSelected'));
-        sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(purchasableItems.map((item) => item.id)));
+        syncCheckoutCartItemIds(purchasableItems);
       }
       setCartItems(purchasableItems);
       setAddresses([]);
       const preferredPaymentMethod = sessionStorage.getItem('checkoutPaymentMethod');
       if (preferredPaymentMethod) {
-        form.setFieldsValue({ paymentMethod: preferredPaymentMethod });
+        form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(preferredPaymentMethod, paymentChannels, currency) });
       }
       setLoading(false);
       return;
@@ -150,9 +161,10 @@ const Checkout: React.FC = () => {
           ? cartRes.data
           : cartRes.data.filter((item) => selectedCartItemIds.includes(item.id));
         const purchasableItems = selectedItems.filter(isPurchasable);
-        if (purchasableItems.length !== selectedItems.length) {
+        const purchasableIds = purchasableItems.map((item) => item.id);
+        if (purchasableItems.length !== selectedItems.length || (selectedCartItemIds.length > 0 && !areSameIds(selectedCartItemIds, purchasableIds))) {
           message.warning(t('pages.checkout.unavailableSelected'));
-          sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(purchasableItems.map((item) => item.id)));
+          syncCheckoutCartItemIds(purchasableItems);
         }
         setCartItems(purchasableItems);
         setAddresses(addressRes.data);
@@ -160,7 +172,7 @@ const Checkout: React.FC = () => {
         if (defaultAddress) setSelectedAddressId(defaultAddress.id);
         const preferredPaymentMethod = sessionStorage.getItem('checkoutPaymentMethod');
         if (preferredPaymentMethod) {
-          form.setFieldsValue({ paymentMethod: preferredPaymentMethod });
+          form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(preferredPaymentMethod, paymentChannels, currency) });
         }
       } catch {
         message.error(t('pages.checkout.loadFailed'));
@@ -170,7 +182,7 @@ const Checkout: React.FC = () => {
     };
 
     loadCheckout();
-  }, [form, selectedCartItemIds, t]);
+  }, [currency, form, paymentChannels, selectedCartItemIds, t]);
 
   useEffect(() => {
     if (selectedAddressId !== 'new') {
@@ -244,17 +256,14 @@ const Checkout: React.FC = () => {
     () => getDeliveryPromise({ currency, locale: market.locale }),
     [currency, market.locale],
   );
-  const giftThreshold = conversionConfig.giftAtCheckout.thresholdMxn;
+  const giftThreshold = getGiftThreshold(currency);
   const giftRemaining = Math.max(0, giftThreshold - cartTotal);
-  const giftUnlocked = conversionConfig.giftAtCheckout.enabled && giftRemaining <= 0;
+  const giftUnlocked = giftThreshold > 0 && giftRemaining <= 0;
   const giftProgress = giftThreshold > 0 ? Math.min(100, Math.round((cartTotal / giftThreshold) * 100)) : 100;
-  const addOnRemaining = useMemo(() => {
-    const targets = [
-      freeShippingRemaining > 0 ? { amount: freeShippingRemaining, reason: 'shipping' as const } : null,
-      conversionConfig.giftAtCheckout.enabled && giftRemaining > 0 ? { amount: giftRemaining, reason: 'gift' as const } : null,
-    ].filter(Boolean) as Array<{ amount: number; reason: 'shipping' | 'gift' }>;
-    return targets.sort((left, right) => left.amount - right.amount)[0] || null;
-  }, [freeShippingRemaining, giftRemaining]);
+  const addOnTarget = useMemo(
+    () => getNearestCartBenefitTarget(cartTotal, market.freeShippingThreshold, currency),
+    [cartTotal, currency, market.freeShippingThreshold],
+  );
   const nextCouponUnlock = useMemo(() => {
     if (!couponQuote?.availableCoupons?.length) return null;
     return couponQuote.availableCoupons
@@ -272,6 +281,36 @@ const Checkout: React.FC = () => {
       .filter((item) => item.gap > 0 && item.estimatedValue > 0)
       .sort((left, right) => left.gap - right.gap || right.estimatedValue - left.estimatedValue)[0] || null;
   }, [cartTotal, couponQuote?.availableCoupons]);
+  const couponOpportunity = useMemo(() => {
+    if (isGuestCheckout || !couponQuote?.availableCoupons?.length) return null;
+    if (selectedCoupon && discountAmount > 0) {
+      return {
+        type: 'ready' as const,
+        title: selectedIsBestCoupon
+          ? t('pages.checkout.couponOpportunityBestTitle')
+          : t('pages.checkout.couponOpportunityAppliedTitle'),
+        text: t('pages.checkout.couponOpportunityAppliedText', {
+          name: selectedCoupon.couponName,
+          amount: formatMoney(discountAmount),
+        }),
+        action: t('pages.checkout.couponOpportunityReview'),
+      };
+    }
+    if (nextCouponUnlock) {
+      return {
+        type: 'build' as const,
+        title: t('pages.checkout.couponOpportunityBuildTitle'),
+        text: t('pages.checkout.couponOpportunityBuildText', {
+          amount: formatMoney(nextCouponUnlock.gap),
+          value: formatMoney(nextCouponUnlock.estimatedValue),
+        }),
+        action: addOnTarget
+          ? t('pages.checkout.savingsShopAddOns')
+          : t('pages.checkout.couponOpportunityReview'),
+      };
+    }
+    return null;
+  }, [addOnTarget, couponQuote?.availableCoupons?.length, discountAmount, formatMoney, isGuestCheckout, nextCouponUnlock, selectedCoupon, selectedIsBestCoupon, t]);
   const savingsCoachItems = [
     {
       key: 'shipping',
@@ -345,6 +384,57 @@ const Checkout: React.FC = () => {
     },
   ];
   const checkoutReadinessScore = Math.round((checkoutReadinessItems.filter((item) => item.ready).length / checkoutReadinessItems.length) * 100);
+  const checkoutNextAction = checkoutReadinessItems.find((item) => !item.ready) || null;
+  const needsCheckoutSupport = Boolean(addOnTarget || couponOpportunity || checkoutNextAction);
+  useEffect(() => {
+    if (needsCheckoutSupport) {
+      setSupportPanelOpen(true);
+    }
+  }, [needsCheckoutSupport]);
+  const scrollToAddOns = useCallback(() => {
+    document.getElementById('checkout-add-on-assistant')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+  const handleCheckoutNextAction = () => {
+    if (!checkoutNextAction) {
+      window.dispatchEvent(new Event('shop:open-support'));
+      return;
+    }
+    if (checkoutNextAction.key === 'items') {
+      navigate('/cart');
+      return;
+    }
+    if (checkoutNextAction.key === 'address') {
+      document.getElementById('checkout-address-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (checkoutNextAction.key === 'payment') {
+      document.getElementById('checkout-payment-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (checkoutNextAction.key === 'savings') {
+      if (addOnTarget) {
+        scrollToAddOns();
+        return;
+      }
+      document.getElementById('checkout-coupon-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+  const handleCouponOpportunityAction = () => {
+    if (couponOpportunity?.type === 'build' && addOnTarget) {
+      scrollToAddOns();
+      return;
+    }
+    document.getElementById('checkout-coupon-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const checkoutNextActionLabel = !checkoutNextAction
+    ? t('pages.checkout.nextActionSupport')
+    : checkoutNextAction.key === 'items'
+      ? t('pages.checkout.nextActionReviewCart')
+      : checkoutNextAction.key === 'address'
+        ? t('pages.checkout.nextActionAddress')
+        : checkoutNextAction.key === 'payment'
+          ? t('pages.checkout.nextActionPayment')
+          : t('pages.checkout.nextActionSavings');
 
   useEffect(() => {
     if (!giftUnlocked || giftCelebrated) return;
@@ -386,14 +476,14 @@ const Checkout: React.FC = () => {
       const response = await cartApi.getItems(Number(userId));
       const purchasableItems = response.data.filter(isPurchasable);
       setCartItems(purchasableItems);
-      sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(purchasableItems.map((item) => item.id)));
+      syncCheckoutCartItemIds(purchasableItems);
       window.dispatchEvent(new Event('shop:cart-updated'));
       return;
     }
-    const addedItem = addGuestCartItem(product, 1);
-    const nextItems = [...cartItems, addedItem].filter(isPurchasable);
+    addGuestCartItem(product, 1);
+    const nextItems = getGuestCartItems().filter(isPurchasable);
     setCartItems(nextItems);
-    sessionStorage.setItem('checkoutCartItemIds', JSON.stringify(nextItems.map((item) => item.id)));
+    syncCheckoutCartItemIds(nextItems);
   };
 
   const handleSubmit = async (values: any) => {
@@ -431,7 +521,7 @@ const Checkout: React.FC = () => {
               selectedSpecs: item.selectedSpecs,
             })),
           });
-      sessionStorage.removeItem('checkoutCartItemIds');
+      clearCheckoutCartItemIds();
       sessionStorage.removeItem('checkoutPaymentMethod');
       if (!token || !userId) {
         removeGuestCartItems(cartItems.map((item) => item.id));
@@ -661,51 +751,45 @@ const Checkout: React.FC = () => {
         </Text>
       </Card>
 
-      <Card style={{ marginBottom: 16 }}>
-        <Text strong>
-          {freeShippingRemaining > 0
-            ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingRemaining) })
-            : t('pages.cart.freeShippingUnlocked')}
-        </Text>
-        <div style={{ marginTop: 8 }}>
-          <Spin spinning={false}>
-            <div style={{ height: 8, background: '#edf0ed', borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{ width: `${freeShippingPercent}%`, height: '100%', background: '#124734' }} />
-            </div>
-          </Spin>
-        </div>
-      </Card>
-
-      {deliveryPromise.enabled ? (
-        <Card className="checkout-page__deliveryPromise" style={{ marginBottom: 16 }}>
-          <span className="checkout-page__deliveryIcon"><TruckOutlined /></span>
+      <Card className="checkout-page__benefitStrip">
+        <div className="checkout-page__benefitItem">
+          <span className="checkout-page__benefitIcon"><TruckOutlined /></span>
           <div>
-            <Text strong>{t('pages.checkout.deliveryPromise', { window: deliveryPromise.windowText })}</Text>
-            <Text type="secondary">
-              {deliveryPromise.shipsToday
-                ? t('pages.checkout.shipsToday', { cutoff: `${deliveryPromise.cutoffHour}:00` })
-                : t('pages.checkout.shipsNextBusinessDay')}
+            <Text strong>
+              {freeShippingRemaining > 0
+                ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingRemaining) })
+                : t('pages.cart.freeShippingUnlocked')}
             </Text>
+            <Progress percent={freeShippingPercent} showInfo={false} strokeColor="#124734" trailColor="#edf0ed" />
           </div>
-        </Card>
-      ) : null}
-
-      {conversionConfig.giftAtCheckout.enabled ? (
-        <Card className={giftUnlocked ? 'checkout-page__gift checkout-page__gift--unlocked' : 'checkout-page__gift'} style={{ marginBottom: 16 }}>
-          <div className="checkout-page__giftHeader">
-            <span className="checkout-page__giftIcon">{giftUnlocked ? <CheckCircleOutlined /> : <GiftOutlined />}</span>
+        </div>
+        {deliveryPromise.enabled ? (
+          <div className="checkout-page__benefitItem">
+            <span className="checkout-page__benefitIcon"><SafetyCertificateOutlined /></span>
+            <div>
+              <Text strong>{t('pages.checkout.deliveryPromise', { window: deliveryPromise.windowText })}</Text>
+              <Text type="secondary">
+                {deliveryPromise.shipsToday
+                  ? t('pages.checkout.shipsToday', { cutoff: `${deliveryPromise.cutoffHour}:00` })
+                  : t('pages.checkout.shipsNextBusinessDay')}
+              </Text>
+            </div>
+          </div>
+        ) : null}
+        {conversionConfig.giftAtCheckout.enabled ? (
+          <div className={giftUnlocked ? 'checkout-page__benefitItem checkout-page__benefitItem--ready' : 'checkout-page__benefitItem'}>
+            <span className="checkout-page__benefitIcon">{giftUnlocked ? <CheckCircleOutlined /> : <GiftOutlined />}</span>
             <div>
               <Text strong>
                 {giftUnlocked
                   ? t('pages.checkout.giftUnlocked', { gift: t(conversionConfig.giftAtCheckout.giftNameKey) })
                   : t('pages.checkout.giftRemaining', { amount: formatMoney(giftRemaining), gift: t(conversionConfig.giftAtCheckout.giftNameKey) })}
               </Text>
-              <Text type="secondary">{t('pages.checkout.giftHint')}</Text>
+              <Progress percent={giftProgress} showInfo={false} strokeColor={giftUnlocked ? '#124734' : '#ffb84d'} trailColor="#edf0ed" />
             </div>
           </div>
-          <Progress percent={giftProgress} showInfo={false} strokeColor={giftUnlocked ? '#124734' : '#ffb84d'} trailColor="#edf0ed" />
-        </Card>
-      ) : null}
+        ) : null}
+      </Card>
 
       <Modal
         open={giftCelebrationOpen}
@@ -719,61 +803,106 @@ const Checkout: React.FC = () => {
         </Space>
       </Modal>
 
-      {addOnRemaining ? (
-        <AddOnAssistant
-          cartProductIds={cartItems.map((item) => item.productId)}
-          remainingAmount={addOnRemaining.amount}
-          reason={addOnRemaining.reason}
-          onAdd={addSuggestedProduct}
-        />
-      ) : null}
-
-      <Card className="checkout-page__savingsCoach" style={{ marginBottom: 16 }}>
-        <div className="checkout-page__savingsCoachHeader">
-          <div>
-            <Text type="secondary">{t('pages.checkout.savingsCoachEyebrow')}</Text>
+      <details
+        className="checkout-page__supportPanel"
+        open={supportPanelOpen}
+        onToggle={(event) => setSupportPanelOpen(event.currentTarget.open)}
+      >
+        <summary>
+          <span>
             <Text strong>{t('pages.checkout.savingsCoachTitle')}</Text>
             <Text type="secondary">{t('pages.checkout.savingsCoachSubtitle')}</Text>
-          </div>
-          {addOnRemaining ? (
-            <Button size="small" onClick={() => navigate('/products')}>
-              {t('pages.checkout.savingsShopAddOns')}
-            </Button>
-          ) : null}
-        </div>
-        <div className="checkout-page__savingsCoachGrid">
-          {savingsCoachItems.map((item) => (
-            <div className={item.ready ? 'checkout-page__savingsCoachItem checkout-page__savingsCoachItem--ready' : 'checkout-page__savingsCoachItem'} key={item.key}>
-              <span className="checkout-page__savingsCoachIcon">{item.ready ? <CheckCircleOutlined /> : item.icon}</span>
-              <span>
-                <Text strong>{item.title}</Text>
-                <Text type="secondary">{item.text}</Text>
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
+          </span>
+          <Tag color={checkoutNextAction ? 'orange' : 'green'}>{checkoutReadinessScore}%</Tag>
+        </summary>
 
-      <Card className="checkout-page__readiness" style={{ marginBottom: 16 }}>
-        <div className="checkout-page__readinessHeader">
-          <div>
-            <Text type="secondary">{t('pages.checkout.readinessEyebrow')}</Text>
-            <Text strong>{t('pages.checkout.readinessTitle')}</Text>
+        {addOnTarget ? (
+          <div id="checkout-add-on-assistant">
+            <AddOnAssistant
+              cartProductIds={cartItems.map((item) => item.productId)}
+              remainingAmount={addOnTarget.remainingAmount}
+              reason={addOnTarget.reason}
+              onAdd={addSuggestedProduct}
+            />
           </div>
-          <Progress type="circle" percent={checkoutReadinessScore} size={64} strokeColor="#124734" />
-        </div>
-        <div className="checkout-page__readinessGrid">
-          {checkoutReadinessItems.map((item) => (
-            <div className={item.ready ? 'checkout-page__readinessItem checkout-page__readinessItem--ready' : 'checkout-page__readinessItem'} key={item.key}>
-              <CheckCircleOutlined />
-              <span>
-                <Text strong>{item.label}</Text>
-                <Text type="secondary">{item.text}</Text>
-              </span>
+        ) : null}
+
+        <Card className="checkout-page__savingsCoach">
+          <div className="checkout-page__savingsCoachHeader">
+            <div>
+              <Text type="secondary">{t('pages.checkout.savingsCoachEyebrow')}</Text>
+              <Text strong>{t('pages.checkout.savingsCoachTitle')}</Text>
+              <Text type="secondary">{t('pages.checkout.savingsCoachSubtitle')}</Text>
             </div>
-          ))}
-        </div>
-      </Card>
+            {addOnTarget ? (
+              <Button size="small" onClick={scrollToAddOns}>
+                {t('pages.checkout.savingsShopAddOns')}
+              </Button>
+            ) : null}
+          </div>
+          <div className="checkout-page__savingsCoachGrid">
+            {savingsCoachItems.map((item) => (
+              <div className={item.ready ? 'checkout-page__savingsCoachItem checkout-page__savingsCoachItem--ready' : 'checkout-page__savingsCoachItem'} key={item.key}>
+                <span className="checkout-page__savingsCoachIcon">{item.ready ? <CheckCircleOutlined /> : item.icon}</span>
+                <span>
+                  <Text strong>{item.title}</Text>
+                  <Text type="secondary">{item.text}</Text>
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {couponOpportunity ? (
+          <Card className={couponOpportunity.type === 'ready' ? 'checkout-page__couponOpportunity checkout-page__couponOpportunity--ready' : 'checkout-page__couponOpportunity'}>
+            <div>
+              <Text strong>{couponOpportunity.title}</Text>
+              <Text type="secondary">{couponOpportunity.text}</Text>
+            </div>
+            <Button size="small" type={couponOpportunity.type === 'ready' ? 'default' : 'primary'} onClick={handleCouponOpportunityAction}>
+              {couponOpportunity.action}
+            </Button>
+          </Card>
+        ) : null}
+
+        <Card className="checkout-page__readiness">
+          <div className="checkout-page__readinessHeader">
+            <div>
+              <Text type="secondary">{t('pages.checkout.readinessEyebrow')}</Text>
+              <Text strong>{t('pages.checkout.readinessTitle')}</Text>
+            </div>
+            <Progress type="circle" percent={checkoutReadinessScore} size={64} strokeColor="#124734" />
+          </div>
+          <div className="checkout-page__readinessGrid">
+            {checkoutReadinessItems.map((item) => (
+              <div className={item.ready ? 'checkout-page__readinessItem checkout-page__readinessItem--ready' : 'checkout-page__readinessItem'} key={item.key}>
+                <CheckCircleOutlined />
+                <span>
+                  <Text strong>{item.label}</Text>
+                  <Text type="secondary">{item.text}</Text>
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className={checkoutNextAction ? 'checkout-page__nextAction' : 'checkout-page__nextAction checkout-page__nextAction--ready'}>
+            <span>
+              <Text strong>
+                {checkoutNextAction
+                  ? t('pages.checkout.nextActionTitle')
+                  : t('pages.checkout.nextActionReadyTitle')}
+              </Text>
+              <Text type="secondary">
+                {checkoutNextAction
+                  ? checkoutNextAction.text
+                  : t('pages.checkout.nextActionReadyText')}
+              </Text>
+            </span>
+            <Button size="small" type={checkoutNextAction ? 'primary' : 'default'} onClick={handleCheckoutNextAction}>
+              {checkoutNextActionLabel}
+            </Button>
+          </div>
+        </Card>
+      </details>
 
       <Card title={t('pages.checkout.itemList')} style={{ marginBottom: 16 }} className="checkout-page__itemsCard">
         <List
@@ -827,7 +956,7 @@ const Checkout: React.FC = () => {
           </Card>
         ) : null}
 
-        <Card title={t('pages.checkout.address')} style={{ marginBottom: 16 }}>
+        <Card id="checkout-address-card" title={t('pages.checkout.address')} style={{ marginBottom: 16 }}>
           {addresses.length > 0 && (
             <Radio.Group value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)} style={{ width: '100%', marginBottom: 16 }}>
               {addresses.map((address) => (
@@ -871,7 +1000,7 @@ const Checkout: React.FC = () => {
           )}
         </Card>
 
-        {!isGuestCheckout ? <Card title={t('pages.checkout.coupon')} style={{ marginBottom: 16 }}>
+        {!isGuestCheckout ? <Card id="checkout-coupon-card" title={t('pages.checkout.coupon')} style={{ marginBottom: 16 }}>
           <Select
             allowClear
             style={{ width: '100%' }}
@@ -886,7 +1015,7 @@ const Checkout: React.FC = () => {
               return {
                 value: coupon.id,
                 label: couponDiscount > 0
-                  ? `${describeCoupon(coupon)} - ${t('pages.checkout.couponSaveAmount', { amount: formatMoney(couponDiscount) })}${bestCouponCandidate?.coupon.id === coupon.id ? ` · ${t('pages.checkout.bestCoupon')}` : ''}`
+                  ? `${describeCoupon(coupon)} - ${t('pages.checkout.couponSaveAmount', { amount: formatMoney(couponDiscount) })}${bestCouponCandidate?.coupon.id === coupon.id ? ` - ${t('pages.checkout.bestCoupon')}` : ''}`
                   : describeCoupon(coupon),
                 disabled: couponDiscount <= 0,
               };
@@ -916,7 +1045,7 @@ const Checkout: React.FC = () => {
             <div><Text strong style={{ color: '#ee4d2d', fontSize: 22 }}>{t('pages.checkout.payable')}: {formatMoney(payableAmount)}</Text></div>
           </div>
         </Card> : (
-          <Card title={t('pages.checkout.orderSummary')} style={{ marginBottom: 16 }}>
+          <Card id="checkout-coupon-card" title={t('pages.checkout.orderSummary')} style={{ marginBottom: 16 }}>
             <div style={{ textAlign: 'right' }}>
               <div><Text>{t('common.subtotal')}: {formatMoney(cartTotal)}</Text></div>
               <div><Text>{t('pages.checkout.shippingFee')}: {formatMoney(shippingFee)}</Text></div>
@@ -925,7 +1054,7 @@ const Checkout: React.FC = () => {
           </Card>
         )}
 
-        <Card title={t('pages.payment.title')}>
+        <Card id="checkout-payment-card" title={t('pages.payment.title')}>
           <div className="checkout-page__paymentConfidence">
             <SafetyCertificateOutlined />
             <span>

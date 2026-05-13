@@ -28,6 +28,7 @@ const OrderManagement = lazy(() => import('./pages/OrderManagement'));
 const OrderTracking = lazy(() => import('./pages/OrderTracking'));
 const PetFinder = lazy(() => import('./pages/PetFinder'));
 const PetGallery = lazy(() => import('./pages/PetGallery'));
+const PermissionManagement = lazy(() => import('./pages/PermissionManagement'));
 const ProductCompare = lazy(() => import('./pages/ProductCompare'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const ProductList = lazy(() => import('./pages/ProductList'));
@@ -123,6 +124,7 @@ const App: React.FC = () => {
             <Route path="logistics-carriers" element={<LogisticsCarrierManagement />} />
             <Route path="coupons" element={<CouponManagement />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="permissions" element={<PermissionManagement />} />
             <Route path="reviews" element={<ReviewManagement />} />
             <Route path="notifications" element={<NotificationManagement />} />
             <Route path="support" element={<SupportManagement />} />

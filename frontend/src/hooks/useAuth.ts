@@ -2,6 +2,7 @@ import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { message } from 'antd';
 import { userApi } from '../api';
 import { User } from '../types';
+import { getEffectiveRole } from '../utils/roles';
 
 interface AuthContextType {
     user: User | null;
@@ -19,12 +20,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     const login = async (username: string, password: string) => {
         try {
             const response = await userApi.login(username, password);
-            const { token, id, username: name, role } = response.data;
+            const { token, id, username: name, role, roleCode } = response.data;
+            const effectiveRole = getEffectiveRole(role, roleCode);
             localStorage.setItem('token', token);
             localStorage.setItem('userId', id);
             localStorage.setItem('username', name);
-            localStorage.setItem('role', role);
-            setUser({ id, username: name, role, email: response.data.email || '' });
+            localStorage.setItem('role', effectiveRole);
+            setUser({ id, username: name, role, roleCode, email: response.data.email || '' });
             message.success('Logged in successfully');
         } catch (error) {
             message.error('Login failed, please check your username and password');
@@ -47,10 +49,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (token) {
             userApi.getProfile()
                 .then(response => {
+                    const effectiveRole = getEffectiveRole(response.data.role, response.data.roleCode);
                     setUser(response.data);
                     localStorage.setItem('userId', String(response.data.id));
                     localStorage.setItem('username', response.data.username);
-                    localStorage.setItem('role', response.data.role);
+                    localStorage.setItem('role', effectiveRole);
                 })
                 .catch(() => {
                     localStorage.removeItem('token');

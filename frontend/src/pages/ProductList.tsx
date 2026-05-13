@@ -3,7 +3,7 @@ import { Badge, Card, Row, Col, Button, Input, Select, Pagination, Tag, message,
 import { BarChartOutlined, BellOutlined, CheckCircleOutlined, FireOutlined, FilterOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiBaseUrl, productApi, cartApi, categoryApi } from '../api';
-import type { Product, Category, ProductVariant } from '../types';
+import type { Product, Category } from '../types';
 import { buildCategoryTree, flattenCategoryTree, getLocalizedCategoryValue } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -13,6 +13,8 @@ import { buildBundleSpecs, getBundleInfo } from '../utils/bundle';
 import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
 import { addStockAlert, readStockAlerts, removeStockAlert } from '../utils/stockAlerts';
 import { conversionConfig, getLowStockCount } from '../utils/conversionConfig';
+import { loadProductViewPreferences } from '../utils/productViewPreferences';
+import { getProductOptionGroups, getProductVariants, optionValueHasVariant, selectCompatibleProductOption } from '../utils/productOptions';
 import './ProductList.css';
 
 const { Text } = Typography;
@@ -29,49 +31,6 @@ const resolveProductListImage = (imageUrl?: string) => {
     return imageUrl;
   }
   return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
-
-type OptionGroup = {
-  name: string;
-  values: string[];
-};
-
-const splitOptionValues = (value: unknown) =>
-  String(value || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-const getProductOptionGroups = (product?: Product | null): OptionGroup[] => {
-  if (!product) return [];
-  const specs = product.specifications || {};
-  const configured = Object.entries(specs)
-    .filter(([key]) => key.startsWith('options.'))
-    .map(([key, value]) => ({
-      name: key.replace(/^options\./, ''),
-      values: splitOptionValues(value),
-    }))
-    .filter((group) => group.name && group.values.length > 0);
-
-  if (configured.length > 0) return configured;
-
-  const fallback: OptionGroup[] = [];
-  if (Array.isArray(product.sizes) && product.sizes.length > 0) fallback.push({ name: 'Size', values: product.sizes });
-  if (Array.isArray(product.colors) && product.colors.length > 0) fallback.push({ name: 'Color', values: product.colors });
-  return fallback;
-};
-
-const getProductVariants = (product?: Product | null): ProductVariant[] => {
-  if (!product) return [];
-  const rawVariants = (product as any).variants;
-  if (Array.isArray(rawVariants)) return rawVariants;
-  if (typeof rawVariants !== 'string' || !rawVariants.trim()) return [];
-  try {
-    const parsed = JSON.parse(rawVariants);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 };
 
 const readSearchHistory = () => {
@@ -112,14 +71,18 @@ const ProductList: React.FC = () => {
   const [categoryId, setCategoryId] = useState<number | undefined>(
     searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined
   );
-  const [sortBy, setSortBy] = useState<string>('default');
+  const [sortBy, setSortBy] = useState<string>(searchParams.get('sort') || 'default');
   const [priceRange, setPriceRange] = useState<[number, number]>(DEFAULT_PRICE_RANGE);
-  const [petSizes, setPetSizes] = useState<string[]>([]);
+  const [petSizes, setPetSizes] = useState<string[]>(
+    searchParams.get('petSize') ? [searchParams.get('petSize') as string] : [],
+  );
   const [materials, setMaterials] = useState<string[]>([]);
   const [colors, setColors] = useState<string[]>([]);
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
   const [quickAddOptions, setQuickAddOptions] = useState<Record<string, string>>({});
   const [searchHistory, setSearchHistory] = useState<string[]>(() => readSearchHistory());
+  const [personalizedProducts, setPersonalizedProducts] = useState<Product[]>([]);
+  const [viewPreferences, setViewPreferences] = useState(() => loadProductViewPreferences());
   const [currentPage, setCurrentPage] = useState(1);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [alertedStockProductIds, setAlertedStockProductIds] = useState<Set<number>>(
@@ -133,6 +96,7 @@ const ProductList: React.FC = () => {
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const getPositiveRate = (product: Product) => product.positiveRate ?? 0;
+  const hasReviewSignal = (product: Product) => Number(product.reviewCount || 0) > 0;
   const getSavingsAmount = (product: Product) => Math.max(0, Number(product.originalPrice || 0) - getPrice(product));
   const isProductSoldOut = (product: Product) => product.stock !== undefined && product.stock <= 0;
   const isQuickAddReady = (product: Product) =>
@@ -169,13 +133,31 @@ const ProductList: React.FC = () => {
     const refreshStockAlerts = () => {
       setAlertedStockProductIds(new Set(readStockAlerts().map((alert) => alert.productId)));
     };
+    const refreshPreferences = () => {
+      setViewPreferences(loadProductViewPreferences());
+    };
     window.addEventListener('shop:stock-alerts-updated', refreshStockAlerts);
+    window.addEventListener('shop:product-view-preferences-updated', refreshPreferences);
     window.addEventListener('storage', refreshStockAlerts);
+    window.addEventListener('storage', refreshPreferences);
     return () => {
       window.removeEventListener('shop:stock-alerts-updated', refreshStockAlerts);
+      window.removeEventListener('shop:product-view-preferences-updated', refreshPreferences);
       window.removeEventListener('storage', refreshStockAlerts);
+      window.removeEventListener('storage', refreshPreferences);
     };
   }, []);
+
+  useEffect(() => {
+    const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
+    if (!isAuthenticated) {
+      setPersonalizedProducts([]);
+      return;
+    }
+    productApi.getPersonalizedRecommendations()
+      .then((response) => setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language))))
+      .catch(() => setPersonalizedProducts([]));
+  }, [language]);
 
   const collectionProducts = useMemo(() => {
     let result = products;
@@ -366,8 +348,12 @@ const ProductList: React.FC = () => {
     const kw = searchParams.get('keyword') || '';
     const cid = searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined;
     const activeCollection = searchParams.get('collection') || '';
+    const requestedSort = searchParams.get('sort') || 'default';
+    const requestedPetSize = searchParams.get('petSize');
     setKeyword(kw);
     setCategoryId(cid);
+    setSortBy(requestedSort);
+    setPetSizes(requestedPetSize ? [requestedPetSize] : []);
     fetchProducts(activeCollection ? undefined : kw, cid);
   }, [fetchProducts, searchParams, language]);
 
@@ -382,6 +368,8 @@ const ProductList: React.FC = () => {
     if (collection) params.set('collection', collection);
     if (trimmed) params.set('keyword', trimmed);
     if (categoryId) params.set('categoryId', categoryId.toString());
+    if (sortBy !== 'default') params.set('sort', sortBy);
+    if (petSizes.length === 1) params.set('petSize', petSizes[0]);
     navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
   };
 
@@ -419,6 +407,8 @@ const ProductList: React.FC = () => {
     if (collection) params.set('collection', collection);
     if (keyword) params.set('keyword', keyword);
     if (cid) params.set('categoryId', cid.toString());
+    if (sortBy !== 'default') params.set('sort', sortBy);
+    if (petSizes.length === 1) params.set('petSize', petSizes[0]);
     navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
     setFilterDrawerOpen(false);
   };
@@ -428,6 +418,37 @@ const ProductList: React.FC = () => {
     setQuickAddProduct(product);
     setQuickAddOptions({});
   };
+
+  const selectQuickAddOption = (groupName: string, value: string) => {
+    setQuickAddOptions((current) =>
+      selectCompatibleProductOption(quickAddOptionGroups, quickAddVariants, current, groupName, value),
+    );
+  };
+
+  const renderQuickAddOptions = () => (
+    <>
+      <Text type="secondary">{t('pages.productList.quickAddHint')}</Text>
+      {quickAddOptionGroups.map((group) => (
+        <Select
+          key={group.name}
+          placeholder={group.name}
+          value={quickAddOptions[group.name] || undefined}
+          onChange={(value) => selectQuickAddOption(group.name, value)}
+          options={group.values.map((value) => ({
+            value,
+            label: value,
+            disabled: !optionValueHasVariant(quickAddVariants, group.name, value),
+          }))}
+          style={{ width: '100%' }}
+        />
+      ))}
+      {Object.keys(quickAddOptions).length > 0 && (
+        <Button type="link" onClick={() => setQuickAddOptions({})} style={{ padding: 0, alignSelf: 'flex-start' }}>
+          {t('common.reset')}
+        </Button>
+      )}
+    </>
+  );
 
   const handleStockAlert = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
@@ -513,7 +534,42 @@ const ProductList: React.FC = () => {
     return matchPrice && matchSize && matchMaterial && matchColor;
   });
 
+  const personalizedProductIds = useMemo(
+    () => new Set(personalizedProducts.map((product) => product.id)),
+    [personalizedProducts],
+  );
+  const topPreferenceCategory = useMemo(() => {
+    const [categoryIdValue] = Object.entries(viewPreferences.categories || {})
+      .sort((left, right) => Number(right[1] || 0) - Number(left[1] || 0))[0] || [];
+    return categoryIdValue;
+  }, [viewPreferences.categories]);
+  const topPreferenceBrand = useMemo(() => {
+    const [brand] = Object.entries(viewPreferences.brands || {})
+      .sort((left, right) => Number(right[1] || 0) - Number(left[1] || 0))[0] || [];
+    return brand;
+  }, [viewPreferences.brands]);
+  const hasPreferenceSignal = Boolean(topPreferenceCategory || topPreferenceBrand || viewPreferences.recent.length > 0);
+  const preferredCategory = topPreferenceCategory
+    ? categories.find((category) => String(category.id) === topPreferenceCategory)
+    : undefined;
+  const preferenceLabel = topPreferenceBrand
+    || (preferredCategory ? getLocalizedCategoryValue(preferredCategory, language, 'name') : '');
+  const getPersonalizedSortScore = (product: Product) =>
+    (personalizedProductIds.has(product.id) ? 42 : 0) +
+    (String(product.categoryId) === topPreferenceCategory ? 14 : 0) +
+    (topPreferenceBrand && product.brand === topPreferenceBrand ? 12 : 0) +
+    (viewPreferences.recent.includes(product.id) ? 6 : 0) +
+    (isBestValueProduct(product) ? 34 : 0) +
+    (isQuickAddReady(product) ? 18 : 0) +
+    Math.min(18, getDiscountPercent(product)) +
+    Math.min(14, getPositiveRate(product) / 8) +
+    Math.min(10, Number(product.reviewCount || 0) / 2) +
+    (getLowStockCount(product.stock) !== null ? 4 : 0);
+
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (sortBy === 'personalized-desc') {
+      return getPersonalizedSortScore(b) - getPersonalizedSortScore(a);
+    }
     if (sortBy === 'price-asc') return getPrice(a) - getPrice(b);
     if (sortBy === 'price-desc') return getPrice(b) - getPrice(a);
     if (sortBy === 'discount-desc') return getDiscountPercent(b) - getDiscountPercent(a);
@@ -553,22 +609,26 @@ const ProductList: React.FC = () => {
     .map((product, index) => ({
       product,
       index,
-      score:
-        (isBestValueProduct(product) ? 34 : 0) +
-        (isQuickAddReady(product) ? 18 : 0) +
-        Math.min(18, getDiscountPercent(product)) +
-        Math.min(14, getPositiveRate(product) / 8) +
-        Math.min(10, Number(product.reviewCount || 0) / 2) +
-        (getLowStockCount(product.stock) !== null ? 4 : 0),
+      score: getPersonalizedSortScore(product),
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.product || null;
   const recommendedProductPrice = recommendedProduct ? getPrice(recommendedProduct) : 0;
   const recommendedProductReasons = recommendedProduct ? [
+    personalizedProductIds.has(recommendedProduct.id) ? t('pages.productList.pickPetProfile') : null,
+    hasPreferenceSignal && !personalizedProductIds.has(recommendedProduct.id) ? t('pages.productList.pickPreference') : null,
     isBestValueProduct(recommendedProduct) ? t('pages.productList.pickBestValue') : null,
     isQuickAddReady(recommendedProduct) ? t('pages.productList.pickQuickAdd') : null,
     getDiscountPercent(recommendedProduct) > 0 ? t('pages.productList.pickDeal', { percent: getDiscountPercent(recommendedProduct) }) : null,
     getLowStockCount(recommendedProduct.stock) !== null ? t('pages.productList.pickLowStock', { count: getLowStockCount(recommendedProduct.stock) || 0 }) : null,
   ].filter(Boolean) as string[] : [];
+  const personalGuideText = personalizedProducts.length > 0
+    ? t('pages.productList.personalGuidePet', { count: personalizedProducts.length })
+    : hasPreferenceSignal
+      ? t('pages.productList.personalGuidePreference', { value: preferenceLabel || t('pages.productList.recentSearches') })
+      : t('pages.productList.personalGuideEmpty');
+  const personalGuideAction = personalizedProducts.length > 0
+    ? { label: t('pages.productList.viewPersonalPicks'), action: () => setSortBy('personalized-desc') }
+    : { label: t('pages.productList.managePetProfile'), action: () => navigate('/profile?tab=pets') };
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
@@ -723,6 +783,7 @@ const ProductList: React.FC = () => {
                 <Select value={sortBy} onChange={setSortBy} style={{ width: '100%' }}
                   options={[
                     { value: 'default', label: t('pages.productList.defaultSort') },
+                    { value: 'personalized-desc', label: t('pages.productList.personalizedSort') },
                     { value: 'price-asc', label: t('pages.productList.priceAsc') },
                     { value: 'price-desc', label: t('pages.productList.priceDesc') },
                     { value: 'discount-desc', label: t('pages.productList.discountDesc') },
@@ -809,6 +870,23 @@ const ProductList: React.FC = () => {
               {shoppingGuideAction.label}
             </Button>
           </div>
+          <div className="product-list__personalGuide">
+            <div>
+              <Text type="secondary">{t('pages.productList.personalGuideEyebrow')}</Text>
+              <Text strong>{t('pages.productList.personalGuideTitle')}</Text>
+              <Text type="secondary">{personalGuideText}</Text>
+            </div>
+            <Space wrap className="product-list__personalGuideActions">
+              {personalizedProducts.length > 0 ? (
+                <Tag color="green">{t('pages.productList.personalGuideActive')}</Tag>
+              ) : (
+                <Tag color="gold">{t('pages.productList.personalGuideSetup')}</Tag>
+              )}
+              <Button size="small" onClick={personalGuideAction.action}>
+                {personalGuideAction.label}
+              </Button>
+            </Space>
+          </div>
           {recommendedProduct ? (
             <div className="product-list__recommendedPick">
               <img
@@ -851,9 +929,9 @@ const ProductList: React.FC = () => {
             </div>
           ) : null}
           {loading ? (
-            <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
+            <div className="product-list__loading"><Spin size="large" /></div>
           ) : paginatedProducts.length === 0 ? (
-            <Empty description={t('pages.productList.empty')} style={{ padding: 80 }}>
+            <Empty description={t('pages.productList.empty')} className="product-list__empty">
               <Space wrap>
                 {activeFilterCount > 0 ? (
                   <Button onClick={resetFilters}>{t('pages.productList.resetFilters')}</Button>
@@ -907,8 +985,18 @@ const ProductList: React.FC = () => {
                       }
                       actions={[
                         renderPrimaryAction(product),
-                        <Button key="compare" icon={<BarChartOutlined />} size="small" className="product-list__actionButton" onClick={(e) => handleCompare(e, product)}>
-                          {isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
+                        <Button
+                          key="compare"
+                          icon={<BarChartOutlined />}
+                          size="small"
+                          className="product-list__actionButton product-list__actionButton--compact"
+                          aria-label={isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
+                          title={isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
+                          onClick={(e) => handleCompare(e, product)}
+                        >
+                          <span className="product-list__actionLabel">
+                            {isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
+                          </span>
                         </Button>,
                       ]}
                     >
@@ -931,8 +1019,10 @@ const ProductList: React.FC = () => {
                               </div>
                             ) : null}
                             <div className="product-list__ratingLine">
-                              <Text type="secondary">
-                                {t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })}
+                              <Text type={hasReviewSignal(product) ? 'secondary' : undefined} className={hasReviewSignal(product) ? undefined : 'product-list__newReviewSignal'}>
+                                {hasReviewSignal(product)
+                                  ? t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })
+                                  : t('pages.productList.noReviewsYet')}
                               </Text>
                             </div>
                             {product.brand && <Text type="secondary" className="product-list__brand">{product.brand}</Text>}
@@ -945,7 +1035,7 @@ const ProductList: React.FC = () => {
                 ))}
               </Row>
               {sortedProducts.length > pageSize && (
-                <div style={{ textAlign: 'center', marginTop: 24 }}>
+                <div className="product-list__pagination">
                   <Pagination current={currentPage} total={sortedProducts.length} pageSize={pageSize} onChange={setCurrentPage} showTotal={(total) => t('pages.productList.count', { count: total })} />
                 </div>
               )}
@@ -995,21 +1085,7 @@ const ProductList: React.FC = () => {
         <Space direction="vertical" style={{ width: '100%' }}>
           {quickAddBundleInfo ? (
             <>
-              {quickAddOptionGroups.length > 0 ? (
-                <>
-                  <Text type="secondary">{t('pages.productList.quickAddHint')}</Text>
-                  {quickAddOptionGroups.map((group) => (
-                    <Select
-                      key={group.name}
-                      placeholder={group.name}
-                      value={quickAddOptions[group.name] || undefined}
-                      onChange={(value) => setQuickAddOptions((current) => ({ ...current, [group.name]: value }))}
-                      options={group.values.map((value) => ({ value, label: value }))}
-                      style={{ width: '100%' }}
-                    />
-                  ))}
-                </>
-              ) : null}
+              {quickAddOptionGroups.length > 0 ? renderQuickAddOptions() : null}
               <Text type="secondary">{t('bundle.includes')}</Text>
               <Space wrap size={[6, 6]}>
                 {quickAddBundleInfo.items.map((item) => (
@@ -1020,17 +1096,7 @@ const ProductList: React.FC = () => {
             </>
           ) : quickAddOptionGroups.length > 0 ? (
             <>
-              <Text type="secondary">{t('pages.productList.quickAddHint')}</Text>
-              {quickAddOptionGroups.map((group) => (
-                <Select
-                  key={group.name}
-                  placeholder={group.name}
-                  value={quickAddOptions[group.name] || undefined}
-                  onChange={(value) => setQuickAddOptions((current) => ({ ...current, [group.name]: value }))}
-                  options={group.values.map((value) => ({ value, label: value }))}
-                  style={{ width: '100%' }}
-                />
-              ))}
+              {renderQuickAddOptions()}
               <Text>
                 {t('pages.productList.quickAddPrice')}: {formatMoney(quickAddPrice)}
               </Text>

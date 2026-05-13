@@ -8,6 +8,48 @@
 
 .order-management-page__table {
   overflow-x: auto;
+  max-width: 100%;
+}
+
+.order-management-page__table .ant-table {
+  max-width: 100%;
+}
+
+.order-management-page__table .ant-table-thead > tr > th,
+.order-management-page__table .ant-table-tbody > tr > td {
+  padding: 10px 8px;
+  vertical-align: top;
+}
+
+.order-management-page__compactStack {
+  max-width: 100%;
+}
+
+.order-management-page__compactStack,
+.order-management-page__compactStack .ant-typography,
+.order-management-page__addressText,
+.order-management-page__trackingText {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.order-management-page__addressText {
+  display: -webkit-box;
+  max-height: 4.6em;
+  overflow: hidden;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.order-management-page__trackingText {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.order-management-page__actions {
+  max-width: 100%;
 }
 
 .order-management-page__summaryGrid {
@@ -105,6 +147,11 @@
 
 .order-management-page .ant-table-cell {
   overflow-wrap: anywhere;
+}
+
+.order-management-page .ant-tag {
+  white-space: normal;
+  line-height: 1.35;
 }
 
 @media (max-width: 720px) {
