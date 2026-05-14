@@ -12,6 +12,9 @@ import java.util.List;
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByProduct_Id(Long productId);
     List<Review> findByProduct_IdAndStatusOrderByCreatedAtDesc(Long productId, String status);
+
+    @Query("SELECT r FROM Review r WHERE r.product.id = :productId AND (r.status = 'APPROVED' OR (r.status = 'PENDING' AND r.user.id = :userId)) ORDER BY r.createdAt DESC")
+    List<Review> findByProductIdIncludingUserPending(@Param("productId") Long productId, @Param("userId") Long userId);
     boolean existsByProduct_IdAndUser_IdAndOrderId(Long productId, Long userId, Long orderId);
     
     @Query("SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.product.id = :productId AND r.status = 'APPROVED'")

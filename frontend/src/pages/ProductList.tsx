@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Spin, Typography, Slider, Checkbox, Modal, Space, Drawer } from 'antd';
-import { BarChartOutlined, BellOutlined, CheckCircleOutlined, FireOutlined, FilterOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { BarChartOutlined, BellOutlined, CheckCircleOutlined, FireOutlined, FilterOutlined, ReloadOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiBaseUrl, productApi, cartApi, categoryApi } from '../api';
 import type { Product, Category } from '../types';
@@ -67,10 +67,12 @@ const ProductList: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
   const [categoryId, setCategoryId] = useState<number | undefined>(
     searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined
   );
+  const [discount, setDiscount] = useState(searchParams.get('discount') === 'true');
   const [sortBy, setSortBy] = useState<string>(searchParams.get('sort') || 'default');
   const [priceRange, setPriceRange] = useState<[number, number]>(DEFAULT_PRICE_RANGE);
   const [petSizes, setPetSizes] = useState<string[]>(
@@ -251,6 +253,7 @@ const ProductList: React.FC = () => {
           const params = new URLSearchParams();
           if (collection) params.set('collection', collection);
           if (keyword) params.set('keyword', keyword);
+          if (discount) params.set('discount', 'true');
           navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
           setFilterDrawerOpen(false);
         },
@@ -296,6 +299,7 @@ const ProductList: React.FC = () => {
     colorOptions,
     colors,
     collection,
+    discount,
     displayedPriceRange,
     formatMoney,
     keyword,
@@ -326,6 +330,7 @@ const ProductList: React.FC = () => {
     collection ? { key: 'collection', color: 'geekblue', label: collection.replace(/-/g, ' ') } : null,
     keyword.trim() ? { key: 'keyword', color: 'purple', label: keyword.trim() } : null,
     selectedCategory ? { key: 'category', color: 'green', label: getLocalizedCategoryValue(selectedCategory, language, 'name') } : null,
+    discount ? { key: 'discount', color: 'red', label: t('home.flashOffers') } : null,
   ].filter(Boolean) as Array<{ key: string; color: string; label: string }>;
   const quickAddOptionGroups = useMemo(() => getProductOptionGroups(quickAddProduct), [quickAddProduct]);
   const quickAddVariants = useMemo(() => getProductVariants(quickAddProduct), [quickAddProduct]);
@@ -348,13 +353,16 @@ const ProductList: React.FC = () => {
     imageUrl: quickAddVariant?.imageUrl || quickAddProduct.imageUrl,
   }) : null;
 
-  const fetchProducts = useCallback(async (kw?: string, cid?: number) => {
+  const fetchProducts = useCallback(async (kw?: string, cid?: number, disc?: boolean) => {
     try {
       setLoading(true);
-      const res = await productApi.getAll(kw || undefined, cid);
+      const res = await productApi.getAll(kw || undefined, cid, disc);
       setProducts(res.data.map((product) => localizeProduct(product, language)));
+      setLoadFailed(false);
       setCurrentPage(1);
     } catch {
+      setProducts([]);
+      setLoadFailed(true);
       message.error(t('pages.productList.fetchFailed'));
     } finally {
       setLoading(false);
@@ -364,14 +372,16 @@ const ProductList: React.FC = () => {
   useEffect(() => {
     const kw = searchParams.get('keyword') || '';
     const cid = searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined;
+    const disc = searchParams.get('discount') === 'true';
     const activeCollection = searchParams.get('collection') || '';
     const requestedSort = searchParams.get('sort') || 'default';
     const requestedPetSize = searchParams.get('petSize');
     setKeyword(kw);
     setCategoryId(cid);
+    setDiscount(disc);
     setSortBy(requestedSort);
     setPetSizes(requestedPetSize ? [requestedPetSize] : []);
-    fetchProducts(activeCollection ? undefined : kw, cid);
+    fetchProducts(activeCollection ? undefined : kw, cid, disc);
   }, [fetchProducts, searchParams, language]);
 
   const handleSearch = (value: string) => {
@@ -385,6 +395,7 @@ const ProductList: React.FC = () => {
     if (collection) params.set('collection', collection);
     if (trimmed) params.set('keyword', trimmed);
     if (categoryId) params.set('categoryId', categoryId.toString());
+    if (discount) params.set('discount', 'true');
     if (sortBy !== 'default') params.set('sort', sortBy);
     if (petSizes.length === 1) params.set('petSize', petSizes[0]);
     navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
@@ -424,6 +435,7 @@ const ProductList: React.FC = () => {
     if (collection) params.set('collection', collection);
     if (keyword) params.set('keyword', keyword);
     if (cid) params.set('categoryId', cid.toString());
+    if (discount) params.set('discount', 'true');
     if (sortBy !== 'default') params.set('sort', sortBy);
     if (petSizes.length === 1) params.set('petSize', petSizes[0]);
     navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
@@ -661,7 +673,9 @@ const ProductList: React.FC = () => {
           className="product-list__actionButton product-list__alertButton"
           onClick={(e) => handleStockAlert(e, product)}
         >
-          {alerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
+          <span className="product-list__actionLabel">
+            {alerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
+          </span>
         </Button>
       );
     }
@@ -674,7 +688,9 @@ const ProductList: React.FC = () => {
         className="product-list__actionButton"
         onClick={(e) => openQuickAdd(e, product)}
       >
-        {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions')}
+        <span className="product-list__actionLabel">
+          {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions')}
+        </span>
       </Button>
     );
   };
@@ -913,6 +929,23 @@ const ProductList: React.FC = () => {
           </div>
           {loading ? (
             <div className="product-list__loading"><Spin size="large" /></div>
+          ) : loadFailed ? (
+            <div className="product-list__loadFailed" role="alert">
+              <Empty description={t('pages.productList.fetchFailed')}>
+                <Space wrap>
+                  <Button
+                    type="primary"
+                    icon={<ReloadOutlined />}
+                    onClick={() => fetchProducts(collection ? undefined : keyword, categoryId, discount)}
+                  >
+                    {t('common.refresh')}
+                  </Button>
+                  <Button onClick={() => navigate('/products')}>
+                    {t('pages.productList.allCategories')}
+                  </Button>
+                </Space>
+              </Empty>
+            </div>
           ) : paginatedProducts.length === 0 ? (
             <Empty description={t('pages.productList.empty')} className="product-list__empty">
               <Space wrap>

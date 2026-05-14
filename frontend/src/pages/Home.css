@@ -41,32 +41,27 @@
   position: relative;
   overflow: hidden;
   border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(18, 71, 52, 0.98) 0%, rgba(18, 71, 52, 0.9) 46%, rgba(18, 71, 52, 0.42) 74%, rgba(18, 71, 52, 0.16) 100%),
+    url('https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=1200&q=80');
   background-size: cover;
-  background-position: center;
+  background-position: center right;
   color: #fff;
   min-height: 430px;
   display: flex;
   align-items: center;
   padding: 34px 44px;
+  box-shadow: 0 18px 42px rgba(10, 33, 24, 0.2);
 }
 
 .shopee-hero__main::after {
-  content: '';
-  position: absolute;
-  right: 28px;
-  bottom: 24px;
-  width: min(42%, 360px);
-  height: 58px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(8px);
-  pointer-events: none;
+  display: none;
 }
 
 .shopee-hero__main > div {
   position: relative;
   z-index: 1;
+  max-width: 660px;
 }
 
 .shopee-hero__eyebrow {
@@ -169,11 +164,19 @@
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
 }
 
-.shopee-hero__actions .ant-btn-background-ghost {
-  border-color: rgba(255, 255, 255, 0.82) !important;
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+.shopee-hero__actions .ant-btn.ant-btn-background-ghost {
+  border-color: rgba(255, 255, 255, 0.94) !important;
+  color: #124734 !important;
+  background: rgba(255, 255, 255, 0.94) !important;
   font-weight: 700;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+.shopee-hero__actions .ant-btn.ant-btn-background-ghost:hover,
+.shopee-hero__actions .ant-btn.ant-btn-background-ghost:focus {
+  border-color: #fff7d6 !important;
+  color: #173f2b !important;
+  background: #fff7d6 !important;
 }
 
 .shopee-hero__aside {
@@ -906,7 +909,7 @@
 
 .pet-ugc__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 
@@ -1100,6 +1103,11 @@
   .shopee-hero__main {
     min-height: 348px;
     align-items: flex-end;
+    background:
+      linear-gradient(180deg, rgba(18, 71, 52, 0.52), rgba(18, 71, 52, 0.86)),
+      url('https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80');
+    background-size: cover;
+    background-position: center;
     padding: 22px 20px 38px;
   }
 
@@ -1268,7 +1276,7 @@
   }
 
   .pet-ugc__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .pet-ugc .shopee-section__header {

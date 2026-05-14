@@ -20,9 +20,13 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @GetMapping("/product/{productId}")
-    public ResponseEntity<Map<String, Object>> getProductReviews(@PathVariable Long productId) {
+    public ResponseEntity<Map<String, Object>> getProductReviews(@PathVariable Long productId, Authentication authentication) {
+        Long currentUserId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+            currentUserId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
+        }
         return ResponseEntity.ok(Map.of(
-            "reviews", reviewService.getReviewsByProductId(productId),
+            "reviews", reviewService.getReviewsByProductId(productId, currentUserId),
             "averageRating", reviewService.getAverageRating(productId)
         ));
     }

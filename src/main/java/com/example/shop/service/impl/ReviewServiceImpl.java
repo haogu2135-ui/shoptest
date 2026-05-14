@@ -39,7 +39,10 @@ public class ReviewServiceImpl implements ReviewService {
     private OrderItemRepository orderItemRepository;
 
     @Override
-    public List<Review> getReviewsByProductId(Long productId) {
+    public List<Review> getReviewsByProductId(Long productId, Long currentUserId) {
+        if (currentUserId != null) {
+            return reviewRepository.findByProductIdIncludingUserPending(productId, currentUserId);
+        }
         return reviewRepository.findByProduct_IdAndStatusOrderByCreatedAtDesc(productId, "APPROVED");
     }
 

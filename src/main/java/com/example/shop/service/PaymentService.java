@@ -174,11 +174,11 @@ public class PaymentService {
         if (payment == null) {
             throw new IllegalArgumentException("Payment not found");
         }
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
         if (PAID.equals(payment.getStatus())) {
             assertMatchingPaidCallback(payment, request);
             return payment;
         }
-        PaymentCallbackRequest request = new PaymentCallbackRequest();
         request.setOrderNo(payment.getOrderNo());
         request.setChannel(payment.getChannel());
         request.setTransactionId(newTransactionId());

@@ -14,6 +14,7 @@ const ORDER_PREFIX = '[ORDER]';
 const SUPPORT_BUTTON_POSITION_KEY = 'shop-support-button-position';
 const SUPPORT_BUTTON_SIZE = 56;
 const SUPPORT_BUTTON_MARGIN = 12;
+const SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN = 88;
 const supportOrderImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
 
 const resolveSupportOrderImage = (imageUrl?: string) => {
@@ -28,6 +29,9 @@ type SupportButtonPosition = {
   left: number;
   top: number;
 };
+
+const getSupportButtonBottomMargin = () =>
+  window.innerWidth <= 720 ? SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN : 24;
 
 const CustomerSupportWidget: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -109,12 +113,12 @@ const CustomerSupportWidget: React.FC = () => {
 
   const getDefaultButtonPosition = useCallback((): SupportButtonPosition => ({
     left: Math.max(SUPPORT_BUTTON_MARGIN, window.innerWidth - SUPPORT_BUTTON_SIZE - 24),
-    top: Math.max(SUPPORT_BUTTON_MARGIN, window.innerHeight - SUPPORT_BUTTON_SIZE - 24),
+    top: Math.max(SUPPORT_BUTTON_MARGIN, window.innerHeight - SUPPORT_BUTTON_SIZE - getSupportButtonBottomMargin()),
   }), []);
 
   const clampButtonPosition = useCallback((position: SupportButtonPosition): SupportButtonPosition => ({
     left: Math.min(Math.max(SUPPORT_BUTTON_MARGIN, position.left), Math.max(SUPPORT_BUTTON_MARGIN, window.innerWidth - SUPPORT_BUTTON_SIZE - SUPPORT_BUTTON_MARGIN)),
-    top: Math.min(Math.max(SUPPORT_BUTTON_MARGIN, position.top), Math.max(SUPPORT_BUTTON_MARGIN, window.innerHeight - SUPPORT_BUTTON_SIZE - SUPPORT_BUTTON_MARGIN)),
+    top: Math.min(Math.max(SUPPORT_BUTTON_MARGIN, position.top), Math.max(SUPPORT_BUTTON_MARGIN, window.innerHeight - SUPPORT_BUTTON_SIZE - getSupportButtonBottomMargin())),
   }), []);
 
   useEffect(() => {
@@ -524,6 +528,7 @@ const CustomerSupportWidget: React.FC = () => {
     <>
       <button
         type="button"
+        className="customer-support-widget__button"
         onPointerDown={handleSupportButtonPointerDown}
         onPointerMove={handleSupportButtonPointerMove}
         onPointerUp={finishSupportButtonPointer}
@@ -556,6 +561,7 @@ const CustomerSupportWidget: React.FC = () => {
 
       {open && (
         <div
+          className="customer-support-widget__panel"
           style={{
             position: 'fixed',
             right: 24,

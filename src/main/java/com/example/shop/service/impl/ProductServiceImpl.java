@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
@@ -90,6 +91,53 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<Product> findByIsFeaturedTrueOrderByIdAsc() {
         return enrichReviewStats(productRepository.findByIsFeaturedTrueOrderByIdAsc());
+    }
+
+    @Override
+    public List<Product> findDiscountProducts() {
+        return getCachedProducts("discount", () -> enrichReviewStats(productRepository.findAll().stream()
+                .filter(product -> {
+                    if (product.getDiscount() != null && product.getDiscount() > 0) {
+                        return true;
+                    }
+                    return product.isActiveLimitedTimeDiscount();
+                })
+                .collect(Collectors.toList())));
+    }
+
+    @Override
+    public List<Product> findAddOnCandidates(BigDecimal targetAmount, List<Long> excludedProductIds, int limit) {
+        BigDecimal normalizedTarget = targetAmount == null ? BigDecimal.ZERO : targetAmount.max(BigDecimal.ZERO);
+        int normalizedLimit = Math.max(1, Math.min(limit <= 0 ? 3 : limit, 8));
+        Set<Long> excludedIds = excludedProductIds == null
+                ? Set.of()
+                : excludedProductIds.stream()
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toSet());
+        String excludedKey = excludedIds.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        String targetKey = normalizedTarget.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+        String cacheKey = "add-on:" + targetKey + ":" + normalizedLimit + ":" + excludedKey;
+        return getCachedProducts(cacheKey, () -> findAddOnCandidatesUncached(normalizedTarget, excludedIds, normalizedLimit));
+    }
+
+    private List<Product> findAddOnCandidatesUncached(BigDecimal normalizedTarget, Set<Long> excludedIds, int normalizedLimit) {
+        BigDecimal floor = normalizedTarget.multiply(BigDecimal.valueOf(0.45));
+        BigDecimal ceiling = normalizedTarget.multiply(BigDecimal.valueOf(1.35)).max(BigDecimal.valueOf(260));
+
+        return enrichReviewStats(productRepository.findAll().stream()
+                .filter(product -> !excludedIds.contains(product.getId()))
+                .filter(this::isReadyAddOnCandidate)
+                .map(product -> new ProductAddOnCandidate(product, scoreAddOnCandidate(product, normalizedTarget, floor, ceiling)))
+                .filter(candidate -> candidate.score > Integer.MIN_VALUE)
+                .sorted(Comparator
+                        .comparingInt((ProductAddOnCandidate candidate) -> candidate.score).reversed()
+                        .thenComparing(candidate -> effectivePrice(candidate.product)))
+                .limit(normalizedLimit)
+                .map(candidate -> candidate.product)
+                .collect(Collectors.toList()));
     }
 
     @Override
@@ -411,11 +459,62 @@ public class ProductServiceImpl implements ProductService {
         return Period.between(birthday, LocalDate.now()).getYears() < 1;
     }
 
+    private boolean isReadyAddOnCandidate(Product product) {
+        BigDecimal price = effectivePrice(product);
+        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+        if (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
+            return false;
+        }
+        if (product.getStock() != null && product.getStock() <= 0) {
+            return false;
+        }
+        Map<String, String> specifications = product.getSpecificationsMap();
+        boolean hasOptions = specifications != null && specifications.keySet().stream().anyMatch(key -> key.startsWith("options."));
+        boolean hasVariants = product.getVariantsList() != null && !product.getVariantsList().isEmpty();
+        return !hasOptions && !hasVariants;
+    }
+
+    private int scoreAddOnCandidate(Product product, BigDecimal targetAmount, BigDecimal floor, BigDecimal ceiling) {
+        BigDecimal price = effectivePrice(product);
+        if (price == null) {
+            return Integer.MIN_VALUE;
+        }
+        boolean inTargetWindow = price.compareTo(floor) >= 0 && price.compareTo(ceiling) <= 0;
+        boolean coversGap = targetAmount.compareTo(BigDecimal.ZERO) == 0 || price.compareTo(targetAmount) >= 0;
+        if (!inTargetWindow && !coversGap) {
+            return Integer.MIN_VALUE;
+        }
+        BigDecimal distance = price.subtract(targetAmount).abs();
+        int score = 1000 - Math.min(600, distance.intValue());
+        if (coversGap) score += 180;
+        if (inTargetWindow) score += 120;
+        if (Boolean.TRUE.equals(product.getIsFeatured())) score += 45;
+        score += Math.min(60, product.getEffectiveDiscountPercent() == null ? 0 : product.getEffectiveDiscountPercent() * 2);
+        score += Math.min(50, product.getReviewCount() == null ? 0 : product.getReviewCount().intValue());
+        return score;
+    }
+
+    private BigDecimal effectivePrice(Product product) {
+        return product.getEffectivePrice() == null ? product.getPrice() : product.getEffectivePrice();
+    }
+
     private static class ProductScore {
         private final Product product;
         private final int score;
 
         private ProductScore(Product product, int score) {
+            this.product = product;
+            this.score = score;
+        }
+    }
+
+    private static class ProductAddOnCandidate {
+        private final Product product;
+        private final int score;
+
+        private ProductAddOnCandidate(Product product, int score) {
             this.product = product;
             this.score = score;
         }

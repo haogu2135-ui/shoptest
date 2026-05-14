@@ -1,15 +1,18 @@
 .add-on-assistant {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 16px;
-  padding: 12px;
-  border: 1px solid #f0dfb9;
+  padding: 14px;
+  border: 1px solid #e5d49f;
   border-radius: 8px;
-  background: #fffaf0;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 240, 0.98), rgba(247, 251, 248, 0.96));
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.08);
 }
 
 .add-on-assistant__header {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
@@ -24,6 +27,17 @@
   line-height: 17px;
 }
 
+.add-on-assistant__target {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #124734;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
 .add-on-assistant__list {
   display: grid;
   gap: 8px;
@@ -31,22 +45,30 @@
 
 .add-on-assistant__item {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
-  gap: 9px;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: center;
-  padding: 8px;
+  padding: 9px;
   border: 1px solid #f4ead2;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fff;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.add-on-assistant__item:hover,
+.add-on-assistant__item:focus-within {
+  border-color: #d9c47f;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
 }
 
 .add-on-assistant__item img {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   display: block;
   border-radius: 6px;
-  object-fit: cover;
-  background: #f7f4ee;
+  object-fit: contain;
+  background: #fffaf0;
 }
 
 .add-on-assistant__body {
@@ -67,7 +89,14 @@
 
 .add-on-assistant__price {
   color: #ee4d2d;
-  font-size: 13px;
+  font-size: 14px;
+}
+
+.add-on-assistant__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .add-on-assistant__fit {
@@ -84,11 +113,29 @@
 .add-on-assistant .ant-btn-primary {
   background: #124734;
   border-color: #124734;
+  font-weight: 700;
 }
 
 @media (max-width: 520px) {
+  .add-on-assistant {
+    padding: 12px;
+  }
+
+  .add-on-assistant__header {
+    display: grid;
+  }
+
+  .add-on-assistant__target {
+    width: fit-content;
+  }
+
   .add-on-assistant__item {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 50px minmax(0, 1fr);
+  }
+
+  .add-on-assistant__item img {
+    width: 50px;
+    height: 50px;
   }
 
   .add-on-assistant__item .ant-btn {

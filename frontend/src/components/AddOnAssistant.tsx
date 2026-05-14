@@ -7,45 +7,13 @@ import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { conversionConfig } from '../utils/conversionConfig';
-import { needsOptionSelection } from '../utils/productOptions';
 import './AddOnAssistant.css';
 
 const { Text } = Typography;
 
 const addOnImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-const ADD_ON_PRODUCT_CACHE_MS = 60_000;
-let addOnProductCache: { products: Product[]; expiresAt: number } | null = null;
-let addOnProductRequest: Promise<Product[]> | null = null;
 
 const getAddOnPrice = (product: Product) => Number(product.effectivePrice ?? product.price ?? 0);
-
-const isReadyAddOnProduct = (product: Product) =>
-  (product.status || 'ACTIVE') === 'ACTIVE'
-  && (product.stock === undefined || product.stock > 0)
-  && !needsOptionSelection(product)
-  && getAddOnPrice(product) > 0;
-
-const loadAddOnProducts = async () => {
-  const now = Date.now();
-  if (addOnProductCache && addOnProductCache.expiresAt > now) {
-    return addOnProductCache.products;
-  }
-  if (!addOnProductRequest) {
-    addOnProductRequest = productApi.getAll()
-      .then((response) => {
-        const products = response.data.filter(isReadyAddOnProduct);
-        addOnProductCache = {
-          products,
-          expiresAt: Date.now() + ADD_ON_PRODUCT_CACHE_MS,
-        };
-        return products;
-      })
-      .finally(() => {
-        addOnProductRequest = null;
-      });
-  }
-  return addOnProductRequest;
-};
 
 const resolveImage = (imageUrl?: string) => {
   if (!imageUrl) return addOnImageFallback;
@@ -71,42 +39,20 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
   useEffect(() => {
     if (!shouldLoadProducts) return;
     setLoading(true);
-    loadAddOnProducts()
-      .then((items) => setProducts(items.map((product) => localizeProduct(product, language))))
+    productApi.getAddOnCandidates(
+      remainingAmount,
+      cartProductIds,
+      conversionConfig.addOnAssistant.maxSuggestions + conversionConfig.addOnAssistant.maxFallbackSuggestions,
+    )
+      .then((response) => setProducts(response.data.map((product) => localizeProduct(product, language))))
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));
-  }, [language, shouldLoadProducts]);
+  }, [cartProductIds, language, remainingAmount, shouldLoadProducts]);
 
   const suggestions = useMemo(() => {
     if (!conversionConfig.addOnAssistant.enabled || remainingAmount <= 0) return [];
-    const cartIds = new Set(cartProductIds);
-    const floor = Math.max(0, remainingAmount * conversionConfig.addOnAssistant.priceFloorRatio);
-    const ceiling = Math.max(
-      conversionConfig.addOnAssistant.priceCeilingMxn,
-      remainingAmount * conversionConfig.addOnAssistant.priceCeilingRatio,
-    );
-    const cartFilteredProducts = products.filter((product) => !cartIds.has(product.id));
-    const targetWindowProducts = cartFilteredProducts
-      .filter((product) => {
-        const price = getAddOnPrice(product);
-        return price >= floor && price <= ceiling;
-      });
-    const fallbackProducts = cartFilteredProducts
-      .filter((product) => getAddOnPrice(product) >= remainingAmount)
-      .sort((left, right) => getAddOnPrice(left) - getAddOnPrice(right))
-      .slice(0, conversionConfig.addOnAssistant.maxFallbackSuggestions || 1);
-    const uniqueProducts = [...targetWindowProducts, ...fallbackProducts]
-      .filter((product, index, list) => list.findIndex((item) => item.id === product.id) === index);
-    return uniqueProducts
-      .sort((left, right) => {
-        const leftPrice = getAddOnPrice(left);
-        const rightPrice = getAddOnPrice(right);
-        return Math.abs(leftPrice - remainingAmount) - Math.abs(rightPrice - remainingAmount)
-          || (right.reviewCount || 0) - (left.reviewCount || 0)
-          || leftPrice - rightPrice;
-      })
-      .slice(0, conversionConfig.addOnAssistant.maxSuggestions);
-  }, [cartProductIds, products, remainingAmount]);
+    return products.slice(0, conversionConfig.addOnAssistant.maxSuggestions);
+  }, [products, remainingAmount]);
 
   const handleAdd = async (product: Product) => {
     setAddingId(product.id);
@@ -141,6 +87,7 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
               : t('pages.addOnAssistant.shippingHint', { amount: formatMoney(remainingAmount) })}
           </Text>
         </div>
+        <span className="add-on-assistant__target">{formatMoney(remainingAmount)}</span>
       </div>
       <div className="add-on-assistant__list">
         {suggestions.map((product) => (
@@ -156,10 +103,12 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
             />
             <div className="add-on-assistant__body">
               <Text className="add-on-assistant__name">{product.name}</Text>
-              <Text strong className="add-on-assistant__price">{formatMoney(getAddOnPrice(product))}</Text>
-              {getAddOnPrice(product) >= remainingAmount ? (
-                <Text className="add-on-assistant__fit">{t('pages.addOnAssistant.coversGap')}</Text>
-              ) : null}
+              <div className="add-on-assistant__meta">
+                <Text strong className="add-on-assistant__price">{formatMoney(getAddOnPrice(product))}</Text>
+                {getAddOnPrice(product) >= remainingAmount ? (
+                  <Text className="add-on-assistant__fit">{t('pages.addOnAssistant.coversGap')}</Text>
+                ) : null}
+              </div>
             </div>
             <Button
               size="small"

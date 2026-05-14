@@ -46,9 +46,6 @@
 
 @media (max-width: 640px) {
   .social-proof-toast {
-    right: 10px;
-    bottom: 72px;
-    left: 10px;
-    width: auto;
+    display: none;
   }
 }

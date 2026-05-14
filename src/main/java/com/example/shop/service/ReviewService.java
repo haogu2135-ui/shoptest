@@ -5,7 +5,7 @@ import com.example.shop.entity.Order;
 import java.util.List;
 
 public interface ReviewService {
-    List<Review> getReviewsByProductId(Long productId);
+    List<Review> getReviewsByProductId(Long productId, Long currentUserId);
     double getAverageRating(Long productId);
     Review addReview(Long productId, Long userId, Long orderId, int rating, String comment);
     Review replyReview(Long id, String reply);

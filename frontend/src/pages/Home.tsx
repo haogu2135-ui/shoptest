@@ -148,6 +148,7 @@ const Home: React.FC = () => {
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
 
   const searchKeyword = (keyword: string) => navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
+  const openDiscountProducts = () => navigate('/products?discount=true');
   const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
   const currentUserId = Number(localStorage.getItem('userId') || 0);
   const openSupport = () => window.dispatchEvent(new Event('shop:open-support'));
@@ -620,7 +621,7 @@ const Home: React.FC = () => {
       title: t('home.flashOffers'),
       summary: t('home.petRecommendationDeals', { count: personalizedDealCount || promoProducts.length }),
       actionLabel: t('home.viewDeals'),
-      action: () => searchKeyword(t('home.keywords.deal')),
+      action: openDiscountProducts,
       disabled: false,
     },
     {
@@ -842,7 +843,7 @@ const Home: React.FC = () => {
               <Text>{t('nav.coupons')}</Text>
             </span>
           </button>
-          <button className="shopee-coupon-entry shopee-coupon-entry--deal" onClick={() => searchKeyword(t('home.keywords.deal'))}>
+          <button className="shopee-coupon-entry shopee-coupon-entry--deal" onClick={openDiscountProducts}>
             <span className="shopee-coupon-entry__icon"><FireOutlined /></span>
             <span>
               <strong>{t('home.flashOffers')}</strong>
@@ -973,7 +974,7 @@ const Home: React.FC = () => {
               <h2>
                 <FireOutlined /> {t('home.flashOffers')}
               </h2>
-              <button onClick={() => searchKeyword(t('home.keywords.deal'))}>{t('home.viewAll')}</button>
+              <button onClick={openDiscountProducts}>{t('home.viewAll')}</button>
             </div>
             <Row gutter={[12, 12]}>
               {promoProducts.map((product, index) => (

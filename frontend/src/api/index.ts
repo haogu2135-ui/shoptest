@@ -32,6 +32,7 @@ const ORDER_TRACK_CACHE_MS = 15_000;
 const PET_GALLERY_CACHE_MS = 20_000;
 const NOTIFICATION_CACHE_MS = 15_000;
 const PERSONALIZED_RECOMMENDATION_CACHE_MS = 45_000;
+const PRODUCT_ADD_ON_CACHE_MS = 30_000;
 const APP_CONFIG_CACHE_MS = 60_000;
 const productListCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
 const productListRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
@@ -45,6 +46,8 @@ const notificationCache = new Map<string, { expiresAt: number; response: AxiosRe
 const notificationRequests = new Map<string, Promise<AxiosResponse<AppNotification[]> | AxiosResponse<{ count: number }>>>();
 const personalizedRecommendationCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
 const personalizedRecommendationRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
+const productAddOnCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
+const productAddOnRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
 let appConfigCache: { expiresAt: number; response: AxiosResponse<AppConfig> } | null = null;
 let appConfigRequest: Promise<AxiosResponse<AppConfig>> | null = null;
 let adminPermissionsCache: { expiresAt: number; response: AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }> } | null = null;
@@ -77,6 +80,8 @@ const clearProductCache = (id?: number) => {
     clearProductListCache();
     personalizedRecommendationCache.clear();
     personalizedRecommendationRequests.clear();
+    productAddOnCache.clear();
+    productAddOnRequests.clear();
     if (id === undefined) {
         productDetailCache.clear();
         productDetailRequests.clear();
@@ -162,10 +167,11 @@ export const userApi = {
 
 // 商品相关 API
 export const productApi = {
-    getAll: (keyword?: string, categoryId?: number) => {
+    getAll: (keyword?: string, categoryId?: number, discount?: boolean) => {
         const params = new URLSearchParams();
         if (keyword) params.append('keyword', keyword);
         if (categoryId) params.append('categoryId', categoryId.toString());
+        if (discount) params.append('discount', 'true');
         const query = params.toString();
         const cacheKey = query || '__all__';
         const cached = productListCache.get(cacheKey);
@@ -178,6 +184,7 @@ export const productApi = {
             params: {
                 ...(keyword ? { keyword } : {}),
                 ...(categoryId ? { categoryId } : {}),
+                ...(discount ? { discount: true } : {}),
             },
         })
             .then((response) => {
@@ -239,6 +246,32 @@ export const productApi = {
             })
             .finally(() => personalizedRecommendationRequests.delete(cacheKey));
         personalizedRecommendationRequests.set(cacheKey, request);
+        return request;
+    },
+    getAddOnCandidates: (targetAmount: number, excludedIds: number[] = [], limit = 3) => {
+        const params = new URLSearchParams();
+        params.append('targetAmount', String(Math.max(0, Number(targetAmount) || 0)));
+        params.append('limit', String(Math.max(1, Math.min(limit || 3, 8))));
+        Array.from(new Set(excludedIds.map(Number).filter(Boolean))).forEach((id) => {
+            params.append('excludedIds', String(id));
+        });
+        const cacheKey = params.toString();
+        const cached = productAddOnCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return Promise.resolve(cached.response);
+        }
+        const pending = productAddOnRequests.get(cacheKey);
+        if (pending) return pending;
+        const request = api.get<Product[]>('/products/add-on-candidates', { params })
+            .then((response) => {
+                productAddOnCache.set(cacheKey, {
+                    response,
+                    expiresAt: Date.now() + PRODUCT_ADD_ON_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => productAddOnRequests.delete(cacheKey));
+        productAddOnRequests.set(cacheKey, request);
         return request;
     },
     create: (product: Partial<Product>) => api.post<Product>('/products', product).finally(() => clearProductCache()),

@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -21,7 +22,11 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long categoryId) {
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Boolean discount) {
+        if (Boolean.TRUE.equals(discount)) {
+            return ResponseEntity.ok(productService.findDiscountProducts());
+        }
         if (keyword != null || categoryId != null) {
             return ResponseEntity.ok(productService.search(keyword, categoryId));
         }
@@ -40,6 +45,14 @@ public class ProductController {
         }
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         return ResponseEntity.ok(productService.findPersonalizedRecommendations(userDetails.getId()));
+    }
+
+    @GetMapping("/add-on-candidates")
+    public ResponseEntity<List<Product>> getAddOnCandidates(
+            @RequestParam(required = false) BigDecimal targetAmount,
+            @RequestParam(required = false) List<Long> excludedIds,
+            @RequestParam(required = false, defaultValue = "3") Integer limit) {
+        return ResponseEntity.ok(productService.findAddOnCandidates(targetAmount, excludedIds, limit == null ? 3 : limit));
     }
 
     @GetMapping("/{id}/recommendations")
