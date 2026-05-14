@@ -47,8 +47,6 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.GET, "/orders/track").permitAll()
             .antMatchers(HttpMethod.POST, "/orders/checkout/guest").permitAll()
             .antMatchers(HttpMethod.POST, "/payments").permitAll()
-            .antMatchers(HttpMethod.POST, "/payments/*/simulate-paid").permitAll()
-            .antMatchers(HttpMethod.POST, "/payments/*/simulate-callback").permitAll()
             .antMatchers(HttpMethod.POST, "/payments/callback").permitAll()
             .antMatchers(HttpMethod.POST, "/payments/stripe/webhook").permitAll()
             .antMatchers(HttpMethod.POST, "/users/create-admin").permitAll()

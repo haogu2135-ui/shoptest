@@ -524,7 +524,7 @@ const ProductDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div className="product-detail-loading">
         <Spin size="large" />
       </div>
     );
@@ -789,9 +789,9 @@ const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="product-detail-page" style={{ background: '#f7f4ee', minHeight: '100vh', padding: '24px' }}>
-      <div className="product-detail-shell" style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <Breadcrumb style={{ marginBottom: 24 }}>
+    <div className="product-detail-page">
+      <div className="product-detail-shell">
+        <Breadcrumb className="product-detail-breadcrumb">
           <Breadcrumb.Item>
             <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/')}>
               <HomeOutlined />
@@ -859,7 +859,7 @@ const ProductDetail: React.FC = () => {
                   }}
                 />
                 {discountPercent > 0 && (
-                  <Tag color="gold" style={{ position: 'absolute', top: 16, right: 16, fontSize: 16, padding: '4px 8px' }}>
+                  <Tag color="gold" className="product-gallery-discount">
                     -{discountPercent}%
                   </Tag>
                 )}
@@ -925,40 +925,39 @@ const ProductDetail: React.FC = () => {
             <Card className="product-summary-card">
               <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div className="product-title-block">
-                  <Title level={2} style={{ marginBottom: 8 }}>{product.name}</Title>
+                  <Title level={2}>{product.name}</Title>
                   {product.brand && (
-                    <Text type="secondary" style={{ fontSize: 16 }}>{t('pages.productDetail.brand')}: {product.brand}</Text>
+                    <Text type="secondary" className="product-brand-text">{t('pages.productDetail.brand')}: {product.brand}</Text>
                   )}
                 </div>
 
                 <div className="product-price-panel">
-                  <div className="product-rating-row" style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                  <div className="product-rating-row">
                     <Rate disabled allowHalf value={displayedRating} />
-                    <Text style={{ marginLeft: 8 }}>{displayedRating.toFixed(1)} {t('pages.productDetail.rating')}</Text>
+                    <Text>{displayedRating.toFixed(1)} {t('pages.productDetail.rating')}</Text>
                   </div>
-                  <div className="product-price-line" style={{ fontSize: 32, color: '#ee4d2d', fontWeight: 600 }}>
+                  <div className="product-price-line">
                     {formatMoney(displayPrice)}
                     {purchaseMode === 'subscribe' && (
-                      <Text delete style={{ fontSize: 16, color: '#999', marginLeft: 8 }}>
+                      <Text delete className="product-price-line__original">
                         {formatMoney(activePrice)}
                       </Text>
                     )}
                     {purchaseMode !== 'subscribe' && product.originalPrice && product.originalPrice > activePrice && (
-                      <Text delete style={{ fontSize: 16, color: '#999', marginLeft: 8 }}>
+                      <Text delete className="product-price-line__original">
                         {formatMoney(product.originalPrice)}
                       </Text>
                     )}
                     {discountPercent > 0 && (
-                      <Tag color="gold" style={{ marginLeft: 8, fontSize: 14 }}>-{discountPercent}%</Tag>
+                      <Tag color="gold" className="product-price-line__discount">-{discountPercent}%</Tag>
                     )}
                   </div>
                   <div className="product-mobile-promo">
                     <span>{limitedTimeRemaining > 0 ? t('pages.productDetail.limitedTimeCountdown') : t('pages.productDetail.freeShipping')}</span>
                     <strong>{limitedTimeRemaining > 0 ? formatCountdown(limitedTimeRemaining) : t('pages.productDetail.authentic')}</strong>
-                    <span>{t('pages.productDetail.stock')}: {stockLabel}</span>
                   </div>
                   {limitedTimeRemaining > 0 && (
-                    <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 4, background: '#fff7e6', color: '#124734', fontWeight: 600 }}>
+                    <div className="product-limited-time-badge">
                       <span>{t('pages.productDetail.limitedTimeCountdown')}</span>
                       <span>{formatCountdown(limitedTimeRemaining)}</span>
                     </div>
@@ -972,8 +971,8 @@ const ProductDetail: React.FC = () => {
 
                 {optionGroups.map((group) => (
                   <div key={group.name}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                      <Text strong style={{ fontSize: 16 }}>{group.name}</Text>
+                    <div className="product-option-header">
+                      <Text strong>{group.name}</Text>
                       {group.name.toLowerCase().includes('size') ? (
                         <Button size="small" type="link" onClick={() => setSizeGuideOpen(true)}>{t('pages.productDetail.sizeGuide')}</Button>
                       ) : null}
@@ -981,7 +980,7 @@ const ProductDetail: React.FC = () => {
                     <Radio.Group
                       value={selectedOptions[group.name]}
                       onChange={e => selectOptionValue(group.name, e.target.value)}
-                      style={{ marginTop: 8 }}
+                      className="product-option-radio"
                     >
                       {group.values.map((value) => {
                         const disabled = !optionValueHasVariant(variants, group.name, value);
@@ -1144,16 +1143,13 @@ const ProductDetail: React.FC = () => {
                 </div>
 
                 <div>
-                  <Text strong style={{ fontSize: 16 }}>{t('pages.productDetail.quantity')}</Text>
+                  <Text strong className="product-quantity-label">{t('pages.productDetail.quantity')}</Text>
                   <div className="product-quantity-row">
                     <Button.Group>
                       <Button onClick={() => handleQuantityChange(quantity - 1)} disabled={quantity <= 1}>-</Button>
                       <Button className="product-quantity__value">{quantity}</Button>
                       <Button onClick={() => handleQuantityChange(quantity + 1)} disabled={selectedStock !== undefined && quantity >= selectedStock}>+</Button>
                     </Button.Group>
-                    <Text type="secondary">
-                      {t('pages.productDetail.stock')}: {stockLabel}
-                    </Text>
                   </div>
                 </div>
 
@@ -1309,19 +1305,19 @@ const ProductDetail: React.FC = () => {
 
         {/* 商品详情和规格参数 */}
         <div ref={detailContentRef} className="product-detail-content-anchor" />
-        <Card className="product-tabs-card" id="product-service-tabs" style={{ marginTop: 24 }}>
+        <Card className="product-tabs-card" id="product-service-tabs">
           <Tabs defaultActiveKey="1">
             <TabPane tab={t('pages.productDetail.details')} key="1">
-              <div style={{ padding: '24px 0' }}>
+              <div className="product-tab-content">
                 <ProductRichDetail detailContent={product.detailContent} fallback={product.description} />
               </div>
             </TabPane>
             <TabPane tab={t('pages.productDetail.specs')} key="2">
-              <div style={{ padding: '24px 0' }}>
+              <div className="product-tab-content">
                 {product.specifications && Object.entries(product.specifications)
                   .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.') && !key.startsWith('bundle.'))
                   .map(([key, value]) => (
-                  <div key={key} style={{ marginBottom: 16 }}>
+                  <div key={key} className="product-spec-row">
                     <Text strong>{key}: </Text>
                     <Text>{value as string}</Text>
                   </div>
@@ -1329,8 +1325,8 @@ const ProductDetail: React.FC = () => {
               </div>
             </TabPane>
             <TabPane tab={t('pages.productDetail.service')} key="3">
-              <div style={{ padding: '24px 0' }}>
-                <div style={{ marginBottom: 16 }}>
+              <div className="product-tab-content">
+                <div className="product-warranty-row">
                   <Text strong>{t('pages.productDetail.warranty')}</Text>
                   <Text>{product.warranty || t('pages.productDetail.defaultWarranty')}</Text>
                 </div>
@@ -1344,7 +1340,7 @@ const ProductDetail: React.FC = () => {
         </Card>
 
         {/* 商品评价 */}
-        <Card className="product-review-card" id="product-reviews-card" style={{ marginTop: 24 }}>
+        <Card className="product-review-card" id="product-reviews-card">
           <ProductReview
             productId={Number(id)}
             reviews={reviews}
@@ -1353,9 +1349,9 @@ const ProductDetail: React.FC = () => {
           />
         </Card>
 
-        <Card className="product-qa-card" id="product-qa-card" style={{ marginTop: 24 }}>
+        <Card className="product-qa-card" id="product-qa-card">
           <Title level={4} style={{ marginBottom: 16 }}>{t('pages.ask.title')}</Title>
-          <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+          <Space direction="vertical" className="product-qa-space">
             <Input.TextArea
               rows={3}
               value={questionText}
@@ -1371,13 +1367,13 @@ const ProductDetail: React.FC = () => {
             locale={{ emptyText: t('pages.ask.empty') }}
             renderItem={(q) => (
               <List.Item key={q.id}>
-                <div style={{ width: '100%' }}>
-                  <div style={{ marginBottom: 8, fontWeight: 500 }}>{q.question}</div>
-                  <div style={{ fontSize: 12, color: '#999', marginBottom: 10 }}>
+                <div className="product-question-item">
+                  <div className="product-question-text">{q.question}</div>
+                  <div className="product-question-meta">
                     {q.username} - {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
                   </div>
                   {q.answer ? (
-                    <div style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 6, padding: 10 }}>
+                    <div className="product-answer-box">
                       <Text strong>{t('pages.ask.answerLabel')}: </Text>
                       <Text>{q.answer}</Text>
                     </div>
@@ -1406,7 +1402,7 @@ const ProductDetail: React.FC = () => {
 
         {/* 相关推荐 */}
         {recommendations.length > 0 && (
-          <div className="product-recommendations" style={{ marginTop: 24 }}>
+          <div className="product-recommendations">
             <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
             <Carousel
               slidesToShow={4}
@@ -1422,7 +1418,7 @@ const ProductDetail: React.FC = () => {
                 const needsOptions = needsOptionSelection(rec);
                 const isRecommendationSoldOut = isRecommendationUnavailable(rec);
                 return (
-                  <div key={rec.id} style={{ padding: '0 8px' }}>
+                  <div key={rec.id} className="product-recommendations__slide">
                     <Card
                       hoverable
                       cover={

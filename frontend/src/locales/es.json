@@ -678,6 +678,8 @@
       "registerTrustTracking": "Rastreo de pedidos",
       "registerPrivacyHint": "Usamos tus datos de contacto solo para cuenta, entrega y actualizaciones de servicio.",
       "loginTrustTitle": "Beneficios de inicio",
+      "loginHeroSubtitle": "Recupera el carrito guardado, sigue cada pedido y mantén tu checkout listo en todos tus dispositivos.",
+      "loginGuestCartHint": "Inicia sesion para recuperar {count} articulos del carrito invitado y continuar el pago mas rapido.",
       "loginTrustCart": "Recupera carrito invitado",
       "loginTrustTracking": "Rastrea cada pedido",
       "loginTrustSecure": "Cuenta segura",

@@ -173,6 +173,14 @@
         WHERE id = #{id}
     </update>
 
+    <update id="markReturnRefundingIfCurrent">
+        UPDATE orders
+        SET status = #{status},
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND status = #{currentStatus}
+    </update>
+
     <update id="completeReturnAndRefundIfCurrent">
         UPDATE orders
         SET status = 'RETURNED',

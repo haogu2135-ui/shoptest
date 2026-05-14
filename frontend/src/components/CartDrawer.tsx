@@ -228,24 +228,20 @@ const CartDrawer: React.FC = () => {
       styles={{ body: { padding: 16 } }}
       extra={<Text strong>{formatMoney(subtotal)}</Text>}
     >
-      <div className="cart-drawer__shipping">
-        <Text strong>
-          {remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}
-        </Text>
-        {giftUnlocked ? (
-          <Text type="secondary">{t('pages.cart.drawerGiftUnlocked')}</Text>
-        ) : null}
-        <Progress percent={progress} showInfo={false} strokeColor="#124734" style={{ marginTop: 8 }} />
-      </div>
-
-      <div className={drawerReady ? 'cart-drawer__status cart-drawer__status--ready' : 'cart-drawer__status'}>
-        <CheckCircleOutlined />
-        <div>
-          <Text strong>{drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle')}</Text>
-          <Text type="secondary">
-            {t('pages.cart.drawerReadyText', { count: checkoutUnitCount, blocked: blockedCount, low: lowStockCount })}
-          </Text>
+      <div className={`cart-drawer__shipping${drawerReady ? ' cart-drawer__shipping--ready' : ''}`}>
+        <div className="cart-drawer__shippingHeader">
+          <CheckCircleOutlined className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
+          <div className="cart-drawer__shippingText">
+            <Text strong>{remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}</Text>
+            <Text type="secondary" className="cart-drawer__shippingStatus">
+              {drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle')} · {t('pages.cart.drawerReadyText', { count: checkoutUnitCount, blocked: blockedCount, low: lowStockCount })}
+            </Text>
+          </div>
         </div>
+        <Progress percent={progress} showInfo={false} strokeColor="#124734" size="small" />
+        {giftUnlocked ? (
+          <Text type="secondary" className="cart-drawer__shippingGift">{t('pages.cart.drawerGiftUnlocked')}</Text>
+        ) : null}
       </div>
 
       {blockedCount > 0 ? (

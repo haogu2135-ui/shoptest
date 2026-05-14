@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, message } from 'antd';
-import { LockOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Typography, message } from 'antd';
+import { CompassOutlined, LockOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -8,10 +8,13 @@ import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import { getEffectiveRole } from '../utils/roles';
 import './Login.css';
 
+const { Text, Title } = Typography;
+
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const guestCartCount = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
 
   const mergeGuestCart = async (userId: number) => {
     const guestItems = getGuestCartItems();
@@ -57,44 +60,89 @@ const Login: React.FC = () => {
 
   return (
     <main className="shopee-login-root">
-      <section className="shopee-login-card">
-        <div className="shopee-login-brand">
-          <div className="shopee-login-mark">ShopMX</div>
-          <div className="shopee-login-subtitle">{t('pages.auth.loginTitle')}</div>
-        </div>
-        <div className="shopee-login-trust" aria-label={t('pages.auth.loginTrustTitle')}>
-          <div className="shopee-login-trust__item">
-            <ShoppingCartOutlined />
-            <span>{t('pages.auth.loginTrustCart')}</span>
+      <section className="shopee-login-shell">
+        <aside className="shopee-login-panel">
+          <Text className="shopee-login-panel__eyebrow">{t('pages.auth.loginTitle')}</Text>
+          <Title level={1}>{t('pages.auth.loginTrustTitle')}</Title>
+          <Text className="shopee-login-panel__subtitle">
+            {guestCartCount > 0
+              ? t('pages.auth.loginGuestCartHint', { count: guestCartCount })
+              : t('pages.auth.loginHeroSubtitle')}
+          </Text>
+          <div className="shopee-login-panel__featureList" aria-label={t('pages.auth.loginTrustTitle')}>
+            <div className="shopee-login-panel__feature">
+              <ShoppingCartOutlined />
+              <span>{t('pages.auth.loginTrustCart')}</span>
+            </div>
+            <div className="shopee-login-panel__feature">
+              <TruckOutlined />
+              <span>{t('pages.auth.loginTrustTracking')}</span>
+            </div>
+            <div className="shopee-login-panel__feature">
+              <SafetyCertificateOutlined />
+              <span>{t('pages.auth.loginTrustSecure')}</span>
+            </div>
           </div>
-          <div className="shopee-login-trust__item">
-            <TruckOutlined />
-            <span>{t('pages.auth.loginTrustTracking')}</span>
-          </div>
-          <div className="shopee-login-trust__item">
-            <SafetyCertificateOutlined />
-            <span>{t('pages.auth.loginTrustSecure')}</span>
-          </div>
-        </div>
-
-        <Form name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">
-          <Form.Item name="username" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
-            <Input prefix={<UserOutlined />} placeholder={t('pages.auth.username')} size="large" autoComplete="username" />
-          </Form.Item>
-          <Form.Item name="password" rules={[{ required: true, message: t('pages.auth.passwordRequired') }]}>
-            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.password')} size="large" autoComplete="current-password" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block size="large" loading={loading}>
-              {t('pages.auth.login')}
+          <div className="shopee-login-panel__actions">
+            <Button type="primary" size="large" onClick={() => navigate('/register')}>
+              {t('pages.auth.register')}
             </Button>
-          </Form.Item>
-        </Form>
+            <Button ghost size="large" onClick={() => navigate('/track-order')}>
+              {t('nav.trackOrder')}
+            </Button>
+          </div>
+        </aside>
 
-        <div className="shopee-login-links">
-          <Link to="/forgot-password">{t('pages.auth.forgotPassword')}</Link>
-          <Link to="/register">{t('pages.auth.register')}</Link>
-        </div>
+        <section className="shopee-login-card">
+          <div className="shopee-login-brand">
+            <div className="shopee-login-mark">ShopMX</div>
+            <div className="shopee-login-subtitle">{t('pages.auth.loginTitle')}</div>
+          </div>
+          <div className="shopee-login-trust" aria-label={t('pages.auth.loginTrustTitle')}>
+            <div className="shopee-login-trust__item">
+              <ShoppingCartOutlined />
+              <span>{t('pages.auth.loginTrustCart')}</span>
+            </div>
+            <div className="shopee-login-trust__item">
+              <TruckOutlined />
+              <span>{t('pages.auth.loginTrustTracking')}</span>
+            </div>
+            <div className="shopee-login-trust__item">
+              <SafetyCertificateOutlined />
+              <span>{t('pages.auth.loginTrustSecure')}</span>
+            </div>
+          </div>
+
+          <Form name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">
+            <Form.Item name="username" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
+              <Input prefix={<UserOutlined />} placeholder={t('pages.auth.username')} size="large" autoComplete="username" />
+            </Form.Item>
+            <Form.Item name="password" rules={[{ required: true, message: t('pages.auth.passwordRequired') }]}>
+              <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.password')} size="large" autoComplete="current-password" />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" block size="large" loading={loading}>
+                {t('pages.auth.login')}
+              </Button>
+            </Form.Item>
+          </Form>
+
+          <div className="shopee-login-quickLinks">
+            <button type="button" onClick={() => navigate('/track-order')}>
+              <TruckOutlined />
+              <span>{t('nav.trackOrder')}</span>
+            </button>
+            <Link to="/register">
+              <CompassOutlined />
+              <span>{t('pages.auth.register')}</span>
+            </Link>
+          </div>
+
+          <div className="shopee-login-links">
+            <Link to="/forgot-password">{t('pages.auth.forgotPassword')}</Link>
+            <Link to="/register">{t('pages.auth.register')}</Link>
+          </div>
+        </section>
       </section>
     </main>
   );

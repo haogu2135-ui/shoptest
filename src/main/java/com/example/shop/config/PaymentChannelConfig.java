@@ -16,14 +16,18 @@ import java.util.stream.Collectors;
 @Component
 @ConfigurationProperties(prefix = "payment")
 public class PaymentChannelConfig {
+    private static final String PROVIDER_STRIPE = "STRIPE";
+    private static final String PROVIDER_GENERIC_REDIRECT = "GENERIC_REDIRECT";
+    private static final String PROVIDER_GENERIC_API = "GENERIC_API";
+
     private String supportedChannels = "STRIPE,SHOP_PAY,PAYPAL,APPLE_PAY,GOOGLE_PAY,VISA,MX_LOCAL_CARD,SPEI,OXXO,ALIPAY,WECHAT_PAY,UNIONPAY,CODI,MERCADO_PAGO";
     private String checkoutBaseUrl = "https://pay.example.local/checkout";
     private String defaultCurrency = "MXN";
     private List<Channel> channels = new ArrayList<>();
+    private Geo geo = new Geo();
 
-    public List<Channel> enabledChannels() {
+    public List<Channel> configuredChannels() {
         List<Channel> configured = channels.stream()
-                .filter(Channel::isEnabled)
                 .sorted(Comparator.comparingInt(Channel::getSortOrder).thenComparing(Channel::getCode))
                 .collect(Collectors.toList());
         if (!configured.isEmpty()) {
@@ -34,15 +38,34 @@ public class PaymentChannelConfig {
                 .collect(Collectors.toList());
     }
 
+    public List<Channel> enabledChannels() {
+        return configuredChannels().stream()
+                .filter(Channel::isEnabled)
+                .collect(Collectors.toList());
+    }
+
     public Channel requireEnabled(String code) {
         String normalized = normalize(code);
         return findEnabled(normalized)
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported payment channel: " + code));
     }
 
+    public Channel requireConfigured(String code) {
+        String normalized = normalize(code);
+        return findConfigured(normalized)
+                .orElseThrow(() -> new IllegalArgumentException("Unsupported payment channel: " + code));
+    }
+
     public Optional<Channel> findEnabled(String code) {
         String normalized = normalize(code);
         return enabledChannels().stream()
+                .filter(channel -> channel.getCode().equals(normalized))
+                .findFirst();
+    }
+
+    public Optional<Channel> findConfigured(String code) {
+        String normalized = normalize(code);
+        return configuredChannels().stream()
                 .filter(channel -> channel.getCode().equals(normalized))
                 .findFirst();
     }
@@ -102,6 +125,11 @@ public class PaymentChannelConfig {
         private String provider = "GENERIC_REDIRECT";
         private String refundMode = "MANUAL";
         private String checkoutUrl;
+        private String createUrl;
+        private String refundUrl;
+        private String authHeaderName;
+        private String authHeaderValue;
+        private String merchantId;
         private String badgeKey;
         private boolean enabled = true;
         private int sortOrder = 100;
@@ -111,5 +139,45 @@ public class PaymentChannelConfig {
         public String getCode() {
             return code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
         }
+
+        public String getProvider() {
+            return normalizeUpper(provider, PROVIDER_GENERIC_REDIRECT);
+        }
+
+        public String getRefundMode() {
+            return normalizeUpper(refundMode, "MANUAL");
+        }
+
+        public boolean isStripeProvider() {
+            return PROVIDER_STRIPE.equals(getCode()) || PROVIDER_STRIPE.equals(getProvider());
+        }
+
+        public boolean isGenericApiProvider() {
+            return PROVIDER_GENERIC_API.equals(getProvider());
+        }
+
+        public boolean isGenericRedirectProvider() {
+            return PROVIDER_GENERIC_REDIRECT.equals(getProvider());
+        }
+
+        private String normalizeUpper(String value, String fallback) {
+            String normalized = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+            return normalized.isEmpty() ? fallback : normalized;
+        }
+    }
+
+    @Data
+    public static class Geo {
+        private boolean enabled = true;
+        private List<String> countryHeaderNames = new ArrayList<>(List.of(
+                "CF-IPCountry",
+                "X-Country-Code",
+                "X-Geo-Country",
+                "X-Country"
+        ));
+        private String lookupUrl;
+        private int lookupTimeoutMs = 1200;
+        private String localIpCountry;
+        private String fallbackCountry;
     }
 }

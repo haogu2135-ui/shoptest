@@ -40,6 +40,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
+    private static final String RETURN_REFUNDING = "RETURN_REFUNDING";
+
 
     @Autowired
     private OrderRepository orderRepository;
@@ -61,6 +63,9 @@ public class OrderService {
     private LogisticsCarrierService logisticsCarrierService;
     @Autowired
     private RefundService refundService;
+    @Lazy
+    @Autowired
+    private OrderService self;
 
     @Value("${order.unpaid-timeout-minutes:30}")
     private long unpaidTimeoutMinutes;
@@ -516,10 +521,22 @@ public class OrderService {
         if (!"RETURN_SHIPPED".equals(order.getStatus())) {
             throw new IllegalStateException("Only return-shipped orders can be completed");
         }
-        refundService.refundPaidPayment(order);
-        int updated = orderRepository.completeReturnAndRefundIfCurrent(id, "RETURN_SHIPPED");
-        if (updated == 0) {
+        int claimed = orderRepository.markReturnRefundingIfCurrent(id, "RETURN_SHIPPED", RETURN_REFUNDING);
+        if (claimed == 0) {
+            Order latest = orderRepository.findById(id);
+            if (latest != null && "RETURNED".equals(latest.getStatus())) {
+                return true;
+            }
             return false;
+        }
+        refundService.refundPaidPayment(order);
+        int updated = orderRepository.completeReturnAndRefundIfCurrent(id, RETURN_REFUNDING);
+        if (updated == 0) {
+            Order latest = orderRepository.findById(id);
+            if (latest != null && "RETURNED".equals(latest.getStatus())) {
+                return true;
+            }
+            throw new IllegalStateException("Return refund finalization failed");
         }
         List<OrderItem> items = orderItemRepository.findByOrderId(id);
         for (OrderItem item : items) {
@@ -636,7 +653,4 @@ public class OrderService {
         }
         return order.getUpdatedAt() != null ? order.getUpdatedAt() : order.getCreatedAt();
     }
-} 
-    @Lazy
-    @Autowired
-    private OrderService self;
+}

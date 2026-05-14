@@ -678,6 +678,8 @@
       "registerTrustTracking": "订单追踪",
       "registerPrivacyHint": "联系方式仅用于账号、配送和服务通知。",
       "loginTrustTitle": "登录权益",
+      "loginHeroSubtitle": "登录后可找回游客购物车、追踪每一笔订单，并在不同设备上延续更顺畅的结账体验。",
+      "loginGuestCartHint": "登录后可找回 {count} 件游客购物车商品，并更快继续结账。",
       "loginTrustCart": "找回游客购物车",
       "loginTrustTracking": "追踪每个订单",
       "loginTrustSecure": "安全账号",

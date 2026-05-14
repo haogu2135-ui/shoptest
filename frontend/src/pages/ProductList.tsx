@@ -310,6 +310,23 @@ const ProductList: React.FC = () => {
     selectedCategory,
     t,
   ]);
+  const clearCatalogContext = () => {
+    setKeyword('');
+    setCategoryId(undefined);
+    setSortBy('default');
+    setCurrentPage(1);
+    navigate('/products');
+    setFilterDrawerOpen(false);
+  };
+  const applySort = (nextSort: string) => {
+    setSortBy(nextSort);
+    setCurrentPage(1);
+  };
+  const resultContextTags = [
+    collection ? { key: 'collection', color: 'geekblue', label: collection.replace(/-/g, ' ') } : null,
+    keyword.trim() ? { key: 'keyword', color: 'purple', label: keyword.trim() } : null,
+    selectedCategory ? { key: 'category', color: 'green', label: getLocalizedCategoryValue(selectedCategory, language, 'name') } : null,
+  ].filter(Boolean) as Array<{ key: string; color: string; label: string }>;
   const quickAddOptionGroups = useMemo(() => getProductOptionGroups(quickAddProduct), [quickAddProduct]);
   const quickAddVariants = useMemo(() => getProductVariants(quickAddProduct), [quickAddProduct]);
   const quickAddBundleInfo = useMemo(() => getBundleInfo(quickAddProduct), [quickAddProduct]);
@@ -548,12 +565,6 @@ const ProductList: React.FC = () => {
       .sort((left, right) => Number(right[1] || 0) - Number(left[1] || 0))[0] || [];
     return brand;
   }, [viewPreferences.brands]);
-  const hasPreferenceSignal = Boolean(topPreferenceCategory || topPreferenceBrand || viewPreferences.recent.length > 0);
-  const preferredCategory = topPreferenceCategory
-    ? categories.find((category) => String(category.id) === topPreferenceCategory)
-    : undefined;
-  const preferenceLabel = topPreferenceBrand
-    || (preferredCategory ? getLocalizedCategoryValue(preferredCategory, language, 'name') : '');
   const getPersonalizedSortScore = (product: Product) =>
     (personalizedProductIds.has(product.id) ? 42 : 0) +
     (String(product.categoryId) === topPreferenceCategory ? 14 : 0) +
@@ -586,24 +597,7 @@ const ProductList: React.FC = () => {
     bestValueCount: filteredProducts.filter(isBestValueProduct).length,
     lowStockCount: filteredProducts.filter((product) => getLowStockCount(product.stock) !== null && !isProductSoldOut(product)).length,
     quickAddReadyCount: filteredProducts.filter(isQuickAddReady).length,
-    averageSavings: filteredProducts.length > 0
-      ? filteredProducts.reduce((sum, product) => sum + getSavingsAmount(product), 0) / filteredProducts.length
-      : 0,
   };
-  const shoppingGuideText = productListInsights.bestValueCount > 0
-    ? t('pages.productList.guideBestValue', { count: productListInsights.bestValueCount })
-    : productListInsights.quickAddReadyCount > 0
-      ? t('pages.productList.guideQuickAdd', { count: productListInsights.quickAddReadyCount })
-      : activeRefinementCount > 0
-        ? t('pages.productList.guideRefineResults')
-        : t('pages.productList.guideStart');
-  const shoppingGuideAction = productListInsights.bestValueCount > 0
-    ? { label: t('pages.productList.shopBestDeals'), action: () => setSortBy('discount-desc') }
-    : productListInsights.quickAddReadyCount > 0
-      ? { label: t('pages.productList.shopQuickAdd'), action: () => setSortBy('default') }
-      : activeRefinementCount > 0
-        ? { label: t('pages.productList.resetFilters'), action: resetFilters }
-        : { label: t('pages.productList.shopTopRated'), action: () => setSortBy('positive-rate-desc') };
   const recommendedProduct = filteredProducts
     .filter((product) => !isProductSoldOut(product))
     .map((product, index) => ({
@@ -612,23 +606,29 @@ const ProductList: React.FC = () => {
       score: getPersonalizedSortScore(product),
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.product || null;
-  const recommendedProductPrice = recommendedProduct ? getPrice(recommendedProduct) : 0;
-  const recommendedProductReasons = recommendedProduct ? [
-    personalizedProductIds.has(recommendedProduct.id) ? t('pages.productList.pickPetProfile') : null,
-    hasPreferenceSignal && !personalizedProductIds.has(recommendedProduct.id) ? t('pages.productList.pickPreference') : null,
-    isBestValueProduct(recommendedProduct) ? t('pages.productList.pickBestValue') : null,
-    isQuickAddReady(recommendedProduct) ? t('pages.productList.pickQuickAdd') : null,
-    getDiscountPercent(recommendedProduct) > 0 ? t('pages.productList.pickDeal', { percent: getDiscountPercent(recommendedProduct) }) : null,
-    getLowStockCount(recommendedProduct.stock) !== null ? t('pages.productList.pickLowStock', { count: getLowStockCount(recommendedProduct.stock) || 0 }) : null,
-  ].filter(Boolean) as string[] : [];
-  const personalGuideText = personalizedProducts.length > 0
-    ? t('pages.productList.personalGuidePet', { count: personalizedProducts.length })
-    : hasPreferenceSignal
-      ? t('pages.productList.personalGuidePreference', { value: preferenceLabel || t('pages.productList.recentSearches') })
-      : t('pages.productList.personalGuideEmpty');
   const personalGuideAction = personalizedProducts.length > 0
-    ? { label: t('pages.productList.viewPersonalPicks'), action: () => setSortBy('personalized-desc') }
+    ? { label: t('pages.productList.viewPersonalPicks'), action: () => applySort('personalized-desc') }
     : { label: t('pages.productList.managePetProfile'), action: () => navigate('/profile?tab=pets') };
+  const quickFilterActions = [
+    {
+      key: 'ready',
+      label: t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount }),
+      onClick: () => applySort('discount-desc'),
+      disabled: productListInsights.quickAddReadyCount === 0,
+    },
+    {
+      key: 'value',
+      label: t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount }),
+      onClick: () => applySort('positive-rate-desc'),
+      disabled: productListInsights.bestValueCount === 0,
+    },
+    {
+      key: 'stock',
+      label: t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount }),
+      onClick: () => applySort('default'),
+      disabled: productListInsights.lowStockCount === 0,
+    },
+  ];
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
@@ -674,23 +674,28 @@ const ProductList: React.FC = () => {
         className="product-list__actionButton"
         onClick={(e) => openQuickAdd(e, product)}
       >
-        {t('pages.productList.quickAdd')}
+        {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions')}
       </Button>
     );
   };
   const renderConfidenceStrip = (product: Product) => {
     const quickReady = isQuickAddReady(product);
     const lowStock = getLowStockCount(product.stock);
+    if (quickReady && lowStock === null) return null;
     return (
       <div className="product-list__confidenceStrip">
-        <span className={quickReady ? 'product-list__confidencePill product-list__confidencePill--ready' : 'product-list__confidencePill'}>
-          <CheckCircleOutlined />
-          {quickReady ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded')}
-        </span>
-        <span className={lowStock !== null ? 'product-list__confidencePill product-list__confidencePill--alert' : 'product-list__confidencePill product-list__confidencePill--ready'}>
-          <FireOutlined />
-          {lowStock !== null ? t('pages.productList.cardLowStock', { count: lowStock }) : t('pages.productList.cardStockReady')}
-        </span>
+        {!quickReady && (
+          <span className="product-list__confidencePill">
+            <CheckCircleOutlined />
+            {t('pages.productList.cardOptionsNeeded')}
+          </span>
+        )}
+        {lowStock !== null && (
+          <span className="product-list__confidencePill product-list__confidencePill--alert">
+            <FireOutlined />
+            {t('pages.productList.cardLowStock', { count: lowStock })}
+          </span>
+        )}
       </div>
     );
   };
@@ -719,14 +724,27 @@ const ProductList: React.FC = () => {
     <Space direction="vertical" className="product-list__filterStack" size="middle">
       <div>
         <Text strong>{t('pages.productList.price')}</Text>
-        <Slider range min={0} max={maxCatalogPrice} step={priceStep} value={displayedPriceRange} onChange={(value) => setPriceRange(value as [number, number])} />
+        <Slider
+          range
+          min={0}
+          max={maxCatalogPrice}
+          step={priceStep}
+          value={displayedPriceRange}
+          onChange={(value) => {
+            setPriceRange(value as [number, number]);
+            setCurrentPage(1);
+          }}
+        />
         <Text type="secondary">{formatMoney(displayedPriceRange[0])} - {formatMoney(displayedPriceRange[1])}</Text>
       </div>
       <div>
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterSize')}</Text>
         <Checkbox.Group
           value={petSizes}
-          onChange={(value) => setPetSizes(value.map(String))}
+          onChange={(value) => {
+            setPetSizes(value.map(String));
+            setCurrentPage(1);
+          }}
           options={petSizeOptions}
         />
       </div>
@@ -734,7 +752,10 @@ const ProductList: React.FC = () => {
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterMaterial')}</Text>
         <Checkbox.Group
           value={materials}
-          onChange={(value) => setMaterials(value.map(String))}
+          onChange={(value) => {
+            setMaterials(value.map(String));
+            setCurrentPage(1);
+          }}
           options={materialOptions}
         />
       </div>
@@ -742,7 +763,10 @@ const ProductList: React.FC = () => {
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterColor')}</Text>
         <Checkbox.Group
           value={colors}
-          onChange={(value) => setColors(value.map(String))}
+          onChange={(value) => {
+            setColors(value.map(String));
+            setCurrentPage(1);
+          }}
           options={colorOptions}
         />
       </div>
@@ -774,13 +798,36 @@ const ProductList: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={24} md={19} lg={20}>
+          <div className="product-list__focusBar">
+            <div className="product-list__focusIntro">
+              <Text strong>{t('pages.productList.title')}</Text>
+              <Space wrap size={[8, 8]}>
+                <Tag color="cyan">{t('pages.productList.count', { count: filteredProducts.length })}</Tag>
+                {resultContextTags.map((tag) => (
+                  <Tag key={tag.key} color={tag.color}>{tag.label}</Tag>
+                ))}
+              </Space>
+            </div>
+            <Space wrap size={[8, 8]} className="product-list__focusActions">
+              {quickFilterActions.map((item) => (
+                <Button key={item.key} size="small" disabled={item.disabled} onClick={item.onClick}>
+                  {item.label}
+                </Button>
+              ))}
+              {resultContextTags.length > 0 ? (
+                <Button size="small" onClick={clearCatalogContext}>
+                  {t('pages.productList.allCategories')}
+                </Button>
+              ) : null}
+            </Space>
+          </div>
           <Card className="product-list__toolbar">
             <Row gutter={[12, 12]} align="middle">
               <Col xs={24} sm={12} md={14} flex="auto">
                 <Input.Search placeholder={t('pages.productList.searchPlaceholder')} value={keyword} onChange={e => setKeyword(e.target.value)} onSearch={handleSearch} className="product-list__search" />
               </Col>
               <Col xs={12} sm={5} md={6}>
-                <Select value={sortBy} onChange={setSortBy} style={{ width: '100%' }}
+                <Select value={sortBy} onChange={applySort} style={{ width: '100%' }}
                   options={[
                     { value: 'default', label: t('pages.productList.defaultSort') },
                     { value: 'personalized-desc', label: t('pages.productList.personalizedSort') },
@@ -836,98 +883,34 @@ const ProductList: React.FC = () => {
               </Space>
             )}
           </Card>
-          <div className="product-list__insightBar" aria-label={t('pages.productList.insightTitle')}>
-            <div className="product-list__insightIntro">
+          <div className="product-list__smartBar">
+            <div className="product-list__smartBarLeft">
               <ThunderboltOutlined />
-              <div>
-                <Text strong>{t('pages.productList.insightTitle')}</Text>
-                <Text type="secondary">{t('pages.productList.insightSubtitle')}</Text>
-              </div>
-            </div>
-            <div className="product-list__insightStats">
-              <Tag color="green">{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</Tag>
-              <Tag color="gold">{t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}</Tag>
-              <Tag color="red">{t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount })}</Tag>
-              {productListInsights.averageSavings > 0 ? (
-                <Tag color="volcano">{t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) })}</Tag>
-              ) : null}
-            </div>
-            <div className="product-list__insightActions">
-              <Button size="small" icon={<FireOutlined />} onClick={() => setSortBy('positive-rate-desc')}>
-                {t('pages.productList.shopTopRated')}
-              </Button>
-              <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => setSortBy('discount-desc')}>
-                {t('pages.productList.shopBestDeals')}
-              </Button>
-            </div>
-          </div>
-          <div className="product-list__shoppingGuide">
-            <div>
-              <Text strong>{t('pages.productList.guideTitle')}</Text>
-              <Text type="secondary">{shoppingGuideText}</Text>
-            </div>
-            <Button size="small" type="primary" onClick={shoppingGuideAction.action}>
-              {shoppingGuideAction.label}
-            </Button>
-          </div>
-          <div className="product-list__personalGuide">
-            <div>
-              <Text type="secondary">{t('pages.productList.personalGuideEyebrow')}</Text>
-              <Text strong>{t('pages.productList.personalGuideTitle')}</Text>
-              <Text type="secondary">{personalGuideText}</Text>
-            </div>
-            <Space wrap className="product-list__personalGuideActions">
-              {personalizedProducts.length > 0 ? (
-                <Tag color="green">{t('pages.productList.personalGuideActive')}</Tag>
-              ) : (
-                <Tag color="gold">{t('pages.productList.personalGuideSetup')}</Tag>
-              )}
-              <Button size="small" onClick={personalGuideAction.action}>
-                {personalGuideAction.label}
-              </Button>
-            </Space>
-          </div>
-          {recommendedProduct ? (
-            <div className="product-list__recommendedPick">
-              <img
-                src={resolveProductListImage(recommendedProduct.imageUrl)}
-                alt={recommendedProduct.name}
-                onError={(event) => {
-                  if (event.currentTarget.src !== productImageFallback) {
-                    event.currentTarget.src = productImageFallback;
-                  }
-                }}
-              />
-              <div className="product-list__recommendedPickBody">
-                <Text type="secondary">{t('pages.productList.pickEyebrow')}</Text>
-                <Text strong>{t('pages.productList.pickTitle', { name: recommendedProduct.name })}</Text>
-                <Text type="secondary">
-                  {t('pages.productList.pickSubtitle', {
-                    price: formatMoney(recommendedProductPrice),
-                    rating: getPositiveRate(recommendedProduct) ? `${getPositiveRate(recommendedProduct)}%` : t('common.unset'),
-                  })}
-                </Text>
-                <Space wrap size={[6, 6]}>
-                  {recommendedProductReasons.slice(0, 3).map((reason) => (
-                    <Tag key={reason} color="green">{reason}</Tag>
-                  ))}
-                </Space>
-              </div>
-              <Space wrap className="product-list__recommendedPickActions">
-                <Button onClick={() => openProductDetail(recommendedProduct.id)}>
-                  {t('pages.productList.viewPick')}
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<ShoppingCartOutlined />}
-                  disabled={isProductSoldOut(recommendedProduct)}
-                  onClick={(event) => openQuickAdd(event, recommendedProduct)}
-                >
-                  {isQuickAddReady(recommendedProduct) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions')}
-                </Button>
+              <Space wrap size={[6, 4]}>
+                <Tag color="green">{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</Tag>
+                <Tag color="gold">{t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}</Tag>
+                {productListInsights.lowStockCount > 0 && <Tag color="red">{t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount })}</Tag>}
               </Space>
             </div>
-          ) : null}
+            <Space wrap size={[6, 4]}>
+              {recommendedProduct && (
+                <Button size="small" type="link" onClick={() => openProductDetail(recommendedProduct.id)}>
+                  {t('pages.productList.viewPick')}: {recommendedProduct.name}
+                </Button>
+              )}
+              <Button size="small" icon={<FireOutlined />} onClick={() => applySort('positive-rate-desc')}>
+                {t('pages.productList.shopTopRated')}
+              </Button>
+              <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => applySort('discount-desc')}>
+                {t('pages.productList.shopBestDeals')}
+              </Button>
+              {personalizedProducts.length > 0 && (
+                <Button size="small" type="primary" onClick={personalGuideAction.action}>
+                  {personalGuideAction.label}
+                </Button>
+              )}
+            </Space>
+          </div>
           {loading ? (
             <div className="product-list__loading"><Spin size="large" /></div>
           ) : paginatedProducts.length === 0 ? (

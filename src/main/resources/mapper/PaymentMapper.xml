@@ -10,8 +10,12 @@
         <result property="status" column="status"/>
         <result property="paymentUrl" column="payment_url"/>
         <result property="transactionId" column="transaction_id"/>
+        <result property="providerReference" column="provider_reference"/>
+        <result property="refundReference" column="refund_reference"/>
         <result property="expiresAt" column="expires_at"/>
         <result property="paidAt" column="paid_at"/>
+        <result property="refundedAt" column="refunded_at"/>
+        <result property="callbackAt" column="callback_at"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
@@ -34,6 +38,12 @@
 
     <select id="findByTransactionId" resultMap="paymentMap">
         SELECT * FROM payments WHERE transaction_id = #{transactionId}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByProviderReference" resultMap="paymentMap">
+        SELECT * FROM payments WHERE provider_reference = #{providerReference}
         ORDER BY id DESC
         LIMIT 1
     </select>
@@ -66,8 +76,8 @@
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.Payment" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO payments (order_id, order_no, amount, channel, status, payment_url, transaction_id, expires_at, paid_at, created_at, updated_at)
-        VALUES (#{orderId}, #{orderNo}, #{amount}, #{channel}, #{status}, #{paymentUrl}, #{transactionId}, #{expiresAt}, #{paidAt}, #{createdAt}, #{updatedAt})
+        INSERT INTO payments (order_id, order_no, amount, channel, status, payment_url, transaction_id, provider_reference, refund_reference, expires_at, paid_at, refunded_at, callback_at, created_at, updated_at)
+        VALUES (#{orderId}, #{orderNo}, #{amount}, #{channel}, #{status}, #{paymentUrl}, #{transactionId}, #{providerReference}, #{refundReference}, #{expiresAt}, #{paidAt}, #{refundedAt}, #{callbackAt}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.example.shop.entity.Payment">
@@ -77,8 +87,12 @@
             status = #{status},
             payment_url = #{paymentUrl},
             transaction_id = #{transactionId},
+            provider_reference = #{providerReference},
+            refund_reference = #{refundReference},
             expires_at = #{expiresAt},
             paid_at = #{paidAt},
+            refunded_at = #{refundedAt},
+            callback_at = #{callbackAt},
             updated_at = #{updatedAt}
         WHERE id = #{id}
     </update>
@@ -92,9 +106,22 @@
         WHERE id = #{id} AND status = 'PENDING'
     </update>
 
+    <update id="markPaidDetailed">
+        UPDATE payments
+        SET status = 'PAID',
+            transaction_id = #{transactionId},
+            provider_reference = #{providerReference},
+            callback_at = #{callbackAt},
+            paid_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
     <update id="markRefunded">
         UPDATE payments
         SET status = 'REFUNDED',
+            refund_reference = #{refundReference},
+            refunded_at = NOW(),
             updated_at = NOW()
         WHERE id = #{id} AND status = 'PAID'
     </update>

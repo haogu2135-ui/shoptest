@@ -233,6 +233,50 @@
   font-size: 24px;
 }
 
+.shop-nav__guestCtas {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 2px;
+}
+
+.shop-nav__guestCta {
+  min-width: 88px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.shop-nav__guestCta:hover,
+.shop-nav__guestCta:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.shop-nav__guestCta--primary {
+  border-color: #f7c948;
+  background: #f7c948;
+  color: #173f2b !important;
+  box-shadow: 0 8px 18px rgba(247, 201, 72, 0.22);
+}
+
+.shop-nav__guestCta--primary:hover,
+.shop-nav__guestCta--primary:focus-visible {
+  background: #f9d76c;
+  border-color: #f9d76c;
+}
+
 .shop-nav__mobile-tools {
   display: none;
 }
@@ -263,6 +307,11 @@
   font-weight: 600;
 }
 
+.shop-nav__mobile-auth--primary {
+  background: #f7c948;
+  color: #173f2b !important;
+}
+
 .shop-nav__mobile-profile {
   display: inline-flex;
   align-items: center;
@@ -270,6 +319,17 @@
   color: #fff;
   font-size: 13px;
   font-weight: 600;
+}
+
+.shop-nav__more-trigger {
+  padding: 0 2px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.shop-nav__more-trigger:hover,
+.shop-nav__more-trigger:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .shop-nav__admin {
@@ -396,7 +456,7 @@
     font-size: 19px;
   }
 
-  .shop-nav__mobile-auth {
+  .shop-nav__guestCtas {
     display: none;
   }
 
@@ -410,6 +470,17 @@
 
   .shop-nav__mobile-orders {
     display: inline-flex !important;
+  }
+
+  .shop-nav__mobile-auth {
+    min-width: 58px;
+    min-height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    padding: 0 10px;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .shop-nav__secondary-action {
@@ -449,6 +520,12 @@
   .shop-nav__actions {
     gap: 8px;
     font-size: 18px;
+  }
+
+  .shop-nav__mobile-auth {
+    min-width: 52px;
+    padding: 0 8px;
+    font-size: 13px;
   }
 
   .shop-nav__mega {

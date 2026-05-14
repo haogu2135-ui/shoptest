@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Dropdown, Input, Select, Tooltip } from 'antd';
+import { Badge, Dropdown, Input, Select } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertOutlined,
   BellOutlined,
   BarChartOutlined,
   CheckOutlined,
+  EllipsisOutlined,
   GiftOutlined,
   GlobalOutlined,
   HeartOutlined,
@@ -45,7 +46,6 @@ const Navbar: React.FC = () => {
   const [couponCount, setCouponCount] = useState(0);
   const [compareCount, setCompareCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
-  const [savedAlertCount, setSavedAlertCount] = useState(0);
   const { language, setLanguage, t } = useLanguage();
   const { currency, setCurrency, market, formatMoney } = useMarket();
   const languageOptions = [
@@ -116,7 +116,6 @@ const Navbar: React.FC = () => {
     let disposed = false;
     const refreshAlertCount = () => {
       const alerts = readStockAlerts();
-      setSavedAlertCount(alerts.length);
       if (alerts.length === 0) {
         setAlertCount(0);
         return;
@@ -245,6 +244,11 @@ const Navbar: React.FC = () => {
   const searchByKeyword = (keyword: string) => {
     navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
   };
+
+  const guestActionItems = [
+    { key: 'register', label: t('nav.register'), to: '/register', primary: true },
+    { key: 'login', label: t('nav.login'), to: '/login', primary: false },
+  ];
 
   return (
     <header className="shop-nav">
@@ -385,6 +389,19 @@ const Navbar: React.FC = () => {
           </nav>
 
           <div className="shop-nav__actions">
+            {!token ? (
+              <div className="shop-nav__guestCtas" aria-label={t('nav.account')}>
+                {guestActionItems.map((item) => (
+                  <Link
+                    key={item.key}
+                    to={item.to}
+                    className={item.primary ? 'shop-nav__guestCta shop-nav__guestCta--primary' : 'shop-nav__guestCta'}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
             <Dropdown
               className="shop-nav__mobile-locale"
               trigger={['click']}
@@ -421,33 +438,28 @@ const Navbar: React.FC = () => {
                     <HeartOutlined />
                   </Badge>
                 </button>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/coupons')} aria-label={t('pages.coupons.title')}>
-                  <Badge count={couponCount} size="small">
-                    <GiftOutlined />
-                  </Badge>
-                </button>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/compare')} aria-label={t('nav.ariaCompare')}>
-                  <Badge count={compareCount} size="small">
-                    <BarChartOutlined />
-                  </Badge>
-                </button>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/history')} aria-label={t('nav.ariaHistory')}>
-                  <HistoryOutlined />
-                </button>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/stock-alerts')} aria-label={t('nav.ariaStockAlerts')}>
-                  <Tooltip title={t('nav.ariaStockAlerts')}>
-                    <Badge count={alertCount} size="small" showZero={savedAlertCount > 0}>
-                      <AlertOutlined />
-                    </Badge>
-                  </Tooltip>
-                </button>
                 <button className="shop-nav__secondary-action" onClick={() => navigate('/notifications')} aria-label={t('nav.ariaNotifications')}>
-                  <Tooltip title={t('nav.ariaNotifications')}>
-                    <Badge count={unreadCount} size="small">
-                      <BellOutlined />
-                    </Badge>
-                  </Tooltip>
+                  <Badge count={unreadCount} size="small">
+                    <BellOutlined />
+                  </Badge>
                 </button>
+                <Dropdown
+                  trigger={['click']}
+                  menu={{
+                    items: [
+                      { key: 'coupons', icon: <GiftOutlined />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
+                      { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
+                      { key: 'history', icon: <HistoryOutlined />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
+                      { key: 'alerts', icon: <AlertOutlined />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
+                    ],
+                  }}
+                >
+                  <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label="More">
+                    <Badge count={couponCount + compareCount + alertCount} size="small" overflowCount={99}>
+                      <EllipsisOutlined />
+                    </Badge>
+                  </button>
+                </Dropdown>
                 <button onClick={() => window.dispatchEvent(new Event('shop:open-cart'))} aria-label={t('nav.ariaCart')}>
                   <Badge count={cartCount} size="small">
                     <ShoppingCartOutlined />
@@ -464,23 +476,24 @@ const Navbar: React.FC = () => {
               </>
             ) : (
               <>
-                <Link to="/register" className="shop-nav__mobile-auth">{t('nav.register')}</Link>
+                <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary">{t('nav.register')}</Link>
                 <Link to="/login" className="shop-nav__mobile-auth">{t('nav.login')}</Link>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/compare')} aria-label={t('nav.ariaCompare')}>
-                  <Badge count={compareCount} size="small">
-                    <BarChartOutlined />
-                  </Badge>
-                </button>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/history')} aria-label={t('nav.ariaHistory')}>
-                  <HistoryOutlined />
-                </button>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/stock-alerts')} aria-label={t('nav.ariaStockAlerts')}>
-                  <Tooltip title={t('nav.ariaStockAlerts')}>
-                    <Badge count={alertCount} size="small" showZero={savedAlertCount > 0}>
-                      <AlertOutlined />
+                <Dropdown
+                  trigger={['click']}
+                  menu={{
+                    items: [
+                      { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
+                      { key: 'history', icon: <HistoryOutlined />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
+                      { key: 'alerts', icon: <AlertOutlined />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
+                    ],
+                  }}
+                >
+                  <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label="More">
+                    <Badge count={compareCount + alertCount} size="small" overflowCount={99}>
+                      <EllipsisOutlined />
                     </Badge>
-                  </Tooltip>
-                </button>
+                  </button>
+                </Dropdown>
                 <button onClick={() => window.dispatchEvent(new Event('shop:open-cart'))} aria-label={t('nav.ariaCart')}>
                   <Badge count={cartCount} size="small">
                     <ShoppingCartOutlined />

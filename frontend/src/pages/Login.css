@@ -1,10 +1,108 @@
 .shopee-login-root {
   width: 100%;
   min-height: 100vh;
-  display: grid;
-  place-items: center;
   padding: 24px;
-  background: linear-gradient(180deg, #fff7f3 0%, #ffffff 55%, #fff 100%);
+  background: linear-gradient(180deg, #f7f4ee 0%, #ffffff 55%, #fff 100%);
+}
+
+.shopee-login-shell {
+  width: min(1120px, 100%);
+  min-height: calc(100vh - 48px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 24px;
+  align-items: center;
+}
+
+.shopee-login-panel {
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 46px;
+  background:
+    linear-gradient(90deg, rgba(18, 71, 52, 0.94), rgba(18, 71, 52, 0.56)),
+    url('https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1400&q=80');
+  background-position: center;
+  background-size: cover;
+  color: #fff;
+}
+
+.shopee-login-panel .ant-typography {
+  margin: 0;
+  color: #fff;
+}
+
+.shopee-login-panel h1.ant-typography {
+  max-width: 560px;
+  font-size: 44px;
+  line-height: 1.08;
+}
+
+.shopee-login-panel__eyebrow {
+  width: fit-content;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.shopee-login-panel__subtitle {
+  max-width: 520px;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.shopee-login-panel__featureList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.shopee-login-panel__feature {
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(10, 33, 24, 0.38);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.shopee-login-panel__feature .anticon {
+  color: #f7c948;
+  font-size: 18px;
+}
+
+.shopee-login-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.shopee-login-panel__actions .ant-btn {
+  min-width: 146px;
+  font-weight: 700;
+}
+
+.shopee-login-panel__actions .ant-btn-background-ghost {
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .shopee-login-card {
@@ -75,6 +173,37 @@
   width: 100%;
 }
 
+.shopee-login-quickLinks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.shopee-login-quickLinks a,
+.shopee-login-quickLinks button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #eee4d3;
+  border-radius: 8px;
+  background: #fff9f2;
+  color: #173f2b;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.shopee-login-quickLinks a:hover,
+.shopee-login-quickLinks button:hover {
+  color: #ee4d2d;
+  border-color: #f7c948;
+  text-decoration: none;
+}
+
 .shopee-login-links {
   display: flex;
   justify-content: space-between;
@@ -110,6 +239,10 @@
     padding: 16px;
   }
 
+  .shopee-login-shell {
+    min-height: auto;
+  }
+
   .shopee-login-card {
     padding: 24px 18px 20px;
   }
@@ -118,7 +251,31 @@
     grid-template-columns: 1fr;
   }
 
+  .shopee-login-quickLinks {
+    grid-template-columns: 1fr;
+  }
+
   .shopee-login-links {
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .shopee-login-shell {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .shopee-login-panel {
+    min-height: 340px;
+    padding: 28px;
+  }
+
+  .shopee-login-panel h1.ant-typography {
+    font-size: 30px;
+  }
+
+  .shopee-login-panel__featureList {
+    grid-template-columns: 1fr;
   }
 }

@@ -33,7 +33,8 @@
 
 .shopee-hero__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 360px);
+  gap: 16px;
 }
 
 .shopee-hero__main {
@@ -102,6 +103,65 @@
   gap: 10px;
 }
 
+.shopee-hero__authActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.shopee-hero__authActions .ant-btn {
+  min-width: 132px;
+  font-weight: 700;
+}
+
+.shopee-hero__categoryRail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.shopee-hero__categoryRail button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shopee-hero__categoryRail button:hover,
+.shopee-hero__categoryRail button:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.shopee-hero__signalRow {
+  display: grid;
+  grid-template-columns: repeat(3, auto auto);
+  gap: 8px 12px;
+  width: fit-content;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.shopee-hero__signalRow span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.shopee-hero__signalRow strong {
+  color: #fff7d6;
+  font-size: 15px;
+}
+
 .shopee-hero__actions .ant-btn-default {
   border: 0;
   color: #124734;
@@ -113,6 +173,62 @@
   border-color: rgba(255, 255, 255, 0.82) !important;
   color: #fff !important;
   background: rgba(255, 255, 255, 0.08) !important;
+  font-weight: 700;
+}
+
+.shopee-hero__aside {
+  display: grid;
+  gap: 12px;
+  align-content: stretch;
+}
+
+.shopee-hero__spotlight {
+  min-height: 132px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(10, 33, 24, 0.72);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.shopee-hero__spotlightIcon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(247, 201, 72, 0.16);
+  color: #f7c948;
+  font-size: 18px;
+}
+
+.shopee-hero__spotlightBody {
+  min-width: 0;
+}
+
+.shopee-hero__spotlightBody strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+}
+
+.shopee-hero__spotlightBody p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shopee-hero__spotlight .ant-btn {
+  grid-column: 1 / -1;
+  width: 100%;
   font-weight: 700;
 }
 
@@ -273,6 +389,73 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 14px;
+}
+
+.shopee-conversion-band {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.shopee-conversion-band__card {
+  min-height: 96px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e9dcc6;
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #fffdf8, #fff6e9);
+  color: #173f2b;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(18, 71, 52, 0.06);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.shopee-conversion-band__card:hover,
+.shopee-conversion-band__card:focus-visible {
+  border-color: #f7c948;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.1);
+}
+
+.shopee-conversion-band__icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eaf4ef;
+  color: #124734;
+  font-size: 20px;
+}
+
+.shopee-conversion-band__body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.shopee-conversion-band__body strong,
+.shopee-conversion-band__body .ant-typography {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.shopee-conversion-band__body strong {
+  color: #173f2b;
+  font-size: 15px;
+}
+
+.shopee-conversion-band__action {
+  color: #124734;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .shopee-mobile-priority {
@@ -721,16 +904,9 @@
   opacity: 1;
 }
 
-.pet-ugc__status {
-  margin: -4px 0 14px;
-  color: #6c6a62;
-  font-size: 13px;
-  line-height: 19px;
-}
-
 .pet-ugc__grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -752,7 +928,7 @@
   position: relative;
   overflow: hidden;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   border: 0;
   padding: 0;
   background: #eee;
@@ -787,12 +963,12 @@
 }
 
 .pet-ugc__meta {
-  min-height: 42px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 7px 8px;
+  padding: 5px 8px;
 }
 
 .pet-ugc__like,
@@ -946,6 +1122,16 @@
     gap: 8px;
   }
 
+  .shopee-hero__authActions {
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .shopee-hero__authActions .ant-btn {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+  }
+
   .shopee-hero__actions .ant-btn {
     height: 40px;
     padding: 0 12px;
@@ -965,6 +1151,34 @@
 
   .shopee-hero__main::after {
     display: none;
+  }
+
+  .shopee-hero__categoryRail {
+    gap: 8px;
+  }
+
+  .shopee-hero__categoryRail button {
+    min-height: 32px;
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+
+  .shopee-hero__signalRow {
+    grid-template-columns: repeat(2, auto auto);
+    width: 100%;
+    gap: 6px 10px;
+    margin-top: 16px;
+    padding: 10px 12px;
+  }
+
+  .shopee-hero__aside {
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  .shopee-hero__spotlight {
+    min-height: 0;
+    padding: 14px;
   }
 
   .shopee-section__header--accent button {
@@ -994,6 +1208,18 @@
 
   .shopee-home-actions {
     grid-template-columns: 1fr;
+  }
+
+  .shopee-conversion-band {
+    grid-template-columns: 1fr;
+  }
+
+  .shopee-conversion-band__card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .shopee-conversion-band__action {
+    grid-column: 2;
   }
 
   .shopee-personalized-insight {
@@ -1042,7 +1268,7 @@
   }
 
   .pet-ugc__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .pet-ugc .shopee-section__header {
@@ -1056,7 +1282,7 @@
   }
 
   .pet-ugc__actions button {
-    flex: 1 1 calc(50% - 8px);
+    flex: 1 1 auto;
     justify-content: center;
     min-height: 38px;
   }

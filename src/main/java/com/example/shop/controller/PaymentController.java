@@ -9,6 +9,7 @@ import com.example.shop.entity.Payment;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.OrderService;
+import com.example.shop.service.PaymentChannelRecommendationService;
 import com.example.shop.service.PaymentService;
 import com.example.shop.service.SecurityAuditLogService;
 import lombok.RequiredArgsConstructor;
@@ -32,12 +33,14 @@ public class PaymentController {
     private final OrderService orderService;
     private final SecurityAuditLogService auditLogService;
     private final PaymentChannelConfig paymentChannelConfig;
+    private final PaymentChannelRecommendationService paymentChannelRecommendationService;
 
     @GetMapping("/channels")
-    public List<PaymentChannelResponse> channels() {
-        return paymentChannelConfig.enabledChannels().stream()
-                .map(PaymentChannelResponse::from)
+    public List<PaymentChannelResponse> channels(HttpServletRequest request) {
+        List<PaymentChannelConfig.Channel> channels = paymentChannelConfig.enabledChannels().stream()
+                .filter(paymentService::isChannelAvailableForCheckout)
                 .collect(Collectors.toList());
+        return paymentChannelRecommendationService.buildChannelResponses(channels, request);
     }
 
     @PostMapping

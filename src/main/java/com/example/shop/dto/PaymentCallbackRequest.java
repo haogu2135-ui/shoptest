@@ -23,6 +23,11 @@ public class PaymentCallbackRequest {
     @NotNull
     private BigDecimal amount;
 
+    private String providerReference;
+
+    @NotNull
+    private Long callbackTimestamp;
+
     @NotBlank
     private String signature;
 }

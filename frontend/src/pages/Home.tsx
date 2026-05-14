@@ -152,6 +152,34 @@ const Home: React.FC = () => {
   const currentUserId = Number(localStorage.getItem('userId') || 0);
   const openSupport = () => window.dispatchEvent(new Event('shop:open-support'));
   const openProduct = (productId: number) => navigate(`/products/${productId}`);
+  const guestJourneyActions = !isAuthenticated
+    ? [
+      {
+        key: 'register',
+        icon: <HeartOutlined />,
+        title: t('nav.register'),
+        text: t('pages.auth.registerHeroSubtitle'),
+        actionLabel: t('nav.register'),
+        action: () => navigate('/register'),
+      },
+      {
+        key: 'login',
+        icon: <CheckCircleOutlined />,
+        title: t('nav.login'),
+        text: t('pages.auth.loginTrustTitle'),
+        actionLabel: t('nav.login'),
+        action: () => navigate('/login'),
+      },
+      {
+        key: 'track',
+        icon: <TruckOutlined />,
+        title: t('nav.trackOrder'),
+        text: t('home.viewDeals'),
+        actionLabel: t('nav.trackOrder'),
+        action: () => navigate('/track-order'),
+      },
+    ]
+    : [];
   const mobileQuickActions = [
     {
       key: 'orders',
@@ -520,17 +548,13 @@ const Home: React.FC = () => {
   }, [discoveryProducts.length]);
 
   const categoryTiles = categories.slice(0, 8);
+  const heroCategoryTiles = categoryTiles.slice(0, 4);
   const petUploadRemaining = petGalleryQuota ? Math.max(0, petGalleryQuota.remaining) : 3;
   const petUploadButtonLabel = uploadingPetPhoto
     ? t('home.petUgcUploading')
     : !isAuthenticated
       ? t('home.petUgcLoginToUpload')
       : t('home.petUgcUploadRemaining', { count: petUploadRemaining });
-  const petUploadStatusText = !isAuthenticated
-    ? t('home.petUgcLoginHint')
-    : petGalleryQuota && !petGalleryQuota.canUpload
-      ? t('home.petUgcLimitReached')
-      : t('home.petUgcQuotaHint', { count: petUploadRemaining });
   const petGalleryItems = useMemo<PetGalleryItem[]>(() => {
     const photoItems = petGalleryPhotos.map((photo) => {
       const source = photo.source || 'USER_UPLOAD';
@@ -558,7 +582,6 @@ const Home: React.FC = () => {
       .sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label))
       .slice(0, 24);
   }, [currentUserId, localPetGalleryLikes, petGalleryPhotos]);
-
   const addPersonalizedReadyProducts = async () => {
     if (personalizedReadyProducts.length === 0) {
       message.info(t('pages.compare.recommendationEmpty'));
@@ -577,6 +600,39 @@ const Home: React.FC = () => {
       message.error(getApiErrorMessage(error, t('messages.addFailed')));
     }
   };
+  const heroSpotlights = [
+    {
+      key: 'recommendations',
+      icon: <CompassOutlined />,
+      title: t('home.petRecommendations'),
+      summary: personalizedRecommendationSource === 'petProfile'
+        ? t('home.petRecommendationReady', { count: personalizedReadyCount })
+        : personalizedPreferenceLabel
+          ? t('home.petRecommendationInsightPreference', { value: personalizedPreferenceLabel })
+          : t('home.petRecommendationsHint'),
+      actionLabel: personalizedDisplayProducts.length > 0 ? t('pages.wishlist.addAllToCart') : t('home.managePetProfiles'),
+      action: personalizedDisplayProducts.length > 0 ? addPersonalizedReadyProducts : () => navigate('/profile?tab=pets'),
+      disabled: personalizedDisplayProducts.length > 0 && personalizedReadyProducts.length === 0,
+    },
+    {
+      key: 'deals',
+      icon: <FireOutlined />,
+      title: t('home.flashOffers'),
+      summary: t('home.petRecommendationDeals', { count: personalizedDealCount || promoProducts.length }),
+      actionLabel: t('home.viewDeals'),
+      action: () => searchKeyword(t('home.keywords.deal')),
+      disabled: false,
+    },
+    {
+      key: 'catalog',
+      icon: <AppstoreOutlined />,
+      title: t('home.categories'),
+      summary: heroCategoryTiles.map((category) => getLocalizedCategoryValue(category, language, 'name')).join(' / '),
+      actionLabel: t('home.viewAll'),
+      action: () => navigate('/products'),
+      disabled: false,
+    },
+  ];
 
   const ProductTile: React.FC<{ product: Product; index: number; compact?: boolean; viewedAt?: number }> = ({
     product,
@@ -695,8 +751,53 @@ const Home: React.FC = () => {
                   {t('home.findWalkingGear')}
                 </Button>
               </div>
+              {!isAuthenticated ? (
+                <div className="shopee-hero__authActions" aria-label={t('nav.account')}>
+                  <Button size="large" type="primary" onClick={() => navigate('/register')}>
+                    {t('nav.register')}
+                  </Button>
+                  <Button size="large" ghost onClick={() => navigate('/login')}>
+                    {t('nav.login')}
+                  </Button>
+                </div>
+              ) : null}
+              {heroCategoryTiles.length ? (
+                <div className="shopee-hero__categoryRail">
+                  {heroCategoryTiles.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => navigate(`/products?categoryId=${category.id}`)}
+                    >
+                      {getLocalizedCategoryValue(category, language, 'name')}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="shopee-hero__signalRow">
+                <span>{t('home.bestSellers')}</span>
+                <strong>{bestSellers.length}</strong>
+                <span>{t('home.flashOffers')}</span>
+                <strong>{promoProducts.length}</strong>
+                <span>{t('home.categories')}</span>
+                <strong>{categories.length}</strong>
+              </div>
             </div>
           </div>
+          <aside className="shopee-hero__aside" aria-label={t('home.petRecommendations')}>
+            {heroSpotlights.map((card) => (
+              <article key={card.key} className="shopee-hero__spotlight">
+                <span className="shopee-hero__spotlightIcon">{card.icon}</span>
+                <div className="shopee-hero__spotlightBody">
+                  <strong>{card.title}</strong>
+                  <p>{card.summary}</p>
+                </div>
+                <Button type="default" onClick={card.action} disabled={card.disabled}>
+                  {card.actionLabel}
+                </Button>
+              </article>
+            ))}
+          </aside>
         </div>
       </section>
 
@@ -720,6 +821,20 @@ const Home: React.FC = () => {
         </section>
 
         <section className="shopee-home-actions" aria-label={t('home.couponsExtra')}>
+          {!isAuthenticated ? (
+            <div className="shopee-conversion-band" aria-label={t('nav.account')}>
+              {guestJourneyActions.map((item) => (
+                <button key={item.key} className="shopee-conversion-band__card" onClick={item.action}>
+                  <span className="shopee-conversion-band__icon">{item.icon}</span>
+                  <span className="shopee-conversion-band__body">
+                    <strong>{item.title}</strong>
+                    <Text>{item.text}</Text>
+                  </span>
+                  <span className="shopee-conversion-band__action">{item.actionLabel}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
           <button className="shopee-coupon-entry" onClick={() => navigate('/coupons')}>
             <span className="shopee-coupon-entry__icon"><GiftOutlined /></span>
             <span>
@@ -915,10 +1030,8 @@ const Home: React.FC = () => {
                 <CameraOutlined /> {petUploadButtonLabel}
               </button>
               <button type="button" onClick={() => navigate('/pet-gallery')}>{t('nav.petGallery')}</button>
-              <button type="button" onClick={() => navigate('/products?keyword=pet')}>{t('home.petUgcShopFeed')}</button>
             </div>
           </div>
-          <p className="pet-ugc__status">{petUploadStatusText}</p>
           <div className="pet-ugc__grid">
             {petGalleryItems.map((item, index) => (
               <div key={item.key} className="pet-ugc__card">

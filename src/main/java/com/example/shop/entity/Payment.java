@@ -18,8 +18,12 @@ public class Payment implements Serializable {
     private String status;
     private String paymentUrl;
     private String transactionId;
+    private String providerReference;
+    private String refundReference;
     private LocalDateTime expiresAt;
     private LocalDateTime paidAt;
+    private LocalDateTime refundedAt;
+    private LocalDateTime callbackAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

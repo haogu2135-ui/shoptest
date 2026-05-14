@@ -391,6 +391,8 @@ export interface PaymentChannel {
     refundMode?: string;
     badgeKey?: string;
     sortOrder?: number;
+    recommended?: boolean;
+    recommendedCountry?: string;
 }
 
 export interface AppConfig {

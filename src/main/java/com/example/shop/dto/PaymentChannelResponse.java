@@ -15,8 +15,14 @@ public class PaymentChannelResponse {
     private String refundMode;
     private String badgeKey;
     private int sortOrder;
+    private boolean recommended;
+    private String recommendedCountry;
 
     public static PaymentChannelResponse from(PaymentChannelConfig.Channel channel) {
+        return from(channel, false, null);
+    }
+
+    public static PaymentChannelResponse from(PaymentChannelConfig.Channel channel, boolean recommended, String recommendedCountry) {
         PaymentChannelResponse response = new PaymentChannelResponse();
         response.setCode(channel.getCode());
         response.setDisplayName(channel.getDisplayName());
@@ -28,6 +34,8 @@ public class PaymentChannelResponse {
         response.setRefundMode(channel.getRefundMode());
         response.setBadgeKey(channel.getBadgeKey());
         response.setSortOrder(channel.getSortOrder());
+        response.setRecommended(recommended);
+        response.setRecommendedCountry(recommendedCountry);
         return response;
     }
 }

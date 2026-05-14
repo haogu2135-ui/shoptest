@@ -319,6 +319,8 @@
       "registerTrustTracking": "Order tracking",
       "registerPrivacyHint": "We use your contact details only for account, delivery and service updates.",
       "loginTrustTitle": "Login benefits",
+      "loginHeroSubtitle": "Recover saved cart items, follow every order, and keep checkout details ready across devices.",
+      "loginGuestCartHint": "Log in to recover {count} guest cart items and continue checkout faster.",
       "loginTrustCart": "Recover guest cart",
       "loginTrustTracking": "Track every order",
       "loginTrustSecure": "Secure account",

@@ -251,8 +251,12 @@ CREATE TABLE IF NOT EXISTS payments (
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     payment_url VARCHAR(500),
     transaction_id VARCHAR(64),
+    provider_reference VARCHAR(128),
+    refund_reference VARCHAR(128),
     expires_at TIMESTAMP NULL,
     paid_at TIMESTAMP NULL,
+    refunded_at TIMESTAMP NULL,
+    callback_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id),
@@ -424,7 +428,12 @@ ALTER TABLE orders ADD COLUMN coupon_id BIGINT;
 ALTER TABLE orders ADD COLUMN coupon_name VARCHAR(100);
 ALTER TABLE notifications ADD COLUMN content_format VARCHAR(20) NOT NULL DEFAULT 'TEXT';
 ALTER TABLE payments ADD COLUMN expires_at TIMESTAMP NULL;
+ALTER TABLE payments ADD COLUMN provider_reference VARCHAR(128);
+ALTER TABLE payments ADD COLUMN refund_reference VARCHAR(128);
+ALTER TABLE payments ADD COLUMN refunded_at TIMESTAMP NULL;
+ALTER TABLE payments ADD COLUMN callback_at TIMESTAMP NULL;
 ALTER TABLE payments ADD INDEX idx_payments_status_expires (status, expires_at);
+ALTER TABLE payments ADD INDEX idx_payments_provider_reference (provider_reference);
 CREATE TABLE IF NOT EXISTS security_audit_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     action VARCHAR(50) NOT NULL,

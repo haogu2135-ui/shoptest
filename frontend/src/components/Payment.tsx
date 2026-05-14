@@ -44,7 +44,8 @@ export const Payment: React.FC<PaymentProps> = ({
             .then((res) => {
                 const channels = res.data.length > 0 ? res.data : fallbackPaymentChannels;
                 setPaymentChannels(channels);
-                setPaymentMethod((current) => channels.some((channel) => channel.code === current) ? current : channels[0]?.code || 'STRIPE');
+                const recommendedMethod = channels.find((channel) => channel.recommended)?.code || channels[0]?.code || 'STRIPE';
+                setPaymentMethod(recommendedMethod);
             })
             .catch(() => setPaymentChannels(fallbackPaymentChannels));
     }, []);

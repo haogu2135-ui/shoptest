@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Link, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout, Spin } from 'antd';
 import CartDrawer from './components/CartDrawer';
 import CustomerSupportWidget from './components/CustomerSupportWidget';
@@ -50,6 +50,34 @@ const LoadingFallback = () => (
 
 const App: React.FC = () => {
   const { t } = useLanguage();
+  const isAuthenticated = Boolean(localStorage.getItem('token'));
+  const footerActionCards = [
+    {
+      key: 'track',
+      to: '/track-order',
+      title: t('nav.trackOrder'),
+      text: t('pages.auth.loginTrustTracking'),
+    },
+    {
+      key: 'coupons',
+      to: '/coupons',
+      title: t('home.couponsExtra'),
+      text: t('nav.download'),
+    },
+    isAuthenticated
+      ? {
+        key: 'orders',
+        to: '/profile?tab=orders',
+        title: t('pages.profile.allOrders'),
+        text: t('pages.auth.loginTrustSecure'),
+      }
+      : {
+        key: 'register',
+        to: '/register',
+        title: t('nav.register'),
+        text: t('pages.auth.registerTrustPerks'),
+      },
+  ];
 
   return (
     <Router>
@@ -83,24 +111,32 @@ const App: React.FC = () => {
                 </Content>
                 <Footer className="shop-footer">
                   <div className="shop-footer__inner">
+                    <div className="shop-footer__ctaStrip">
+                      {footerActionCards.map((card) => (
+                        <Link key={card.key} to={card.to} className="shop-footer__ctaCard">
+                          <strong>{card.title}</strong>
+                          <span>{card.text}</span>
+                        </Link>
+                      ))}
+                    </div>
                     <div className="shop-footer__columns">
                       <div>
                         <h3>{t('footer.customerCare')}</h3>
-                        <p>{t('footer.helpCenter')}</p>
-                        <p>{t('footer.howToBuy')}</p>
-                        <p>{t('footer.returns')}</p>
+                        <Link to="/track-order">{t('footer.tracking')}</Link>
+                        <Link to="/products">{t('footer.howToBuy')}</Link>
+                        <button type="button" onClick={() => window.dispatchEvent(new Event('shop:open-support'))}>{t('footer.helpCenter')}</button>
                       </div>
                       <div>
                         <h3>{t('footer.about')}</h3>
-                        <p>{t('footer.dailyDeals')}</p>
-                        <p>{t('footer.sellers')}</p>
-                        <p>{t('footer.policies')}</p>
+                        <Link to="/products?keyword=deal">{t('footer.dailyDeals')}</Link>
+                        <Link to="/pet-finder">{t('nav.petFinder')}</Link>
+                        <Link to="/pet-gallery">{t('nav.petGallery')}</Link>
                       </div>
                       <div>
                         <h3>{t('footer.payments')}</h3>
-                        <p>{t('footer.methods')}</p>
-                        <p>{t('footer.shipping')}</p>
-                        <p>{t('footer.tracking')}</p>
+                        <Link to="/coupons">{t('nav.download')}</Link>
+                        <Link to="/track-order">{t('footer.shipping')}</Link>
+                        <Link to="/profile?tab=orders">{t('footer.returns')}</Link>
                       </div>
                     </div>
                     <div className="shop-footer__copy">{t('footer.rights')}</div>

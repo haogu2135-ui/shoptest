@@ -1,3 +1,158 @@
+.product-detail-page {
+  background: #f7f4ee;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.product-detail-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.product-detail-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.product-detail-breadcrumb {
+  margin-bottom: 24px;
+}
+
+.product-gallery-discount {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 16px;
+  padding: 4px 8px;
+}
+
+.product-title-block h2.ant-typography {
+  margin-bottom: 8px;
+}
+
+.product-brand-text {
+  font-size: 16px;
+}
+
+.product-rating-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.product-rating-row .ant-typography {
+  margin-left: 8px;
+}
+
+.product-price-line {
+  font-size: 32px;
+  color: #ee4d2d;
+  font-weight: 600;
+}
+
+.product-price-line__original {
+  font-size: 16px;
+  color: #999;
+  margin-left: 8px;
+}
+
+.product-price-line__discount {
+  margin-left: 8px;
+  font-size: 14px;
+}
+
+.product-limited-time-badge {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: #fff7e6;
+  color: #124734;
+  font-weight: 600;
+}
+
+.product-option-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-option-header .ant-typography {
+  font-size: 16px;
+}
+
+.product-option-radio {
+  margin-top: 8px;
+}
+
+.product-quantity-label {
+  font-size: 16px;
+}
+
+.product-tabs-card {
+  margin-top: 24px;
+}
+
+.product-tab-content {
+  padding: 24px 0;
+}
+
+.product-spec-row {
+  margin-bottom: 16px;
+}
+
+.product-warranty-row {
+  margin-bottom: 16px;
+}
+
+.product-review-card {
+  margin-top: 24px;
+}
+
+.product-qa-card {
+  margin-top: 24px;
+}
+
+.product-qa-space {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.product-question-item {
+  width: 100%;
+}
+
+.product-question-text {
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.product-question-meta {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 10px;
+}
+
+.product-answer-box {
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.product-recommendations {
+  margin-top: 24px;
+}
+
+.product-recommendations__slide {
+  padding: 0 8px;
+}
+
 .product-detail-main-image {
   position: relative;
   width: 100%;

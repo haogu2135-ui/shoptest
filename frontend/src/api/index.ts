@@ -33,7 +33,6 @@ const PET_GALLERY_CACHE_MS = 20_000;
 const NOTIFICATION_CACHE_MS = 15_000;
 const PERSONALIZED_RECOMMENDATION_CACHE_MS = 45_000;
 const APP_CONFIG_CACHE_MS = 60_000;
-const PAYMENT_CHANNEL_CACHE_MS = 60_000;
 const productListCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
 const productListRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
 const productDetailCache = new Map<number, { expiresAt: number; response: AxiosResponse<Product> }>();
@@ -48,8 +47,6 @@ const personalizedRecommendationCache = new Map<string, { expiresAt: number; res
 const personalizedRecommendationRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
 let appConfigCache: { expiresAt: number; response: AxiosResponse<AppConfig> } | null = null;
 let appConfigRequest: Promise<AxiosResponse<AppConfig>> | null = null;
-let paymentChannelCache: { expiresAt: number; response: AxiosResponse<PaymentChannel[]> } | null = null;
-let paymentChannelRequest: Promise<AxiosResponse<PaymentChannel[]>> | null = null;
 let adminPermissionsCache: { expiresAt: number; response: AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }> } | null = null;
 let adminPermissionsRequest: Promise<AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }>> | null = null;
 
@@ -325,21 +322,7 @@ export const couponApi = {
 };
 
 export const paymentApi = {
-    getChannels: () => {
-        if (paymentChannelCache && paymentChannelCache.expiresAt > Date.now()) {
-            return Promise.resolve(paymentChannelCache.response);
-        }
-        if (paymentChannelRequest) return paymentChannelRequest;
-        paymentChannelRequest = api.get<PaymentChannel[]>('/payments/channels')
-            .then((response) => {
-                paymentChannelCache = { response, expiresAt: Date.now() + PAYMENT_CHANNEL_CACHE_MS };
-                return response;
-            })
-            .finally(() => {
-                paymentChannelRequest = null;
-            });
-        return paymentChannelRequest;
-    },
+    getChannels: () => api.get<PaymentChannel[]>('/payments/channels'),
     create: (orderId: number, channel: string, guestEmail?: string) => api.post<Payment>('/payments', { orderId, channel, guestEmail }),
     simulatePaid: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${paymentId}/simulate-paid`, guestEmail ? { guestEmail } : undefined),
     simulateCallback: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${paymentId}/simulate-callback`, guestEmail ? { guestEmail } : undefined),

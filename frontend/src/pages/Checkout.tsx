@@ -53,6 +53,10 @@ const findBestCoupon = (coupons: UserCoupon[], cartTotal: number) =>
     .sort((left, right) => right.discount - left.discount || Number(left.coupon.thresholdAmount || 0) - Number(right.coupon.thresholdAmount || 0))[0] || null;
 
 const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: string) => {
+  const backendRecommended = channels.find((channel) => channel.recommended)?.code;
+  if (backendRecommended) {
+    return backendRecommended;
+  }
   if (!conversionConfig.paymentRecommendation.enabled) return null;
   const preferredCodes = conversionConfig.paymentRecommendation.byCurrency[
     currency as keyof typeof conversionConfig.paymentRecommendation.byCurrency
@@ -115,13 +119,21 @@ const Checkout: React.FC = () => {
         const channels = res.data.length > 0 ? res.data : fallbackPaymentChannels;
         setPaymentChannels(channels);
         const current = form.getFieldValue('paymentMethod');
-        if (!current || !channels.some((channel) => channel.code === current)) {
-          form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(current, channels, currency) });
+        const rememberedMethod = sessionStorage.getItem('checkoutPaymentMethod');
+        const bootstrapCandidate = rememberedMethod || (current && current !== 'STRIPE' ? current : null);
+        const nextMethod = resolveCheckoutPaymentMethod(bootstrapCandidate, channels, currency);
+        if (nextMethod && nextMethod !== current) {
+          form.setFieldsValue({ paymentMethod: nextMethod });
         }
       }),
     ]).catch(() => {
       setPaymentSimulationEnabled(paymentSimulationEnabledFallback);
       setPaymentChannels(fallbackPaymentChannels);
+      const current = form.getFieldValue('paymentMethod');
+      const nextMethod = resolveCheckoutPaymentMethod(sessionStorage.getItem('checkoutPaymentMethod'), fallbackPaymentChannels, currency);
+      if (nextMethod && nextMethod !== current) {
+        form.setFieldsValue({ paymentMethod: nextMethod });
+      }
     });
   }, [currency, form]);
 
@@ -1066,7 +1078,7 @@ const Checkout: React.FC = () => {
               </Text>
             </span>
           </div>
-          <Form.Item name="paymentMethod" label={t('pages.checkout.paymentMethod')} initialValue="STRIPE" rules={[{ required: true, message: t('pages.checkout.paymentRequired') }]}>
+          <Form.Item name="paymentMethod" label={t('pages.checkout.paymentMethod')} rules={[{ required: true, message: t('pages.checkout.paymentRequired') }]}>
             <Select options={paymentOptions} />
           </Form.Item>
           <Form.Item>
