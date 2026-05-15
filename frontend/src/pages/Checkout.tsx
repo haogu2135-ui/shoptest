@@ -447,6 +447,44 @@ const Checkout: React.FC = () => {
         : checkoutNextAction.key === 'payment'
           ? t('pages.checkout.nextActionPayment')
           : t('pages.checkout.nextActionSavings');
+  const checkoutHeroHighlights = [
+    {
+      key: 'payable',
+      title: t('pages.checkout.payable'),
+      text: formatMoney(payableAmount),
+    },
+    {
+      key: 'shipping',
+      title: t('pages.checkout.shippingFee'),
+      text: freeShippingRemaining > 0
+        ? t('pages.checkout.savingsFreeShippingText', { amount: formatMoney(freeShippingRemaining) })
+        : t('pages.checkout.savingsFreeShippingUnlocked'),
+    },
+    {
+      key: 'payment',
+      title: t('pages.checkout.paymentMethod'),
+      text: selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault'),
+    },
+  ];
+  const checkoutSummaryCards = [
+    {
+      key: 'payable',
+      title: t('pages.checkout.payable'),
+      text: formatMoney(payableAmount),
+    },
+    {
+      key: 'shipping',
+      title: freeShippingRemaining > 0
+        ? t('pages.checkout.readinessFreeShippingGap', { amount: formatMoney(freeShippingRemaining) })
+        : t('pages.cart.freeShippingUnlocked'),
+      text: `${freeShippingPercent}%`,
+    },
+    {
+      key: 'payment',
+      title: t('pages.checkout.paymentMethod'),
+      text: selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault'),
+    },
+  ];
 
   useEffect(() => {
     if (!giftUnlocked || giftCelebrated) return;
@@ -703,7 +741,29 @@ const Checkout: React.FC = () => {
 
   return (
     <div className="checkout-page">
-      <Title level={2}>{t('pages.checkout.title')}</Title>
+      <section className="checkout-page__hero">
+        <div className="checkout-page__heroContent">
+          <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
+          <Title level={2}>{t('pages.checkout.title')}</Title>
+          <Text>{t('pages.checkout.savingsCoachSubtitle')}</Text>
+        </div>
+        <div className="checkout-page__heroStats">
+          {checkoutHeroHighlights.map((item) => (
+            <article key={item.key} className="checkout-page__heroStat">
+              <strong>{item.title}</strong>
+              <span>{item.text}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="checkout-page__summaryStrip">
+        {checkoutSummaryCards.map((item) => (
+          <article key={item.key} className="checkout-page__summaryStripCard">
+            <strong>{item.title}</strong>
+            <span>{item.text}</span>
+          </article>
+        ))}
+      </section>
 
       <div className="checkout-page__trustBar" aria-label={t('pages.checkout.trustTitle')}>
         <div className="checkout-page__trustItem">
@@ -927,6 +987,8 @@ const Checkout: React.FC = () => {
                     src={resolveCheckoutImage(item.imageUrl)}
                     alt={item.productName}
                     className="checkout-page__itemImage"
+                    loading="lazy"
+                    decoding="async"
                     onError={(event) => {
                       if (event.currentTarget.src !== checkoutImageFallback) {
                         event.currentTarget.src = checkoutImageFallback;

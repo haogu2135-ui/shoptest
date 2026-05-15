@@ -122,6 +122,23 @@ const CartDrawer: React.FC = () => {
         : t('pages.cart.drawerExpressAddOnHint', { amount: formatMoney(benefitTarget.remainingAmount) })
       : t('pages.cart.drawerExpressReadyHint');
   const expressPaymentCodes = expressPaymentCodesByCurrency[currency] || expressPaymentCodesByCurrency.USD;
+  const drawerHighlights = [
+    {
+      key: 'subtotal',
+      title: t('common.subtotal'),
+      text: formatMoney(subtotal),
+    },
+    {
+      key: 'ready',
+      title: t('pages.cart.readyItems', { count: checkoutItems.length }),
+      text: t('pages.cart.selectedSummary', { count: checkoutUnitCount }),
+    },
+    {
+      key: 'blocked',
+      title: t('pages.cart.blockedItems', { count: blockedCount }),
+      text: blockedCount > 0 ? t('pages.cart.drawerReviewTitle') : t('pages.cart.drawerReadyTitle'),
+    },
+  ];
 
   const updateQuantity = async (item: CartItem, quantity: number) => {
     try {
@@ -228,6 +245,15 @@ const CartDrawer: React.FC = () => {
       styles={{ body: { padding: 16 } }}
       extra={<Text strong>{formatMoney(subtotal)}</Text>}
     >
+      <section className="cart-drawer__hero">
+        {drawerHighlights.map((item) => (
+          <article key={item.key} className="cart-drawer__heroStat">
+            <strong>{item.title}</strong>
+            <span>{item.text}</span>
+          </article>
+        ))}
+      </section>
+
       <div className={`cart-drawer__shipping${drawerReady ? ' cart-drawer__shipping--ready' : ''}`}>
         <div className="cart-drawer__shippingHeader">
           <CheckCircleOutlined className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
@@ -305,6 +331,8 @@ const CartDrawer: React.FC = () => {
                     src={resolveCartImage(item.imageUrl)}
                     alt={item.productName}
                     className="cart-drawer__image"
+                    loading="lazy"
+                    decoding="async"
                     onError={(event) => {
                       if (event.currentTarget.src !== cartDrawerImageFallback) {
                         event.currentTarget.src = cartDrawerImageFallback;

@@ -4,6 +4,13 @@
   padding: 24px 0 36px;
 }
 
+.wishlist-page,
+.wishlist-page .ant-card,
+.wishlist-page .ant-btn,
+.wishlist-page .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
 .wishlist-page--empty {
   padding: 80px 24px;
   text-align: center;
@@ -19,8 +26,9 @@
   padding: 18px 20px;
   border: 1px solid #eee4d3;
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(18, 71, 52, 0.08);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 244, 0.94));
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.08);
 }
 
 .wishlist-page__insightBar {
@@ -32,7 +40,9 @@
   padding: 14px 16px;
   border: 1px solid #d9eadf;
   border-radius: 8px;
-  background: linear-gradient(135deg, #f7fff8 0%, #fffaf0 100%);
+  background:
+    linear-gradient(135deg, rgba(247, 255, 248, 0.98), rgba(232, 244, 255, 0.72));
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
 }
 
 .wishlist-page__insightIntro {
@@ -141,8 +151,9 @@
   padding: 14px;
   border: 1px solid #d9eadf;
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 8px 22px rgba(18, 71, 52, 0.08);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 240, 0.92));
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.1);
 }
 
 .wishlist-page__bestPickImageButton {
@@ -161,6 +172,12 @@
   height: 100%;
   display: block;
   object-fit: cover;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.wishlist-page__bestPickImageButton:hover .wishlist-page__bestPickImage {
+  transform: scale(1.04);
+  filter: saturate(1.05);
 }
 
 .wishlist-page__bestPickBody {
@@ -218,10 +235,11 @@
   border: 1px solid #eee4d3;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(18, 71, 52, 0.06);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
 .wishlist-page__card:hover {
+  border-color: #124734;
   transform: translateY(-2px);
   box-shadow: 0 10px 24px rgba(18, 71, 52, 0.12);
 }
@@ -349,6 +367,8 @@
 
 .wishlist-page__primaryAction {
   font-weight: 700;
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(238, 77, 45, 0.16);
 }
 
 .wishlist-page__removeAction {

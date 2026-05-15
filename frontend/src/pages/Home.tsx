@@ -634,6 +634,59 @@ const Home: React.FC = () => {
       disabled: false,
     },
   ];
+  const heroFeaturedProduct = personalizedDisplayProducts[0] || bestSellers[0] || promoProducts[0] || featured[0] || products[0] || null;
+  const heroFeaturedTag = heroFeaturedProduct
+    ? [
+      heroFeaturedProduct.brand,
+      getDiscountPercent(heroFeaturedProduct) > 0 ? t('home.flashOffers') : '',
+      heroFeaturedProduct.stock !== undefined && heroFeaturedProduct.stock > 0
+        ? t('home.stockAvailable', { count: heroFeaturedProduct.stock })
+        : '',
+    ].filter(Boolean).join(' • ')
+    : '';
+  const conversionHighlights = [
+    {
+      key: 'deals',
+      value: `${promoProducts.length || bestSellers.length}+`,
+      label: t('home.flashOffers'),
+    },
+    {
+      key: 'personalized',
+      value: `${personalizedReadyCount}`,
+      label: t('home.petRecommendationReady', { count: personalizedReadyCount }),
+    },
+    {
+      key: 'community',
+      value: `${petGalleryItems.length}+`,
+      label: t('home.petUgcTitle'),
+    },
+  ];
+  const curatedStoryCards = [
+    {
+      key: 'starter',
+      icon: <GiftOutlined />,
+      title: t('home.couponsExtra'),
+      summary: `${promoProducts.length || bestSellers.length} ${t('home.flashOffers').toLowerCase()}`,
+      actionLabel: t('home.viewDeals'),
+      action: openDiscountProducts,
+    },
+    {
+      key: 'routine',
+      icon: <TruckOutlined />,
+      title: t('home.trust.freeShipping', { amount: formatPrice(market.freeShippingThreshold) }),
+      summary: t('home.trust.fastDispatch'),
+      actionLabel: t('home.shopAll'),
+      action: () => navigate('/products'),
+    },
+    {
+      key: 'ugc',
+      icon: <CameraOutlined />,
+      title: t('home.petUgcTitle'),
+      summary: `${petGalleryItems.length} ${t('home.viewAll').toLowerCase()} stories`,
+      actionLabel: t('nav.petGallery'),
+      action: () => navigate('/pet-gallery'),
+    },
+  ];
 
   const ProductTile: React.FC<{ product: Product; index: number; compact?: boolean; viewedAt?: number }> = ({
     product,
@@ -671,6 +724,8 @@ const Home: React.FC = () => {
                 src={image}
                 alt={`${product.name} ${imageIndex + 1}`}
                 className="shopee-product__image"
+                loading="lazy"
+                decoding="async"
                 onError={(event) => {
                   event.currentTarget.src = images[images.length - 1];
                 }}
@@ -682,6 +737,8 @@ const Home: React.FC = () => {
             src={images[0]}
             alt={product.name}
             className="shopee-product__image"
+            loading="lazy"
+            decoding="async"
             onError={(event) => {
               event.currentTarget.src = images[images.length - 1];
             }}
@@ -693,6 +750,16 @@ const Home: React.FC = () => {
         {product.isFeatured ? <span className="shopee-product__mall">{t('common.mall')}</span> : null}
         {isSoldOut ? <span className="shopee-product__soldOut">{t('pages.productList.soldOut')}</span> : null}
         <span className="shopee-product__quickActions">
+          <button
+            type="button"
+            aria-label={t('home.viewAll')}
+            onClick={(event) => {
+              event.stopPropagation();
+              openProduct(product.id);
+            }}
+          >
+            <SearchOutlined />
+          </button>
           <button
             type="button"
             aria-label={t('pages.productList.addToCart')}
@@ -783,9 +850,33 @@ const Home: React.FC = () => {
                 <span>{t('home.categories')}</span>
                 <strong>{categories.length}</strong>
               </div>
+              <div className="shopee-hero__trustPills" aria-label={t('home.trust.petSafe')}>
+                <span>{t('home.trust.freeShipping', { amount: formatPrice(market.freeShippingThreshold) })}</span>
+                <span>{t('home.trust.easyReturns')}</span>
+                <span>{t('home.trust.petSafe')}</span>
+              </div>
             </div>
           </div>
           <aside className="shopee-hero__aside" aria-label={t('home.petRecommendations')}>
+            {heroFeaturedProduct ? (
+              <article className="shopee-hero__featuredCard">
+                <span className="shopee-hero__featuredEyebrow">{t('pages.productList.viewPick')}</span>
+                <strong>{heroFeaturedProduct.name}</strong>
+                <p>{heroFeaturedProduct.description || t('home.petRecommendationsHint')}</p>
+                <div className="shopee-hero__featuredMeta">
+                  <span>{formatPrice(getPrice(heroFeaturedProduct))}</span>
+                  {heroFeaturedTag ? <small>{heroFeaturedTag}</small> : null}
+                </div>
+                <div className="shopee-hero__featuredActions">
+                  <Button type="primary" onClick={() => openProduct(heroFeaturedProduct.id)}>
+                    {t('home.buyNow')}
+                  </Button>
+                  <Button onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, heroFeaturedProduct)}>
+                    {t('pages.productList.addToCart')}
+                  </Button>
+                </div>
+              </article>
+            ) : null}
             {heroSpotlights.map((card) => (
               <article key={card.key} className="shopee-hero__spotlight">
                 <span className="shopee-hero__spotlightIcon">{card.icon}</span>
@@ -836,6 +927,14 @@ const Home: React.FC = () => {
               ))}
             </div>
           ) : null}
+          <div className="shopee-conversion-strip" aria-label={t('home.petRecommendations')}>
+            {conversionHighlights.map((item) => (
+              <article key={item.key} className="shopee-conversion-strip__item">
+                <strong>{item.value}</strong>
+                <span>{item.label}</span>
+              </article>
+            ))}
+          </div>
           <button className="shopee-coupon-entry" onClick={() => navigate('/coupons')}>
             <span className="shopee-coupon-entry__icon"><GiftOutlined /></span>
             <span>
@@ -850,6 +949,21 @@ const Home: React.FC = () => {
               <Text>{t('home.viewDeals')}</Text>
             </span>
           </button>
+        </section>
+
+        <section className="shopee-story-grid" aria-label={t('home.bestSellers')}>
+          {curatedStoryCards.map((card) => (
+            <article key={card.key} className="shopee-story-card">
+              <span className="shopee-story-card__icon">{card.icon}</span>
+              <div className="shopee-story-card__body">
+                <strong>{card.title}</strong>
+                <Text>{card.summary}</Text>
+              </div>
+              <Button type="text" onClick={card.action}>
+                {card.actionLabel}
+              </Button>
+            </article>
+          ))}
         </section>
 
         {bestSellers.length ? (
@@ -867,6 +981,48 @@ const Home: React.FC = () => {
                 </Col>
               ))}
             </Row>
+          </section>
+        ) : null}
+
+        {bestSellers.length >= 3 ? (
+          <section className="shopee-section shopee-editorial-band">
+            <div className="shopee-section__header">
+              <h2>
+                <HeartOutlined /> {t('home.petRecommendations')}
+              </h2>
+              <button onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
+            </div>
+            <div className="shopee-editorial-band__grid">
+              <article className="shopee-editorial-band__feature">
+                <span className="shopee-editorial-band__eyebrow">{t('home.heroEyebrow')}</span>
+                <strong>{bestSellers[0]?.name}</strong>
+                <Text>{bestSellers[0]?.description || t('home.petRecommendationsHint')}</Text>
+                <div className="shopee-editorial-band__actions">
+                  <Button type="primary" onClick={() => openProduct(bestSellers[0].id)}>
+                    {t('home.buyNow')}
+                  </Button>
+                  <Button onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, bestSellers[0])}>
+                    {t('pages.productList.addToCart')}
+                  </Button>
+                </div>
+              </article>
+              <div className="shopee-editorial-band__stack">
+                {bestSellers.slice(1, 3).map((product, index) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    className="shopee-editorial-band__miniCard"
+                    onClick={() => openProduct(product.id)}
+                  >
+                    <span className="shopee-editorial-band__miniIndex">0{index + 2}</span>
+                    <span className="shopee-editorial-band__miniBody">
+                      <strong>{product.name}</strong>
+                      <Text>{formatPrice(getPrice(product))}</Text>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </section>
         ) : null}
 
@@ -926,6 +1082,8 @@ const Home: React.FC = () => {
                       <img
                         src={resolveAssetImage(category.imageUrl)}
                         alt={getLocalizedCategoryValue(category, language, 'name')}
+                        loading="lazy"
+                        decoding="async"
                         style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 6 }}
                         onError={usePetGalleryImageFallback}
                       />
@@ -1042,7 +1200,13 @@ const Home: React.FC = () => {
                   aria-label={`${t('home.petUgcTitle')} ${item.label}`}
                   onClick={() => setPetPreviewItem(item)}
                 >
-                  <img src={item.image} alt={`Pet customer story ${index + 1}`} onError={usePetGalleryImageFallback} />
+                  <img
+                    src={item.image}
+                    alt={`Pet customer story ${index + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    onError={usePetGalleryImageFallback}
+                  />
                   <span>{item.label}</span>
                 </button>
                 <div className="pet-ugc__meta">

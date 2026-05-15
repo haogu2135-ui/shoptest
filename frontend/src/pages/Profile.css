@@ -1,3 +1,12 @@
+.profile-page,
+.profile-page .ant-card,
+.profile-page .ant-btn,
+.profile-page .ant-input,
+.profile-page .ant-select,
+.profile-page .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
 .profile-orders {
   color: #1f1f1f;
 }
@@ -19,7 +28,9 @@
   padding: 14px 16px;
   border: 1px solid #dce9df;
   border-radius: 8px;
-  background: linear-gradient(135deg, #f7fff8 0%, #fff7f0 100%);
+  background:
+    linear-gradient(135deg, rgba(247, 255, 248, 0.98), rgba(255, 247, 240, 0.92));
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .profile-action-center__intro {
@@ -114,7 +125,9 @@
   padding: 14px;
   border: 1px solid #dce9df;
   border-radius: 8px;
-  background: #fbfff8;
+  background:
+    linear-gradient(135deg, rgba(251, 255, 248, 0.98), rgba(232, 244, 255, 0.68));
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
 }
 
 .profile-health-panel > div:first-child {
@@ -289,6 +302,15 @@
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #f0f0f0;
+  box-shadow: 0 6px 18px rgba(18, 71, 52, 0.05);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.profile-order-card:hover,
+.profile-order-card:focus-within {
+  border-color: #dce9df;
+  box-shadow: 0 12px 26px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
 }
 
 .profile-order-card__top {
@@ -298,7 +320,7 @@
   align-items: center;
   gap: 12px;
   padding: 8px 14px;
-  background: #f0f0f0;
+  background: #f8fcf9;
 }
 
 .profile-order-card__link {
@@ -396,6 +418,9 @@
 .profile-order-card__actions .ant-btn-primary {
   background: #ff4d00;
   border-color: #ff4d00;
+  border-radius: 8px;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(255, 77, 0, 0.18);
 }
 
 .profile-order-card__actions .ant-btn-link {

@@ -49,12 +49,12 @@
 }
 
 .ant-card {
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
 }
 
 .ant-card-hoverable:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-lift);
 }
 
 .support-order-select-popup {
@@ -140,9 +140,14 @@
 }
 
 .shop-footer {
-  padding: 34px 0 22px !important;
-  border-top: 4px solid #ee4d2d;
-  background: #fff !important;
+  position: relative;
+  overflow: hidden;
+  padding: 42px 0 24px !important;
+  border-top: 1px solid rgba(18, 71, 52, 0.12);
+  background:
+    radial-gradient(circle at 0 0, rgba(247, 201, 72, 0.16), transparent 22%),
+    radial-gradient(circle at 100% 20%, rgba(18, 71, 52, 0.09), transparent 24%),
+    linear-gradient(180deg, #fffdf8, #f6f1e8) !important;
 }
 
 .shop-footer__inner {
@@ -153,55 +158,63 @@
 .shop-footer__ctaStrip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 14px;
+  margin-bottom: 28px;
 }
 
 .shop-footer__ctaCard {
-  min-height: 84px;
+  min-height: 108px;
   display: grid;
-  gap: 4px;
+  gap: 8px;
   align-content: center;
-  padding: 14px 16px;
-  border: 1px solid #eee4d3;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #fffdf8, #fff6e9);
+  padding: 18px 18px 16px;
+  border: 1px solid rgba(18, 71, 52, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(232, 244, 255, 0.82));
   color: #173f2b;
   text-decoration: none;
-  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 14px 32px rgba(18, 71, 52, 0.08);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .shop-footer__ctaCard:hover {
   color: #173f2b;
   border-color: #f7c948;
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(18, 71, 52, 0.1);
+  background: linear-gradient(135deg, rgba(255, 253, 248, 1), rgba(223, 245, 231, 0.96));
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(18, 71, 52, 0.12);
 }
 
 .shop-footer__ctaCard strong {
   color: #173f2b;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .shop-footer__ctaCard span {
   color: #6c6a62;
   font-size: 13px;
+  line-height: 1.6;
 }
 
 .shop-footer__columns {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 28px;
+  gap: 24px;
+  padding: 22px;
+  border: 1px solid rgba(18, 71, 52, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.05);
   text-align: left;
 }
 
 .shop-footer h3 {
-  margin: 0 0 12px;
-  color: #333;
-  font-size: 13px;
-  font-weight: 700;
+  margin: 0 0 14px;
+  color: #173f2b;
+  font-size: 12px;
+  font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .shop-footer p {
@@ -213,9 +226,9 @@
 .shop-footer a,
 .shop-footer button {
   display: block;
-  margin: 6px 0;
-  color: #777;
-  font-size: 13px;
+  margin: 8px 0;
+  color: #5f625a;
+  font-size: 14px;
   text-decoration: none;
   border: 0;
   background: transparent;
@@ -231,14 +244,14 @@
 
 .shop-footer a:hover,
 .shop-footer button:hover {
-  color: #ee4d2d;
+  color: #124734;
 }
 
 .shop-footer__copy {
-  margin-top: 28px;
+  margin-top: 22px;
   padding-top: 18px;
-  border-top: 1px solid #eee;
-  color: #999;
+  border-top: 1px solid rgba(18, 71, 52, 0.1);
+  color: #7c8178;
   font-size: 12px;
   text-align: center;
 }

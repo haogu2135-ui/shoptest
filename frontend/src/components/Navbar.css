@@ -2,14 +2,15 @@
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: #124734;
+  background:
+    linear-gradient(180deg, rgba(18, 71, 52, 0.98), rgba(16, 61, 44, 0.98));
   color: #fff;
-  box-shadow: 0 6px 18px rgba(18, 71, 52, 0.18);
+  box-shadow: 0 8px 24px rgba(18, 71, 52, 0.2);
 }
 
 .shop-nav__announcement {
   overflow: hidden;
-  background: #f7c948;
+  background: linear-gradient(90deg, #f7c948, #ffdf7e 52%, #dff5e7);
   color: #173f2b;
   font-size: 13px;
   font-weight: 700;
@@ -99,6 +100,23 @@
   align-items: center;
 }
 
+.shop-nav__linkActive {
+  position: relative;
+  opacity: 1 !important;
+  color: #fff7d6 !important;
+}
+
+.shop-nav__linkActive::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 999px;
+  background: #f7c948;
+}
+
 .shop-nav__language,
 .shop-nav__currency {
   min-width: 94px;
@@ -137,14 +155,48 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   font-size: 30px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+}
+
+.shop-nav__brand--active {
+  color: #fff7d6;
+}
+
+.shop-nav__brandIcon {
+  width: 54px;
+  height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(247, 201, 72, 0.24), rgba(255, 255, 255, 0.14));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .shop-nav__brand .anticon {
-  font-size: 38px;
+  font-size: 30px;
+}
+
+.shop-nav__brandCopy {
+  display: grid;
+  gap: 2px;
+}
+
+.shop-nav__brandCopy strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.shop-nav__brandCopy small {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .shop-nav__mega {
@@ -162,19 +214,30 @@
   display: none;
 }
 
-.shop-nav__mega button {
+.shop-nav__mega button,
+.shop-nav__megaButton {
   min-height: 30px;
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 4px 12px;
   white-space: nowrap;
   color: #fff;
   font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .shop-nav__mega button:hover,
-.shop-nav__mega button:focus-visible {
-  background: rgba(255, 255, 255, 0.14);
+.shop-nav__mega button:focus-visible,
+.shop-nav__megaButton:hover,
+.shop-nav__megaButton:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
   text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.shop-nav__megaButton--active {
+  background: rgba(247, 201, 72, 0.18);
+  color: #fff7d6 !important;
+  box-shadow: inset 0 0 0 1px rgba(247, 201, 72, 0.36);
 }
 
 .shop-nav__search {
@@ -183,11 +246,46 @@
   min-width: 0;
 }
 
+.shop-nav__searchShell {
+  display: grid;
+  gap: 10px;
+}
+
+.shop-nav__searchIntro {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.shop-nav__searchIntro strong {
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 800;
+}
+
+.shop-nav__searchIntro span {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shop-nav__searchBar {
+  min-width: 0;
+}
+
 .shop-nav__search .ant-input-group {
   height: 42px;
   padding: 3px;
-  border-radius: 2px;
+  border-radius: 8px;
   background: #fff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.shop-nav__search .ant-input-group:focus-within {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18), 0 0 0 3px rgba(247, 201, 72, 0.28);
 }
 
 .shop-nav__search .ant-input-affix-wrapper {
@@ -204,9 +302,20 @@
 .shop-nav__search .ant-btn {
   width: 62px;
   height: 36px;
-  border-radius: 2px;
+  border-radius: 6px !important;
   background: #f7c948;
   color: #173f2b;
+  font-weight: 800;
+}
+
+.shop-nav__search .ant-btn:hover,
+.shop-nav__search .ant-btn:focus {
+  background: #ffdf7e !important;
+  color: #173f2b !important;
+}
+
+.shop-nav__search .ant-input-affix-wrapper {
+  border-radius: 6px 0 0 6px;
 }
 
 .shop-nav__suggestions {
@@ -215,6 +324,25 @@
   margin-top: 6px;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.shop-nav__searchSignals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.shop-nav__searchSignals span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .shop-nav__suggestions button {
@@ -229,8 +357,37 @@
   min-width: 112px;
   align-items: center;
   justify-content: flex-end;
-  gap: 18px;
+  gap: 12px;
   font-size: 24px;
+}
+
+.shop-nav__actionSummary {
+  min-width: 126px;
+  display: inline-grid;
+  gap: 2px;
+  justify-items: start;
+  padding: 8px 12px !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.shop-nav__actionSummary span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.shop-nav__actionSummary strong {
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.shop-nav__actionSummary--guest strong {
+  color: #fff7d6;
 }
 
 .shop-nav__guestCtas {
@@ -299,6 +456,15 @@
   align-items: center;
   gap: 5px;
   min-height: 32px;
+  border-radius: 8px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.shop-nav__actions button:hover,
+.shop-nav__admin:hover {
+  background: rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+  transform: translateY(-1px);
 }
 
 .shop-nav__mobile-auth {
@@ -405,8 +571,22 @@
     grid-column: 1;
   }
 
+  .shop-nav__brandIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
   .shop-nav__brand .anticon {
-    font-size: 24px;
+    font-size: 22px;
+  }
+
+  .shop-nav__brandCopy strong {
+    font-size: 18px;
+  }
+
+  .shop-nav__brandCopy small {
+    font-size: 10px;
   }
 
   .shop-nav__search {
@@ -430,8 +610,21 @@
   }
 
   .shop-nav__suggestions,
-  .shop-nav__mobile-tools {
+  .shop-nav__mobile-tools,
+  .shop-nav__searchSignals {
     display: none;
+  }
+
+  .shop-nav__searchShell {
+    gap: 8px;
+  }
+
+  .shop-nav__searchIntro strong {
+    font-size: 13px;
+  }
+
+  .shop-nav__searchIntro span {
+    font-size: 11px;
   }
 
   .shop-nav__mega {
@@ -458,6 +651,10 @@
 
   .shop-nav__guestCtas {
     display: none;
+  }
+
+  .shop-nav__actionSummary {
+    display: none !important;
   }
 
   .shop-nav__mobile-locale {
@@ -513,8 +710,21 @@
     gap: 5px;
   }
 
+  .shop-nav__brandIcon {
+    width: 36px;
+    height: 36px;
+  }
+
   .shop-nav__brand .anticon {
-    font-size: 22px;
+    font-size: 20px;
+  }
+
+  .shop-nav__brandCopy strong {
+    font-size: 16px;
+  }
+
+  .shop-nav__brandCopy small {
+    display: none;
   }
 
   .shop-nav__actions {

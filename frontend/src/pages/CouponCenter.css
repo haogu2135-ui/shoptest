@@ -4,6 +4,13 @@
   padding: 24px 0;
 }
 
+.coupon-center-page,
+.coupon-center-page .ant-card,
+.coupon-center-page .ant-btn,
+.coupon-center-page .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
 .coupon-opportunity {
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.45fr);
@@ -13,7 +20,10 @@
   padding: 18px;
   border: 1px solid #dfe7dc;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(255, 184, 77, 0.16), rgba(18, 71, 52, 0.08)), #fffdf8;
+  background:
+    linear-gradient(135deg, rgba(255, 184, 77, 0.16), rgba(18, 71, 52, 0.08)),
+    #fffdf8;
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.08);
 }
 
 .coupon-opportunity__copy {
@@ -73,6 +83,39 @@
 
 .coupon-center-page__coupon {
   height: 100%;
+  position: relative;
+  overflow: hidden;
+  border-color: #eee4d3;
+}
+
+.coupon-center-page__coupon::before,
+.coupon-center-page__coupon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f7f4ee;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.coupon-center-page__coupon::before {
+  left: -9px;
+}
+
+.coupon-center-page__coupon::after {
+  right: -9px;
+}
+
+.coupon-center-page__coupon .ant-card-head {
+  border-bottom-style: dashed;
+}
+
+.coupon-center-page__coupon .ant-btn-primary {
+  border-radius: 8px;
+  font-weight: 800;
 }
 
 .coupon-priority-grid {
@@ -91,6 +134,15 @@
   border: 1px solid #e4dccd;
   border-radius: 8px;
   background: #fff;
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.06);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.coupon-priority-card:hover,
+.coupon-priority-card:focus-within {
+  border-color: #f7c948;
+  box-shadow: 0 14px 30px rgba(18, 71, 52, 0.12);
+  transform: translateY(-1px);
 }
 
 .coupon-priority-card--use {

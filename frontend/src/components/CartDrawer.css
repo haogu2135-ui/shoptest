@@ -4,18 +4,52 @@
   min-height: 0;
 }
 
+.cart-drawer__hero {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cart-drawer__heroStat {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #dce9df;
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(248, 252, 249, 0.98), rgba(232, 244, 255, 0.68));
+  box-shadow: 0 6px 16px rgba(18, 71, 52, 0.05);
+}
+
+.cart-drawer__heroStat strong {
+  color: #124734;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.cart-drawer__heroStat span {
+  color: #173f2b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .cart-drawer__shipping {
   flex: 0 0 auto;
   margin-bottom: 10px;
   padding: 10px 12px;
   border: 1px solid #ffd8bf;
   border-radius: 8px;
-  background: #fff7f0;
+  background:
+    linear-gradient(135deg, rgba(255, 247, 240, 0.98), rgba(255, 250, 240, 0.94));
 }
 
 .cart-drawer__shipping--ready {
   border-color: #dce9df;
-  background: #f8fcf9;
+  background:
+    linear-gradient(135deg, rgba(248, 252, 249, 0.98), rgba(232, 244, 255, 0.68));
 }
 
 .cart-drawer__shippingHeader {
@@ -88,7 +122,7 @@
   width: 100%;
   min-width: 0;
   padding-inline: 8px;
-  font-weight: 600;
+  font-weight: 800;
   border-radius: 6px !important;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -200,6 +234,12 @@
 .cart-drawer__item {
   align-items: flex-start;
   gap: 8px;
+  border-radius: 8px;
+  transition: background var(--transition-fast);
+}
+
+.cart-drawer__item:hover {
+  background: #fbfff8;
 }
 
 .cart-drawer__item .ant-list-item-action {
@@ -247,14 +287,24 @@
   margin: 12px -16px -16px;
   padding: 14px 16px 16px;
   border-top: 1px solid #eee4d3;
-  background: #fff;
-  box-shadow: 0 -10px 24px rgba(18, 71, 52, 0.08);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 -12px 28px rgba(18, 71, 52, 0.13);
+  backdrop-filter: blur(12px);
 }
 
 .cart-drawer__subtotal {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1eadf;
+}
+
+.cart-drawer__footer .ant-btn-primary {
+  min-height: 42px;
+  border-radius: 8px;
+  font-weight: 800;
+  box-shadow: 0 10px 22px rgba(238, 77, 45, 0.2);
 }
 
 .cart-drawer__footerHint {
@@ -265,6 +315,10 @@
 }
 
 @media (max-width: 520px) {
+  .cart-drawer__hero {
+    grid-template-columns: 1fr;
+  }
+
   .cart-drawer .ant-drawer-header {
     padding: 12px 14px;
   }

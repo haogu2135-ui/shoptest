@@ -6,7 +6,9 @@
   align-items: center;
   width: 100%;
   padding: 24px;
-  background: #f7f4ee;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(18, 71, 52, 0.12), transparent 24%),
+    #f7f4ee;
 }
 
 .register-page__panel {
@@ -61,6 +63,25 @@
 
 .register-page__card {
   width: 100%;
+  border-color: #eee4d3;
+  box-shadow: 0 16px 38px rgba(18, 71, 52, 0.1);
+}
+
+.register-page__card .ant-card-body {
+  padding: 30px 28px;
+}
+
+.register-page__card .ant-input,
+.register-page__card .ant-input-affix-wrapper,
+.register-page__card .ant-select-selector {
+  border-radius: 8px !important;
+}
+
+.register-page__card .ant-btn-primary {
+  min-height: 42px;
+  border-radius: 8px;
+  font-weight: 800;
+  box-shadow: 0 10px 22px rgba(238, 77, 45, 0.2);
 }
 
 .register-page__title {
@@ -86,5 +107,9 @@
 
   .register-page__copy h1.ant-typography {
     font-size: 30px;
+  }
+
+  .register-page__card .ant-card-body {
+    padding: 22px 18px;
   }
 }

@@ -677,6 +677,45 @@ const ProductDetail: React.FC = () => {
     : recommendedPurchaseMode === 'subscribe'
       ? t('pages.productDetail.pathSubscribeText', { amount: formatMoney(subscriptionSavings * quantity), interval: replenishmentIntervalLabel })
       : t('pages.productDetail.pathOnceText');
+  const heroStats = [
+    { key: 'rating', label: `${displayedRating.toFixed(1)} ${t('pages.productDetail.rating')}` },
+    { key: 'stock', label: `${t('pages.productDetail.stock')}: ${stockLabel}` },
+    deliveryPromise.enabled ? { key: 'delivery', label: t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText }) } : null,
+  ].filter(Boolean) as Array<{ key: string; label: string }>;
+  const productJourneyCards = [
+    {
+      key: 'subtotal',
+      title: t('pages.productDetail.purchaseSubtotal'),
+      text: formatMoney(purchaseSubtotal),
+    },
+    {
+      key: 'mode',
+      title: t('pages.productDetail.purchaseMode'),
+      text: purchaseModeLabel,
+    },
+    {
+      key: 'confidence',
+      title: t('pages.productDetail.rating'),
+      text: `${displayedRating.toFixed(1)} / 5 · ${reviews.length || Number(product?.reviewCount || 0)} ${t('adminLayout.reviews')}`,
+    },
+  ];
+  const purchaseSnapshotItems = [
+    {
+      key: 'stock',
+      label: t('pages.productDetail.stock'),
+      value: isOutOfStock ? t('pages.productDetail.soldOut') : String(stockLabel),
+    },
+    {
+      key: 'qty',
+      label: t('pages.productDetail.purchaseQuantity'),
+      value: String(quantity),
+    },
+    {
+      key: 'total',
+      label: t('pages.productDetail.purchaseSubtotal'),
+      value: formatMoney(purchaseSubtotal),
+    },
+  ];
 
   const handleQuantityChange = (value: number) => {
     const maxQuantity = selectedStock !== undefined ? selectedStock : 999;
@@ -805,6 +844,37 @@ const ProductDetail: React.FC = () => {
           <Breadcrumb.Item>{product.name}</Breadcrumb.Item>
         </Breadcrumb>
 
+        <section className="product-detail-hero">
+          <div className="product-detail-hero__content">
+            {product.brand ? <span className="product-detail-hero__eyebrow">{product.brand}</span> : null}
+            <h1>{product.name}</h1>
+            <Text>{recommendedPathText}</Text>
+            <div className="product-detail-hero__stats">
+              {heroStats.map((item) => (
+                <span key={item.key}>{item.label}</span>
+              ))}
+            </div>
+          </div>
+          <div className="product-detail-hero__aside">
+            <strong>{formatMoney(displayPrice)}</strong>
+            <Text type="secondary">
+              {purchaseSavings > 0
+                ? t('pages.productDetail.decisionValueSavingsText', { amount: formatMoney(purchaseSavings) })
+                : deliveryPromise.enabled
+                  ? t('pages.productDetail.decisionDeliveryText', { window: deliveryPromise.windowText })
+                  : t('pages.productDetail.defaultShipping')}
+            </Text>
+          </div>
+        </section>
+        <section className="product-detail-journey">
+          {productJourneyCards.map((item) => (
+            <article key={item.key} className="product-detail-journey__card">
+              <strong>{item.title}</strong>
+              <span>{item.text}</span>
+            </article>
+          ))}
+        </section>
+
         <Row gutter={24}>
           {/* 商品图片区 */}
           <Col span={12}>
@@ -835,6 +905,8 @@ const ProductDetail: React.FC = () => {
                         src={image}
                         alt={`${product.name} - ${index + 1}`}
                         className="product-mobile-gallery__img"
+                        loading="lazy"
+                        decoding="async"
                         style={pinchZoom.active && index === activeMobileImageIndex ? {
                           transform: `scale(${pinchZoom.scale})`,
                           transformOrigin: `${pinchZoom.originX}% ${pinchZoom.originY}%`,
@@ -851,6 +923,8 @@ const ProductDetail: React.FC = () => {
                   src={selectedImage}
                   alt={product.name}
                   className="product-detail-main-image__img"
+                  loading="eager"
+                  decoding="async"
                   onClick={() => setIsModalVisible(true)}
                   onMouseMove={handleGalleryZoomMove}
                   onMouseLeave={handleGalleryZoomLeave}
@@ -882,6 +956,8 @@ const ProductDetail: React.FC = () => {
                           src={image}
                           alt={`${product.name} - ${index + 1}`}
                           className={`product-detail-thumbs__img${selectedImage === image ? ' product-detail-thumbs__img--active' : ''}`}
+                          loading="lazy"
+                          decoding="async"
                           onClick={() => {
                             selectGalleryImage(image, index);
                             pauseImageRotation();
@@ -909,6 +985,8 @@ const ProductDetail: React.FC = () => {
                         src={image}
                         alt={`${product.name} - ${index + 1}`}
                         className="product-mobile-thumbs__img"
+                        loading="lazy"
+                        decoding="async"
                         onError={(event) => {
                           event.currentTarget.src = productImages[productImages.length - 1];
                         }}
@@ -1177,6 +1255,14 @@ const ProductDetail: React.FC = () => {
                     <Text strong>{formatMoney(purchaseSubtotal)}</Text>
                   </div>
                 </div>
+                <div className="product-purchase-snapshot">
+                  {purchaseSnapshotItems.map((item) => (
+                    <div key={item.key} className="product-purchase-snapshot__item">
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
 
                 <details className="product-detail-disclosure">
                   <summary>
@@ -1426,6 +1512,8 @@ const ProductDetail: React.FC = () => {
                           alt={rec.name}
                           src={rec.imageUrl || fallbackProductImage}
                           className="product-recommendations__image"
+                          loading="lazy"
+                          decoding="async"
                           onClick={(event) => {
                             event.stopPropagation();
                             navigate(`/products/${rec.id}`);

@@ -410,6 +410,42 @@ const Cart: React.FC = () => {
       action: goCheckout,
     };
   })();
+  const cartHeroHighlights = [
+    {
+      key: 'total',
+      title: t('common.total'),
+      text: formatMoney(selectedTotal),
+    },
+    {
+      key: 'shipping',
+      title: t('pages.cart.freeShippingUnlocked'),
+      text: freeShippingRemaining > 0
+        ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingRemaining) })
+        : t('pages.cart.freeShippingUnlocked'),
+    },
+    {
+      key: 'saved',
+      title: t('pages.cart.saveForLaterTitle'),
+      text: t('pages.cart.savedValueText', { count: savedItems.length, amount: formatMoney(savedItemsTotal) }),
+    },
+  ];
+  const cartSummaryCards = [
+    {
+      key: 'selected',
+      title: t('pages.cart.selectedSummary', { count: selectedUnitCount }),
+      text: formatMoney(selectedTotal),
+    },
+    {
+      key: 'shipping',
+      title: freeShippingRemaining > 0 ? t('pages.cart.readinessFreeShippingGap', { amount: formatMoney(freeShippingRemaining) }) : t('pages.cart.freeShippingUnlocked'),
+      text: `${freeShippingPercent}%`,
+    },
+    {
+      key: 'saved',
+      title: t('pages.cart.saveForLaterTitle'),
+      text: `${savedItems.length}`,
+    },
+  ];
 
   const addSuggestedProduct = async (product: Product) => {
     const userId = getAuthenticatedCartUserId();
@@ -476,6 +512,8 @@ const Cart: React.FC = () => {
             src={resolveCartPageImage(record.imageUrl)}
             alt={name}
             style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
+            loading="lazy"
+            decoding="async"
             onError={(event) => {
               if (event.currentTarget.src !== cartImageFallback) {
                 event.currentTarget.src = cartImageFallback;
@@ -555,7 +593,37 @@ const Cart: React.FC = () => {
 
   return (
     <div className="cart-page">
-      <Title level={2}>{t('pages.cart.title')}</Title>
+      <section className="cart-page__hero">
+        <div className="cart-page__heroContent">
+          <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
+          <Title level={2}>{t('pages.cart.title')}</Title>
+          <Text>{cartItems.length > 0 ? cartNextAction.text : t('pages.cart.empty')}</Text>
+          <div className="cart-page__heroActions">
+            <Button type={cartItems.length > 0 ? 'primary' : 'default'} onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}>
+              {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
+            </Button>
+            <Button onClick={() => navigate('/products')}>
+              {t('pages.cart.browse')}
+            </Button>
+          </div>
+        </div>
+        <div className="cart-page__heroStats">
+          {cartHeroHighlights.map((item) => (
+            <article key={item.key} className="cart-page__heroStat">
+              <strong>{item.title}</strong>
+              <span>{item.text}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="cart-page__summaryStrip">
+        {cartSummaryCards.map((item) => (
+          <article key={item.key} className="cart-page__summaryStripCard">
+            <strong>{item.title}</strong>
+            <span>{item.text}</span>
+          </article>
+        ))}
+      </section>
       {showRecentlyViewedRecovery ? (
         <Card className="cart-page__recentRecovery" style={{ marginBottom: 16 }}>
           <div className="cart-page__recentRecoveryHeader">
@@ -575,6 +643,8 @@ const Cart: React.FC = () => {
                   <img
                     src={resolveCartPageImage(product.imageUrl)}
                     alt={product.name}
+                    loading="lazy"
+                    decoding="async"
                     onError={(event) => {
                       if (event.currentTarget.src !== cartImageFallback) {
                         event.currentTarget.src = cartImageFallback;
@@ -712,6 +782,8 @@ const Cart: React.FC = () => {
               <img
                 src={resolveCartPageImage(item.imageUrl)}
                 alt={item.productName}
+                loading="lazy"
+                decoding="async"
                 onError={(event) => {
                   if (event.currentTarget.src !== cartImageFallback) {
                     event.currentTarget.src = cartImageFallback;
@@ -840,6 +912,8 @@ const Cart: React.FC = () => {
                   <img
                     src={resolveCartPageImage(item.imageUrl)}
                     alt={item.productName}
+                    loading="lazy"
+                    decoding="async"
                     onError={(event) => {
                       if (event.currentTarget.src !== cartImageFallback) {
                         event.currentTarget.src = cartImageFallback;

@@ -4,6 +4,122 @@
   padding: 24px 0 36px;
 }
 
+.checkout-page,
+.checkout-page .ant-card,
+.checkout-page .ant-btn,
+.checkout-page .ant-input,
+.checkout-page .ant-select,
+.checkout-page .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
+.checkout-page__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 20px;
+  border: 1px solid #d6eadc;
+  border-radius: var(--radius-card);
+  background:
+    radial-gradient(circle at 100% 0, rgba(247, 201, 72, 0.16), transparent 26%),
+    linear-gradient(135deg, rgba(18, 71, 52, 0.98), rgba(18, 71, 52, 0.9) 54%, rgba(34, 90, 68, 0.92));
+  box-shadow: var(--shadow-soft);
+}
+
+.checkout-page__heroContent {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: center;
+}
+
+.checkout-page__heroEyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(247, 201, 72, 0.16);
+  color: #fff7d6;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.checkout-page__heroContent h2.ant-typography {
+  margin: 0;
+  color: #fff;
+  font-size: 34px;
+  line-height: 1.08;
+}
+
+.checkout-page__heroContent .ant-typography {
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.6;
+}
+
+.checkout-page__heroStats {
+  display: grid;
+  gap: 10px;
+}
+
+.checkout-page__heroStat {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.checkout-page__heroStat strong {
+  color: #fff7d6;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.checkout-page__heroStat span {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.checkout-page__summaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.checkout-page__summaryStripCard {
+  min-height: 92px;
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  padding: 16px 18px;
+  border: 1px solid #e6dfcf;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(223, 245, 231, 0.72));
+  box-shadow: 0 10px 22px rgba(18, 71, 52, 0.06);
+}
+
+.checkout-page__summaryStripCard strong {
+  color: #173f2b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.checkout-page__summaryStripCard span {
+  color: #173f2b;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .checkout-page--result {
   width: min(820px, calc(100% - 24px));
 }
@@ -30,7 +146,9 @@
   padding: 12px;
   border: 1px solid #dce9df;
   border-radius: 8px;
-  background: #f8fcf9;
+  background:
+    linear-gradient(135deg, rgba(248, 252, 249, 0.98), rgba(232, 244, 255, 0.68));
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.05);
 }
 
 .checkout-page__trustItem > .anticon {
@@ -83,8 +201,20 @@
 
 .checkout-page__paymentMethod--selected {
   border-color: #124734;
-  background: #f6fbf7;
-  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.1);
+  background:
+    linear-gradient(135deg, rgba(246, 251, 247, 0.98), rgba(223, 245, 231, 0.72));
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.12);
+  position: relative;
+}
+
+.checkout-page__paymentMethod--selected::after {
+  content: '';
+  position: absolute;
+  inset: 8px 8px auto auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #124734;
 }
 
 .checkout-page__paymentMethodTop {
@@ -173,12 +303,14 @@
 .checkout-page__summaryTotal {
   color: #ee4d2d;
   font-size: 24px;
+  font-weight: 800;
 }
 
 .checkout-page__benefitStrip {
   margin-bottom: 16px;
   border-color: #dce9df;
-  background: #f8fcf9;
+  background:
+    linear-gradient(135deg, rgba(248, 252, 249, 0.98), rgba(255, 250, 244, 0.94));
 }
 
 .checkout-page__benefitStrip .ant-card-body {
@@ -392,7 +524,8 @@
   align-items: center;
   border: 1px solid #ffd8bf;
   border-radius: 8px;
-  background: #fff9f4;
+  background:
+    linear-gradient(135deg, rgba(255, 249, 244, 0.98), rgba(255, 247, 230, 0.86));
 }
 
 .checkout-page__couponOpportunity--ready .ant-card-body {
@@ -505,7 +638,16 @@
   padding: 10px;
   border: 1px solid #dce9df;
   border-radius: 8px;
-  background: #f8fcf9;
+  background:
+    linear-gradient(135deg, rgba(248, 252, 249, 0.98), rgba(232, 244, 255, 0.68));
+}
+
+.checkout-page > .ant-card:last-child .ant-btn-primary,
+.checkout-page__readiness .ant-btn-primary {
+  min-height: 42px;
+  border-radius: 8px;
+  font-weight: 800;
+  box-shadow: 0 10px 22px rgba(238, 77, 45, 0.2);
 }
 
 .checkout-page__paymentConfidence > .anticon {
@@ -530,8 +672,17 @@
     padding: 14px 0 24px;
   }
 
-  .checkout-page h2.ant-typography {
-    font-size: 24px;
+  .checkout-page__hero {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .checkout-page__heroContent h2.ant-typography {
+    font-size: 26px;
+  }
+
+  .checkout-page__summaryStrip {
+    grid-template-columns: 1fr;
   }
 
   .checkout-page .ant-card-body {

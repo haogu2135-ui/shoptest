@@ -6,6 +6,13 @@
     radial-gradient(circle at 82% 0%, rgba(18, 71, 52, 0.12), transparent 28%);
 }
 
+.shopee-home,
+.shopee-home button,
+.shopee-home .ant-btn,
+.shopee-home .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
 .shopee-container {
   width: min(1200px, calc(100% - 24px));
   margin: 0 auto;
@@ -40,7 +47,7 @@
 .shopee-hero__main {
   position: relative;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: 8px;
   background:
     linear-gradient(90deg, rgba(18, 71, 52, 0.98) 0%, rgba(18, 71, 52, 0.9) 46%, rgba(18, 71, 52, 0.42) 74%, rgba(18, 71, 52, 0.16) 100%),
     url('https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=1200&q=80');
@@ -157,6 +164,25 @@
   font-size: 15px;
 }
 
+.shopee-hero__trustPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.shopee-hero__trustPills span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .shopee-hero__actions .ant-btn-default {
   border: 0;
   color: #124734;
@@ -179,10 +205,84 @@
   background: #fff7d6 !important;
 }
 
+.shopee-hero__actions .ant-btn,
+.shopee-hero__authActions .ant-btn,
+.shopee-hero__spotlight .ant-btn {
+  border-radius: 8px;
+}
+
 .shopee-hero__aside {
   display: grid;
   gap: 12px;
   align-content: stretch;
+}
+
+.shopee-hero__featuredCard {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(247, 201, 72, 0.2);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08)),
+    rgba(10, 33, 24, 0.76);
+  color: #fff;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.shopee-hero__featuredEyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(247, 201, 72, 0.18);
+  color: #fff7d6;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.shopee-hero__featuredCard strong {
+  font-size: 24px;
+  line-height: 1.18;
+}
+
+.shopee-hero__featuredCard p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.shopee-hero__featuredMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.shopee-hero__featuredMeta span {
+  color: #fff7d6;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.shopee-hero__featuredMeta small {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shopee-hero__featuredActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shopee-hero__featuredActions .ant-btn {
+  flex: 1 1 140px;
+  min-height: 40px;
+  border-radius: 10px;
+  font-weight: 700;
 }
 
 .shopee-hero__spotlight {
@@ -278,10 +378,11 @@
 .shopee-section {
   margin-top: 14px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid #eee4d3;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(18, 71, 52, 0.06);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(8px);
 }
 
 .shopee-section__header {
@@ -394,6 +495,93 @@
   margin-top: 14px;
 }
 
+.shopee-conversion-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.shopee-conversion-strip__item {
+  min-height: 90px;
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  padding: 16px 18px;
+  border: 1px solid #e6dfcf;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(223, 245, 231, 0.7));
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+}
+
+.shopee-conversion-strip__item strong {
+  color: #173f2b;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.shopee-conversion-strip__item span {
+  color: #6c6a62;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shopee-story-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.shopee-story-card {
+  min-height: 144px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 18px;
+  border: 1px solid #e8decf;
+  border-radius: var(--radius-card);
+  background: linear-gradient(135deg, rgba(255, 250, 240, 0.98), rgba(232, 244, 255, 0.76));
+  box-shadow: var(--shadow-soft);
+}
+
+.shopee-story-card__icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #173f2b;
+  color: #fff7d6;
+  font-size: 18px;
+}
+
+.shopee-story-card__body {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.shopee-story-card__body strong {
+  color: #173f2b;
+  font-size: 16px;
+}
+
+.shopee-story-card__body .ant-typography {
+  color: #6c6a62;
+  line-height: 1.5;
+}
+
+.shopee-story-card .ant-btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding-inline: 0;
+  color: #124734;
+  font-weight: 800;
+}
+
 .shopee-conversion-band {
   grid-column: 1 / -1;
   display: grid;
@@ -415,6 +603,7 @@
   text-align: left;
   cursor: pointer;
   box-shadow: 0 8px 22px rgba(18, 71, 52, 0.06);
+  will-change: transform;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
@@ -556,7 +745,7 @@
   align-items: center;
   gap: 14px;
   border: 1px solid #eee4d3;
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 14px 18px;
   background: #fff;
   color: #222;
@@ -603,6 +792,123 @@
 
 .shopee-promo-products .shopee-section__header h2 {
   color: #124734;
+}
+
+.shopee-editorial-band {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 100% 0, rgba(247, 201, 72, 0.18), transparent 26%),
+    linear-gradient(135deg, rgba(18, 71, 52, 0.98), rgba(18, 71, 52, 0.9) 52%, rgba(34, 90, 68, 0.94));
+  border-color: rgba(18, 71, 52, 0.26);
+}
+
+.shopee-editorial-band .shopee-section__header {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.shopee-editorial-band .shopee-section__header h2,
+.shopee-editorial-band .shopee-section__header button {
+  color: #fff;
+}
+
+.shopee-editorial-band__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: 14px;
+}
+
+.shopee-editorial-band__feature {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.shopee-editorial-band__eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(247, 201, 72, 0.16);
+  color: #fff7d6;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.shopee-editorial-band__feature strong {
+  color: #fff;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.shopee-editorial-band__feature .ant-typography {
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.7;
+}
+
+.shopee-editorial-band__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shopee-editorial-band__actions .ant-btn:not(.ant-btn-primary) {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.shopee-editorial-band__stack {
+  display: grid;
+  gap: 12px;
+}
+
+.shopee-editorial-band__miniCard {
+  min-height: 104px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  text-align: left;
+  transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.shopee-editorial-band__miniCard:hover,
+.shopee-editorial-band__miniCard:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(247, 201, 72, 0.36);
+  transform: translateY(-2px);
+}
+
+.shopee-editorial-band__miniIndex {
+  color: #f7c948;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.shopee-editorial-band__miniBody {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.shopee-editorial-band__miniBody strong {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+}
+
+.shopee-editorial-band__miniBody .ant-typography {
+  color: rgba(255, 255, 255, 0.74);
 }
 
 .shopee-section__header--accent {
@@ -699,11 +1005,12 @@
   height: 100%;
   display: block;
   object-fit: cover;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
 
 .shopee-product:hover .shopee-product__image {
   transform: scale(1.03);
+  filter: saturate(1.04);
 }
 
 .shopee-product__carousel,
@@ -761,7 +1068,7 @@
   right: 8px;
   bottom: 8px;
   display: inline-flex;
-  gap: 6px;
+  gap: 7px;
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 0.16s ease, transform 0.16s ease;
@@ -774,22 +1081,24 @@
 }
 
 .shopee-product__quickActions button {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   color: #124734;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(18, 71, 52, 0.18);
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.18);
+  transition: transform var(--transition-fast), background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .shopee-product__quickActions button:hover {
   background: #124734;
   color: #fff;
+  transform: translateY(-1px);
 }
 
 .shopee-product__quickActions button:focus-visible {
@@ -1218,6 +1527,14 @@
     grid-template-columns: 1fr;
   }
 
+  .shopee-conversion-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .shopee-story-grid {
+    grid-template-columns: 1fr;
+  }
+
   .shopee-conversion-band {
     grid-template-columns: 1fr;
   }
@@ -1240,6 +1557,27 @@
 
   .shopee-personalized-insight .ant-btn {
     width: 100%;
+  }
+
+  .shopee-editorial-band__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shopee-editorial-band__feature {
+    padding: 18px;
+  }
+
+  .shopee-editorial-band__feature strong {
+    font-size: 24px;
+  }
+
+  .shopee-hero__featuredCard {
+    padding: 16px;
+  }
+
+  .shopee-hero__featuredCard strong,
+  .shopee-hero__featuredMeta span {
+    font-size: 21px;
   }
 
   .pet-trust-strip {

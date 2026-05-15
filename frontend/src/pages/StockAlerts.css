@@ -4,6 +4,14 @@
   padding: 24px 0;
 }
 
+.stock-alerts,
+.stock-alerts .ant-card,
+.stock-alerts .ant-btn,
+.stock-alerts .ant-list,
+.stock-alerts .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
 .stock-alerts__header {
   display: flex;
   justify-content: space-between;
@@ -21,7 +29,9 @@
   padding: 16px;
   border: 1px solid #f0e1cf;
   border-radius: 8px;
-  background: linear-gradient(135deg, #fff8ed 0%, #f7fbf6 100%);
+  background:
+    linear-gradient(135deg, rgba(255, 248, 237, 0.98), rgba(247, 251, 246, 0.96));
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .stock-alerts__assistantCopy {
@@ -58,6 +68,13 @@
   border: 1px solid #eadfce;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.84);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.stock-alerts__signal:hover {
+  border-color: #f7c948;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
 }
 
 .stock-alerts__signal svg {
@@ -100,8 +117,9 @@
   padding: 14px 16px;
   border: 1px solid #d9eadf;
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.07);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 244, 0.92));
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.08);
 }
 
 .stock-alerts__recovery .ant-typography {
@@ -170,7 +188,13 @@
 .stock-alerts__item {
   border-radius: 8px;
   padding-inline: 12px !important;
-  transition: background 0.18s ease, opacity 0.18s ease;
+  transition: background 0.18s ease, opacity 0.18s ease, transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.stock-alerts__item:hover {
+  background: #fbfff8;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+  transform: translateY(-1px);
 }
 
 .stock-alerts__item .ant-list-item-meta-title,

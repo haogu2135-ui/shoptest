@@ -4,6 +4,15 @@
   padding: 24px 0;
 }
 
+.pet-finder-page,
+.pet-finder-page .ant-card,
+.pet-finder-page .ant-btn,
+.pet-finder-page .ant-select,
+.pet-finder-page .ant-input,
+.pet-finder-page .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
 .pet-finder-page__layout {
   display: grid;
   gap: 18px;
@@ -18,7 +27,9 @@
   padding: 16px;
   border: 1px solid #f0e1cf;
   border-radius: 8px;
-  background: linear-gradient(135deg, #fff8ed 0%, #f7fbf6 100%);
+  background:
+    linear-gradient(135deg, rgba(255, 248, 237, 0.98), rgba(247, 251, 246, 0.96));
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .pet-finder-page__insightCopy {
@@ -55,6 +66,13 @@
   border: 1px solid #eadfce;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.84);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.pet-finder-page__signal:hover {
+  border-color: #f7c948;
+  box-shadow: 0 10px 22px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
 }
 
 .pet-finder-page__signal svg {
@@ -91,8 +109,9 @@
   padding: 14px;
   border: 1px solid #d9eadf;
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.07);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(232, 244, 255, 0.68));
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.08);
 }
 
 .pet-finder-page__nextStepCopy {
@@ -119,6 +138,7 @@
 .pet-finder-page__nextStepActions .ant-btn {
   min-height: 38px;
   font-weight: 700;
+  border-radius: 8px;
 }
 
 @media (max-width: 640px) {

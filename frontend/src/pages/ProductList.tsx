@@ -610,6 +610,11 @@ const ProductList: React.FC = () => {
     lowStockCount: filteredProducts.filter((product) => getLowStockCount(product.stock) !== null && !isProductSoldOut(product)).length,
     quickAddReadyCount: filteredProducts.filter(isQuickAddReady).length,
   };
+  const topCategoryName = selectedCategory
+    ? getLocalizedCategoryValue(selectedCategory, language, 'name')
+    : categoryRows[0]
+      ? getLocalizedCategoryValue(categoryRows[0], language, 'name')
+      : t('pages.productList.allCategories');
   const recommendedProduct = filteredProducts
     .filter((product) => !isProductSoldOut(product))
     .map((product, index) => ({
@@ -618,6 +623,23 @@ const ProductList: React.FC = () => {
       score: getPersonalizedSortScore(product),
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.product || null;
+  const heroProduct = recommendedProduct || sortedProducts.find((product) => !isProductSoldOut(product)) || sortedProducts[0] || null;
+  const heroProductHighlights = heroProduct
+    ? [
+      heroProduct.brand,
+      getDiscountPercent(heroProduct) > 0 ? t('pages.productList.sale') : '',
+      isQuickAddReady(heroProduct) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions'),
+    ].filter(Boolean)
+    : [];
+  const sortOptions = [
+    { value: 'default', label: t('pages.productList.defaultSort') },
+    { value: 'personalized-desc', label: t('pages.productList.personalizedSort') },
+    { value: 'price-asc', label: t('pages.productList.priceAsc') },
+    { value: 'price-desc', label: t('pages.productList.priceDesc') },
+    { value: 'discount-desc', label: t('pages.productList.discountDesc') },
+    { value: 'positive-rate-desc', label: t('pages.productList.positiveRateDesc') },
+    { value: 'name', label: t('pages.productList.byName') },
+  ];
   const personalGuideAction = personalizedProducts.length > 0
     ? { label: t('pages.productList.viewPersonalPicks'), action: () => applySort('personalized-desc') }
     : { label: t('pages.productList.managePetProfile'), action: () => navigate('/profile?tab=pets') };
@@ -814,6 +836,38 @@ const ProductList: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={24} md={19} lg={20}>
+          <section className="product-list__heroBand">
+            <div className="product-list__heroContent">
+              <span className="product-list__heroEyebrow">{topCategoryName}</span>
+              <h1>{keyword.trim() || t('pages.productList.title')}</h1>
+              <Text>
+                {collection
+                  ? `${t('pages.productList.filters')}: ${collection.replace(/-/g, ' ')}`
+                  : resultContextTags.length > 0
+                    ? resultContextTags.map((tag) => tag.label).join(' / ')
+                    : t('pages.productList.searchPlaceholder')}
+              </Text>
+              <div className="product-list__heroStats">
+                <span>{t('pages.productList.count', { count: filteredProducts.length })}</span>
+                <span>{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</span>
+                <span>{t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}</span>
+              </div>
+            </div>
+            {heroProduct ? (
+              <button type="button" className="product-list__heroCard" onClick={() => openProductDetail(heroProduct.id)}>
+                <strong>{heroProduct.name}</strong>
+                <Text>{formatMoney(getPrice(heroProduct))}</Text>
+                <span>{renderBadges(heroProduct).slice(0, 2).map((badge) => badge.label).join(' · ') || t('pages.productList.viewPick')}</span>
+                {heroProductHighlights.length ? (
+                  <div className="product-list__heroHighlights">
+                    {heroProductHighlights.map((item) => (
+                      <small key={item}>{item}</small>
+                    ))}
+                  </div>
+                ) : null}
+              </button>
+            ) : null}
+          </section>
           <div className="product-list__focusBar">
             <div className="product-list__focusIntro">
               <Text strong>{t('pages.productList.title')}</Text>
@@ -843,17 +897,7 @@ const ProductList: React.FC = () => {
                 <Input.Search placeholder={t('pages.productList.searchPlaceholder')} value={keyword} onChange={e => setKeyword(e.target.value)} onSearch={handleSearch} className="product-list__search" />
               </Col>
               <Col xs={12} sm={5} md={6}>
-                <Select value={sortBy} onChange={applySort} style={{ width: '100%' }}
-                  options={[
-                    { value: 'default', label: t('pages.productList.defaultSort') },
-                    { value: 'personalized-desc', label: t('pages.productList.personalizedSort') },
-                    { value: 'price-asc', label: t('pages.productList.priceAsc') },
-                    { value: 'price-desc', label: t('pages.productList.priceDesc') },
-                    { value: 'discount-desc', label: t('pages.productList.discountDesc') },
-                    { value: 'positive-rate-desc', label: t('pages.productList.positiveRateDesc') },
-                    { value: 'name', label: t('pages.productList.byName') },
-                  ]}
-                />
+                <Select value={sortBy} onChange={applySort} style={{ width: '100%' }} options={sortOptions} />
               </Col>
               <Col xs={12} sm={7} md={4}>
                 <div className="product-list__toolbarMeta">
@@ -983,6 +1027,8 @@ const ProductList: React.FC = () => {
                             alt={product.name}
                             src={resolveProductListImage(product.imageUrl)}
                             className="product-list__image"
+                            loading="lazy"
+                            decoding="async"
                             onError={(event) => {
                               if (event.currentTarget.src !== productImageFallback) {
                                 event.currentTarget.src = productImageFallback;
@@ -1041,7 +1087,12 @@ const ProductList: React.FC = () => {
                                   : t('pages.productList.noReviewsYet')}
                               </Text>
                             </div>
-                            {product.brand && <Text type="secondary" className="product-list__brand">{product.brand}</Text>}
+                            <div className="product-list__metaRow">
+                              {product.brand && <Text type="secondary" className="product-list__brand">{product.brand}</Text>}
+                              <Text type="secondary" className="product-list__metaAction">
+                                {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.productList.viewPick')}
+                              </Text>
+                            </div>
                             {renderConfidenceStrip(product)}
                           </div>
                         }

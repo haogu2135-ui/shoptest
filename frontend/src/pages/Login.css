@@ -2,7 +2,9 @@
   width: 100%;
   min-height: 100vh;
   padding: 24px;
-  background: linear-gradient(180deg, #f7f4ee 0%, #ffffff 55%, #fff 100%);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(247, 201, 72, 0.18), transparent 24%),
+    linear-gradient(180deg, #f7f4ee 0%, #ffffff 55%, #fff 100%);
 }
 
 .shopee-login-shell {
@@ -111,8 +113,9 @@
   padding: 32px 28px 24px;
   border: 1px solid #f0f0f0;
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 16px 38px rgba(18, 71, 52, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .shopee-login-brand {
@@ -195,12 +198,15 @@
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), color var(--transition-fast);
 }
 
 .shopee-login-quickLinks a:hover,
 .shopee-login-quickLinks button:hover {
   color: #ee4d2d;
   border-color: #f7c948;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+  transform: translateY(-1px);
   text-decoration: none;
 }
 

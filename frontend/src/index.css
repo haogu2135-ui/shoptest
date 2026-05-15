@@ -4,6 +4,27 @@
   box-sizing: border-box;
 }
 
+:root {
+  --brand-forest: #124734;
+  --brand-forest-deep: #173f2b;
+  --brand-sand: #f7f4ee;
+  --brand-cream: #fffaf0;
+  --brand-mint: #dff5e7;
+  --brand-sky: #e8f4ff;
+  --brand-coral-soft: #fff0ea;
+  --brand-gold: #f7c948;
+  --brand-accent: #ee4d2d;
+  --text-main: #1d1b16;
+  --text-muted: #6c6a62;
+  --surface-card: rgba(255, 255, 255, 0.98);
+  --radius-card: 8px;
+  --radius-pill: 999px;
+  --shadow-soft: 0 10px 26px rgba(18, 71, 52, 0.08);
+  --shadow-lift: 0 16px 36px rgba(18, 71, 52, 0.13);
+  --transition-fast: 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-smooth: 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 html,
 body,
 #root {
@@ -13,12 +34,25 @@ body,
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at 8% -8%, rgba(247, 201, 72, 0.2), transparent 22%),
+    radial-gradient(circle at 92% 0%, rgba(18, 71, 52, 0.14), transparent 24%),
+    var(--brand-sand);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Avenir Next Demi Bold', 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+  letter-spacing: 0.01em;
 }
 
 img,
@@ -102,4 +136,32 @@ svg {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
-} 
+}
+
+.ant-btn {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.ant-btn:hover {
+  transform: translateY(-1px);
+}
+
+.ant-btn:focus-visible,
+.ant-input:focus-visible,
+.ant-input-affix-wrapper:focus-visible,
+.ant-select-focused .ant-select-selector,
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid rgba(247, 201, 72, 0.45);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

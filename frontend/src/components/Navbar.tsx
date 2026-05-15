@@ -34,6 +34,10 @@ const { Search } = Input;
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isPathActive = (paths: string[]) => paths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
+  const isProductsActive = location.pathname === '/products' || location.pathname.startsWith('/products/');
+  const isDealsActive = isProductsActive && new URLSearchParams(location.search).get('discount') === 'true';
+  const isSmartDevicesActive = isProductsActive && new URLSearchParams(location.search).get('collection') === 'smart-devices';
   const token = localStorage.getItem('token');
   const userId = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
@@ -54,6 +58,13 @@ const Navbar: React.FC = () => {
     { value: 'en', label: 'English' },
   ];
   const currencyOptions = Object.values(markets).map((item) => ({ value: item.currency, label: item.label }));
+  const communitySignalCount = wishlistCount + unreadCount + couponCount + compareCount + alertCount;
+  const utilityMenuCount = token ? couponCount + compareCount + alertCount : compareCount + alertCount;
+  const navHighlights = [
+    t('nav.freeShippingOver', { amount: formatMoney(market.freeShippingThreshold) }),
+    t('nav.followDeals'),
+    t('nav.help'),
+  ];
   const renderCurrentMenuLabel = (active: boolean, label: React.ReactNode) => (
     <span className={active ? 'shop-nav__menu-current' : 'shop-nav__menu-item'}>
       {active ? <CheckOutlined /> : <span className="shop-nav__menu-check-spacer" />}
@@ -262,14 +273,14 @@ const Navbar: React.FC = () => {
       <div className="shop-nav__top">
         <div className="shop-nav__inner">
           <div className="shop-nav__links">
-            <Link to={canAccessAdmin ? adminPath : '/products'}>{t('nav.sell')}</Link>
-            <Link to="/pet-finder">{t('nav.petFinder')}</Link>
-            <Link to="/pet-gallery">{t('nav.petGallery')}</Link>
-            <Link to="/coupons">{t('nav.download')}</Link>
-            <Link to="/products?keyword=deal">{t('nav.followDeals')}</Link>
+            <Link className={!canAccessAdmin && isProductsActive ? 'shop-nav__linkActive' : undefined} to={canAccessAdmin ? adminPath : '/products'}>{t('nav.sell')}</Link>
+            <Link className={isPathActive(['/pet-finder']) ? 'shop-nav__linkActive' : undefined} to="/pet-finder">{t('nav.petFinder')}</Link>
+            <Link className={isPathActive(['/pet-gallery']) ? 'shop-nav__linkActive' : undefined} to="/pet-gallery">{t('nav.petGallery')}</Link>
+            <Link className={isPathActive(['/coupons']) ? 'shop-nav__linkActive' : undefined} to="/coupons">{t('nav.download')}</Link>
+            <Link className={isDealsActive ? 'shop-nav__linkActive' : undefined} to="/products?discount=true">{t('nav.followDeals')}</Link>
           </div>
           <div className="shop-nav__links shop-nav__links--right">
-            <Link to="/track-order">{t('nav.trackOrder')}</Link>
+            <Link className={isPathActive(['/track-order']) ? 'shop-nav__linkActive' : undefined} to="/track-order">{t('nav.trackOrder')}</Link>
             <button type="button" onClick={openSupport}>{t('nav.help')}</button>
             <Select
               aria-label={t('nav.language')}
@@ -311,24 +322,40 @@ const Navbar: React.FC = () => {
 
       <div className="shop-nav__main">
         <div className="shop-nav__inner shop-nav__inner--main">
-          <Link to="/" className="shop-nav__brand" aria-label={t('nav.ariaHome')}>
-            <ShopOutlined />
-            <span>{t('common.brand')}</span>
+          <Link to="/" className={location.pathname === '/' ? 'shop-nav__brand shop-nav__brand--active' : 'shop-nav__brand'} aria-label={t('nav.ariaHome')}>
+            <span className="shop-nav__brandIcon"><ShopOutlined /></span>
+            <span className="shop-nav__brandCopy">
+              <strong>{t('common.brand')}</strong>
+              <small>{t('home.heroEyebrow')}</small>
+            </span>
           </Link>
 
           <div className="shop-nav__search">
-            <Search
-              placeholder={t('nav.searchPlaceholder')}
-              onSearch={handleSearch}
-              enterButton={<SearchOutlined />}
-              size="large"
-              allowClear
-            />
+            <div className="shop-nav__searchShell">
+              <div className="shop-nav__searchIntro">
+                <strong>{t('home.heroTitle')}</strong>
+                <span>{navHighlights.join(' • ')}</span>
+              </div>
+              <div className="shop-nav__searchBar">
+                <Search
+                  placeholder={t('nav.searchPlaceholder')}
+                  onSearch={handleSearch}
+                  enterButton={<SearchOutlined />}
+                  size="large"
+                  allowClear
+                />
+              </div>
+            </div>
             <div className="shop-nav__suggestions">
               <button onClick={() => searchBySuggestion('nav.suggestions.dogToys')}>{t('nav.suggestions.dogToys')}</button>
               <button onClick={() => searchBySuggestion('nav.suggestions.catLitter')}>{t('nav.suggestions.catLitter')}</button>
               <button onClick={() => searchBySuggestion('nav.suggestions.petBeds')}>{t('nav.suggestions.petBeds')}</button>
               <button onClick={() => searchBySuggestion('nav.suggestions.leashes')}>{t('nav.suggestions.leashes')}</button>
+            </div>
+            <div className="shop-nav__searchSignals" aria-label={t('nav.help')}>
+              <span>{t('home.trust.freeShipping', { amount: formatMoney(market.freeShippingThreshold) })}</span>
+              <span>{t('home.trust.easyReturns')}</span>
+              <span>{t('home.trust.petSafe')}</span>
             </div>
             <div className="shop-nav__mobile-tools">
               <Select
@@ -367,7 +394,7 @@ const Navbar: React.FC = () => {
                 ],
               }}
             >
-              <button type="button">{t('nav.petNav.dog')}</button>
+              <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}>{t('nav.petNav.dog')}</button>
             </Dropdown>
             <Dropdown
               menu={{
@@ -378,17 +405,28 @@ const Navbar: React.FC = () => {
                 ],
               }}
             >
-              <button type="button">{t('nav.petNav.cat')}</button>
+              <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}>{t('nav.petNav.cat')}</button>
             </Dropdown>
-            <button type="button" onClick={() => searchByKeyword('small pets')}>{t('nav.petNav.smallPets')}</button>
-            <button type="button" onClick={() => searchByKeyword('walking')}>{t('nav.petNav.walking')}</button>
-            <button type="button" onClick={() => searchByKeyword('sleeping')}>{t('nav.petNav.sleeping')}</button>
-            <button type="button" onClick={() => navigate('/products?collection=smart-devices')}>{t('nav.petNav.smartDevices')}</button>
-            <button type="button" onClick={() => navigate('/pet-finder')}>{t('nav.petFinder')}</button>
-            <button type="button" onClick={() => navigate('/pet-gallery')}>{t('nav.petGallery')}</button>
+            <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('small pets')}>{t('nav.petNav.smallPets')}</button>
+            <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('walking')}>{t('nav.petNav.walking')}</button>
+            <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('sleeping')}>{t('nav.petNav.sleeping')}</button>
+            <button type="button" className={isSmartDevicesActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/products?collection=smart-devices')}>{t('nav.petNav.smartDevices')}</button>
+            <button type="button" className={isPathActive(['/pet-finder']) ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/pet-finder')}>{t('nav.petFinder')}</button>
+            <button type="button" className={isPathActive(['/pet-gallery']) ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/pet-gallery')}>{t('nav.petGallery')}</button>
           </nav>
 
           <div className="shop-nav__actions">
+            {token ? (
+              <button type="button" className="shop-nav__actionSummary" onClick={() => navigate('/profile')} aria-label={t('nav.account')}>
+                <span>{username || t('nav.account')}</span>
+                <strong>{communitySignalCount}</strong>
+              </button>
+            ) : (
+              <button type="button" className="shop-nav__actionSummary shop-nav__actionSummary--guest" onClick={() => navigate('/register')} aria-label={t('nav.register')}>
+                <span>{t('nav.register')}</span>
+                <strong>{t('home.couponsExtra')}</strong>
+              </button>
+            )}
             {!token ? (
               <div className="shop-nav__guestCtas" aria-label={t('nav.account')}>
                 {guestActionItems.map((item) => (
@@ -455,7 +493,7 @@ const Navbar: React.FC = () => {
                   }}
                 >
                   <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label="More">
-                    <Badge count={couponCount + compareCount + alertCount} size="small" overflowCount={99}>
+                    <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <EllipsisOutlined />
                     </Badge>
                   </button>
@@ -489,7 +527,7 @@ const Navbar: React.FC = () => {
                   }}
                 >
                   <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label="More">
-                    <Badge count={compareCount + alertCount} size="small" overflowCount={99}>
+                    <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <EllipsisOutlined />
                     </Badge>
                   </button>
