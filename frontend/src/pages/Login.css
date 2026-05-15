@@ -69,6 +69,38 @@
   margin-top: 4px;
 }
 
+.shopee-login-panel__spotlight {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.shopee-login-panel__spotlightCard {
+  min-height: 82px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(8px);
+}
+
+.shopee-login-panel__spotlightCard strong {
+  color: #f7c948;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.shopee-login-panel__spotlightCard span {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .shopee-login-panel__feature {
   min-height: 88px;
   display: flex;
@@ -111,15 +143,21 @@
   width: 100%;
   max-width: 420px;
   padding: 32px 28px 24px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
+  border: 1px solid rgba(226, 234, 220, 0.9);
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 16px 38px rgba(18, 71, 52, 0.1);
+  box-shadow: 0 26px 50px rgba(18, 71, 52, 0.12);
   backdrop-filter: blur(10px);
 }
 
+.shopee-login-card__header {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
 .shopee-login-brand {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .shopee-login-mark {
@@ -133,6 +171,44 @@
   margin-top: 8px;
   color: #666;
   font-size: 14px;
+}
+
+.shopee-login-card__intro {
+  color: #5f6f64;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.shopee-login-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.shopee-login-card__stat {
+  min-height: 82px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #eee4d3;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #fff9f2 100%);
+  text-align: center;
+}
+
+.shopee-login-card__stat strong {
+  color: #173f2b;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.shopee-login-card__stat span {
+  color: #6b766f;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .shopee-login-trust,
@@ -253,6 +329,8 @@
     padding: 24px 18px 20px;
   }
 
+  .shopee-login-card__stats,
+  .shopee-login-panel__spotlight,
   .shopee-login-trust {
     grid-template-columns: 1fr;
   }
@@ -281,6 +359,7 @@
     font-size: 30px;
   }
 
+  .shopee-login-panel__spotlight,
   .shopee-login-panel__featureList {
     grid-template-columns: 1fr;
   }

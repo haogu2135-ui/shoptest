@@ -83,6 +83,20 @@ const Login: React.FC = () => {
               <span>{t('pages.auth.loginTrustSecure')}</span>
             </div>
           </div>
+          <div className="shopee-login-panel__spotlight">
+            <div className="shopee-login-panel__spotlightCard">
+              <strong>{guestCartCount}</strong>
+              <span>{t('pages.auth.loginTrustCart')}</span>
+            </div>
+            <div className="shopee-login-panel__spotlightCard">
+              <strong>24/7</strong>
+              <span>{t('nav.trackOrder')}</span>
+            </div>
+            <div className="shopee-login-panel__spotlightCard">
+              <strong>SSL</strong>
+              <span>{t('pages.auth.loginTrustSecure')}</span>
+            </div>
+          </div>
           <div className="shopee-login-panel__actions">
             <Button type="primary" size="large" onClick={() => navigate('/register')}>
               {t('pages.auth.register')}
@@ -94,9 +108,30 @@ const Login: React.FC = () => {
         </aside>
 
         <section className="shopee-login-card">
-          <div className="shopee-login-brand">
-            <div className="shopee-login-mark">ShopMX</div>
-            <div className="shopee-login-subtitle">{t('pages.auth.loginTitle')}</div>
+          <div className="shopee-login-card__header">
+            <div className="shopee-login-brand">
+              <div className="shopee-login-mark">ShopMX</div>
+              <div className="shopee-login-subtitle">{t('pages.auth.loginTitle')}</div>
+            </div>
+            <Text className="shopee-login-card__intro">
+              {guestCartCount > 0
+                ? t('pages.auth.loginGuestCartHint', { count: guestCartCount })
+                : t('pages.auth.loginHeroSubtitle')}
+            </Text>
+          </div>
+          <div className="shopee-login-card__stats" aria-label={t('pages.auth.loginTrustTitle')}>
+            <div className="shopee-login-card__stat">
+              <strong>{guestCartCount}</strong>
+              <span>{t('pages.auth.loginTrustCart')}</span>
+            </div>
+            <div className="shopee-login-card__stat">
+              <strong>24/7</strong>
+              <span>{t('pages.auth.loginTrustTracking')}</span>
+            </div>
+            <div className="shopee-login-card__stat">
+              <strong>SSL</strong>
+              <span>{t('pages.auth.loginTrustSecure')}</span>
+            </div>
           </div>
           <div className="shopee-login-trust" aria-label={t('pages.auth.loginTrustTitle')}>
             <div className="shopee-login-trust__item">

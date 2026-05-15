@@ -242,17 +242,37 @@ const CouponCenter: React.FC = () => {
 
   return (
     <div className="coupon-center-page">
-      <Title level={2}><GiftOutlined /> {t('pages.coupons.title')}</Title>
+      <section className="coupon-center-page__hero">
+        <div className="coupon-center-page__heroCopy">
+          <Text className="coupon-center-page__eyebrow">{t('pages.coupons.title')}</Text>
+          <Title level={2}><GiftOutlined /> {t('pages.coupons.opportunityTitle')}</Title>
+          <Text className="coupon-center-page__heroText">
+            {couponInsights.bestCoupon
+              ? t('pages.coupons.opportunitySubtitleBest', { name: couponInsights.bestCoupon.name })
+              : t('pages.coupons.opportunitySubtitle')}
+          </Text>
+        </div>
+        <div className="coupon-center-page__heroStats" aria-label={t('pages.coupons.title')}>
+          <div>
+            <strong>{claimableCoupons.length}</strong>
+            <span>{t('pages.coupons.claimableCount')}</span>
+          </div>
+          <div>
+            <strong>{couponInsights.unusedMine}</strong>
+            <span>{t('pages.coupons.readyToUse')}</span>
+          </div>
+          <div>
+            <strong>{formatMoney(cartSubtotal)}</strong>
+            <span>{t('pages.coupons.currentCartValue')}</span>
+          </div>
+        </div>
+      </section>
 
       <section className="coupon-opportunity">
         <div className="coupon-opportunity__copy">
           <Text type="secondary">{t('pages.coupons.opportunityEyebrow')}</Text>
           <h2>{t('pages.coupons.opportunityTitle')}</h2>
-          <p>
-            {couponInsights.bestCoupon
-              ? t('pages.coupons.opportunitySubtitleBest', { name: couponInsights.bestCoupon.name })
-              : t('pages.coupons.opportunitySubtitle')}
-          </p>
+          <p>{t('pages.coupons.savingsPathTitle')}</p>
         </div>
         <div className="coupon-opportunity__metrics">
           <div>

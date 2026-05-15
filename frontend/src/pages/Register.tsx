@@ -51,9 +51,44 @@ const Register: React.FC = () => {
             <Tag icon={<GiftOutlined />} color="orange">{t('pages.auth.registerTrustPerks')}</Tag>
             <Tag icon={<TruckOutlined />} color="blue">{t('pages.auth.registerTrustTracking')}</Tag>
           </div>
+          <div className="register-page__featureCards">
+            <div className="register-page__featureCard">
+              <SafetyCertificateOutlined />
+              <div>
+                <strong>{t('pages.auth.registerTrustSecure')}</strong>
+                <span>{t('pages.auth.registerPrivacyHint')}</span>
+              </div>
+            </div>
+            <div className="register-page__featureCard">
+              <GiftOutlined />
+              <div>
+                <strong>{t('pages.auth.registerTrustPerks')}</strong>
+                <span>{t('pages.auth.registerHeroSubtitle')}</span>
+              </div>
+            </div>
+            <div className="register-page__featureCard">
+              <TruckOutlined />
+              <div>
+                <strong>{t('pages.auth.registerTrustTracking')}</strong>
+                <span>{t('nav.trackOrder')}</span>
+              </div>
+            </div>
+          </div>
+          <div className="register-page__actions">
+            <Button type="primary" size="large" onClick={() => navigate('/login')}>
+              {t('pages.auth.loginNow')}
+            </Button>
+            <Button ghost size="large" onClick={() => navigate('/track-order')}>
+              {t('nav.trackOrder')}
+            </Button>
+          </div>
         </div>
       </section>
       <Card className="register-page__card">
+        <div className="register-page__cardHeader">
+          <div className="register-page__brand">ShopMX</div>
+          <Text className="register-page__cardHint">{t('pages.auth.registerPrivacyHint')}</Text>
+        </div>
         <Title level={2} className="register-page__title">
           {t('pages.auth.registerTitle')}
         </Title>
@@ -144,7 +179,7 @@ const Register: React.FC = () => {
           <Space direction="vertical" className="register-page__footer">
             <Text type="secondary">{t('pages.auth.registerPrivacyHint')}</Text>
             <div>
-            {t('pages.auth.alreadyAccount')}<Link to="/login">{t('pages.auth.loginNow')}</Link>
+              {t('pages.auth.alreadyAccount')}<Link to="/login">{t('pages.auth.loginNow')}</Link>
             </div>
           </Space>
         </Form>

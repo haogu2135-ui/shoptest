@@ -61,37 +61,126 @@
   margin-top: 8px;
 }
 
+.register-page__featureCards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.register-page__featureCard {
+  min-height: 116px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(8px);
+}
+
+.register-page__featureCard .anticon {
+  margin-top: 2px;
+  color: #f7c948;
+  font-size: 20px;
+}
+
+.register-page__featureCard div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.register-page__featureCard strong {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.register-page__featureCard span {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.register-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.register-page__actions .ant-btn {
+  min-width: 148px;
+  font-weight: 800;
+}
+
+.register-page__actions .ant-btn-background-ghost {
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
 .register-page__card {
   width: 100%;
   border-color: #eee4d3;
-  box-shadow: 0 16px 38px rgba(18, 71, 52, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 20px 42px rgba(18, 71, 52, 0.12);
 }
 
 .register-page__card .ant-card-body {
   padding: 30px 28px;
 }
 
+.register-page__cardHeader {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.register-page__brand {
+  color: #ee4d2d;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.register-page__cardHint {
+  color: #5f6f64;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
 .register-page__card .ant-input,
 .register-page__card .ant-input-affix-wrapper,
 .register-page__card .ant-select-selector {
-  border-radius: 8px !important;
+  border-radius: 14px !important;
+  min-height: 48px;
 }
 
 .register-page__card .ant-btn-primary {
-  min-height: 42px;
-  border-radius: 8px;
+  min-height: 46px;
+  border-radius: 14px;
   font-weight: 800;
   box-shadow: 0 10px 22px rgba(238, 77, 45, 0.2);
 }
 
 .register-page__title {
   margin-bottom: 24px !important;
-  text-align: center;
+  text-align: left;
 }
 
 .register-page__footer {
   width: 100%;
   text-align: center;
+}
+
+.register-page__footer a {
+  margin-left: 6px;
+  color: #ee4d2d;
+  font-weight: 700;
 }
 
 @media (max-width: 860px) {
@@ -109,7 +198,23 @@
     font-size: 30px;
   }
 
+  .register-page__featureCards {
+    grid-template-columns: 1fr;
+  }
+
+  .register-page__actions {
+    flex-direction: column;
+  }
+
+  .register-page__actions .ant-btn {
+    width: 100%;
+  }
+
   .register-page__card .ant-card-body {
     padding: 22px 18px;
+  }
+
+  .register-page__title {
+    text-align: center;
   }
 }

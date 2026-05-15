@@ -815,8 +815,44 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="profile-page" style={{ padding: '24px', maxWidth: 1000, margin: '0 auto' }}>
-      <Title level={2}>{t('pages.profile.title')}</Title>
+    <div className="profile-page">
+      <div className="profile-overview">
+        <div className="profile-overview__copy">
+          <Text className="profile-overview__eyebrow">{t('pages.profile.title')}</Text>
+          <Title level={2}>{user.username}</Title>
+          <Text className="profile-overview__text">
+            {defaultAddressReady ? petProfileFocusText : addressReadinessText}
+          </Text>
+          <Space wrap className="profile-overview__actions">
+            <Button type="primary" onClick={() => openProfileTab('orders')}>
+              {t('pages.profile.orders', { count: orders.length })}
+            </Button>
+            <Button onClick={() => openProfileTab(defaultAddressReady ? 'pets' : 'addresses')}>
+              {defaultAddressReady
+                ? (petProfiles.length > 0 ? t('pages.profile.completePetProfile') : t('pages.profile.addPet'))
+                : t('pages.profile.addAddress')}
+            </Button>
+          </Space>
+        </div>
+        <div className="profile-overview__stats" aria-label={t('pages.profile.actionCenterTitle')}>
+          <div className="profile-overview__stat">
+            <strong>{orders.length}</strong>
+            <span>{t('pages.profile.allOrders')}</span>
+          </div>
+          <div className="profile-overview__stat">
+            <strong>{addresses.length}</strong>
+            <span>{t('pages.profile.addresses', { count: addresses.length })}</span>
+          </div>
+          <div className="profile-overview__stat">
+            <strong>{petProfiles.length}</strong>
+            <span>{t('pages.profile.pets', { count: petProfiles.length })}</span>
+          </div>
+          <div className="profile-overview__stat">
+            <strong>{accountHealthScore}%</strong>
+            <span>{t('pages.profile.accountHealthTitle')}</span>
+          </div>
+        </div>
+      </div>
 
       <div className="profile-action-center" aria-label={t('pages.profile.actionCenterTitle')}>
         <div className="profile-action-center__intro">
@@ -878,6 +914,7 @@ const Profile: React.FC = () => {
       </div>
 
       <Tabs
+        className="profile-tabs"
         activeKey={profileActiveTab}
         onChange={setProfileActiveTab}
         items={[
@@ -885,7 +922,7 @@ const Profile: React.FC = () => {
             key: 'info',
             label: t('pages.profile.info'),
             children: (
-              <Card>
+              <Card className="profile-section-card">
                 <div className="profile-health-panel">
                   <div>
                     <Text strong>{t('pages.profile.accountHealthTitle')}</Text>
@@ -938,7 +975,7 @@ const Profile: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Button type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openAddressModal()}>
+                <Button className="profile-block-button" type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openAddressModal()}>
                   {t('pages.profile.addAddress')}
                 </Button>
                 {addresses.length === 0 ? (
@@ -947,7 +984,7 @@ const Profile: React.FC = () => {
                   <List
                     dataSource={addresses}
                     renderItem={(address) => (
-                      <Card key={address.id} style={{ marginBottom: 12 }}>
+                      <Card key={address.id} className="profile-section-card profile-address-card" style={{ marginBottom: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
                           <div>
                             <Space>
@@ -1072,6 +1109,8 @@ const Profile: React.FC = () => {
                                   <img
                                     src={resolveOrderImage(primaryItem.imageUrl)}
                                     alt={primaryItem.productName || t('pages.profile.productFallback', { id: primaryItem.productId })}
+                                    loading="lazy"
+                                    decoding="async"
                                     onError={useImageFallback}
                                   />
                                 </button>
@@ -1216,7 +1255,7 @@ const Profile: React.FC = () => {
                     </Button>
                   </Space>
                 </div>
-                <Button type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openPetModal()}>
+                <Button className="profile-block-button" type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openPetModal()}>
                   {t('pages.profile.addPet')}
                 </Button>
                 {petProfiles.length === 0 ? (
@@ -1228,6 +1267,7 @@ const Profile: React.FC = () => {
                     renderItem={(pet) => (
                       <List.Item>
                         <Card
+                          className="profile-section-card profile-pet-card"
                           title={pet.name}
                           extra={<Tag color="green">{petTypeLabel(pet.petType)}</Tag>}
                           actions={[
@@ -1432,6 +1472,8 @@ const Profile: React.FC = () => {
                             src={resolveOrderImage(item.imageUrl)}
                             alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
                             className="profile-order-detail__image"
+                            loading="lazy"
+                            decoding="async"
                             onError={useImageFallback}
                           />
                         </button>

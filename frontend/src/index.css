@@ -18,7 +18,11 @@
   --text-muted: #6c6a62;
   --surface-card: rgba(255, 255, 255, 0.98);
   --radius-card: 8px;
+  --radius-tile: 16px;
   --radius-pill: 999px;
+  --shadow-1: 0 4px 14px rgba(18, 71, 52, 0.05);
+  --shadow-2: 0 10px 26px rgba(18, 71, 52, 0.08);
+  --shadow-3: 0 18px 40px rgba(18, 71, 52, 0.14);
   --shadow-soft: 0 10px 26px rgba(18, 71, 52, 0.08);
   --shadow-lift: 0 16px 36px rgba(18, 71, 52, 0.13);
   --transition-fast: 0.16s cubic-bezier(0.22, 1, 0.36, 1);
