@@ -21,4 +21,11 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
             "where c.id = ?1 and c.status = 'ACTIVE' " +
             "and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity)")
     int incrementClaimedQuantity(Long couponId);
+
+    @Modifying
+    @Query(value = "update coupons set claimed_quantity = case " +
+            "when coalesce(claimed_quantity, 0) > ?2 then coalesce(claimed_quantity, 0) - ?2 " +
+            "else 0 end, updated_at = current_timestamp where id = ?1",
+            nativeQuery = true)
+    int decrementClaimedQuantity(Long couponId, int quantity);
 }

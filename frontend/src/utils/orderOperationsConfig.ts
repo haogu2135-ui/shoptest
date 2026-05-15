@@ -17,10 +17,11 @@ export const orderStatusColors: Record<string, string> = {
   RETURN_APPROVED: 'geekblue',
   RETURN_SHIPPED: 'cyan',
   RETURNED: 'purple',
+  REFUNDED: 'purple',
 };
 
 export const orderValidTransitions: Record<string, string[]> = {
-  PENDING_PAYMENT: ['CANCELLED'],
+  PENDING_PAYMENT: ['PENDING_SHIPMENT', 'CANCELLED'],
   PENDING_SHIPMENT: ['SHIPPED'],
   SHIPPED: ['COMPLETED'],
   COMPLETED: [],
@@ -29,6 +30,7 @@ export const orderValidTransitions: Record<string, string[]> = {
   RETURN_SHIPPED: ['RETURNED'],
   CANCELLED: [],
   RETURNED: [],
+  REFUNDED: [],
 };
 
 export const orderPriority: Record<string, number> = {
@@ -40,6 +42,7 @@ export const orderPriority: Record<string, number> = {
   RETURN_APPROVED: 5,
   COMPLETED: 6,
   RETURNED: 7,
+  REFUNDED: 7,
   CANCELLED: 8,
 };
 
@@ -93,6 +96,11 @@ export const orderNextActionByStatus: Record<string, AdminOrderNextAction> = {
     titleKey: 'pages.adminOrders.nextRefunded',
     textKey: 'pages.adminOrders.nextRefundedHint',
   },
+  REFUNDED: {
+    tone: 'success',
+    titleKey: 'pages.adminOrders.nextRefunded',
+    textKey: 'pages.adminOrders.nextRefundedHint',
+  },
   COMPLETED: {
     tone: 'success',
     titleKey: 'pages.adminOrders.nextCompleted',
@@ -115,7 +123,7 @@ export const isOrderNeedsAction = (order: Order) => orderNeedsActionStatuses.inc
 
 export const isOrderShippable = (order: Order) => order.status === orderShippableStatus;
 
-export const isOrderRefunded = (order: Order) => order.status === 'RETURNED' || Boolean(order.refundedAt);
+export const isOrderRefunded = (order: Order) => order.status === 'RETURNED' || order.status === 'REFUNDED' || Boolean(order.refundedAt);
 
 export type OrderSlaState = {
   overdue: boolean;

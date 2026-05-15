@@ -12,4 +12,9 @@ public interface PetBirthdayCouponGrantMapper {
                      @Param("userId") Long userId,
                      @Param("couponId") Long couponId,
                      @Param("birthdayYear") Integer birthdayYear);
+
+    int deleteByCouponId(@Param("couponId") Long couponId);
+
+    int deleteByPetIdAndBirthdayYear(@Param("petId") Long petId,
+                                     @Param("birthdayYear") Integer birthdayYear);
 }

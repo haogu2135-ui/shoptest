@@ -3,7 +3,9 @@ const urlAttributes = new Set(['href', 'src', 'xlink:href', 'action', 'formactio
 
 const isAllowedUrl = (value: string) => {
   const trimmed = value.trim();
-  if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('/')) return true;
+  if (!trimmed || trimmed.startsWith('#')) return true;
+  if (trimmed.startsWith('//') || trimmed.startsWith('\\\\')) return false;
+  if (trimmed.startsWith('/')) return true;
   try {
     const url = new URL(trimmed, window.location.origin);
     return ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol);

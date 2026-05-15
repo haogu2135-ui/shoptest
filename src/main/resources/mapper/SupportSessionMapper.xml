@@ -11,6 +11,7 @@
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="username" column="username"/>
+        <result property="assignedAdminName" column="assigned_admin_name"/>
         <result property="unreadByUser" column="unread_by_user"/>
         <result property="unreadByAdmin" column="unread_by_admin"/>
     </resultMap>
@@ -18,27 +19,38 @@
     <sql id="supportSessionColumns">
         ss.id, ss.user_id, ss.assigned_admin_id, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at,
         u.username,
-        COALESCE(SUM(CASE WHEN sm.is_read_by_user = FALSE THEN 1 ELSE 0 END), 0) AS unread_by_user,
-        COALESCE(SUM(CASE WHEN sm.is_read_by_admin = FALSE THEN 1 ELSE 0 END), 0) AS unread_by_admin
+        admin.username AS assigned_admin_name,
+        COALESCE(unread.unread_by_user, 0) AS unread_by_user,
+        COALESCE(unread.unread_by_admin, 0) AS unread_by_admin
+    </sql>
+
+    <sql id="supportUnreadJoin">
+        LEFT JOIN (
+            SELECT session_id,
+                   SUM(CASE WHEN is_read_by_user = FALSE THEN 1 ELSE 0 END) AS unread_by_user,
+                   SUM(CASE WHEN is_read_by_admin = FALSE THEN 1 ELSE 0 END) AS unread_by_admin
+            FROM support_messages
+            GROUP BY session_id
+        ) unread ON ss.id = unread.session_id
     </sql>
 
     <select id="findById" resultMap="supportSessionMap">
         SELECT <include refid="supportSessionColumns"/>
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
-        LEFT JOIN support_messages sm ON ss.id = sm.session_id
+        LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
+        <include refid="supportUnreadJoin"/>
         WHERE ss.id = #{id}
-        GROUP BY ss.id, ss.user_id, ss.assigned_admin_id, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at, u.username
     </select>
 
     <select id="findOpenByUserId" resultMap="supportSessionMap">
         SELECT <include refid="supportSessionColumns"/>
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
-        LEFT JOIN support_messages sm ON ss.id = sm.session_id
+        LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
+        <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
           AND ss.status = 'OPEN'
-        GROUP BY ss.id, ss.user_id, ss.assigned_admin_id, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at, u.username
         ORDER BY ss.updated_at DESC
         LIMIT 1
     </select>
@@ -47,9 +59,9 @@
         SELECT <include refid="supportSessionColumns"/>
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
-        LEFT JOIN support_messages sm ON ss.id = sm.session_id
+        LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
+        <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
-        GROUP BY ss.id, ss.user_id, ss.assigned_admin_id, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at, u.username
         ORDER BY ss.updated_at DESC
         LIMIT 1
     </select>
@@ -58,9 +70,9 @@
         SELECT <include refid="supportSessionColumns"/>
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
-        LEFT JOIN support_messages sm ON ss.id = sm.session_id
+        LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
+        <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
-        GROUP BY ss.id, ss.user_id, ss.assigned_admin_id, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at, u.username
         ORDER BY ss.updated_at DESC
     </select>
 
@@ -68,13 +80,13 @@
         SELECT <include refid="supportSessionColumns"/>
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
-        LEFT JOIN support_messages sm ON ss.id = sm.session_id
+        LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
+        <include refid="supportUnreadJoin"/>
         <where>
             <if test="status != null and status != ''">
                 ss.status = #{status}
             </if>
         </where>
-        GROUP BY ss.id, ss.user_id, ss.assigned_admin_id, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at, u.username
         ORDER BY ss.updated_at DESC
     </select>
 
@@ -96,6 +108,15 @@
         SET assigned_admin_id = #{adminId},
             updated_at = CURRENT_TIMESTAMP
         WHERE id = #{id}
+    </update>
+
+    <update id="reopen">
+        UPDATE support_sessions
+        SET status = 'OPEN',
+            assigned_admin_id = #{adminId},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+          AND status = 'CLOSED'
     </update>
 
     <update id="close">

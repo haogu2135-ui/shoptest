@@ -12,6 +12,7 @@ import com.example.shop.service.ProductService;
 import com.example.shop.util.CsvUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -163,10 +164,17 @@ public class ProductServiceImpl implements ProductService {
     }
 
     public List<Product> findRelatedProducts(Long productId, Long categoryId) {
-        return enrichReviewStats(productRepository.findByCategoryId(categoryId).stream()
-                .filter(p -> !p.getId().equals(productId))
+        if (productId == null || categoryId == null) {
+            return List.of();
+        }
+        String cacheKey = "related:" + productId + ":" + categoryId;
+        return getCachedProducts(cacheKey, () -> enrichReviewStats(productRepository
+                .findActiveByCategoryId(categoryId, PageRequest.of(0, 14))
+                .stream()
+                .filter(product -> !productId.equals(product.getId()))
+                .filter(this::hasSellableStock)
                 .limit(8)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList())));
     }
 
     @Override
@@ -467,13 +475,17 @@ public class ProductServiceImpl implements ProductService {
         if (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
             return false;
         }
-        if (product.getStock() != null && product.getStock() <= 0) {
+        if (!hasSellableStock(product)) {
             return false;
         }
         Map<String, String> specifications = product.getSpecificationsMap();
         boolean hasOptions = specifications != null && specifications.keySet().stream().anyMatch(key -> key.startsWith("options."));
         boolean hasVariants = product.getVariantsList() != null && !product.getVariantsList().isEmpty();
         return !hasOptions && !hasVariants;
+    }
+
+    private boolean hasSellableStock(Product product) {
+        return product != null && (product.getStock() == null || product.getStock() > 0);
     }
 
     private int scoreAddOnCandidate(Product product, BigDecimal targetAmount, BigDecimal floor, BigDecimal ceiling) {
@@ -713,7 +725,28 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<Product> enrichReviewStats(List<Product> products) {
-        products.forEach(this::enrichReviewStats);
+        if (products == null || products.isEmpty()) {
+            return products;
+        }
+        List<Long> productIds = products.stream()
+                .map(Product::getId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        if (productIds.isEmpty()) {
+            products.forEach(product -> applyReviewStats(product, null));
+            return products;
+        }
+        Map<Long, ProductReviewStats> statsByProductId = reviewRepository.summarizeApprovedReviewsByProductIds(productIds).stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).longValue(),
+                        row -> new ProductReviewStats(
+                                ((Number) row[1]).longValue(),
+                                row[2] == null ? 0L : ((Number) row[2]).longValue(),
+                                row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()
+                        )
+                ));
+        products.forEach(product -> applyReviewStats(product, statsByProductId.get(product.getId())));
         return products;
     }
 
@@ -721,12 +754,36 @@ public class ProductServiceImpl implements ProductService {
         if (product == null || product.getId() == null) {
             return product;
         }
-        long reviewCount = reviewRepository.countByProduct_IdAndStatus(product.getId(), "APPROVED");
-        long positiveCount = reviewRepository.countByProduct_IdAndStatusAndRatingGreaterThanEqual(product.getId(), "APPROVED", 4);
+        ProductReviewStats stats = new ProductReviewStats(
+                reviewRepository.countByProduct_IdAndStatus(product.getId(), "APPROVED"),
+                reviewRepository.countByProduct_IdAndStatusAndRatingGreaterThanEqual(product.getId(), "APPROVED", 4),
+                reviewRepository.findAverageRatingByProductId(product.getId())
+        );
+        applyReviewStats(product, stats);
+        return product;
+    }
+
+    private void applyReviewStats(Product product, ProductReviewStats stats) {
+        if (product == null) {
+            return;
+        }
+        long reviewCount = stats == null ? 0L : stats.reviewCount;
+        long positiveCount = stats == null ? 0L : stats.positiveCount;
         double positiveRate = reviewCount == 0 ? 0 : positiveCount * 100.0 / reviewCount;
         product.setReviewCount(reviewCount);
         product.setPositiveRate(Math.round(positiveRate * 10.0) / 10.0);
-        product.setAverageRating(reviewRepository.findAverageRatingByProductId(product.getId()));
-        return product;
+        product.setAverageRating(stats == null ? 0.0 : Math.round(stats.averageRating * 10.0) / 10.0);
     }
-} 
+
+    private static class ProductReviewStats {
+        private final long reviewCount;
+        private final long positiveCount;
+        private final double averageRating;
+
+        private ProductReviewStats(long reviewCount, long positiveCount, double averageRating) {
+            this.reviewCount = reviewCount;
+            this.positiveCount = positiveCount;
+            this.averageRating = averageRating;
+        }
+    }
+}

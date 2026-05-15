@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Carousel, Col, Empty, Modal, Popconfirm, Row, Spin, Typography, message } from 'antd';
+import { Button, Col, Empty, Modal, Popconfirm, Row, Spin, Typography, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import {
   AppstoreOutlined,
@@ -33,6 +33,7 @@ import { clearProductViewHistory, loadProductViewPreferences } from '../utils/pr
 import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
 import SocialProofToast from '../components/SocialProofToast';
+import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
 
 const { Text } = Typography;
@@ -139,6 +140,7 @@ const Home: React.FC = () => {
   const [petGalleryQuota, setPetGalleryQuota] = useState<PetGalleryQuota | null>(null);
   const [uploadingPetPhoto, setUploadingPetPhoto] = useState(false);
   const [localPetGalleryLikes, setLocalPetGalleryLikes] = useState<string[]>(() => readLocalPetGalleryLikes());
+  const [wishlistedProductIds, setWishlistedProductIds] = useState<Set<number>>(new Set());
   const [petPreviewItem, setPetPreviewItem] = useState<PetGalleryItem | null>(null);
   const petUploadInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -231,6 +233,16 @@ const Home: React.FC = () => {
       onClick: () => navigate('/history'),
     },
   ];
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUserId) {
+      setWishlistedProductIds(new Set());
+      return;
+    }
+    wishlistApi.getByUser(currentUserId)
+      .then((response) => setWishlistedProductIds(new Set(response.data.map((item) => item.productId))))
+      .catch(() => setWishlistedProductIds(new Set()));
+  }, [currentUserId, isAuthenticated]);
 
   const refreshPetGallery = useCallback(async () => {
     try {
@@ -361,6 +373,15 @@ const Home: React.FC = () => {
 
     try {
       const response = await wishlistApi.toggle(currentUserId, product.id);
+      setWishlistedProductIds((current) => {
+        const next = new Set(current);
+        if (response.data.wishlisted) {
+          next.add(product.id);
+        } else {
+          next.delete(product.id);
+        }
+        return next;
+      });
       window.dispatchEvent(new Event('shop:wishlist-updated'));
       message.success(response.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
     } catch (error) {
@@ -696,6 +717,7 @@ const Home: React.FC = () => {
   }) => {
     const images = normalizeProductImages(product, index);
     const isSoldOut = product.stock !== undefined && product.stock <= 0;
+    const isWishlisted = wishlistedProductIds.has(product.id);
     const stockBadgeText = product.stock !== undefined && product.stock > 0
       ? product.stock <= 5
         ? t('pages.cart.lowStockLeft', { count: product.stock })
@@ -716,34 +738,18 @@ const Home: React.FC = () => {
       }}
     >
       <span className="shopee-product__imageWrap">
-        {images.length > 2 ? (
-          <Carousel autoplay dots={false} autoplaySpeed={2600 + (index % 4) * 350} className="shopee-product__carousel">
-            {images.slice(0, -1).map((image, imageIndex) => (
-              <img
-                key={`${image}-${imageIndex}`}
-                src={image}
-                alt={`${product.name} ${imageIndex + 1}`}
-                className="shopee-product__image"
-                loading="lazy"
-                decoding="async"
-                onError={(event) => {
-                  event.currentTarget.src = images[images.length - 1];
-                }}
-              />
-            ))}
-          </Carousel>
-        ) : (
-          <img
-            src={images[0]}
-            alt={product.name}
-            className="shopee-product__image"
-            loading="lazy"
-            decoding="async"
-            onError={(event) => {
+        <img
+          src={images[0]}
+          alt={product.name}
+          className="shopee-product__image"
+          loading="lazy"
+          decoding="async"
+          onError={(event) => {
+            if (event.currentTarget.src !== images[images.length - 1]) {
               event.currentTarget.src = images[images.length - 1];
-            }}
-          />
-        )}
+            }
+          }}
+        />
         {getDiscountPercent(product) > 0 ? (
           <span className="shopee-product__discount">-{getDiscountPercent(product)}%</span>
         ) : null}
@@ -770,10 +776,11 @@ const Home: React.FC = () => {
           </button>
           <button
             type="button"
-            aria-label={t('pages.productDetail.favorite')}
+            aria-label={isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
+            className={isWishlisted ? 'shopee-product__quickAction--favorite shopee-product__quickAction--favoriteActive' : 'shopee-product__quickAction--favorite'}
             onClick={(event) => handleQuickWishlist(event, product)}
           >
-            <HeartOutlined />
+            {isWishlisted ? <HeartFilled /> : <HeartOutlined />}
           </button>
         </span>
       </span>
@@ -796,9 +803,24 @@ const Home: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="shopee-loading">
-        <Spin size="large" />
-      </div>
+      <main className="shopee-home">
+        <section className="shopee-hero">
+          <div className="shopee-container shopee-hero__grid">
+            <HeroSkeleton />
+            <div className="shopee-hero__aside">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="shimmer" style={{ height: 132, borderRadius: 8 }} />
+              ))}
+            </div>
+          </div>
+        </section>
+        <div className="shopee-container">
+          <StatsStripSkeleton />
+          <div style={{ marginTop: 16 }}>
+            <ProductCardSkeleton count={8} />
+          </div>
+        </div>
+      </main>
     );
   }
 

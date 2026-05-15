@@ -37,7 +37,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
     private final Map<Long, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
     private final Set<WebSocketSession> adminSessions = ConcurrentHashMap.newKeySet();
 
-    @Value("${support.websocket.max-message-chars:1200}")
+    @Value("${support.websocket.max-message-chars:1000}")
     private int maxMessageChars;
 
     @Override

@@ -2,11 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Cascader, Divider, Empty, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SafetyCertificateOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { addressApi, apiBaseUrl, appConfigApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
+import { addressApi, apiBaseUrl, cartApi, couponApi, orderApi, paymentApi } from '../api';
 import type { CartItem, CouponQuote, Order, Payment, PaymentChannel, Product, UserAddress, UserCoupon } from '../types';
 import { regionData } from '../regionData';
 import { useLanguage } from '../i18n';
-import { createPaymentMethodDetails, createPaymentMethodOptions, fallbackPaymentChannels, paymentMethodLabel, paymentSimulationEnabledFallback } from '../utils/paymentMethods';
+import { createPaymentMethodDetails, createPaymentMethodOptions, fallbackPaymentChannels, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { addGuestCartItem, getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
@@ -14,6 +14,7 @@ import { navigateToSafeUrl } from '../utils/safeUrl';
 import { conversionConfig, getDeliveryPromise, getLowStockCount } from '../utils/conversionConfig';
 import { getGiftThreshold, getNearestCartBenefitTarget } from '../utils/cartBenefits';
 import { clearCheckoutCartItemIds, readCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
+import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import AddOnAssistant from '../components/AddOnAssistant';
 import './Checkout.css';
 
@@ -52,6 +53,12 @@ const findBestCoupon = (coupons: UserCoupon[], cartTotal: number) =>
     .filter((item) => item.discount > 0)
     .sort((left, right) => right.discount - left.discount || Number(left.coupon.thresholdAmount || 0) - Number(right.coupon.thresholdAmount || 0))[0] || null;
 
+const normalizeCheckoutText = (value: unknown, maxLength: number) =>
+  String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+
+const isLikelyPhone = (value: unknown) =>
+  /^[+\d][\d\s().-]{5,38}$/.test(String(value || '').trim());
+
 const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: string) => {
   const backendRecommended = channels.find((channel) => channel.recommended)?.code;
   if (backendRecommended) {
@@ -89,11 +96,9 @@ const Checkout: React.FC = () => {
   const [guestPaymentEmail, setGuestPaymentEmail] = useState<string | undefined>();
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>('STRIPE');
   const [paymentCreateError, setPaymentCreateError] = useState<string | null>(null);
-  const [paymentSimulationEnabled, setPaymentSimulationEnabled] = useState(paymentSimulationEnabledFallback);
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>(fallbackPaymentChannels);
   const [giftCelebrationOpen, setGiftCelebrationOpen] = useState(false);
   const [giftCelebrated, setGiftCelebrated] = useState(false);
-  const [simulatingCallback, setSimulatingCallback] = useState(false);
   const [couponQuote, setCouponQuote] = useState<CouponQuote | null>(null);
   const [selectedUserCouponId, setSelectedUserCouponId] = useState<number | null>(null);
   const [couponManuallyChanged, setCouponManuallyChanged] = useState(false);
@@ -113,9 +118,8 @@ const Checkout: React.FC = () => {
   );
 
   useEffect(() => {
-    Promise.all([
-      appConfigApi.get().then((res) => setPaymentSimulationEnabled(Boolean(res.data.paymentSimulationEnabled))),
-      paymentApi.getChannels().then((res) => {
+    paymentApi.getChannels()
+      .then((res) => {
         const channels = res.data.length > 0 ? res.data : fallbackPaymentChannels;
         setPaymentChannels(channels);
         const current = form.getFieldValue('paymentMethod');
@@ -125,16 +129,15 @@ const Checkout: React.FC = () => {
         if (nextMethod && nextMethod !== current) {
           form.setFieldsValue({ paymentMethod: nextMethod });
         }
-      }),
-    ]).catch(() => {
-      setPaymentSimulationEnabled(paymentSimulationEnabledFallback);
+      })
+      .catch(() => {
       setPaymentChannels(fallbackPaymentChannels);
       const current = form.getFieldValue('paymentMethod');
       const nextMethod = resolveCheckoutPaymentMethod(sessionStorage.getItem('checkoutPaymentMethod'), fallbackPaymentChannels, currency);
       if (nextMethod && nextMethod !== current) {
         form.setFieldsValue({ paymentMethod: nextMethod });
       }
-    });
+      });
   }, [currency, form]);
 
   const selectedCartItemIds = useMemo(() => {
@@ -485,6 +488,7 @@ const Checkout: React.FC = () => {
       text: selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault'),
     },
   ];
+  const checkoutSubmitDisabled = submitting || cartItems.length === 0 || cartItems.some((item) => !isPurchasable(item));
 
   useEffect(() => {
     if (!giftUnlocked || giftCelebrated) return;
@@ -511,11 +515,13 @@ const Checkout: React.FC = () => {
     if (selectedAddressId !== 'new') {
       const address = addresses.find((item) => item.id === selectedAddressId);
       if (!address) throw new Error(t('pages.checkout.addressRequired'));
-      return `${address.recipientName} / ${address.phone} / ${address.address}`;
+      return normalizeCheckoutText(`${address.recipientName} / ${address.phone} / ${address.address}`, 500);
     }
+    const recipientName = normalizeCheckoutText(values.recipientName, 80);
+    const phone = normalizeCheckoutText(values.phone, 40);
     const region = values.region ? values.region.join(' ') : '';
-    const detail = values.shippingAddress || '';
-    return `${values.recipientName} / ${values.phone} / ${region} ${detail}`.trim();
+    const detail = normalizeCheckoutText(values.shippingAddress, 260);
+    return normalizeCheckoutText(`${recipientName} / ${phone} / ${region} ${detail}`, 500);
   };
 
   const addSuggestedProduct = async (product: Product) => {
@@ -551,20 +557,21 @@ const Checkout: React.FC = () => {
     setSubmitting(true);
     try {
       const shippingAddress = buildAddress(values);
+      const normalizedPaymentMethod = normalizeCheckoutText(values.paymentMethod, 40);
       const orderRes = token && userId
         ? await orderApi.checkout({
             userId: Number(userId),
             cartItemIds: cartItems.map((item) => item.id),
             shippingAddress,
-            paymentMethod: values.paymentMethod,
+            paymentMethod: normalizedPaymentMethod,
             userCouponId: selectedUserCouponId,
           })
         : await orderApi.guestCheckout({
-            guestEmail: values.guestEmail,
-            guestName: values.recipientName,
-            guestPhone: values.phone,
+            guestEmail: normalizeCheckoutText(values.guestEmail, 120).toLowerCase(),
+            guestName: normalizeCheckoutText(values.recipientName, 80),
+            guestPhone: normalizeCheckoutText(values.phone, 40),
             shippingAddress,
-            paymentMethod: values.paymentMethod,
+            paymentMethod: normalizedPaymentMethod,
             items: cartItems.map((item) => ({
               productId: item.productId,
               quantity: item.quantity,
@@ -580,15 +587,15 @@ const Checkout: React.FC = () => {
       }
       window.dispatchEvent(new Event('shop:coupons-updated'));
       setCreatedOrder(orderRes.data);
-      setPendingPaymentMethod(values.paymentMethod);
-      setGuestPaymentEmail(token && userId ? undefined : values.guestEmail);
+      setPendingPaymentMethod(normalizedPaymentMethod);
+      setGuestPaymentEmail(token && userId ? undefined : normalizeCheckoutText(values.guestEmail, 120).toLowerCase());
       setPaymentCreateError(null);
       let paymentRes;
       try {
         paymentRes = await paymentApi.create(
           orderRes.data.id,
-          values.paymentMethod,
-          token && userId ? undefined : values.guestEmail,
+          normalizedPaymentMethod,
+          token && userId ? undefined : normalizeCheckoutText(values.guestEmail, 120).toLowerCase(),
         );
       } catch (paymentError: any) {
         setPayment(null);
@@ -607,21 +614,6 @@ const Checkout: React.FC = () => {
       message.error(error?.response?.data?.error || t('pages.checkout.orderCreateFailed'));
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const simulatePay = async () => {
-    if (!payment) return;
-    setPaying(true);
-    try {
-      const paidRes = await paymentApi.simulatePaid(payment.id, guestPaymentEmail);
-      setPayment(paidRes.data);
-      setCreatedOrder((order) => order ? { ...order, status: 'PENDING_SHIPMENT' } : order);
-      message.success(t('pages.checkout.paid'));
-    } catch (error: any) {
-      message.error(error?.response?.data?.error || t('pages.checkout.payFailed'));
-    } finally {
-      setPaying(false);
     }
   };
 
@@ -650,20 +642,22 @@ const Checkout: React.FC = () => {
     }
   };
 
-  const simulateCallback = async () => {
-    if (!payment) return;
-    setSimulatingCallback(true);
-    try {
-      const callbackRes = await paymentApi.simulateCallback(payment.id, guestPaymentEmail);
-      setPayment(callbackRes.data);
-      setCreatedOrder((order) => order ? { ...order, status: 'PENDING_SHIPMENT' } : order);
-      message.success(t('pages.checkout.paid'));
-    } catch (error: any) {
-      message.error(error?.response?.data?.error || t('pages.checkout.payFailed'));
-    } finally {
-      setSimulatingCallback(false);
-    }
-  };
+  useEffect(() => {
+    if (!createdOrder || !payment || payment.status !== 'PENDING') return undefined;
+    const timer = window.setInterval(async () => {
+      try {
+        const [orderRes, paymentRes] = await Promise.all([
+          orderApi.getById(createdOrder.id),
+          paymentApi.getLatestByOrder(createdOrder.id),
+        ]);
+        setCreatedOrder(orderRes.data);
+        setPayment(paymentRes.data);
+      } catch {
+        // Keep the submitted-order screen stable while the gateway is still redirecting or polling.
+      }
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [createdOrder, payment]);
 
   if (loading) {
     return <div className="checkout-page checkout-page--loading"><Spin size="large" /></div>;
@@ -692,6 +686,14 @@ const Checkout: React.FC = () => {
 
   if (createdOrder && payment) {
     const paid = payment.status === 'PAID';
+    const paymentRecovery = getPaymentRecoveryState(payment);
+    const paymentRecoveryTone = paid
+      ? 'success'
+      : paymentRecovery.isExpired
+        ? 'error'
+        : paymentRecovery.isExpiringSoon
+          ? 'warning'
+          : 'processing';
     return (
       <div className="checkout-page checkout-page--result">
         <Result
@@ -699,14 +701,9 @@ const Checkout: React.FC = () => {
           title={paid ? t('pages.checkout.paidTitle') : t('pages.checkout.pendingTitle')}
           subTitle={t('pages.checkout.resultSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
           extra={[
-            !paid && (payment.paymentUrl || paymentSimulationEnabled) && (
-              <Button type="primary" key="pay" loading={paying} onClick={payment.paymentUrl ? openPaymentUrl : simulatePay}>
-                {payment.paymentUrl ? t('pages.checkout.openPayment') : t('pages.checkout.simulatePay')}
-              </Button>
-            ),
-            !paid && paymentSimulationEnabled && (
-              <Button key="callback" loading={simulatingCallback} onClick={simulateCallback}>
-                {t('pages.checkout.simulateCallback')}
+            !paid && payment.paymentUrl && (
+              <Button type="primary" key="pay" loading={paying} onClick={openPaymentUrl}>
+                {t('pages.checkout.openPayment')}
               </Button>
             ),
             <Button key="profile" onClick={() => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
@@ -714,6 +711,43 @@ const Checkout: React.FC = () => {
             <Button key="home" onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
           ].filter(Boolean)}
         />
+        <Card className="checkout-page__paymentRecovery" title={t('pages.checkout.paymentRecoveryTitle')}>
+          <div className="checkout-page__paymentRecoveryGrid">
+            <div>
+              <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
+              <Tag color={paid ? 'green' : paymentRecovery.isExpired ? 'red' : paymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
+                {paid ? t('pages.checkout.paymentRecoveryPaid') : paymentRecovery.isExpired ? t('pages.checkout.paymentRecoveryExpired') : t('pages.checkout.paymentRecoveryPending')}
+              </Tag>
+            </div>
+            <div>
+              <Text strong>{t('pages.checkout.paymentRecoveryWindow')}</Text>
+              <Text type={paymentRecoveryTone === 'error' ? 'danger' : paymentRecoveryTone === 'warning' ? 'warning' : 'secondary'}>
+                {paymentRecovery.minutesLeft === null
+                  ? t('pages.checkout.paymentRecoveryWindowUnknown')
+                  : paymentRecovery.isExpired
+                    ? t('pages.checkout.paymentRecoveryWindowExpired')
+                    : t('pages.checkout.paymentRecoveryWindowMinutes', { count: paymentRecovery.minutesLeft })}
+              </Text>
+            </div>
+            <div>
+              <Text strong>{t('pages.checkout.paymentRecoveryNext')}</Text>
+              <Text type="secondary">
+                {paid
+                  ? t('pages.checkout.paymentRecoveryNextPaid')
+                  : payment.paymentUrl
+                    ? t('pages.checkout.paymentRecoveryNextOpen')
+                    : t('pages.checkout.paymentRecoveryNextRetry')}
+              </Text>
+            </div>
+          </div>
+          {!paid ? (
+            <Space wrap className="checkout-page__paymentRecoveryActions">
+              {payment.paymentUrl ? <Button type="primary" onClick={openPaymentUrl}>{t('pages.checkout.openPayment')}</Button> : null}
+              <Button loading={paying} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>
+              <Button onClick={() => window.dispatchEvent(new Event('shop:open-support'))}>{t('pages.checkout.nextActionSupport')}</Button>
+            </Space>
+          ) : null}
+        </Card>
         <Card title={t('pages.checkout.paymentCard')}>
           <Space direction="vertical">
             <Text>{t('pages.checkout.channel')}: {paymentMethodLabel(payment.channel, t)}</Text>
@@ -721,7 +755,7 @@ const Checkout: React.FC = () => {
             {createdOrder.discountAmount && createdOrder.discountAmount > 0 ? <Text>{t('pages.checkout.coupon')}: -{formatMoney(createdOrder.discountAmount)} {createdOrder.couponName ? `(${createdOrder.couponName})` : ''}</Text> : null}
             <Text>{t('pages.checkout.shippingFee')}: {formatMoney(createdOrder.shippingFee)}</Text>
             <Text>{t('pages.checkout.paymentStatus')}: <Tag color={paid ? 'green' : 'orange'}>{t(`status.${payment.status}`)}</Tag></Text>
-            <Text className="checkout-page__paymentUrl">{t('pages.checkout.paymentLink')}: {payment.paymentUrl || '-'}</Text>
+            <Text className="checkout-page__paymentUrl">{t('pages.checkout.paymentLink')}: {formatPaymentUrlLabel(payment.paymentUrl)}</Text>
             {payment.expiresAt && <Text>{t('pages.checkout.paymentExpiresAt')}: {new Date(payment.expiresAt).toLocaleString()}</Text>}
             {payment.transactionId && <Text>{t('pages.checkout.transactionId')}: {payment.transactionId}</Text>}
           </Space>
@@ -1024,7 +1058,7 @@ const Checkout: React.FC = () => {
         {isGuestCheckout ? (
           <Card title={t('pages.checkout.contact')} style={{ marginBottom: 16 }}>
             <Form.Item name="guestEmail" label={t('pages.checkout.email')} rules={[{ required: true, message: t('pages.checkout.emailRequired') }, { type: 'email', message: t('pages.checkout.emailInvalid') }]}>
-              <Input placeholder="you@example.com" autoComplete="email" />
+              <Input placeholder="you@example.com" autoComplete="email" maxLength={120} />
             </Form.Item>
             <Text type="secondary">{t('pages.checkout.guestHint')}</Text>
           </Card>
@@ -1059,16 +1093,23 @@ const Checkout: React.FC = () => {
           {(selectedAddressId === 'new' || addresses.length === 0) && (
             <>
               <Form.Item name="recipientName" label={t('pages.checkout.recipient')} rules={[{ required: true, message: t('pages.checkout.recipientRequired') }]}>
-                <Input placeholder={t('pages.checkout.recipientRequired')} />
+                <Input placeholder={t('pages.checkout.recipientRequired')} maxLength={80} autoComplete="name" />
               </Form.Item>
-              <Form.Item name="phone" label={t('pages.profile.phone')} rules={[{ required: true, message: t('pages.checkout.phoneRequired') }]}>
-                <Input placeholder={t('pages.checkout.phoneRequired')} />
+              <Form.Item
+                name="phone"
+                label={t('pages.profile.phone')}
+                rules={[
+                  { required: true, message: t('pages.checkout.phoneRequired') },
+                  { validator: (_, value) => (!value || isLikelyPhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.checkout.phoneRequired')))) },
+                ]}
+              >
+                <Input placeholder={t('pages.checkout.phoneRequired')} maxLength={40} autoComplete="tel" />
               </Form.Item>
               <Form.Item name="region" label={t('pages.checkout.region')} rules={[{ required: true, message: t('pages.checkout.regionRequired') }]}>
                 <Cascader options={regionData} placeholder={t('pages.checkout.regionPlaceholder')} showSearch />
               </Form.Item>
               <Form.Item name="shippingAddress" label={t('pages.checkout.detailAddress')} rules={[{ required: true, message: t('pages.checkout.detailRequired') }]}>
-                <Input.TextArea rows={2} placeholder={t('pages.checkout.detailPlaceholder')} />
+                <Input.TextArea rows={2} placeholder={t('pages.checkout.detailPlaceholder')} maxLength={260} showCount />
               </Form.Item>
             </>
           )}
@@ -1129,6 +1170,16 @@ const Checkout: React.FC = () => {
         )}
 
         <Card id="checkout-payment-card" title={t('pages.payment.title')}>
+          <div className="checkout-page__submitReview">
+            <div>
+              <Text type="secondary">{t('pages.checkout.itemSummary', { count: cartItems.reduce((sum, item) => sum + item.quantity, 0) })}</Text>
+              <Text strong>{formatMoney(payableAmount)}</Text>
+            </div>
+            <div>
+              <Text type="secondary">{t('pages.checkout.paymentMethod')}</Text>
+              <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
+            </div>
+          </div>
           <div className="checkout-page__paymentConfidence">
             <SafetyCertificateOutlined />
             <span>
@@ -1144,7 +1195,7 @@ const Checkout: React.FC = () => {
             <Select options={paymentOptions} />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" loading={submitting} block size="large">
+            <Button type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large">
               {t('pages.checkout.submitWithAmount', { amount: formatMoney(payableAmount) })}
             </Button>
           </Form.Item>

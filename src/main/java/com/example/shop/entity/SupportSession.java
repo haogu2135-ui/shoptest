@@ -19,6 +19,7 @@ public class SupportSession implements Serializable {
     private LocalDateTime updatedAt;
 
     private String username;
+    private String assignedAdminName;
     private Integer unreadByUser;
     private Integer unreadByAdmin;
 }

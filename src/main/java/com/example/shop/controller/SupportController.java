@@ -4,6 +4,7 @@ import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.SupportService;
+import com.example.shop.service.PetBirthdayCouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,6 +18,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SupportController {
     private final SupportService supportService;
+    private final PetBirthdayCouponService petBirthdayCouponService;
 
     @GetMapping("/support/session")
     public SupportSession getMySession() {
@@ -110,9 +112,41 @@ public class SupportController {
         return supportService.closeSession(sessionId);
     }
 
+    @PutMapping("/admin/support/sessions/{sessionId}/assign")
+    public ResponseEntity<?> assignSupportSession(@PathVariable Long sessionId) {
+        try {
+            return ResponseEntity.ok(supportService.assignSession(sessionId, currentUserId()));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PutMapping("/admin/support/sessions/{sessionId}/reopen")
+    public ResponseEntity<?> reopenSupportSession(@PathVariable Long sessionId) {
+        try {
+            return ResponseEntity.ok(supportService.reopenSession(sessionId, currentUserId()));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @GetMapping("/admin/support/unread-count")
     public Map<String, Integer> getSupportUnreadCount() {
         return Map.of("count", supportService.countUnreadByAdmin());
+    }
+
+    @PostMapping("/admin/support/sessions/{sessionId}/birthday-coupons/reissue")
+    public ResponseEntity<?> reissueBirthdayCoupon(@PathVariable Long sessionId) {
+        SupportSession session = supportService.getSession(sessionId);
+        if (session == null) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            int granted = petBirthdayCouponService.reissueBirthdayCoupons(session.getUserId(), java.time.LocalDate.now());
+            return ResponseEntity.ok(Map.of("granted", granted));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     private boolean canAccessSession(Long sessionId) {

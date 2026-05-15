@@ -10,6 +10,9 @@ import java.util.List;
 public interface PetProfileMapper {
     List<PetProfile> findByUserId(Long userId);
     List<PetProfile> findBirthdayPets(@Param("month") int month, @Param("day") int day);
+    List<PetProfile> findBirthdayPetsByUserId(@Param("userId") Long userId,
+                                               @Param("month") int month,
+                                               @Param("day") int day);
     PetProfile findById(Long id);
     int insert(PetProfile petProfile);
     int update(PetProfile petProfile);

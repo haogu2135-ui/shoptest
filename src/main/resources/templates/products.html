@@ -3,131 +3,276 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>商品列表</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .navbar {
-            background-color: #333;
-            padding: 15px;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-        }
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-        .product-card {
-            background: white;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            padding: 15px;
-            text-align: center;
-        }
-        .product-card img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 5px;
-        }
-        .product-card h3 {
-            margin: 10px 0;
-        }
-        .price {
-            color: #e44d26;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-        .add-to-cart {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .add-to-cart:hover {
-            background-color: #45a049;
-        }
-        .cart-icon {
-            position: relative;
-        }
-        .cart-count {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background-color: #e44d26;
-            color: white;
-            border-radius: 50%;
-            padding: 2px 6px;
-            font-size: 12px;
-        }
-    </style>
+    <title>商品列表 - MyShop</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
-    <div class="navbar">
+    <nav class="navbar">
         <div class="logo">MyShop</div>
+        <div class="navbar-search">
+            <input type="text" id="searchInput" placeholder="搜索商品..." autocomplete="off">
+            <span class="search-icon">🔍</span>
+        </div>
         <div class="nav-links">
-            <a href="/cart" class="cart-icon">
-                购物车
-                <span class="cart-count" th:text="${cartItemCount}">0</span>
+            <a href="/cart" class="cart-link" id="cartLink">
+                🛒 购物车
+                <span class="cart-badge" id="cartBadge" th:text="${cartItemCount}">0</span>
             </a>
-            <a th:href="@{/logout}">退出登录</a>
+            <a th:href="@{/logout}">退出</a>
+        </div>
+    </nav>
+
+    <div class="category-bar" id="categoryBar">
+        <div class="category-tab active" data-cat="all">全部</div>
+        <div class="category-tab" data-cat="clothing">服装</div>
+        <div class="category-tab" data-cat="electronics">数码</div>
+        <div class="category-tab" data-cat="food">食品</div>
+        <div class="category-tab" data-cat="home">家居</div>
+        <div class="category-tab" data-cat="beauty">美妆</div>
+        <div class="category-tab" data-cat="sports">运动</div>
+    </div>
+
+    <div class="page-content">
+        <!-- 工具条：排序 + 价格筛选 + 视图切换 -->
+        <div class="toolbar">
+            <div class="sort-tabs" id="sortTabs">
+                <div class="sort-tab active" data-sort="default">综合</div>
+                <div class="sort-tab" data-sort="sales">销量</div>
+                <div class="sort-tab" data-sort="price-asc">价格 ↑</div>
+                <div class="sort-tab" data-sort="price-desc">价格 ↓</div>
+                <div class="sort-tab" data-sort="newest">最新</div>
+            </div>
+            <div class="price-filter">
+                <span>价格</span>
+                <input type="number" id="priceMin" placeholder="最低" min="0">
+                <span>—</span>
+                <input type="number" id="priceMax" placeholder="最高" min="0">
+                <button class="btn btn-ghost" id="applyPrice" style="height:30px;padding:0 0.8rem;font-size:0.8rem;">确定</button>
+            </div>
+            <div class="view-switch">
+                <button class="view-btn active" data-view="grid" title="网格">▦</button>
+                <button class="view-btn" data-view="list" title="列表">☰</button>
+            </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <span class="section-title" id="sectionTitle">全部商品</span>
+            <span style="font-size:0.82rem;color:var(--text-muted);" id="productCount"></span>
+        </div>
+
+        <div class="product-grid" id="productGrid">
+            <div class="product-card"
+                 th:each="product : ${products}"
+                 th:data-name="${product.name}"
+                 th:data-id="${product.id}"
+                 th:data-price="${product.price}"
+                 th:data-sold="${product.soldCount != null ? product.soldCount : 0}">
+                <div class="card-img-wrap">
+                    <img th:src="@{'/images/' + ${product.image}}" th:alt="${product.name}" loading="lazy">
+                    <button class="wishlist-btn" title="收藏">♡</button>
+                </div>
+                <div class="card-body">
+                    <div class="card-name" th:text="${product.name}"></div>
+                    <div class="card-meta">
+                        <div class="card-price">
+                            <span class="price-symbol">¥</span><span th:text="${#numbers.formatDecimal(product.price, 1, 2)}"></span>
+                        </div>
+                        <span class="sold-count">已售 <span th:text="${product.soldCount != null ? product.soldCount : 0}">0</span></span>
+                    </div>
+                    <button class="btn btn-primary btn-block add-to-cart"
+                            th:data-product-id="${product.id}">加入购物车</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="noResult" style="display:none;text-align:center;padding:3rem;color:var(--text-muted);">
+            <div style="font-size:2.5rem;margin-bottom:0.8rem;">🔍</div>
+            <div>没有找到相关商品</div>
         </div>
     </div>
 
-    <div class="product-grid">
-        <div class="product-card" th:each="product : ${products}">
-            <img th:src="@{'/images/' + ${product.image}}" th:alt="${product.name}">
-            <h3 th:text="${product.name}"></h3>
-            <p class="price" th:text="'¥' + ${#numbers.formatDecimal(product.price, 1, 2)}"></p>
-            <button class="add-to-cart" th:data-product-id="${product.id}">加入购物车</button>
-        </div>
-    </div>
+    <footer class="site-footer">
+        © 2025 MyShop &nbsp;·&nbsp; <a href="#">关于我们</a> &nbsp;·&nbsp; <a href="#">联系客服</a> &nbsp;·&nbsp; <a href="#">隐私政策</a>
+    </footer>
+
+    <button class="back-to-top" id="backToTop" title="回到顶部">↑</button>
+    <div class="toast-container" id="toastContainer"></div>
 
     <script>
-        document.querySelectorAll('.add-to-cart').forEach(button => {
-            button.addEventListener('click', function() {
-                const productId = this.dataset.productId;
-                fetch('/api/cart/add', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        productId: productId,
-                        quantity: 1
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('添加成功！');
-                        location.reload();
-                    } else {
-                        alert('添加失败：' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('添加失败，请稍后重试');
-                });
+        function showToast(msg, type) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type || 'info');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        const grid = document.getElementById('productGrid');
+        const allCards = Array.from(grid.querySelectorAll('.product-card'));
+        const countEl = document.getElementById('productCount');
+
+        let state = {
+            keyword: '',
+            sort: 'default',
+            priceMin: null,
+            priceMax: null,
+        };
+
+        function applyFilters() {
+            const cards = allCards.slice();
+
+            // 搜索 + 价格过滤
+            const filtered = cards.filter(c => {
+                const name = (c.dataset.name || '').toLowerCase();
+                const price = parseFloat(c.dataset.price) || 0;
+                if (state.keyword && !name.includes(state.keyword)) return false;
+                if (state.priceMin != null && price < state.priceMin) return false;
+                if (state.priceMax != null && price > state.priceMax) return false;
+                return true;
+            });
+
+            // 排序
+            const sorters = {
+                'default':    () => 0,
+                'sales':      (a,b) => parseInt(b.dataset.sold) - parseInt(a.dataset.sold),
+                'price-asc':  (a,b) => parseFloat(a.dataset.price) - parseFloat(b.dataset.price),
+                'price-desc': (a,b) => parseFloat(b.dataset.price) - parseFloat(a.dataset.price),
+                'newest':     (a,b) => parseInt(b.dataset.id) - parseInt(a.dataset.id),
+            };
+            filtered.sort(sorters[state.sort]);
+
+            // 重排 DOM
+            allCards.forEach(c => c.style.display = 'none');
+            filtered.forEach(c => {
+                c.style.display = '';
+                grid.appendChild(c);
+            });
+
+            document.getElementById('noResult').style.display = filtered.length === 0 ? 'block' : 'none';
+            countEl.textContent = state.keyword || state.priceMin != null || state.priceMax != null
+                ? `找到 ${filtered.length} 件商品`
+                : `共 ${allCards.length} 件商品`;
+        }
+
+        applyFilters();
+
+        // 搜索
+        document.getElementById('searchInput').addEventListener('input', function() {
+            state.keyword = this.value.trim().toLowerCase();
+            applyFilters();
+        });
+
+        // 排序 tab
+        document.querySelectorAll('.sort-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.sort-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                state.sort = this.dataset.sort;
+                applyFilters();
             });
         });
+
+        // 价格筛选
+        document.getElementById('applyPrice').addEventListener('click', () => {
+            const min = parseFloat(document.getElementById('priceMin').value);
+            const max = parseFloat(document.getElementById('priceMax').value);
+            state.priceMin = isNaN(min) ? null : min;
+            state.priceMax = isNaN(max) ? null : max;
+            applyFilters();
+        });
+
+        // 分类切换
+        document.querySelectorAll('.category-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('sectionTitle').textContent =
+                    this.dataset.cat === 'all' ? '全部商品' : this.textContent;
+            });
+        });
+
+        // 视图切换
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                grid.classList.toggle('list-view', this.dataset.view === 'list');
+            });
+        });
+
+        // 飞入购物车动画
+        function flyToCart(fromEl) {
+            const cartEl = document.getElementById('cartLink');
+            if (!cartEl) return;
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = cartEl.getBoundingClientRect();
+            const dot = document.createElement('div');
+            dot.className = 'fly-dot';
+            dot.style.left = (fromRect.left + fromRect.width / 2 - 7) + 'px';
+            dot.style.top  = (fromRect.top + fromRect.height / 2 - 7) + 'px';
+            document.body.appendChild(dot);
+            requestAnimationFrame(() => {
+                const dx = toRect.left + toRect.width / 2 - (fromRect.left + fromRect.width / 2);
+                const dy = toRect.top + toRect.height / 2 - (fromRect.top + fromRect.height / 2);
+                dot.style.transform = `translate(${dx}px, ${dy}px) scale(0.3)`;
+                dot.style.opacity = '0';
+            });
+            setTimeout(() => dot.remove(), 700);
+
+            // 角标 bump
+            const badge = document.getElementById('cartBadge');
+            if (badge) {
+                badge.classList.remove('bump');
+                void badge.offsetWidth;
+                badge.classList.add('bump');
+            }
+        }
+
+        // 加入购物车
+        document.querySelectorAll('.add-to-cart').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const productId = this.dataset.productId;
+                const orig = this.textContent;
+                const card = this.closest('.product-card');
+                this.disabled = true;
+                this.textContent = '添加中…';
+                fetch('/api/cart/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productId, quantity: 1 })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('已加入购物车 🛒', 'success');
+                        flyToCart(card);
+                        const badge = document.getElementById('cartBadge');
+                        if (badge) badge.textContent = parseInt(badge.textContent || 0) + 1;
+                    } else {
+                        showToast('添加失败：' + data.message, 'error');
+                    }
+                })
+                .catch(() => showToast('网络错误，请稍后重试', 'error'))
+                .finally(() => { this.disabled = false; this.textContent = orig; });
+            });
+        });
+
+        // 收藏
+        document.querySelectorAll('.wishlist-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.classList.toggle('active');
+                this.textContent = this.classList.contains('active') ? '♥' : '♡';
+                showToast(this.classList.contains('active') ? '已加入收藏 ❤️' : '已取消收藏', 'info');
+            });
+        });
+
+        // 回到顶部
+        const topBtn = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => topBtn.classList.toggle('visible', window.scrollY > 300));
+        topBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     </script>
 </body>
-</html> 
+</html>

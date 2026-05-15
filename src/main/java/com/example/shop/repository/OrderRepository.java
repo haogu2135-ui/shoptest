@@ -31,5 +31,6 @@ public interface OrderRepository {
     int updateReturnTracking(@Param("id") Long id, @Param("status") String status, @Param("returnTrackingNumber") String returnTrackingNumber);
     int markReturnRefundingIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus, @Param("status") String status);
     int completeReturnAndRefundIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus);
+    int markRefunded(@Param("id") Long id, @Param("currentStatus") String currentStatus, @Param("reason") String reason);
     int deleteById(Long id);
 } 

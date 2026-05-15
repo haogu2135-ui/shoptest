@@ -1,7 +1,7 @@
 .social-proof-toast {
   position: fixed;
-  left: 18px;
-  bottom: 18px;
+  right: 92px;
+  bottom: 24px;
   z-index: 990;
   width: min(320px, calc(100vw - 32px));
   display: grid;

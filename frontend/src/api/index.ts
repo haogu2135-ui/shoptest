@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
-import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole } from '../types';
+import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig } from '../types';
 
 const resolveApiBaseUrl = () => {
     const configured = process.env.REACT_APP_API_BASE_URL;
@@ -288,6 +288,11 @@ export const cartApi = {
     updateQuantity: (cartItemId: number, quantity: number) =>
         api.put('/cart/update', null, { params: { cartItemId, quantity } }),
     removeItem: (cartItemId: number) => api.delete(`/cart/remove/${cartItemId}`),
+    removeItems: (cartItemIds: number[]) => {
+        const params = new URLSearchParams();
+        Array.from(new Set(cartItemIds.map(Number).filter(Boolean))).forEach((id) => params.append('cartItemIds', String(id)));
+        return api.delete('/cart/remove', { params });
+    },
     clear: (userId: number) => api.delete('/cart/clear', { params: { userId } })
 };
 
@@ -457,6 +462,8 @@ export const adminApi = {
     }),
     updateOrderStatus: (id: number, status: string, trackingNumber?: string, trackingCarrierCode?: string) =>
         api.put(`/admin/orders/${id}/status`, { status, trackingNumber, trackingCarrierCode }),
+    refundOrder: (id: number, payload: { reason?: string; restock?: boolean }) =>
+        api.post<{ message: string; payment: Payment }>(`/admin/orders/${id}/refund`, payload),
     batchShipOrders: (orderIds: number[], trackingPrefix: string, trackingCarrierCode?: string) =>
         api.post('/admin/orders/batch-ship', { orderIds, trackingPrefix, trackingCarrierCode }),
     updateProductStatus: (id: number, status: string) =>
@@ -480,6 +487,9 @@ export const adminApi = {
     deleteCoupon: (id: number) => api.delete(`/admin/coupons/${id}`),
     grantCoupon: (id: number, userIds: number[]) => api.post<{ granted: number }>(`/admin/coupons/${id}/grant`, { userIds }),
     runPetBirthdayCoupons: () => api.post<{ granted: number }>('/admin/pet-birthday-coupons/run'),
+    getPetBirthdayCouponConfig: () => api.get<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config'),
+    updatePetBirthdayCouponConfig: (config: Partial<PetBirthdayCouponConfig>) =>
+        api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config),
     broadcastNotification: (payload: { type: string; title: string; message: string; contentFormat: 'TEXT' | 'HTML' }) =>
         api.post<{ sent: number }>('/admin/notifications/broadcast', payload),
 };
@@ -637,5 +647,9 @@ export const adminSupportApi = {
         api.post<{ message: SupportMessage; session: SupportSession }>(`/admin/support/sessions/${sessionId}/messages`, { content }),
     markRead: (sessionId: number) => api.put(`/admin/support/sessions/${sessionId}/read`),
     closeSession: (sessionId: number) => api.put<SupportSession>(`/admin/support/sessions/${sessionId}/close`),
+    assignSession: (sessionId: number) => api.put<SupportSession>(`/admin/support/sessions/${sessionId}/assign`),
+    reopenSession: (sessionId: number) => api.put<SupportSession>(`/admin/support/sessions/${sessionId}/reopen`),
+    reissueBirthdayCoupons: (sessionId: number) =>
+        api.post<{ granted: number }>(`/admin/support/sessions/${sessionId}/birthday-coupons/reissue`),
     getUnreadCount: () => api.get<{ count: number }>('/admin/support/unread-count'),
 };

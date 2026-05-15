@@ -12,4 +12,15 @@
         INSERT IGNORE INTO pet_birthday_coupon_grants (pet_id, user_id, coupon_id, birthday_year, granted_at)
         VALUES (#{petId}, #{userId}, #{couponId}, #{birthdayYear}, NOW())
     </insert>
+
+    <delete id="deleteByCouponId">
+        DELETE FROM pet_birthday_coupon_grants
+        WHERE coupon_id = #{couponId}
+    </delete>
+
+    <delete id="deleteByPetIdAndBirthdayYear">
+        DELETE FROM pet_birthday_coupon_grants
+        WHERE pet_id = #{petId}
+          AND birthday_year = #{birthdayYear}
+    </delete>
 </mapper>

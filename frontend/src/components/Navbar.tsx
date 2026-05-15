@@ -36,8 +36,11 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const isPathActive = (paths: string[]) => paths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
   const isProductsActive = location.pathname === '/products' || location.pathname.startsWith('/products/');
-  const isDealsActive = isProductsActive && new URLSearchParams(location.search).get('discount') === 'true';
-  const isSmartDevicesActive = isProductsActive && new URLSearchParams(location.search).get('collection') === 'smart-devices';
+  const navSearchParams = new URLSearchParams(location.search);
+  const activeProductKeyword = (navSearchParams.get('keyword') || '').toLowerCase();
+  const isDealsActive = isProductsActive && navSearchParams.get('discount') === 'true';
+  const isSmartDevicesActive = isProductsActive && navSearchParams.get('collection') === 'smart-devices';
+  const isProductKeywordActive = (...terms: string[]) => isProductsActive && terms.some((term) => activeProductKeyword.includes(term));
   const token = localStorage.getItem('token');
   const userId = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
@@ -394,7 +397,7 @@ const Navbar: React.FC = () => {
                 ],
               }}
             >
-              <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}>{t('nav.petNav.dog')}</button>
+              <button type="button" className={isProductKeywordActive('dog', 'puppy') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}>{t('nav.petNav.dog')}</button>
             </Dropdown>
             <Dropdown
               menu={{
@@ -405,11 +408,11 @@ const Navbar: React.FC = () => {
                 ],
               }}
             >
-              <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}>{t('nav.petNav.cat')}</button>
+              <button type="button" className={isProductKeywordActive('cat', 'kitten') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}>{t('nav.petNav.cat')}</button>
             </Dropdown>
-            <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('small pets')}>{t('nav.petNav.smallPets')}</button>
-            <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('walking')}>{t('nav.petNav.walking')}</button>
-            <button type="button" className={isProductsActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('sleeping')}>{t('nav.petNav.sleeping')}</button>
+            <button type="button" className={isProductKeywordActive('small pets') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('small pets')}>{t('nav.petNav.smallPets')}</button>
+            <button type="button" className={isProductKeywordActive('walking') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('walking')}>{t('nav.petNav.walking')}</button>
+            <button type="button" className={isProductKeywordActive('sleeping') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('sleeping')}>{t('nav.petNav.sleeping')}</button>
             <button type="button" className={isSmartDevicesActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/products?collection=smart-devices')}>{t('nav.petNav.smartDevices')}</button>
             <button type="button" className={isPathActive(['/pet-finder']) ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/pet-finder')}>{t('nav.petFinder')}</button>
             <button type="button" className={isPathActive(['/pet-gallery']) ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/pet-gallery')}>{t('nav.petGallery')}</button>

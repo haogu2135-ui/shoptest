@@ -3,106 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>注册</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f4f4f4;
-        }
-        .register-container {
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .error-message {
-            color: #dc3545;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        .login-link {
-            text-align: center;
-            margin-top: 15px;
-        }
-        .login-link a {
-            color: #007bff;
-            text-decoration: none;
-        }
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <title>注册 - MyShop</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
-<body>
-    <div class="register-container">
-        <h2 style="text-align: center;">注册</h2>
-        <div th:if="${error}" class="error-message" th:text="${error}"></div>
+<body class="auth-page">
+    <div class="auth-card">
+        <div class="brand">
+            <div class="brand-name">MyShop</div>
+            <div class="brand-sub">创建您的账号，开始购物</div>
+        </div>
+
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
         <form th:action="@{/api/users/register}" method="post" id="registerForm">
             <div class="form-group">
                 <label for="username">用户名</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username" placeholder="3-20位字符" required minlength="3" maxlength="20" autofocus>
             </div>
-            <div class="form-group">
-                <label for="password">密码</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <div class="form-group">
-                <label for="confirmPassword">确认密码</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required>
-            </div>
+
             <div class="form-group">
                 <label for="email">邮箱</label>
-                <input type="email" id="email" name="email" required>
+                <input type="email" id="email" name="email" placeholder="请输入邮箱" required>
             </div>
-            <button type="submit">注册</button>
+
+            <div class="form-group">
+                <label for="password">密码</label>
+                <div class="input-with-action">
+                    <input type="password" id="password" name="password" placeholder="至少 8 位，包含字母与数字" required minlength="8">
+                    <button type="button" class="input-action-btn" data-target="password" title="显示/隐藏">👁</button>
+                </div>
+                <div class="pwd-strength" id="pwdStrength">
+                    <div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div>
+                </div>
+                <div class="pwd-strength-label" id="pwdLabel"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">确认密码</label>
+                <div class="input-with-action">
+                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="请再次输入密码" required>
+                    <button type="button" class="input-action-btn" data-target="confirmPassword" title="显示/隐藏">👁</button>
+                </div>
+                <div id="matchHint" style="font-size:0.78rem;margin-top:4px;height:1em;"></div>
+            </div>
+
+            <label class="checkbox-row" style="margin-bottom:1rem;">
+                <input type="checkbox" id="agreeTerms" required>
+                <span>我已阅读并同意 <a href="#">用户协议</a> 与 <a href="#">隐私政策</a></span>
+            </label>
+
+            <button type="submit" class="btn btn-primary btn-block">注册</button>
         </form>
-        <div class="login-link">
+
+        <div class="auth-footer">
             已有账号？<a th:href="@{/login}">立即登录</a>
         </div>
     </div>
+
     <script>
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            if (password !== confirmPassword) {
-                alert('两次输入的密码不一致');
-                return;
+        // 密码显隐
+        document.querySelectorAll('.input-action-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const input = document.getElementById(btn.dataset.target);
+                const isPwd = input.type === 'password';
+                input.type = isPwd ? 'text' : 'password';
+                btn.textContent = isPwd ? '🙈' : '👁';
+            });
+        });
+
+        // 密码强度评估
+        const pwd = document.getElementById('password');
+        const strengthBox = document.getElementById('pwdStrength');
+        const labelEl = document.getElementById('pwdLabel');
+        const labels = ['', '弱', '中', '强', '非常强'];
+        const classes = ['', 'weak', 'medium', 'strong', 'very-strong'];
+
+        function evaluate(p) {
+            let s = 0;
+            if (p.length >= 8) s++;
+            if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s++;
+            if (/\d/.test(p)) s++;
+            if (/[^A-Za-z0-9]/.test(p)) s++;
+            return Math.min(s, 4);
+        }
+
+        pwd.addEventListener('input', () => {
+            const score = pwd.value ? evaluate(pwd.value) : 0;
+            strengthBox.className = 'pwd-strength ' + classes[score];
+            labelEl.className = 'pwd-strength-label ' + classes[score];
+            labelEl.textContent = labels[score] || '';
+        });
+
+        // 密码匹配实时提示
+        const confirmPwd = document.getElementById('confirmPassword');
+        const matchHint = document.getElementById('matchHint');
+        function checkMatch() {
+            if (!confirmPwd.value) { matchHint.textContent = ''; return; }
+            if (confirmPwd.value === pwd.value) {
+                matchHint.textContent = '✓ 密码一致';
+                matchHint.style.color = 'var(--success)';
+            } else {
+                matchHint.textContent = '✗ 两次密码不一致';
+                matchHint.style.color = 'var(--danger)';
             }
-            
-            this.submit();
+        }
+        confirmPwd.addEventListener('input', checkMatch);
+        pwd.addEventListener('input', checkMatch);
+
+        // 提交校验
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            if (pwd.value !== confirmPwd.value) {
+                e.preventDefault();
+                matchHint.textContent = '✗ 两次密码不一致';
+                matchHint.style.color = 'var(--danger)';
+                confirmPwd.focus();
+            }
         });
     </script>
 </body>
-</html> 
+</html>

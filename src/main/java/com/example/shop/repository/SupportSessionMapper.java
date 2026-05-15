@@ -16,5 +16,6 @@ public interface SupportSessionMapper {
     int insert(SupportSession session);
     int updateLastMessage(@Param("id") Long id, @Param("lastMessage") String lastMessage);
     int assignAdmin(@Param("id") Long id, @Param("adminId") Long adminId);
+    int reopen(@Param("id") Long id, @Param("adminId") Long adminId);
     int close(@Param("id") Long id);
 }

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api';
-import type { Coupon, User } from '../types';
+import type { Coupon, PetBirthdayCouponConfig, User } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import './CouponManagement.css';
@@ -16,6 +16,9 @@ const CouponManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [birthdayCouponLoading, setBirthdayCouponLoading] = useState(false);
+  const [birthdayConfigLoading, setBirthdayConfigLoading] = useState(false);
+  const [birthdayConfigSaving, setBirthdayConfigSaving] = useState(false);
+  const [birthdayConfig, setBirthdayConfig] = useState<PetBirthdayCouponConfig | null>(null);
   const [couponSubmitting, setCouponSubmitting] = useState(false);
   const [grantSubmitting, setGrantSubmitting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -24,7 +27,9 @@ const CouponManagement: React.FC = () => {
   const [grantCoupon, setGrantCoupon] = useState<Coupon | null>(null);
   const [form] = Form.useForm();
   const [grantForm] = Form.useForm();
+  const [birthdayConfigForm] = Form.useForm();
   const couponType = Form.useWatch('couponType', form);
+  const birthdayCouponType = Form.useWatch('couponType', birthdayConfigForm);
   const { formatMoney } = useMarket();
   const couponOpsStats = useMemo(() => {
     const now = Date.now();
@@ -68,10 +73,24 @@ const CouponManagement: React.FC = () => {
     }
   };
 
+  const loadBirthdayConfig = useCallback(async () => {
+    setBirthdayConfigLoading(true);
+    try {
+      const res = await adminApi.getPetBirthdayCouponConfig();
+      setBirthdayConfig(res.data);
+      birthdayConfigForm.setFieldsValue(res.data);
+    } catch {
+      message.error(t('pages.adminCoupons.birthdayConfigLoadFailed'));
+    } finally {
+      setBirthdayConfigLoading(false);
+    }
+  }, [birthdayConfigForm, t]);
+
   useEffect(() => {
     loadCoupons();
     loadUsers();
-  }, [loadCoupons]);
+    loadBirthdayConfig();
+  }, [loadBirthdayConfig, loadCoupons]);
 
   const openCreate = () => {
     setEditingCoupon(null);
@@ -131,8 +150,8 @@ const CouponManagement: React.FC = () => {
       await adminApi.deleteCoupon(id);
       message.success(t('pages.adminCoupons.deleted'));
       await loadCoupons();
-    } catch {
-      message.error(t('pages.adminCoupons.deleteFailed'));
+    } catch (error: any) {
+      message.error(error?.response?.data?.error || t('pages.adminCoupons.deleteFailed'));
     }
   };
 
@@ -169,6 +188,34 @@ const CouponManagement: React.FC = () => {
       message.error(error?.response?.data?.error || t('pages.adminCoupons.petBirthdayFailed'));
     } finally {
       setBirthdayCouponLoading(false);
+    }
+  };
+
+  const saveBirthdayConfig = async () => {
+    try {
+      const values = await birthdayConfigForm.validateFields();
+      setBirthdayConfigSaving(true);
+      const payload = {
+        ...values,
+        enabled: Boolean(values.enabled),
+        totalQuantityPerCoupon: values.totalQuantityPerCoupon || null,
+        maxDiscountAmount: values.maxDiscountAmount || null,
+      };
+      if (payload.couponType === 'FULL_REDUCTION') {
+        payload.discountPercent = null;
+        payload.maxDiscountAmount = null;
+      } else {
+        payload.reductionAmount = null;
+      }
+      const res = await adminApi.updatePetBirthdayCouponConfig(payload);
+      setBirthdayConfig(res.data);
+      birthdayConfigForm.setFieldsValue(res.data);
+      message.success(t('pages.adminCoupons.birthdayConfigSaved'));
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(error?.response?.data?.error || t('pages.adminCoupons.birthdayConfigSaveFailed'));
+    } finally {
+      setBirthdayConfigSaving(false);
     }
   };
 
@@ -214,9 +261,6 @@ const CouponManagement: React.FC = () => {
       <div className="coupon-management-page__header">
         <Title level={3} style={{ margin: 0 }}><GiftOutlined /> {t('pages.adminCoupons.title')}</Title>
         <Space wrap className="coupon-management-page__actions">
-          <Button icon={<GiftOutlined />} loading={birthdayCouponLoading} onClick={runPetBirthdayCoupons}>
-            {t('pages.adminCoupons.runPetBirthdayCoupons')}
-          </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</Button>
         </Space>
       </div>
@@ -251,6 +295,116 @@ const CouponManagement: React.FC = () => {
         </div>
       </section>
 
+      <Card
+        className="coupon-management-birthday"
+        title={
+          <Space>
+            <GiftOutlined />
+            <span>{t('pages.adminCoupons.birthdayConfigTitle')}</span>
+            <Tag color={birthdayConfig?.enabled ? 'green' : 'default'}>
+              {birthdayConfig?.enabled ? t('pages.adminCoupons.birthdayEnabled') : t('pages.adminCoupons.birthdayDisabled')}
+            </Tag>
+          </Space>
+        }
+        extra={
+          <Space wrap>
+            <Button
+              icon={<GiftOutlined />}
+              loading={birthdayCouponLoading}
+              disabled={birthdayConfigLoading}
+              onClick={runPetBirthdayCoupons}
+            >
+              {t('pages.adminCoupons.runPetBirthdayCoupons')}
+            </Button>
+            <Button
+              type="primary"
+              loading={birthdayConfigSaving}
+              disabled={birthdayConfigLoading}
+              onClick={saveBirthdayConfig}
+            >
+              {t('common.save')}
+            </Button>
+          </Space>
+        }
+        loading={birthdayConfigLoading}
+      >
+        <Form form={birthdayConfigForm} layout="vertical" className="coupon-management-birthday__form">
+          <div className="coupon-management-page__formRow">
+            <Form.Item name="enabled" label={t('pages.adminCoupons.birthdayEnabledLabel')} valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            <Form.Item name="namePrefix" label={t('pages.adminCoupons.birthdayNamePrefix')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayNamePrefixRequired') }]}>
+              <Input />
+            </Form.Item>
+          </div>
+          <div className="coupon-management-page__formRow">
+            <Form.Item name="couponType" label={t('pages.adminCoupons.type')} rules={[{ required: true }]}>
+              <Select
+                onChange={() => birthdayConfigForm.validateFields(['reductionAmount', 'discountPercent', 'maxDiscountAmount']).catch(() => undefined)}
+                options={[
+                  { value: 'FULL_REDUCTION', label: t('pages.coupons.fullReduction') },
+                  { value: 'DISCOUNT', label: t('pages.coupons.discount') },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item name="thresholdAmount" label={t('pages.adminCoupons.minimumSpend')} rules={[{ required: true, message: t('pages.adminCoupons.minimumSpendRequired') }]}>
+              <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} />
+            </Form.Item>
+          </div>
+          {birthdayCouponType === 'DISCOUNT' ? (
+            <>
+              <div className="coupon-management-page__formRow">
+                <Form.Item name="discountPercent" label={t('pages.adminCoupons.discountPayablePercent')} rules={[{ required: true, message: t('pages.adminCoupons.discountPercentRequired') }]}>
+                  <InputNumber min={1} max={99} suffix="%" placeholder={t('pages.adminCoupons.discountPlaceholder')} />
+                </Form.Item>
+                <Form.Item name="maxDiscountAmount" label={t('pages.adminCoupons.maxDiscountLabel')}>
+                  <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} />
+                </Form.Item>
+              </div>
+              <div className="coupon-management-page__formRow">
+                <Form.Item name="validDays" label={t('pages.adminCoupons.birthdayValidDays')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayValidDaysRequired') }]}>
+                  <InputNumber min={1} max={365} />
+                </Form.Item>
+                <Form.Item name="maxBenefitsPerUser" label={t('pages.adminCoupons.birthdayMaxPerUser')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayMaxPerUserRequired') }]}>
+                  <InputNumber min={0} />
+                </Form.Item>
+              </div>
+              <div className="coupon-management-page__formRow">
+                <Form.Item name="totalQuantityPerCoupon" label={t('pages.adminCoupons.birthdayQuantityPerCoupon')}>
+                  <InputNumber min={1} />
+                </Form.Item>
+                <div />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="coupon-management-page__formRow">
+                <Form.Item name="reductionAmount" label={t('pages.adminCoupons.reductionAmount')} rules={[{ required: true, message: t('pages.adminCoupons.reductionAmountRequired') }]}>
+                  <InputNumber min={0.01} precision={2} prefix={t('common.currencySymbol')} />
+                </Form.Item>
+                <Form.Item name="validDays" label={t('pages.adminCoupons.birthdayValidDays')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayValidDaysRequired') }]}>
+                  <InputNumber min={1} max={365} />
+                </Form.Item>
+              </div>
+              <div className="coupon-management-page__formRow">
+                <Form.Item name="maxBenefitsPerUser" label={t('pages.adminCoupons.birthdayMaxPerUser')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayMaxPerUserRequired') }]}>
+                  <InputNumber min={0} />
+                </Form.Item>
+                <Form.Item name="totalQuantityPerCoupon" label={t('pages.adminCoupons.birthdayQuantityPerCoupon')}>
+                  <InputNumber min={1} />
+                </Form.Item>
+              </div>
+            </>
+          )}
+          <Form.Item name="description" label={t('pages.adminCoupons.description')}>
+            <Input.TextArea rows={2} />
+          </Form.Item>
+          <Typography.Text type="secondary">
+            {t('pages.adminCoupons.birthdayConfigHint')}
+          </Typography.Text>
+        </Form>
+      </Card>
+
       <Table columns={columns} dataSource={coupons} rowKey="id" loading={loading} bordered scroll={{ x: 980 }} pagination={{ pageSize: 10 }} />
 
       <Modal title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')} open={modalVisible} onOk={submitCoupon} onCancel={() => setModalVisible(false)} confirmLoading={couponSubmitting} width={720}>
@@ -283,13 +437,22 @@ const CouponManagement: React.FC = () => {
           </div>
           <div className="coupon-management-page__formRow">
             {couponType === 'DISCOUNT' ? (
-              <Form.Item name="maxDiscountAmount" label={t('pages.adminCoupons.maxDiscountLabel')}>
-                <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} />
-              </Form.Item>
-            ) : null}
-            <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')}>
-              <InputNumber min={1} />
-            </Form.Item>
+              <>
+                <Form.Item name="maxDiscountAmount" label={t('pages.adminCoupons.maxDiscountLabel')}>
+                  <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} />
+                </Form.Item>
+                <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')}>
+                  <InputNumber min={1} />
+                </Form.Item>
+              </>
+            ) : (
+              <>
+                <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')}>
+                  <InputNumber min={1} />
+                </Form.Item>
+                <div />
+              </>
+            )}
           </div>
           <Form.Item name="scope" label={t('pages.adminCoupons.scope')}>
             <Select options={[{ value: 'PUBLIC', label: t('pages.adminCoupons.publicClaim') }, { value: 'ASSIGNED', label: t('pages.adminCoupons.adminAssigned') }]} />

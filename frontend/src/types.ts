@@ -227,6 +227,23 @@ export interface Coupon {
     description?: string;
 }
 
+export interface PetBirthdayCouponConfig {
+    id: number;
+    enabled: boolean;
+    namePrefix: string;
+    couponType: 'FULL_REDUCTION' | 'DISCOUNT';
+    thresholdAmount?: number;
+    reductionAmount?: number;
+    discountPercent?: number;
+    maxDiscountAmount?: number;
+    validDays: number;
+    maxBenefitsPerUser: number;
+    totalQuantityPerCoupon?: number;
+    description?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 export interface UserCoupon {
     id: number;
     userId: number;
@@ -375,9 +392,14 @@ export interface Payment {
     status: string;
     paymentUrl?: string;
     transactionId?: string;
+    providerReference?: string;
+    refundReference?: string;
     expiresAt?: string;
     paidAt?: string;
+    refundedAt?: string;
+    callbackAt?: string;
     createdAt: string;
+    updatedAt?: string;
 }
 
 export interface PaymentChannel {
@@ -420,6 +442,7 @@ export interface SupportSession {
     id: number;
     userId: number;
     assignedAdminId?: number;
+    assignedAdminName?: string;
     status: string;
     lastMessage?: string;
     lastMessageAt?: string;

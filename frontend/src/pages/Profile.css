@@ -1,11 +1,4 @@
-.profile-page,
-.profile-page .ant-card,
-.profile-page .ant-btn,
-.profile-page .ant-input,
-.profile-page .ant-select,
-.profile-page .ant-typography {
-  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
-}
+/* font-family inherited from body — no need to redeclare */
 
 .profile-page {
   max-width: 1080px;
@@ -21,11 +14,11 @@
   margin-bottom: 18px;
   padding: 24px;
   border: 1px solid #dce9df;
-  border-radius: 28px;
+  border-radius: 24px;
   background:
     radial-gradient(circle at top right, rgba(247, 201, 72, 0.18), transparent 24%),
     linear-gradient(135deg, #123f2d 0%, #1f5b41 52%, #ecdcc9 180%);
-  box-shadow: 0 24px 48px rgba(18, 71, 52, 0.14);
+  box-shadow: 0 20px 44px rgba(18, 71, 52, 0.14);
 }
 
 .profile-overview__copy {
@@ -95,9 +88,16 @@
   gap: 8px;
   padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 20px;
+  border-radius: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06));
   backdrop-filter: blur(10px);
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.profile-overview__stat:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.1));
+  border-color: rgba(247, 201, 72, 0.36);
+  transform: translateY(-2px);
 }
 
 .profile-overview__stat strong {
@@ -129,9 +129,9 @@
   margin-bottom: 16px;
   padding: 8px 12px;
   border: 1px solid #e6ece3;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 24px rgba(18, 71, 52, 0.05);
+  border-radius: var(--radius-tile);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
 }
 
 .profile-tabs > .ant-tabs-nav::before {
@@ -145,7 +145,7 @@
 }
 
 .profile-tabs .ant-tabs-ink-bar {
-  background: linear-gradient(90deg, #ff7a18, #ff4d00);
+  background: #124734;
   height: 3px !important;
   border-radius: 999px;
 }
@@ -153,24 +153,27 @@
 .profile-section-card,
 .profile-section-card.ant-card {
   border-color: #e6ece3;
-  border-radius: 24px;
-  box-shadow: 0 16px 32px rgba(18, 71, 52, 0.06);
+  border-radius: 20px;
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.06);
 }
 
 .profile-block-button.ant-btn {
   min-height: 48px;
   border-style: solid;
   border-color: #dce9df;
-  border-radius: 16px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbf8 100%);
   color: #173f2b;
   font-weight: 800;
+  transition: border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .profile-block-button.ant-btn:hover,
 .profile-block-button.ant-btn:focus {
-  border-color: #ffb48a;
-  color: #ff4d00;
+  border-color: #124734;
+  color: #124734;
+  box-shadow: 0 6px 16px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
 }
 
 .profile-action-center {
@@ -227,19 +230,19 @@
   align-items: center;
   padding: 10px;
   border: 1px solid #e7eadf;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
   color: #173f2b;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .profile-action-center__card:hover,
 .profile-action-center__card:focus-visible {
   outline: none;
-  border-color: #ff4d00;
-  box-shadow: 0 8px 18px rgba(255, 77, 0, 0.12);
+  border-color: #124734;
+  box-shadow: 0 6px 16px rgba(18, 71, 52, 0.1);
   transform: translateY(-1px);
 }
 
@@ -379,7 +382,7 @@
 .profile-after-sale-panel__metrics button {
   min-height: 72px;
   border: 1px solid #e7eadf;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
   color: #173f2b;
   cursor: pointer;
@@ -388,14 +391,14 @@
   gap: 3px;
   padding: 8px;
   text-align: center;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .profile-after-sale-panel__metrics button:hover,
 .profile-after-sale-panel__metrics button:focus-visible {
   outline: none;
-  border-color: #ff4d00;
-  box-shadow: 0 8px 18px rgba(255, 77, 0, 0.1);
+  border-color: #124734;
+  box-shadow: 0 6px 16px rgba(18, 71, 52, 0.1);
   transform: translateY(-1px);
 }
 
@@ -954,11 +957,40 @@
   }
 }
 
+.profile-payment-recovery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: #f4fbf6;
+}
+
+.profile-payment-recovery > div {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  min-width: 0;
+}
+
+.profile-payment-recovery .ant-typography {
+  display: block;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.profile-payment-recovery .ant-tag {
+  width: fit-content;
+  margin-inline-end: 0;
+}
+
 @media (max-width: 520px) {
   .profile-overview__stats,
   .profile-action-center__cards,
   .profile-address-readiness__stats,
-  .profile-after-sale-panel__metrics {
+  .profile-after-sale-panel__metrics,
+  .profile-payment-recovery {
     grid-template-columns: 1fr;
   }
 

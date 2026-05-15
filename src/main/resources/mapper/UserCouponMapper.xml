@@ -90,4 +90,21 @@
             used_at = NULL
         WHERE id = #{id} AND status = 'USED'
     </update>
+
+    <select id="countUsedByCouponId" resultType="int">
+        SELECT COUNT(*) FROM user_coupons
+        WHERE coupon_id = #{couponId} AND status = 'USED'
+    </select>
+
+    <delete id="deleteUnusedByCouponId">
+        DELETE FROM user_coupons
+        WHERE coupon_id = #{couponId} AND status &lt;&gt; 'USED'
+    </delete>
+
+    <delete id="deleteUnusedByCouponIdAndUserId">
+        DELETE FROM user_coupons
+        WHERE coupon_id = #{couponId}
+          AND user_id = #{userId}
+          AND status &lt;&gt; 'USED'
+    </delete>
 </mapper>

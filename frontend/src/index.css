@@ -7,8 +7,8 @@
 :root {
   --brand-forest: #124734;
   --brand-forest-deep: #173f2b;
-  --brand-sand: #f7f4ee;
-  --brand-cream: #fffaf0;
+  --brand-sand: #f8f6f1;
+  --brand-cream: #fffdf8;
   --brand-mint: #dff5e7;
   --brand-sky: #e8f4ff;
   --brand-coral-soft: #fff0ea;
@@ -18,15 +18,50 @@
   --text-muted: #6c6a62;
   --surface-card: rgba(255, 255, 255, 0.98);
   --radius-card: 8px;
-  --radius-tile: 16px;
+  --radius-tile: 8px;
   --radius-pill: 999px;
-  --shadow-1: 0 4px 14px rgba(18, 71, 52, 0.05);
-  --shadow-2: 0 10px 26px rgba(18, 71, 52, 0.08);
-  --shadow-3: 0 18px 40px rgba(18, 71, 52, 0.14);
-  --shadow-soft: 0 10px 26px rgba(18, 71, 52, 0.08);
-  --shadow-lift: 0 16px 36px rgba(18, 71, 52, 0.13);
+  --shadow-1: 0 3px 10px rgba(18, 71, 52, 0.04);
+  --shadow-2: 0 8px 22px rgba(18, 71, 52, 0.07);
+  --shadow-3: 0 14px 34px rgba(18, 71, 52, 0.11);
+  --shadow-soft: 0 8px 22px rgba(18, 71, 52, 0.07);
+  --shadow-lift: 0 14px 30px rgba(18, 71, 52, 0.11);
   --transition-fast: 0.16s cubic-bezier(0.22, 1, 0.36, 1);
   --transition-smooth: 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-spring: 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Price counter animation ── */
+@keyframes price-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes badge-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25%       { transform: rotate(-8deg); }
+  75%       { transform: rotate(8deg); }
+}
+
+@keyframes badge-pop {
+  0%   { transform: scale(0) translateY(4px); opacity: 0; }
+  60%  { transform: scale(1.15) translateY(-2px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-enter {
+  from { opacity: 0; transform: translateX(60px) scale(0.95); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes toast-exit {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to   { opacity: 0; transform: translateX(60px) scale(0.95); }
 }
 
 html,
@@ -43,10 +78,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   color: var(--text-main);
-  background:
-    radial-gradient(circle at 8% -8%, rgba(247, 201, 72, 0.2), transparent 22%),
-    radial-gradient(circle at 92% 0%, rgba(18, 71, 52, 0.14), transparent 24%),
-    var(--brand-sand);
+  background: linear-gradient(180deg, #fbfaf7 0%, var(--brand-sand) 36%, #f4f8f5 100%);
+}
+
+/* Ant Design components inherit body font — no need to redeclare per-page */
+.ant-btn,
+.ant-input,
+.ant-select,
+.ant-typography,
+.ant-card,
+.ant-card-body {
+  font-family: inherit;
 }
 
 h1,
@@ -56,7 +98,7 @@ h4,
 h5,
 h6 {
   font-family: 'Avenir Next Demi Bold', 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
 }
 
 img,
@@ -143,11 +185,20 @@ code {
 }
 
 .ant-btn {
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease,
+              background 0.16s ease,
+              border-color 0.16s ease,
+              color 0.16s ease;
 }
 
 .ant-btn:hover {
-  transform: translateY(-1px);
+  transform: none;
+}
+
+.ant-btn:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 0.1s;
 }
 
 .ant-btn:focus-visible,
@@ -158,6 +209,25 @@ a:focus-visible,
 button:focus-visible {
   outline: 3px solid rgba(247, 201, 72, 0.45);
   outline-offset: 2px;
+}
+
+/* ── Price counter animation ── */
+.price-pop {
+  animation: price-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Badge pop animation ── */
+.badge-pop {
+  animation: badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Toast animations (enhanced SocialProofToast) ── */
+.toast-enter {
+  animation: toast-enter 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.toast-exit {
+  animation: toast-exit 0.28s ease-in both;
 }
 
 @media (prefers-reduced-motion: reduce) {

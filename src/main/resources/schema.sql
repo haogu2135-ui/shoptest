@@ -328,8 +328,33 @@ CREATE TABLE IF NOT EXISTS pet_birthday_coupon_grants (
     UNIQUE KEY uk_pet_birthday_year (pet_id, birthday_year),
     FOREIGN KEY (pet_id) REFERENCES pet_profiles(id),
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (coupon_id) REFERENCES coupons(id)
+    FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pet_birthday_coupon_configs (
+    id BIGINT PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    name_prefix VARCHAR(100) NOT NULL DEFAULT 'Pet Birthday Gift',
+    coupon_type VARCHAR(30) NOT NULL DEFAULT 'FULL_REDUCTION',
+    threshold_amount DECIMAL(10,2) DEFAULT 30.00,
+    reduction_amount DECIMAL(10,2) DEFAULT 8.00,
+    discount_percent INT,
+    max_discount_amount DECIMAL(10,2),
+    valid_days INT NOT NULL DEFAULT 14,
+    max_benefits_per_user INT NOT NULL DEFAULT 3,
+    total_quantity_per_coupon INT,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO pet_birthday_coupon_configs (
+    id, enabled, name_prefix, coupon_type, threshold_amount, reduction_amount,
+    valid_days, max_benefits_per_user, description
+) VALUES (
+    1, TRUE, 'Pet Birthday Gift', 'FULL_REDUCTION', 30.00, 8.00,
+    14, 3, 'Exclusive birthday coupon for pet profiles. Auto-granted once per pet birthday each year.'
+);
 
 CREATE TABLE IF NOT EXISTS product_questions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,

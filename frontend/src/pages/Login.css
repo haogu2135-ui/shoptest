@@ -24,7 +24,7 @@
   justify-content: center;
   gap: 14px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius-tile);
   padding: 46px;
   background:
     linear-gradient(90deg, rgba(18, 71, 52, 0.94), rgba(18, 71, 52, 0.56)),
@@ -32,6 +32,7 @@
   background-position: center;
   background-size: cover;
   color: #fff;
+  box-shadow: var(--shadow-3);
 }
 
 .shopee-login-panel .ant-typography {
@@ -47,12 +48,13 @@
 
 .shopee-login-panel__eyebrow {
   width: fit-content;
-  padding: 4px 10px;
+  padding: 4px 12px;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .shopee-login-panel__subtitle {
@@ -83,9 +85,16 @@
   gap: 4px;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
+  border-radius: 12px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
   backdrop-filter: blur(8px);
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.shopee-login-panel__spotlightCard:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  border-color: rgba(247, 201, 72, 0.4);
+  transform: translateY(-2px);
 }
 
 .shopee-login-panel__spotlightCard strong {
@@ -108,12 +117,18 @@
   gap: 8px;
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
+  border-radius: 12px;
   background: rgba(10, 33, 24, 0.38);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.45;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.shopee-login-panel__feature:hover {
+  background: rgba(10, 33, 24, 0.52);
+  border-color: rgba(255, 255, 255, 0.24);
 }
 
 .shopee-login-panel__feature .anticon {
@@ -130,6 +145,8 @@
 
 .shopee-login-panel__actions .ant-btn {
   min-width: 146px;
+  min-height: 44px;
+  border-radius: 10px;
   font-weight: 700;
 }
 
@@ -139,14 +156,15 @@
   background: rgba(255, 255, 255, 0.08) !important;
 }
 
+/* ── Login card ── */
 .shopee-login-card {
   width: 100%;
   max-width: 420px;
   padding: 32px 28px 24px;
   border: 1px solid rgba(226, 234, 220, 0.9);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 26px 50px rgba(18, 71, 52, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 48px rgba(18, 71, 52, 0.12), 0 4px 12px rgba(18, 71, 52, 0.06);
   backdrop-filter: blur(10px);
 }
 
@@ -163,7 +181,7 @@
 .shopee-login-mark {
   color: #ee4d2d;
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
 }
 
@@ -193,9 +211,15 @@
   gap: 4px;
   padding: 12px;
   border: 1px solid #eee4d3;
-  border-radius: 16px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #fff9f2 100%);
   text-align: center;
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.shopee-login-card__stat:hover {
+  box-shadow: var(--shadow-1);
+  transform: translateY(-1px);
 }
 
 .shopee-login-card__stat strong {
@@ -218,7 +242,7 @@
   margin-bottom: 18px;
   padding: 12px;
   border: 1px solid #f0e1cf;
-  border-radius: 8px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #fff8ed 0%, #f7fbf6 100%);
 }
 
@@ -245,13 +269,37 @@
 .shopee-login-trust__item .anticon,
 .shopee-login-reset-guide__item .anticon {
   flex: 0 0 auto;
-  color: #2f855a;
+  color: #124734;
 }
 
+/* ── Form inputs ── */
 .shopee-login-form {
   width: 100%;
 }
 
+.shopee-login-card .ant-input,
+.shopee-login-card .ant-input-affix-wrapper,
+.shopee-login-card .ant-select-selector {
+  border-radius: 10px !important;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.shopee-login-card .ant-btn-primary {
+  min-height: 44px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 15px;
+  box-shadow: 0 8px 20px rgba(238, 77, 45, 0.22);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.shopee-login-card .ant-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(238, 77, 45, 0.3);
+}
+
+/* ── Quick links ── */
 .shopee-login-quickLinks {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -267,21 +315,22 @@
   justify-content: center;
   gap: 8px;
   border: 1px solid #eee4d3;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff9f2;
   color: #173f2b;
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
-  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), color var(--transition-fast);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
 }
 
 .shopee-login-quickLinks a:hover,
 .shopee-login-quickLinks button:hover {
   color: #ee4d2d;
   border-color: #f7c948;
-  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+  background: #fffbf0;
+  box-shadow: 0 6px 16px rgba(18, 71, 52, 0.08);
   transform: translateY(-1px);
   text-decoration: none;
 }
@@ -302,12 +351,14 @@
   border: 0;
   padding: 0;
   background: transparent;
-  color: #1677ff;
+  color: #124734;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .shopee-login-links a {
   color: #ee4d2d;
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -327,6 +378,7 @@
 
   .shopee-login-card {
     padding: 24px 18px 20px;
+    border-radius: 16px;
   }
 
   .shopee-login-card__stats,
@@ -353,6 +405,7 @@
   .shopee-login-panel {
     min-height: 340px;
     padding: 28px;
+    border-radius: 12px;
   }
 
   .shopee-login-panel h1.ant-typography {

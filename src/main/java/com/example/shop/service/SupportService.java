@@ -5,6 +5,7 @@ import com.example.shop.entity.SupportSession;
 import com.example.shop.repository.SupportMessageMapper;
 import com.example.shop.repository.SupportSessionMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,9 @@ import java.util.List;
 public class SupportService {
     private final SupportSessionMapper supportSessionMapper;
     private final SupportMessageMapper supportMessageMapper;
+
+    @Value("${support.message.max-chars:${support.websocket.max-message-chars:1000}}")
+    private int maxMessageChars;
 
     @Transactional
     public SupportSession getOrCreateOpenSession(Long userId) {
@@ -79,12 +83,16 @@ public class SupportService {
         if (session == null) {
             throw new IllegalArgumentException("Support session not found");
         }
+        if (session.getAssignedAdminId() == null) {
+            supportSessionMapper.assignAdmin(sessionId, adminId);
+        }
         return sendMessage(session.getId(), adminId, "ADMIN", content);
     }
 
     @Transactional
     public SupportMessage sendMessage(Long sessionId, Long senderId, String senderRole, String content) {
-        if (content == null || content.trim().isEmpty()) {
+        String normalizedContent = normalizeContent(content);
+        if (normalizedContent.isEmpty()) {
             throw new IllegalArgumentException("Message content is required");
         }
         SupportSession session = supportSessionMapper.findById(sessionId);
@@ -101,7 +109,7 @@ public class SupportService {
         message.setSessionId(sessionId);
         message.setSenderId(senderId);
         message.setSenderRole(senderRole);
-        message.setContent(content.trim());
+        message.setContent(normalizedContent);
         message.setIsReadByUser("USER".equals(senderRole));
         message.setIsReadByAdmin("ADMIN".equals(senderRole));
         message.setCreatedAt(LocalDateTime.now());
@@ -113,9 +121,47 @@ public class SupportService {
                 .orElse(message);
     }
 
+    private String normalizeContent(String content) {
+        String normalized = content == null ? "" : content.trim();
+        int maxChars = maxMessageChars > 0 ? maxMessageChars : 1000;
+        if (normalized.length() > maxChars) {
+            throw new IllegalArgumentException("Message is too long");
+        }
+        return normalized;
+    }
+
     @Transactional
     public SupportSession closeSession(Long sessionId) {
-        supportSessionMapper.close(sessionId);
+        SupportSession session = supportSessionMapper.findById(sessionId);
+        if (session == null) {
+            throw new IllegalArgumentException("Support session not found");
+        }
+        if (!"CLOSED".equals(session.getStatus())) {
+            supportSessionMapper.close(sessionId);
+        }
+        return supportSessionMapper.findById(sessionId);
+    }
+
+    @Transactional
+    public SupportSession assignSession(Long sessionId, Long adminId) {
+        SupportSession session = supportSessionMapper.findById(sessionId);
+        if (session == null) {
+            throw new IllegalArgumentException("Support session not found");
+        }
+        supportSessionMapper.assignAdmin(sessionId, adminId);
+        return supportSessionMapper.findById(sessionId);
+    }
+
+    @Transactional
+    public SupportSession reopenSession(Long sessionId, Long adminId) {
+        SupportSession session = supportSessionMapper.findById(sessionId);
+        if (session == null) {
+            throw new IllegalArgumentException("Support session not found");
+        }
+        if ("OPEN".equals(session.getStatus())) {
+            return assignSession(sessionId, adminId);
+        }
+        supportSessionMapper.reopen(sessionId, adminId);
         return supportSessionMapper.findById(sessionId);
     }
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
-import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { adminSupportApi, apiBaseUrl, orderApi, supportWebSocketUrl } from '../api';
 import type { Order, OrderItem, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
@@ -27,6 +27,9 @@ const SupportManagement: React.FC = () => {
   const [filter, setFilter] = useState<string | undefined>('OPEN');
   const [content, setContent] = useState('');
   const [connected, setConnected] = useState(false);
+  const [reissueLoading, setReissueLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [detailItems, setDetailItems] = useState<OrderItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -240,6 +243,23 @@ const SupportManagement: React.FC = () => {
     }
   };
 
+  const reissueBirthdayCoupons = async () => {
+    if (!selectedSession) return;
+    setReissueLoading(true);
+    try {
+      const res = await adminSupportApi.reissueBirthdayCoupons(selectedSession.id);
+      if (res.data.granted > 0) {
+        message.success(t('pages.adminSupport.reissueBirthdayCouponSuccess', { count: res.data.granted }));
+      } else {
+        message.warning(t('pages.adminSupport.noBirthdayCouponReissued'));
+      }
+    } catch (err: any) {
+      message.error(err.response?.data?.error || t('pages.adminSupport.reissueBirthdayCouponFailed'));
+    } finally {
+      setReissueLoading(false);
+    }
+  };
+
   const openOrderDetail = async (orderId: number) => {
     setDetailLoading(true);
     try {
@@ -261,9 +281,45 @@ const SupportManagement: React.FC = () => {
   const closedSessionCount = sessions.filter((item) => item.status === 'CLOSED').length;
   const unreadSessionCount = sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0).length;
   const unreadMessageCount = sessions.reduce((sum, item) => sum + Number(item.unreadByAdmin || 0), 0);
+  const currentAdminId = Number(localStorage.getItem('userId') || 0);
+  const mySessionCount = sessions.filter((item) => currentAdminId && Number(item.assignedAdminId) === currentAdminId && item.status === 'OPEN').length;
   const filteredQueueSessions = filter === 'NEEDS_REPLY'
     ? sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0)
     : sessions;
+
+  const upsertSession = (session: SupportSession) => {
+    setSelectedSession((current) => current?.id === session.id ? session : current);
+    setSessions((items) => sortSupportSessions([session, ...items.filter((item) => item.id !== session.id)]));
+  };
+
+  const assignToMe = async () => {
+    if (!selectedSession) return;
+    setAssigning(true);
+    try {
+      const res = await adminSupportApi.assignSession(selectedSession.id);
+      upsertSession(res.data);
+      message.success(t('pages.adminSupport.assignedToMe'));
+    } catch (err: any) {
+      message.error(err.response?.data?.error || t('messages.operationFailed'));
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const reopenSession = async () => {
+    if (!selectedSession) return;
+    setReopening(true);
+    try {
+      const res = await adminSupportApi.reopenSession(selectedSession.id);
+      upsertSession(res.data);
+      setFilter('OPEN');
+      message.success(t('pages.adminSupport.sessionReopened'));
+    } catch (err: any) {
+      message.error(err.response?.data?.error || t('messages.operationFailed'));
+    } finally {
+      setReopening(false);
+    }
+  };
 
   return (
     <div className="support-management">
@@ -297,6 +353,7 @@ const SupportManagement: React.FC = () => {
         <div className="support-management__insightStats">
           <Tag color={unreadMessageCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.unreadMessages', { count: unreadMessageCount })}</Tag>
           <Tag color={openSessionCount > 0 ? 'green' : 'default'}>{t('pages.adminSupport.openSessions', { count: openSessionCount })}</Tag>
+          <Tag color={mySessionCount > 0 ? 'blue' : 'default'}>{t('pages.adminSupport.mySessions', { count: mySessionCount })}</Tag>
           <Tag color="default">{t('pages.adminSupport.closedSessions', { count: closedSessionCount })}</Tag>
         </div>
         <div className="support-management__insightActions">
@@ -338,6 +395,7 @@ const SupportManagement: React.FC = () => {
                       <div>
                         <Text type="secondary" ellipsis>{displayLastMessage(item.lastMessage)}</Text>
                         <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+                          {item.assignedAdminName ? `${t('pages.adminSupport.assignedTo')}: ${item.assignedAdminName} · ` : ''}
                           {item.updatedAt ? new Date(item.updatedAt).toLocaleString(dateLocale) : ''}
                         </div>
                       </div>
@@ -358,8 +416,25 @@ const SupportManagement: React.FC = () => {
                 <Space>
                   <Text strong>{selectedSession.username || `${t('pages.adminSupport.user')} #${selectedSession.userId}`}</Text>
                   <Tag color={selectedSession.status === 'OPEN' ? 'green' : 'default'}>{t(`status.${selectedSession.status}`)}</Tag>
+                  <Tag color={selectedSession.assignedAdminId ? 'blue' : 'default'}>
+                    {selectedSession.assignedAdminName || t('pages.adminSupport.unassigned')}
+                  </Tag>
                 </Space>
-                <Button disabled={selectedSession.status !== 'OPEN'} onClick={closeSession}>{t('pages.adminSupport.closeSession')}</Button>
+                <Space>
+                  {selectedSession.status === 'OPEN' ? (
+                    <Button loading={assigning} onClick={assignToMe}>
+                      {t('pages.adminSupport.assignToMe')}
+                    </Button>
+                  ) : (
+                    <Button loading={reopening} onClick={reopenSession}>
+                      {t('pages.adminSupport.reopenSession')}
+                    </Button>
+                  )}
+                  <Button icon={<GiftOutlined />} loading={reissueLoading} onClick={reissueBirthdayCoupons}>
+                    {t('pages.adminSupport.reissueBirthdayCoupon')}
+                  </Button>
+                  <Button disabled={selectedSession.status !== 'OPEN'} onClick={closeSession}>{t('pages.adminSupport.closeSession')}</Button>
+                </Space>
               </div>
               <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#fafafa' }}>
                 {messages.length === 0 ? (

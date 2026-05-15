@@ -1,20 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
 import { CloseOutlined, CustomerServiceOutlined, SendOutlined, ShoppingOutlined, SoundOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { apiBaseUrl, orderApi, supportApi, supportWebSocketUrl, userApi } from '../api';
 import type { Order, OrderItem, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { parseSupportSocketPayload, supportChatConfig } from '../utils/supportChatConfig';
+import './CustomerSupportWidget.css';
 
 const { Text } = Typography;
 const ORDER_PREFIX = '[ORDER]';
 const SUPPORT_BUTTON_POSITION_KEY = 'shop-support-button-position';
 const SUPPORT_BUTTON_SIZE = 56;
 const SUPPORT_BUTTON_MARGIN = 12;
-const SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN = 88;
+const SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN = 20;
 const supportOrderImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
 
 const resolveSupportOrderImage = (imageUrl?: string) => {
@@ -37,6 +38,7 @@ const CustomerSupportWidget: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [connected, setConnected] = useState(false);
   const [session, setSession] = useState<SupportSession | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<SupportSession[]>([]);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -46,6 +48,7 @@ const CustomerSupportWidget: React.FC = () => {
   const [detailItems, setDetailItems] = useState<OrderItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [sendingOrderId, setSendingOrderId] = useState<number | null>(null);
+  const [sending, setSending] = useState(false);
   const [content, setContent] = useState('');
   const [unread, setUnread] = useState(0);
   const [buttonPosition, setButtonPosition] = useState<SupportButtonPosition | null>(null);
@@ -63,6 +66,7 @@ const CustomerSupportWidget: React.FC = () => {
   const reconnectTimerRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const token = localStorage.getItem('token');
@@ -110,6 +114,24 @@ const CustomerSupportWidget: React.FC = () => {
     : messageLength > 0
       ? t('pages.support.messageReady')
       : t('pages.support.messageDraftHint');
+
+  const latestOrder = orders[0];
+  const conversationUpdatedAt = session?.lastMessageAt || session?.updatedAt || session?.createdAt;
+  const assignedAgentText = session?.assignedAdminName || t('pages.support.unassignedAgent');
+
+  const sortSupportSessions = useCallback((items: SupportSession[]) =>
+    [...items].sort((left, right) => {
+      const leftOpen = left.status === 'OPEN' ? 1 : 0;
+      const rightOpen = right.status === 'OPEN' ? 1 : 0;
+      if (leftOpen !== rightOpen) return rightOpen - leftOpen;
+      const leftTime = left.updatedAt ? new Date(left.updatedAt).getTime() : 0;
+      const rightTime = right.updatedAt ? new Date(right.updatedAt).getTime() : 0;
+      return rightTime - leftTime || right.id - left.id;
+    }), []);
+
+  const upsertSessionHistory = useCallback((nextSession: SupportSession) => {
+    setSessionHistory((items) => sortSupportSessions([nextSession, ...items.filter((item) => item.id !== nextSession.id)]));
+  }, [sortSupportSessions]);
 
   const getDefaultButtonPosition = useCallback((): SupportButtonPosition => ({
     left: Math.max(SUPPORT_BUTTON_MARGIN, window.innerWidth - SUPPORT_BUTTON_SIZE - 24),
@@ -189,11 +211,6 @@ const CustomerSupportWidget: React.FC = () => {
         }
       }
 
-      if (ordersData.length === 0 && currentUserId) {
-        const res = await orderApi.getAll();
-        ordersData = (res.data || []).filter((order) => Number(order.userId) === currentUserId);
-      }
-
       const sortedOrders = [...ordersData].sort((left, right) => {
         const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
         const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
@@ -270,8 +287,12 @@ const CustomerSupportWidget: React.FC = () => {
       try {
         const sessionRes = await supportApi.getSession();
         setSession(sessionRes.data);
+        upsertSessionHistory(sessionRes.data);
         const messagesRes = await supportApi.getMessages(sessionRes.data.id);
         setMessages(messagesRes.data);
+        supportApi.getSessions()
+          .then((res) => setSessionHistory(sortSupportSessions(res.data || [])))
+          .catch(() => undefined);
         setUnread(0);
       } catch {
         message.error(t('pages.support.loadFailed'));
@@ -299,6 +320,7 @@ const CustomerSupportWidget: React.FC = () => {
         }
         if (payload.type === 'MESSAGE') {
           setSession(payload.session);
+          upsertSessionHistory(payload.session);
           setMessages((items) => {
             const currentSessionId = sessionRef.current?.id;
             const incomingFromAgent = payload.message.senderRole === 'ADMIN';
@@ -318,6 +340,7 @@ const CustomerSupportWidget: React.FC = () => {
         }
         if (payload.type === 'SESSION_CLOSED' || payload.type === 'SESSION_UPDATED') {
           setSession(payload.session);
+          upsertSessionHistory(payload.session);
         }
       };
     };
@@ -333,15 +356,23 @@ const CustomerSupportWidget: React.FC = () => {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [open, token, t]);
+  }, [open, token, t, sortSupportSessions, upsertSessionHistory]);
 
   useEffect(() => {
     if (!open || !activeSessionId) return;
     const timer = window.setInterval(async () => {
       try {
-        const sessionRes = await supportApi.getSession();
-        const messagesRes = await supportApi.getMessages(sessionRes.data.id);
-        setSession(sessionRes.data);
+        const [messagesRes, sessionsRes] = await Promise.all([
+          supportApi.getMessages(activeSessionId),
+          supportApi.getSessions(),
+        ]);
+        const sortedSessions = sortSupportSessions(sessionsRes.data || []);
+        const selectedSession = sortedSessions.find((item) => item.id === activeSessionId);
+        if (selectedSession) {
+          setSession(selectedSession);
+          sessionRef.current = selectedSession;
+        }
+        setSessionHistory(sortedSessions);
         setMessages(messagesRes.data);
         setUnread(0);
       } catch {
@@ -349,7 +380,7 @@ const CustomerSupportWidget: React.FC = () => {
       }
     }, 10000);
     return () => window.clearInterval(timer);
-  }, [open, activeSessionId]);
+  }, [open, activeSessionId, sortSupportSessions]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
@@ -426,35 +457,40 @@ const CustomerSupportWidget: React.FC = () => {
   }, [fetchSupportOrders, navigate, t]);
 
   const send = async () => {
+    if (sending) return;
     const text = content.trim();
     if (!text) return;
     if (text.length > supportChatConfig.maxMessageChars) {
       message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
       return;
     }
-    const activeSession = sessionRef.current;
-    if (activeSession && activeSession.status !== 'OPEN') {
-      setSession(null);
-      sessionRef.current = null;
-      setMessages([]);
-    }
-    const activeSessionId = sessionRef.current?.status === 'OPEN' ? sessionRef.current.id : undefined;
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({
-        type: 'SEND',
-        sessionId: activeSessionId,
-        content: text,
-      }));
-      setContent('');
-      return;
-    }
+    setSending(true);
     try {
+      const activeSession = sessionRef.current;
+      if (activeSession && activeSession.status !== 'OPEN') {
+        setSession(null);
+        sessionRef.current = null;
+        setMessages([]);
+      }
+      const activeSessionId = sessionRef.current?.status === 'OPEN' ? sessionRef.current.id : undefined;
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          type: 'SEND',
+          sessionId: activeSessionId,
+          content: text,
+        }));
+        setContent('');
+        return;
+      }
       const res = await supportApi.sendMessage(text, activeSessionId);
       setSession(res.data.session);
+      upsertSessionHistory(res.data.session);
       setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
       setContent('');
     } catch (err: any) {
       message.error(err.response?.data?.error || t('pages.support.connectFailed'));
+    } finally {
+      setSending(false);
     }
   };
 
@@ -480,6 +516,7 @@ const CustomerSupportWidget: React.FC = () => {
       } else {
         const res = await supportApi.sendMessage(text, activeSessionId);
         setSession(res.data.session);
+        upsertSessionHistory(res.data.session);
         setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
       }
       message.success(t('pages.support.orderSent'));
@@ -515,6 +552,7 @@ const CustomerSupportWidget: React.FC = () => {
     try {
       const res = await supportApi.closeSession(closingSession.id);
       setSession(res.data);
+      upsertSessionHistory(res.data);
     } catch {
       setSession(closingSession);
       sessionRef.current = closingSession;
@@ -523,71 +561,100 @@ const CustomerSupportWidget: React.FC = () => {
   };
 
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const sessionOptions = sessionHistory.map((item) => ({
+    value: item.id,
+    label: `${item.status === 'OPEN' ? t('status.OPEN') : t('status.CLOSED')} - ${item.lastMessageAt ? new Date(item.lastMessageAt).toLocaleString(dateLocale) : `#${item.id}`}`,
+  }));
+
+  const switchSession = async (sessionId: number) => {
+    const target = sessionHistory.find((item) => item.id === sessionId);
+    if (target) {
+      setSession(target);
+      sessionRef.current = target;
+    }
+    try {
+      const messagesRes = await supportApi.getMessages(sessionId);
+      setMessages(messagesRes.data);
+      supportApi.getSessions()
+        .then((res) => setSessionHistory(sortSupportSessions(res.data || [])))
+        .catch(() => undefined);
+    } catch {
+      message.error(t('pages.support.loadFailed'));
+    }
+  };
+  const isMobileViewport = typeof window !== 'undefined' && window.innerWidth <= 720;
+  const isCatalogSurface = location.pathname === '/' || location.pathname.startsWith('/products');
+  const hideFloatingButton = isMobileViewport && isCatalogSurface;
 
   return (
     <>
-      <button
-        type="button"
-        className="customer-support-widget__button"
-        onPointerDown={handleSupportButtonPointerDown}
-        onPointerMove={handleSupportButtonPointerMove}
-        onPointerUp={finishSupportButtonPointer}
-        onPointerCancel={finishSupportButtonPointer}
-        aria-label={t('pages.support.title')}
-        style={{
-          position: 'fixed',
-          left: buttonPosition?.left ?? 'auto',
-          top: buttonPosition?.top ?? 'auto',
-          right: buttonPosition ? 'auto' : 24,
-          bottom: buttonPosition ? 'auto' : 24,
-          zIndex: 1200,
-          width: SUPPORT_BUTTON_SIZE,
-          height: SUPPORT_BUTTON_SIZE,
-          border: 0,
-          borderRadius: '50%',
-          background: '#124734',
-          color: '#fff',
-          boxShadow: '0 8px 22px rgba(0,0,0,.22)',
-          cursor: 'pointer',
-          fontSize: 24,
-          touchAction: 'none',
-          userSelect: 'none',
-        }}
-      >
-        <Badge count={unread} size="small">
-          <CustomerServiceOutlined style={{ color: '#fff' }} />
-        </Badge>
-      </button>
-
-      {open && (
-        <div
-          className="customer-support-widget__panel"
+      {!hideFloatingButton ? (
+        <button
+          type="button"
+          className="customer-support-widget__button"
+          onPointerDown={handleSupportButtonPointerDown}
+          onPointerMove={handleSupportButtonPointerMove}
+          onPointerUp={finishSupportButtonPointer}
+          onPointerCancel={finishSupportButtonPointer}
+          aria-label={t('pages.support.title')}
           style={{
             position: 'fixed',
-            right: 24,
-            bottom: 92,
-            zIndex: 1200,
-            width: 'min(380px, calc(100vw - 32px))',
-            height: 'min(560px, calc(100vh - 120px))',
-            display: 'flex',
-            flexDirection: 'column',
-            border: '1px solid #eee',
-            borderRadius: 8,
-            background: '#fff',
-            boxShadow: '0 12px 34px rgba(0,0,0,.2)',
-            overflow: 'hidden',
+            left: isMobileViewport ? 'auto' : buttonPosition?.left ?? 'auto',
+            top: isMobileViewport ? 'auto' : buttonPosition?.top ?? 'auto',
+            right: isMobileViewport ? 18 : buttonPosition ? 'auto' : 24,
+            bottom: isMobileViewport ? 'calc(20px + env(safe-area-inset-bottom))' : buttonPosition ? 'auto' : 24,
+            width: isMobileViewport ? 46 : SUPPORT_BUTTON_SIZE,
+            height: isMobileViewport ? 46 : SUPPORT_BUTTON_SIZE,
+            fontSize: isMobileViewport ? 20 : 24,
           }}
         >
-          <div style={{ padding: '12px 14px', background: '#ee4d2d', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Badge count={unread} size="small">
+            <CustomerServiceOutlined style={{ color: '#fff' }} />
+          </Badge>
+        </button>
+      ) : null}
+
+      {open && (
+        <div className="customer-support-widget__panel">
+          <div className="customer-support-widget__header">
             <Space>
               <CustomerServiceOutlined />
-              <Text style={{ color: '#fff' }} strong>{t('pages.support.title')}</Text>
-              <Badge status={connected ? 'success' : 'default'} text={<span style={{ color: '#fff' }}>{connected ? t('pages.support.online') : t('pages.support.offline')}</span>} />
+              <Text className="customer-support-widget__headerTitle" strong>{t('pages.support.title')}</Text>
+              <Badge status={connected ? 'success' : 'default'} text={<span className="customer-support-widget__presenceText">{connected ? t('pages.support.online') : t('pages.support.offline')}</span>} />
             </Space>
-            <Button type="text" size="small" icon={<CloseOutlined />} onClick={() => setOpen(false)} style={{ color: '#fff' }} />
+            <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<CloseOutlined />} onClick={() => setOpen(false)} />
+          </div>
+          {sessionHistory.length > 1 ? (
+            <div className="customer-support-widget__sessionPicker">
+              <Select
+                size="small"
+                style={{ width: '100%' }}
+                value={session?.id}
+                onChange={(value) => switchSession(Number(value))}
+                options={sessionOptions}
+                optionFilterProp="label"
+              />
+            </div>
+          ) : null}
+
+          <div className="customer-support-widget__brief">
+            <div>
+              <Text strong className="customer-support-widget__briefTitle">{t('pages.support.conversationBrief')}</Text>
+              <Text type="secondary" className="customer-support-widget__briefMeta">
+                {t('pages.support.assignedAgent')}: {assignedAgentText}
+              </Text>
+            </div>
+            <div className="customer-support-widget__briefSide">
+              <Tag color={hasSharedOrder ? 'green' : 'default'}>{hasSharedOrder ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}</Tag>
+              {conversationUpdatedAt ? (
+                <Text type="secondary" className="customer-support-widget__briefMeta">
+                  {t('pages.support.lastUpdated')}: {new Date(conversationUpdatedAt).toLocaleString(dateLocale)}
+                </Text>
+              ) : null}
+            </div>
           </div>
 
-          <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: 12, background: '#fafafa' }}>
+          <div ref={listRef} className="customer-support-widget__messages">
             {messages.length === 0 ? (
               <Empty description={t('pages.support.welcome')} />
             ) : (
@@ -597,31 +664,31 @@ const CustomerSupportWidget: React.FC = () => {
                   const mine = item.senderRole === 'USER';
                   const order = decodeOrderMessage(item.content);
                   return (
-                    <List.Item style={{ justifyContent: mine ? 'flex-end' : 'flex-start', border: 0, padding: '6px 0' }}>
-                      <div style={{ maxWidth: '78%', textAlign: mine ? 'right' : 'left' }}>
-                        <div style={{ fontSize: 12, color: '#999', marginBottom: 3 }}>
+                    <List.Item className={`customer-support-widget__messageRow ${mine ? 'customer-support-widget__messageRow--mine' : ''}`}>
+                      <div className={`customer-support-widget__message ${mine ? 'customer-support-widget__message--mine' : ''}`}>
+                        <div className="customer-support-widget__messageMeta">
                           {mine ? t('pages.support.you') : t('pages.support.agent')}
                           {item.createdAt ? ` - ${new Date(item.createdAt).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}` : ''}
                         </div>
                         {order ? (
-                          <Card size="small" style={{ display: 'inline-block', minWidth: 220, maxWidth: '100%', borderColor: mine ? '#f6c1b3' : '#eee', background: mine ? '#fff7f4' : '#fff', textAlign: 'left' }}>
+                          <Card size="small" className={`customer-support-widget__orderCard ${mine ? 'customer-support-widget__orderCard--mine' : ''}`}>
                             <Space align="start">
-                              <ShoppingOutlined style={{ color: '#ee4d2d', marginTop: 4 }} />
+                              <ShoppingOutlined className="customer-support-widget__orderIcon" />
                               <div>
-                                <div style={{ fontWeight: 600 }}>{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
-                                <div style={{ color: '#ee4d2d', fontWeight: 600 }}>{formatMoney(order.totalAmount)}</div>
-                                <div style={{ marginTop: 4 }}>
+                                <div className="customer-support-widget__orderTitle">{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
+                                <div className="customer-support-widget__orderAmount">{formatMoney(order.totalAmount)}</div>
+                                <div className="customer-support-widget__orderTags">
                                   <Tag color="blue">{order.status}</Tag>
                                   {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
                                 </div>
-                                <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openOrderDetail(order.id)}>
+                                <Button className="customer-support-widget__linkButton" type="link" size="small" onClick={() => openOrderDetail(order.id)}>
                                   {t('pages.support.viewOrder')}
                                 </Button>
                               </div>
                             </Space>
                           </Card>
                         ) : (
-                          <div style={{ display: 'inline-block', padding: '8px 10px', borderRadius: 8, background: mine ? '#ee4d2d' : '#fff', color: mine ? '#fff' : '#333', border: mine ? 0 : '1px solid #eee', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                          <div className={`customer-support-widget__bubble ${mine ? 'customer-support-widget__bubble--mine' : ''}`}>
                             {item.content}
                           </div>
                         )}
@@ -634,30 +701,43 @@ const CustomerSupportWidget: React.FC = () => {
           </div>
 
           {session?.status === 'CLOSED' && content.trim().length === 0 && (
-            <div style={{ padding: '8px 12px', background: '#fff7e6', borderTop: '1px solid #ffe7ba' }}>
+            <div className="customer-support-widget__closedNotice">
               <Text type="secondary">{t('pages.support.closed')}</Text>
             </div>
           )}
 
-          <div style={{ padding: 12, borderTop: '1px solid #eee', background: '#fff' }}>
-            <div style={{ border: '1px solid #d8eadf', background: '#f4fbf6', borderRadius: 8, padding: 10, marginBottom: 10 }}>
-              <Space style={{ width: '100%', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div className="customer-support-widget__composer">
+            <div className="customer-support-widget__triage">
+              <Space className="customer-support-widget__triageHeader">
                 <div>
-                  <Text strong style={{ color: '#124734', display: 'block' }}>{t('pages.support.triageTitle')}</Text>
-                  <Text type="secondary" style={{ fontSize: 12 }}>{supportIntent.helper}</Text>
+                  <Text strong className="customer-support-widget__triageTitle">{t('pages.support.triageTitle')}</Text>
+                  <Text type="secondary" className="customer-support-widget__triageHelper">{supportIntent.helper}</Text>
                 </div>
                 <Tag color={connected ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
                   {connected ? t('pages.support.connectedHint') : t('pages.support.reconnectingHint')}
                 </Tag>
               </Space>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between', marginTop: 8, flexWrap: 'wrap' }}>
+              <div className="customer-support-widget__triageMeta">
                 <Tag color="blue" style={{ marginInlineEnd: 0 }}>{supportIntent.label}</Tag>
-                <Text type={messageTooLong ? 'danger' : 'secondary'} style={{ fontSize: 12 }}>
+                <Text type={messageTooLong ? 'danger' : 'secondary'} className="customer-support-widget__messageQuality">
                   {messageQualityText}
                 </Text>
               </div>
+              {!hasSharedOrder && latestOrder ? (
+                <Button
+                  className="customer-support-widget__shareLatest"
+                  size="small"
+                  type="primary"
+                  ghost
+                  icon={<ShoppingOutlined />}
+                  loading={sendingOrderId === latestOrder.id}
+                  onClick={() => sendOrder(latestOrder.id)}
+                >
+                  {t('pages.support.shareLatestOrder')}
+                </Button>
+              ) : null}
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            <div className="customer-support-widget__quickReplies">
               {quickReplies.map((reply) => (
                 <Button
                   key={reply}
@@ -668,15 +748,15 @@ const CustomerSupportWidget: React.FC = () => {
                 </Button>
               ))}
             </div>
-            <div style={{ marginBottom: 8 }}>
-              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <div className="customer-support-widget__orderPicker">
+              <Space className="customer-support-widget__orderPickerHeader">
                 <Text type="secondary">{t('pages.support.sendOrder')}</Text>
-                <SoundOutlined style={{ color: '#ee4d2d' }} />
+                <SoundOutlined className="customer-support-widget__soundIcon" />
               </Space>
               <Select
                 showSearch
                 optionFilterProp="label"
-                style={{ width: '100%', marginTop: 6 }}
+                className="customer-support-widget__orderSelect"
                 placeholder={t('pages.support.pickOrder')}
                 options={orderOptions}
                 open={orderSelectOpen}
@@ -710,9 +790,9 @@ const CustomerSupportWidget: React.FC = () => {
               placeholder={t('pages.support.inputPlaceholder')}
               autoSize={{ minRows: 2, maxRows: 4 }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              <Button style={{ flex: '1 1 150px' }} disabled={!session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
-              <Button style={{ flex: '1 1 110px' }} type="primary" icon={<SendOutlined />} disabled={messageTooLong || messageLength === 0} onClick={send}>{t('common.send')}</Button>
+            <div className="customer-support-widget__actions">
+              <Button className="customer-support-widget__secondaryAction" disabled={!session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
+              <Button className="customer-support-widget__primaryAction" type="primary" icon={<SendOutlined />} loading={sending} disabled={messageTooLong || messageLength === 0 || sending} onClick={send}>{t('common.send')}</Button>
             </div>
           </div>
         </div>

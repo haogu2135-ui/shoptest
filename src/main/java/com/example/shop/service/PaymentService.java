@@ -285,8 +285,17 @@ public class PaymentService {
         return paymentRepository.findById(payment.getId());
     }
 
+    @Transactional
     public List<Payment> findByOrderId(Long orderId) {
-        return paymentRepository.findByOrderId(orderId);
+        List<Payment> payments = paymentRepository.findByOrderId(orderId);
+        boolean expiredAny = false;
+        for (Payment payment : payments) {
+            if (payment != null && isExpired(payment)) {
+                expirePayment(payment);
+                expiredAny = true;
+            }
+        }
+        return expiredAny ? paymentRepository.findByOrderId(orderId) : payments;
     }
 
     public Payment findById(Long paymentId) {
@@ -603,7 +612,13 @@ public class PaymentService {
     }
 
     private boolean verifySignature(PaymentCallbackRequest request) {
-        return expectedSignature(request).equalsIgnoreCase(request.getSignature());
+        String signature = trimToNull(request.getSignature());
+        if (signature == null) {
+            return false;
+        }
+        byte[] expected = expectedSignature(request).toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8);
+        byte[] actual = signature.toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(expected, actual);
     }
 
     private void assertMatchingPaidCallback(Payment payment, PaymentCallbackRequest request) {

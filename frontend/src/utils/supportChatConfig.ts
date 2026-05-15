@@ -1,4 +1,4 @@
-const DEFAULT_SUPPORT_MESSAGE_MAX_CHARS = 1200;
+const DEFAULT_SUPPORT_MESSAGE_MAX_CHARS = 1000;
 
 const parsePositiveInt = (value: string | undefined, fallback: number) => {
   if (!value) return fallback;

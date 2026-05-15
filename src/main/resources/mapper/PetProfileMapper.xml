@@ -31,6 +31,16 @@
         ORDER BY user_id ASC, id ASC
     </select>
 
+    <select id="findBirthdayPetsByUserId" resultMap="petProfileMap">
+        SELECT *
+        FROM pet_profiles
+        WHERE user_id = #{userId}
+          AND birthday IS NOT NULL
+          AND MONTH(birthday) = #{month}
+          AND DAYOFMONTH(birthday) = #{day}
+        ORDER BY id ASC
+    </select>
+
     <insert id="insert" parameterType="com.example.shop.entity.PetProfile" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO pet_profiles (user_id, name, pet_type, breed, birthday, weight, size, created_at, updated_at)
         VALUES (#{userId}, #{name}, #{petType}, #{breed}, #{birthday}, #{weight}, #{size}, #{createdAt}, #{updatedAt})

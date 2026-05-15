@@ -1,26 +1,146 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Shopee Style E-commerce</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyShop - 品质购物</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
     <nav class="navbar">
         <div class="logo">MyShop</div>
+        <div class="navbar-search">
+            <input type="text" id="searchInput" placeholder="搜索商品..." autocomplete="off">
+            <span class="search-icon">🔍</span>
+        </div>
         <div class="nav-links">
-            <a href="/login" th:unless="${#authentication.principal}">登录/注册</a>
-            <a href="/cart" th:if="${#authentication.principal}">购物车</a>
+            <a th:href="@{/login}" th:unless="${#authentication != null and #authentication.principal != 'anonymousUser'}">登录 / 注册</a>
+            <a href="/cart" class="cart-link" th:if="${#authentication != null and #authentication.principal != 'anonymousUser'}">
+                🛒 购物车
+            </a>
         </div>
     </nav>
 
-    <div class="product-grid">
-        <div class="product-card" th:each="product : ${products}">
-            <img th:src="@{'/images/' + ${product.image}}" alt="Product Image">
-            <h3 th:text="${product.name}"></h3>
-            <p class="price" th:text="'¥' + ${#numbers.formatDecimal(product.price, 1, 2)}"></p>
-            <button class="add-to-cart" th:data-product-id="${product.id}">加入购物车</button>
+    <div class="hero-banner">
+        <h1>发现好物，品质生活</h1>
+        <p>精选商品，每日特惠，放心购买</p>
+    </div>
+
+    <div class="category-bar">
+        <div class="category-tab active">全部</div>
+        <div class="category-tab">服装</div>
+        <div class="category-tab">数码</div>
+        <div class="category-tab">食品</div>
+        <div class="category-tab">家居</div>
+        <div class="category-tab">美妆</div>
+        <div class="category-tab">运动</div>
+    </div>
+
+    <div class="page-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <span class="section-title">热门商品</span>
+            <span style="font-size:0.82rem;color:var(--text-muted);" id="productCount"></span>
+        </div>
+
+        <div class="product-grid" id="productGrid">
+            <div class="product-card" th:each="product : ${products}"
+                 th:data-name="${product.name}">
+                <div class="card-img-wrap">
+                    <img th:src="@{'/images/' + ${product.image}}" th:alt="${product.name}" loading="lazy">
+                    <button class="wishlist-btn" title="收藏">♡</button>
+                </div>
+                <div class="card-body">
+                    <div class="card-name" th:text="${product.name}"></div>
+                    <div class="card-meta">
+                        <div class="card-price">
+                            <span class="price-symbol">¥</span><span th:text="${#numbers.formatDecimal(product.price, 1, 2)}"></span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-block add-to-cart"
+                            th:data-product-id="${product.id}">加入购物车</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="noResult" style="display:none;text-align:center;padding:3rem;color:var(--text-muted);">
+            <div style="font-size:2.5rem;margin-bottom:0.8rem;">🔍</div>
+            <div>没有找到相关商品</div>
         </div>
     </div>
+
+    <footer class="site-footer">
+        © 2025 MyShop &nbsp;·&nbsp; <a href="#">关于我们</a> &nbsp;·&nbsp; <a href="#">联系客服</a> &nbsp;·&nbsp; <a href="#">隐私政策</a>
+    </footer>
+
+    <button class="back-to-top" id="backToTop">↑</button>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        function showToast(msg, type) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type || 'info');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        const allCards = Array.from(document.querySelectorAll('#productGrid .product-card'));
+        document.getElementById('productCount').textContent = '共 ' + allCards.length + ' 件商品';
+
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            let visible = 0;
+            allCards.forEach(card => {
+                const show = !q || (card.dataset.name || '').toLowerCase().includes(q);
+                card.style.display = show ? '' : 'none';
+                if (show) visible++;
+            });
+            document.getElementById('noResult').style.display = visible === 0 ? 'block' : 'none';
+            document.getElementById('productCount').textContent =
+                q ? `找到 ${visible} 件商品` : `共 ${allCards.length} 件商品`;
+        });
+
+        document.querySelectorAll('.add-to-cart').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const productId = this.dataset.productId;
+                const orig = this.textContent;
+                this.disabled = true; this.textContent = '添加中…';
+                fetch('/api/cart/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productId, quantity: 1 })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) showToast('已加入购物车 🛒', 'success');
+                    else showToast('添加失败：' + data.message, 'error');
+                })
+                .catch(() => showToast('网络错误，请稍后重试', 'error'))
+                .finally(() => { this.disabled = false; this.textContent = orig; });
+            });
+        });
+
+        document.querySelectorAll('.wishlist-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.classList.toggle('active');
+                this.textContent = this.classList.contains('active') ? '♥' : '♡';
+                showToast(this.classList.contains('active') ? '已加入收藏 ❤️' : '已取消收藏', 'info');
+            });
+        });
+
+        document.querySelectorAll('.category-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        const topBtn = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => topBtn.classList.toggle('visible', window.scrollY > 300));
+        topBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    </script>
 </body>
 </html>

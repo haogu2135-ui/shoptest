@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Checkbox, Divider, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import { adminApi, logisticsCarrierApi, orderApi } from '../api';
-import type { LogisticsCarrier, Order, OrderItem } from '../types';
+import { adminApi, logisticsCarrierApi, orderApi, paymentApi } from '../api';
+import type { LogisticsCarrier, Order, OrderItem, Payment } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import {
@@ -16,6 +16,7 @@ import {
   orderValidTransitions,
 } from '../utils/orderOperationsConfig';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
+import { paymentMethodLabel } from '../utils/paymentMethods';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderManagement.css';
 
@@ -43,6 +44,14 @@ const OrderManagement: React.FC = () => {
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState('');
   const [selectedTrackingCarrierCode, setSelectedTrackingCarrierCode] = useState<string | undefined>();
+  const [refundOrder, setRefundOrder] = useState<Order | null>(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundRestock, setRefundRestock] = useState(false);
+  const [refunding, setRefunding] = useState(false);
+  const [refundPayments, setRefundPayments] = useState<Payment[]>([]);
+  const [refundPaymentsLoading, setRefundPaymentsLoading] = useState(false);
+  const [orderPayments, setOrderPayments] = useState<Payment[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
   const [statusUpdatingIds, setStatusUpdatingIds] = useState<React.Key[]>([]);
   const { t, language } = useLanguage();
@@ -282,14 +291,62 @@ const OrderManagement: React.FC = () => {
   const handleViewItems = async (order: Order) => {
     setDetailOrder(order);
     setItemsLoading(true);
+    setPaymentsLoading(true);
     try {
-      const res = await orderApi.getItems(order.id);
-      setOrderItems(res.data);
+      const [itemsRes, paymentsRes] = await Promise.all([
+        orderApi.getItems(order.id),
+        paymentApi.getByOrder(order.id),
+      ]);
+      setOrderItems(itemsRes.data);
+      setOrderPayments(paymentsRes.data || []);
     } catch {
       setOrderItems([]);
+      setOrderPayments([]);
       message.error(t('messages.operationFailed'));
     } finally {
       setItemsLoading(false);
+      setPaymentsLoading(false);
+    }
+  };
+
+  const canRefundOrder = (order: Order) =>
+    ['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED'].includes(order.status)
+    && !isOrderRefunded(order);
+
+  const openRefundModal = async (order: Order) => {
+    setRefundOrder(order);
+    setRefundReason(order.returnReason || '');
+    setRefundRestock(order.status === 'PENDING_SHIPMENT');
+    setRefundPayments([]);
+    setRefundPaymentsLoading(true);
+    try {
+      const res = await paymentApi.getByOrder(order.id);
+      setRefundPayments(res.data || []);
+    } catch {
+      setRefundPayments([]);
+    } finally {
+      setRefundPaymentsLoading(false);
+    }
+  };
+
+  const handleRefundOrder = async () => {
+    if (!refundOrder) return;
+    try {
+      setRefunding(true);
+      const res = await adminApi.refundOrder(refundOrder.id, {
+        reason: refundReason.trim(),
+        restock: refundRestock,
+      });
+      message.success(t('pages.adminOrders.refundCompletedWithReference', { reference: res.data.payment.refundReference || res.data.payment.id }));
+      setRefundOrder(null);
+      setRefundReason('');
+      setRefundRestock(false);
+      setRefundPayments([]);
+      fetchOrders(filterStatus);
+    } catch (err: any) {
+      message.error(err.response?.data?.error || t('pages.adminOrders.refundFailed'));
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -498,6 +555,9 @@ const OrderManagement: React.FC = () => {
   ];
   const activeQuickFilterLabel = orderSummaryCards.find((item) => item.filter === quickFilter)?.label;
   const transitionLabel = (currentStatus: string, nextStatus: string) => {
+    if (currentStatus === 'PENDING_PAYMENT' && nextStatus === 'PENDING_SHIPMENT') {
+      return t('pages.adminOrders.confirmPayment');
+    }
     if (currentStatus === 'RETURN_REQUESTED' && nextStatus === 'RETURN_APPROVED') {
       return t('pages.adminOrders.approveReturn');
     }
@@ -510,6 +570,16 @@ const OrderManagement: React.FC = () => {
     return t(`status.${nextStatus}`);
   };
   const confirmStatusChange = (record: Order, nextStatus: string) => {
+    if (record.status === 'PENDING_PAYMENT' && nextStatus === 'PENDING_SHIPMENT') {
+      Modal.confirm({
+        title: t('pages.adminOrders.confirmPaymentTitle'),
+        content: t('pages.adminOrders.confirmPaymentContent'),
+        okText: t('pages.adminOrders.confirmPayment'),
+        cancelText: t('common.cancel'),
+        onOk: () => handleStatusChange(record.id, nextStatus),
+      });
+      return;
+    }
     if (record.status === 'RETURN_REQUESTED' && nextStatus === 'RETURN_APPROVED') {
       Modal.confirm({
         title: t('pages.adminOrders.confirmApproveReturnTitle'),
@@ -672,6 +742,11 @@ const OrderManagement: React.FC = () => {
                 }))}
               />
             )}
+            {canRefundOrder(record) ? (
+              <Button size="small" danger onClick={() => openRefundModal(record)}>
+                {t('pages.adminOrders.refundNow')}
+              </Button>
+            ) : null}
           </Space>
         );
       },
@@ -714,6 +789,7 @@ const OrderManagement: React.FC = () => {
               { value: 'RETURN_APPROVED', label: t('status.RETURN_APPROVED') },
               { value: 'RETURN_SHIPPED', label: t('status.RETURN_SHIPPED') },
               { value: 'RETURNED', label: t('status.RETURNED') },
+              { value: 'REFUNDED', label: t('status.REFUNDED') },
               { value: 'CANCELLED', label: t('status.CANCELLED') },
             ]}
           />
@@ -801,6 +877,78 @@ const OrderManagement: React.FC = () => {
         </Space>
       </Modal>
       <Modal
+        title={t('pages.adminOrders.refundNow')}
+        open={!!refundOrder}
+        confirmLoading={refunding}
+        okText={t('pages.adminOrders.refundNow')}
+        okButtonProps={{ danger: true }}
+        onOk={handleRefundOrder}
+        onCancel={() => {
+          setRefundOrder(null);
+          setRefundReason('');
+          setRefundRestock(false);
+          setRefundPayments([]);
+        }}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text type="secondary">
+            {t('pages.adminOrders.refundConfirmHint', {
+              orderNo: refundOrder?.orderNo || refundOrder?.id || '',
+              amount: refundOrder ? formatMoney(refundOrder.totalAmount) : '',
+            })}
+          </Typography.Text>
+          <Input.TextArea
+            value={refundReason}
+            onChange={(event) => setRefundReason(event.target.value)}
+            placeholder={t('pages.adminOrders.refundReasonPlaceholder')}
+            maxLength={500}
+            showCount
+            rows={4}
+          />
+          <Checkbox checked={refundRestock} onChange={(event) => setRefundRestock(event.target.checked)}>
+            {t('pages.adminOrders.restockRefundItems')}
+          </Checkbox>
+          <div>
+            <Typography.Text strong>{t('pages.adminOrders.refundPaymentEvidence')}</Typography.Text>
+            <Table
+              rowKey="id"
+              loading={refundPaymentsLoading}
+              dataSource={refundPayments}
+              pagination={false}
+              size="small"
+              columns={[
+                {
+                  title: t('pages.adminOrders.paymentMethod'),
+                  dataIndex: 'channel',
+                  key: 'channel',
+                  render: (channel: string) => paymentMethodLabel(channel, t),
+                },
+                {
+                  title: t('common.status'),
+                  dataIndex: 'status',
+                  key: 'status',
+                  width: 104,
+                  render: (status: string) => <Tag color={orderStatusColors[status] || 'default'}>{t(`status.${status}`)}</Tag>,
+                },
+                {
+                  title: t('common.amount'),
+                  dataIndex: 'amount',
+                  key: 'amount',
+                  width: 112,
+                  render: (value: number) => formatMoney(value),
+                },
+                {
+                  title: t('pages.adminOrders.refundReference'),
+                  dataIndex: 'refundReference',
+                  key: 'refundReference',
+                  render: (value: string) => value || '-',
+                },
+              ]}
+            />
+          </div>
+        </Space>
+      </Modal>
+      <Modal
         title={t('pages.adminOrders.batchShipOrders')}
         open={batchShipOpen}
         confirmLoading={batchShipping}
@@ -840,45 +988,88 @@ const OrderManagement: React.FC = () => {
         onCancel={() => {
           setDetailOrder(null);
           setOrderItems([]);
+          setOrderPayments([]);
         }}
         footer={null}
         width={720}
       >
-        <Table
-          rowKey="id"
-          loading={itemsLoading}
-          dataSource={orderItems}
-          pagination={false}
-          size="small"
-          columns={[
-            { title: t('common.id'), dataIndex: 'productId', key: 'productId', width: 90 },
-            {
-              title: t('pages.adminOrders.product'),
-              dataIndex: 'productName',
-              key: 'productName',
-              render: (v: string, item: OrderItem) => (
-                <Space direction="vertical" size={0}>
-                  <span>{v || `#${item.productId}`}</span>
-                  {item.selectedSpecs ? <Typography.Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Typography.Text> : null}
-                </Space>
-              ),
-            },
-            { title: t('common.quantity'), dataIndex: 'quantity', key: 'quantity', width: 100 },
-            {
-              title: t('common.amount'),
-              dataIndex: 'price',
-              key: 'price',
-              width: 120,
-              render: (v: number) => formatMoney(v),
-            },
-            {
-              title: t('common.subtotal'),
-              key: 'subtotal',
-              width: 120,
-              render: (_: any, item: OrderItem) => formatMoney(item.price * item.quantity),
-            },
-          ]}
-        />
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Table
+            rowKey="id"
+            loading={itemsLoading}
+            dataSource={orderItems}
+            pagination={false}
+            size="small"
+            columns={[
+              { title: t('common.id'), dataIndex: 'productId', key: 'productId', width: 90 },
+              {
+                title: t('pages.adminOrders.product'),
+                dataIndex: 'productName',
+                key: 'productName',
+                render: (v: string, item: OrderItem) => (
+                  <Space direction="vertical" size={0}>
+                    <span>{v || `#${item.productId}`}</span>
+                    {item.selectedSpecs ? <Typography.Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Typography.Text> : null}
+                  </Space>
+                ),
+              },
+              { title: t('common.quantity'), dataIndex: 'quantity', key: 'quantity', width: 100 },
+              {
+                title: t('common.amount'),
+                dataIndex: 'price',
+                key: 'price',
+                width: 120,
+                render: (v: number) => formatMoney(v),
+              },
+              {
+                title: t('common.subtotal'),
+                key: 'subtotal',
+                width: 120,
+                render: (_: any, item: OrderItem) => formatMoney(item.price * item.quantity),
+              },
+            ]}
+          />
+          <div>
+            <Typography.Text strong>{t('pages.adminOrders.paymentHistory')}</Typography.Text>
+            <Table
+              rowKey="id"
+              loading={paymentsLoading}
+              dataSource={orderPayments}
+              pagination={false}
+              size="small"
+              columns={[
+                { title: t('pages.adminOrders.paymentMethod'), dataIndex: 'channel', key: 'channel', width: 120 },
+                {
+                  title: t('common.status'),
+                  dataIndex: 'status',
+                  key: 'status',
+                  width: 110,
+                  render: (status: string) => <Tag color={orderStatusColors[status] || 'default'}>{t(`status.${status}`)}</Tag>,
+                },
+                {
+                  title: t('common.amount'),
+                  dataIndex: 'amount',
+                  key: 'amount',
+                  width: 120,
+                  render: (value: number) => formatMoney(value),
+                },
+                {
+                  title: t('pages.adminOrders.refundReference'),
+                  dataIndex: 'refundReference',
+                  key: 'refundReference',
+                  render: (value: string) => value || '-',
+                },
+                {
+                  title: t('pages.adminOrders.createdAt'),
+                  dataIndex: 'createdAt',
+                  key: 'createdAt',
+                  width: 145,
+                  render: (value: string) => value ? new Date(value).toLocaleString(dateLocale) : '-',
+                },
+              ]}
+            />
+          </div>
+        </Space>
       </Modal>
     </div>
   );

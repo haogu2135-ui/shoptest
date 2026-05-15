@@ -16,4 +16,7 @@ public interface UserCouponMapper {
     int insert(UserCoupon userCoupon);
     int markUsed(@Param("id") Long id, @Param("orderId") Long orderId);
     int releaseUsed(@Param("id") Long id);
+    int countUsedByCouponId(@Param("couponId") Long couponId);
+    int deleteUnusedByCouponId(@Param("couponId") Long couponId);
+    int deleteUnusedByCouponIdAndUserId(@Param("couponId") Long couponId, @Param("userId") Long userId);
 }

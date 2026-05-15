@@ -64,6 +64,19 @@ public class CartController {
         cartService.removeFromCart(cartItemId);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/remove")
+    public ResponseEntity<?> removeCartItems(@RequestParam List<Long> cartItemIds, Authentication authentication) {
+        if (cartItemIds == null || cartItemIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No cart items selected"));
+        }
+        try {
+            cartService.removeFromCart(cartItemIds, authentication);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
     
     @DeleteMapping("/clear")
     public void clearCart(@RequestParam Long userId, Authentication authentication) {

@@ -65,6 +65,12 @@
         LIMIT 1
     </select>
 
+    <select id="findLatestRefundedByOrderId" resultMap="paymentMap">
+        SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'REFUNDED'
+        ORDER BY refunded_at DESC, id DESC
+        LIMIT 1
+    </select>
+
     <select id="findPendingByOrderId" resultMap="paymentMap">
         SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'PENDING'
         ORDER BY id DESC

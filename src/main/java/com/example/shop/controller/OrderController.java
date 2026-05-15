@@ -5,6 +5,7 @@ import com.example.shop.dto.GuestCheckoutRequest;
 import com.example.shop.dto.OrderTrackResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
+import com.example.shop.entity.Payment;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.OrderItemService;
@@ -135,12 +136,17 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/pay")
-    public ResponseEntity<?> payOrder(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<?> payOrder(@PathVariable Long id,
+                                      @RequestBody(required = false) Map<String, String> body,
+                                      Authentication authentication) {
         try {
             SecurityUtils.assertAdmin(authentication);
-            orderService.updateOrderStatus(id, "PENDING_SHIPMENT");
-            return ResponseEntity.ok(Map.of("message", "Payment confirmed"));
+            String transactionId = body == null ? null : body.get("transactionId");
+            Payment payment = orderService.confirmPayment(id, transactionId);
+            return ResponseEntity.ok(Map.of("message", "Payment confirmed", "payment", payment));
         } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

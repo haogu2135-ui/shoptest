@@ -1,0 +1,239 @@
+/* ========================================
+   SkeletonLoader — animated skeleton UI
+   ======================================== */
+
+/* ── Base shimmer keyframe ── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+@keyframes pulse-fade {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Shimmer gradient (shared) ── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #ede8de 0%,
+    #f5f1ea 40%,
+    #ede8de 80%
+  );
+  background-size: 1200px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ── Stagger wrapper ── */
+.skeleton--card > *,
+.skeleton--list > * {
+  animation: slide-up 0.35s ease-out both;
+}
+
+.skeleton--card > *:nth-child(1),
+.skeleton--list > *:nth-child(1) { animation-delay: 0ms; }
+.skeleton--card > *:nth-child(2),
+.skeleton--list > *:nth-child(2) { animation-delay: 50ms; }
+.skeleton--card > *:nth-child(3),
+.skeleton--list > *:nth-child(3) { animation-delay: 100ms; }
+.skeleton--card > *:nth-child(4),
+.skeleton--list > *:nth-child(4) { animation-delay: 150ms; }
+.skeleton--card > *:nth-child(5),
+.skeleton--list > *:nth-child(5) { animation-delay: 200ms; }
+.skeleton--card > *:nth-child(6),
+.skeleton--list > *:nth-child(6) { animation-delay: 250ms; }
+.skeleton--card > *:nth-child(7),
+.skeleton--list > *:nth-child(7) { animation-delay: 300ms; }
+.skeleton--card > *:nth-child(8),
+.skeleton--list > *:nth-child(8) { animation-delay: 350ms; }
+
+/* ── Row layout ── */
+.skeleton__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+}
+
+/* ── Avatar circle ── */
+.skeleton__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+/* ── Lines block ── */
+.skeleton__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton__line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.skeleton__line--title { height: 14px; }
+.skeleton__line--meta  { height: 11px; }
+
+/* ── Image block (optional) ── */
+.skeleton__image {
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+/* ── Hero skeleton ── */
+.hero-skeleton {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 360px);
+  gap: 16px;
+  min-height: 430px;
+  padding: 34px 44px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(18, 71, 52, 0.92), rgba(18, 71, 52, 0.6));
+}
+
+.hero-skeleton__left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: center;
+}
+
+.hero-skeleton__right {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.hero-skeleton__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* ── Product card skeleton ── */
+.product-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.product-skeleton__card {
+  border: 1px solid #eee4d3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.product-skeleton__image {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+}
+
+.product-skeleton__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+/* ── Stats strip skeleton ── */
+.stats-strip-skeleton {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* ── Detail skeleton ── */
+.skeleton--detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 20px;
+  padding: 20px;
+}
+
+.skeleton--detail .skeleton__gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton--detail .skeleton__main-image {
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+}
+
+.skeleton--detail .skeleton__thumbs {
+  display: flex;
+  gap: 8px;
+}
+
+.skeleton--detail .skeleton__thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+}
+
+.skeleton--detail .skeleton__info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton--detail .skeleton__info-line {
+  height: 20px;
+  border-radius: 6px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .hero-skeleton {
+    grid-template-columns: 1fr;
+    padding: 20px;
+    min-height: 300px;
+  }
+
+  .hero-skeleton__right {
+    display: none;
+  }
+
+  .product-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats-strip-skeleton {
+    grid-template-columns: 1fr;
+  }
+
+  .skeleton--detail {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .product-skeleton {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: pulse-fade 1.6s ease-in-out infinite;
+    background: none;
+    background-color: #ede8de;
+  }
+
+  .skeleton--card > *,
+  .skeleton--list > * {
+    animation: none;
+  }
+}

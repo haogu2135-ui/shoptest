@@ -22,6 +22,7 @@ import { needsOptionSelection } from '../utils/productOptions';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
 import AddOnAssistant from '../components/AddOnAssistant';
+import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Cart.css';
 
 const { Title, Text } = Typography;
@@ -52,6 +53,8 @@ const Cart: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [restoringSaved, setRestoringSaved] = useState(false);
   const [addingRecentId, setAddingRecentId] = useState<number | null>(null);
+  const [updatingItemIds, setUpdatingItemIds] = useState<number[]>([]);
+  const [removingItemIds, setRemovingItemIds] = useState<number[]>([]);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
@@ -125,22 +128,31 @@ const Cart: React.FC = () => {
   }, []);
 
   const updateQuantity = async (itemId: number, quantity: number) => {
+    if (updatingItemIds.includes(itemId)) return;
+    const targetItem = cartItems.find((item) => item.id === itemId);
+    const normalizedQuantity = Math.max(1, Math.min(Number(quantity) || 1, targetItem?.stock || 99));
+    if (targetItem && normalizedQuantity === targetItem.quantity) return;
     try {
+      setUpdatingItemIds((ids) => Array.from(new Set([...ids, itemId])));
       const userId = getAuthenticatedCartUserId();
       if (userId) {
-        await cartApi.updateQuantity(itemId, quantity);
-        setCartItems((items) => items.map((item) => (item.id === itemId ? { ...item, quantity } : item)));
+        await cartApi.updateQuantity(itemId, normalizedQuantity);
+        setCartItems((items) => items.map((item) => (item.id === itemId ? { ...item, quantity: normalizedQuantity } : item)));
       } else {
-        setCartItems(updateGuestCartQuantity(itemId, quantity));
+        setCartItems(updateGuestCartQuantity(itemId, normalizedQuantity));
       }
       if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch (err: any) {
       message.error(err.response?.data?.error || t('pages.cart.quantityFailed'));
+    } finally {
+      setUpdatingItemIds((ids) => ids.filter((id) => id !== itemId));
     }
   };
 
   const removeItem = async (itemId: number) => {
+    if (removingItemIds.includes(itemId)) return;
     try {
+      setRemovingItemIds((ids) => Array.from(new Set([...ids, itemId])));
       const userId = getAuthenticatedCartUserId();
       if (userId) {
         await cartApi.removeItem(itemId);
@@ -153,6 +165,8 @@ const Cart: React.FC = () => {
       if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
     } catch {
       message.error(t('messages.deleteFailed'));
+    } finally {
+      setRemovingItemIds((ids) => ids.filter((id) => id !== itemId));
     }
   };
 
@@ -256,19 +270,23 @@ const Cart: React.FC = () => {
 
   const removeItems = async (itemIds: number[], successMessage: string) => {
     if (itemIds.length === 0) return;
+    const normalizedIds = Array.from(new Set(itemIds));
     try {
+      setRemovingItemIds((ids) => Array.from(new Set([...ids, ...normalizedIds])));
       const userId = getAuthenticatedCartUserId();
       if (userId) {
-        await Promise.all(itemIds.map((itemId) => cartApi.removeItem(itemId)));
-        setCartItems((items) => items.filter((item) => !itemIds.includes(item.id)));
+        await cartApi.removeItems(normalizedIds);
+        setCartItems((items) => items.filter((item) => !normalizedIds.includes(item.id)));
       } else {
-        setCartItems(removeGuestCartItems(itemIds));
+        setCartItems(removeGuestCartItems(normalizedIds));
       }
-      setSelectedIds((ids) => ids.filter((id) => !itemIds.includes(id)));
+      setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
       message.success(successMessage);
       if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
-    } catch {
-      message.error(t('messages.deleteFailed'));
+    } catch (err: any) {
+      message.error(err?.response?.data?.error || t('messages.deleteFailed'));
+    } finally {
+      setRemovingItemIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
     }
   };
 
@@ -551,7 +569,7 @@ const Cart: React.FC = () => {
         <InputNumber
           min={1}
           max={record.stock || undefined}
-          disabled={!isAvailable(record)}
+          disabled={!isAvailable(record) || updatingItemIds.includes(record.id) || removingItemIds.includes(record.id)}
           value={record.quantity}
           size="small"
           onChange={(value) => updateQuantity(record.id, value || 1)}
@@ -570,16 +588,43 @@ const Cart: React.FC = () => {
       width: 150,
       render: (_: unknown, record: CartItem) => (
         <Space direction="vertical" size={2}>
-          <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(record)}>
+          <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(record)} disabled={removingItemIds.includes(record.id)}>
             {t('pages.cart.saveForLater')}
           </Button>
           <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(record.id)}>
-            <Button type="text" danger icon={<DeleteOutlined />} size="small">{t('common.delete')}</Button>
+            <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(record.id)}>{t('common.delete')}</Button>
           </Popconfirm>
         </Space>
       ),
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="cart-page">
+        <section className="cart-page__hero">
+          <div className="cart-page__heroContent">
+            <div className="shimmer" style={{ width: 100, height: 18, borderRadius: 999 }} />
+            <div className="shimmer" style={{ width: 220, height: 40, borderRadius: 10 }} />
+            <div className="shimmer" style={{ width: '70%', height: 16, borderRadius: 6 }} />
+            <div className="cart-page__heroActions">
+              <div className="shimmer" style={{ width: 140, height: 40, borderRadius: 10 }} />
+              <div className="shimmer" style={{ width: 100, height: 40, borderRadius: 10 }} />
+            </div>
+          </div>
+          <div className="cart-page__heroStats">
+            {[1, 2, 3].map(i => <div key={i} className="shimmer" style={{ height: 80, borderRadius: 16 }} />)}
+          </div>
+        </section>
+        <section className="cart-page__summaryStrip">
+          <StatsStripSkeleton cols={3} />
+        </section>
+        <div style={{ marginTop: 16 }}>
+          <ProductCardSkeleton count={6} />
+        </div>
+      </div>
+    );
+  }
 
   if (!loading && cartItems.length === 0 && savedItems.length === 0 && recentProducts.length === 0) {
     return (
@@ -679,7 +724,7 @@ const Cart: React.FC = () => {
                 disabled={selectedIds.length === 0}
                 onConfirm={removeSelectedItems}
               >
-                <Button danger icon={<DeleteOutlined />} disabled={selectedIds.length === 0}>
+                <Button danger icon={<DeleteOutlined />} disabled={selectedIds.length === 0} loading={selectedIds.some((id) => removingItemIds.includes(id))}>
                   {t('pages.cart.deleteSelected')}
                 </Button>
               </Popconfirm>
@@ -688,7 +733,7 @@ const Cart: React.FC = () => {
                 disabled={unavailableItems.length === 0}
                 onConfirm={clearUnavailableItems}
               >
-                <Button disabled={unavailableItems.length === 0}>
+                <Button disabled={unavailableItems.length === 0} loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}>
                   {t('pages.cart.clearUnavailable')}
                 </Button>
               </Popconfirm>
@@ -725,7 +770,7 @@ const Cart: React.FC = () => {
                 {t('pages.cart.selectCheckoutReady')}
               </Button>
               {unavailableItems.length > 0 ? (
-                <Button size="small" onClick={clearUnavailableItems}>
+                <Button size="small" onClick={clearUnavailableItems} loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}>
                   {t('pages.cart.clearUnavailable')}
                 </Button>
               ) : null}
@@ -808,17 +853,17 @@ const Cart: React.FC = () => {
               <InputNumber
                 min={1}
                 max={item.stock || undefined}
-                disabled={!isAvailable(item)}
+                disabled={!isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id)}
                 value={item.quantity}
                 size="small"
                 onChange={(value) => updateQuantity(item.id, value || 1)}
               />
               <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(item.price * item.quantity)}</Text>
-              <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)}>
+              <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
                 {t('pages.cart.saveForLaterShort')}
               </Button>
               <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(item.id)}>
-                <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(item.id)} />
               </Popconfirm>
             </div>
           </Card>

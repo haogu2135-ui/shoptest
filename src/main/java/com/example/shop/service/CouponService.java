@@ -30,6 +30,7 @@ public class CouponService {
 
     private final CouponRepository couponRepository;
     private final UserCouponMapper userCouponMapper;
+    private final PetBirthdayCouponService petBirthdayCouponService;
 
     public List<Coupon> findAll() {
         return couponRepository.findAll().stream()
@@ -83,6 +84,13 @@ public class CouponService {
 
     @Transactional
     public void delete(Long id) {
+        if (!couponRepository.existsById(id)) {
+            throw new IllegalArgumentException("Coupon not found");
+        }
+        if (userCouponMapper.countUsedByCouponId(id) > 0) {
+            throw new IllegalStateException("Cannot delete coupon that has been used in orders");
+        }
+        petBirthdayCouponService.deleteBirthdayCouponRecords(id);
         couponRepository.deleteById(id);
     }
 

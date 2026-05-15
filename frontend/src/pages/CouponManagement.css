@@ -92,9 +92,32 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 .coupon-management-page__formRow .ant-input-number {
+  width: 100%;
+}
+
+.coupon-management-page__formRow > .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.coupon-management-birthday {
+  margin-bottom: 16px;
+  border-color: #e5dfd3;
+  box-shadow: 0 8px 24px rgba(18, 71, 52, 0.06);
+}
+
+.coupon-management-birthday .ant-card-head-title {
+  overflow-wrap: anywhere;
+}
+
+.coupon-management-birthday .ant-card-extra {
+  margin-inline-start: 12px;
+}
+
+.coupon-management-birthday__form .ant-input-number {
   width: 100%;
 }
 
@@ -129,5 +152,21 @@
   .coupon-management-page__formRow {
     grid-template-columns: 1fr;
     gap: 0;
+  }
+
+  .coupon-management-birthday .ant-card-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .coupon-management-birthday .ant-card-extra {
+    width: 100%;
+    margin: 0;
+  }
+
+  .coupon-management-birthday .ant-card-extra .ant-space,
+  .coupon-management-birthday .ant-card-extra .ant-btn {
+    width: 100%;
   }
 }

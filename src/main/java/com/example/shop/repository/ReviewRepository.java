@@ -20,6 +20,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.product.id = :productId AND r.status = 'APPROVED'")
     double findAverageRatingByProductId(@Param("productId") Long productId);
 
+    @Query("SELECT r.product.id, COUNT(r), SUM(CASE WHEN r.rating >= 4 THEN 1 ELSE 0 END), COALESCE(AVG(r.rating), 0) " +
+            "FROM Review r WHERE r.product.id IN :productIds AND r.status = 'APPROVED' GROUP BY r.product.id")
+    List<Object[]> summarizeApprovedReviewsByProductIds(@Param("productIds") List<Long> productIds);
+
     long countByProduct_IdAndStatus(Long productId, String status);
 
     long countByProduct_IdAndStatusAndRatingGreaterThanEqual(Long productId, String status, int rating);

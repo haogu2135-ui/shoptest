@@ -2,12 +2,15 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.CouponGrantRequest;
 import com.example.shop.dto.CouponUpsertRequest;
+import com.example.shop.dto.PetBirthdayCouponConfigRequest;
 import com.example.shop.dto.ProductImportResult;
 import com.example.shop.entity.Coupon;
 import com.example.shop.entity.AdminRole;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
+import com.example.shop.entity.Payment;
 import com.example.shop.entity.Product;
+import com.example.shop.entity.PetBirthdayCouponConfig;
 import com.example.shop.entity.Review;
 import com.example.shop.entity.SecurityAuditLog;
 import com.example.shop.entity.User;
@@ -257,8 +260,14 @@ public class AdminController {
 
     @DeleteMapping("/coupons/{id}")
     public ResponseEntity<?> deleteCoupon(@PathVariable Long id) {
-        couponService.delete(id);
-        return ResponseEntity.ok().build();
+        try {
+            couponService.delete(id);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/coupons/{id}/grant")
@@ -275,6 +284,20 @@ public class AdminController {
     public ResponseEntity<?> runPetBirthdayCoupons() {
         int granted = petBirthdayCouponService.grantBirthdayCoupons(LocalDate.now());
         return ResponseEntity.ok(Map.of("granted", granted));
+    }
+
+    @GetMapping("/pet-birthday-coupons/config")
+    public ResponseEntity<PetBirthdayCouponConfig> getPetBirthdayCouponConfig() {
+        return ResponseEntity.ok(petBirthdayCouponService.getConfig());
+    }
+
+    @PutMapping("/pet-birthday-coupons/config")
+    public ResponseEntity<?> updatePetBirthdayCouponConfig(@RequestBody PetBirthdayCouponConfigRequest request) {
+        try {
+            return ResponseEntity.ok(petBirthdayCouponService.updateConfig(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     // ==================== Notification Management ====================
@@ -460,8 +483,12 @@ public class AdminController {
 
         try {
             boolean updated;
+            Payment payment = null;
             if ("CANCELLED".equals(newStatus)) {
                 updated = orderService.cancelOrder(id);
+            } else if ("PENDING_SHIPMENT".equals(newStatus) && "PENDING_PAYMENT".equals(order.getStatus())) {
+                payment = orderService.confirmPayment(id, body.get("transactionId"));
+                updated = payment != null;
             } else if ("RETURN_APPROVED".equals(newStatus)) {
                 updated = orderService.approveReturn(id);
             } else if ("COMPLETED".equals(newStatus) && "RETURN_REQUESTED".equals(order.getStatus())) {
@@ -475,8 +502,14 @@ public class AdminController {
             }
             if (updated) {
                 auditLogService.record(auditActionForOrderStatus(order.getStatus(), newStatus), "SUCCESS", authentication, "ORDER", id, request,
-                        "Order status updated", "from=" + order.getStatus() + ",to=" + newStatus + ",orderNo=" + order.getOrderNo());
-                return ResponseEntity.ok(Map.of("message", "状态更新成功", "status", newStatus));
+                        "Order status updated", "from=" + order.getStatus() + ",to=" + newStatus + ",orderNo=" + order.getOrderNo() + paymentMetadata(payment));
+                Map<String, Object> response = new LinkedHashMap<>();
+                response.put("message", "状态更新成功");
+                response.put("status", newStatus);
+                if (payment != null) {
+                    response.put("payment", payment);
+                }
+                return ResponseEntity.ok(response);
             }
             auditLogService.record(auditActionForOrderStatus(order.getStatus(), newStatus), "FAILURE", authentication, "ORDER", id, request,
                     "Order status update returned false", "from=" + order.getStatus() + ",to=" + newStatus + ",orderNo=" + order.getOrderNo());
@@ -486,6 +519,29 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {
             auditLogService.record(auditActionForOrderStatus(order.getStatus(), newStatus), "FAILURE", authentication, "ORDER", id, request, e.getMessage(), "to=" + newStatus);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/orders/{id}/refund")
+    public ResponseEntity<?> refundOrder(@PathVariable Long id,
+                                         @RequestBody(required = false) Map<String, Object> body,
+                                         Authentication authentication,
+                                         HttpServletRequest request) {
+        String reason = body == null || body.get("reason") == null ? "" : String.valueOf(body.get("reason"));
+        boolean restock = body != null && Boolean.parseBoolean(String.valueOf(body.getOrDefault("restock", "false")));
+        try {
+            Payment payment = orderService.refundOrder(id, reason, restock);
+            auditLogService.record("ORDER_REFUND", "SUCCESS", authentication, "ORDER", id, request,
+                    "Order refunded",
+                    "paymentId=" + payment.getId() + ",channel=" + payment.getChannel() + ",reference=" + payment.getRefundReference() + ",restock=" + restock);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Refund completed",
+                    "payment", payment
+            ));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            auditLogService.record("ORDER_REFUND", "FAILURE", authentication, "ORDER", id, request,
+                    e.getMessage(), "restock=" + restock);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -733,6 +789,9 @@ public class AdminController {
     }
 
     private String auditActionForOrderStatus(String currentStatus, String newStatus) {
+        if ("PENDING_PAYMENT".equals(currentStatus) && "PENDING_SHIPMENT".equals(newStatus)) {
+            return "PAYMENT_MANUAL_CONFIRM";
+        }
         if ("RETURNED".equals(newStatus)) {
             return "REFUND_COMPLETE";
         }
@@ -743,6 +802,15 @@ public class AdminController {
             return "RETURN_REJECT";
         }
         return "ORDER_STATUS_UPDATE";
+    }
+
+    private String paymentMetadata(Payment payment) {
+        if (payment == null) {
+            return "";
+        }
+        return ",paymentId=" + payment.getId()
+                + ",paymentChannel=" + payment.getChannel()
+                + ",transactionId=" + payment.getTransactionId();
     }
 
     private LocalDateTime parseDateTime(String value) {

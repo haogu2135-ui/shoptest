@@ -3,89 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f4f4f4;
-        }
-        .login-container {
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .error-message {
-            color: #dc3545;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        .register-link {
-            text-align: center;
-            margin-top: 15px;
-        }
-        .register-link a {
-            color: #007bff;
-            text-decoration: none;
-        }
-        .register-link a:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <title>登录 - MyShop</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
-<body>
-    <div class="login-container">
-        <h2 style="text-align: center;">登录</h2>
-        <div th:if="${param.error}" class="error-message">
-            用户名或密码错误
+<body class="auth-page">
+    <div class="auth-card">
+        <div class="brand">
+            <div class="brand-name">MyShop</div>
+            <div class="brand-sub">欢迎回来，请登录您的账号</div>
         </div>
-        <div th:if="${param.logout}" class="error-message">
-            您已成功退出登录
-        </div>
+
+        <div th:if="${param.error}" class="alert alert-error">用户名或密码错误，请重试</div>
+        <div th:if="${param.logout}" class="alert alert-success">您已成功退出登录</div>
+
         <form th:action="@{/login}" method="post">
             <div class="form-group">
                 <label for="username">用户名</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username" placeholder="请输入用户名" required autofocus>
             </div>
             <div class="form-group">
                 <label for="password">密码</label>
-                <input type="password" id="password" name="password" required>
+                <div class="input-with-action">
+                    <input type="password" id="password" name="password" placeholder="请输入密码" required>
+                    <button type="button" class="input-action-btn" id="togglePwd" title="显示/隐藏密码">👁</button>
+                </div>
             </div>
-            <button type="submit">登录</button>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+                <label class="checkbox-row">
+                    <input type="checkbox" name="remember-me">
+                    <span>记住我</span>
+                </label>
+                <a href="#" style="font-size:0.85rem;">忘记密码？</a>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">登录</button>
         </form>
-        <div class="register-link">
+
+        <div class="divider">其他登录方式</div>
+        <div class="social-buttons">
+            <button type="button" class="social-btn" title="微信登录">💬</button>
+            <button type="button" class="social-btn" title="QQ登录">🐧</button>
+            <button type="button" class="social-btn" title="微博登录">📱</button>
+        </div>
+
+        <div class="auth-footer">
             还没有账号？<a th:href="@{/api/users/register}">立即注册</a>
         </div>
     </div>
+
+    <script>
+        const pwd = document.getElementById('password');
+        const toggle = document.getElementById('togglePwd');
+        toggle.addEventListener('click', () => {
+            const isPwd = pwd.type === 'password';
+            pwd.type = isPwd ? 'text' : 'password';
+            toggle.textContent = isPwd ? '🙈' : '👁';
+        });
+    </script>
 </body>
 </html>

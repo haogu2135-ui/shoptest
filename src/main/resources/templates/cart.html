@@ -3,211 +3,317 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>购物车</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .navbar {
-            background-color: #333;
-            padding: 15px;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-        }
-        .cart-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .cart-item {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .cart-item img {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            margin-right: 20px;
-            border-radius: 5px;
-        }
-        .item-details {
-            flex-grow: 1;
-        }
-        .item-name {
-            font-size: 1.2em;
-            margin-bottom: 5px;
-        }
-        .item-price {
-            color: #e44d26;
-            font-weight: bold;
-        }
-        .quantity-controls {
-            display: flex;
-            align-items: center;
-            margin: 0 20px;
-        }
-        .quantity-btn {
-            background-color: #f0f0f0;
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-        }
-        .quantity-input {
-            width: 50px;
-            text-align: center;
-            margin: 0 10px;
-        }
-        .remove-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-        .cart-summary {
-            margin-top: 20px;
-            text-align: right;
-        }
-        .total {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .checkout-btn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1.1em;
-        }
-        .checkout-btn:hover {
-            background-color: #218838;
-        }
-        .empty-cart {
-            text-align: center;
-            padding: 50px;
-            color: #666;
-        }
-    </style>
+    <title>购物车 - MyShop</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
-    <div class="navbar">
+    <nav class="navbar">
         <div class="logo">MyShop</div>
         <div class="nav-links">
-            <a href="/api/products">继续购物</a>
-            <a th:href="@{/logout}">退出登录</a>
+            <a href="/api/products">← 继续购物</a>
+            <a th:href="@{/logout}">退出</a>
+        </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="cart-container">
+            <div class="cart-header">我的购物车</div>
+
+            <!-- 空购物车 -->
+            <div th:if="${cartItems.empty}" class="empty-cart">
+                <div class="empty-icon">🛒</div>
+                <p>购物车还是空的，去挑选喜欢的商品吧</p>
+                <a href="/api/products" class="btn btn-primary">去购物</a>
+            </div>
+
+            <div th:if="${!cartItems.empty}">
+                <!-- 免运费进度 -->
+                <div class="free-shipping-bar" id="shippingBar">
+                    <span id="shippingMsg">计算中…</span>
+                    <div class="bar-track">
+                        <div class="bar-fill" id="shippingFill" style="width:0%"></div>
+                    </div>
+                </div>
+
+                <!-- 全选条 -->
+                <div style="background:white;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:0.75rem 1.2rem;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:space-between;">
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="selectAll" checked>
+                        <span>全选</span>
+                    </label>
+                    <span style="font-size:0.85rem;color:var(--text-muted);">
+                        已选 <span id="selectedCount">0</span> 件
+                    </span>
+                </div>
+
+                <div class="cart-list">
+                    <div class="cart-item" th:each="item : ${cartItems}"
+                         th:data-item-id="${item.id}"
+                         th:data-price="${item.product.price}"
+                         th:data-qty="${item.quantity}">
+                        <label class="checkbox-row" style="margin-right:6px;">
+                            <input type="checkbox" class="item-check" checked>
+                        </label>
+                        <img th:src="@{'/images/' + ${item.product.image}}" th:alt="${item.product.name}">
+                        <div class="item-details">
+                            <div class="item-name" th:text="${item.product.name}"></div>
+                            <div class="item-price" th:text="'¥' + ${#numbers.formatDecimal(item.product.price, 1, 2)}"></div>
+                            <div class="item-subtotal">
+                                小计：<span class="subtotal-val">¥<span class="subtotal-num"
+                                    th:text="${#numbers.formatDecimal(item.product.price * item.quantity, 1, 2)}"></span></span>
+                            </div>
+                        </div>
+                        <div class="quantity-controls">
+                            <button class="qty-btn qty-minus">−</button>
+                            <input type="number" class="quantity-input" th:value="${item.quantity}" min="1" readonly>
+                            <button class="qty-btn qty-plus">+</button>
+                        </div>
+                        <button class="btn btn-ghost remove-btn"
+                                style="margin-left:0.8rem;color:var(--danger);border-color:var(--danger);">删除</button>
+                    </div>
+                </div>
+
+                <!-- 优惠券 -->
+                <div class="coupon-row">
+                    <label>🎟 优惠券</label>
+                    <input type="text" id="couponInput" placeholder="输入优惠码（试试 SAVE10）">
+                    <button class="btn btn-primary" id="applyCoupon" style="height:34px;padding:0 1rem;">使用</button>
+                    <span class="applied-tag" id="couponTag" style="display:none;">已优惠 ¥<span id="couponDiscount">0</span></span>
+                </div>
+
+                <!-- 订单摘要 -->
+                <div class="cart-summary">
+                    <div class="summary-rows">
+                        <div class="summary-row">
+                            <span>商品总价</span>
+                            <span id="subtotal">¥0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>运费</span>
+                            <span id="shippingFee">¥0.00</span>
+                        </div>
+                        <div class="summary-row discount" id="discountRow" style="display:none;">
+                            <span>优惠券</span>
+                            <span>-¥<span id="discountAmt">0.00</span></span>
+                        </div>
+                    </div>
+                    <div class="summary-bottom">
+                        <div>
+                            <div class="total-label">共 <span id="itemCount">0</span> 件商品，应付</div>
+                            <div class="total-amount" id="totalAmount">¥0.00</div>
+                        </div>
+                        <button class="btn btn-success" id="checkoutBtn"
+                                style="padding:0.75rem 2.5rem;font-size:1rem;">去结算</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 推荐位 -->
+            <div class="recommend-section" th:if="${!cartItems.empty}">
+                <div class="section-title">为你推荐</div>
+                <div style="background:white;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.88rem;">
+                    💡 浏览更多 <a href="/api/products">热门商品</a>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="cart-container">
-        <h2>购物车</h2>
-        <div th:if="${cartItems.empty}" class="empty-cart">
-            <p>购物车是空的</p>
-            <a href="/api/products" class="checkout-btn">去购物</a>
-        </div>
-        <div th:each="item : ${cartItems}" class="cart-item">
-            <img th:src="@{'/images/' + ${item.product.image}}" th:alt="${item.product.name}">
-            <div class="item-details">
-                <div class="item-name" th:text="${item.product.name}"></div>
-                <div class="item-price" th:text="'¥' + ${#numbers.formatDecimal(item.product.price, 1, 2)}"></div>
-            </div>
-            <div class="quantity-controls">
-                <button class="quantity-btn" th:onclick="'updateQuantity(' + ${item.id} + ', ' + (${item.quantity} - 1) + ')'">-</button>
-                <input type="number" class="quantity-input" th:value="${item.quantity}" min="1" 
-                       th:onchange="'updateQuantity(' + ${item.id} + ', this.value)'">
-                <button class="quantity-btn" th:onclick="'updateQuantity(' + ${item.id} + ', ' + (${item.quantity} + 1) + ')'">+</button>
-            </div>
-            <button class="remove-btn" th:onclick="'removeItem(' + ${item.id} + ')'">删除</button>
-        </div>
-        <div th:if="${!cartItems.empty}" class="cart-summary">
-            <div class="total" th:text="'总计: ¥' + ${#numbers.formatDecimal(total, 1, 2)}"></div>
-            <button class="checkout-btn" onclick="checkout()">结算</button>
-        </div>
-    </div>
+    <footer class="site-footer">
+        © 2025 MyShop &nbsp;·&nbsp; <a href="#">关于我们</a> &nbsp;·&nbsp; <a href="#">联系客服</a>
+    </footer>
+
+    <button class="back-to-top" id="backToTop">↑</button>
+    <div class="toast-container" id="toastContainer"></div>
 
     <script>
+        function showToast(msg, type) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type || 'info');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        const FREE_THRESHOLD = 99;
+        const SHIPPING_FEE = 8;
+        let couponDiscount = 0;
+
+        function fmt(n) { return '¥' + (Math.round(n * 100) / 100).toFixed(2); }
+
+        function recompute() {
+            const rows = document.querySelectorAll('.cart-item');
+            let subtotal = 0, count = 0, selected = 0;
+            rows.forEach(r => {
+                const checked = r.querySelector('.item-check').checked;
+                const price = parseFloat(r.dataset.price) || 0;
+                const qty = parseInt(r.querySelector('.quantity-input').value) || 0;
+                r.querySelector('.subtotal-num').textContent = (price * qty).toFixed(2);
+                if (checked) {
+                    subtotal += price * qty;
+                    count += qty;
+                    selected++;
+                }
+            });
+
+            const shipping = subtotal >= FREE_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE;
+            const total = Math.max(0, subtotal + shipping - couponDiscount);
+
+            document.getElementById('subtotal').textContent = fmt(subtotal);
+            document.getElementById('shippingFee').textContent = shipping === 0 && subtotal > 0 ? '免运费' : fmt(shipping);
+            document.getElementById('totalAmount').textContent = fmt(total);
+            document.getElementById('itemCount').textContent = count;
+            document.getElementById('selectedCount').textContent = selected;
+
+            // 进度条
+            const pct = Math.min(subtotal / FREE_THRESHOLD * 100, 100);
+            document.getElementById('shippingFill').style.width = pct + '%';
+            document.getElementById('shippingMsg').textContent =
+                subtotal >= FREE_THRESHOLD ? '🎉 已享免运费'
+                : `再购 ¥${(FREE_THRESHOLD - subtotal).toFixed(2)} 可免运费`;
+
+            // 全选状态同步
+            const checks = document.querySelectorAll('.item-check');
+            const all = checks.length;
+            const on = Array.from(checks).filter(c => c.checked).length;
+            const allBox = document.getElementById('selectAll');
+            if (allBox) allBox.checked = all > 0 && on === all;
+        }
+
+        recompute();
+
+        // 全选
+        document.getElementById('selectAll')?.addEventListener('change', function() {
+            document.querySelectorAll('.item-check').forEach(c => c.checked = this.checked);
+            recompute();
+        });
+
+        // 单选
+        document.querySelectorAll('.item-check').forEach(c => {
+            c.addEventListener('change', recompute);
+        });
+
+        // 数量变更
         function updateQuantity(itemId, quantity) {
             if (quantity < 1) return;
             fetch('/api/cart/update', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    itemId: itemId,
-                    quantity: quantity
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ itemId, quantity })
             })
-            .then(response => response.json())
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) showToast('更新失败：' + data.message, 'error');
+            })
+            .catch(() => showToast('网络错误，请稍后重试', 'error'));
+        }
+
+        function removeItem(itemId, row) {
+            row.style.opacity = '0.4';
+            row.style.pointerEvents = 'none';
+            fetch('/api/cart/remove/' + itemId, { method: 'DELETE' })
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    location.reload();
+                    row.style.transition = 'all 0.3s';
+                    row.style.maxHeight = row.offsetHeight + 'px';
+                    requestAnimationFrame(() => {
+                        row.style.maxHeight = '0';
+                        row.style.padding = '0';
+                        row.style.overflow = 'hidden';
+                        row.style.opacity = '0';
+                    });
+                    setTimeout(() => {
+                        row.remove();
+                        recompute();
+                        if (document.querySelectorAll('.cart-item').length === 0) location.reload();
+                    }, 320);
                 } else {
-                    alert('更新失败：' + data.message);
+                    row.style.opacity = '';
+                    row.style.pointerEvents = '';
+                    showToast('删除失败：' + data.message, 'error');
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('更新失败，请稍后重试');
+            .catch(() => {
+                row.style.opacity = '';
+                row.style.pointerEvents = '';
+                showToast('网络错误，请稍后重试', 'error');
             });
         }
 
-        function removeItem(itemId) {
-            if (!confirm('确定要删除这个商品吗？')) return;
-            fetch('/api/cart/remove/' + itemId, {
-                method: 'DELETE'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('删除失败：' + data.message);
+        document.querySelectorAll('.cart-item').forEach(row => {
+            const itemId = row.dataset.itemId;
+            const input = row.querySelector('.quantity-input');
+            row.querySelector('.qty-minus').addEventListener('click', () => {
+                const v = parseInt(input.value);
+                if (v > 1) {
+                    input.value = v - 1;
+                    recompute();
+                    updateQuantity(itemId, v - 1);
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('删除失败，请稍后重试');
             });
-        }
+            row.querySelector('.qty-plus').addEventListener('click', () => {
+                const v = parseInt(input.value) + 1;
+                input.value = v;
+                recompute();
+                updateQuantity(itemId, v);
+            });
+            row.querySelector('.remove-btn').addEventListener('click', () => removeItem(itemId, row));
+        });
 
-        function checkout() {
-            fetch('/api/orders/create', {
-                method: 'POST'
-            })
-            .then(response => response.json())
+        // 优惠券
+        document.getElementById('applyCoupon')?.addEventListener('click', () => {
+            const code = document.getElementById('couponInput').value.trim().toUpperCase();
+            const tag = document.getElementById('couponTag');
+            const row = document.getElementById('discountRow');
+            if (code === 'SAVE10') {
+                couponDiscount = 10;
+            } else if (code === 'SAVE20') {
+                couponDiscount = 20;
+            } else if (!code) {
+                couponDiscount = 0;
+                tag.style.display = 'none';
+                row.style.display = 'none';
+                recompute();
+                return;
+            } else {
+                showToast('优惠码无效', 'error');
+                return;
+            }
+            document.getElementById('couponDiscount').textContent = couponDiscount;
+            document.getElementById('discountAmt').textContent = couponDiscount.toFixed(2);
+            tag.style.display = '';
+            row.style.display = '';
+            recompute();
+            showToast('优惠码已应用 🎉', 'success');
+        });
+
+        // 结算
+        document.getElementById('checkoutBtn')?.addEventListener('click', function() {
+            const selected = document.querySelectorAll('.item-check:checked').length;
+            if (selected === 0) { showToast('请至少选择一件商品', 'error'); return; }
+            this.disabled = true;
+            this.textContent = '处理中…';
+            fetch('/api/orders/create', { method: 'POST' })
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert('订单创建成功！');
-                    window.location.href = '/api/products';
+                    showToast('订单创建成功！即将跳转…', 'success');
+                    setTimeout(() => window.location.href = '/api/products', 1400);
                 } else {
-                    alert('创建订单失败：' + data.message);
+                    showToast('创建订单失败：' + data.message, 'error');
+                    this.disabled = false; this.textContent = '去结算';
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('创建订单失败，请稍后重试');
+            .catch(() => {
+                showToast('网络错误，请稍后重试', 'error');
+                this.disabled = false; this.textContent = '去结算';
             });
-        }
+        });
+
+        const topBtn = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => topBtn.classList.toggle('visible', window.scrollY > 300));
+        topBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     </script>
 </body>
-</html> 
+</html>

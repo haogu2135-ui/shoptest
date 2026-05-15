@@ -191,6 +191,19 @@
           AND status = #{currentStatus}
     </update>
 
+    <update id="markRefunded">
+        UPDATE orders
+        SET status = 'REFUNDED',
+            return_reason = CASE
+                WHEN #{reason} IS NULL OR #{reason} = '' THEN return_reason
+                ELSE #{reason}
+            END,
+            refunded_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND status = #{currentStatus}
+    </update>
+
     <delete id="deleteById">
         DELETE FROM orders WHERE id = #{id}
     </delete>

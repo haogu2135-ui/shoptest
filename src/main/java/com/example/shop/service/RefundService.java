@@ -42,22 +42,30 @@ public class RefundService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void refundPaidPayment(Order order) {
+    public Payment refundPaidPayment(Order order, String reason) {
         Payment payment = paymentRepository.findLatestPaidByOrderId(order.getId());
         if (payment == null) {
-            return;
+            Payment refunded = paymentRepository.findLatestRefundedByOrderId(order.getId());
+            if (refunded != null) {
+                return refunded;
+            }
+            throw new IllegalStateException("No paid payment found for refund");
         }
         PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
         String refundReference = null;
+        String normalizedReason = normalizeReason(reason);
         if (shouldRefundViaStripe(payment, channel)) {
             refundReference = refundStripePayment(order, payment);
         } else if (shouldRefundViaGenericApi(channel)) {
-            refundReference = refundGenericApiPayment(order, payment, channel);
+            refundReference = refundGenericApiPayment(order, payment, channel, normalizedReason);
+        } else {
+            refundReference = "MANUAL-" + order.getId() + "-" + payment.getId();
         }
         int updated = paymentRepository.markRefunded(payment.getId(), refundReference);
         if (updated == 0 && !STATUS_REFUNDED.equals(resolveLatestPaymentStatus(payment.getId()))) {
             throw new IllegalStateException("Refund state update failed");
         }
+        return paymentRepository.findById(payment.getId());
     }
 
     private boolean shouldRefundViaStripe(Payment payment, PaymentChannelConfig.Channel channel) {
@@ -96,7 +104,7 @@ public class RefundService {
         }
     }
 
-    private String refundGenericApiPayment(Order order, Payment payment, PaymentChannelConfig.Channel channel) {
+    private String refundGenericApiPayment(Order order, Payment payment, PaymentChannelConfig.Channel channel, String reason) {
         String refundUrl = trimToNull(channel.getRefundUrl());
         if (refundUrl == null) {
             throw new IllegalStateException("Refund URL is not configured for channel " + channel.getCode());
@@ -110,14 +118,16 @@ public class RefundService {
         payload.put("channel", payment.getChannel());
         payload.put("amount", normalizeAmount(payment.getAmount()));
         payload.put("currency", resolveCurrency(channel));
-        payload.put("reason", "RETURN_COMPLETED");
+        payload.put("reason", firstNonBlank(reason, "RETURN_COMPLETED"));
         payload.put("merchantId", trimToNull(channel.getMerchantId()));
+        String idempotencyKey = refundIdempotencyKey(order, payment);
+        payload.put("idempotencyKey", idempotencyKey);
         ResponseEntity<String> response;
         try {
             response = restTemplate.exchange(
                     refundUrl,
                     HttpMethod.POST,
-                    new HttpEntity<>(payload, buildHeaders(channel)),
+                    new HttpEntity<>(payload, buildHeaders(channel, idempotencyKey)),
                     String.class);
         } catch (RestClientException e) {
             throw new IllegalStateException("Gateway refund request failed: " + e.getMessage());
@@ -128,7 +138,7 @@ public class RefundService {
         return parseRefundReference(response.getBody(), payment.getId());
     }
 
-    private HttpHeaders buildHeaders(PaymentChannelConfig.Channel channel) {
+    private HttpHeaders buildHeaders(PaymentChannelConfig.Channel channel, String idempotencyKey) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         String authHeaderName = trimToNull(channel.getAuthHeaderName());
@@ -136,6 +146,7 @@ public class RefundService {
         if (authHeaderName != null && authHeaderValue != null) {
             headers.set(authHeaderName, authHeaderValue);
         }
+        headers.set("Idempotency-Key", idempotencyKey);
         return headers;
     }
 
@@ -183,6 +194,18 @@ public class RefundService {
 
     private String normalizeAmount(BigDecimal amount) {
         return amount == null ? "0" : amount.stripTrailingZeros().toPlainString();
+    }
+
+    private String refundIdempotencyKey(Order order, Payment payment) {
+        return "return-refund-" + order.getId() + "-" + payment.getId();
+    }
+
+    private String normalizeReason(String reason) {
+        String normalized = trimToNull(reason);
+        if (normalized == null) {
+            return null;
+        }
+        return normalized.length() > 500 ? normalized.substring(0, 500) : normalized;
     }
 
     private String firstNonBlank(String... values) {

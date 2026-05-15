@@ -69,6 +69,7 @@ public class PaymentController {
                                           Authentication authentication,
                                           HttpServletRequest request) {
         try {
+            SecurityUtils.assertAdmin(authentication);
             assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null);
             Payment payment = paymentService.simulatePaid(id);
             auditLogService.record("PAYMENT_SIMULATE_PAID", "SUCCESS", authentication, "PAYMENT", id, request,
@@ -91,6 +92,7 @@ public class PaymentController {
                                               Authentication authentication,
                                               HttpServletRequest request) {
         try {
+            SecurityUtils.assertAdmin(authentication);
             assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null);
             Payment payment = paymentService.simulateCallback(id);
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "SUCCESS", authentication, "PAYMENT", id, request,

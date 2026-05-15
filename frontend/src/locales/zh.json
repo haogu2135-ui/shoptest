@@ -30,7 +30,8 @@
     "tableTotal": "共 {count} 条",
     "send": "发送",
     "refresh": "刷新",
-    "reset": "重置"
+    "reset": "重置",
+    "save": "保存"
   },
   "status": {
     "PENDING_PAYMENT": "待付款",
@@ -309,7 +310,14 @@
       "reconnectingHint": "重连中",
       "messageReady": "可以发送",
       "messageDraftHint": "发送前补充一句问题描述",
-      "messageTooLongInline": "上限 {count} 个字符"
+      "messageTooLongInline": "上限 {count} 个字符",
+      "conversationBrief": "会话摘要",
+      "assignedAgent": "负责客服",
+      "unassignedAgent": "等待分配",
+      "orderContextReady": "已附订单",
+      "orderContextMissing": "未附订单",
+      "lastUpdated": "更新",
+      "shareLatestOrder": "发送最近订单"
     },
     "adminSupport": {
       "title": "在线客服",
@@ -325,9 +333,20 @@
       "queueSubtitle": "优先处理客户消息，减少订单和售后阻塞。",
       "unreadMessages": "{count} 条未读",
       "openSessions": "{count} 个进行中",
+      "mySessions": "我负责 {count} 个",
       "closedSessions": "{count} 个已关闭",
       "showNeedsReply": "查看待回复",
-      "showOpen": "查看进行中"
+      "showOpen": "查看进行中",
+      "assignedTo": "负责人",
+      "unassigned": "未分配",
+      "assignToMe": "接入处理",
+      "assignedToMe": "已分配给你",
+      "reopenSession": "重新打开",
+      "sessionReopened": "会话已重新打开",
+      "reissueBirthdayCoupon": "补发生日券",
+      "reissueBirthdayCouponSuccess": "已补发 {count} 张生日券",
+      "noBirthdayCouponReissued": "该用户今天没有可补发的宠物生日券",
+      "reissueBirthdayCouponFailed": "生日券补发失败"
     },
     "coupons": {
       "title": "优惠券",
@@ -443,7 +462,22 @@
       "activeCoupons": "生效中",
       "publicActiveCoupons": "公开领取",
       "expiringSoonCoupons": "即将过期",
-      "lowRemainingCoupons": "库存紧张"
+      "lowRemainingCoupons": "库存紧张",
+      "birthdayConfigLoadFailed": "宠物生日优惠券配置加载失败",
+      "birthdayConfigSaved": "宠物生日优惠券配置已保存",
+      "birthdayConfigSaveFailed": "宠物生日优惠券配置保存失败",
+      "birthdayConfigTitle": "宠物生日优惠券自动化",
+      "birthdayEnabled": "已启用",
+      "birthdayDisabled": "已禁用",
+      "birthdayEnabledLabel": "自动发放",
+      "birthdayNamePrefix": "优惠券名称前缀",
+      "birthdayNamePrefixRequired": "请输入优惠券名称前缀",
+      "birthdayValidDays": "有效天数",
+      "birthdayValidDaysRequired": "请输入有效天数",
+      "birthdayMaxPerUser": "每用户每年最大权益次数",
+      "birthdayMaxPerUserRequired": "请输入每年用户上限",
+      "birthdayQuantityPerCoupon": "每张优惠券发放数量",
+      "birthdayConfigHint": "每日定时任务和手动补发均使用此配置。每只宠物每个生日年度最多领取一张生日优惠券。"
     },
     "cart": {
       "title": "购物车",
@@ -767,6 +801,9 @@
       "pickPreference": "匹配浏览偏好",
       "viewPick": "查看推荐",
       "personalizedSort": "个性化优先",
+      "quickAddSort": "快速加购优先",
+      "bestValueSort": "性价比优先",
+      "lowStockSort": "低库存优先",
       "personalGuideEyebrow": "个性化导购路径",
       "personalGuideTitle": "结合宠物档案和浏览信号选购",
       "personalGuidePet": "已有 {count} 个宠物档案推荐可用。系统会优先推荐更适合你家宠物的商品。",
@@ -776,7 +813,10 @@
       "personalGuideSetup": "待完善档案",
       "viewPersonalPicks": "优先可信推荐",
       "managePetProfile": "管理宠物档案",
-      "noReviewsYet": "新品，暂无评价"
+      "noReviewsYet": "新品，暂无评价",
+      "checkoutPathEyebrow": "最快下单路径",
+      "checkoutPathTitle": "优先查看这几件",
+      "checkoutPathText": "{count} 件商品位于当前结果前列，其中 {ready} 件可直接加购。"
     },
     "compare": {
       "title": "商品对比",
@@ -890,6 +930,19 @@
       "transactionId": "交易号",
       "paymentExpiresAt": "支付过期时间",
       "paymentStatus": "支付状态",
+      "paymentRecoveryTitle": "支付恢复助手",
+      "paymentRecoveryStatus": "状态",
+      "paymentRecoveryPaid": "已支付",
+      "paymentRecoveryPending": "待支付",
+      "paymentRecoveryExpired": "已过期",
+      "paymentRecoveryWindow": "支付窗口",
+      "paymentRecoveryWindowUnknown": "正在确认网关时效",
+      "paymentRecoveryWindowExpired": "当前支付窗口已过期",
+      "paymentRecoveryWindowMinutes": "剩余 {count} 分钟",
+      "paymentRecoveryNext": "下一步",
+      "paymentRecoveryNextPaid": "接下来会为你准备发货更新。",
+      "paymentRecoveryNextOpen": "打开安全支付网关并完成付款。",
+      "paymentRecoveryNextRetry": "刷新支付链接，或联系在线客服协助。",
       "emptySelected": "未选择结算商品",
       "backCart": "返回购物车",
       "title": "确认订单",
@@ -1230,6 +1283,9 @@
       "returnTracking": "退货物流单号",
       "returnReason": "退货原因",
       "refundedAt": "退款完成时间",
+      "confirmPayment": "确认收款",
+      "confirmPaymentTitle": "确认这笔订单已收款？",
+      "confirmPaymentContent": "确认后系统会写入支付记录，并将订单转为待发货。",
       "approveReturn": "同意退货",
       "rejectReturn": "拒绝退货",
       "confirmReturnReceivedAndRefund": "确认收货并退款",
@@ -1240,7 +1296,16 @@
       "confirmApproveReturnContent": "同意后，客户可以寄回退货商品，等待平台收货后退款。",
       "confirmRejectReturnTitle": "确认拒绝这个退货申请？",
       "confirmRejectReturnContent": "拒绝后，订单将恢复为已完成状态，客户不会进入寄回流程。",
-      "returnInfo": "退货信息"
+      "returnInfo": "退货信息",
+      "refundNow": "立即退款",
+      "refundFailed": "退款失败",
+      "refundCompletedWithReference": "退款已完成，凭证：{reference}",
+      "refundConfirmHint": "将为订单 {orderNo} 退款 {amount}。请仅在确认应向客户退回款项后操作。",
+      "refundReasonPlaceholder": "填写退款原因，用于审计和客服备注",
+      "restockRefundItems": "退款后回补库存",
+      "paymentHistory": "支付记录",
+      "refundReference": "退款凭证",
+      "refundPaymentEvidence": "支付凭证"
     },
     "logisticsCarriers": {
       "title": "快递公司配置",
@@ -1664,7 +1729,11 @@
       "pathSubscribeText": "按 {interval} 配送，本单预计可省 {amount}。",
       "pathOnceTitle": "单次购买更灵活",
       "pathOnceText": "适合礼物、首次试用、玩具、服饰和一次性配件。",
-      "useRecommendedPath": "使用推荐方案"
+      "useRecommendedPath": "使用推荐方案",
+      "completeSetTitle": "顺手搭配",
+      "completeSetText": "同类目热卖配件，可减少二次寻找。",
+      "completeSetAdd": "加购",
+      "mobileBuybarMeta": "{price} · {stock}"
     },
     "profile": {
       "fetchUserFailed": "用户信息加载失败",

@@ -2,16 +2,17 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Cascader, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Tabs, Tag, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, PlusOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { addressApi, apiBaseUrl, appConfigApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
+import { addressApi, apiBaseUrl, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { Order, OrderItem, Payment, PetProfile, User, UserAddress } from '../types';
 import { findRegionPath, regionData } from '../regionData';
 import { useLanguage } from '../i18n';
-import { createPaymentMethodOptions, mexicoPaymentMethodDetails, paymentMethodLabel, paymentSimulationEnabledFallback } from '../utils/paymentMethods';
+import { createPaymentMethodOptions, mexicoPaymentMethodDetails, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import './Profile.css';
 import dayjs from 'dayjs';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { navigateToSafeUrl } from '../utils/safeUrl';
+import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 
 const { Title, Text } = Typography;
@@ -92,11 +93,8 @@ const Profile: React.FC = () => {
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('STRIPE');
-  const [paymentSimulationEnabled, setPaymentSimulationEnabled] = useState(paymentSimulationEnabledFallback);
   const [orderPayments, setOrderPayments] = useState<Payment[]>([]);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
-  const [simulatingPayment, setSimulatingPayment] = useState(false);
-  const [simulatingCallback, setSimulatingCallback] = useState(false);
   const [refreshingPayment, setRefreshingPayment] = useState(false);
   const [returnShipmentOrder, setReturnShipmentOrder] = useState<Order | null>(null);
   const [returnTrackingNumber, setReturnTrackingNumber] = useState('');
@@ -171,12 +169,6 @@ const Profile: React.FC = () => {
     } catch {
       setPetProfiles([]);
     }
-  }, []);
-
-  useEffect(() => {
-    appConfigApi.get()
-      .then((res) => setPaymentSimulationEnabled(Boolean(res.data.paymentSimulationEnabled)))
-      .catch(() => setPaymentSimulationEnabled(paymentSimulationEnabledFallback));
   }, []);
 
   useEffect(() => {
@@ -319,45 +311,6 @@ const Profile: React.FC = () => {
       fetchOrders();
     } finally {
       setPayingOrderId(null);
-    }
-  };
-
-  const handleSimulatePayment = async () => {
-    if (!selectedPayment) return;
-    setSimulatingPayment(true);
-    try {
-      const paidRes = await paymentApi.simulatePaid(selectedPayment.id);
-      setSelectedPayment(paidRes.data);
-      message.success(t('pages.checkout.paid'));
-      await fetchOrders();
-      if (selectedOrder) {
-        await refreshPaymentState(selectedOrder.id);
-      }
-    } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.checkout.payFailed'));
-      await fetchOrders();
-    } finally {
-      setSimulatingPayment(false);
-    }
-  };
-
-  const handleSimulateCallback = async () => {
-    if (!selectedPayment) return;
-    setSimulatingCallback(true);
-    try {
-      const callbackRes = await paymentApi.simulateCallback(selectedPayment.id);
-      setSelectedPayment(callbackRes.data);
-      setSelectedPaymentMethod(callbackRes.data.channel);
-      message.success(t('pages.checkout.paid'));
-      await fetchOrders();
-      if (selectedOrder) {
-        await refreshPaymentState(selectedOrder.id);
-      }
-    } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.checkout.payFailed'));
-      await fetchOrders();
-    } finally {
-      setSimulatingCallback(false);
     }
   };
 
@@ -614,6 +567,7 @@ const Profile: React.FC = () => {
   const { formatMoney } = useMarket();
   const paymentOptions = createPaymentMethodOptions(t);
   const selectedPaymentMethodDetail = mexicoPaymentMethodDetails.find((method) => method.value === selectedPaymentMethod);
+  const selectedPaymentRecovery = getPaymentRecoveryState(selectedPayment);
   const pendingPaymentCount = orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
   const inTransitCount = orders.filter((order) => order.status === 'SHIPPED').length;
   const afterSaleCount = orders.filter((order) => afterSaleStatuses.includes(order.status)).length;
@@ -1562,18 +1516,17 @@ const Profile: React.FC = () => {
         open={paymentModalVisible}
         onCancel={() => setPaymentModalVisible(false)}
         footer={[
-          selectedPayment?.status === 'PENDING' && (selectedPayment.paymentUrl || paymentSimulationEnabled) && (
+          selectedPayment?.status === 'PENDING' && selectedPayment.paymentUrl && (
             <Button
               key="pay"
               type="primary"
-              loading={simulatingPayment}
-              onClick={selectedPayment.paymentUrl ? () => {
+              onClick={() => {
                 if (!navigateToSafeUrl(selectedPayment.paymentUrl)) {
                   message.error(t('pages.payment.failed'));
                 }
-              } : handleSimulatePayment}
+              }}
             >
-              {selectedPayment.paymentUrl ? t('pages.checkout.openPayment') : t('pages.checkout.simulatePay')}
+              {t('pages.checkout.openPayment')}
             </Button>
           ),
           selectedPayment && selectedPayment.status !== 'PAID' && (
@@ -1581,16 +1534,43 @@ const Profile: React.FC = () => {
               {t('pages.profile.refreshPayment')}
             </Button>
           ),
-          selectedPayment?.status === 'PENDING' && paymentSimulationEnabled && (
-            <Button key="callback" loading={simulatingCallback} onClick={handleSimulateCallback}>
-              {t('pages.checkout.simulateCallback')}
-            </Button>
-          ),
           <Button key="close" onClick={() => setPaymentModalVisible(false)}>{t('common.cancel')}</Button>,
         ].filter(Boolean)}
       >
         {selectedOrder && selectedPayment && (
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <div className="profile-payment-recovery">
+              <div>
+                <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
+                <Tag color={selectedPayment.status === 'PAID' ? 'green' : selectedPaymentRecovery.isExpired ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
+                  {selectedPayment.status === 'PAID'
+                    ? t('pages.checkout.paymentRecoveryPaid')
+                    : selectedPaymentRecovery.isExpired
+                      ? t('pages.checkout.paymentRecoveryExpired')
+                      : t('pages.checkout.paymentRecoveryPending')}
+                </Tag>
+              </div>
+              <div>
+                <Text strong>{t('pages.checkout.paymentRecoveryWindow')}</Text>
+                <Text type={selectedPaymentRecovery.isExpired ? 'danger' : selectedPaymentRecovery.isExpiringSoon ? 'warning' : 'secondary'}>
+                  {selectedPaymentRecovery.minutesLeft === null
+                    ? t('pages.checkout.paymentRecoveryWindowUnknown')
+                    : selectedPaymentRecovery.isExpired
+                      ? t('pages.checkout.paymentRecoveryWindowExpired')
+                      : t('pages.checkout.paymentRecoveryWindowMinutes', { count: selectedPaymentRecovery.minutesLeft })}
+                </Text>
+              </div>
+              <div>
+                <Text strong>{t('pages.checkout.paymentRecoveryNext')}</Text>
+                <Text type="secondary">
+                  {selectedPayment.status === 'PAID'
+                    ? t('pages.checkout.paymentRecoveryNextPaid')
+                    : selectedPayment.paymentUrl
+                      ? t('pages.checkout.paymentRecoveryNextOpen')
+                      : t('pages.checkout.paymentRecoveryNextRetry')}
+                </Text>
+              </div>
+            </div>
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label={t('pages.profile.orderNo')}>{selectedOrder.orderNo || selectedOrder.id}</Descriptions.Item>
               <Descriptions.Item label={t('common.amount')}>
@@ -1629,7 +1609,7 @@ const Profile: React.FC = () => {
                       }
                     }}
                   >
-                    {selectedPayment.paymentUrl}
+                    {formatPaymentUrlLabel(selectedPayment.paymentUrl)}
                   </Button>
                 ) : '-'}
               </Descriptions.Item>

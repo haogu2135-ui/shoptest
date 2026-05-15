@@ -1,41 +1,28 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>服务器错误</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-        }
-        .error-container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: #e74c3c;
-        }
-        .error-message {
-            color: #666;
-            margin: 20px 0;
-        }
-        .back-link {
-            color: #3498db;
-            text-decoration: none;
-        }
-        .back-link:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器错误 - MyShop</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
-    <div class="error-container">
-        <h1>500 - 服务器内部错误</h1>
-        <div class="error-message">
-            抱歉，服务器遇到了一个错误。请稍后再试。
+    <nav class="navbar">
+        <div class="logo">MyShop</div>
+    </nav>
+
+    <div class="error-page">
+        <div class="error-code">500</div>
+        <div class="error-title">服务器开小差了</div>
+        <div class="error-desc">抱歉，服务器遇到了一个错误，请稍后再试</div>
+        <div style="display:flex;gap:0.8rem;">
+            <a href="/" class="btn btn-primary">返回首页</a>
+            <button class="btn btn-ghost" onclick="location.reload()">刷新重试</button>
         </div>
-        <a href="/" class="back-link">返回首页</a>
     </div>
+
+    <footer class="site-footer">
+        © 2025 MyShop
+    </footer>
 </body>
-</html> 
+</html>

@@ -769,6 +769,15 @@ const ProductDetail: React.FC = () => {
     }
   };
 
+  const completeSetItems = recommendations
+    .filter((item) => !isRecommendationUnavailable(item))
+    .filter((item) => item.id !== product.id)
+    .slice(0, 2);
+  const mobileBuybarMeta = t('pages.productDetail.mobileBuybarMeta', {
+    price: formatMoney(displayPrice),
+    stock: isOutOfStock ? t('pages.productDetail.soldOut') : stockLabel,
+  });
+
   const selectGalleryImage = (image: string, index: number) => {
     setSelectedImage(image);
     setActiveMobileImageIndex(index);
@@ -1264,6 +1273,60 @@ const ProductDetail: React.FC = () => {
                   ))}
                 </div>
 
+                {completeSetItems.length > 0 ? (
+                  <div className="product-complete-set">
+                    <div className="product-complete-set__header">
+                      <Text strong>{t('pages.productDetail.completeSetTitle')}</Text>
+                      <Text type="secondary">{t('pages.productDetail.completeSetText')}</Text>
+                    </div>
+                    <div className="product-complete-set__items">
+                      {completeSetItems.map((item) => {
+                        const needsOptions = needsOptionSelection(item);
+                        return (
+                          <div
+                            key={item.id}
+                            role="button"
+                            tabIndex={0}
+                            className="product-complete-set__item"
+                            onClick={() => navigate(`/products/${item.id}`)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                navigate(`/products/${item.id}`);
+                              }
+                            }}
+                          >
+                            <img
+                              src={item.imageUrl || fallbackProductImage}
+                              alt={item.name}
+                              loading="lazy"
+                              decoding="async"
+                              onError={(event) => {
+                                if (event.currentTarget.src !== fallbackProductImage) {
+                                  event.currentTarget.src = fallbackProductImage;
+                                }
+                              }}
+                            />
+                            <span className="product-complete-set__copy">
+                              <strong>{item.name}</strong>
+                              <span>{formatMoney(item.effectivePrice ?? item.price)}</span>
+                            </span>
+                            <Button
+                              size="small"
+                              type={needsOptions ? 'default' : 'primary'}
+                              icon={<ShoppingCartOutlined />}
+                              loading={recommendationAddingId === item.id}
+                              onClick={(event) => handleAddRecommendationToCart(event, item)}
+                            >
+                              {needsOptions ? t('pages.wishlist.selectOptions') : t('pages.productDetail.completeSetAdd')}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
                 <details className="product-detail-disclosure">
                   <summary>
                     <span>{t('pages.productDetail.decisionTitle')}</span>
@@ -1564,6 +1627,7 @@ const ProductDetail: React.FC = () => {
       </div>
 
       <div className="product-mobile-buybar">
+        <div className="product-mobile-buybar__meta">{mobileBuybarMeta}</div>
         <button type="button" className="product-mobile-buybar__tool" onClick={() => navigate('/')}>
           <HomeOutlined />
           <span>{t('nav.ariaHome')}</span>

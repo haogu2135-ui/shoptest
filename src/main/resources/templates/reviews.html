@@ -3,248 +3,294 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>商品评价</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .navbar {
-            background-color: #333;
-            padding: 15px;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-        }
-        .review-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .product-info {
-            display: flex;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-        .product-image {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            margin-right: 20px;
-            border-radius: 5px;
-        }
-        .product-details {
-            flex-grow: 1;
-        }
-        .product-name {
-            font-size: 1.5em;
-            margin-bottom: 10px;
-        }
-        .average-rating {
-            color: #f0ad4e;
-            font-size: 1.2em;
-            margin-bottom: 10px;
-        }
-        .review-form {
-            margin-bottom: 30px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }
-        .rating-input {
-            margin-bottom: 15px;
-        }
-        .rating-input label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .rating-stars {
-            display: flex;
-            gap: 10px;
-        }
-        .star {
-            font-size: 24px;
-            cursor: pointer;
-            color: #ddd;
-        }
-        .star.active {
-            color: #f0ad4e;
-        }
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            resize: vertical;
-        }
-        .submit-btn {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .submit-btn:hover {
-            background-color: #0056b3;
-        }
-        .review-list {
-            margin-top: 30px;
-        }
-        .review-item {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .review-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        .reviewer-name {
-            font-weight: bold;
-        }
-        .review-date {
-            color: #666;
-        }
-        .review-rating {
-            color: #f0ad4e;
-            margin-bottom: 10px;
-        }
-        .review-content {
-            color: #333;
-            line-height: 1.5;
-        }
-    </style>
+    <title>商品评价 - MyShop</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
-    <div class="navbar">
+    <nav class="navbar">
         <div class="logo">MyShop</div>
         <div class="nav-links">
-            <a href="/api/products">返回商品列表</a>
-            <a th:href="@{/logout}">退出登录</a>
+            <a href="/api/products">← 返回商品</a>
+            <a th:href="@{/logout}">退出</a>
         </div>
-    </div>
+    </nav>
 
-    <div class="review-container">
-        <div class="product-info">
-            <img th:src="@{'/images/' + ${product.image}}" th:alt="${product.name}" class="product-image">
-            <div class="product-details">
-                <h2 class="product-name" th:text="${product.name}"></h2>
-                <div class="average-rating">
-                    平均评分：<span th:text="${#numbers.formatDecimal(averageRating, 1, 1)}">0.0</span>
-                </div>
-            </div>
-        </div>
+    <div class="page-content">
+        <div class="review-container">
 
-        <div class="review-form">
-            <h3>写评价</h3>
-            <form id="reviewForm">
-                <div class="rating-input">
-                    <label>评分</label>
-                    <div class="rating-stars">
-                        <span class="star" data-rating="1">★</span>
-                        <span class="star" data-rating="2">★</span>
-                        <span class="star" data-rating="3">★</span>
-                        <span class="star" data-rating="4">★</span>
-                        <span class="star" data-rating="5">★</span>
+            <!-- 商品信息 + 评分概览 -->
+            <div class="product-info-card">
+                <img th:src="@{'/images/' + ${product.image}}" th:alt="${product.name}">
+                <div style="flex:1;">
+                    <div class="product-name" th:text="${product.name}"></div>
+                    <div class="avg-rating" style="margin-bottom:0.6rem;">
+                        <span class="score" th:text="${#numbers.formatDecimal(averageRating, 1, 1)}">0.0</span>
+                        <span class="stars">★★★★★</span>
+                        <span class="label">综合评分</span>
+                    </div>
+                    <div class="rating-breakdown">
+                        <div class="rating-row" th:each="n : ${#numbers.sequence(5,1,-1)}">
+                            <span th:text="${n} + '星'">5星</span>
+                            <div class="bar-track">
+                                <div class="bar-fill" style="width:0%" th:data-star="${n}"></div>
+                            </div>
+                            <span class="count" th:data-star-count="${n}">0</span>
+                        </div>
                     </div>
                 </div>
-                <textarea name="comment" rows="4" placeholder="分享您的使用体验..." required></textarea>
-                <button type="submit" class="submit-btn">提交评价</button>
-            </form>
-        </div>
-
-        <div class="review-list">
-            <h3>全部评价</h3>
-            <div th:each="review : ${reviews}" class="review-item">
-                <div class="review-header">
-                    <span class="reviewer-name" th:text="${review.user.username}"></span>
-                    <span class="review-date" th:text="${#dates.format(review.createTime, 'yyyy-MM-dd HH:mm')}"></span>
-                </div>
-                <div class="review-rating">
-                    <span th:each="i : ${#numbers.sequence(1, review.rating)}">★</span>
-                    <span th:each="i : ${#numbers.sequence(review.rating + 1, 5)}">☆</span>
-                </div>
-                <div class="review-content" th:text="${review.comment}"></div>
             </div>
+
+            <!-- 写评价 -->
+            <div class="review-form-card">
+                <h3>写评价</h3>
+                <form id="reviewForm">
+                    <div class="form-group">
+                        <label>评分</label>
+                        <div class="rating-stars">
+                            <span class="star" data-rating="1">★</span>
+                            <span class="star" data-rating="2">★</span>
+                            <span class="star" data-rating="3">★</span>
+                            <span class="star" data-rating="4">★</span>
+                            <span class="star" data-rating="5">★</span>
+                        </div>
+                        <div id="ratingLabel" style="font-size:0.82rem;color:var(--text-muted);margin-top:4px;height:1.2em;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="comment">评价内容</label>
+                        <textarea id="comment" name="comment" rows="4"
+                                  placeholder="分享您的使用体验，帮助其他买家做决策…" required
+                                  style="resize:vertical;"></textarea>
+                        <div style="text-align:right;font-size:0.78rem;color:var(--text-muted);margin-top:4px;">
+                            <span id="charCount">0</span> / 500
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">提交评价</button>
+                </form>
+            </div>
+
+            <!-- 评价列表 -->
+            <div class="review-list-card">
+                <h3 style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>全部评价</span>
+                    <span style="font-size:0.82rem;font-weight:400;color:var(--text-muted);"
+                          th:text="${#lists.size(reviews)} + ' 条'">0 条</span>
+                </h3>
+
+                <!-- 筛选 chips -->
+                <div class="review-filter" id="reviewFilter">
+                    <div class="filter-chip active" data-filter="all">全部 (<span th:text="${#lists.size(reviews)}">0</span>)</div>
+                    <div class="filter-chip" data-filter="5">5星</div>
+                    <div class="filter-chip" data-filter="4">4星</div>
+                    <div class="filter-chip" data-filter="3">3星</div>
+                    <div class="filter-chip" data-filter="2">2星</div>
+                    <div class="filter-chip" data-filter="1">1星</div>
+                    <div style="flex:1;"></div>
+                    <div class="filter-chip" data-sort="newest">最新</div>
+                    <div class="filter-chip" data-sort="rating-desc">评分↓</div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(reviews)}" id="emptyReviews"
+                     style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+                    <div style="font-size:2rem;margin-bottom:0.5rem;">💬</div>
+                    <div>暂无评价，快来抢先评价吧</div>
+                </div>
+
+                <div id="reviewList">
+                    <div th:each="review : ${reviews}" class="review-item"
+                         th:data-rating="${review.rating}"
+                         th:data-time="${#dates.format(review.createTime, 'yyyy-MM-dd HH:mm')}">
+                        <div class="review-header">
+                            <div class="reviewer-info">
+                                <div class="reviewer-avatar"
+                                     th:text="${#strings.substring(review.user.username, 0, 1).toUpperCase()}">U</div>
+                                <span class="reviewer-name" th:text="${review.user.username}"></span>
+                            </div>
+                            <span class="review-date" th:text="${#dates.format(review.createTime, 'yyyy-MM-dd HH:mm')}"></span>
+                        </div>
+                        <div class="review-rating">
+                            <span th:each="i : ${#numbers.sequence(1, review.rating)}">★</span>
+                            <span th:each="i : ${#numbers.sequence(review.rating + 1, 5)}" style="color:#ddd;">★</span>
+                        </div>
+                        <div class="review-content" th:text="${review.comment}"></div>
+                        <div class="review-actions">
+                            <button class="helpful-btn" data-helpful="0">👍 有用 <span class="count">0</span></button>
+                            <button class="helpful-btn">💬 回复</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="filterEmpty" style="display:none;text-align:center;padding:2rem;color:var(--text-muted);">
+                    暂无该星级评价
+                </div>
+            </div>
+
         </div>
     </div>
 
+    <footer class="site-footer">
+        © 2025 MyShop &nbsp;·&nbsp; <a href="#">关于我们</a> &nbsp;·&nbsp; <a href="#">联系客服</a>
+    </footer>
+
+    <button class="back-to-top" id="backToTop">↑</button>
+    <div class="toast-container" id="toastContainer"></div>
+
     <script>
-        // 评分星星交互
+        function showToast(msg, type) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type || 'info');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        // 评分输入
+        const ratingLabels = ['', '很差', '较差', '一般', '不错', '非常好'];
         const stars = document.querySelectorAll('.star');
         let selectedRating = 0;
 
         stars.forEach(star => {
-            star.addEventListener('mouseover', function() {
-                const rating = this.dataset.rating;
-                updateStars(rating);
+            star.addEventListener('mouseover', () => {
+                highlightStars(star.dataset.rating);
+                document.getElementById('ratingLabel').textContent = ratingLabels[star.dataset.rating];
             });
-
-            star.addEventListener('mouseout', function() {
-                updateStars(selectedRating);
+            star.addEventListener('mouseout', () => {
+                highlightStars(selectedRating);
+                document.getElementById('ratingLabel').textContent = selectedRating ? ratingLabels[selectedRating] : '';
             });
-
-            star.addEventListener('click', function() {
-                selectedRating = this.dataset.rating;
-                updateStars(selectedRating);
+            star.addEventListener('click', () => {
+                selectedRating = parseInt(star.dataset.rating);
+                highlightStars(selectedRating);
+                document.getElementById('ratingLabel').textContent = ratingLabels[selectedRating];
             });
         });
 
-        function updateStars(rating) {
-            stars.forEach(star => {
-                star.classList.toggle('active', star.dataset.rating <= rating);
-            });
+        function highlightStars(rating) {
+            stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.rating) <= parseInt(rating)));
         }
 
-        // 提交评价
+        // 字数统计
+        document.getElementById('comment').addEventListener('input', function() {
+            const len = Math.min(this.value.length, 500);
+            document.getElementById('charCount').textContent = len;
+            if (this.value.length > 500) this.value = this.value.slice(0, 500);
+        });
+
+        // 提交
         document.getElementById('reviewForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            if (selectedRating === 0) {
-                alert('请选择评分');
-                return;
-            }
-
-            const comment = this.querySelector('textarea').value;
+            if (!selectedRating) { showToast('请先选择评分', 'error'); return; }
+            const btn = this.querySelector('button[type=submit]');
+            btn.disabled = true; btn.textContent = '提交中…';
             fetch('/api/reviews', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     productId: [[${product.id}]],
                     rating: selectedRating,
-                    comment: comment
+                    comment: document.getElementById('comment').value
                 })
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert('评价提交成功！');
-                    location.reload();
+                    showToast('评价提交成功！', 'success');
+                    setTimeout(() => location.reload(), 1200);
                 } else {
-                    alert('评价提交失败：' + data.message);
+                    showToast('提交失败：' + data.message, 'error');
+                    btn.disabled = false; btn.textContent = '提交评价';
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('评价提交失败，请稍后重试');
+            .catch(() => {
+                showToast('网络错误，请稍后重试', 'error');
+                btn.disabled = false; btn.textContent = '提交评价';
             });
         });
+
+        // 评分分布
+        (function() {
+            const items = document.querySelectorAll('#reviewList .review-item');
+            const counts = {1:0,2:0,3:0,4:0,5:0};
+            items.forEach(item => {
+                const r = parseInt(item.dataset.rating);
+                if (r >= 1 && r <= 5) counts[r]++;
+            });
+            const total = items.length || 1;
+            document.querySelectorAll('.bar-fill[data-star]').forEach(bar => {
+                bar.style.width = (counts[parseInt(bar.dataset.star)] / total * 100) + '%';
+            });
+            document.querySelectorAll('[data-star-count]').forEach(el => {
+                el.textContent = counts[parseInt(el.dataset.starCount)] || 0;
+            });
+        })();
+
+        // 筛选 / 排序
+        const list = document.getElementById('reviewList');
+        const allItems = Array.from(list.querySelectorAll('.review-item'));
+        let curFilter = 'all';
+        let curSort = null;
+
+        function applyReviewFilter() {
+            const visible = allItems.filter(item => {
+                if (curFilter === 'all') return true;
+                return item.dataset.rating === curFilter;
+            });
+
+            if (curSort === 'newest') {
+                visible.sort((a,b) => b.dataset.time.localeCompare(a.dataset.time));
+            } else if (curSort === 'rating-desc') {
+                visible.sort((a,b) => parseInt(b.dataset.rating) - parseInt(a.dataset.rating));
+            }
+
+            allItems.forEach(it => it.style.display = 'none');
+            visible.forEach(it => { it.style.display = ''; list.appendChild(it); });
+
+            const empty = document.getElementById('filterEmpty');
+            if (empty) empty.style.display = visible.length === 0 && allItems.length > 0 ? 'block' : 'none';
+        }
+
+        document.querySelectorAll('.filter-chip[data-filter]').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip[data-filter]').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                curFilter = chip.dataset.filter;
+                applyReviewFilter();
+            });
+        });
+
+        document.querySelectorAll('.filter-chip[data-sort]').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const isOn = chip.classList.contains('active');
+                document.querySelectorAll('.filter-chip[data-sort]').forEach(c => c.classList.remove('active'));
+                if (!isOn) {
+                    chip.classList.add('active');
+                    curSort = chip.dataset.sort;
+                } else {
+                    curSort = null;
+                }
+                applyReviewFilter();
+            });
+        });
+
+        // 有用按钮
+        document.querySelectorAll('.helpful-btn[data-helpful]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const countEl = this.querySelector('.count');
+                let n = parseInt(countEl.textContent) || 0;
+                if (this.classList.contains('active')) {
+                    this.classList.remove('active');
+                    countEl.textContent = Math.max(0, n - 1);
+                } else {
+                    this.classList.add('active');
+                    countEl.textContent = n + 1;
+                }
+            });
+        });
+
+        // 回到顶部
+        const topBtn = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => topBtn.classList.toggle('visible', window.scrollY > 300));
+        topBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     </script>
 </body>
-</html> 
+</html>
