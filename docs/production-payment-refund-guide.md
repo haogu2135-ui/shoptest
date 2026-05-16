@@ -150,6 +150,7 @@ For `GENERIC_API` refunds, the backend posts:
   "orderId": 123,
   "orderNo": "SO...",
   "paymentId": 99,
+  "idempotencyKey": "return-refund-123-99",
   "transactionId": "provider-transaction-id",
   "providerReference": "provider-reference-id",
   "channel": "OXXO",
@@ -159,6 +160,8 @@ For `GENERIC_API` refunds, the backend posts:
   "merchantId": "shopmx-live"
 }
 ```
+
+The same idempotency key is also sent as the `Idempotency-Key` HTTP header. The payment adapter must treat repeated refund requests with the same key as the same refund attempt and return the original refund reference.
 
 Recommended response:
 
@@ -260,3 +263,77 @@ order.return-window-days=7
 ```
 
 Before launch, test one complete live-mode order with a small MXN amount, then refund it from the admin flow and confirm the refund appears in the provider dashboard.
+
+## Storefront Recovery Checklist
+
+Use the same customer-facing loop in checkout, profile orders, and support:
+
+1. Identify the current step: order created, payment pending, payment confirmed, fulfillment queued, return requested, return approved, return shipped, or refunded.
+2. Bind the order number before asking the customer to retry payment or submit return tracking.
+3. Give one next action only: open payment link, regenerate payment, contact support, submit return tracking, track return shipment, or wait for refund confirmation.
+4. Keep the latest payment link visible, but always provide a refresh path for expired or missing links.
+5. Keep the after-sales promise visible after payment succeeds, so the customer knows where to return later if needed.
+
+Recommended UI behavior:
+
+- Checkout result page should show the current payment step and recovery actions immediately after order creation.
+- Profile payment modal should show the same step rail plus payment history, because returning users need proof and context.
+- Profile return modal should show the return step rail before the reason or tracking input.
+- Admin order management should show the same four return stages and expose the next eligible status action.
+
+## Admin Refund Operations
+
+Daily refund queue order:
+
+1. Review `RETURN_REQUESTED` first and approve or reject eligibility.
+2. Follow up `RETURN_APPROVED` orders that still do not have return tracking.
+3. Confirm receipt and refund `RETURN_SHIPPED` orders as the highest risk queue.
+4. Leave `RETURNED` orders as reference cases unless the provider refund failed.
+
+Before clicking "confirm return received and refund":
+
+- Check that the return tracking number exists or that warehouse receipt is verified.
+- Check that the order has a latest paid payment.
+- Check the payment channel refund mode:
+  - `STRIPE`: provider refund should be created automatically.
+  - `GENERIC_API`: adapter must return `REFUNDED` plus `refundReference`.
+  - `MANUAL`: operator must complete the external refund before closing the order.
+- Copy the suggested customer reply and send it through support if the customer is waiting.
+
+## Daily Operations Dashboard
+
+Use the admin dashboard as the first stop before opening detailed order queues:
+
+1. Check pending payment count. If it is rising, inspect payment links, channel health, and recent payment failure logs.
+2. Check `RETURN_REQUESTED`. These cases need a clear approve or reject decision before the customer loses confidence.
+3. Check `RETURN_APPROVED`. These cases need a return tracking reminder if the customer has not shipped the item back.
+4. Check `RETURN_SHIPPED`. Treat this as the highest refund-risk queue because money is waiting to be returned.
+5. Open audit logs for payment failures, callbacks, and refund events when dashboard counts do not match provider records.
+
+Recommended owner split:
+
+- Customer support owns customer communication, order binding, and reason collection.
+- Operations owns return approval, warehouse receipt checks, and refund closure.
+- Finance owns provider dashboard reconciliation for Stripe, generic API, and manual refunds.
+
+## Admin Deep Links
+
+Use deep links when wiring dashboard cards, support shortcuts, or incident playbooks. They should land the operator directly in the right queue instead of asking them to filter again:
+
+- `/admin/orders?status=PENDING_PAYMENT`: pending payment recovery queue.
+- `/admin/orders?status=RETURN_REQUESTED`: return eligibility review queue.
+- `/admin/orders?status=RETURN_APPROVED`: approved returns waiting for customer shipment.
+- `/admin/orders?status=RETURN_SHIPPED`: returned parcels waiting for receipt confirmation and refund.
+- `/admin/orders?quick=REFUNDED`: refunded/reference cases.
+- `/admin/audit-logs?view=payment-failures`: failed payment events.
+- `/admin/audit-logs?view=refunds`: refund completion events.
+- `/admin/audit-logs?view=callbacks`: payment callback events.
+- `/admin/audit-logs?view=payment-ops`: all payment-related audit events.
+
+## Failure Recovery Rules
+
+- Payment record missing after order creation: regenerate the payment for the same order, do not create another order.
+- Payment link expired: create a fresh payment with the selected channel and keep the old payment in history.
+- Callback delayed: keep the order in pending payment until the callback or manual reconciliation confirms success.
+- Refund API failure: keep the order out of `RETURNED` until the provider refund succeeds or a manual refund reference is recorded.
+- Duplicate callbacks: rely on provider reference, transaction id, and idempotency keys; do not ship twice or refund twice.

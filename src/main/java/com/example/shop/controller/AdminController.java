@@ -1,4 +1,4 @@
-package com.example.shop.controller;
+﻿package com.example.shop.controller;
 
 import com.example.shop.dto.CouponGrantRequest;
 import com.example.shop.dto.CouponUpsertRequest;
@@ -471,7 +471,7 @@ public class AdminController {
         if (newStatus == null || newStatus.isEmpty()) {
             auditLogService.record("ORDER_STATUS_UPDATE", "FAILURE", authentication, "ORDER", id, request,
                     "Order status is required", null);
-            return ResponseEntity.badRequest().body(Map.of("error", "状态不能为空"));
+            return ResponseEntity.badRequest().body(Map.of("error", "status is required"));
         }
 
         Order order = orderService.getOrderById(id);
@@ -504,7 +504,7 @@ public class AdminController {
                 auditLogService.record(auditActionForOrderStatus(order.getStatus(), newStatus), "SUCCESS", authentication, "ORDER", id, request,
                         "Order status updated", "from=" + order.getStatus() + ",to=" + newStatus + ",orderNo=" + order.getOrderNo() + paymentMetadata(payment));
                 Map<String, Object> response = new LinkedHashMap<>();
-                response.put("message", "状态更新成功");
+                response.put("message", "status updated");
                 response.put("status", newStatus);
                 if (payment != null) {
                     response.put("payment", payment);
@@ -564,7 +564,7 @@ public class AdminController {
         StringBuilder failedIds = new StringBuilder();
         for (Object idValue : (List<?>) idsValue) {
             try {
-                Long id = Long.valueOf(String.valueOf(idValue));
+                Long id = parseBatchId(idValue);
                 orderService.shipOrder(id, trackingPrefix + "-" + id, trackingCarrierCode);
                 success++;
             } catch (Exception e) {
@@ -621,15 +621,15 @@ public class AdminController {
 
     @PutMapping("/products/{id}/status")
     public ResponseEntity<?> updateProductStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String status = body.get("status");
-        if (status == null || status.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "状态不能为空"));
+        String status = body.get("status") == null ? "" : body.get("status").trim();
+        if (status.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "status is required"));
         }
         return productService.findById(id)
                 .map(product -> {
                     product.setStatus(status);
                     productService.save(product);
-                    return ResponseEntity.ok(Map.of("message", "状态更新成功", "status", status));
+                    return ResponseEntity.ok(Map.of("message", "status updated", "status", status));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -637,8 +637,8 @@ public class AdminController {
     @PostMapping("/products/batch-status")
     public ResponseEntity<?> batchUpdateProductStatus(@RequestBody Map<String, Object> body) {
         Object idsValue = body.get("productIds");
-        String status = String.valueOf(body.get("status"));
-        if (!(idsValue instanceof List<?>) || status == null || status.isEmpty() || "null".equals(status)) {
+        String status = body.get("status") == null ? "" : String.valueOf(body.get("status")).trim();
+        if (!(idsValue instanceof List<?>) || status.isEmpty() || "null".equals(status)) {
             return ResponseEntity.badRequest().body(Map.of("error", "productIds and status are required"));
         }
 
@@ -646,12 +646,17 @@ public class AdminController {
         int failed = 0;
         for (Object idValue : (List<?>) idsValue) {
             try {
-                Long id = Long.valueOf(String.valueOf(idValue));
-                productService.findById(id).ifPresent(product -> {
+                Long id = parseBatchId(idValue);
+                boolean updated = productService.findById(id).map(product -> {
                     product.setStatus(status);
                     productService.save(product);
-                });
-                success++;
+                    return true;
+                }).orElse(false);
+                if (updated) {
+                    success++;
+                } else {
+                    failed++;
+                }
             } catch (Exception e) {
                 failed++;
             }
@@ -834,6 +839,13 @@ public class AdminController {
 
     private List<User> filterUsers(String keyword, String role, String status) {
         return userService.search(keyword, role, status);
+    }
+
+    private Long parseBatchId(Object value) {
+        if (value == null || String.valueOf(value).trim().isEmpty()) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return Long.valueOf(String.valueOf(value).trim());
     }
 
     // ==================== Review Management ====================

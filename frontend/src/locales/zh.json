@@ -1481,6 +1481,7 @@
       "richImagePlaceholder": "详情图片 URL",
       "richVideoPlaceholder": "视频 URL，支持 YouTube、Vimeo 或 MP4",
       "richCaptionPlaceholder": "可选图片或视频说明",
+      "richInvalidUrl": "请输入有效的 http(s) 链接或已上传文件路径。",
       "addRichText": "添加文字",
       "addRichImage": "添加图片",
       "addRichVideo": "添加视频",

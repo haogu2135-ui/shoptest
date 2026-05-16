@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, DatePicker, Input, Progress, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { AlertOutlined, DownloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api';
 import type { SecurityAuditLog } from '../types';
 import { useLanguage } from '../i18n';
@@ -53,16 +54,72 @@ const highRiskActions = new Set([
   'PAYMENT_SIMULATE_PAID',
 ]);
 
+const paymentOpsActions = new Set([
+  'PAYMENT_CREATE',
+  'PAYMENT_CALLBACK',
+  'STRIPE_WEBHOOK',
+  'REFUND_COMPLETE',
+]);
+
 const SecurityAuditLogManagement: React.FC = () => {
   const { t, language } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [logs, setLogs] = useState<SecurityAuditLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [action, setAction] = useState<string | undefined>();
-  const [result, setResult] = useState<string | undefined>();
-  const [resourceType, setResourceType] = useState<string | undefined>();
+  const [action, setAction] = useState<string | undefined>(searchParams.get('action') || undefined);
+  const [result, setResult] = useState<string | undefined>(searchParams.get('result') || undefined);
+  const [resourceType, setResourceType] = useState<string | undefined>(searchParams.get('resourceType') || undefined);
   const [actorUsername, setActorUsername] = useState('');
   const [range, setRange] = useState<any>(null);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const opsCopy = useMemo(() => {
+    if (language === 'zh') {
+      return {
+        title: '支付与退款异常队列',
+        subtitle: '把支付失败、回调、退款完成记录放在同一个运营视角里，方便上线后排查网关和人工操作问题。',
+        paymentFailures: '支付失败',
+        refundEvents: '退款动作',
+        callbackEvents: '回调记录',
+        highRiskEvents: '高风险动作',
+        showPaymentFailures: '查看支付失败',
+        showRefunds: '查看退款动作',
+        showCallbacks: '查看支付回调',
+        clear: '重置筛选',
+        guideTitle: '排查顺序',
+        guideText: '先看失败支付，再核对回调与退款动作，最后按订单号回到后台订单处理。',
+      };
+    }
+    if (language === 'es') {
+      return {
+        title: 'Cola de pagos y reembolsos',
+        subtitle: 'Agrupa fallos de pago, callbacks y reembolsos para revisar pasarelas y acciones manuales.',
+        paymentFailures: 'Fallos de pago',
+        refundEvents: 'Reembolsos',
+        callbackEvents: 'Callbacks',
+        highRiskEvents: 'Acciones sensibles',
+        showPaymentFailures: 'Ver fallos',
+        showRefunds: 'Ver reembolsos',
+        showCallbacks: 'Ver callbacks',
+        clear: 'Limpiar filtros',
+        guideTitle: 'Orden de revision',
+        guideText: 'Primero pagos fallidos, luego callbacks y reembolsos, y despues volver al pedido relacionado.',
+      };
+    }
+    return {
+      title: 'Payment and refund queue',
+      subtitle: 'Review payment failures, callbacks, and refund events in one operations view.',
+      paymentFailures: 'Payment failures',
+      refundEvents: 'Refund events',
+      callbackEvents: 'Callback events',
+      highRiskEvents: 'Sensitive actions',
+      showPaymentFailures: 'Show failures',
+      showRefunds: 'Show refunds',
+      showCallbacks: 'Show callbacks',
+      clear: 'Clear filters',
+      guideTitle: 'Review order',
+      guideText: 'Start with failed payments, then callbacks and refunds, then return to the related order.',
+    };
+  }, [language]);
 
   const queryParams = useMemo(() => {
     const params: Record<string, unknown> = { limit: 300 };
@@ -84,6 +141,9 @@ const SecurityAuditLogManagement: React.FC = () => {
     const paymentFailures = logs.filter((log) => (
       log.result === 'FAILURE' && (log.action.startsWith('PAYMENT') || log.action.includes('STRIPE'))
     )).length;
+    const refundEvents = logs.filter((log) => log.action === 'REFUND_COMPLETE').length;
+    const callbackEvents = logs.filter((log) => log.action === 'PAYMENT_CALLBACK' || log.action === 'STRIPE_WEBHOOK').length;
+    const paymentOpsEvents = logs.filter((log) => paymentOpsActions.has(log.action)).length;
 
     const failedActorCounts = logs.reduce<Record<string, number>>((acc, log) => {
       if (log.result !== 'FAILURE') return acc;
@@ -102,12 +162,80 @@ const SecurityAuditLogManagement: React.FC = () => {
       sensitiveActions,
       exports,
       paymentFailures,
+      refundEvents,
+      callbackEvents,
+      paymentOpsEvents,
       repeatedFailures,
       healthScore,
     };
   }, [logs]);
 
-  const fetchLogs = async () => {
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'payment-failures') {
+      setAction(undefined);
+      setResult('FAILURE');
+      setResourceType('PAYMENT');
+      return;
+    }
+    if (view === 'refunds') {
+      setAction('REFUND_COMPLETE');
+      setResult(undefined);
+      setResourceType(undefined);
+      return;
+    }
+    if (view === 'callbacks') {
+      setAction('PAYMENT_CALLBACK');
+      setResult(undefined);
+      setResourceType('PAYMENT');
+      return;
+    }
+    if (view === 'payment-ops') {
+      setAction(undefined);
+      setResult(undefined);
+      setResourceType('PAYMENT');
+      return;
+    }
+    setAction(searchParams.get('action') || undefined);
+    setResult(searchParams.get('result') || undefined);
+    setResourceType(searchParams.get('resourceType') || undefined);
+  }, [searchParams]);
+
+  const updateAuditFilters = useCallback((next: { action?: string; result?: string; resourceType?: string; view?: string }) => {
+    const params = new URLSearchParams();
+    if (next.view) params.set('view', next.view);
+    if (next.action) params.set('action', next.action);
+    if (next.result) params.set('result', next.result);
+    if (next.resourceType) params.set('resourceType', next.resourceType);
+    setSearchParams(params, { replace: true });
+    setAction(next.action);
+    setResult(next.result);
+    setResourceType(next.resourceType);
+  }, [setSearchParams]);
+
+  const applyPaymentFailureFilter = () => {
+    updateAuditFilters({ result: 'FAILURE', resourceType: 'PAYMENT', view: 'payment-failures' });
+  };
+
+  const applyRefundFilter = () => {
+    updateAuditFilters({ action: 'REFUND_COMPLETE', view: 'refunds' });
+  };
+
+  const applyCallbackFilter = () => {
+    updateAuditFilters({ action: 'PAYMENT_CALLBACK', resourceType: 'PAYMENT', view: 'callbacks' });
+  };
+
+  const applyPaymentOpsFilter = () => {
+    updateAuditFilters({ resourceType: 'PAYMENT', view: 'payment-ops' });
+  };
+
+  const clearOpsFilters = () => {
+    updateAuditFilters({});
+    setActorUsername('');
+    setRange(null);
+  };
+
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const res = await adminApi.getAuditLogs(queryParams);
@@ -117,12 +245,14 @@ const SecurityAuditLogManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [queryParams, t]);
 
   useEffect(() => {
-    fetchLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const handle = window.setTimeout(() => {
+      fetchLogs();
+    }, 180);
+    return () => window.clearTimeout(handle);
+  }, [fetchLogs]);
 
   const exportLogs = async () => {
     try {
@@ -184,12 +314,52 @@ const SecurityAuditLogManagement: React.FC = () => {
           </div>
         </div>
       </section>
+      <section className="audit-log-page__opsPanel" aria-label={opsCopy.title}>
+        <div className="audit-log-page__opsIntro">
+          <Text strong>{opsCopy.title}</Text>
+          <Text type="secondary">{opsCopy.subtitle}</Text>
+        </div>
+        <div className="audit-log-page__opsMetrics">
+          <button type="button" className={auditInsights.paymentFailures > 0 ? 'is-risk' : ''} onClick={applyPaymentFailureFilter}>
+            <AlertOutlined />
+            <strong>{auditInsights.paymentFailures}</strong>
+            <span>{opsCopy.paymentFailures}</span>
+          </button>
+          <button type="button" onClick={applyRefundFilter}>
+            <SafetyCertificateOutlined />
+            <strong>{auditInsights.refundEvents}</strong>
+            <span>{opsCopy.refundEvents}</span>
+          </button>
+          <button type="button" onClick={applyCallbackFilter}>
+            <SearchOutlined />
+            <strong>{auditInsights.callbackEvents}</strong>
+            <span>{opsCopy.callbackEvents}</span>
+          </button>
+          <button type="button" className={auditInsights.sensitiveActions > 0 ? 'is-watch' : ''} onClick={applyPaymentOpsFilter}>
+            <AlertOutlined />
+            <strong>{auditInsights.paymentOpsEvents}</strong>
+            <span>{opsCopy.highRiskEvents}</span>
+          </button>
+        </div>
+        <div className="audit-log-page__opsActions">
+          <div>
+            <Text strong>{opsCopy.guideTitle}</Text>
+            <Text type="secondary">{opsCopy.guideText}</Text>
+          </div>
+          <Space wrap>
+            <Button size="small" onClick={applyPaymentFailureFilter}>{opsCopy.showPaymentFailures}</Button>
+            <Button size="small" onClick={applyRefundFilter}>{opsCopy.showRefunds}</Button>
+            <Button size="small" onClick={applyCallbackFilter}>{opsCopy.showCallbacks}</Button>
+            <Button size="small" onClick={clearOpsFilters}>{opsCopy.clear}</Button>
+          </Space>
+        </div>
+      </section>
       <Card className="audit-log-page__toolbar">
         <Space wrap>
           <Select
             allowClear
             value={action}
-            onChange={setAction}
+            onChange={(value) => updateAuditFilters({ action: value, result, resourceType })}
             placeholder={t('pages.auditLogs.action')}
             style={{ width: 210 }}
             options={auditActionOptions.map((value) => ({ value, label: value }))}
@@ -197,7 +367,7 @@ const SecurityAuditLogManagement: React.FC = () => {
           <Select
             allowClear
             value={result}
-            onChange={setResult}
+            onChange={(value) => updateAuditFilters({ action, result: value, resourceType })}
             placeholder={t('pages.auditLogs.result')}
             style={{ width: 140 }}
             options={[
@@ -208,7 +378,7 @@ const SecurityAuditLogManagement: React.FC = () => {
           <Select
             allowClear
             value={resourceType}
-            onChange={setResourceType}
+            onChange={(value) => updateAuditFilters({ action, result, resourceType: value })}
             placeholder={t('pages.auditLogs.resource')}
             style={{ width: 150 }}
             options={['USER', 'ORDER', 'PAYMENT', 'SECURITY_AUDIT_LOG'].map((value) => ({ value, label: value }))}

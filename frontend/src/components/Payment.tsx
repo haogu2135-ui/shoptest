@@ -10,6 +10,8 @@ import type { PaymentChannel } from '../types';
 import './Payment.css';
 
 const { Text, Title } = Typography;
+const getDefaultPaymentMethod = (channels: PaymentChannel[]) =>
+    channels.find((channel) => channel.recommended)?.code || channels[0]?.code || 'STRIPE';
 
 interface PaymentProps {
     amount: number;
@@ -24,7 +26,7 @@ export const Payment: React.FC<PaymentProps> = ({
     onSuccess,
     onCancel,
 }) => {
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VISA');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => getDefaultPaymentMethod(fallbackPaymentChannels));
     const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>(fallbackPaymentChannels);
     const [loading, setLoading] = useState(false);
     const { t } = useLanguage();
@@ -44,16 +46,24 @@ export const Payment: React.FC<PaymentProps> = ({
             .then((res) => {
                 const channels = res.data.length > 0 ? res.data : fallbackPaymentChannels;
                 setPaymentChannels(channels);
-                const recommendedMethod = channels.find((channel) => channel.recommended)?.code || channels[0]?.code || 'STRIPE';
-                setPaymentMethod(recommendedMethod);
+                setPaymentMethod(getDefaultPaymentMethod(channels));
             })
-            .catch(() => setPaymentChannels(fallbackPaymentChannels));
+            .catch(() => {
+                setPaymentChannels(fallbackPaymentChannels);
+                setPaymentMethod(getDefaultPaymentMethod(fallbackPaymentChannels));
+            });
     }, []);
 
     const handlePayment = async () => {
         setLoading(true);
         try {
-            const response = await paymentApi.create(orderId, paymentMethod);
+            const safePaymentMethod = paymentChannels.some((channel) => channel.code === paymentMethod)
+                ? paymentMethod
+                : getDefaultPaymentMethod(paymentChannels);
+            if (safePaymentMethod !== paymentMethod) {
+                setPaymentMethod(safePaymentMethod);
+            }
+            const response = await paymentApi.create(orderId, safePaymentMethod);
             const payment = response.data;
             if (payment.paymentUrl) {
                 if (!navigateToSafeUrl(payment.paymentUrl)) {

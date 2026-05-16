@@ -1,0 +1,200 @@
+.pet-personalized-assistant {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 18px;
+  border: 1px solid #d7e4da;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(247, 201, 72, 0.14), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.99), rgba(242, 249, 245, 0.96));
+  box-shadow: 0 14px 28px rgba(18, 71, 52, 0.08);
+}
+
+.pet-personalized-assistant,
+.pet-personalized-assistant .ant-btn,
+.pet-personalized-assistant .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
+.pet-personalized-assistant--compact {
+  padding: 14px;
+  border-radius: 18px;
+}
+
+.pet-personalized-assistant__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pet-personalized-assistant__header > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.pet-personalized-assistant__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(18, 71, 52, 0.08);
+  color: #124734;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pet-personalized-assistant__header h4.ant-typography,
+.pet-personalized-assistant__header h5.ant-typography {
+  margin: 0;
+  color: #173f2b;
+}
+
+.pet-personalized-assistant__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pet-personalized-assistant__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #426856;
+}
+
+.pet-personalized-assistant__stats .ant-tag {
+  margin: 0;
+  padding-inline: 10px;
+  border-radius: 999px;
+  border-color: #d6eadc;
+  color: #124734;
+  background: #f6fbf7;
+}
+
+.pet-personalized-assistant__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pet-personalized-assistant__card {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e6efe8;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+}
+
+.pet-personalized-assistant__media,
+.pet-personalized-assistant__name {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pet-personalized-assistant__media img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #f7faf8;
+}
+
+.pet-personalized-assistant__body {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.pet-personalized-assistant__name {
+  color: #173f2b;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.pet-personalized-assistant__name:hover {
+  color: #124734;
+}
+
+.pet-personalized-assistant__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pet-personalized-assistant__price {
+  color: #124734;
+  font-size: 18px;
+}
+
+.pet-personalized-assistant__foot {
+  display: grid;
+  gap: 10px;
+}
+
+.pet-personalized-assistant__insight {
+  border-radius: 14px;
+  border-color: #e8efe9;
+  background: #f8fbf9;
+}
+
+.pet-personalized-assistant__insight .ant-alert-message {
+  margin-bottom: 2px;
+  color: #173f2b;
+}
+
+.pet-personalized-assistant__insight .ant-alert-description {
+  color: #5f7869;
+  font-size: 12px;
+}
+
+.pet-personalized-assistant--compact .pet-personalized-assistant__list {
+  grid-template-columns: 1fr;
+}
+
+.pet-personalized-assistant--compact .pet-personalized-assistant__card {
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: start;
+}
+
+.pet-personalized-assistant--compact .pet-personalized-assistant__media img {
+  aspect-ratio: 1 / 1;
+}
+
+@media (max-width: 900px) {
+  .pet-personalized-assistant__list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .pet-personalized-assistant {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .pet-personalized-assistant__header {
+    flex-direction: column;
+  }
+
+  .pet-personalized-assistant__actions {
+    justify-content: flex-start;
+  }
+}

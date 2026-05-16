@@ -14,6 +14,7 @@ import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefi
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
 import AddOnAssistant from './AddOnAssistant';
+import PetPersonalizedAssistant from './PetPersonalizedAssistant';
 import './CartDrawer.css';
 
 const { Text } = Typography;
@@ -366,6 +367,12 @@ const CartDrawer: React.FC = () => {
           )}
         />
       )}
+
+      <PetPersonalizedAssistant
+        variant="compact"
+        excludedProductIds={items.map((item) => item.productId)}
+        onAdd={addSuggestedProduct}
+      />
 
       <div className="cart-drawer__footer">
         <Space direction="vertical" style={{ width: '100%' }}>

@@ -14,6 +14,7 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class PetProfileService {
     private final PetProfileMapper petProfileMapper;
+    private final ProductService productService;
 
     public List<PetProfile> findByUserId(Long userId) {
         return petProfileMapper.findByUserId(userId);
@@ -40,12 +41,14 @@ public class PetProfileService {
         } else if (petProfileMapper.update(pet) == 0) {
             throw new IllegalArgumentException("Pet profile not found");
         }
+        productService.clearPersonalizedRecommendationCache(userId);
         return petProfileMapper.findById(pet.getId());
     }
 
     @Transactional
     public void delete(Long userId, Long id) {
         petProfileMapper.deleteByIdAndUserId(id, userId);
+        productService.clearPersonalizedRecommendationCache(userId);
     }
 
     private String normalizePetType(String value) {

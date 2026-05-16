@@ -85,7 +85,7 @@ const App: React.FC = () => {
         <Routes>
           <Route
             element={
-              <Layout style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+              <Layout className="shop-app-shell" style={{ minHeight: '100vh' }}>
                 <Navbar />
                 <Content style={{ marginTop: 0, padding: 0 }}>
                   <Routes>

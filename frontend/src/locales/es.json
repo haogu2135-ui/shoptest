@@ -1648,6 +1648,7 @@
       "richImagePlaceholder": "URL de imagen de detalle",
       "richVideoPlaceholder": "URL de video, admite YouTube, Vimeo o MP4",
       "richCaptionPlaceholder": "Descripcion opcional de imagen o video",
+      "richInvalidUrl": "Usa una URL http(s) valida o una ruta de archivo subida.",
       "addRichText": "Agregar texto",
       "addRichImage": "Agregar imagen",
       "addRichVideo": "Agregar video",

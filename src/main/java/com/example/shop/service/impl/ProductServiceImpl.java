@@ -182,6 +182,18 @@ public class ProductServiceImpl implements ProductService {
         if (userId == null) {
             return List.of();
         }
+        return getCachedProducts("personalized:" + userId, () -> findPersonalizedRecommendationsUncached(userId));
+    }
+
+    @Override
+    public void clearPersonalizedRecommendationCache(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        productSearchCache.remove("personalized:" + userId);
+    }
+
+    private List<Product> findPersonalizedRecommendationsUncached(Long userId) {
         List<PetProfile> pets = petProfileMapper.findByUserId(userId);
         if (pets == null || pets.isEmpty()) {
             return List.of();
@@ -190,6 +202,7 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toMap(Category::getId, category -> category));
         List<Product> products = productRepository.findAll().stream()
                 .filter(product -> product.getStatus() == null || "ACTIVE".equalsIgnoreCase(product.getStatus()))
+                .filter(product -> product.getStock() == null || product.getStock() > 0)
                 .collect(Collectors.toList());
 
         return enrichReviewStats(products.stream()
@@ -197,6 +210,7 @@ public class ProductServiceImpl implements ProductService {
                 .filter(entry -> entry.score > 0)
                 .sorted(Comparator
                         .comparingInt((ProductScore entry) -> entry.score).reversed()
+                        .thenComparingInt(entry -> personalizedRecommendationPriority(entry.product))
                         .thenComparing(entry -> entry.product.getReviewCount() == null ? 0L : entry.product.getReviewCount(), Comparator.reverseOrder())
                         .thenComparing(entry -> entry.product.getId()))
                 .limit(12)
@@ -472,16 +486,28 @@ public class ProductServiceImpl implements ProductService {
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
             return false;
         }
+        return isQuickAddReady(product);
+    }
+
+    private int personalizedRecommendationPriority(Product product) {
+        return isQuickAddReady(product) ? 0 : 1;
+    }
+
+    private boolean isQuickAddReady(Product product) {
         if (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
             return false;
         }
         if (!hasSellableStock(product)) {
             return false;
         }
+        return !hasSelectableOptions(product);
+    }
+
+    private boolean hasSelectableOptions(Product product) {
         Map<String, String> specifications = product.getSpecificationsMap();
         boolean hasOptions = specifications != null && specifications.keySet().stream().anyMatch(key -> key.startsWith("options."));
         boolean hasVariants = product.getVariantsList() != null && !product.getVariantsList().isEmpty();
-        return !hasOptions && !hasVariants;
+        return hasOptions || hasVariants;
     }
 
     private boolean hasSellableStock(Product product) {

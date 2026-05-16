@@ -18,6 +18,7 @@ public interface ProductService {
     List<Product> search(String keyword, Long categoryId);
     List<Product> findRelatedProducts(Long productId, Long categoryId);
     List<Product> findPersonalizedRecommendations(Long userId);
+    void clearPersonalizedRecommendationCache(Long userId);
     List<Product> findDiscountProducts();
     List<Product> findAddOnCandidates(BigDecimal targetAmount, List<Long> excludedProductIds, int limit);
     ProductImportResult importCsv(MultipartFile file);

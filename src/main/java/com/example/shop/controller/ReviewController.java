@@ -51,18 +51,46 @@ public class ReviewController {
                 return ResponseEntity.status(401).build();
             }
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            Long orderId = parseLong(request.get("orderId"), "orderId");
+            Integer rating = parseRating(request.get("rating"));
             Review review = reviewService.addReview(
                 productId,
                 userDetails.getId(),
-                Long.parseLong(request.get("orderId").toString()),
-                Integer.parseInt(request.get("rating").toString()),
-                (String) request.get("comment")
+                orderId,
+                rating,
+                request.get("comment") == null ? "" : String.valueOf(request.get("comment"))
             );
             return ResponseEntity.ok(review);
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Review failed"));
+        }
+    }
+
+    private Long parseLong(Object value, String field) {
+        if (value == null || String.valueOf(value).trim().isEmpty()) {
+            throw new IllegalArgumentException(field + " is required");
+        }
+        try {
+            return Long.parseLong(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(field + " is invalid");
+        }
+    }
+
+    private Integer parseRating(Object value) {
+        if (value == null || String.valueOf(value).trim().isEmpty()) {
+            throw new IllegalArgumentException("rating is required");
+        }
+        try {
+            int rating = Integer.parseInt(String.valueOf(value).trim());
+            if (rating < 1 || rating > 5) {
+                throw new IllegalArgumentException("rating must be between 1 and 5");
+            }
+            return rating;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("rating is invalid");
         }
     }
 } 

@@ -1631,6 +1631,7 @@
       "richImagePlaceholder": "Image URL",
       "richVideoPlaceholder": "Video URL",
       "richCaptionPlaceholder": "Caption",
+      "richInvalidUrl": "Use a valid http(s) URL or upload path.",
       "addRichText": "Add text",
       "addRichImage": "Add image",
       "addRichVideo": "Add video",

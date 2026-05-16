@@ -148,17 +148,13 @@ public class ProductVariantService {
     }
 
     private boolean selectedOptionsMatch(Map<String, Object> variant, Map<String, String> selected) {
-        Object rawOptions = variant.get("options");
-        if (!(rawOptions instanceof Map)) {
-            return false;
-        }
-        Map<?, ?> options = (Map<?, ?>) rawOptions;
+        Map<String, String> options = parseVariantOptions(variant);
         if (options.isEmpty()) {
             return false;
         }
-        for (Map.Entry<?, ?> entry : options.entrySet()) {
-            String key = String.valueOf(entry.getKey());
-            String value = String.valueOf(entry.getValue());
+        for (Map.Entry<String, String> entry : options.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
             if (!value.equals(selected.get(key))) {
                 return false;
             }
@@ -187,7 +183,7 @@ public class ProductVariantService {
         String selectedSku = selected.get("_variantSku");
         if (selectedSku != null && !selectedSku.isEmpty()) {
             Optional<Map<String, Object>> bySku = variants.stream()
-                    .filter(variant -> selectedSku.equals(String.valueOf(variant.getOrDefault("sku", ""))))
+                    .filter(variant -> selectedSku.equals(String.valueOf(variant.getOrDefault("sku", "")).trim()))
                     .findFirst();
             if (bySku.isPresent()) return bySku;
         }
@@ -212,6 +208,43 @@ public class ProductVariantService {
         }
     }
 
+    private Map<String, String> parseVariantOptions(Map<String, Object> variant) {
+        if (variant == null || variant.isEmpty()) {
+            return Map.of();
+        }
+        Object rawOptions = variant.get("options");
+        if (rawOptions instanceof Map) {
+            Map<?, ?> options = (Map<?, ?>) rawOptions;
+            Map<String, String> result = new LinkedHashMap<>();
+            options.forEach((key, value) -> {
+                String normalizedKey = key == null ? "" : String.valueOf(key).trim();
+                String normalizedValue = value == null ? "" : String.valueOf(value).trim();
+                if (!normalizedKey.isEmpty() && !normalizedValue.isEmpty()) {
+                    result.put(normalizedKey, normalizedValue);
+                }
+            });
+            return result;
+        }
+
+        Object optionText = variant.get("optionText");
+        if (optionText == null || String.valueOf(optionText).trim().isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> result = new LinkedHashMap<>();
+        for (String token : String.valueOf(optionText).split(",")) {
+            String[] parts = token.split("=", 2);
+            if (parts.length != 2) {
+                continue;
+            }
+            String key = parts[0] == null ? "" : parts[0].trim();
+            String value = parts[1] == null ? "" : parts[1].trim();
+            if (!key.isEmpty() && !value.isEmpty()) {
+                result.put(key, value);
+            }
+        }
+        return result;
+    }
+
     private void writeVariants(Product product, List<Map<String, Object>> variants) {
         try {
             product.setVariants(variants == null || variants.isEmpty() ? null : mapper.writeValueAsString(variants));
@@ -227,7 +260,11 @@ public class ProductVariantService {
         if (value == null || String.valueOf(value).trim().isEmpty()) {
             return BigDecimal.ZERO;
         }
-        return new BigDecimal(String.valueOf(value));
+        try {
+            return new BigDecimal(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            return BigDecimal.ZERO;
+        }
     }
 
     private Integer integerValue(Object value) {
@@ -237,6 +274,10 @@ public class ProductVariantService {
         if (value == null || String.valueOf(value).trim().isEmpty()) {
             return null;
         }
-        return Integer.parseInt(String.valueOf(value));
+        try {
+            return Integer.parseInt(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

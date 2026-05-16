@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons';
 import type { ProductDetailBlock } from '../types';
 import { useLanguage } from '../i18n';
-import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
+import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, resolveRichMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -33,11 +33,12 @@ const compactBlocks = (blocks: ProductDetailBlock[]) =>
   });
 
 const RichVideoPreview: React.FC<{ block: ProductDetailBlock; index: number }> = ({ block, index }) => {
-  if (!isHttpMediaUrl(block.url)) return null;
-  const videoUrl = toEmbeddableVideoUrl(block.url);
-  if (!canEmbedVideoUrl(block.url)) {
+  const mediaUrl = resolveRichMediaUrl(block.url);
+  if (!mediaUrl) return null;
+  const videoUrl = toEmbeddableVideoUrl(mediaUrl);
+  if (!canEmbedVideoUrl(mediaUrl)) {
     return (
-      <a href={block.url} target="_blank" rel="noopener noreferrer">
+      <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
         {block.caption || block.url}
       </a>
     );
@@ -153,12 +154,16 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                     onChange={(event) => updateBlock(index, { caption: event.target.value })}
                   />
                   {block.type === 'image' && block.url ? (
-                    <Image
-                      src={block.url}
-                      width={180}
-                      style={{ borderRadius: 6, objectFit: 'cover' }}
-                      fallback="https://via.placeholder.com/180x120?text=Image"
-                    />
+                    isHttpMediaUrl(block.url) ? (
+                      <Image
+                        src={resolveRichMediaUrl(block.url) || undefined}
+                        width={180}
+                        style={{ borderRadius: 6, objectFit: 'cover' }}
+                        fallback="https://via.placeholder.com/180x120?text=Image"
+                      />
+                    ) : (
+                      <Text type="danger">{t('pages.productAdmin.richInvalidUrl')}</Text>
+                    )
                   ) : null}
                   {block.type === 'video' && block.url ? <RichVideoPreview block={block} index={index} /> : null}
                 </Space>

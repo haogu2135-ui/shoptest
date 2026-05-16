@@ -178,7 +178,14 @@ public class SupportController {
         if (value instanceof Number) {
             return ((Number) value).longValue();
         }
-        String text = String.valueOf(value);
-        return text.isBlank() ? null : Long.valueOf(text);
+        String text = String.valueOf(value).trim();
+        if (text.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

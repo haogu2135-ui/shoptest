@@ -13,7 +13,7 @@ import { buildCategoryTree, descendantIdSet, flattenCategoryTree, getCategoryPat
 import { useLanguage } from '../i18n';
 import dayjs from 'dayjs';
 import ProductRichDetailEditor from '../components/ProductRichDetailEditor';
-import ProductRichDetail from '../components/ProductRichDetail';
+import ProductRichDetail, { isHttpMediaUrl } from '../components/ProductRichDetail';
 import { useMarket } from '../hooks/useMarket';
 import './ProductManagement.css';
 
@@ -104,6 +104,35 @@ const normalizeVariantOptionText = (value?: string) =>
     .map((item) => item.trim())
     .filter(Boolean)
     .join(', ');
+
+const toSafeNumber = (value: unknown, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const parseVariantOptions = (variant: any) => {
+  if (variant?.options && typeof variant.options === 'object' && !Array.isArray(variant.options)) {
+    return Object.entries(variant.options).reduce((result: Record<string, string>, [key, value]) => {
+      const normalizedKey = String(key || '').trim();
+      const normalizedValue = String(value || '').trim();
+      if (normalizedKey && normalizedValue) result[normalizedKey] = normalizedValue;
+      return result;
+    }, {});
+  }
+
+  return String(variant?.optionText || '')
+    .split(',')
+    .reduce((result: Record<string, string>, item) => {
+      const [rawKey, ...rawValue] = item.split('=');
+      const key = String(rawKey || '').trim();
+      const value = rawValue.join('=').trim();
+      if (key && value) result[key] = value;
+      return result;
+    }, {});
+};
+
+const formatVariantOptionText = (variant: any) =>
+  Object.entries(parseVariantOptions(variant)).map(([key, value]) => `${key}=${value}`).join(', ');
 
 const createSkuFromOptions = (options: Record<string, string>, index: number) => {
   const suffix = Object.values(options)
@@ -210,9 +239,9 @@ const ProductManagement: React.FC = () => {
   const variantSummary = useMemo(() => {
     const rows = Array.isArray(previewVariants) ? previewVariants : [];
     const validRows = rows.filter((row: any) => String(row?.optionText || '').trim());
-    const totalStock = validRows.reduce((sum: number, row: any) => sum + Number(row?.stock || 0), 0);
+    const totalStock = validRows.reduce((sum: number, row: any) => sum + toSafeNumber(row?.stock), 0);
     const prices = validRows
-      .map((row: any) => Number(row?.price || 0))
+      .map((row: any) => toSafeNumber(row?.price))
       .filter((price: number) => price > 0);
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
@@ -356,11 +385,11 @@ const ProductManagement: React.FC = () => {
     const detailContent = parseJsonArray(record.detailContent);
     const variants = parseJsonArray(record.variants).map((variant: any) => ({
       sku: variant.sku,
-      optionText: Object.entries(variant.options || {}).map(([key, value]) => `${key}=${value}`).join(', '),
+      optionText: formatVariantOptionText(variant),
       price: variant.price,
       stock: variant.stock,
       imageUrl: variant.imageUrl,
-    }));
+    })).filter((variant: any) => variant.optionText);
     const specs = Object.keys(specsObj).length > 0
       ? Object.entries(specsObj).map(([key, value]) => ({ key, value }))
       : [{}];
@@ -481,7 +510,7 @@ const ProductManagement: React.FC = () => {
 
   const syncStockFromVariants = () => {
     const rows = (form.getFieldValue('variants') || []).filter((row: any) => String(row?.optionText || '').trim());
-    const totalStock = rows.reduce((sum: number, row: any) => sum + Number(row?.stock || 0), 0);
+    const totalStock = rows.reduce((sum: number, row: any) => sum + toSafeNumber(row?.stock), 0);
     form.setFieldValue('stock', totalStock);
     message.success(t('pages.productAdmin.stockSyncedFromVariants', { count: rows.length, stock: totalStock }));
   };
@@ -506,7 +535,7 @@ const ProductManagement: React.FC = () => {
           url: block.url?.trim(),
           caption: block.caption?.trim(),
         }))
-        .filter((block: any) => block.type === 'text' ? !!block.content : !!block.url);
+        .filter((block: any) => block.type === 'text' ? !!block.content : !!block.url && isHttpMediaUrl(block.url));
       const localizedContent = values.localizedContent || {};
       ['es', 'zh'].forEach((locale) => {
         ['name', 'description', 'brand'].forEach((field) => {
@@ -541,23 +570,19 @@ const ProductManagement: React.FC = () => {
       const variants = (values.variants || [])
         .map((variant: any) => {
           const optionText = String(variant?.optionText || '').trim();
-          const options = optionText.split(',').reduce((result: Record<string, string>, item: string) => {
-            const [rawKey, ...rawValue] = item.split('=');
-            const key = String(rawKey || '').trim();
-            const value = rawValue.join('=').trim();
-            if (key && value) result[key] = value;
-            return result;
-          }, {});
+          const options = parseVariantOptions({ optionText });
+          const price = toSafeNumber(variant?.price);
+          const stock = toSafeNumber(variant?.stock, NaN);
           return {
             sku: variant?.sku?.trim(),
             options,
-            price: Number(variant?.price || 0),
-            stock: variant?.stock === undefined || variant?.stock === null ? undefined : Number(variant.stock),
+            price,
+            stock: Number.isFinite(stock) ? stock : undefined,
             imageUrl: variant?.imageUrl?.trim(),
           };
         })
-        .filter((variant: any) => Object.keys(variant.options).length > 0 && variant.price > 0);
-      const variantStockTotal = variants.reduce((sum: number, variant: any) => sum + Number(variant.stock || 0), 0);
+        .filter((variant: any) => Object.keys(variant.options).length > 0 && Number.isFinite(variant.price) && variant.price > 0);
+      const variantStockTotal = variants.reduce((sum: number, variant: any) => sum + toSafeNumber(variant.stock), 0);
       const {
         specifications: _specs,
         images: _images,
@@ -634,7 +659,7 @@ const ProductManagement: React.FC = () => {
     ];
     const rows = filteredProducts.map((product: any) => {
       const variants = parseJsonArray(product.variants);
-      const variantStock = variants.reduce((sum: number, variant: any) => sum + Number(variant?.stock || 0), 0);
+      const variantStock = variants.reduce((sum: number, variant: any) => sum + toSafeNumber(variant?.stock), 0);
       return [
         product.id,
         product.name,

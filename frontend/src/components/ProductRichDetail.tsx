@@ -1,5 +1,6 @@
 import React from 'react';
 import { Empty, Typography } from 'antd';
+import { apiBaseUrl } from '../api';
 import type { ProductDetailBlock } from '../types';
 import './ProductRichDetail.css';
 
@@ -14,11 +15,18 @@ type ProductRichDetailProps = {
 export const isHttpMediaUrl = (value?: string): value is string => {
   if (!value) return false;
   try {
-    const url = new URL(value);
+    const url = new URL(value, window.location.origin);
     return url.protocol === 'http:' || url.protocol === 'https:';
   } catch {
     return false;
   }
+};
+
+export const resolveRichMediaUrl = (value?: string) => {
+  if (!isHttpMediaUrl(value)) return null;
+  const trimmed = String(value || '').trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `${apiBaseUrl}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`;
 };
 
 export const parseDetailContent = (value?: ProductRichDetailProps['detailContent']): ProductDetailBlock[] => {
@@ -36,7 +44,8 @@ export const isDirectVideo = (value: string) => /\.(mp4|webm|ogg)(\?.*)?$/i.test
 
 export const toEmbeddableVideoUrl = (value: string) => {
   try {
-    const url = new URL(value);
+    const resolvedValue = resolveRichMediaUrl(value) || value;
+    const url = new URL(resolvedValue, window.location.origin);
     const hostname = url.hostname.replace(/^www\./, '').toLowerCase();
     if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) {
       const parts = url.pathname.split('/').filter(Boolean);
@@ -52,7 +61,7 @@ export const toEmbeddableVideoUrl = (value: string) => {
       const videoId = hostname === 'player.vimeo.com' && parts[0] === 'video' ? parts[1] : parts[0];
       return videoId ? `https://player.vimeo.com/video/${videoId}` : value;
     }
-    return value;
+    return resolvedValue;
   } catch {
     return value;
   }
@@ -87,6 +96,7 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
   return (
     <div className="product-rich-detail">
       {blocks.map((block, index) => {
+        const mediaUrl = resolveRichMediaUrl(block.url);
         if (block.type === 'text') {
           return (
             <Paragraph key={index} className="product-rich-detail__text">
@@ -95,11 +105,11 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
           );
         }
 
-        if (block.type === 'image' && isHttpMediaUrl(block.url)) {
+        if (block.type === 'image' && mediaUrl) {
           return (
             <figure key={index} className="product-rich-detail__figure">
               <img
-                src={block.url}
+                src={mediaUrl}
                 alt={block.caption || 'Product detail'}
                 loading="lazy"
                 onMouseMove={handleImageZoomMove}
@@ -110,11 +120,11 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
           );
         }
 
-        if (block.type === 'video' && isHttpMediaUrl(block.url)) {
-          const videoUrl = toEmbeddableVideoUrl(block.url);
+        if (block.type === 'video' && mediaUrl) {
+          const videoUrl = toEmbeddableVideoUrl(mediaUrl);
           return (
             <figure key={index} className="product-rich-detail__figure">
-              {canEmbedVideoUrl(block.url) ? (
+              {canEmbedVideoUrl(mediaUrl) ? (
                 <div className="product-rich-detail__video">
                   {isDirectVideo(videoUrl) ? (
                     <video src={videoUrl} controls preload="metadata" />
@@ -123,7 +133,7 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
                   )}
                 </div>
               ) : (
-                <a className="product-rich-detail__video-link" href={block.url} target="_blank" rel="noopener noreferrer">
+                <a className="product-rich-detail__video-link" href={mediaUrl} target="_blank" rel="noopener noreferrer">
                   {block.caption || 'Open product video'}
                 </a>
               )}

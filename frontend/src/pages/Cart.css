@@ -393,6 +393,88 @@
   overflow-wrap: anywhere;
 }
 
+.cart-page__checkoutPath {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid #dce9df;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(247, 201, 72, 0.14), transparent 28%),
+    linear-gradient(135deg, #ffffff, #f7fbf8);
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.07);
+}
+
+.cart-page__checkoutPathHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cart-page__checkoutPathHeader > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.cart-page__checkoutPathHeader .ant-typography {
+  line-height: 1.35;
+}
+
+.cart-page__checkoutPathSteps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cart-page__checkoutPathStep {
+  min-height: 108px;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 6px;
+  padding: 11px;
+  border: 1px solid #ffd8bf;
+  border-radius: 12px;
+  background: #fff8f2;
+}
+
+.cart-page__checkoutPathStep--ready {
+  border-color: #d5e8d8;
+  background: #ffffff;
+}
+
+.cart-page__checkoutPathStep > span:first-child {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffb84d;
+  color: #173f2b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cart-page__checkoutPathStep--ready > span:first-child {
+  background: #124734;
+  color: #ffffff;
+}
+
+.cart-page__checkoutPathStep strong {
+  color: #173f2b;
+  line-height: 1.25;
+}
+
+.cart-page__checkoutPathStep p {
+  margin: 0;
+  color: #6c6a62;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .cart-page__summary {
   position: sticky;
   bottom: 0;
@@ -659,6 +741,29 @@
 
   .cart-page__nextAction .ant-btn {
     width: 100%;
+  }
+
+  .cart-page__checkoutPath {
+    padding: 12px;
+  }
+
+  .cart-page__checkoutPathHeader {
+    display: grid;
+  }
+
+  .cart-page__checkoutPathSteps {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-page__checkoutPathStep {
+    min-height: 0;
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: start;
+  }
+
+  .cart-page__checkoutPathStep > span:first-child {
+    grid-row: 1 / span 2;
   }
 
   .cart-page__mobileItemTop {

@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Avatar, Card, Col, Divider, List, Progress, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Avatar, Button, Card, Col, Divider, List, Progress, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
 import {
   ShopOutlined, ShoppingOutlined, TeamOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, WarningOutlined, RiseOutlined, TruckOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api';
 import type { DashboardStats } from '../types';
 import { useLanguage } from '../i18n';
@@ -232,11 +233,69 @@ const DonutChart: React.FC<{
 };
 
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const paymentRefundCopy = useMemo(() => {
+    if (language === 'zh') {
+      return {
+        title: '支付与回退运营闭环',
+        subtitle: '从待付款、售后申请、回寄、退款确认四个节点看今天最该处理的订单。',
+        pendingPayment: '待付款',
+        returnRequested: '待审核退货',
+        returnApproved: '待用户回寄',
+        returnShipped: '待确认退款',
+        refunded: '已退款',
+        paymentAction: '催付或检查支付链接',
+        returnAction: '进入退款工作台',
+        auditAction: '查看支付/退款日志',
+        healthReady: '流程健康',
+        healthWatch: '需要关注',
+        healthRisk: '优先处理',
+        guideTitle: '处理顺序',
+        guideText: '先看待付款恢复，再处理待审核售后，最后确认已回寄订单的退款。',
+      };
+    }
+    if (language === 'es') {
+      return {
+        title: 'Flujo de pagos y reembolsos',
+        subtitle: 'Prioriza pagos pendientes, solicitudes, devoluciones y confirmacion de reembolso.',
+        pendingPayment: 'Pago pendiente',
+        returnRequested: 'Por revisar',
+        returnApproved: 'Esperando devolucion',
+        returnShipped: 'Por reembolsar',
+        refunded: 'Reembolsado',
+        paymentAction: 'Revisar pagos',
+        returnAction: 'Abrir reembolsos',
+        auditAction: 'Ver auditoria',
+        healthReady: 'Sano',
+        healthWatch: 'Vigilar',
+        healthRisk: 'Prioridad alta',
+        guideTitle: 'Orden recomendado',
+        guideText: 'Primero pagos pendientes, luego solicitudes de devolucion y despues reembolsos listos.',
+      };
+    }
+    return {
+      title: 'Payment and return operations',
+      subtitle: 'Watch pending payment, return review, return shipment, and refund confirmation from one queue.',
+      pendingPayment: 'Pending payment',
+      returnRequested: 'Return review',
+      returnApproved: 'Awaiting return',
+      returnShipped: 'Ready to refund',
+      refunded: 'Refunded',
+      paymentAction: 'Review payments',
+      returnAction: 'Open refund workbench',
+      auditAction: 'Open audit logs',
+      healthReady: 'Healthy',
+      healthWatch: 'Watch',
+      healthRisk: 'Prioritize',
+      guideTitle: 'Recommended order',
+      guideText: 'Recover pending payments first, review return requests next, then close ready-to-refund orders.',
+    };
+  }, [language]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -292,6 +351,53 @@ const AdminDashboard: React.FC = () => {
   const pendingPaymentOrders = Number(stats.pendingPaymentOrders || 0);
   const lowStockProducts = Number(stats.lowStockProducts || 0);
   const missingTrackingOrders = Number(stats.ordersWithoutTracking || 0);
+  const returnRequestedOrders = Number(stats.orderStatusBreakdown?.RETURN_REQUESTED || 0);
+  const returnApprovedOrders = Number(stats.orderStatusBreakdown?.RETURN_APPROVED || 0);
+  const returnShippedOrders = Number(stats.orderStatusBreakdown?.RETURN_SHIPPED || 0);
+  const returnedOrders = Number(stats.orderStatusBreakdown?.RETURNED || 0);
+  const paymentReturnRiskScore = pendingPaymentOrders + returnRequestedOrders * 2 + returnApprovedOrders * 2 + returnShippedOrders * 3;
+  const paymentReturnHealth = paymentReturnRiskScore === 0
+    ? paymentRefundCopy.healthReady
+    : paymentReturnRiskScore >= 6
+      ? paymentRefundCopy.healthRisk
+      : paymentRefundCopy.healthWatch;
+  const paymentReturnCards = [
+    {
+      key: 'pending-payment',
+      value: pendingPaymentOrders,
+      label: paymentRefundCopy.pendingPayment,
+      tone: pendingPaymentOrders > 0 ? 'warning' : 'ready',
+      target: '/admin/orders?status=PENDING_PAYMENT',
+    },
+    {
+      key: 'return-requested',
+      value: returnRequestedOrders,
+      label: paymentRefundCopy.returnRequested,
+      tone: returnRequestedOrders > 0 ? 'warning' : 'ready',
+      target: '/admin/orders?status=RETURN_REQUESTED',
+    },
+    {
+      key: 'return-approved',
+      value: returnApprovedOrders,
+      label: paymentRefundCopy.returnApproved,
+      tone: returnApprovedOrders > 0 ? 'info' : 'ready',
+      target: '/admin/orders?status=RETURN_APPROVED',
+    },
+    {
+      key: 'return-shipped',
+      value: returnShippedOrders,
+      label: paymentRefundCopy.returnShipped,
+      tone: returnShippedOrders > 0 ? 'danger' : 'ready',
+      target: '/admin/orders?status=RETURN_SHIPPED',
+    },
+    {
+      key: 'returned',
+      value: returnedOrders,
+      label: paymentRefundCopy.refunded,
+      tone: 'ready',
+      target: '/admin/orders?status=RETURNED',
+    },
+  ];
   const operationalActions = [
     {
       key: 'payment',
@@ -371,6 +477,40 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <section className="admin-dashboard__paymentOps" aria-label={paymentRefundCopy.title}>
+        <div className="admin-dashboard__paymentOpsIntro">
+          <Typography.Text strong>{paymentRefundCopy.title}</Typography.Text>
+          <Typography.Text type="secondary">{paymentRefundCopy.subtitle}</Typography.Text>
+          <Tag color={paymentReturnRiskScore === 0 ? 'green' : paymentReturnRiskScore >= 6 ? 'red' : 'orange'}>
+            {paymentReturnHealth}
+          </Tag>
+        </div>
+        <div className="admin-dashboard__paymentOpsGrid">
+          {paymentReturnCards.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`admin-dashboard__paymentOpsCard admin-dashboard__paymentOpsCard--${item.tone}`}
+              onClick={() => navigate(item.target)}
+            >
+              <strong>{item.value}</strong>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="admin-dashboard__paymentOpsActions">
+          <div>
+            <Typography.Text strong>{paymentRefundCopy.guideTitle}</Typography.Text>
+            <Typography.Text type="secondary">{paymentRefundCopy.guideText}</Typography.Text>
+          </div>
+          <Space wrap>
+            <Button size="small" onClick={() => navigate('/admin/orders?status=PENDING_PAYMENT')}>{paymentRefundCopy.paymentAction}</Button>
+            <Button size="small" type="primary" onClick={() => navigate('/admin/orders?quick=RETURN_SHIPPED')}>{paymentRefundCopy.returnAction}</Button>
+            <Button size="small" onClick={() => navigate('/admin/audit-logs?view=payment-failures')}>{paymentRefundCopy.auditAction}</Button>
+          </Space>
+        </div>
+      </section>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>

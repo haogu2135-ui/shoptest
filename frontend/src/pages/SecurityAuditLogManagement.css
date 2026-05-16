@@ -95,6 +95,96 @@
   margin-bottom: 16px;
 }
 
+.audit-log-page__opsPanel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(320px, 1.2fr);
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8fcf9 0%, #fffaf4 100%);
+}
+
+.audit-log-page__opsIntro,
+.audit-log-page__opsActions > div {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.audit-log-page__opsIntro .ant-typography,
+.audit-log-page__opsActions .ant-typography {
+  display: block;
+  line-height: 1.35;
+}
+
+.audit-log-page__opsMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.audit-log-page__opsMetrics button {
+  min-height: 82px;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e7eadf;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #173f2b;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.audit-log-page__opsMetrics button:hover,
+.audit-log-page__opsMetrics button:focus-visible {
+  outline: none;
+  border-color: #ff7a45;
+  box-shadow: 0 8px 18px rgba(255, 122, 69, 0.14);
+  transform: translateY(-1px);
+}
+
+.audit-log-page__opsMetrics button.is-risk {
+  border-color: #f5c2c2;
+  background: #fff7f7;
+  color: #b42318;
+}
+
+.audit-log-page__opsMetrics button.is-watch {
+  border-color: #ffe58f;
+  background: #fffbe6;
+  color: #8c6d1f;
+}
+
+.audit-log-page__opsMetrics strong {
+  color: inherit;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.audit-log-page__opsMetrics span {
+  color: #647067;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.audit-log-page__opsActions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(18, 71, 52, 0.08);
+}
+
 .audit-log-page__toolbar .ant-space {
   width: 100%;
 }
@@ -107,6 +197,20 @@
   .audit-log-page__insights {
     grid-template-columns: 1fr;
     padding: 14px;
+  }
+
+  .audit-log-page__opsPanel,
+  .audit-log-page__opsActions {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-log-page__opsMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .audit-log-page__opsActions .ant-space,
+  .audit-log-page__opsActions .ant-btn {
+    width: 100%;
   }
 
   .audit-log-page__signalGrid {
