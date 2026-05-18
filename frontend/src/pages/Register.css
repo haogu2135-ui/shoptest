@@ -1,4 +1,4 @@
-.register-page {
+﻿.register-page {
   min-height: calc(100vh - 64px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 430px;
@@ -7,8 +7,7 @@
   width: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at 90% 0%, rgba(18, 71, 52, 0.12), transparent 24%),
-    #f7f4ee;
+    linear-gradient(180deg, #ffffff 0%, #f6f8f6 52%, #f1f6f3 100%);
 }
 
 .register-page__panel {
@@ -16,7 +15,7 @@
   display: flex;
   align-items: center;
   overflow: hidden;
-  border-radius: var(--radius-tile);
+  border-radius: 8px;
   padding: 44px;
   background:
     linear-gradient(90deg, rgba(18, 71, 52, 0.92), rgba(18, 71, 52, 0.56)),
@@ -77,7 +76,7 @@
   align-items: start;
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 12px;
+  border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
   backdrop-filter: blur(8px);
   transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
@@ -85,13 +84,13 @@
 
 .register-page__featureCard:hover {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-  border-color: rgba(247, 201, 72, 0.4);
+  border-color: rgba(238, 77, 45, 0.4);
   transform: translateY(-2px);
 }
 
 .register-page__featureCard .anticon {
   margin-top: 2px;
-  color: #f7c948;
+  color: #ffb39f;
   font-size: 20px;
 }
 
@@ -123,7 +122,7 @@
 .register-page__actions .ant-btn {
   min-width: 148px;
   min-height: 44px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 800;
 }
 
@@ -133,12 +132,12 @@
   background: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* ── Register card ── */
+/* 鈹€鈹€ Register card 鈹€鈹€ */
 .register-page__card {
   width: 100%;
-  border-color: #eee4d3;
-  border-radius: 20px;
-  box-shadow: 0 24px 48px rgba(18, 71, 52, 0.12), 0 4px 12px rgba(18, 71, 52, 0.06);
+  border-color: #e4ebe4;
+  border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(18, 71, 52, 0.12), 0 4px 12px rgba(18, 71, 52, 0.06);
 }
 
 .register-page__card .ant-card-body {
@@ -167,14 +166,14 @@
 .register-page__card .ant-input,
 .register-page__card .ant-input-affix-wrapper,
 .register-page__card .ant-select-selector {
-  border-radius: 10px !important;
+  border-radius: 8px !important;
   min-height: 44px;
   font-size: 14px;
 }
 
 .register-page__card .ant-btn-primary {
   min-height: 44px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 800;
   font-size: 15px;
   box-shadow: 0 8px 20px rgba(238, 77, 45, 0.22);
@@ -211,7 +210,7 @@
   .register-page__panel {
     min-height: 320px;
     padding: 26px;
-    border-radius: 12px;
+    border-radius: 8px;
   }
 
   .register-page__copy h1.ant-typography {
@@ -237,4 +236,25 @@
   .register-page__title {
     text-align: center;
   }
+}
+
+.register-page__card {
+  border-color: #e4ebe4;
+  background: #ffffff;
+}
+
+.register-page__cardHint {
+  color: #627064;
+}
+
+.register-page__card .ant-input,
+.register-page__card .ant-input-affix-wrapper,
+.register-page__card .ant-select-selector {
+  border-color: #dce9df;
+}
+
+.register-page__card .ant-input:hover,
+.register-page__card .ant-input-affix-wrapper:hover,
+.register-page__card .ant-select-selector:hover {
+  border-color: #124734 !important;
 }

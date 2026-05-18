@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -83,5 +85,18 @@ public class PaymentService {
             order.setStatus("PAID");
             orderRepository.save(order);
         }
+    }
+
+    public Map<String, Object> getPaymentStatus(Long orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new RuntimeException("Payment record not found"));
+        Map<String, Object> result = new HashMap<>();
+        result.put("orderId", payment.getOrderId());
+        result.put("amount", payment.getAmount());
+        result.put("method", payment.getMethod());
+        result.put("status", payment.getStatus());
+        result.put("transactionId", payment.getTransactionId());
+        result.put("createdAt", payment.getCreatedAt());
+        return result;
     }
 } 

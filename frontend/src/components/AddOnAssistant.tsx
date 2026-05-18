@@ -1,25 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Skeleton, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { apiBaseUrl, productApi } from '../api';
+import { productApi } from '../api';
 import type { Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { conversionConfig } from '../utils/conversionConfig';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import './AddOnAssistant.css';
 
 const { Text } = Typography;
 
-const addOnImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
 const getAddOnPrice = (product: Product) => Number(product.effectivePrice ?? product.price ?? 0);
-
-const resolveImage = (imageUrl?: string) => {
-  if (!imageUrl) return addOnImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) return imageUrl;
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const ADD_ON_CACHE_TTL_MS = 2 * 60 * 1000;
+const addOnCandidateCache = new Map<string, { expiresAt: number; products: Product[] }>();
 
 interface AddOnAssistantProps {
   cartProductIds: number[];
@@ -35,29 +30,55 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const shouldLoadProducts = conversionConfig.addOnAssistant.enabled && remainingAmount > 0;
+  const excludedKey = useMemo(
+    () => Array.from(new Set(cartProductIds.map(Number).filter(Boolean))).sort((left, right) => left - right).join(','),
+    [cartProductIds],
+  );
+  const excludedProductIds = useMemo(
+    () => (excludedKey ? excludedKey.split(',').map((value) => Number(value)).filter(Boolean) : []),
+    [excludedKey],
+  );
 
   useEffect(() => {
     if (!shouldLoadProducts) return;
+    const cacheKey = `${language}|${remainingAmount}|${excludedKey}`;
+    const cached = addOnCandidateCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      setProducts(cached.products);
+      return;
+    }
     setLoading(true);
     productApi.getAddOnCandidates(
       remainingAmount,
-      cartProductIds,
+      excludedProductIds,
       conversionConfig.addOnAssistant.maxSuggestions + conversionConfig.addOnAssistant.maxFallbackSuggestions,
     )
-      .then((response) => setProducts(response.data.map((product) => localizeProduct(product, language))))
+      .then((response) => {
+        const localizedProducts = response.data.map((product) => localizeProduct(product, language));
+        addOnCandidateCache.set(cacheKey, {
+          expiresAt: Date.now() + ADD_ON_CACHE_TTL_MS,
+          products: localizedProducts,
+        });
+        setProducts(localizedProducts);
+      })
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));
-  }, [cartProductIds, language, remainingAmount, shouldLoadProducts]);
+  }, [excludedKey, excludedProductIds, language, remainingAmount, shouldLoadProducts]);
 
   const suggestions = useMemo(() => {
     if (!conversionConfig.addOnAssistant.enabled || remainingAmount <= 0) return [];
     return products.slice(0, conversionConfig.addOnAssistant.maxSuggestions);
   }, [products, remainingAmount]);
+  const insightBadges = [
+    reason === 'gift' ? t('pages.addOnAssistant.giftBadge') : t('pages.addOnAssistant.shippingBadge'),
+    t('pages.addOnAssistant.quickAddBadge'),
+  ];
 
   const handleAdd = async (product: Product) => {
     setAddingId(product.id);
     try {
       await onAdd(product);
+      setProducts((current) => current.filter((item) => item.id !== product.id));
       message.success(t('pages.addOnAssistant.added'));
     } catch (error: any) {
       message.error(error?.response?.data?.error || t('messages.addFailed'));
@@ -89,15 +110,18 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
         </div>
         <span className="add-on-assistant__target">{formatMoney(remainingAmount)}</span>
       </div>
+      <div className="add-on-assistant__badges">
+        {insightBadges.map((badge) => <span key={badge}>{badge}</span>)}
+      </div>
       <div className="add-on-assistant__list">
         {suggestions.map((product) => (
           <article key={product.id} className="add-on-assistant__item">
             <img
-              src={resolveImage(product.imageUrl)}
+              src={resolveProductImage(product.imageUrl)}
               alt={product.name}
               onError={(event) => {
-                if (event.currentTarget.src !== addOnImageFallback) {
-                  event.currentTarget.src = addOnImageFallback;
+                if (event.currentTarget.src !== productImageFallback) {
+                  event.currentTarget.src = productImageFallback;
                 }
               }}
             />

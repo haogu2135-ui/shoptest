@@ -6,9 +6,16 @@ export type CartBenefitTarget = {
   threshold: number;
 };
 
+const toNonNegativeFinite = (value: unknown) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, numeric) : 0;
+};
+
 export const getGiftThreshold = (currency: string) => {
   if (!conversionConfig.giftAtCheckout.enabled) return 0;
-  return currency === 'MXN' ? conversionConfig.giftAtCheckout.thresholdMxn : 0;
+  return String(currency || '').toUpperCase() === 'MXN'
+    ? toNonNegativeFinite(conversionConfig.giftAtCheckout.thresholdMxn)
+    : 0;
 };
 
 export const getNearestCartBenefitTarget = (
@@ -17,17 +24,19 @@ export const getNearestCartBenefitTarget = (
   currency: string,
 ): CartBenefitTarget | null => {
   const candidates: CartBenefitTarget[] = [];
-  const shippingRemaining = Math.max(0, freeShippingThreshold - subtotal);
-  if (freeShippingThreshold > 0 && shippingRemaining > 0) {
+  const safeSubtotal = toNonNegativeFinite(subtotal);
+  const safeFreeShippingThreshold = toNonNegativeFinite(freeShippingThreshold);
+  const shippingRemaining = Math.max(0, safeFreeShippingThreshold - safeSubtotal);
+  if (safeFreeShippingThreshold > 0 && shippingRemaining > 0) {
     candidates.push({
       reason: 'shipping',
       remainingAmount: shippingRemaining,
-      threshold: freeShippingThreshold,
+      threshold: safeFreeShippingThreshold,
     });
   }
 
   const giftThreshold = getGiftThreshold(currency);
-  const giftRemaining = Math.max(0, giftThreshold - subtotal);
+  const giftRemaining = Math.max(0, giftThreshold - safeSubtotal);
   if (giftThreshold > 0 && giftRemaining > 0) {
     candidates.push({
       reason: 'gift',
@@ -41,5 +50,5 @@ export const getNearestCartBenefitTarget = (
 
 export const isGiftUnlocked = (subtotal: number, currency: string) => {
   const giftThreshold = getGiftThreshold(currency);
-  return giftThreshold > 0 && subtotal >= giftThreshold;
+  return giftThreshold > 0 && toNonNegativeFinite(subtotal) >= giftThreshold;
 };

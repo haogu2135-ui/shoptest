@@ -43,10 +43,24 @@ public class CouponController {
         }
     }
 
+    @PostMapping("/me/{couponId}/claim")
+    public ResponseEntity<?> claimMine(@PathVariable Long couponId, Authentication authentication) {
+        try {
+            return ResponseEntity.ok(couponService.claim(couponId, SecurityUtils.requireUser(authentication).getId()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<UserCoupon>> userCoupons(@PathVariable Long userId, Authentication authentication) {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         return ResponseEntity.ok(couponService.findUserCoupons(userId));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<List<UserCoupon>> myCoupons(Authentication authentication) {
+        return ResponseEntity.ok(couponService.findUserCoupons(SecurityUtils.requireUser(authentication).getId()));
     }
 
     @GetMapping("/user/{userId}/available")
@@ -55,10 +69,28 @@ public class CouponController {
         return ResponseEntity.ok(couponService.findAvailableUserCoupons(userId));
     }
 
+    @GetMapping("/me/available")
+    public ResponseEntity<List<UserCoupon>> availableMyCoupons(Authentication authentication) {
+        return ResponseEntity.ok(couponService.findAvailableUserCoupons(SecurityUtils.requireUser(authentication).getId()));
+    }
+
     @PostMapping("/quote")
     public ResponseEntity<?> quote(@Valid @RequestBody CouponQuoteRequest request, Authentication authentication) {
         try {
+            if (request.getUserId() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "userId is required"));
+            }
             SecurityUtils.assertSelfOrAdmin(authentication, request.getUserId());
+            return ResponseEntity.ok(orderService.quoteCheckout(request));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/me/quote")
+    public ResponseEntity<?> quoteMine(@Valid @RequestBody CouponQuoteRequest request, Authentication authentication) {
+        try {
+            request.setUserId(SecurityUtils.requireUser(authentication).getId());
             return ResponseEntity.ok(orderService.quoteCheckout(request));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

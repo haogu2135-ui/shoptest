@@ -2,13 +2,25 @@ const blockedTags = 'script, iframe, object, embed, link, meta, style, form, inp
 const urlAttributes = new Set(['href', 'src', 'xlink:href', 'action', 'formaction']);
 const allowedAnchorTargets = new Set(['_blank', '_self', '_parent', '_top']);
 
+const hasUnsafeControlCharacter = (value: string) =>
+  Array.from(value).some((char) => {
+    const code = char.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
+
 const isAllowedUrl = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed || trimmed.startsWith('#')) return true;
+  const normalized = trimmed.toLowerCase();
+  if (hasUnsafeControlCharacter(trimmed) || trimmed.includes('\\') || normalized.includes('%00') || normalized.includes('%5c')) {
+    return false;
+  }
   if (trimmed.startsWith('//') || trimmed.startsWith('\\\\')) return false;
   if (trimmed.startsWith('/')) return true;
   try {
-    const url = new URL(trimmed, window.location.origin);
+    const baseUrl = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+    const url = new URL(trimmed, baseUrl);
+    if (url.username || url.password) return false;
     return ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol);
   } catch {
     return false;

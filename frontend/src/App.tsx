@@ -1,10 +1,12 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Link, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { Layout, Spin } from 'antd';
+import { GiftOutlined, UserAddOutlined, FileSearchOutlined } from '@ant-design/icons';
 import CartDrawer from './components/CartDrawer';
 import CustomerSupportWidget from './components/CustomerSupportWidget';
 import Navbar from './components/Navbar';
 import { useLanguage } from './i18n';
+import { dispatchDomEvent } from './utils/domEvents';
 import './App.css';
 
 const { Content, Footer } = Layout;
@@ -48,19 +50,21 @@ const LoadingFallback = () => (
   </div>
 );
 
-const App: React.FC = () => {
+const StorefrontLayout: React.FC = () => {
   const { t } = useLanguage();
   const isAuthenticated = Boolean(localStorage.getItem('token'));
   const footerActionCards = [
     {
       key: 'track',
       to: '/track-order',
+      icon: <FileSearchOutlined />,
       title: t('nav.trackOrder'),
       text: t('pages.auth.loginTrustTracking'),
     },
     {
       key: 'coupons',
       to: '/coupons',
+      icon: <GiftOutlined />,
       title: t('home.couponsExtra'),
       text: t('nav.download'),
     },
@@ -68,86 +72,91 @@ const App: React.FC = () => {
       ? {
         key: 'orders',
         to: '/profile?tab=orders',
+        icon: <FileSearchOutlined />,
         title: t('pages.profile.allOrders'),
         text: t('pages.auth.loginTrustSecure'),
       }
       : {
         key: 'register',
         to: '/register',
+        icon: <UserAddOutlined />,
         title: t('nav.register'),
         text: t('pages.auth.registerTrustPerks'),
       },
   ];
 
   return (
+    <Layout className="shop-app-shell" style={{ minHeight: '100vh' }}>
+      <Navbar />
+      <Content style={{ marginTop: 0, padding: 0 }}>
+        <Outlet />
+      </Content>
+      <Footer className="shop-footer">
+        <div className="shop-footer__inner">
+          <div className="shop-footer__ctaStrip">
+            {footerActionCards.map((card) => (
+              <Link key={card.key} to={card.to} className="shop-footer__ctaCard">
+                <span className={`shop-footer__ctaIcon shop-footer__ctaIcon--${card.key}`}>{card.icon}</span>
+                <span className="shop-footer__ctaCopy">
+                  <strong>{card.title}</strong>
+                  <span>{card.text}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+          <div className="shop-footer__columns">
+            <div>
+              <h3>{t('footer.customerCare')}</h3>
+              <Link to="/track-order">{t('footer.tracking')}</Link>
+              <Link to="/products">{t('footer.howToBuy')}</Link>
+              <button type="button" onClick={() => dispatchDomEvent('shop:open-support')}>{t('footer.helpCenter')}</button>
+            </div>
+            <div>
+              <h3>{t('footer.about')}</h3>
+              <Link to="/products?keyword=deal">{t('footer.dailyDeals')}</Link>
+              <Link to="/pet-finder">{t('nav.petFinder')}</Link>
+              <Link to="/pet-gallery">{t('nav.petGallery')}</Link>
+            </div>
+            <div>
+              <h3>{t('footer.payments')}</h3>
+              <Link to="/coupons">{t('nav.download')}</Link>
+              <Link to="/track-order">{t('footer.shipping')}</Link>
+              <Link to="/profile?tab=orders">{t('footer.returns')}</Link>
+            </div>
+          </div>
+          <div className="shop-footer__copy">{t('footer.rights')}</div>
+        </div>
+      </Footer>
+      <CartDrawer />
+      <CustomerSupportWidget />
+    </Layout>
+  );
+};
+
+const App: React.FC = () => {
+  return (
     <Router>
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
-          <Route
-            element={
-              <Layout className="shop-app-shell" style={{ minHeight: '100vh' }}>
-                <Navbar />
-                <Content style={{ marginTop: 0, padding: 0 }}>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/products" element={<ProductList />} />
-                    <Route path="/pet-finder" element={<PetFinder />} />
-                    <Route path="/pet-gallery" element={<PetGallery />} />
-                    <Route path="/compare" element={<ProductCompare />} />
-                    <Route path="/products/:id" element={<ProductDetail />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route path="/checkout" element={<Checkout />} />
-                    <Route path="/coupons" element={<CouponCenter />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/wishlist" element={<Wishlist />} />
-                    <Route path="/history" element={<BrowsingHistory />} />
-                    <Route path="/stock-alerts" element={<StockAlerts />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/track-order" element={<OrderTracking />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/register" element={<Register />} />
-                  </Routes>
-                </Content>
-                <Footer className="shop-footer">
-                  <div className="shop-footer__inner">
-                    <div className="shop-footer__ctaStrip">
-                      {footerActionCards.map((card) => (
-                        <Link key={card.key} to={card.to} className="shop-footer__ctaCard">
-                          <strong>{card.title}</strong>
-                          <span>{card.text}</span>
-                        </Link>
-                      ))}
-                    </div>
-                    <div className="shop-footer__columns">
-                      <div>
-                        <h3>{t('footer.customerCare')}</h3>
-                        <Link to="/track-order">{t('footer.tracking')}</Link>
-                        <Link to="/products">{t('footer.howToBuy')}</Link>
-                        <button type="button" onClick={() => window.dispatchEvent(new Event('shop:open-support'))}>{t('footer.helpCenter')}</button>
-                      </div>
-                      <div>
-                        <h3>{t('footer.about')}</h3>
-                        <Link to="/products?keyword=deal">{t('footer.dailyDeals')}</Link>
-                        <Link to="/pet-finder">{t('nav.petFinder')}</Link>
-                        <Link to="/pet-gallery">{t('nav.petGallery')}</Link>
-                      </div>
-                      <div>
-                        <h3>{t('footer.payments')}</h3>
-                        <Link to="/coupons">{t('nav.download')}</Link>
-                        <Link to="/track-order">{t('footer.shipping')}</Link>
-                        <Link to="/profile?tab=orders">{t('footer.returns')}</Link>
-                      </div>
-                    </div>
-                    <div className="shop-footer__copy">{t('footer.rights')}</div>
-                  </div>
-                </Footer>
-                <CartDrawer />
-                <CustomerSupportWidget />
-              </Layout>
-            }
-          >
-            <Route path="*" element={null} />
+          <Route path="/" element={<StorefrontLayout />}>
+            <Route index element={<Home />} />
+            <Route path="products" element={<ProductList />} />
+            <Route path="pet-finder" element={<PetFinder />} />
+            <Route path="pet-gallery" element={<PetGallery />} />
+            <Route path="compare" element={<ProductCompare />} />
+            <Route path="products/:id" element={<ProductDetail />} />
+            <Route path="cart" element={<Cart />} />
+            <Route path="checkout" element={<Checkout />} />
+            <Route path="coupons" element={<CouponCenter />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="wishlist" element={<Wishlist />} />
+            <Route path="history" element={<BrowsingHistory />} />
+            <Route path="stock-alerts" element={<StockAlerts />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="track-order" element={<OrderTracking />} />
+            <Route path="login" element={<Login />} />
+            <Route path="forgot-password" element={<ForgotPassword />} />
+            <Route path="register" element={<Register />} />
           </Route>
 
           <Route path="/admin" element={<AdminLayout />}>

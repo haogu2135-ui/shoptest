@@ -1,4 +1,4 @@
-*,
+﻿*,
 *::before,
 *::after {
   box-sizing: border-box;
@@ -7,15 +7,15 @@
 :root {
   --brand-forest: #124734;
   --brand-forest-deep: #173f2b;
-  --brand-sand: #f8f6f1;
-  --brand-cream: #fffdf8;
+  --brand-sand: #f8fcf9;
+  --brand-cream: #ffffff;
   --brand-mint: #dff5e7;
-  --brand-sky: #e8f4ff;
+  --brand-sky: #eaf4ef;
   --brand-coral-soft: #fff0ea;
-  --brand-gold: #f7c948;
+  --brand-gold: #ee4d2d;
   --brand-accent: #ee4d2d;
-  --text-main: #1d1b16;
-  --text-muted: #6c6a62;
+  --text-main: #173f2b;
+  --text-muted: #627064;
   --surface-card: rgba(255, 255, 255, 0.98);
   --radius-card: 8px;
   --radius-tile: 8px;
@@ -28,9 +28,18 @@
   --transition-fast: 0.16s cubic-bezier(0.22, 1, 0.36, 1);
   --transition-smooth: 0.26s cubic-bezier(0.22, 1, 0.36, 1);
   --transition-spring: 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --surface-page: #f6f8f6;
+  --surface-raised: #ffffff;
+  --surface-subtle: #f8faf8;
+  --line-soft: #e5ebe4;
+  --line-strong: #cad8cf;
+  --status-info: #1677ff;
+  --status-success: #237804;
+  --status-warning: #ad6800;
+  --status-danger: #b42318;
 }
 
-/* ── Price counter animation ── */
+/* 鈹€鈹€ Price counter animation 鈹€鈹€ */
 @keyframes price-pop {
   0%   { transform: scale(1); }
   40%  { transform: scale(1.12); }
@@ -78,10 +87,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   color: var(--text-main);
-  background: linear-gradient(180deg, #fbfaf7 0%, var(--brand-sand) 36%, #f4f8f5 100%);
+  background:
+    linear-gradient(180deg, #ffffff 0%, var(--surface-page) 44%, #f2f6f4 100%);
 }
 
-/* Ant Design components inherit body font — no need to redeclare per-page */
+/* Ant Design components inherit body font 鈥?no need to redeclare per-page */
 .ant-btn,
 .ant-input,
 .ant-select,
@@ -151,7 +161,7 @@ svg {
 }
 
 .notification-rich-content {
-  color: #333;
+  color: #173f2b;
   line-height: 1.7;
   word-break: break-word;
 }
@@ -185,6 +195,11 @@ code {
 }
 
 .ant-btn {
+  min-height: 34px;
+  max-width: 100%;
+  border-radius: 8px;
+  font-weight: 700;
+  line-height: 1.2;
   transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.2s ease,
               background 0.16s ease,
@@ -192,8 +207,170 @@ code {
               color 0.16s ease;
 }
 
+.ant-btn:not(.ant-btn-icon-only) {
+  height: auto;
+  min-width: 0;
+  white-space: normal;
+  align-items: center;
+  justify-content: center;
+}
+
+.ant-btn:not(.ant-btn-icon-only) > span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.2;
+}
+
+button {
+  max-width: 100%;
+}
+
+button:not([aria-label]) {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+button:not([aria-label]) > span:not(.anticon) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.ant-space,
+.ant-btn-group {
+  min-width: 0;
+}
+
+.ant-space .ant-btn {
+  flex-shrink: 1;
+}
+
+.ant-card-extra,
+.ant-modal-footer,
+.ant-table-cell .ant-space,
+.ant-form-item-control-input-content > .ant-space {
+  min-width: 0;
+}
+
+.ant-card-extra .ant-space,
+.ant-modal-footer .ant-space,
+.ant-table-cell .ant-space,
+.ant-form-item-control-input-content > .ant-space {
+  flex-wrap: wrap;
+}
+
 .ant-btn:hover {
   transform: none;
+}
+
+.ant-btn-primary {
+  box-shadow: 0 8px 18px rgba(238, 77, 45, 0.18);
+}
+
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  box-shadow: 0 10px 22px rgba(238, 77, 45, 0.24);
+}
+
+.ant-btn-default:not(:disabled):hover,
+.ant-btn-default:not(:disabled):focus {
+  border-color: var(--brand-forest);
+  color: var(--brand-forest);
+}
+
+.ant-card {
+  border-color: var(--line-soft);
+}
+
+.ant-card-head {
+  min-height: 46px;
+  border-bottom-color: var(--line-soft);
+}
+
+.ant-card-head-title {
+  font-weight: 800;
+  color: var(--brand-forest-deep);
+}
+
+.ant-table {
+  color: #20251f;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  background: #f7faf8;
+  color: #304338;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  border-bottom-color: var(--line-strong);
+}
+
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  border-bottom-color: #edf1ec;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr:hover > td {
+  background: #fbfdfb;
+}
+
+.ant-table-wrapper .ant-table-pagination.ant-pagination {
+  margin: 14px 0 0;
+}
+
+.ant-tag {
+  border-radius: 999px;
+  padding-inline: 8px;
+  font-weight: 700;
+}
+
+.ant-alert {
+  border-radius: 8px;
+}
+
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-select-selector,
+.ant-picker,
+.ant-input-search .ant-input,
+.ant-input-search .ant-input-group-addon .ant-btn {
+  border-radius: 8px !important;
+}
+
+.ant-form-item {
+  margin-bottom: 18px;
+}
+
+.ant-modal-content,
+.ant-drawer-content,
+.ant-popover-inner,
+.ant-dropdown-menu {
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(18, 71, 52, 0.16);
+}
+
+.ant-modal-header {
+  border-bottom-color: var(--line-soft);
+}
+
+.ant-modal-title {
+  color: var(--brand-forest-deep);
+  font-weight: 800;
+}
+
+.ant-descriptions-bordered .ant-descriptions-item-label {
+  background: #f8faf8;
+  color: #4a5b50;
+  font-weight: 700;
+}
+
+.ant-empty-description {
+  color: var(--text-muted);
 }
 
 .ant-btn:active {
@@ -207,21 +384,21 @@ code {
 .ant-select-focused .ant-select-selector,
 a:focus-visible,
 button:focus-visible {
-  outline: 3px solid rgba(247, 201, 72, 0.45);
+  outline: 3px solid rgba(238, 77, 45, 0.36);
   outline-offset: 2px;
 }
 
-/* ── Price counter animation ── */
+/* 鈹€鈹€ Price counter animation 鈹€鈹€ */
 .price-pop {
   animation: price-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* ── Badge pop animation ── */
+/* 鈹€鈹€ Badge pop animation 鈹€鈹€ */
 .badge-pop {
   animation: badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* ── Toast animations (enhanced SocialProofToast) ── */
+/* 鈹€鈹€ Toast animations (enhanced SocialProofToast) 鈹€鈹€ */
 .toast-enter {
   animation: toast-enter 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }

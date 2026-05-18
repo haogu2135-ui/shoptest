@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, Image, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
 import { BellOutlined, CheckCircleOutlined, DeleteOutlined, FireOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiBaseUrl, cartApi, productApi } from '../api';
+import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import type { Product } from '../types';
@@ -10,18 +10,13 @@ import { addGuestCartItem } from '../utils/guestCart';
 import { clearStockAlerts, readStockAlerts, removeStockAlert, type StockAlertItem } from '../utils/stockAlerts';
 import { localizeProduct } from '../utils/localizedProduct';
 import { needsOptionSelection } from '../utils/productOptions';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './StockAlerts.css';
 
 const { Title, Text } = Typography;
-const stockAlertImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveStockAlertImage = (imageUrl?: string) => {
-  if (!imageUrl) return stockAlertImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const stockAlertImageFallback = productImageFallback;
+const resolveStockAlertImage = resolveProductImage;
 
 const isBackInStock = (product?: Product) => Boolean(product && (product.stock === undefined || product.stock > 0));
 
@@ -29,6 +24,7 @@ const StockAlerts: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [alerts, setAlerts] = useState<StockAlertItem[]>(() => readStockAlerts());
   const [products, setProducts] = useState<Record<number, Product>>({});
   const [loading, setLoading] = useState(false);
@@ -48,12 +44,10 @@ const StockAlerts: React.FC = () => {
       try {
         setLoading(true);
         const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
-        const responses = await Promise.allSettled(productIds.map((productId) => productApi.getById(productId)));
-        const nextProducts = responses.reduce<Record<number, Product>>((acc, result) => {
-          if (result.status === 'fulfilled') {
-            const product = localizeProduct(result.value.data, language);
-            acc[product.id] = product;
-          }
+        const response = await productApi.getByIds(productIds);
+        const nextProducts = response.data.reduce<Record<number, Product>>((acc, item) => {
+          const product = localizeProduct(item, language);
+          acc[product.id] = product;
           return acc;
         }, {});
         setProducts(nextProducts);
@@ -87,17 +81,16 @@ const StockAlerts: React.FC = () => {
       return false;
     }
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
     try {
-      if (token && userId) {
-        await cartApi.addItem(Number(userId), product.id, 1);
-        window.dispatchEvent(new Event('shop:cart-updated'));
+      if (token) {
+        await cartApi.addItem(0, product.id, 1);
+        dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem({ ...product, imageUrl: resolveStockAlertImage(product.imageUrl) }, 1, undefined, product.effectivePrice ?? product.price);
       }
       if (!quiet) {
         message.success(t('messages.addCartSuccess'));
-        window.dispatchEvent(new Event('shop:open-cart'));
+        dispatchDomEvent('shop:open-cart');
       }
       return true;
     } catch {
@@ -137,7 +130,7 @@ const StockAlerts: React.FC = () => {
     const added = results.filter(Boolean).length;
     if (added > 0) {
       message.success(t('pages.stockAlerts.addedReadyCount', { count: added }));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:open-cart');
     }
   };
 
@@ -180,7 +173,7 @@ const StockAlerts: React.FC = () => {
   })();
 
   return (
-    <div className="stock-alerts">
+    <div className={`stock-alerts stock-alerts--${language}`}>
       <Card>
         <div className="stock-alerts__header">
           <div>
@@ -335,7 +328,7 @@ const StockAlerts: React.FC = () => {
                     title={<Link to={`/products/${item.productId}`}>{product?.name || item.productName}</Link>}
                     description={
                       <Space direction="vertical" size={4}>
-                        <Text type="secondary">{t('pages.stockAlerts.createdAt', { time: new Date(item.createdAt).toLocaleString() })}</Text>
+                        <Text type="secondary">{t('pages.stockAlerts.createdAt', { time: new Date(item.createdAt).toLocaleString(dateLocale) })}</Text>
                         {product ? (
                           <>
                             <Text strong className="stock-alerts__price">{formatMoney(product.effectivePrice ?? product.price)}</Text>

@@ -37,14 +37,18 @@ public class UserAddressService {
     @Transactional
     public void updateAddress(UserAddress address) {
         address.setUpdatedAt(LocalDateTime.now());
-        userAddressMapper.update(address);
+        if (userAddressMapper.update(address) == 0) {
+            throw new IllegalStateException("Address update failed");
+        }
     }
 
     @Transactional
     public void deleteAddress(Long id) {
         UserAddress addr = userAddressMapper.findById(id);
         if (addr == null) return;
-        userAddressMapper.deleteById(id);
+        if (userAddressMapper.deleteByIdAndUserId(id, addr.getUserId()) == 0) {
+            throw new IllegalStateException("Address delete failed");
+        }
         if (Boolean.TRUE.equals(addr.getIsDefault())) {
             List<UserAddress> remaining = userAddressMapper.findByUserId(addr.getUserId());
             if (!remaining.isEmpty()) {
@@ -54,8 +58,16 @@ public class UserAddressService {
     }
 
     @Transactional
-    public void setDefault(Long id, Long userId) {
+    public void setDefault(Long id) {
+        UserAddress address = userAddressMapper.findById(id);
+        if (address == null) {
+            throw new IllegalArgumentException("Address not found");
+        }
+        Long userId = address.getUserId();
         userAddressMapper.clearDefault(userId);
-        userAddressMapper.setDefault(id, userId);
+        int updated = userAddressMapper.setDefault(id, userId);
+        if (updated == 0) {
+            throw new IllegalStateException("Default address update failed");
+        }
     }
 }

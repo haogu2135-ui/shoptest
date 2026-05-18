@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Typography, Slider, Checkbox, Modal, Space, Drawer } from 'antd';
-import { BarChartOutlined, BellOutlined, CheckCircleOutlined, FireOutlined, FilterOutlined, HeartFilled, HeartOutlined, ReloadOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { BarChartOutlined, BellOutlined, CheckCircleOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { apiBaseUrl, productApi, cartApi, categoryApi, wishlistApi } from '../api';
+import { productApi, cartApi, categoryApi, wishlistApi } from '../api';
 import type { Product, Category } from '../types';
-import { buildCategoryTree, flattenCategoryTree, getLocalizedCategoryValue } from '../utils/categoryTree';
+import { flattenCategoryTree, getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -16,6 +16,9 @@ import { conversionConfig, getLowStockCount } from '../utils/conversionConfig';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import { loadProductViewPreferences } from '../utils/productViewPreferences';
 import { getProductOptionGroups, getProductVariants, optionValueHasVariant, selectCompatibleProductOption } from '../utils/productOptions';
+import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './ProductList.css';
 
 const { Text } = Typography;
@@ -25,15 +28,21 @@ const MAX_SEARCH_LENGTH = 80;
 const DEFAULT_PRICE_RANGE: [number, number] = [0, 10000];
 const SMART_DEVICE_CATEGORY_IDS = new Set([10, 11]);
 const SMART_DEVICE_TERMS = ['smart', 'automatic', 'feeder', 'feeders', 'fountain', 'waterer', 'waterers', 'camera', 'tracker', 'sensor', 'device', 'connected'];
-const productImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveProductListImage = (imageUrl?: string) => {
-  if (!imageUrl) return productImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const VALID_SORT_VALUES = new Set([
+  'default',
+  'personalized-desc',
+  'quick-add-desc',
+  'best-value-desc',
+  'low-stock-desc',
+  'price-asc',
+  'price-desc',
+  'discount-desc',
+  'positive-rate-desc',
+  'name',
+]);
+const VALID_PET_SIZES = new Set(['Small', 'Medium', 'Large']);
+const VALID_COLLECTIONS = new Set(['smart-devices']);
+const resolveProductListImage = resolveProductImage;
 
 const readSearchHistory = () => {
   try {
@@ -45,10 +54,26 @@ const readSearchHistory = () => {
 };
 
 const writeSearchHistory = (history: string[]) => {
-  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_SEARCH_HISTORY)));
+  try {
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_SEARCH_HISTORY)));
+  } catch {
+    // Search should keep working even when browser storage is unavailable.
+  }
 };
 
 const normalizeSearchValue = (value: string) => value.replace(/\s+/g, ' ').trim().slice(0, MAX_SEARCH_LENGTH);
+const normalizeSortValue = (value: string | null | undefined) =>
+  value && VALID_SORT_VALUES.has(value) ? value : 'default';
+const normalizePetSizeValue = (value: string | null | undefined) =>
+  value && VALID_PET_SIZES.has(value) ? value : '';
+const normalizePetSizeValues = (values: Array<string | null | undefined>) =>
+  Array.from(new Set(values.map(normalizePetSizeValue).filter(Boolean)));
+const normalizeCollectionValue = (value: string | null | undefined) =>
+  value && VALID_COLLECTIONS.has(value) ? value : '';
+const parsePositiveId = (value: string | null) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+};
 
 const productSearchText = (product: Product) => [
   product.name,
@@ -65,6 +90,15 @@ const matchesSmartDeviceCollection = (product: Product) => {
   return SMART_DEVICE_TERMS.some((term) => text.includes(term));
 };
 
+type ProductListUrlOverrides = Partial<{
+  collection: string;
+  keyword: string;
+  categoryId?: number;
+  discount: boolean;
+  sortBy: string;
+  petSizes: string[];
+}>;
+
 const ProductList: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -72,15 +106,13 @@ const ProductList: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
-  const [categoryId, setCategoryId] = useState<number | undefined>(
-    searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined
-  );
+  const [keyword, setKeyword] = useState(normalizeSearchValue(searchParams.get('keyword') || ''));
+  const [categoryId, setCategoryId] = useState<number | undefined>(parsePositiveId(searchParams.get('categoryId')));
   const [discount, setDiscount] = useState(searchParams.get('discount') === 'true');
-  const [sortBy, setSortBy] = useState<string>(searchParams.get('sort') || 'default');
+  const [sortBy, setSortBy] = useState<string>(normalizeSortValue(searchParams.get('sort')));
   const [priceRange, setPriceRange] = useState<[number, number]>(DEFAULT_PRICE_RANGE);
   const [petSizes, setPetSizes] = useState<string[]>(
-    searchParams.get('petSize') ? [searchParams.get('petSize') as string] : [],
+    normalizePetSizeValues(searchParams.getAll('petSize').length ? searchParams.getAll('petSize') : [searchParams.get('petSize')]),
   );
   const [materials, setMaterials] = useState<string[]>([]);
   const [colors, setColors] = useState<string[]>([]);
@@ -96,12 +128,12 @@ const ProductList: React.FC = () => {
     () => new Set(readStockAlerts().map((alert) => alert.productId)),
   );
   const priceRangeMaxRef = useRef(DEFAULT_PRICE_RANGE[1]);
+  const productRequestSeqRef = useRef(0);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
-  const collection = searchParams.get('collection') || '';
+  const collection = normalizeCollectionValue(searchParams.get('collection'));
   const pageSize = 12;
-  const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-  const currentUserId = Number(localStorage.getItem('userId') || 0);
+  const isAuthenticated = Boolean(localStorage.getItem('token'));
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const getPositiveRate = (product: Product) => product.positiveRate ?? 0;
@@ -139,14 +171,14 @@ const ProductList: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated || !currentUserId) {
+    if (!isAuthenticated) {
       setWishlistedProductIds(new Set());
       return;
     }
-    wishlistApi.getByUser(currentUserId)
+    wishlistApi.getByUser(0)
       .then((res) => setWishlistedProductIds(new Set(res.data.map((item) => item.productId))))
       .catch(() => setWishlistedProductIds(new Set()));
-  }, [currentUserId, isAuthenticated]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const refreshStockAlerts = () => {
@@ -168,7 +200,7 @@ const ProductList: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
+    const isAuthenticated = Boolean(localStorage.getItem('token'));
     if (!isAuthenticated) {
       setPersonalizedProducts([]);
       return;
@@ -213,6 +245,30 @@ const ProductList: React.FC = () => {
     colors.length > 0,
   ].filter(Boolean).length;
   const activeRefinementCount = activeFilterCount + (categoryId ? 1 : 0);
+  const buildProductsUrl = useCallback((overrides: ProductListUrlOverrides = {}) => {
+    const nextCollection = normalizeCollectionValue(overrides.collection ?? collection);
+    const nextKeyword = normalizeSearchValue(overrides.keyword ?? keyword);
+    const nextCategoryId = Object.prototype.hasOwnProperty.call(overrides, 'categoryId')
+      ? overrides.categoryId
+      : categoryId;
+    const nextDiscount = overrides.discount ?? discount;
+    const nextSort = normalizeSortValue(overrides.sortBy ?? sortBy);
+    const nextPetSizes = normalizePetSizeValues(overrides.petSizes ?? petSizes);
+    const params = new URLSearchParams();
+    if (nextCollection) params.set('collection', nextCollection);
+    if (nextKeyword) params.set('keyword', nextKeyword);
+    if (nextCategoryId) params.set('categoryId', nextCategoryId.toString());
+    if (nextDiscount) params.set('discount', 'true');
+    if (nextSort !== 'default') params.set('sort', nextSort);
+    nextPetSizes.forEach((size) => params.append('petSize', size));
+    return `/products${params.toString() ? '?' + params.toString() : ''}`;
+  }, [categoryId, collection, discount, keyword, petSizes, sortBy]);
+  const updatePetSizes = useCallback((nextSizes: string[]) => {
+    const normalizedSizes = normalizePetSizeValues(nextSizes);
+    setPetSizes(normalizedSizes);
+    setCurrentPage(1);
+    navigate(buildProductsUrl({ petSizes: normalizedSizes }));
+  }, [buildProductsUrl, navigate]);
 
   useEffect(() => {
     setPriceRange((currentRange) => {
@@ -252,8 +308,19 @@ const ProductList: React.FC = () => {
     });
     return categories.filter((category) => visibleIds.has(category.id));
   }, [categories, categoryId, collection, collectionProducts, keyword]);
-  const categoryTree = useMemo(() => buildCategoryTree(visibleCategories), [visibleCategories]);
+  const categoryTree = useMemo(() => getDisplayCategoryRoots(visibleCategories), [visibleCategories]);
   const categoryRows = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
+  const categoryDepthById = useMemo(() => {
+    const depths = new Map<number, number>();
+    const visit = (nodes: Category[], depth: number) => {
+      nodes.forEach((category) => {
+        depths.set(category.id, depth);
+        visit(category.children || [], depth + 1);
+      });
+    };
+    visit(categoryTree, 1);
+    return depths;
+  }, [categoryTree]);
   const selectedCategory = useMemo(
     () => categoryRows.find((category) => category.id === categoryId),
     [categoryId, categoryRows],
@@ -267,11 +334,7 @@ const ProductList: React.FC = () => {
         onClose: () => {
           setCategoryId(undefined);
           setCurrentPage(1);
-          const params = new URLSearchParams();
-          if (collection) params.set('collection', collection);
-          if (keyword) params.set('keyword', keyword);
-          if (discount) params.set('discount', 'true');
-          navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
+          navigate(buildProductsUrl({ categoryId: undefined }));
           setFilterDrawerOpen(false);
         },
       });
@@ -291,8 +354,7 @@ const ProductList: React.FC = () => {
       key: `size-${value}`,
       label: `${t('pages.productList.filterSize')}: ${optionLabels.get(value) || value}`,
       onClose: () => {
-        setPetSizes((current) => current.filter((item) => item !== value));
-        setCurrentPage(1);
+        updatePetSizes(petSizes.filter((item) => item !== value));
       },
     }));
     materials.forEach((value) => tags.push({
@@ -315,11 +377,9 @@ const ProductList: React.FC = () => {
   }, [
     colorOptions,
     colors,
-    collection,
-    discount,
+    buildProductsUrl,
     displayedPriceRange,
     formatMoney,
-    keyword,
     language,
     materialOptions,
     materials,
@@ -330,18 +390,13 @@ const ProductList: React.FC = () => {
     priceFilterActive,
     selectedCategory,
     t,
+    updatePetSizes,
   ]);
-  const clearCatalogContext = () => {
-    setKeyword('');
-    setCategoryId(undefined);
-    setSortBy('default');
-    setCurrentPage(1);
-    navigate('/products');
-    setFilterDrawerOpen(false);
-  };
   const applySort = (nextSort: string) => {
-    setSortBy(nextSort);
+    const normalizedSort = normalizeSortValue(nextSort);
+    setSortBy(normalizedSort);
     setCurrentPage(1);
+    navigate(buildProductsUrl({ sortBy: normalizedSort }));
   };
   const resultContextTags = [
     collection ? { key: 'collection', color: 'geekblue', label: collection.replace(/-/g, ' ') } : null,
@@ -362,6 +417,12 @@ const ProductList: React.FC = () => {
     () => quickAddBundleInfo?.price ?? quickAddVariant?.price ?? (quickAddProduct ? getPrice(quickAddProduct) : 0),
     [quickAddBundleInfo, quickAddProduct, quickAddVariant],
   );
+  const quickAddMissingOption = useMemo(
+    () => quickAddOptionGroups.find((group) => !quickAddOptions[group.name]),
+    [quickAddOptionGroups, quickAddOptions],
+  );
+  const quickAddInvalidSelection = quickAddVariants.length > 0 && !quickAddMissingOption && !quickAddVariant;
+  const quickAddSubmitDisabled = Boolean(quickAddMissingOption || quickAddInvalidSelection);
   const buildQuickAddCartSnapshot = () => quickAddProduct ? ({
     ...quickAddProduct,
     stock: quickAddVariant?.stock ?? quickAddProduct.stock,
@@ -371,33 +432,39 @@ const ProductList: React.FC = () => {
   }) : null;
 
   const fetchProducts = useCallback(async (kw?: string, cid?: number, disc?: boolean) => {
+    const requestSeq = productRequestSeqRef.current + 1;
+    productRequestSeqRef.current = requestSeq;
     try {
       setLoading(true);
       const res = await productApi.getAll(kw || undefined, cid, disc);
+      if (productRequestSeqRef.current !== requestSeq) return;
       setProducts(res.data.map((product) => localizeProduct(product, language)));
       setLoadFailed(false);
       setCurrentPage(1);
     } catch {
+      if (productRequestSeqRef.current !== requestSeq) return;
       setProducts([]);
       setLoadFailed(true);
       message.error(t('pages.productList.fetchFailed'));
     } finally {
-      setLoading(false);
+      if (productRequestSeqRef.current === requestSeq) {
+        setLoading(false);
+      }
     }
   }, [language, t]);
 
   useEffect(() => {
-    const kw = searchParams.get('keyword') || '';
-    const cid = searchParams.get('categoryId') ? Number(searchParams.get('categoryId')) : undefined;
+    const kw = normalizeSearchValue(searchParams.get('keyword') || '');
+    const cid = parsePositiveId(searchParams.get('categoryId'));
     const disc = searchParams.get('discount') === 'true';
-    const activeCollection = searchParams.get('collection') || '';
-    const requestedSort = searchParams.get('sort') || 'default';
-    const requestedPetSize = searchParams.get('petSize');
+    const activeCollection = normalizeCollectionValue(searchParams.get('collection'));
+    const requestedSort = normalizeSortValue(searchParams.get('sort'));
+    const requestedPetSizes = normalizePetSizeValues(searchParams.getAll('petSize').length ? searchParams.getAll('petSize') : [searchParams.get('petSize')]);
     setKeyword(kw);
     setCategoryId(cid);
     setDiscount(disc);
     setSortBy(requestedSort);
-    setPetSizes(requestedPetSize ? [requestedPetSize] : []);
+    setPetSizes(requestedPetSizes);
     fetchProducts(activeCollection ? undefined : kw, cid, disc);
   }, [fetchProducts, searchParams, language]);
 
@@ -408,14 +475,7 @@ const ProductList: React.FC = () => {
       setSearchHistory(nextHistory);
       writeSearchHistory(nextHistory);
     }
-    const params = new URLSearchParams();
-    if (collection) params.set('collection', collection);
-    if (trimmed) params.set('keyword', trimmed);
-    if (categoryId) params.set('categoryId', categoryId.toString());
-    if (discount) params.set('discount', 'true');
-    if (sortBy !== 'default') params.set('sort', sortBy);
-    if (petSizes.length === 1) params.set('petSize', petSizes[0]);
-    navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
+    navigate(buildProductsUrl({ keyword: trimmed }));
   };
 
   const clearSearchHistory = () => {
@@ -436,13 +496,13 @@ const ProductList: React.FC = () => {
 
   const handleWishlistToggle = async (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
-    if (!isAuthenticated || !currentUserId) {
+    if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
     }
     try {
-      const res = await wishlistApi.toggle(currentUserId, product.id);
+      const res = await wishlistApi.toggle(0, product.id);
       setWishlistedProductIds((current) => {
         const next = new Set(current);
         if (res.data.wishlisted) {
@@ -452,7 +512,7 @@ const ProductList: React.FC = () => {
         }
         return next;
       });
-      window.dispatchEvent(new Event('shop:wishlist-updated'));
+      dispatchDomEvent('shop:wishlist-updated');
       message.success(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
     } catch {
       message.error(t('messages.operationFailed'));
@@ -473,14 +533,7 @@ const ProductList: React.FC = () => {
 
   const handleCategoryChange = (cid: number | undefined) => {
     setCategoryId(cid);
-    const params = new URLSearchParams();
-    if (collection) params.set('collection', collection);
-    if (keyword) params.set('keyword', keyword);
-    if (cid) params.set('categoryId', cid.toString());
-    if (discount) params.set('discount', 'true');
-    if (sortBy !== 'default') params.set('sort', sortBy);
-    if (petSizes.length === 1) params.set('petSize', petSizes[0]);
-    navigate(`/products${params.toString() ? '?' + params.toString() : ''}`);
+    navigate(buildProductsUrl({ categoryId: cid }));
     setFilterDrawerOpen(false);
   };
 
@@ -502,12 +555,12 @@ const ProductList: React.FC = () => {
       {quickAddOptionGroups.map((group) => (
         <Select
           key={group.name}
-          placeholder={group.name}
+          placeholder={getLocalizedOptionLabel(group.name, language)}
           value={quickAddOptions[group.name] || undefined}
           onChange={(value) => selectQuickAddOption(group.name, value)}
           options={group.values.map((value) => ({
             value,
-            label: value,
+            label: getLocalizedOptionLabel(value, language),
             disabled: !optionValueHasVariant(quickAddVariants, group.name, value),
           }))}
           style={{ width: '100%' }}
@@ -551,26 +604,24 @@ const ProductList: React.FC = () => {
     const bundleInfo = getBundleInfo(quickAddProduct);
     if (bundleInfo) {
       const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
       const selectedSpecs = buildBundleSpecs(quickAddProduct, quickAddOptions, quickAddVariant?.sku);
       const snapshot = buildQuickAddCartSnapshot();
       try {
-        if (token && userId) {
-          await cartApi.addItem(Number(userId), quickAddProduct.id, 1, selectedSpecs);
-          window.dispatchEvent(new Event('shop:cart-updated'));
+        if (token) {
+          await cartApi.addItem(0, quickAddProduct.id, 1, selectedSpecs);
+          dispatchDomEvent('shop:cart-updated');
         } else if (snapshot) {
           addGuestCartItem(snapshot, 1, selectedSpecs, bundleInfo.price);
         }
         message.success(t('messages.addCartSuccess'));
         setQuickAddProduct(null);
-        window.dispatchEvent(new Event('shop:open-cart'));
+        dispatchDomEvent('shop:open-cart');
       } catch {
         message.error(t('messages.addFailed'));
       }
       return;
     }
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
     const selectedSpecs = quickAddOptionGroups.length
       ? JSON.stringify({
         ...quickAddOptions,
@@ -580,15 +631,15 @@ const ProductList: React.FC = () => {
     const selectedPrice = quickAddPrice;
     const snapshot = buildQuickAddCartSnapshot();
     try {
-      if (token && userId) {
-        await cartApi.addItem(Number(userId), quickAddProduct.id, 1, selectedSpecs);
-        window.dispatchEvent(new Event('shop:cart-updated'));
+      if (token) {
+        await cartApi.addItem(0, quickAddProduct.id, 1, selectedSpecs);
+        dispatchDomEvent('shop:cart-updated');
       } else if (snapshot) {
         addGuestCartItem(snapshot, 1, selectedSpecs, selectedPrice);
       }
       message.success(t('messages.addCartSuccess'));
       setQuickAddProduct(null);
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:open-cart');
     } catch {
       message.error(t('messages.addFailed'));
     }
@@ -675,18 +726,24 @@ const ProductList: React.FC = () => {
     return getConversionSortScore(b) - getConversionSortScore(a);
   });
 
+  const productListInsightTotals = filteredProducts.reduce((summary, product) => {
+    if (isBestValueProduct(product)) summary.bestValueCount += 1;
+    if (getLowStockCount(product.stock) !== null && !isProductSoldOut(product)) summary.lowStockCount += 1;
+    if (isQuickAddReady(product)) summary.quickAddReadyCount += 1;
+    summary.totalSavings += getSavingsAmount(product);
+    return summary;
+  }, {
+    bestValueCount: 0,
+    lowStockCount: 0,
+    quickAddReadyCount: 0,
+    totalSavings: 0,
+  });
   const productListInsights = {
-    bestValueCount: filteredProducts.filter(isBestValueProduct).length,
-    lowStockCount: filteredProducts.filter((product) => getLowStockCount(product.stock) !== null && !isProductSoldOut(product)).length,
-    quickAddReadyCount: filteredProducts.filter(isQuickAddReady).length,
-    averageSavings: filteredProducts.length
-      ? filteredProducts.reduce((total, product) => total + getSavingsAmount(product), 0) / filteredProducts.length
-      : 0,
+    bestValueCount: productListInsightTotals.bestValueCount,
+    lowStockCount: productListInsightTotals.lowStockCount,
+    quickAddReadyCount: productListInsightTotals.quickAddReadyCount,
+    averageSavings: filteredProducts.length ? productListInsightTotals.totalSavings / filteredProducts.length : 0,
   };
-  const checkoutPathProducts = sortedProducts
-    .filter((product) => !isProductSoldOut(product))
-    .slice(0, 3);
-  const checkoutPathReadyCount = checkoutPathProducts.filter(isQuickAddReady).length;
   const topCategoryName = selectedCategory
     ? getLocalizedCategoryValue(selectedCategory, language, 'name')
     : categoryRows[0]
@@ -705,9 +762,16 @@ const ProductList: React.FC = () => {
     ? [
       heroProduct.brand,
       getDiscountPercent(heroProduct) > 0 ? t('pages.productList.sale') : '',
-      isQuickAddReady(heroProduct) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions'),
+      isQuickAddReady(heroProduct) ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded'),
     ].filter(Boolean)
     : [];
+  const productListGuideText = activeFilterCount > 0
+    ? t('pages.productList.guideRefineResults')
+    : productListInsights.bestValueCount > 0
+      ? t('pages.productList.guideBestValue', { count: productListInsights.bestValueCount })
+      : productListInsights.quickAddReadyCount > 0
+        ? t('pages.productList.guideQuickAdd', { count: productListInsights.quickAddReadyCount })
+        : t('pages.productList.guideStart');
   const sortOptions = [
     { value: 'default', label: t('pages.productList.defaultSort') },
     { value: 'personalized-desc', label: t('pages.productList.personalizedSort') },
@@ -720,40 +784,6 @@ const ProductList: React.FC = () => {
     { value: 'positive-rate-desc', label: t('pages.productList.positiveRateDesc') },
     { value: 'name', label: t('pages.productList.byName') },
   ];
-  const personalGuideAction = personalizedProducts.length > 0
-    ? { label: t('pages.productList.viewPersonalPicks'), action: () => applySort('personalized-desc') }
-    : { label: t('pages.productList.managePetProfile'), action: () => navigate('/profile?tab=pets') };
-  const quickFilterActions = [
-    {
-      key: 'ready',
-      label: t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount }),
-      onClick: () => applySort('quick-add-desc'),
-      disabled: productListInsights.quickAddReadyCount === 0,
-    },
-    {
-      key: 'value',
-      label: t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount }),
-      onClick: () => applySort('best-value-desc'),
-      disabled: productListInsights.bestValueCount === 0,
-    },
-    {
-      key: 'stock',
-      label: t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount }),
-      onClick: () => applySort('low-stock-desc'),
-      disabled: productListInsights.lowStockCount === 0,
-    },
-  ];
-  const personalSignalLabel = personalizedProducts.length > 0
-    ? t('pages.productList.personalGuideActive')
-    : t('pages.productList.personalGuideSetup');
-  const guideText = productListInsights.bestValueCount > 0
-    ? t('pages.productList.guideBestValue', { count: productListInsights.bestValueCount })
-    : productListInsights.quickAddReadyCount > 0
-      ? t('pages.productList.guideQuickAdd', { count: productListInsights.quickAddReadyCount })
-      : activeFilterCount > 0
-        ? t('pages.productList.guideRefineResults')
-        : t('pages.productList.guideStart');
-
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
     if (currentPage > totalPages) {
@@ -801,7 +831,7 @@ const ProductList: React.FC = () => {
         onClick={(e) => openQuickAdd(e, product)}
       >
         <span className="product-list__actionLabel">
-          {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions')}
+          {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.productList.chooseOptionsAction')}
         </span>
       </Button>
     );
@@ -809,19 +839,25 @@ const ProductList: React.FC = () => {
   const renderConfidenceStrip = (product: Product) => {
     const quickReady = isQuickAddReady(product);
     const lowStock = getLowStockCount(product.stock);
-    if (quickReady && lowStock === null) return null;
+    const soldOut = isProductSoldOut(product);
     return (
       <div className="product-list__confidenceStrip">
-        {!quickReady && (
-          <span className="product-list__confidencePill">
+        {!soldOut && (
+          <span className={`product-list__confidencePill${quickReady ? ' product-list__confidencePill--ready' : ''}`}>
             <CheckCircleOutlined />
-            {t('pages.productList.cardOptionsNeeded')}
+            {quickReady ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded')}
           </span>
         )}
         {lowStock !== null && (
           <span className="product-list__confidencePill product-list__confidencePill--alert">
             <FireOutlined />
             {t('pages.productList.cardLowStock', { count: lowStock })}
+          </span>
+        )}
+        {lowStock === null && !soldOut && (
+          <span className="product-list__confidencePill product-list__confidencePill--trust">
+            <CheckCircleOutlined />
+            {t('pages.productList.cardReturnReady')}
           </span>
         )}
       </div>
@@ -840,7 +876,7 @@ const ProductList: React.FC = () => {
           block
           onClick={() => handleCategoryChange(cat.id)}
           className="product-list__categoryButton"
-          style={{ paddingLeft: 12 + ((cat.level || 1) - 1) * 14 }}
+          style={{ paddingLeft: 12 + ((categoryDepthById.get(cat.id) || 1) - 1) * 14 }}
         >
           {getLocalizedCategoryValue(cat, language, 'name')}
         </Button>
@@ -869,10 +905,7 @@ const ProductList: React.FC = () => {
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterSize')}</Text>
         <Checkbox.Group
           value={petSizes}
-          onChange={(value) => {
-            setPetSizes(value.map(String));
-            setCurrentPage(1);
-          }}
+          onChange={(value) => updatePetSizes(value.map(String))}
           options={petSizeOptions}
         />
       </div>
@@ -902,10 +935,10 @@ const ProductList: React.FC = () => {
   );
 
   return (
-    <div className="product-list">
+    <div className={`product-list product-list--${language}`}>
       <Row gutter={24}>
-        <Col xs={0} sm={0} md={5} lg={4}>
-          <Card title={t('pages.productList.title')} size="small" style={{ marginBottom: 16 }}>
+        <Col xs={0} sm={0} md={5} lg={4} className="product-list__sidebar">
+          <Card title={t('pages.productList.sidebarTitle')} size="small" className="product-list__sidebarCard">
             {renderCategoryPanel()}
           </Card>
           <Card
@@ -929,10 +962,10 @@ const ProductList: React.FC = () => {
           <section className="product-list__heroBand">
             <div className="product-list__heroContent">
               <span className="product-list__heroEyebrow">{topCategoryName}</span>
-              <h1>{keyword.trim() || t('pages.productList.title')}</h1>
+              <h1>{keyword.trim() || t('pages.productList.catalogTitle')}</h1>
               <Text>
                 {collection
-                  ? `${t('pages.productList.filters')}: ${collection.replace(/-/g, ' ')}`
+                  ? `${t('pages.productList.resultContextLabel')}: ${collection.replace(/-/g, ' ')}`
                   : resultContextTags.length > 0
                     ? resultContextTags.map((tag) => tag.label).join(' / ')
                     : t('pages.productList.searchPlaceholder')}
@@ -947,7 +980,7 @@ const ProductList: React.FC = () => {
               <button type="button" className="product-list__heroCard" onClick={() => openProductDetail(heroProduct.id)}>
                 <strong>{heroProduct.name}</strong>
                 <Text>{formatMoney(getPrice(heroProduct))}</Text>
-                <span>{renderBadges(heroProduct).slice(0, 2).map((badge) => badge.label).join(' · ') || t('pages.productList.viewPick')}</span>
+                <span>{renderBadges(heroProduct).slice(0, 2).map((badge) => badge.label).join(' / ') || t('pages.productList.viewPick')}</span>
                 {heroProductHighlights.length ? (
                   <div className="product-list__heroHighlights">
                     {heroProductHighlights.map((item) => (
@@ -958,29 +991,6 @@ const ProductList: React.FC = () => {
               </button>
             ) : null}
           </section>
-          <div className="product-list__focusBar">
-            <div className="product-list__focusIntro">
-              <Text strong>{t('pages.productList.title')}</Text>
-              <Space wrap size={[8, 8]}>
-                <Tag color="cyan">{t('pages.productList.count', { count: filteredProducts.length })}</Tag>
-                {resultContextTags.map((tag) => (
-                  <Tag key={tag.key} color={tag.color}>{tag.label}</Tag>
-                ))}
-              </Space>
-            </div>
-            <Space wrap size={[8, 8]} className="product-list__focusActions">
-              {quickFilterActions.map((item) => (
-                <Button key={item.key} size="small" disabled={item.disabled} onClick={item.onClick}>
-                  {item.label}
-                </Button>
-              ))}
-              {resultContextTags.length > 0 ? (
-                <Button size="small" onClick={clearCatalogContext}>
-                  {t('pages.productList.allCategories')}
-                </Button>
-              ) : null}
-            </Space>
-          </div>
           <Card className="product-list__toolbar">
             <Row gutter={[12, 12]} align="middle">
               <Col xs={24} sm={12} md={14} flex="auto">
@@ -994,7 +1004,7 @@ const ProductList: React.FC = () => {
                 />
               </Col>
               <Col xs={12} sm={5} md={6}>
-                <Select value={sortBy} onChange={applySort} style={{ width: '100%' }} options={sortOptions} />
+                <Select value={sortBy} onChange={applySort} className="product-list__sortSelect" options={sortOptions} />
               </Col>
               <Col xs={12} sm={7} md={4}>
                 <div className="product-list__toolbarMeta">
@@ -1028,7 +1038,7 @@ const ProductList: React.FC = () => {
               </div>
             ) : null}
             {searchHistory.length > 0 && (
-              <Space wrap size={[8, 8]} style={{ marginTop: 12 }}>
+              <Space wrap size={[8, 8]} className="product-list__recentSearches">
                 <Text type="secondary">{t('pages.productList.recentSearches')}</Text>
                 {searchHistory.map((term) => (
                   <Tag key={term} style={{ cursor: 'pointer' }} onClick={() => handleSearch(term)}>
@@ -1041,105 +1051,90 @@ const ProductList: React.FC = () => {
               </Space>
             )}
           </Card>
-          <div className="product-list__smartBar">
-            <div className="product-list__smartBarLeft">
-              <ThunderboltOutlined />
-              <Space wrap size={[6, 4]} className="product-list__smartStats">
-                <Tag className="product-list__smartStat product-list__smartStat--ready">{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</Tag>
-                <Tag className="product-list__smartStat product-list__smartStat--value">{t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}</Tag>
-                {productListInsights.lowStockCount > 0 && <Tag color="red">{t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount })}</Tag>}
-              </Space>
-            </div>
-            <Space wrap size={[6, 4]} className="product-list__smartActions">
-              {recommendedProduct && (
-                <Button size="small" type="text" className="product-list__smartPick" onClick={() => openProductDetail(recommendedProduct.id)}>
-                  <span>{t('pages.productList.viewPick')}</span>
-                  <strong>{recommendedProduct.name}</strong>
-                </Button>
-              )}
-              <Button size="small" className="product-list__smartAction" icon={<FireOutlined />} onClick={() => applySort('positive-rate-desc')}>
-                {t('pages.productList.shopTopRated')}
-              </Button>
-              <Button size="small" className="product-list__smartAction" icon={<ShoppingCartOutlined />} onClick={() => applySort('discount-desc')}>
-                {t('pages.productList.shopBestDeals')}
-              </Button>
-              {personalizedProducts.length > 0 && (
-                <Button size="small" className="product-list__smartPersonal" onClick={personalGuideAction.action}>
-                  {personalGuideAction.label}
-                </Button>
-              )}
-            </Space>
-          </div>
-          <section className="product-list__insightPanel" aria-label={t('pages.productList.insightTitle')}>
-            <div className="product-list__insightCopy">
-              <span>{t('pages.productList.insightTitle')}</span>
-              <strong>{t('pages.productList.guideTitle')}</strong>
-              <Text>{guideText}</Text>
-            </div>
-            <div className="product-list__insightMetrics">
-              <span>{t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) })}</span>
-              <span>{personalSignalLabel}</span>
-              {recommendedProduct ? (
-                <Button type="link" size="small" onClick={() => openProductDetail(recommendedProduct.id)}>
-                  {t('pages.productList.viewPick')}
-                </Button>
-              ) : null}
-            </div>
-          </section>
-          {checkoutPathProducts.length > 0 ? (
-            <section className="product-list__checkoutPath" aria-label={t('pages.productList.checkoutPathTitle')}>
-              <div className="product-list__checkoutPathCopy">
-                <Text type="secondary">{t('pages.productList.checkoutPathEyebrow')}</Text>
-                <strong>{t('pages.productList.checkoutPathTitle')}</strong>
-                <Text>
-                  {t('pages.productList.checkoutPathText', {
-                    count: checkoutPathProducts.length,
-                    ready: checkoutPathReadyCount,
-                  })}
-                </Text>
-              </div>
-              <div className="product-list__checkoutPathItems">
-                {checkoutPathProducts.map((product) => (
-                  <button
-                    type="button"
-                    key={product.id}
-                    className="product-list__checkoutPathItem"
-                    onClick={() => openProductDetail(product.id)}
-                  >
-                    <span>
-                      <strong>{product.name}</strong>
-                      <small>{formatMoney(getPrice(product))}</small>
-                    </span>
-                    <Tag color={isQuickAddReady(product) ? 'green' : 'orange'}>
-                      {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.wishlist.selectOptions')}
+          {!loading && !loadFailed ? (
+            <>
+              <section className="product-list__smartBar" aria-label={t('pages.productList.insightTitle')}>
+                <div className="product-list__smartBarLeft">
+                  <CheckCircleOutlined />
+                  <Text strong>{t('pages.productList.insightTitle')}</Text>
+                  <Space wrap size={[6, 6]} className="product-list__smartStats">
+                    <Tag className="product-list__smartStat product-list__smartStat--ready">
+                      {t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}
                     </Tag>
-                  </button>
-                ))}
-              </div>
-            </section>
+                    <Tag className="product-list__smartStat product-list__smartStat--value">
+                      {t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}
+                    </Tag>
+                  </Space>
+                </div>
+                <Space wrap className="product-list__smartActions" size={[8, 8]}>
+                  {heroProduct ? (
+                    <Button className="product-list__smartPick" onClick={() => openProductDetail(heroProduct.id)}>
+                      <span>{t('pages.productList.viewPick')}</span>
+                      <strong>{heroProduct.name}</strong>
+                    </Button>
+                  ) : null}
+                  <Button className="product-list__smartAction" onClick={() => applySort('discount-desc')}>
+                    {t('pages.productList.shopBestDeals')}
+                  </Button>
+                  <Button className="product-list__smartPersonal" onClick={() => applySort('quick-add-desc')}>
+                    {t('pages.productList.shopQuickAdd')}
+                  </Button>
+                </Space>
+              </section>
+              <section className="product-list__insightPanel" aria-label={t('pages.productList.guideTitle')}>
+                <div className="product-list__insightCopy">
+                  <span>{t('pages.productList.guideTitle')}</span>
+                  <strong>{topCategoryName}</strong>
+                  <Text>{productListGuideText}</Text>
+                </div>
+                <div className="product-list__insightMetrics">
+                  <span>{t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) })}</span>
+                  <span>{t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount })}</span>
+                  {activeFilterCount > 0 ? (
+                    <Button type="link" onClick={resetFilters}>{t('pages.productList.resetFilters')}</Button>
+                  ) : (
+                    <Button type="link" onClick={() => applySort('positive-rate-desc')}>{t('pages.productList.shopTopRated')}</Button>
+                  )}
+                </div>
+              </section>
+            </>
           ) : null}
           {loading ? (
             <div className="product-list__loading">
               <StatsStripSkeleton cols={3} />
-              <div style={{ marginTop: 16 }}>
+              <div className="product-list__loadingGrid">
                 <ProductCardSkeleton count={12} />
               </div>
             </div>
           ) : loadFailed ? (
             <div className="product-list__loadFailed" role="alert">
               <Empty description={t('pages.productList.fetchFailed')}>
-                <Space wrap>
-                  <Button
-                    type="primary"
-                    icon={<ReloadOutlined />}
-                    onClick={() => fetchProducts(collection ? undefined : keyword, categoryId, discount)}
-                  >
-                    {t('common.refresh')}
-                  </Button>
-                  <Button onClick={() => navigate('/products')}>
-                    {t('pages.productList.allCategories')}
-                  </Button>
-                </Space>
+                <div className="product-list__recovery">
+                  <Text>{t('pages.productList.loadRecoveryText')}</Text>
+                  <div className="product-list__recoveryGrid">
+                    <Button
+                      type="primary"
+                      icon={<ReloadOutlined />}
+                      onClick={() => fetchProducts(collection ? undefined : keyword, categoryId, discount)}
+                    >
+                      {t('common.refresh')}
+                    </Button>
+                    <Button icon={<FilterOutlined />} onClick={() => navigate('/products')}>
+                      {t('pages.productList.allCategories')}
+                    </Button>
+                    <Button icon={<GiftOutlined />} onClick={() => navigate('/coupons')}>
+                      {t('pages.productList.loadRecoveryCoupons')}
+                    </Button>
+                    <Button icon={<CustomerServiceOutlined />} onClick={() => dispatchDomEvent('shop:open-support')}>
+                      {t('pages.productList.loadRecoverySupport')}
+                    </Button>
+                  </div>
+                  <div className="product-list__recoveryTips">
+                    <span>{t('pages.productList.loadRecoveryTipRefresh')}</span>
+                    <span>{t('pages.productList.loadRecoveryTipFilters')}</span>
+                    <span>{t('pages.productList.loadRecoveryTipSupport')}</span>
+                  </div>
+                </div>
               </Empty>
             </div>
           ) : paginatedProducts.length === 0 ? (
@@ -1187,8 +1182,8 @@ const ProductList: React.FC = () => {
                               }
                             }}
                           />
-                          <div className="product-list__badges">
-                            {renderBadges(product).map((badge) => <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>)}
+                          <div className="product-list__badges" aria-label={t('pages.productList.productBadges')}>
+                            {renderBadges(product).slice(0, 3).map((badge) => <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>)}
                           </div>
                           {product.stock !== undefined && product.stock <= 0 && (
                             <div className="product-list__soldOut">
@@ -1250,15 +1245,12 @@ const ProductList: React.FC = () => {
                             <div className="product-list__ratingLine">
                               <Text type={hasReviewSignal(product) ? 'secondary' : undefined} className={hasReviewSignal(product) ? undefined : 'product-list__newReviewSignal'}>
                                 {hasReviewSignal(product)
-                                  ? t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })
+                                  ? t('pages.productList.positiveRate', { rate: Math.round(product.positiveRate || 0).toString(), count: product.reviewCount || 0 })
                                   : t('pages.productList.noReviewsYet')}
                               </Text>
                             </div>
                             <div className="product-list__metaRow">
                               {product.brand && <Text type="secondary" className="product-list__brand">{product.brand}</Text>}
-                              <Text type="secondary" className="product-list__metaAction">
-                                {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.productList.viewPick')}
-                              </Text>
                             </div>
                             {renderConfidenceStrip(product)}
                           </div>
@@ -1297,14 +1289,14 @@ const ProductList: React.FC = () => {
         }
       >
         <div className="product-list__drawerContent">
-          <Card title={t('pages.productList.title')} size="small">
+          <Card title={t('pages.productList.drawerCategoryTitle')} size="small">
             {renderCategoryPanel()}
           </Card>
-          <Card title={t('pages.productList.filters')} size="small">
+          <Card title={t('pages.productList.drawerFilterTitle')} size="small">
             {renderFilterPanel()}
           </Card>
           <Button type="primary" block size="large" onClick={() => setFilterDrawerOpen(false)}>
-            {t('common.confirm')}
+            {t('pages.productList.applyFilters')}
           </Button>
         </div>
       </Drawer>
@@ -1315,6 +1307,8 @@ const ProductList: React.FC = () => {
         onOk={submitQuickAdd}
         okText={t('pages.productList.addToCart')}
         cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: quickAddSubmitDisabled }}
+        className="product-list__quickAddModal"
       >
         <Space direction="vertical" style={{ width: '100%' }}>
           {quickAddBundleInfo ? (
@@ -1331,6 +1325,13 @@ const ProductList: React.FC = () => {
           ) : quickAddOptionGroups.length > 0 ? (
             <>
               {renderQuickAddOptions()}
+              {quickAddMissingOption ? (
+                <Text type="secondary">{t('pages.productList.quickAddCompleteOptions', { option: getLocalizedOptionLabel(quickAddMissingOption.name, language) })}</Text>
+              ) : quickAddInvalidSelection ? (
+                <Text type="danger">{t('pages.productList.quickAddUnavailable')}</Text>
+              ) : (
+                <Text type="success">{t('pages.productList.quickAddSelectionReady')}</Text>
+              )}
               <Text>
                 {t('pages.productList.quickAddPrice')}: {formatMoney(quickAddPrice)}
               </Text>
@@ -1348,4 +1349,3 @@ const ProductList: React.FC = () => {
 };
 
 export default ProductList;
-

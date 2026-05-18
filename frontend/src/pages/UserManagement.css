@@ -1,4 +1,24 @@
-.user-management-page {
+﻿.user-management-page {
+  min-width: 0;
+}
+
+.user-management-page .ant-table-wrapper,
+.user-management-page .ant-card {
+  border-color: #e4ebe4;
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
+}
+
+.user-management-page__toolbar {
+  margin-bottom: 16px;
+}
+
+.user-management-page__filters {
+  width: 100%;
+}
+
+.user-management-page__filters .ant-input-affix-wrapper,
+.user-management-page__filters .ant-select,
+.user-management-page__filters .ant-btn {
   min-width: 0;
 }
 
@@ -11,7 +31,8 @@
   padding: 18px;
   border: 1px solid #d8eadf;
   border-radius: 8px;
-  background: linear-gradient(135deg, #f7fbf6 0%, #fff8ed 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .user-management-page__healthCopy {
@@ -25,7 +46,7 @@
 }
 
 .user-management-page__eyebrow {
-  color: #2f855a;
+  color: #124734;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;
@@ -45,47 +66,50 @@
   gap: 10px;
 }
 
-.user-management-page__healthItem.ant-card {
+.user-management-page__healthItem {
   min-height: 92px;
-  border-color: #dfe8dc;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.84);
-}
-
-.user-management-page__healthItem .ant-card-body {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 6px;
-  min-height: 90px;
   padding: 12px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.user-management-page__healthItem:hover {
+  border-color: #124734;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
 }
 
 .user-management-page__healthItem svg {
   width: 18px;
   height: 18px;
-  color: #2f855a;
+  color: #124734;
 }
 
 .user-management-page__healthItem strong {
-  color: #263327;
+  color: #173f2b;
   font-size: 24px;
   line-height: 1;
 }
 
 .user-management-page__healthItem span {
-  color: #5f6b5f;
+  color: #627064;
   font-size: 12px;
   line-height: 1.35;
 }
 
-.user-management-page__healthItem.is-risk.ant-card {
-  border-color: #f5c2c2;
-  background: #fff7f7;
+.user-management-page__healthItem.is-risk {
+  border-color: #ffa39e;
+  background: #fff1f0;
 }
 
 .user-management-page__healthItem.is-risk svg {
-  color: #dc2626;
+  color: #b42318;
 }
 
 .user-management-page .ant-table-cell {
@@ -93,6 +117,14 @@
 }
 
 @media (max-width: 720px) {
+  .user-management-page__filters,
+  .user-management-page__filters .ant-space-item,
+  .user-management-page__filters .ant-input-affix-wrapper,
+  .user-management-page__filters .ant-select,
+  .user-management-page__filters .ant-btn {
+    width: 100% !important;
+  }
+
   .user-management-page__health {
     grid-template-columns: 1fr;
     padding: 14px;

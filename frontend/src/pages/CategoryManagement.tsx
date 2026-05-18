@@ -18,7 +18,7 @@ import {
   Typography,
 } from 'antd';
 import { BranchesOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
-import { apiBaseUrl, categoryApi } from '../api';
+import { categoryApi } from '../api';
 import type { Category } from '../types';
 import {
   buildCategoryTree,
@@ -28,19 +28,13 @@ import {
   toTreeOptions,
 } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
+import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import './CategoryManagement.css';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
-const categoryImageFallback = 'https://via.placeholder.com/80?text=CAT';
-
-const resolveCategoryImage = (imageUrl?: string) => {
-  if (!imageUrl) return categoryImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const categoryImageFallback = imageFallbacks.category;
+const resolveCategoryImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, categoryImageFallback);
 
 const CategoryManagement: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -265,7 +259,7 @@ const CategoryManagement: React.FC = () => {
   ];
 
   return (
-    <div className="category-management-page">
+    <div className={`category-management-page category-management-page--${language}`}>
       <Title level={3} style={{ marginBottom: 0 }}>
         {t('pages.categoryAdmin.title')}
       </Title>
@@ -335,7 +329,7 @@ const CategoryManagement: React.FC = () => {
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.categoryAdmin.name')} rules={[{ required: true, message: t('pages.categoryAdmin.nameRequired') }]}>

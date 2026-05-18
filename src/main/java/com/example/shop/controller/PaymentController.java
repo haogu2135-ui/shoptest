@@ -69,7 +69,6 @@ public class PaymentController {
                                           Authentication authentication,
                                           HttpServletRequest request) {
         try {
-            SecurityUtils.assertAdmin(authentication);
             assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null);
             Payment payment = paymentService.simulatePaid(id);
             auditLogService.record("PAYMENT_SIMULATE_PAID", "SUCCESS", authentication, "PAYMENT", id, request,
@@ -92,7 +91,6 @@ public class PaymentController {
                                               Authentication authentication,
                                               HttpServletRequest request) {
         try {
-            SecurityUtils.assertAdmin(authentication);
             assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null);
             Payment payment = paymentService.simulateCallback(id);
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "SUCCESS", authentication, "PAYMENT", id, request,
@@ -145,14 +143,18 @@ public class PaymentController {
     }
 
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<List<Payment>> findByOrderId(@PathVariable Long orderId, Authentication authentication) {
-        assertCanSeeOrder(orderId, authentication);
+    public ResponseEntity<List<Payment>> findByOrderId(@PathVariable Long orderId,
+                                                       @RequestParam(required = false) String guestEmail,
+                                                       Authentication authentication) {
+        assertCanSeeOrder(orderId, authentication, guestEmail);
         return ResponseEntity.ok(paymentService.findByOrderId(orderId));
     }
 
     @GetMapping("/order/{orderId}/latest")
-    public ResponseEntity<Payment> findLatestByOrderId(@PathVariable Long orderId, Authentication authentication) {
-        assertCanSeeOrder(orderId, authentication);
+    public ResponseEntity<Payment> findLatestByOrderId(@PathVariable Long orderId,
+                                                       @RequestParam(required = false) String guestEmail,
+                                                       Authentication authentication) {
+        assertCanSeeOrder(orderId, authentication, guestEmail);
         Payment payment = paymentService.findLatestByOrderId(orderId);
         return payment != null ? ResponseEntity.ok(payment) : ResponseEntity.notFound().build();
     }
@@ -163,11 +165,15 @@ public class PaymentController {
     }
 
     private void assertCanSeeOrder(Long orderId, Authentication authentication) {
+        assertCanSeeOrder(orderId, authentication, null);
+    }
+
+    private void assertCanSeeOrder(Long orderId, Authentication authentication, String guestEmail) {
         Order order = orderService.getOrderById(orderId);
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
+        assertCanOperateOrder(order, authentication, guestEmail, "Payment is not available for this order");
     }
 
     private void assertCanCreatePayment(PaymentCreateRequest request, Authentication authentication) {
@@ -192,8 +198,15 @@ public class PaymentController {
 
     private void assertCanOperateOrder(Order order, Authentication authentication, String guestEmail, String forbiddenMessage) {
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
-            SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
-            return;
+            try {
+                SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
+                return;
+            } catch (ResponseStatusException e) {
+                if (isGuestOrder(order) && guestEmailMatches(order, guestEmail)) {
+                    return;
+                }
+                throw e;
+            }
         }
         if (!isGuestOrder(order) || !guestEmailMatches(order, guestEmail)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);

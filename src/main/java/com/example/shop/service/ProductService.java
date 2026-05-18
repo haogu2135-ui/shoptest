@@ -11,10 +11,15 @@ import java.math.BigDecimal;
 
 public interface ProductService {
     List<Product> findAll();
+    List<Product> findPublicProducts();
     Optional<Product> findById(Long id);
+    Optional<Product> findPublicById(Long id);
+    List<Product> findByIds(List<Long> ids);
+    List<Product> findPublicByIds(List<Long> ids);
     Product save(Product product);
     void deleteById(Long id);
     List<Product> findByIsFeaturedTrueOrderByIdAsc();
+    List<Product> findPublicFeaturedProducts();
     List<Product> search(String keyword, Long categoryId);
     List<Product> findRelatedProducts(Long productId, Long categoryId);
     List<Product> findPersonalizedRecommendations(Long userId);

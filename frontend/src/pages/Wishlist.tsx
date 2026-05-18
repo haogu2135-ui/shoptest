@@ -2,22 +2,17 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Row, Col, Button, Empty, Spin, Typography, message, Popconfirm, Tag, Space } from 'antd';
 import { ShoppingCartOutlined, DeleteOutlined, HeartFilled, SettingOutlined, ThunderboltOutlined, CheckCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { apiBaseUrl, wishlistApi, cartApi } from '../api';
+import { wishlistApi, cartApi } from '../api';
 import type { WishlistItem } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './Wishlist.css';
 
 const { Text, Title } = Typography;
-const wishlistImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveWishlistImage = (imageUrl?: string) => {
-  if (!imageUrl) return wishlistImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const wishlistImageFallback = productImageFallback;
+const resolveWishlistImage = resolveProductImage;
 
 const isPurchasable = (item: WishlistItem) =>
   (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock > 0);
@@ -29,8 +24,7 @@ const Wishlist: React.FC = () => {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const userId = Number(localStorage.getItem('userId'));
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const wishlistGroups = useMemo(() => {
     const directAddItems: WishlistItem[] = [];
@@ -86,29 +80,29 @@ const Wishlist: React.FC = () => {
 
   const fetchWishlist = useCallback(async () => {
     try {
-      const res = await wishlistApi.getByUser(userId);
+      const res = await wishlistApi.getByUser(0);
       setItems(res.data);
     } catch {
       message.error(t('pages.wishlist.fetchFailed'));
     } finally {
       setLoading(false);
     }
-  }, [t, userId]);
+  }, [t]);
 
   useEffect(() => {
-    if (!userId) {
+    if (!localStorage.getItem('token')) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
     }
     fetchWishlist();
-  }, [fetchWishlist, userId, navigate, t]);
+  }, [fetchWishlist, navigate, t]);
 
   const handleRemove = async (productId: number) => {
     try {
-      await wishlistApi.remove(userId, productId);
+      await wishlistApi.remove(0, productId);
       setItems((current) => current.filter(item => item.productId !== productId));
-      window.dispatchEvent(new Event('shop:wishlist-updated'));
+      dispatchDomEvent('shop:wishlist-updated');
       message.success(t('pages.wishlist.removed'));
     } catch {
       message.error(t('messages.operationFailed'));
@@ -117,10 +111,10 @@ const Wishlist: React.FC = () => {
 
   const handleAddToCart = async (productId: number) => {
     try {
-      await cartApi.addItem(userId, productId, 1);
+      await cartApi.addItem(0, productId, 1);
       message.success(t('messages.addCartSuccess'));
-      window.dispatchEvent(new Event('shop:cart-updated'));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:cart-updated');
+      dispatchDomEvent('shop:open-cart');
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.addFailed'));
     }
@@ -132,13 +126,13 @@ const Wishlist: React.FC = () => {
       return;
     }
     const results = await Promise.allSettled(
-      directAddItems.map((item) => cartApi.addItem(userId, item.productId, 1)),
+      directAddItems.map((item) => cartApi.addItem(0, item.productId, 1)),
     );
     const added = results.filter((result) => result.status === 'fulfilled').length;
     if (added > 0) {
       message.success(t('pages.wishlist.addedAllToCart', { count: added }));
-      window.dispatchEvent(new Event('shop:cart-updated'));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:cart-updated');
+      dispatchDomEvent('shop:open-cart');
     } else {
       message.error(t('messages.addFailed'));
     }
@@ -147,7 +141,7 @@ const Wishlist: React.FC = () => {
   const clearUnavailableItems = async () => {
     if (wishlistGroups.unavailableItems.length === 0) return;
     const results = await Promise.allSettled(
-      wishlistGroups.unavailableItems.map((item) => wishlistApi.remove(userId, item.productId)),
+      wishlistGroups.unavailableItems.map((item) => wishlistApi.remove(0, item.productId)),
     );
     const removedProductIds = new Set(
       wishlistGroups.unavailableItems
@@ -156,7 +150,7 @@ const Wishlist: React.FC = () => {
     );
     if (removedProductIds.size > 0) {
       setItems((current) => current.filter((item) => !removedProductIds.has(item.productId)));
-      window.dispatchEvent(new Event('shop:wishlist-updated'));
+      dispatchDomEvent('shop:wishlist-updated');
       message.success(t('pages.cart.clearedUnavailable', { count: removedProductIds.size }));
       return;
     }
@@ -276,7 +270,7 @@ const Wishlist: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <div className="wishlist-page wishlist-page--empty">
+      <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
         <Empty description={t('pages.wishlist.empty')} />
         <Button type="primary" style={{ marginTop: 16 }} onClick={() => navigate('/products')}>{t('pages.wishlist.browse')}</Button>
       </div>
@@ -284,7 +278,7 @@ const Wishlist: React.FC = () => {
   }
 
   return (
-    <div className="wishlist-page">
+    <div className={`wishlist-page wishlist-page--${language}`}>
       <div className="wishlist-page__header">
         <Space align="center">
           <HeartFilled style={{ color: '#ee4d2d', fontSize: 24 }} />

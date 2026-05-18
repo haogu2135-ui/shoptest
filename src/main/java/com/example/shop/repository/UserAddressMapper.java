@@ -18,7 +18,7 @@ public interface UserAddressMapper {
 
     int update(UserAddress address);
 
-    int deleteById(Long id);
+    int deleteByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 
     int clearDefault(Long userId);
 

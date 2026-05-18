@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ConfigProvider } from 'antd';
 import enUS from 'antd/locale/en_US';
@@ -19,7 +19,14 @@ const localeMap = {
 };
 
 const LocalizedApp: React.FC = () => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+    document.title = t('common.siteTitle');
+    const description = document.querySelector('meta[name="description"]');
+    description?.setAttribute('content', t('common.siteDescription'));
+  }, [language, t]);
 
   return (
     <ConfigProvider locale={localeMap[language]}>

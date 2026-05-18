@@ -1,14 +1,12 @@
-.pet-personalized-assistant {
+﻿.pet-personalized-assistant {
   display: grid;
   gap: 14px;
   margin: 16px 0;
   padding: 18px;
   border: 1px solid #d7e4da;
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at 100% 0, rgba(247, 201, 72, 0.14), transparent 30%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.99), rgba(242, 249, 245, 0.96));
-  box-shadow: 0 14px 28px rgba(18, 71, 52, 0.08);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .pet-personalized-assistant,
@@ -19,7 +17,7 @@
 
 .pet-personalized-assistant--compact {
   padding: 14px;
-  border-radius: 18px;
+  border-radius: 8px;
 }
 
 .pet-personalized-assistant__header {
@@ -92,7 +90,7 @@
   gap: 12px;
   padding: 12px;
   border: 1px solid #e6efe8;
-  border-radius: 18px;
+  border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
 }
@@ -110,7 +108,7 @@
 .pet-personalized-assistant__media img {
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 14px;
+  border-radius: 8px;
   object-fit: cover;
   background: #f7faf8;
 }
@@ -150,7 +148,7 @@
 }
 
 .pet-personalized-assistant__insight {
-  border-radius: 14px;
+  border-radius: 8px;
   border-color: #e8efe9;
   background: #f8fbf9;
 }
@@ -187,7 +185,7 @@
 @media (max-width: 640px) {
   .pet-personalized-assistant {
     padding: 14px;
-    border-radius: 18px;
+    border-radius: 8px;
   }
 
   .pet-personalized-assistant__header {

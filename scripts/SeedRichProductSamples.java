@@ -180,7 +180,9 @@ public class SeedRichProductSamples {
                 "Feature", feature,
                 "Market", "Mexico test catalog",
                 "options.Size", "Small,Medium,Large",
-                "options.Color", "Orange,Teal,Graphite"
+                "options.Color", "Orange,Teal,Graphite",
+                "i18n.es.name", spanishName(name),
+                "i18n.es.description", spanishDescription(name)
         );
         seed.detailContentJson = detailJson(name, headline, detailText, heroImage, secondaryImage);
         seed.variantsJson = variantsJson(seed.price);
@@ -190,6 +192,84 @@ public class SeedRichProductSamples {
         seed.freeShipping = id % 4 == 0;
         seed.freeShippingThreshold = new BigDecimal("899.00");
         return seed;
+    }
+
+    private static String spanishName(String name) {
+        switch (name) {
+            case "NutriTail Adult Dog Salmon & Rice 5kg":
+                return "Alimento NutriTail de salmón y arroz para perro adulto, 5 kg";
+            case "CanineCore Puppy Chicken Bites 500g":
+                return "Bocaditos CanineCore de pollo para cachorro, 500 g";
+            case "NutriTail Indoor Cat Hairball Control 3kg":
+                return "Alimento NutriTail para gato indoor control bolas de pelo, 3 kg";
+            case "HydraWhisk Tuna Creamy Cat Treats 24 Pack":
+                return "Premios cremosos HydraWhisk de atún para gato, 24 piezas";
+            case "PawPilot Smart Feeder Mini 2L":
+                return "Comedero inteligente PawPilot Mini 2L";
+            case "PawPilot Dual Bowl Slow Feeder Station":
+                return "Estación PawPilot de doble plato con comedero lento";
+            case "HydraWhisk Ceramic Flow Fountain 2.8L":
+                return "Fuente cerámica HydraWhisk Flow 2.8L";
+            case "CloudNap Cooling Sofa Bed":
+                return "Cama sofá refrescante CloudNap";
+            case "CloudNap Window Hammock for Cats":
+                return "Hamaca CloudNap para ventana, gatos";
+            case "BrightBite Puzzle Treat Spinner":
+                return "Dispensador giratorio BrightBite tipo puzzle";
+            case "BrightBite Rope & Rubber Chew Trio":
+                return "Trío BrightBite de cuerda y caucho para morder";
+            case "PurePaws Aloe Grooming Wipes 120 Count":
+                return "Toallitas PurePaws con aloe, 120 piezas";
+            case "PurePaws Deshedding Brush Pro":
+                return "Cepillo deslanador PurePaws Pro";
+            case "TrailTails Reflective City Leash 1.8m":
+                return "Correa urbana reflectante TrailTails 1.8 m";
+            case "TrailTails Airline Soft Carrier":
+                return "Transportadora suave TrailTails para avión";
+            case "PawPilot Pet Supplies Starter Crate":
+                return "Caja inicial PawPilot de artículos para mascota";
+            default:
+                return name;
+        }
+    }
+
+    private static String spanishDescription(String name) {
+        switch (name) {
+            case "NutriTail Adult Dog Salmon & Rice 5kg":
+                return "Alimento seco balanceado de salmón y arroz para perros adultos con estómago sensible.";
+            case "CanineCore Puppy Chicken Bites 500g":
+                return "Premios suaves para cachorro en porciones pequeñas, ideales para recompensas rápidas.";
+            case "NutriTail Indoor Cat Hairball Control 3kg":
+                return "Alimento para gato de interior con fibra, taurina y calorías controladas.";
+            case "HydraWhisk Tuna Creamy Cat Treats 24 Pack":
+                return "Premios cremosos de atún para consentir, complementar comida u ocultar suplementos.";
+            case "PawPilot Smart Feeder Mini 2L":
+                return "Comedero automático compacto para gatos y perros pequeños con horarios desde la app.";
+            case "PawPilot Dual Bowl Slow Feeder Station":
+                return "Estación elevada con platos de acero y accesorio para comer más lento.";
+            case "HydraWhisk Ceramic Flow Fountain 2.8L":
+                return "Fuente cerámica para mascota con bomba silenciosa y filtración por capas.";
+            case "CloudNap Cooling Sofa Bed":
+                return "Cama tipo sofá con tela refrescante y funda lavable.";
+            case "CloudNap Window Hammock for Cats":
+                return "Hamaca soleada para ventana con ventosas reforzadas para gatos.";
+            case "BrightBite Puzzle Treat Spinner":
+                return "Juguete puzzle ajustable que libera premios durante el juego supervisado.";
+            case "BrightBite Rope & Rubber Chew Trio":
+                return "Set de tres piezas para jalar, buscar y enriquecer la mordida.";
+            case "PurePaws Aloe Grooming Wipes 120 Count":
+                return "Toallitas grandes con aloe para patas, retoques de pelaje y limpieza de viaje.";
+            case "PurePaws Deshedding Brush Pro":
+                return "Cepillo cómodo para reducir pelo suelto en pelajes largos y cortos.";
+            case "TrailTails Reflective City Leash 1.8m":
+                return "Correa reflectante con asa acolchada y segundo agarre para mayor control.";
+            case "TrailTails Airline Soft Carrier":
+                return "Transportadora suave con paneles de malla, correa de hombro y tapete lavable.";
+            case "PawPilot Pet Supplies Starter Crate":
+                return "Kit inicial amplio con platos, toallitas, juguetes y básicos de paseo.";
+            default:
+                return "";
+        }
     }
 
     private static String detailJson(String name, String headline, String detailText, String heroImage, String secondaryImage) {

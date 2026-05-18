@@ -74,7 +74,12 @@ const translate = (language: Language, key: string, params?: TranslationParams) 
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    const storedLanguage = localStorage.getItem(STORAGE_KEY);
+    let storedLanguage: string | null = null;
+    try {
+      storedLanguage = localStorage.getItem(STORAGE_KEY);
+    } catch {
+      storedLanguage = null;
+    }
     if (isLanguage(storedLanguage)) return storedLanguage;
     const locale = navigator.language || '';
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -82,7 +87,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const setLanguage = (nextLanguage: Language) => {
-    localStorage.setItem(STORAGE_KEY, nextLanguage);
+    try {
+      localStorage.setItem(STORAGE_KEY, nextLanguage);
+    } catch {
+      // Language switching should still work when persistence is unavailable.
+    }
     setLanguageState(nextLanguage);
   };
 

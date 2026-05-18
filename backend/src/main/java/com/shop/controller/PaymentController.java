@@ -9,7 +9,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payment")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(originPatterns = {"http://localhost:*", "http://127.0.0.1:*"})
 public class PaymentController {
     private final PaymentService paymentService;
 
@@ -38,14 +38,28 @@ public class PaymentController {
     @PostMapping("/notify")
     public String handlePaymentNotify(@RequestParam Map<String, String> params) {
         String transactionId = params.get("out_trade_no");
+        if (transactionId == null || transactionId.trim().isEmpty()) {
+            return "fail";
+        }
         String status = "SUCCESS".equals(params.get("trade_status")) ? "SUCCESS" : "FAILED";
-        paymentService.handlePaymentCallback(transactionId, status);
-        return "success";
+        try {
+            paymentService.handlePaymentCallback(transactionId, status);
+            return "success";
+        } catch (Exception e) {
+            return "fail";
+        }
     }
 
     @GetMapping("/query/{orderId}")
     public ResponseEntity<?> queryPaymentStatus(@PathVariable Long orderId) {
         // 实现支付状态查询逻辑
-        return ResponseEntity.ok().build();
+        try {
+            return ResponseEntity.ok(paymentService.getPaymentStatus(orderId));
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 } 

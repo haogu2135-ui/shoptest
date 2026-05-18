@@ -32,6 +32,11 @@ public class UserAddressController {
         return userAddressService.getAddresses(userId);
     }
 
+    @GetMapping("/me")
+    public List<UserAddress> getMyAddresses(Authentication authentication) {
+        return userAddressService.getAddresses(SecurityUtils.requireUser(authentication).getId());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserAddress> getAddress(@PathVariable Long id, Authentication authentication) {
         UserAddress address = userAddressService.getAddress(id);
@@ -45,6 +50,12 @@ public class UserAddressController {
     public ResponseEntity<UserAddress> getDefaultAddress(@RequestParam Long userId, Authentication authentication) {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         UserAddress address = userAddressService.getDefaultAddress(userId);
+        return address == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(address);
+    }
+
+    @GetMapping("/me/default")
+    public ResponseEntity<UserAddress> getMyDefaultAddress(Authentication authentication) {
+        UserAddress address = userAddressService.getDefaultAddress(SecurityUtils.requireUser(authentication).getId());
         return address == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(address);
     }
 
@@ -69,8 +80,13 @@ public class UserAddressController {
         SecurityUtils.assertSelfOrAdmin(authentication, existing.getUserId());
         address.setId(id);
         address.setUserId(existing.getUserId());
-        userAddressService.updateAddress(address);
-        return ResponseEntity.ok(address);
+        address.setIsDefault(existing.getIsDefault());
+        try {
+            userAddressService.updateAddress(address);
+            return ResponseEntity.ok(address);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -80,19 +96,22 @@ public class UserAddressController {
             return ResponseEntity.notFound().build();
         }
         SecurityUtils.assertSelfOrAdmin(authentication, existing.getUserId());
-        userAddressService.deleteAddress(id);
-        return ResponseEntity.ok(Map.of("message", "Deleted"));
+        try {
+            userAddressService.deleteAddress(id);
+            return ResponseEntity.ok(Map.of("message", "Deleted"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}/default")
-    public ResponseEntity<?> setDefault(@PathVariable Long id, @RequestParam Long userId, Authentication authentication) {
-        SecurityUtils.assertSelfOrAdmin(authentication, userId);
+    public ResponseEntity<?> setDefault(@PathVariable Long id, Authentication authentication) {
         UserAddress existing = userAddressService.getAddress(id);
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
         SecurityUtils.assertSelfOrAdmin(authentication, existing.getUserId());
-        userAddressService.setDefault(id, userId);
+        userAddressService.setDefault(id);
         return ResponseEntity.ok(Map.of("message", "Default address set"));
     }
 }

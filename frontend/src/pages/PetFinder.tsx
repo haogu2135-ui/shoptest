@@ -97,7 +97,11 @@ const PetFinder: React.FC = () => {
   }, [language, t]);
 
   useEffect(() => {
-    localStorage.setItem(FINDER_STORAGE_KEY, JSON.stringify({ petType, need, budget, priority }));
+    try {
+      localStorage.setItem(FINDER_STORAGE_KEY, JSON.stringify({ petType, need, budget, priority }));
+    } catch {
+      // Finder preferences are a convenience; do not block the current session.
+    }
   }, [budget, need, petType, priority]);
 
   useEffect(() => {

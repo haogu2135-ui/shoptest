@@ -1,6 +1,6 @@
 {
-  "short_name": "在线商城",
-  "name": "在线商城",
+  "short_name": "ShopMX",
+  "name": "ShopMX Pet Store",
   "icons": [
     {
       "src": "favicon.ico",
@@ -22,4 +22,4 @@
   "display": "standalone",
   "theme_color": "#000000",
   "background_color": "#ffffff"
-} 
+}

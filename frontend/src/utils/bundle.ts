@@ -1,5 +1,13 @@
 import type { Product, ProductBundleItem } from '../types';
 
+const MAX_BUNDLE_ITEM_QUANTITY = 99;
+
+const normalizeBundleQuantity = (value: unknown) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 1;
+  return Math.max(1, Math.min(Math.floor(numeric), MAX_BUNDLE_ITEM_QUANTITY));
+};
+
 const parseBundleItems = (value?: string): ProductBundleItem[] => {
   if (!value) return [];
   try {
@@ -8,14 +16,14 @@ const parseBundleItems = (value?: string): ProductBundleItem[] => {
       ? parsed
         .map((item) => ({
           name: String(item?.name || '').trim(),
-          quantity: Number(item?.quantity || 1),
-          productId: item?.productId ? Number(item.productId) : undefined,
+          quantity: normalizeBundleQuantity(item?.quantity),
+          productId: Number.isSafeInteger(Number(item?.productId)) && Number(item.productId) > 0 ? Number(item.productId) : undefined,
         }))
         .filter((item) => item.name)
       : [];
   } catch {
     return value
-      .split(/[+,\n，、/]/)
+      .split(/[+,\n,，、]/)
       .map((name) => ({ name: name.trim(), quantity: 1 }))
       .filter((item) => item.name);
   }
@@ -26,12 +34,12 @@ export const getBundleInfo = (product?: Product | null) => {
   const enabled = String(specs['bundle.enabled'] || '').toLowerCase() === 'true';
   const price = Number(specs['bundle.price'] || 0);
   const items = parseBundleItems(specs['bundle.items']);
-  if (!enabled || price <= 0 || items.length === 0) {
+  if (!enabled || !Number.isFinite(price) || price <= 0 || items.length === 0) {
     return null;
   }
   return {
     price,
-    title: specs['bundle.title'] || product?.name || 'Bundle',
+    title: String(specs['bundle.title'] || product?.name || 'Bundle').trim() || 'Bundle',
     items,
   };
 };

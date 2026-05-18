@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Checkbox, Divider, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Divider, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import { adminApi, logisticsCarrierApi, orderApi, paymentApi } from '../api';
 import type { LogisticsCarrier, Order, OrderItem, Payment } from '../types';
 import { useLanguage } from '../i18n';
@@ -23,10 +24,11 @@ import './OrderManagement.css';
 const { Title } = Typography;
 
 const OrderManagement: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string | undefined>();
-  const [quickFilter, setQuickFilter] = useState<string | undefined>();
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(() => searchParams.get('status') || undefined);
+  const [quickFilter, setQuickFilter] = useState<string | undefined>(() => searchParams.get('quick') || undefined);
   const [shippingOrder, setShippingOrder] = useState<Order | null>(null);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingCarrierCode, setTrackingCarrierCode] = useState<string | undefined>();
@@ -75,8 +77,11 @@ const OrderManagement: React.FC = () => {
   }, [fetchOrders, filterStatus]);
 
   useEffect(() => {
-    setQuickFilter(undefined);
-  }, [filterStatus]);
+    const nextStatus = searchParams.get('status') || undefined;
+    const nextQuick = searchParams.get('quick') || undefined;
+    setFilterStatus((current) => current === nextStatus ? current : nextStatus);
+    setQuickFilter((current) => current === nextQuick ? current : nextQuick);
+  }, [searchParams]);
 
   useEffect(() => {
     setSelectedOrderIds([]);
@@ -350,6 +355,10 @@ const OrderManagement: React.FC = () => {
     }
   };
 
+  const hasLoadedRefundPayments = refundPayments.length > 0;
+  const hasPaidRefundPayment = refundPayments.some((payment) => payment.status === 'PAID');
+  const refundAlreadyProcessing = refundPayments.some((payment) => payment.status === 'REFUNDING');
+
   const handleBatchShip = async () => {
     if (selectedVisibleShippableIds.length === 0) {
       message.error(t('pages.adminOrders.selectPendingShipment'));
@@ -403,6 +412,7 @@ const OrderManagement: React.FC = () => {
       t('pages.adminOrders.tracking'),
       t('pages.adminOrders.returnTracking'),
       t('pages.adminOrders.returnReason'),
+      t('pages.adminOrders.refundedAt'),
       t('pages.adminOrders.address'),
       t('pages.adminOrders.createdAt'),
     ];
@@ -415,6 +425,7 @@ const OrderManagement: React.FC = () => {
       order.trackingNumber || '',
       order.returnTrackingNumber || '',
       order.returnReason || '',
+      order.refundedAt ? new Date(order.refundedAt).toLocaleString(dateLocale) : '',
       order.shippingAddress || '',
       order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '',
     ]);
@@ -881,7 +892,10 @@ const OrderManagement: React.FC = () => {
         open={!!refundOrder}
         confirmLoading={refunding}
         okText={t('pages.adminOrders.refundNow')}
-        okButtonProps={{ danger: true }}
+        okButtonProps={{
+          danger: true,
+          disabled: hasLoadedRefundPayments && !hasPaidRefundPayment,
+        }}
         onOk={handleRefundOrder}
         onCancel={() => {
           setRefundOrder(null);
@@ -908,6 +922,13 @@ const OrderManagement: React.FC = () => {
           <Checkbox checked={refundRestock} onChange={(event) => setRefundRestock(event.target.checked)}>
             {t('pages.adminOrders.restockRefundItems')}
           </Checkbox>
+          {hasLoadedRefundPayments && !hasPaidRefundPayment ? (
+            <Alert
+              type={refundAlreadyProcessing ? 'warning' : 'error'}
+              showIcon
+              message={refundAlreadyProcessing ? t('pages.adminOrders.refundProcessingHint') : t('pages.adminOrders.noPaidPaymentForRefund')}
+            />
+          ) : null}
           <div>
             <Typography.Text strong>{t('pages.adminOrders.refundPaymentEvidence')}</Typography.Text>
             <Table

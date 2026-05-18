@@ -4,11 +4,13 @@ import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
 import com.example.shop.repository.PaymentRepository;
+import com.example.shop.util.GatewayUrlValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
+import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.RefundCreateParams;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -30,6 +33,7 @@ import java.util.Map;
 @Service
 public class RefundService {
     private static final String STATUS_REFUNDED = "REFUNDED";
+    private static final String STATUS_REFUNDING = "REFUNDING";
 
     @Autowired
     private PaymentRepository paymentRepository;
@@ -39,9 +43,13 @@ public class RefundService {
     @Value("${stripe.secret-key:}")
     private String stripeSecretKey;
 
+    @Value("${payment.gateway-allow-local:false}")
+    private boolean paymentGatewayAllowLocal;
+
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Transactional
     public Payment refundPaidPayment(Order order, String reason) {
         Payment payment = paymentRepository.findLatestPaidByOrderId(order.getId());
         if (payment == null) {
@@ -49,17 +57,37 @@ public class RefundService {
             if (refunded != null) {
                 return refunded;
             }
+            Payment latest = paymentRepository.findLatestByOrderId(order.getId());
+            if (latest != null && STATUS_REFUNDING.equals(latest.getStatus())) {
+                throw new IllegalStateException("Refund is already processing");
+            }
             throw new IllegalStateException("No paid payment found for refund");
+        }
+        int claimed = paymentRepository.markRefunding(payment.getId());
+        if (claimed == 0) {
+            String latestStatus = resolveLatestPaymentStatus(payment.getId());
+            if (STATUS_REFUNDED.equals(latestStatus)) {
+                return paymentRepository.findById(payment.getId());
+            }
+            if (STATUS_REFUNDING.equals(latestStatus)) {
+                throw new IllegalStateException("Refund is already processing");
+            }
+            throw new IllegalStateException("Refund state claim failed");
         }
         PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
         String refundReference = null;
         String normalizedReason = normalizeReason(reason);
-        if (shouldRefundViaStripe(payment, channel)) {
-            refundReference = refundStripePayment(order, payment);
-        } else if (shouldRefundViaGenericApi(channel)) {
-            refundReference = refundGenericApiPayment(order, payment, channel, normalizedReason);
-        } else {
-            refundReference = "MANUAL-" + order.getId() + "-" + payment.getId();
+        try {
+            if (shouldRefundViaStripe(payment, channel)) {
+                refundReference = refundStripePayment(order, payment);
+            } else if (shouldRefundViaGenericApi(channel)) {
+                refundReference = refundGenericApiPayment(order, payment, channel, normalizedReason);
+            } else {
+                refundReference = "MANUAL-" + order.getId() + "-" + payment.getId();
+            }
+        } catch (RuntimeException e) {
+            paymentRepository.revertRefunding(payment.getId());
+            throw e;
         }
         int updated = paymentRepository.markRefunded(payment.getId(), refundReference);
         if (updated == 0 && !STATUS_REFUNDED.equals(resolveLatestPaymentStatus(payment.getId()))) {
@@ -87,13 +115,14 @@ public class RefundService {
         if (isBlank(stripeSecretKey)) {
             throw new IllegalStateException("Stripe secret key is not configured");
         }
-        if (isBlank(payment.getTransactionId())) {
+        String paymentIntent = resolveStripePaymentIntent(payment);
+        if (isBlank(paymentIntent)) {
             throw new IllegalStateException("Stripe payment intent is missing");
         }
         try {
             Stripe.apiKey = stripeSecretKey;
             Refund refund = Refund.create(RefundCreateParams.builder()
-                    .setPaymentIntent(payment.getTransactionId())
+                    .setPaymentIntent(paymentIntent)
                     .build(),
                     RequestOptions.builder()
                             .setIdempotencyKey("return-refund-" + order.getId() + "-" + payment.getId())
@@ -104,11 +133,33 @@ public class RefundService {
         }
     }
 
+    private String resolveStripePaymentIntent(Payment payment) {
+        String transactionId = trimToNull(payment.getTransactionId());
+        if (transactionId != null && transactionId.startsWith("pi_")) {
+            return transactionId;
+        }
+        String providerReference = trimToNull(payment.getProviderReference());
+        String sessionId = firstNonBlank(
+                providerReference != null && providerReference.startsWith("cs_") ? providerReference : null,
+                transactionId != null && transactionId.startsWith("cs_") ? transactionId : null);
+        if (sessionId == null) {
+            return null;
+        }
+        try {
+            Stripe.apiKey = stripeSecretKey;
+            Session session = Session.retrieve(sessionId);
+            return trimToNull(session.getPaymentIntent());
+        } catch (StripeException e) {
+            throw new IllegalStateException("Stripe payment lookup failed: " + e.getMessage());
+        }
+    }
+
     private String refundGenericApiPayment(Order order, Payment payment, PaymentChannelConfig.Channel channel, String reason) {
         String refundUrl = trimToNull(channel.getRefundUrl());
         if (refundUrl == null) {
             throw new IllegalStateException("Refund URL is not configured for channel " + channel.getCode());
         }
+        refundUrl = GatewayUrlValidator.requireOutboundHttpUrl(refundUrl, paymentGatewayAllowLocal, "Refund URL");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("orderId", order.getId());
         payload.put("orderNo", order.getOrderNo());

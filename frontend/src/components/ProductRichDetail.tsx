@@ -1,10 +1,16 @@
 import React from 'react';
 import { Empty, Typography } from 'antd';
-import { apiBaseUrl } from '../api';
 import type { ProductDetailBlock } from '../types';
+import { resolveApiAssetUrl } from '../utils/mediaAssets';
 import './ProductRichDetail.css';
 
 const { Paragraph, Text } = Typography;
+
+const hasUnsafeUrlCharacter = (value: string) =>
+  Array.from(value).some((char) => {
+    const code = char.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
 
 type ProductRichDetailProps = {
   detailContent?: ProductDetailBlock[] | string | null;
@@ -13,10 +19,15 @@ type ProductRichDetailProps = {
 };
 
 export const isHttpMediaUrl = (value?: string): value is string => {
-  if (!value) return false;
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return false;
+  const normalized = trimmed.toLowerCase();
+  if (hasUnsafeUrlCharacter(trimmed) || trimmed.includes('\\') || normalized.includes('%00') || normalized.includes('%5c')) {
+    return false;
+  }
   try {
-    const url = new URL(value, window.location.origin);
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    const url = new URL(trimmed, window.location.origin);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && !url.username && !url.password;
   } catch {
     return false;
   }
@@ -25,22 +36,37 @@ export const isHttpMediaUrl = (value?: string): value is string => {
 export const resolveRichMediaUrl = (value?: string) => {
   if (!isHttpMediaUrl(value)) return null;
   const trimmed = String(value || '').trim();
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `${apiBaseUrl}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`;
+  return resolveApiAssetUrl(trimmed);
 };
 
 export const parseDetailContent = (value?: ProductRichDetailProps['detailContent']): ProductDetailBlock[] => {
-  if (Array.isArray(value)) return value;
+  const normalizeBlocks = (items: unknown[]) =>
+    items
+      .map((item) => {
+        const block = item as Partial<ProductDetailBlock>;
+        if (block?.type === 'text') {
+          const content = String(block.content || '').trim();
+          return content ? { type: 'text' as const, content } : null;
+        }
+        if (block?.type === 'image' || block?.type === 'video') {
+          const url = String(block.url || '').trim();
+          const caption = String(block.caption || '').trim();
+          return url ? { type: block.type, url, caption } : null;
+        }
+        return null;
+      })
+      .filter(Boolean) as ProductDetailBlock[];
+  if (Array.isArray(value)) return normalizeBlocks(value);
   if (typeof value !== 'string' || !value.trim()) return [];
   try {
     const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? normalizeBlocks(parsed) : [];
   } catch {
     return [];
   }
 };
 
-export const isDirectVideo = (value: string) => /\.(mp4|webm|ogg)(\?.*)?$/i.test(value);
+export const isDirectVideo = (value: string) => /\.(mp4|webm|ogg)([?#].*)?$/i.test(value);
 
 export const toEmbeddableVideoUrl = (value: string) => {
   try {
@@ -74,6 +100,7 @@ export const canEmbedVideoUrl = (value: string) => {
 
 const handleImageZoomMove = (event: React.MouseEvent<HTMLImageElement>) => {
   const rect = event.currentTarget.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
   const x = ((event.clientX - rect.left) / rect.width) * 100;
   const y = ((event.clientY - rect.top) / rect.height) * 100;
   event.currentTarget.style.transformOrigin = `${x}% ${y}%`;

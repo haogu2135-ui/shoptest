@@ -40,6 +40,9 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public List<Review> getReviewsByProductId(Long productId, Long currentUserId) {
+        if (!isPublicProduct(productId)) {
+            return List.of();
+        }
         if (currentUserId != null) {
             return reviewRepository.findByProductIdIncludingUserPending(productId, currentUserId);
         }
@@ -48,6 +51,9 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public double getAverageRating(Long productId) {
+        if (!isPublicProduct(productId)) {
+            return 0;
+        }
         return reviewRepository.findAverageRatingByProductId(productId);
     }
 
@@ -66,6 +72,9 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(readOnly = true)
     public List<Order> getReviewableOrders(Long productId, Long userId) {
+        if (!isPublicProduct(productId)) {
+            return List.of();
+        }
         LocalDateTime deadline = LocalDateTime.now().minusDays(30);
         return orderRepository.findByUserId(userId).stream()
                 .filter(order -> "COMPLETED".equals(order.getStatus()))
@@ -83,6 +92,10 @@ public class ReviewServiceImpl implements ReviewService {
 
         if (productOpt.isEmpty() || userOpt.isEmpty()) {
             throw new IllegalArgumentException("Product or User not found");
+        }
+        Product product = productOpt.get();
+        if (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
+            throw new IllegalStateException("Product is not available");
         }
         if (rating < 1 || rating > 5) {
             throw new IllegalArgumentException("Rating must be between 1 and 5");
@@ -110,7 +123,7 @@ public class ReviewServiceImpl implements ReviewService {
         }
 
         Review review = new Review();
-        review.setProduct(productOpt.get());
+        review.setProduct(product);
         review.setUser(userOpt.get());
         review.setOrderId(orderId);
         review.setRating(rating);
@@ -118,6 +131,15 @@ public class ReviewServiceImpl implements ReviewService {
         review.setStatus("PENDING");
 
         return reviewRepository.save(review);
+    }
+
+    private boolean isPublicProduct(Long productId) {
+        if (productId == null) {
+            return false;
+        }
+        return productRepository.findById(productId)
+                .map(product -> product.getStatus() == null || "ACTIVE".equalsIgnoreCase(product.getStatus()))
+                .orElse(false);
     }
 
     @Override

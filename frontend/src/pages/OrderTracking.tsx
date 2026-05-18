@@ -1,26 +1,24 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Button, Card, Descriptions, Empty, Form, Input, List, Space, Tag, Typography, message } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, CustomerServiceOutlined, SearchOutlined, TruckOutlined } from '@ant-design/icons';
+import { Button, Card, Descriptions, Empty, Form, Input, List, Modal, Space, Tag, Typography, message } from 'antd';
+import { CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, CustomerServiceOutlined, RollbackOutlined, SearchOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { apiBaseUrl, orderApi } from '../api';
-import type { Order, OrderItem } from '../types';
+import { cartApi, orderApi, paymentApi } from '../api';
+import type { Order, OrderItem, Payment } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { paymentMethodLabel } from '../utils/paymentMethods';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { navigateToSafeUrl } from '../utils/safeUrl';
+import { getPaymentRecoveryState } from '../utils/paymentRecovery';
+import { addGuestCartItem } from '../utils/guestCart';
+import { dispatchDomEvent } from '../utils/domEvents';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderTracking.css';
 
 const { Text, Title } = Typography;
-const orderTrackingImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveOrderTrackingImage = (imageUrl?: string) => {
-  if (!imageUrl) return orderTrackingImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const orderTrackingImageFallback = productImageFallback;
+const resolveOrderTrackingImage = resolveProductImage;
 
 const statusColor: Record<string, string> = {
   PENDING_PAYMENT: 'orange',
@@ -44,13 +42,16 @@ const getTrackingStep = (status?: string) => {
 const OrderTracking: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [trackedEmail, setTrackedEmail] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const trackingStep = getTrackingStep(order?.status);
-  const supportOpen = useCallback(() => window.dispatchEvent(new Event('shop:open-support')), []);
+  const supportOpen = useCallback(() => dispatchDomEvent('shop:open-support'), []);
   const nextAction = useMemo(() => {
     if (!order) return null;
     if (order.status === 'PENDING_PAYMENT') {
@@ -107,11 +108,14 @@ const OrderTracking: React.FC = () => {
 
   const onFinish = async (values: { orderNo: string; email: string }) => {
     setLoading(true);
+    const normalizedEmail = values.email.trim().toLowerCase();
     try {
-      const res = await orderApi.track(values.orderNo.trim(), values.email.trim());
+      const res = await orderApi.track(values.orderNo.trim(), normalizedEmail);
+      setTrackedEmail(normalizedEmail);
       setOrder(res.data.order);
       setItems(res.data.items || []);
     } catch (error: any) {
+      setTrackedEmail('');
       setOrder(null);
       setItems([]);
       message.error(error?.response?.data?.error || t('pages.orderTracking.notFound'));
@@ -120,8 +124,88 @@ const OrderTracking: React.FC = () => {
     }
   };
 
+  const continuePayment = async () => {
+    if (!order || order.status !== 'PENDING_PAYMENT') return;
+    setPaying(true);
+    try {
+      const paymentsRes = await paymentApi.getByOrder(order.id, trackedEmail);
+      const payments = paymentsRes.data || [];
+      const reusablePayment = payments.find((payment: Payment) => payment.status === 'PAID')
+        || payments.find((payment: Payment) => payment.status === 'PENDING' && !getPaymentRecoveryState(payment).isExpired);
+      const payment = reusablePayment || (await paymentApi.create(order.id, order.paymentMethod || payments[0]?.channel || 'STRIPE', trackedEmail)).data;
+      if (payment.status === 'PAID') {
+        message.success(t('pages.checkout.paidTitle'));
+        const refreshed = await orderApi.track(order.orderNo || String(order.id), trackedEmail);
+        setOrder(refreshed.data.order);
+        setItems(refreshed.data.items || []);
+        return;
+      }
+      message.success(t('pages.checkout.paymentReady'));
+      if (payment.paymentUrl && !navigateToSafeUrl(payment.paymentUrl)) {
+        message.error(t('pages.payment.failed'));
+      }
+    } catch (error: any) {
+      message.error(error?.response?.data?.error || t('pages.profile.continuePayFailed'));
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const restoreTrackedItemsToCart = async () => {
+    if (localStorage.getItem('token')) {
+      const results = await Promise.allSettled(items.map((item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs)));
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') return;
+        const item = items[index];
+        addGuestCartItem({
+          id: item.productId,
+          name: item.productName || t('pages.profile.productFallback', { id: item.productId }),
+          imageUrl: item.imageUrl,
+          price: item.price,
+          status: 'ACTIVE',
+        }, item.quantity, item.selectedSpecs, item.price);
+      });
+      dispatchDomEvent('shop:cart-updated');
+      return;
+    }
+    items.forEach((item) => {
+      addGuestCartItem({
+        id: item.productId,
+        name: item.productName || t('pages.profile.productFallback', { id: item.productId }),
+        imageUrl: item.imageUrl,
+        price: item.price,
+        status: 'ACTIVE',
+      }, item.quantity, item.selectedSpecs, item.price);
+    });
+  };
+
+  const cancelPendingPayment = () => {
+    if (!order || order.status !== 'PENDING_PAYMENT') return;
+    Modal.confirm({
+      title: t('pages.checkout.rollbackPaymentTitle'),
+      content: t('pages.checkout.rollbackPaymentContent'),
+      okText: t('pages.checkout.rollbackPaymentAction'),
+      cancelText: t('common.cancel'),
+      okButtonProps: { danger: true },
+      async onOk() {
+        setCanceling(true);
+        try {
+          await orderApi.cancel(order.id, trackedEmail);
+          await restoreTrackedItemsToCart();
+          message.success(t('pages.checkout.rollbackPaymentSuccess'));
+          setOrder({ ...order, status: 'CANCELLED' });
+          navigate('/cart');
+        } catch (error: any) {
+          message.error(error?.response?.data?.error || t('pages.checkout.rollbackPaymentFailed'));
+        } finally {
+          setCanceling(false);
+        }
+      },
+    });
+  };
+
   return (
-    <div className="order-tracking-page">
+    <div className={`order-tracking-page order-tracking-page--${language}`}>
       <Title level={2}>{t('pages.orderTracking.title')}</Title>
       <Card style={{ marginBottom: 16 }}>
         <Form layout="vertical" onFinish={onFinish}>
@@ -196,9 +280,23 @@ const OrderTracking: React.FC = () => {
                 <Text strong>{nextAction.title}</Text>
                 <Text type="secondary">{nextAction.text}</Text>
               </div>
-              <Button icon={<CustomerServiceOutlined />} onClick={supportOpen}>
-                {t('pages.profile.contactSupport')}
-              </Button>
+              {order.status === 'PENDING_PAYMENT' ? (
+                <Space wrap className="order-tracking-page__nextActionButtons">
+                  <Button type="primary" icon={<CreditCardOutlined />} loading={paying} onClick={continuePayment}>
+                    {t('pages.profile.continuePay')}
+                  </Button>
+                  <Button danger icon={<RollbackOutlined />} loading={canceling} onClick={cancelPendingPayment}>
+                    {t('pages.profile.cancelOrder')}
+                  </Button>
+                  <Button icon={<CustomerServiceOutlined />} onClick={supportOpen}>
+                    {t('pages.profile.contactSupport')}
+                  </Button>
+                </Space>
+              ) : (
+                <Button icon={<CustomerServiceOutlined />} onClick={supportOpen}>
+                  {t('pages.profile.contactSupport')}
+                </Button>
+              )}
             </section>
           ) : null}
           {assurancePlan ? (

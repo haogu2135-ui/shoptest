@@ -2,6 +2,7 @@ import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { message } from 'antd';
 import { userApi } from '../api';
 import { User } from '../types';
+import { useLanguage } from '../i18n';
 import { getEffectiveRole } from '../utils/roles';
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const { t } = useLanguage();
 
     const login = async (username: string, password: string) => {
         try {
@@ -27,9 +29,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
             localStorage.setItem('username', name);
             localStorage.setItem('role', effectiveRole);
             setUser({ id, username: name, role, roleCode, email: response.data.email || '' });
-            message.success('Logged in successfully');
+            message.success(t('pages.auth.loginSuccess'));
         } catch (error) {
-            message.error('Login failed, please check your username and password');
+            message.error(t('pages.auth.loginFailed'));
             throw error;
         }
     };
@@ -41,7 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
         localStorage.removeItem('userId');
         localStorage.removeItem('username');
         localStorage.removeItem('role');
-        message.success('Logged out');
+        message.success(t('pages.auth.logoutSuccess'));
     };
 
     React.useEffect(() => {

@@ -1,13 +1,12 @@
-.add-on-assistant {
+﻿.add-on-assistant {
   display: grid;
   gap: 12px;
   margin-bottom: 16px;
   padding: 14px;
-  border: 1px solid #e5d49f;
+  border: 1px solid #e4ebe4;
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(255, 250, 240, 0.98), rgba(247, 251, 248, 0.96));
-  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.08);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .add-on-assistant__header {
@@ -29,6 +28,7 @@
 
 .add-on-assistant__target {
   flex: 0 0 auto;
+  max-width: 100%;
   padding: 4px 9px;
   border-radius: 999px;
   background: #124734;
@@ -36,11 +36,29 @@
   font-size: 12px;
   font-weight: 800;
   line-height: 18px;
+  overflow-wrap: anywhere;
 }
 
 .add-on-assistant__list {
   display: grid;
   gap: 8px;
+}
+
+.add-on-assistant__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.add-on-assistant__badges span {
+  padding: 3px 8px;
+  border: 1px solid #dce9df;
+  border-radius: 999px;
+  background: #f7fbf8;
+  color: #124734;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
 }
 
 .add-on-assistant__item {
@@ -49,7 +67,7 @@
   gap: 10px;
   align-items: center;
   padding: 9px;
-  border: 1px solid #f4ead2;
+  border: 1px solid #e4ebe4;
   border-radius: 8px;
   background: #fff;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
@@ -57,7 +75,7 @@
 
 .add-on-assistant__item:hover,
 .add-on-assistant__item:focus-within {
-  border-color: #d9c47f;
+  border-color: #124734;
   box-shadow: 0 8px 18px rgba(18, 71, 52, 0.1);
   transform: translateY(-1px);
 }
@@ -68,7 +86,7 @@
   display: block;
   border-radius: 6px;
   object-fit: contain;
-  background: #fffaf0;
+  background: #f8fcf9;
 }
 
 .add-on-assistant__body {
@@ -116,6 +134,12 @@
   font-weight: 700;
 }
 
+.add-on-assistant .ant-btn > span:not(.anticon) {
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+  white-space: normal;
+}
+
 @media (max-width: 520px) {
   .add-on-assistant {
     padding: 12px;
@@ -140,5 +164,6 @@
 
   .add-on-assistant__item .ant-btn {
     grid-column: 1 / -1;
+    min-height: 40px;
   }
 }

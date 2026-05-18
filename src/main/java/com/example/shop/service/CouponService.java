@@ -8,6 +8,7 @@ import com.example.shop.entity.UserCoupon;
 import com.example.shop.repository.CouponRepository;
 import com.example.shop.repository.UserCouponMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,9 +40,7 @@ public class CouponService {
     }
 
     public List<Coupon> findPublicActive() {
-        return couponRepository.findByScopeAndStatusOrderByIdDesc(PUBLIC, "ACTIVE").stream()
-                .filter(this::isClaimableNow)
-                .collect(Collectors.toList());
+        return couponRepository.findClaimableByScopeAndStatus(PUBLIC, "ACTIVE", LocalDateTime.now());
     }
 
     public List<UserCoupon> findUserCoupons(Long userId) {
@@ -114,7 +113,12 @@ public class CouponService {
         userCoupon.setCouponId(couponId);
         userCoupon.setStatus(UNUSED);
         userCoupon.setClaimedAt(LocalDateTime.now());
-        userCouponMapper.insert(userCoupon);
+        try {
+            userCouponMapper.insert(userCoupon);
+        } catch (DuplicateKeyException e) {
+            couponRepository.decrementClaimedQuantity(couponId, 1);
+            return userCouponMapper.findByCouponIdAndUserId(couponId, userId);
+        }
         return userCouponMapper.findById(userCoupon.getId());
     }
 
@@ -136,8 +140,12 @@ public class CouponService {
             userCoupon.setCouponId(couponId);
             userCoupon.setStatus(UNUSED);
             userCoupon.setClaimedAt(LocalDateTime.now());
-            userCouponMapper.insert(userCoupon);
-            granted++;
+            try {
+                userCouponMapper.insert(userCoupon);
+                granted++;
+            } catch (DuplicateKeyException e) {
+                couponRepository.decrementClaimedQuantity(couponId, 1);
+            }
         }
         return granted;
     }
@@ -226,7 +234,7 @@ public class CouponService {
         if (FULL_REDUCTION.equals(coupon.getCouponType())) {
             discount = defaultMoney(coupon.getReductionAmount());
         } else if (DISCOUNT.equals(coupon.getCouponType())) {
-            int percent = coupon.getDiscountPercent() == null ? 100 : coupon.getDiscountPercent();
+            int percent = coupon.getDiscountPercent() == null ? 0 : coupon.getDiscountPercent();
             discount = subtotal.multiply(BigDecimal.valueOf(100L - percent))
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
             if (coupon.getMaxDiscountAmount() != null && coupon.getMaxDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
@@ -249,18 +257,9 @@ public class CouponService {
         if (coupon.getEndAt() != null && now.isAfter(coupon.getEndAt())) {
             throw new IllegalStateException("Coupon has expired");
         }
-        if (coupon.getTotalQuantity() != null && coupon.getClaimedQuantity() != null
-                && coupon.getClaimedQuantity() >= coupon.getTotalQuantity()) {
+        if (coupon.getTotalQuantity() != null
+                && (coupon.getTotalQuantity() <= 0 || Math.max(0, coupon.getClaimedQuantity() == null ? 0 : coupon.getClaimedQuantity()) >= coupon.getTotalQuantity())) {
             throw new IllegalStateException("Coupon is out of stock");
-        }
-    }
-
-    private boolean isClaimableNow(Coupon coupon) {
-        try {
-            ensureClaimable(coupon);
-            return true;
-        } catch (IllegalStateException e) {
-            return false;
         }
     }
 

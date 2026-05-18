@@ -16,12 +16,12 @@ public class PageController {
 
     @GetMapping("/home/products")
     public ResponseEntity<List<Product>> getHomeProducts() {
-        return ResponseEntity.ok(productService.findAll());
+        return ResponseEntity.ok(productService.findPublicProducts());
     }
 
     @GetMapping("/home/products/{id}")
     public ResponseEntity<Product> getHomeProductById(@PathVariable Long id) {
-        return productService.findById(id)
+        return productService.findPublicById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

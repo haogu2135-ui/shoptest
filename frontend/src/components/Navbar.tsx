@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge, Dropdown, Input, Select } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -22,6 +22,7 @@ import {
 import { adminApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { Language, useLanguage } from '../i18n';
 import { CurrencyCode, markets } from '../utils/market';
+import { dispatchDomEvent } from '../utils/domEvents';
 import { useMarket } from '../hooks/useMarket';
 import { getGuestCartItems } from '../utils/guestCart';
 import { readCompareProductIds } from '../utils/productCompare';
@@ -30,19 +31,27 @@ import { readStockAlerts } from '../utils/stockAlerts';
 import './Navbar.css';
 
 const { Search } = Input;
+const NAV_SEARCH_MAX_LENGTH = 80;
+
+const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isPathActive = (paths: string[]) => paths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
+  const isPathActive = useCallback(
+    (paths: string[]) => paths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`)),
+    [location.pathname],
+  );
   const isProductsActive = location.pathname === '/products' || location.pathname.startsWith('/products/');
-  const navSearchParams = new URLSearchParams(location.search);
+  const navSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const activeProductKeyword = (navSearchParams.get('keyword') || '').toLowerCase();
   const isDealsActive = isProductsActive && navSearchParams.get('discount') === 'true';
   const isSmartDevicesActive = isProductsActive && navSearchParams.get('collection') === 'smart-devices';
-  const isProductKeywordActive = (...terms: string[]) => isProductsActive && terms.some((term) => activeProductKeyword.includes(term));
+  const isProductKeywordActive = useCallback(
+    (...terms: string[]) => isProductsActive && terms.some((term) => activeProductKeyword.includes(term)),
+    [activeProductKeyword, isProductsActive],
+  );
   const token = localStorage.getItem('token');
-  const userId = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
   const [navRole, setNavRole] = useState(localStorage.getItem('role') || '');
   const [adminPath, setAdminPath] = useState(localStorage.getItem('adminDefaultPath') || '/admin');
@@ -76,7 +85,7 @@ const Navbar: React.FC = () => {
   );
 
   const openSupport = () => {
-    window.dispatchEvent(new Event('shop:open-support'));
+    dispatchDomEvent('shop:open-support');
   };
 
   useEffect(() => {
@@ -134,12 +143,12 @@ const Navbar: React.FC = () => {
         setAlertCount(0);
         return;
       }
-      Promise.allSettled(alerts.map((alert) => productApi.getById(alert.productId)))
-        .then((responses) => {
+      const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
+      productApi.getByIds(productIds)
+        .then((response) => {
           if (disposed) return;
-          const readyCount = responses.filter((result) => {
-            if (result.status !== 'fulfilled') return false;
-            const stock = result.value.data.stock;
+          const readyCount = response.data.filter((product) => {
+            const stock = product.stock;
             return stock === undefined || stock > 0;
           }).length;
           setAlertCount(readyCount);
@@ -153,23 +162,26 @@ const Navbar: React.FC = () => {
       setCartCount(count);
     };
     const refreshCartCount = () => {
-      if (token && userId) {
-        cartApi.getItems(Number(userId))
+      if (token) {
+        cartApi.getItems(0)
           .then((res) => {
+            if (disposed) return;
             const count = res.data.reduce((sum: number, item: any) => sum + item.quantity, 0);
             setCartCount(count);
           })
-          .catch(() => setCartCount(0));
+          .catch(() => {
+            if (!disposed) setCartCount(0);
+          });
       } else {
         refreshGuestCartCount();
       }
     };
     const refreshUnreadCount = () => {
-      if (!token || !userId) {
+      if (!token) {
         setUnreadCount(0);
         return;
       }
-      notificationApi.getUnreadCount(Number(userId))
+      notificationApi.getUnreadCount()
         .then((res) => {
           if (!disposed) setUnreadCount(res.data.count);
         })
@@ -178,11 +190,11 @@ const Navbar: React.FC = () => {
         });
     };
     const refreshWishlistCount = () => {
-      if (!token || !userId) {
+      if (!token) {
         setWishlistCount(0);
         return;
       }
-      wishlistApi.getCount(Number(userId))
+      wishlistApi.getCount(0)
         .then((res) => {
           if (!disposed) setWishlistCount(res.data.count);
         })
@@ -191,11 +203,11 @@ const Navbar: React.FC = () => {
         });
     };
     const refreshCouponCount = () => {
-      if (!token || !userId) {
+      if (!token) {
         setCouponCount(0);
         return;
       }
-      couponApi.getAvailableByUser(Number(userId))
+      couponApi.getAvailableByUser(0)
         .then((res) => {
           if (!disposed) setCouponCount(res.data.length);
         })
@@ -231,7 +243,7 @@ const Navbar: React.FC = () => {
       window.removeEventListener('shop:coupons-updated', refreshCouponCount);
       window.removeEventListener('storage', refreshLocalCountsFromStorage);
     };
-  }, [token, userId, location.pathname]);
+  }, [token]);
 
   const handleLogout = () => {
     userApi.logout().catch(() => undefined);
@@ -245,30 +257,80 @@ const Navbar: React.FC = () => {
   };
 
   const handleSearch = (value: string) => {
-    if (value.trim()) {
-      navigate(`/products?keyword=${encodeURIComponent(value.trim())}`);
+    const keyword = normalizeNavKeyword(value);
+    if (keyword) {
+      navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
     }
   };
 
   const searchBySuggestion = (key: string) => {
-    const keyword = t(key);
-    navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
+    const keyword = normalizeNavKeyword(t(key));
+    if (keyword) navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
   };
 
   const searchByKeyword = (keyword: string) => {
-    navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
+    const normalizedKeyword = normalizeNavKeyword(keyword);
+    if (normalizedKeyword) navigate(`/products?keyword=${encodeURIComponent(normalizedKeyword)}`);
   };
 
   const guestActionItems = [
     { key: 'register', label: t('nav.register'), to: '/register', primary: true },
     { key: 'login', label: t('nav.login'), to: '/login', primary: false },
   ];
+  const petNavItems = [
+    {
+      key: 'dog',
+      label: t('nav.petNav.dog'),
+      active: isProductKeywordActive('dog', 'puppy'),
+      children: [
+        { key: 'dog-toys', label: t('nav.petNav.dogToys'), keyword: 'dog toys' },
+        { key: 'dog-walking', label: t('nav.petNav.dogWalking'), keyword: 'dog leash' },
+        { key: 'dog-beds', label: t('nav.petNav.dogBeds'), keyword: 'dog bed' },
+      ],
+    },
+    {
+      key: 'cat',
+      label: t('nav.petNav.cat'),
+      active: isProductKeywordActive('cat', 'kitten'),
+      children: [
+        { key: 'cat-toys', label: t('nav.petNav.catToys'), keyword: 'cat toys' },
+        { key: 'cat-sleeping', label: t('nav.petNav.catBeds'), keyword: 'cat bed' },
+        { key: 'cat-smart', label: t('nav.petNav.catSmart'), to: '/products?collection=smart-devices&keyword=cat' },
+      ],
+    },
+    { key: 'small-pets', label: t('nav.petNav.smallPets'), active: isProductKeywordActive('small pets'), keyword: 'small pets' },
+    { key: 'walking', label: t('nav.petNav.walking'), active: isProductKeywordActive('walking'), keyword: 'walking' },
+    { key: 'sleeping', label: t('nav.petNav.sleeping'), active: isProductKeywordActive('sleeping'), keyword: 'sleeping' },
+    { key: 'smart-devices', label: t('nav.petNav.smartDevices'), active: isSmartDevicesActive, to: '/products?collection=smart-devices' },
+    { key: 'pet-finder', label: t('nav.petFinder'), active: isPathActive(['/pet-finder']), to: '/pet-finder' },
+    { key: 'pet-gallery', label: t('nav.petGallery'), active: isPathActive(['/pet-gallery']), to: '/pet-gallery' },
+  ];
+
+  const renderPetNavButton = (item: typeof petNavItems[number]) => (
+    <button
+      type="button"
+      aria-current={item.active ? 'page' : undefined}
+      className={item.active ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}
+      onClick={() => {
+        if ('to' in item && item.to) {
+          navigate(item.to);
+          return;
+        }
+        if ('keyword' in item && item.keyword) {
+          searchByKeyword(item.keyword);
+        }
+      }}
+    >
+      {item.label}
+    </button>
+  );
 
   return (
-    <header className="shop-nav">
+    <header className={`shop-nav shop-nav--${language}`}>
       <div className="shop-nav__announcement">
         <div className="shop-nav__ticker">
           <span>{t('nav.freeShippingOver', { amount: formatMoney(market.freeShippingThreshold) })}</span>
+          <span className="shop-nav__tickerAd">{t('nav.highlightDeal')}</span>
           <span>{t('nav.springSale')}</span>
           <span>{t('nav.easyReturns')}</span>
         </div>
@@ -291,11 +353,11 @@ const Navbar: React.FC = () => {
               size="small"
               value={language}
               onChange={(value) => setLanguage(value as Language)}
-              popupClassName="shop-nav__select-popup"
+              classNames={{ popup: { root: 'shop-nav__select-popup' } }}
               options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
             <Select
-              aria-label="Currency"
+              aria-label={t('nav.currency')}
               className="shop-nav__currency"
               size="small"
               value={currency}
@@ -303,7 +365,7 @@ const Navbar: React.FC = () => {
                 const nextCurrency = value as CurrencyCode;
                 setCurrency(nextCurrency);
               }}
-              popupClassName="shop-nav__select-popup"
+              classNames={{ popup: { root: 'shop-nav__select-popup' } }}
               options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
             {token ? (
@@ -337,7 +399,7 @@ const Navbar: React.FC = () => {
             <div className="shop-nav__searchShell">
               <div className="shop-nav__searchIntro">
                 <strong>{t('home.heroTitle')}</strong>
-                <span>{navHighlights.join(' • ')}</span>
+                <span>{navHighlights.join(' / ')}</span>
               </div>
               <div className="shop-nav__searchBar">
                 <Search
@@ -367,16 +429,16 @@ const Navbar: React.FC = () => {
                 size="small"
                 value={language}
                 onChange={(value) => setLanguage(value as Language)}
-                popupClassName="shop-nav__select-popup"
+                classNames={{ popup: { root: 'shop-nav__select-popup' } }}
                 options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
               <Select
-                aria-label="Currency"
+                aria-label={t('nav.currency')}
                 className="shop-nav__currency"
                 size="small"
                 value={currency}
                 onChange={(value) => setCurrency(value as CurrencyCode)}
-                popupClassName="shop-nav__select-popup"
+                classNames={{ popup: { root: 'shop-nav__select-popup' } }}
                 options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
               {token ? (
@@ -387,35 +449,38 @@ const Navbar: React.FC = () => {
             </div>
           </div>
 
-          <nav className="shop-nav__mega" aria-label="Pet shopping navigation">
-            <Dropdown
-              menu={{
-                items: [
-                  { key: 'dog-toys', label: <button type="button" onClick={() => searchByKeyword('dog toys')}>{t('nav.petNav.dogToys')}</button> },
-                  { key: 'dog-walking', label: <button type="button" onClick={() => searchByKeyword('dog leash')}>{t('nav.petNav.dogWalking')}</button> },
-                  { key: 'dog-beds', label: <button type="button" onClick={() => searchByKeyword('dog bed')}>{t('nav.petNav.dogBeds')}</button> },
-                ],
-              }}
-            >
-              <button type="button" className={isProductKeywordActive('dog', 'puppy') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}>{t('nav.petNav.dog')}</button>
-            </Dropdown>
-            <Dropdown
-              menu={{
-                items: [
-                  { key: 'cat-toys', label: <button type="button" onClick={() => searchByKeyword('cat toys')}>{t('nav.petNav.catToys')}</button> },
-                  { key: 'cat-sleeping', label: <button type="button" onClick={() => searchByKeyword('cat bed')}>{t('nav.petNav.catBeds')}</button> },
-                  { key: 'cat-smart', label: <button type="button" onClick={() => navigate('/products?collection=smart-devices&keyword=cat')}>{t('nav.petNav.catSmart')}</button> },
-                ],
-              }}
-            >
-              <button type="button" className={isProductKeywordActive('cat', 'kitten') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}>{t('nav.petNav.cat')}</button>
-            </Dropdown>
-            <button type="button" className={isProductKeywordActive('small pets') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('small pets')}>{t('nav.petNav.smallPets')}</button>
-            <button type="button" className={isProductKeywordActive('walking') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('walking')}>{t('nav.petNav.walking')}</button>
-            <button type="button" className={isProductKeywordActive('sleeping') ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => searchByKeyword('sleeping')}>{t('nav.petNav.sleeping')}</button>
-            <button type="button" className={isSmartDevicesActive ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/products?collection=smart-devices')}>{t('nav.petNav.smartDevices')}</button>
-            <button type="button" className={isPathActive(['/pet-finder']) ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/pet-finder')}>{t('nav.petFinder')}</button>
-            <button type="button" className={isPathActive(['/pet-gallery']) ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'} onClick={() => navigate('/pet-gallery')}>{t('nav.petGallery')}</button>
+          <nav className="shop-nav__mega" aria-label={t('home.categories')}>
+            {petNavItems.map((item) => (
+              'children' in item && item.children ? (
+                <Dropdown
+                  key={item.key}
+                  menu={{
+                    items: item.children.map((child) => ({
+                      key: child.key,
+                      label: (
+                        <button
+                          type="button"
+                          className="shop-nav__menu-action"
+                          onClick={() => {
+                            if ('to' in child && child.to) {
+                              navigate(child.to);
+                              return;
+                            }
+                            if ('keyword' in child && child.keyword) {
+                              searchByKeyword(child.keyword);
+                            }
+                          }}
+                        >
+                          {child.label}
+                        </button>
+                      ),
+                    })),
+                  }}
+                >
+                  {renderPetNavButton(item)}
+                </Dropdown>
+              ) : renderPetNavButton(item)
+            ))}
           </nav>
 
           <div className="shop-nav__actions">
@@ -455,7 +520,7 @@ const Navbar: React.FC = () => {
                     onClick: () => setLanguage(item.value as Language),
                   })),
                   { type: 'divider' },
-                  { key: 'currency-title', label: 'Currency', disabled: true },
+                  { key: 'currency-title', label: t('nav.currency'), disabled: true },
                   ...currencyOptions.map((item) => ({
                     key: `currency-${item.value}`,
                     label: renderCurrentMenuLabel(currency === item.value, item.label),
@@ -464,7 +529,7 @@ const Navbar: React.FC = () => {
                 ],
               }}
             >
-              <button type="button" aria-label={`${t('nav.language')} / Currency`}>
+              <button type="button" aria-label={`${t('nav.language')} / ${t('nav.currency')}`}>
                 <GlobalOutlined />
               </button>
             </Dropdown>
@@ -495,13 +560,13 @@ const Navbar: React.FC = () => {
                     ],
                   }}
                 >
-                  <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label="More">
+                  <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={t('nav.more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <EllipsisOutlined />
                     </Badge>
                   </button>
                 </Dropdown>
-                <button onClick={() => window.dispatchEvent(new Event('shop:open-cart'))} aria-label={t('nav.ariaCart')}>
+                <button onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
                   <Badge count={cartCount} size="small">
                     <ShoppingCartOutlined />
                   </Badge>
@@ -529,13 +594,13 @@ const Navbar: React.FC = () => {
                     ],
                   }}
                 >
-                  <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label="More">
+                  <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={t('nav.more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <EllipsisOutlined />
                     </Badge>
                   </button>
                 </Dropdown>
-                <button onClick={() => window.dispatchEvent(new Event('shop:open-cart'))} aria-label={t('nav.ariaCart')}>
+                <button onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
                   <Badge count={cartCount} size="small">
                     <ShoppingCartOutlined />
                   </Badge>

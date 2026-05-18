@@ -12,9 +12,11 @@ import {
   UserAddOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { apiBaseUrl, petGalleryApi } from '../api';
+import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
 import type { PetGalleryPhoto, PetGalleryQuota } from '../types';
+import { resolveApiAssetUrl } from '../utils/mediaAssets';
+import { getApiErrorMessage } from '../utils/apiError';
 import './PetGallery.css';
 
 const { Paragraph, Text, Title } = Typography;
@@ -52,26 +54,19 @@ const readLocalLikes = () => {
 };
 
 const writeLocalLikes = (likes: string[]) => {
-  localStorage.setItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(likes))));
+  try {
+    localStorage.setItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(likes))));
+  } catch {
+    // Keep the gallery usable when browser storage is unavailable.
+  }
 };
 
-const resolvePhotoUrl = (imageUrl: string) => {
-  if (!imageUrl) return petGalleryImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const resolvePhotoUrl = (imageUrl: string) => resolveApiAssetUrl(imageUrl, petGalleryImageFallback);
 
 const usePetGalleryImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
   if (event.currentTarget.src !== petGalleryImageFallback) {
     event.currentTarget.src = petGalleryImageFallback;
   }
-};
-
-const getApiErrorMessage = (error: unknown, fallback: string) => {
-  const responseMessage = (error as { response?: { data?: { error?: string; message?: string } } }).response?.data;
-  return responseMessage?.error || responseMessage?.message || fallback;
 };
 
 const PetGallery: React.FC = () => {
@@ -86,8 +81,7 @@ const PetGallery: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
 
-  const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-  const currentUserId = Number(localStorage.getItem('userId') || 0);
+  const isAuthenticated = Boolean(localStorage.getItem('token'));
 
   const refreshGallery = useCallback(async (force = false) => {
     try {
@@ -113,18 +107,15 @@ const PetGallery: React.FC = () => {
   }, [refreshGallery]);
 
   const items = useMemo<GalleryItem[]>(() => {
-    const apiItems = photos.map((photo) => {
-      const source = photo.source || 'USER_UPLOAD';
-      return {
-        key: `photo-${photo.id}`,
-        image: resolvePhotoUrl(photo.imageUrl),
-        label: `@${photo.username || 'pet_parent'}`,
-        likeCount: photo.likeCount || 0,
-        likedByMe: Boolean(photo.likedByMe),
-        canDelete: Boolean(photo.canDelete || (currentUserId && photo.userId === currentUserId && source === 'USER_UPLOAD')),
-        photo,
-      };
-    });
+    const apiItems = photos.map((photo) => ({
+      key: `photo-${photo.id}`,
+      image: resolvePhotoUrl(photo.imageUrl),
+      label: `@${photo.username || 'pet_parent'}`,
+      likeCount: photo.likeCount || 0,
+      likedByMe: Boolean(photo.likedByMe),
+      canDelete: Boolean(photo.canDelete),
+      photo,
+    }));
     const existingImages = new Set(apiItems.map((item) => item.image));
     const existingLabels = new Set(apiItems.map((item) => item.label.toLowerCase()));
     const localItems = fallbackPhotos
@@ -136,7 +127,7 @@ const PetGallery: React.FC = () => {
         canDelete: false,
       }));
     return [...apiItems, ...localItems].sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label));
-  }, [currentUserId, localLikes, photos]);
+  }, [localLikes, photos]);
 
   const userUploadCount = photos.filter((photo) => photo.source !== 'SEED').length;
   const remainingUploads = quota ? Math.max(0, quota.remaining) : 3;
@@ -218,7 +209,7 @@ const PetGallery: React.FC = () => {
       message.success(t('home.petUgcUploadSuccess'));
       await refreshGallery(true);
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcUploadFailed')));
+      message.error(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language));
     } finally {
       setUploading(false);
     }
@@ -245,7 +236,7 @@ const PetGallery: React.FC = () => {
       setPhotos((current) => current.map((photo) => photo.id === response.data.id ? response.data : photo));
       message.success(t('home.petUgcLiked'));
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcLikeFailed')));
+      message.error(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language));
     }
   };
 
@@ -256,12 +247,12 @@ const PetGallery: React.FC = () => {
       message.success(t('home.petUgcDeleted'));
       await refreshGallery(true);
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcDeleteFailed')));
+      message.error(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language));
     }
   };
 
   return (
-    <main className="pet-gallery-page">
+    <main className={`pet-gallery-page pet-gallery-page--${language}`}>
       <section className="pet-gallery-hero">
         <div className="pet-gallery-hero__copy">
           <Text className="pet-gallery-hero__eyebrow">{t('pages.petGallery.eyebrow')}</Text>
@@ -457,7 +448,7 @@ const PetGallery: React.FC = () => {
         centered
         width={760}
         className="pet-gallery-preview"
-        destroyOnClose
+        destroyOnHidden
         onCancel={() => setPreviewItem(null)}
       >
         {activePreviewItem ? (

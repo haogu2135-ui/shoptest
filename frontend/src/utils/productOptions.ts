@@ -5,9 +5,11 @@ export type ProductOptionGroup = {
   values: string[];
 };
 
+const OPTION_VALUE_DELIMITER = /[,，、;\n]/;
+
 const splitOptionValues = (value: unknown) =>
   String(value || '')
-    .split(',')
+    .split(OPTION_VALUE_DELIMITER)
     .map((item) => item.trim())
     .filter(Boolean);
 
@@ -16,7 +18,7 @@ const normalizeOptionValues = (values: unknown[]) =>
 
 const parseVariantOptionText = (value: unknown): Record<string, string> =>
   String(value || '')
-    .split(',')
+    .split(OPTION_VALUE_DELIMITER)
     .reduce((result: Record<string, string>, item) => {
       const [rawKey, ...rawValue] = item.split('=');
       const key = String(rawKey || '').trim();
@@ -29,6 +31,7 @@ const normalizeVariantOptions = (variant: any): Record<string, string> => {
   if (variant?.options && typeof variant.options === 'object' && !Array.isArray(variant.options)) {
     return Object.entries(variant.options).reduce((result: Record<string, string>, [key, value]) => {
       const normalizedKey = String(key || '').trim();
+      if (value && typeof value === 'object') return result;
       const normalizedValue = String(value || '').trim();
       if (normalizedKey && normalizedValue) result[normalizedKey] = normalizedValue;
       return result;
@@ -65,7 +68,7 @@ export const getProductVariants = (product?: Partial<Product> | null): ProductVa
         sku: variant?.sku ? String(variant.sku).trim() : undefined,
         options: normalizeVariantOptions(variant),
         price: Number(variant?.price || 0),
-        stock: Number.isFinite(Number(variant?.stock)) ? Number(variant.stock) : undefined,
+        stock: Number.isFinite(Number(variant?.stock)) ? Math.max(0, Math.floor(Number(variant.stock))) : undefined,
         imageUrl: variant?.imageUrl ? String(variant.imageUrl).trim() : undefined,
       }))
       .filter((variant) => Object.keys(variant.options).length > 0 && Number.isFinite(variant.price) && variant.price > 0);

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Cascader, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Tabs, Tag, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, PlusOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { addressApi, apiBaseUrl, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
+import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { Order, OrderItem, Payment, PetProfile, User, UserAddress } from '../types';
 import { findRegionPath, regionData } from '../regionData';
 import { useLanguage } from '../i18n';
@@ -13,18 +13,13 @@ import dayjs from 'dayjs';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { navigateToSafeUrl } from '../utils/safeUrl';
 import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { dispatchDomEvent } from '../utils/domEvents';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 
 const { Title, Text } = Typography;
-const orderImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveOrderImage = (imageUrl?: string) => {
-  if (!imageUrl) return orderImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const orderImageFallback = productImageFallback;
+const resolveOrderImage = resolveProductImage;
 
 const useImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
   if (event.currentTarget.src !== orderImageFallback) {
@@ -129,10 +124,8 @@ const Profile: React.FC = () => {
   }, [t]);
 
   const fetchOrders = useCallback(async () => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
     try {
-      const response = await orderApi.getByUser(Number(userId));
+      const response = await orderApi.getMine();
       const sortedOrders = sortOrdersNewestFirst(response.data || []);
       setOrders(sortedOrders);
       const itemEntries = await Promise.all(
@@ -152,10 +145,8 @@ const Profile: React.FC = () => {
   }, [t]);
 
   const fetchAddresses = useCallback(async () => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
     try {
-      const response = await addressApi.getByUser(Number(userId));
+      const response = await addressApi.getByUser(0);
       setAddresses(response.data);
     } catch {
       setAddresses([]);
@@ -225,8 +216,7 @@ const Profile: React.FC = () => {
     try {
       const values = await passwordForm.validateFields();
       setPasswordSubmitting(true);
-      const userId = Number(localStorage.getItem('userId'));
-      await userApi.updatePassword(userId, values.oldPassword, values.newPassword);
+      await userApi.updatePassword(values.oldPassword, values.newPassword);
       message.success(t('pages.profile.passwordChanged'));
       setPasswordModalVisible(false);
       passwordForm.resetFields();
@@ -255,14 +245,13 @@ const Profile: React.FC = () => {
   };
 
   const handleReorder = async () => {
-    const userId = Number(localStorage.getItem('userId'));
-    if (!userId || orderItems.length === 0) return;
+    if (!localStorage.getItem('token') || orderItems.length === 0) return;
     setReordering(true);
     let added = 0;
     try {
       for (const item of orderItems) {
         try {
-          await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
+          await cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs);
           added += item.quantity;
         } catch {
           // Keep trying the remaining order items.
@@ -277,8 +266,8 @@ const Profile: React.FC = () => {
           ? t('pages.profile.reordered', { count: added })
           : t('pages.profile.reorderPartial', { count: added }),
       );
-      window.dispatchEvent(new Event('shop:cart-updated'));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:cart-updated');
+      dispatchDomEvent('shop:open-cart');
     } finally {
       setReordering(false);
     }
@@ -300,9 +289,11 @@ const Profile: React.FC = () => {
       const paymentListRes = await paymentApi.getByOrder(order.id);
       const paymentList = paymentListRes.data;
       const preferredMethod = order.paymentMethod || paymentList[0]?.channel || 'STRIPE';
-      const latestPayment = paymentList[0] || (await paymentApi.create(order.id, preferredMethod)).data;
+      const reusablePayment = paymentList.find((item) => item.status === 'PAID')
+        || paymentList.find((item) => item.status === 'PENDING' && !getPaymentRecoveryState(item).isExpired);
+      const latestPayment = reusablePayment || (await paymentApi.create(order.id, preferredMethod)).data;
       setSelectedOrder(order);
-      setOrderPayments(paymentList.length > 0 ? paymentList : [latestPayment]);
+      setOrderPayments(paymentList.some((item) => item.id === latestPayment.id) ? paymentList : [latestPayment, ...paymentList]);
       setSelectedPayment(latestPayment);
       setSelectedPaymentMethod(latestPayment.channel || preferredMethod);
       setPaymentModalVisible(true);
@@ -409,22 +400,21 @@ const Profile: React.FC = () => {
   };
 
   const openSupport = () => {
-    window.dispatchEvent(new Event('shop:open-support'));
+    dispatchDomEvent('shop:open-support');
   };
 
   const handleSaveAddress = async () => {
     try {
       const values = await addressForm.validateFields();
       setAddressSubmitting(true);
-      const userId = Number(localStorage.getItem('userId'));
       const regionStr = values.region ? values.region.join(' ') : '';
       const fullAddress = `${regionStr} ${values.detail || ''}`.trim();
       const payload = { recipientName: values.recipientName, phone: values.phone, address: fullAddress };
       if (editingAddress) {
-        await addressApi.update(editingAddress.id, { ...payload, userId });
+        await addressApi.update(editingAddress.id, payload);
         message.success(t('pages.profile.addressUpdated'));
       } else {
-        await addressApi.create({ ...payload, userId });
+        await addressApi.create(payload);
         message.success(t('pages.profile.addressAdded'));
       }
       setAddressModalVisible(false);
@@ -450,9 +440,8 @@ const Profile: React.FC = () => {
   };
 
   const handleSetDefault = async (id: number) => {
-    const userId = Number(localStorage.getItem('userId'));
     try {
-      await addressApi.setDefault(id, userId);
+      await addressApi.setDefault(id);
       message.success(t('pages.profile.defaultSet'));
       fetchAddresses();
     } catch {
@@ -769,7 +758,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="profile-page">
+    <div className={`profile-page profile-page--${language}`}>
       <div className="profile-overview">
         <div className="profile-overview__copy">
           <Text className="profile-overview__eyebrow">{t('pages.profile.title')}</Text>

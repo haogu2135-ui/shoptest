@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Cascader, Divider, Empty, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SafetyCertificateOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, RollbackOutlined, SafetyCertificateOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { addressApi, apiBaseUrl, cartApi, couponApi, orderApi, paymentApi } from '../api';
+import { addressApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
 import type { CartItem, CouponQuote, Order, Payment, PaymentChannel, Product, UserAddress, UserCoupon } from '../types';
 import { regionData } from '../regionData';
 import { useLanguage } from '../i18n';
-import { createPaymentMethodDetails, createPaymentMethodOptions, fallbackPaymentChannels, paymentMethodLabel } from '../utils/paymentMethods';
+import { createPaymentMethodDetails, fallbackPaymentChannels, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { addGuestCartItem, getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
@@ -15,46 +15,80 @@ import { conversionConfig, getDeliveryPromise, getLowStockCount } from '../utils
 import { getGiftThreshold, getNearestCartBenefitTarget } from '../utils/cartBenefits';
 import { clearCheckoutCartItemIds, readCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { getApiErrorMessage } from '../utils/apiError';
+import { dispatchDomEvent } from '../utils/domEvents';
 import AddOnAssistant from '../components/AddOnAssistant';
+import { useAppConfig } from '../hooks/useAppConfig';
 import './Checkout.css';
 
 const { Text, Title } = Typography;
-const checkoutImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveCheckoutImage = (imageUrl?: string) => {
-  if (!imageUrl) return checkoutImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const checkoutImageFallback = productImageFallback;
+const resolveCheckoutImage = resolveProductImage;
 
 const isPurchasable = (item: CartItem) =>
   (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock >= item.quantity);
 const getCartItemLowStockCount = (item: CartItem) => getLowStockCount(item.stock, item.quantity);
-const areSameIds = (left: number[], right: number[]) =>
-  left.length === right.length && left.every((id, index) => id === right[index]);
+const areSameIds = (left: number[], right: number[]) => {
+  const leftIds = new Set(left);
+  const rightIds = new Set(right);
+  return leftIds.size === rightIds.size && Array.from(leftIds).every((id) => rightIds.has(id));
+};
+const toSafeMoney = (value: unknown) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+};
+
 const estimateCouponDiscount = (coupon: UserCoupon, cartTotal: number) => {
-  if (cartTotal < Number(coupon.thresholdAmount || 0)) {
+  const safeCartTotal = toSafeMoney(cartTotal);
+  const threshold = toSafeMoney(coupon.thresholdAmount);
+  if (safeCartTotal <= 0 || safeCartTotal < threshold) {
     return 0;
   }
   if (coupon.couponType === 'FULL_REDUCTION') {
-    return Math.min(Number(coupon.reductionAmount || 0), cartTotal);
+    return Math.min(toSafeMoney(coupon.reductionAmount), safeCartTotal);
   }
-  const percent = Number(coupon.discountPercent || 100);
-  const discount = cartTotal * (100 - percent) / 100;
-  const maxDiscount = Number(coupon.maxDiscountAmount || 0);
-  return Math.min(maxDiscount > 0 ? Math.min(discount, maxDiscount) : discount, cartTotal);
+  const rawPercent = Number(coupon.discountPercent ?? 0);
+  const percent = Math.max(0, Math.min(Number.isFinite(rawPercent) ? rawPercent : 0, 100));
+  const discount = safeCartTotal * percent / 100;
+  const maxDiscount = toSafeMoney(coupon.maxDiscountAmount);
+  return Math.min(maxDiscount > 0 ? Math.min(discount, maxDiscount) : discount, safeCartTotal);
 };
 
 const findBestCoupon = (coupons: UserCoupon[], cartTotal: number) =>
   coupons
     .map((coupon) => ({ coupon, discount: estimateCouponDiscount(coupon, cartTotal) }))
-    .filter((item) => item.discount > 0)
-    .sort((left, right) => right.discount - left.discount || Number(left.coupon.thresholdAmount || 0) - Number(right.coupon.thresholdAmount || 0))[0] || null;
+    .filter((item) => Number.isFinite(item.discount) && item.discount > 0)
+    .sort((left, right) => right.discount - left.discount || toSafeMoney(left.coupon.thresholdAmount) - toSafeMoney(right.coupon.thresholdAmount))[0] || null;
 
 const normalizeCheckoutText = (value: unknown, maxLength: number) =>
   String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+
+const getBrowserStorageItem = (storage: Storage | undefined, key: string) => {
+  try {
+    return storage?.getItem(key) || null;
+  } catch {
+    return null;
+  }
+};
+
+const setBrowserStorageItem = (storage: Storage | undefined, key: string, value: string) => {
+  try {
+    storage?.setItem(key, value);
+  } catch {
+    // Checkout should stay usable when browser storage is blocked or full.
+  }
+};
+
+const removeBrowserStorageItem = (storage: Storage | undefined, key: string) => {
+  try {
+    storage?.removeItem(key);
+  } catch {
+    // Checkout cleanup is best-effort in restricted storage modes.
+  }
+};
+
+const CHECKOUT_GUEST_DRAFT_KEY = 'checkoutGuestDraft';
 
 const isLikelyPhone = (value: unknown) =>
   /^[+\d][\d\s().-]{5,38}$/.test(String(value || '').trim());
@@ -96,6 +130,9 @@ const Checkout: React.FC = () => {
   const [guestPaymentEmail, setGuestPaymentEmail] = useState<string | undefined>();
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>('STRIPE');
   const [paymentCreateError, setPaymentCreateError] = useState<string | null>(null);
+  const [paymentSimulationEnabled, setPaymentSimulationEnabled] = useState(false);
+  const [simulatingPayment, setSimulatingPayment] = useState(false);
+  const [cancelingPayment, setCancelingPayment] = useState(false);
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>(fallbackPaymentChannels);
   const [giftCelebrationOpen, setGiftCelebrationOpen] = useState(false);
   const [giftCelebrated, setGiftCelebrated] = useState(false);
@@ -103,19 +140,27 @@ const Checkout: React.FC = () => {
   const [selectedUserCouponId, setSelectedUserCouponId] = useState<number | null>(null);
   const [couponManuallyChanged, setCouponManuallyChanged] = useState(false);
   const [supportPanelOpen, setSupportPanelOpen] = useState(false);
-  const { t } = useLanguage();
+  const couponQuoteSeqRef = React.useRef(0);
+  const { t, language } = useLanguage();
+  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const watchedPaymentMethod = Form.useWatch('paymentMethod', form);
+  const watchedGuestEmail = Form.useWatch('guestEmail', form);
   const watchedRecipientName = Form.useWatch('recipientName', form);
   const watchedPhone = Form.useWatch('phone', form);
+  const watchedRegion = Form.useWatch('region', form);
   const watchedShippingAddress = Form.useWatch('shippingAddress', form);
-  const paymentOptions = useMemo(() => createPaymentMethodOptions(t, paymentChannels), [paymentChannels, t]);
   const paymentMethodDetails = useMemo(() => createPaymentMethodDetails(paymentChannels), [paymentChannels]);
   const { currency, market, formatMoney } = useMarket();
-  const isGuestCheckout = !localStorage.getItem('token') || !localStorage.getItem('userId');
+  const { config: appConfig } = useAppConfig();
+  const isGuestCheckout = !getBrowserStorageItem(window.localStorage, 'token');
   const recommendedPaymentMethod = useMemo(
     () => getRecommendedPaymentMethod(paymentChannels, currency),
     [currency, paymentChannels],
   );
+
+  useEffect(() => {
+    setPaymentSimulationEnabled(Boolean(appConfig.paymentSimulationEnabled));
+  }, [appConfig.paymentSimulationEnabled]);
 
   useEffect(() => {
     paymentApi.getChannels()
@@ -123,7 +168,7 @@ const Checkout: React.FC = () => {
         const channels = res.data.length > 0 ? res.data : fallbackPaymentChannels;
         setPaymentChannels(channels);
         const current = form.getFieldValue('paymentMethod');
-        const rememberedMethod = sessionStorage.getItem('checkoutPaymentMethod');
+        const rememberedMethod = getBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod');
         const bootstrapCandidate = rememberedMethod || (current && current !== 'STRIPE' ? current : null);
         const nextMethod = resolveCheckoutPaymentMethod(bootstrapCandidate, channels, currency);
         if (nextMethod && nextMethod !== current) {
@@ -131,12 +176,12 @@ const Checkout: React.FC = () => {
         }
       })
       .catch(() => {
-      setPaymentChannels(fallbackPaymentChannels);
-      const current = form.getFieldValue('paymentMethod');
-      const nextMethod = resolveCheckoutPaymentMethod(sessionStorage.getItem('checkoutPaymentMethod'), fallbackPaymentChannels, currency);
-      if (nextMethod && nextMethod !== current) {
-        form.setFieldsValue({ paymentMethod: nextMethod });
-      }
+        setPaymentChannels(fallbackPaymentChannels);
+        const current = form.getFieldValue('paymentMethod');
+        const nextMethod = resolveCheckoutPaymentMethod(getBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod'), fallbackPaymentChannels, currency);
+        if (nextMethod && nextMethod !== current) {
+          form.setFieldsValue({ paymentMethod: nextMethod });
+        }
       });
   }, [currency, form]);
 
@@ -145,9 +190,8 @@ const Checkout: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    if (!token || !userId) {
+    const token = getBrowserStorageItem(window.localStorage, 'token');
+    if (!token) {
       const guestItems = getGuestCartItems().filter((item) => selectedCartItemIds.length === 0 || selectedCartItemIds.includes(item.id));
       const purchasableItems = guestItems.filter(isPurchasable);
       const purchasableIds = purchasableItems.map((item) => item.id);
@@ -157,7 +201,7 @@ const Checkout: React.FC = () => {
       }
       setCartItems(purchasableItems);
       setAddresses([]);
-      const preferredPaymentMethod = sessionStorage.getItem('checkoutPaymentMethod');
+      const preferredPaymentMethod = getBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod');
       if (preferredPaymentMethod) {
         form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(preferredPaymentMethod, paymentChannels, currency) });
       }
@@ -169,8 +213,8 @@ const Checkout: React.FC = () => {
       setLoading(true);
       try {
         const [cartRes, addressRes] = await Promise.all([
-          cartApi.getItems(Number(userId)),
-          addressApi.getByUser(Number(userId)).catch(() => ({ data: [] as UserAddress[] })),
+          cartApi.getItems(0),
+          addressApi.getByUser(0).catch(() => ({ data: [] as UserAddress[] })),
         ]);
         const selectedItems = selectedCartItemIds.length === 0
           ? cartRes.data
@@ -185,7 +229,7 @@ const Checkout: React.FC = () => {
         setAddresses(addressRes.data);
         const defaultAddress = addressRes.data.find((address) => address.isDefault) || addressRes.data[0];
         if (defaultAddress) setSelectedAddressId(defaultAddress.id);
-        const preferredPaymentMethod = sessionStorage.getItem('checkoutPaymentMethod');
+        const preferredPaymentMethod = getBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod');
         if (preferredPaymentMethod) {
           form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(preferredPaymentMethod, paymentChannels, currency) });
         }
@@ -214,21 +258,65 @@ const Checkout: React.FC = () => {
     }
   }, [addresses, form, selectedAddressId]);
 
-  const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  useEffect(() => {
+    if (!isGuestCheckout) {
+      removeBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+      return;
+    }
+    const rawDraft = getBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+    if (!rawDraft) return;
+    try {
+      const draft = JSON.parse(rawDraft);
+      if (draft && typeof draft === 'object') {
+        form.setFieldsValue({
+          guestEmail: normalizeCheckoutText(draft.guestEmail, 120),
+          recipientName: normalizeCheckoutText(draft.recipientName, 80),
+          phone: normalizeCheckoutText(draft.phone, 40),
+          region: Array.isArray(draft.region) ? draft.region : undefined,
+          shippingAddress: normalizeCheckoutText(draft.shippingAddress, 260),
+        });
+      }
+    } catch {
+      removeBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+    }
+  }, [form, isGuestCheckout]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userId = Number(localStorage.getItem('userId') || 0);
-    if (!token || !userId || cartItems.length === 0) {
+    if (!isGuestCheckout) return;
+    const draft = {
+      guestEmail: normalizeCheckoutText(watchedGuestEmail, 120),
+      recipientName: normalizeCheckoutText(watchedRecipientName, 80),
+      phone: normalizeCheckoutText(watchedPhone, 40),
+      region: Array.isArray(watchedRegion) ? watchedRegion : undefined,
+      shippingAddress: normalizeCheckoutText(watchedShippingAddress, 260),
+    };
+    const hasDraft = Object.values(draft).some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value));
+    if (hasDraft) {
+      setBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));
+    } else {
+      removeBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+    }
+  }, [isGuestCheckout, watchedGuestEmail, watchedPhone, watchedRecipientName, watchedRegion, watchedShippingAddress]);
+
+  const cartTotal = cartItems.reduce((sum, item) => {
+    const quantity = Number(item.quantity);
+    return sum + toSafeMoney(item.price) * (Number.isFinite(quantity) ? Math.max(1, Math.floor(quantity)) : 1);
+  }, 0);
+
+  useEffect(() => {
+    const token = getBrowserStorageItem(window.localStorage, 'token');
+    if (!token || cartItems.length === 0) {
       setCouponQuote(null);
       return;
     }
+    const requestSeq = couponQuoteSeqRef.current + 1;
+    couponQuoteSeqRef.current = requestSeq;
     couponApi.quote({
-      userId,
       cartItemIds: cartItems.map((item) => item.id),
       userCouponId: selectedUserCouponId,
     })
       .then((res) => {
+        if (couponQuoteSeqRef.current !== requestSeq) return;
         setCouponQuote(res.data);
         if (!selectedUserCouponId && !couponManuallyChanged) {
           const bestCoupon = conversionConfig.checkout.autoSelectBestCoupon
@@ -241,17 +329,26 @@ const Checkout: React.FC = () => {
         }
       })
       .catch((error) => {
+        if (couponQuoteSeqRef.current !== requestSeq) return;
         if (selectedUserCouponId) {
-          message.error(error?.response?.data?.error || t('pages.checkout.couponUnavailable'));
+          message.error(getApiErrorMessage(error, t('pages.checkout.couponUnavailable'), language));
           setSelectedUserCouponId(null);
         }
       });
-  }, [cartItems, cartTotal, couponManuallyChanged, selectedUserCouponId, t]);
+  }, [cartItems, cartTotal, couponManuallyChanged, language, selectedUserCouponId, t]);
 
-  const guestShippingFee = cartTotal >= market.freeShippingThreshold ? 0 : 30;
-  const shippingFee = couponQuote?.shippingFee ?? (isGuestCheckout ? guestShippingFee : 0);
-  const payableAmount = couponQuote?.payableAmount ?? (cartTotal + shippingFee);
-  const discountAmount = couponQuote?.discountAmount ?? 0;
+  const guestShippingFee = market.freeShippingThreshold > 0 && cartTotal >= market.freeShippingThreshold ? 0 : market.defaultShippingFee;
+  const shippingFee = toSafeMoney(couponQuote?.shippingFee ?? (isGuestCheckout ? guestShippingFee : 0));
+  const payableAmount = Math.max(0, toSafeMoney(couponQuote?.payableAmount ?? (cartTotal + shippingFee)));
+  const discountAmount = Math.min(cartTotal, toSafeMoney(couponQuote?.discountAmount ?? 0));
+  const shippingPolicyText = shippingFee <= 0
+    ? t('pages.checkout.shippingPolicyFreeApplied')
+    : market.freeShippingThreshold > 0
+      ? t('pages.checkout.shippingPolicyStandardWithThreshold', {
+        fee: formatMoney(market.defaultShippingFee),
+        threshold: formatMoney(market.freeShippingThreshold),
+      })
+      : t('pages.checkout.shippingPolicyStandardOnly', { fee: formatMoney(market.defaultShippingFee) });
   const selectedCoupon = useMemo(
     () => couponQuote?.availableCoupons.find((coupon) => coupon.id === selectedUserCouponId),
     [couponQuote?.availableCoupons, selectedUserCouponId],
@@ -289,7 +386,7 @@ const Checkout: React.FC = () => {
           ? Number(coupon.reductionAmount || 0)
           : Math.min(
             Number(coupon.maxDiscountAmount || 0) || threshold,
-            threshold * (100 - Number(coupon.discountPercent || 100)) / 100,
+            threshold * Math.max(0, Math.min(Number(coupon.discountPercent || 0), 100)) / 100,
           );
         return { coupon, gap, estimatedValue };
       })
@@ -361,10 +458,16 @@ const Checkout: React.FC = () => {
     } : null,
   ].filter(Boolean) as Array<{ key: string; icon: React.ReactNode; ready: boolean; title: string; text: string }>;
   const selectedAddress = selectedAddressId === 'new' ? null : addresses.find((address) => address.id === selectedAddressId) || null;
-  const newAddressReady = Boolean(watchedRecipientName && watchedPhone && watchedShippingAddress);
+  const newAddressReady = Boolean(
+    normalizeCheckoutText(watchedRecipientName, 80)
+      && isLikelyPhone(watchedPhone)
+      && Array.isArray(watchedRegion)
+      && watchedRegion.length > 0
+      && normalizeCheckoutText(watchedShippingAddress, 260),
+  );
   const selectedAddressReady = selectedAddressId === 'new'
     ? newAddressReady
-    : Boolean(selectedAddress?.recipientName && selectedAddress?.phone && selectedAddress?.address);
+    : Boolean(selectedAddress?.recipientName && isLikelyPhone(selectedAddress?.phone) && selectedAddress?.address);
   const selectedPaymentDetail = paymentMethodDetails.find((method) => method.value === watchedPaymentMethod);
   const checkoutReadinessItems = [
     {
@@ -411,7 +514,7 @@ const Checkout: React.FC = () => {
   }, []);
   const handleCheckoutNextAction = () => {
     if (!checkoutNextAction) {
-      window.dispatchEvent(new Event('shop:open-support'));
+      dispatchDomEvent('shop:open-support');
       return;
     }
     if (checkoutNextAction.key === 'items') {
@@ -488,7 +591,11 @@ const Checkout: React.FC = () => {
       text: selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault'),
     },
   ];
-  const checkoutSubmitDisabled = submitting || cartItems.length === 0 || cartItems.some((item) => !isPurchasable(item));
+  const checkoutSubmitDisabled = submitting
+    || cartItems.length === 0
+    || cartItems.some((item) => !isPurchasable(item))
+    || !selectedAddressReady
+    || !watchedPaymentMethod;
 
   useEffect(() => {
     if (!giftUnlocked || giftCelebrated) return;
@@ -503,7 +610,7 @@ const Checkout: React.FC = () => {
   const describeCoupon = (coupon: UserCoupon) => {
     const rule = coupon.couponType === 'FULL_REDUCTION'
       ? `${formatMoney(coupon.thresholdAmount)} - ${formatMoney(coupon.reductionAmount)}`
-      : t('pages.checkout.discountPayable', { percent: coupon.discountPercent || 100 }) + (coupon.maxDiscountAmount ? `, ${t('pages.checkout.maxDiscount', { amount: formatMoney(coupon.maxDiscountAmount) })}` : '');
+      : t('pages.checkout.discountPayable', { percent: coupon.discountPercent || 0 }) + (coupon.maxDiscountAmount ? `, ${t('pages.checkout.maxDiscount', { amount: formatMoney(coupon.maxDiscountAmount) })}` : '');
     const threshold = Number(coupon.thresholdAmount || 0);
     if (cartTotal < threshold) {
       return `${coupon.couponName}: ${rule} (${t('pages.checkout.needMore', { amount: formatMoney(threshold - cartTotal) })})`;
@@ -525,15 +632,14 @@ const Checkout: React.FC = () => {
   };
 
   const addSuggestedProduct = async (product: Product) => {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    if (token && userId) {
-      await cartApi.addItem(Number(userId), product.id, 1);
-      const response = await cartApi.getItems(Number(userId));
+    const token = getBrowserStorageItem(window.localStorage, 'token');
+    if (token) {
+      await cartApi.addItem(0, product.id, 1);
+      const response = await cartApi.getItems(0);
       const purchasableItems = response.data.filter(isPurchasable);
       setCartItems(purchasableItems);
       syncCheckoutCartItemIds(purchasableItems);
-      window.dispatchEvent(new Event('shop:cart-updated'));
+      dispatchDomEvent('shop:cart-updated');
       return;
     }
     addGuestCartItem(product, 1);
@@ -543,8 +649,7 @@ const Checkout: React.FC = () => {
   };
 
   const handleSubmit = async (values: any) => {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
+    const token = getBrowserStorageItem(window.localStorage, 'token');
     if (cartItems.length === 0) {
       message.error(t('pages.checkout.emptyCart'));
       return;
@@ -558,9 +663,8 @@ const Checkout: React.FC = () => {
     try {
       const shippingAddress = buildAddress(values);
       const normalizedPaymentMethod = normalizeCheckoutText(values.paymentMethod, 40);
-      const orderRes = token && userId
+      const orderRes = token
         ? await orderApi.checkout({
-            userId: Number(userId),
             cartItemIds: cartItems.map((item) => item.id),
             shippingAddress,
             paymentMethod: normalizedPaymentMethod,
@@ -579,27 +683,28 @@ const Checkout: React.FC = () => {
             })),
           });
       clearCheckoutCartItemIds();
-      sessionStorage.removeItem('checkoutPaymentMethod');
-      if (!token || !userId) {
+      removeBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod');
+      removeBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+      if (!token) {
         removeGuestCartItems(cartItems.map((item) => item.id));
       } else {
-        window.dispatchEvent(new Event('shop:cart-updated'));
+        dispatchDomEvent('shop:cart-updated');
       }
-      window.dispatchEvent(new Event('shop:coupons-updated'));
+      dispatchDomEvent('shop:coupons-updated');
       setCreatedOrder(orderRes.data);
       setPendingPaymentMethod(normalizedPaymentMethod);
-      setGuestPaymentEmail(token && userId ? undefined : normalizeCheckoutText(values.guestEmail, 120).toLowerCase());
+      setGuestPaymentEmail(token ? undefined : normalizeCheckoutText(values.guestEmail, 120).toLowerCase());
       setPaymentCreateError(null);
       let paymentRes;
       try {
         paymentRes = await paymentApi.create(
           orderRes.data.id,
           normalizedPaymentMethod,
-          token && userId ? undefined : normalizeCheckoutText(values.guestEmail, 120).toLowerCase(),
+          token ? undefined : normalizeCheckoutText(values.guestEmail, 120).toLowerCase(),
         );
       } catch (paymentError: any) {
         setPayment(null);
-        setPaymentCreateError(paymentError?.response?.data?.error || t('pages.payment.createFailed'));
+        setPaymentCreateError(getApiErrorMessage(paymentError, t('pages.payment.createFailed'), language));
         message.warning(t('pages.checkout.orderCreatedPaymentPending'));
         return;
       }
@@ -611,7 +716,7 @@ const Checkout: React.FC = () => {
         }
       }
     } catch (error: any) {
-      message.error(error?.response?.data?.error || t('pages.checkout.orderCreateFailed'));
+      message.error(getApiErrorMessage(error, t('pages.checkout.orderCreateFailed'), language));
     } finally {
       setSubmitting(false);
     }
@@ -629,8 +734,9 @@ const Checkout: React.FC = () => {
         message.error(t('pages.payment.failed'));
       }
     } catch (error: any) {
-      setPaymentCreateError(error?.response?.data?.error || t('pages.payment.createFailed'));
-      message.error(error?.response?.data?.error || t('pages.payment.createFailed'));
+      const localizedError = getApiErrorMessage(error, t('pages.payment.createFailed'), language);
+      setPaymentCreateError(localizedError);
+      message.error(localizedError);
     } finally {
       setPaying(false);
     }
@@ -642,36 +748,115 @@ const Checkout: React.FC = () => {
     }
   };
 
+  const simulatePayment = async () => {
+    if (!payment) return;
+    setSimulatingPayment(true);
+    try {
+      const paymentRes = await paymentApi.simulateCallback(payment.id, guestPaymentEmail);
+      setPayment(paymentRes.data);
+      if (createdOrder?.id && getBrowserStorageItem(window.localStorage, 'token')) {
+        const orderRes = await orderApi.getById(createdOrder.id);
+        setCreatedOrder(orderRes.data);
+      } else if (createdOrder) {
+        setCreatedOrder({ ...createdOrder, status: 'PENDING_SHIPMENT' });
+      }
+      message.success(t('pages.checkout.simulatePaymentSuccess'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.checkout.simulatePaymentFailed'), language));
+    } finally {
+      setSimulatingPayment(false);
+    }
+  };
+
+  const restoreSubmittedCartItems = async () => {
+    const token = getBrowserStorageItem(window.localStorage, 'token');
+    if (token) {
+      await Promise.all(cartItems.map((item) =>
+        cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs),
+      ));
+      dispatchDomEvent('shop:cart-updated');
+      return;
+    }
+    cartItems.forEach((item) => {
+      addGuestCartItem({
+        id: item.productId,
+        name: item.productName,
+        imageUrl: item.imageUrl,
+        price: item.price,
+        stock: item.stock,
+        status: item.productStatus || 'ACTIVE',
+      }, item.quantity, item.selectedSpecs, item.price);
+    });
+  };
+
+  const rollbackPendingPayment = () => {
+    if (!createdOrder || createdOrder.status !== 'PENDING_PAYMENT') return;
+    Modal.confirm({
+      title: t('pages.checkout.rollbackPaymentTitle'),
+      content: t('pages.checkout.rollbackPaymentContent'),
+      okText: t('pages.checkout.rollbackPaymentAction'),
+      cancelText: t('common.cancel'),
+      okButtonProps: { danger: true },
+      async onOk() {
+        setCancelingPayment(true);
+        try {
+          await orderApi.cancel(createdOrder.id, guestPaymentEmail);
+          await restoreSubmittedCartItems();
+          setPayment(null);
+          setCreatedOrder(null);
+          setPaymentCreateError(null);
+          message.success(t('pages.checkout.rollbackPaymentSuccess'));
+          navigate('/cart');
+        } catch (error: any) {
+          message.error(getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language));
+        } finally {
+          setCancelingPayment(false);
+        }
+      },
+    });
+  };
+
+  const createdOrderId = createdOrder?.id;
+  const paymentStatus = payment?.status;
+
   useEffect(() => {
-    if (!createdOrder || !payment || payment.status !== 'PENDING') return undefined;
+    if (!createdOrderId || paymentStatus !== 'PENDING') return undefined;
+    const shouldRefreshOrder = Boolean(getBrowserStorageItem(window.localStorage, 'token'));
+    let disposed = false;
     const timer = window.setInterval(async () => {
       try {
-        const [orderRes, paymentRes] = await Promise.all([
-          orderApi.getById(createdOrder.id),
-          paymentApi.getLatestByOrder(createdOrder.id),
-        ]);
-        setCreatedOrder(orderRes.data);
+        const paymentRes = await paymentApi.getLatestByOrder(createdOrderId, shouldRefreshOrder ? undefined : guestPaymentEmail);
+        if (disposed) return;
         setPayment(paymentRes.data);
+        if (shouldRefreshOrder) {
+          const orderRes = await orderApi.getById(createdOrderId);
+          if (disposed) return;
+          setCreatedOrder(orderRes.data);
+        }
       } catch {
         // Keep the submitted-order screen stable while the gateway is still redirecting or polling.
       }
     }, 5000);
-    return () => window.clearInterval(timer);
-  }, [createdOrder, payment]);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [createdOrderId, guestPaymentEmail, paymentStatus]);
 
   if (loading) {
-    return <div className="checkout-page checkout-page--loading"><Spin size="large" /></div>;
+    return <div className={`checkout-page checkout-page--loading checkout-page--${language}`}><Spin size="large" /></div>;
   }
 
   if (createdOrder && !payment) {
     return (
-      <div className="checkout-page checkout-page--result">
+      <div className={`checkout-page checkout-page--result checkout-page--${language}`}>
         <Result
           status="warning"
           title={t('pages.checkout.orderCreatedPaymentPending')}
           subTitle={t('pages.checkout.paymentPendingSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
           extra={[
             <Button type="primary" key="retry" loading={paying} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>,
+            <Button danger key="rollback" icon={<RollbackOutlined />} loading={cancelingPayment} onClick={rollbackPendingPayment}>{t('pages.checkout.rollbackPaymentAction')}</Button>,
             <Button key="profile" onClick={() => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
             <Button key="track" onClick={() => navigate('/track-order')}>{t('pages.orderTracking.title')}</Button>,
             <Button key="home" onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
@@ -695,7 +880,7 @@ const Checkout: React.FC = () => {
           ? 'warning'
           : 'processing';
     return (
-      <div className="checkout-page checkout-page--result">
+      <div className={`checkout-page checkout-page--result checkout-page--${language}`}>
         <Result
           status={paid ? 'success' : 'info'}
           title={paid ? t('pages.checkout.paidTitle') : t('pages.checkout.pendingTitle')}
@@ -743,8 +928,18 @@ const Checkout: React.FC = () => {
           {!paid ? (
             <Space wrap className="checkout-page__paymentRecoveryActions">
               {payment.paymentUrl ? <Button type="primary" onClick={openPaymentUrl}>{t('pages.checkout.openPayment')}</Button> : null}
+              {paymentSimulationEnabled ? (
+                <Button loading={simulatingPayment} onClick={simulatePayment}>
+                  {t('pages.checkout.simulatePay')}
+                </Button>
+              ) : null}
               <Button loading={paying} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>
-              <Button onClick={() => window.dispatchEvent(new Event('shop:open-support'))}>{t('pages.checkout.nextActionSupport')}</Button>
+              {createdOrder.status === 'PENDING_PAYMENT' ? (
+                <Button danger icon={<RollbackOutlined />} loading={cancelingPayment} onClick={rollbackPendingPayment}>
+                  {t('pages.checkout.rollbackPaymentAction')}
+                </Button>
+              ) : null}
+              <Button onClick={() => dispatchDomEvent('shop:open-support')}>{t('pages.checkout.nextActionSupport')}</Button>
             </Space>
           ) : null}
         </Card>
@@ -756,7 +951,7 @@ const Checkout: React.FC = () => {
             <Text>{t('pages.checkout.shippingFee')}: {formatMoney(createdOrder.shippingFee)}</Text>
             <Text>{t('pages.checkout.paymentStatus')}: <Tag color={paid ? 'green' : 'orange'}>{t(`status.${payment.status}`)}</Tag></Text>
             <Text className="checkout-page__paymentUrl">{t('pages.checkout.paymentLink')}: {formatPaymentUrlLabel(payment.paymentUrl)}</Text>
-            {payment.expiresAt && <Text>{t('pages.checkout.paymentExpiresAt')}: {new Date(payment.expiresAt).toLocaleString()}</Text>}
+            {payment.expiresAt && <Text>{t('pages.checkout.paymentExpiresAt')}: {new Date(payment.expiresAt).toLocaleString(dateLocale)}</Text>}
             {payment.transactionId && <Text>{t('pages.checkout.transactionId')}: {payment.transactionId}</Text>}
           </Space>
         </Card>
@@ -766,7 +961,7 @@ const Checkout: React.FC = () => {
 
   if (cartItems.length === 0) {
     return (
-      <div className="checkout-page checkout-page--empty">
+      <div className={`checkout-page checkout-page--empty checkout-page--${language}`}>
         <Empty description={t('pages.checkout.emptySelected')} />
         <Button type="primary" style={{ marginTop: 16 }} onClick={() => navigate('/cart')}>{t('pages.checkout.backCart')}</Button>
       </div>
@@ -774,7 +969,7 @@ const Checkout: React.FC = () => {
   }
 
   return (
-    <div className="checkout-page">
+    <div className={`checkout-page checkout-page--${language}`}>
       <section className="checkout-page__hero">
         <div className="checkout-page__heroContent">
           <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
@@ -823,7 +1018,7 @@ const Checkout: React.FC = () => {
         </div>
       </div>
 
-      <Card title={t('pages.checkout.expressCheckout')} style={{ marginBottom: 16 }}>
+      <Card title={t('pages.checkout.expressCheckout')} className="checkout-page__expressCard">
         <Form form={form} component={false}>
           <Form.Item noStyle shouldUpdate={(prev, next) => prev.paymentMethod !== next.paymentMethod}>
             {({ getFieldValue }) => {
@@ -852,7 +1047,7 @@ const Checkout: React.FC = () => {
             }}
           </Form.Item>
         </Form>
-        <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+        <Text type="secondary" className="checkout-page__expressHint">
           {t('pages.checkout.expressHint')}
         </Text>
       </Card>
@@ -1010,7 +1205,7 @@ const Checkout: React.FC = () => {
         </Card>
       </details>
 
-      <Card title={t('pages.checkout.itemList')} style={{ marginBottom: 16 }} className="checkout-page__itemsCard">
+      <Card title={t('pages.checkout.itemList')} className="checkout-page__itemsCard checkout-page__sectionCard">
         <List
           dataSource={cartItems}
           renderItem={(item) => (
@@ -1056,7 +1251,7 @@ const Checkout: React.FC = () => {
 
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
         {isGuestCheckout ? (
-          <Card title={t('pages.checkout.contact')} style={{ marginBottom: 16 }}>
+          <Card title={t('pages.checkout.contact')} className="checkout-page__sectionCard">
             <Form.Item name="guestEmail" label={t('pages.checkout.email')} rules={[{ required: true, message: t('pages.checkout.emailRequired') }, { type: 'email', message: t('pages.checkout.emailInvalid') }]}>
               <Input placeholder="you@example.com" autoComplete="email" maxLength={120} />
             </Form.Item>
@@ -1064,9 +1259,9 @@ const Checkout: React.FC = () => {
           </Card>
         ) : null}
 
-        <Card id="checkout-address-card" title={t('pages.checkout.address')} style={{ marginBottom: 16 }}>
+        <Card id="checkout-address-card" title={t('pages.checkout.address')} className="checkout-page__sectionCard">
           {addresses.length > 0 && (
-            <Radio.Group value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)} style={{ width: '100%', marginBottom: 16 }}>
+            <Radio.Group value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)} className="checkout-page__addressGroup">
               {addresses.map((address) => (
                 <Radio
                   key={address.id}
@@ -1115,7 +1310,7 @@ const Checkout: React.FC = () => {
           )}
         </Card>
 
-        {!isGuestCheckout ? <Card id="checkout-coupon-card" title={t('pages.checkout.coupon')} style={{ marginBottom: 16 }}>
+        {!isGuestCheckout ? <Card id="checkout-coupon-card" title={t('pages.checkout.coupon')} className="checkout-page__sectionCard">
           <Select
             allowClear
             style={{ width: '100%' }}
@@ -1141,7 +1336,7 @@ const Checkout: React.FC = () => {
             <Alert
               type="success"
               showIcon
-              style={{ marginTop: 12 }}
+              className="checkout-page__couponAlert"
               message={selectedIsBestCoupon
                 ? t('pages.checkout.bestCouponApplied', { name: selectedCoupon.couponName })
                 : t('pages.checkout.couponAutoApplied', { name: selectedCoupon.couponName })}
@@ -1149,22 +1344,24 @@ const Checkout: React.FC = () => {
             />
           ) : null}
           {couponQuote && couponQuote.availableCoupons.length > 0 && !couponQuote.availableCoupons.some((coupon) => calculateCouponDiscount(coupon) > 0) ? (
-            <div style={{ marginTop: 8 }}>
+            <div className="checkout-page__couponRules">
               <Text type="secondary">{t('pages.checkout.couponRulesNotMet')}</Text>
             </div>
           ) : null}
-          <div style={{ marginTop: 12, textAlign: 'right' }}>
+          <div className="checkout-page__couponSummary">
             <div><Text>{t('common.subtotal')}: {formatMoney(cartTotal)}</Text></div>
             {discountAmount > 0 ? <div><Text type="success">{t('pages.checkout.couponDiscount')}: -{formatMoney(discountAmount)}</Text></div> : null}
             <div><Text>{t('pages.checkout.shippingFee')}: {formatMoney(shippingFee)}</Text></div>
-            <div><Text strong style={{ color: '#ee4d2d', fontSize: 22 }}>{t('pages.checkout.payable')}: {formatMoney(payableAmount)}</Text></div>
+            <Text type="secondary" className="checkout-page__shippingPolicy">{shippingPolicyText}</Text>
+            <div><Text strong className="checkout-page__payableTotal">{t('pages.checkout.payable')}: {formatMoney(payableAmount)}</Text></div>
           </div>
         </Card> : (
-          <Card id="checkout-coupon-card" title={t('pages.checkout.orderSummary')} style={{ marginBottom: 16 }}>
-            <div style={{ textAlign: 'right' }}>
+          <Card id="checkout-coupon-card" title={t('pages.checkout.orderSummary')} className="checkout-page__sectionCard">
+            <div className="checkout-page__couponSummary">
               <div><Text>{t('common.subtotal')}: {formatMoney(cartTotal)}</Text></div>
               <div><Text>{t('pages.checkout.shippingFee')}: {formatMoney(shippingFee)}</Text></div>
-              <div><Text strong style={{ color: '#ee4d2d', fontSize: 22 }}>{t('pages.checkout.payable')}: {formatMoney(payableAmount)}</Text></div>
+              <Text type="secondary" className="checkout-page__shippingPolicy">{shippingPolicyText}</Text>
+              <div><Text strong className="checkout-page__payableTotal">{t('pages.checkout.payable')}: {formatMoney(payableAmount)}</Text></div>
             </div>
           </Card>
         )}
@@ -1191,8 +1388,8 @@ const Checkout: React.FC = () => {
               </Text>
             </span>
           </div>
-          <Form.Item name="paymentMethod" label={t('pages.checkout.paymentMethod')} rules={[{ required: true, message: t('pages.checkout.paymentRequired') }]}>
-            <Select options={paymentOptions} />
+          <Form.Item name="paymentMethod" rules={[{ required: true, message: t('pages.checkout.paymentRequired') }]} hidden>
+            <Input />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large">

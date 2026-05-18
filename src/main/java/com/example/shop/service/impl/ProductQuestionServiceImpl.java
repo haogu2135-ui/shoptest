@@ -31,6 +31,10 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductQuestion> getByProductId(Long productId) {
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null || (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus()))) {
+            return List.of();
+        }
         return questionRepository.findByProduct_IdOrderByCreatedAtDesc(productId);
     }
 
@@ -39,6 +43,9 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     public ProductQuestion ask(Long productId, Long userId, String questionText) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+        if (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
+            throw new IllegalStateException("Product is not available");
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         if (questionText == null || questionText.trim().isEmpty()) {

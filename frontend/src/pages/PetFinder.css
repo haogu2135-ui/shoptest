@@ -1,4 +1,4 @@
-.pet-finder-page {
+﻿.pet-finder-page {
   width: min(1200px, calc(100% - 24px));
   margin: 0 auto;
   padding: 24px 0;
@@ -25,10 +25,9 @@
   align-items: center;
   margin-bottom: 18px;
   padding: 16px;
-  border: 1px solid #f0e1cf;
+  border: 1px solid #e4ebe4;
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(255, 248, 237, 0.98), rgba(247, 251, 246, 0.96));
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 72%, #fff7f0 100%);
   box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
@@ -43,7 +42,7 @@
 }
 
 .pet-finder-page__eyebrow {
-  color: #a05a00;
+  color: #124734;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;
@@ -63,15 +62,15 @@
   justify-content: center;
   gap: 6px;
   padding: 12px;
-  border: 1px solid #eadfce;
+  border: 1px solid #e4ebe4;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.84);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .pet-finder-page__signal:hover {
-  border-color: #f7c948;
-  box-shadow: 0 10px 22px rgba(18, 71, 52, 0.1);
+  border-color: #124734;
+  box-shadow: 0 12px 26px rgba(18, 71, 52, 0.12);
   transform: translateY(-1px);
 }
 
@@ -81,23 +80,33 @@
 }
 
 .pet-finder-page__signal strong {
-  color: #2f261d;
+  color: #173f2b;
   font-size: 24px;
   line-height: 1;
 }
 
 .pet-finder-page__signal span {
-  color: #6b6259;
+  color: #627064;
   font-size: 12px;
   line-height: 1.35;
 }
 
 .pet-finder-page__signal.is-ok svg {
-  color: #2f855a;
+  color: #124734;
+}
+
+.pet-finder-page__signal.is-ok {
+  border-color: #d5e8d8;
+  background: #f7fbf8;
 }
 
 .pet-finder-page__signal.is-warm svg {
   color: #d97706;
+}
+
+.pet-finder-page__signal.is-warm {
+  border-color: #ffd8bf;
+  background: #fff7f0;
 }
 
 .pet-finder-page__nextStep {
@@ -110,7 +119,8 @@
   border: 1px solid #d9eadf;
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(232, 244, 255, 0.68));
+    linear-gradient(90deg, rgba(18, 71, 52, 0.1) 0 4px, transparent 4px),
+    #ffffff;
   box-shadow: 0 10px 24px rgba(18, 71, 52, 0.08);
 }
 

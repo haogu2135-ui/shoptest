@@ -229,7 +229,7 @@ public class OrderService {
         if (selectedItems.stream().anyMatch(item -> !userId.equals(item.getUserId()))) {
             throw new IllegalArgumentException("Selected cart items do not belong to this user");
         }
-        Map<Long, Product> productById = loadProductsForCartItems(selectedItems);
+        Map<Long, Product> productById = loadProductsForCartItems(selectedItems, reserveStock);
         for (CartItem item : selectedItems) {
             Product product = productById.get(item.getProductId());
             if (product == null) {
@@ -264,7 +264,9 @@ public class OrderService {
                 .filter(id -> id != null && id > 0)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<Long, Product> productById = productRepository.findAllById(productIds).stream()
+        Map<Long, Product> productById = (reserveStock
+                ? productRepository.findAllByIdForUpdate(productIds)
+                : productRepository.findAllById(productIds)).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
         return items.stream().map(requestItem -> {
             Product product = productById.get(requestItem.getProductId());
@@ -366,6 +368,10 @@ public class OrderService {
     }
 
     private Map<Long, Product> loadProductsForCartItems(List<CartItem> items) {
+        return loadProductsForCartItems(items, false);
+    }
+
+    private Map<Long, Product> loadProductsForCartItems(List<CartItem> items, boolean forUpdate) {
         if (items == null || items.isEmpty()) {
             return Map.of();
         }
@@ -374,7 +380,9 @@ public class OrderService {
                 .filter(id -> id != null && id > 0)
                 .distinct()
                 .collect(Collectors.toList());
-        return productRepository.findAllById(productIds).stream()
+        return (forUpdate
+                ? productRepository.findAllByIdForUpdate(productIds)
+                : productRepository.findAllById(productIds)).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
     }
 
@@ -397,16 +405,21 @@ public class OrderService {
         if (cartItemIds == null || cartItemIds.isEmpty()) {
             throw new IllegalArgumentException("No checkout items selected");
         }
-        List<Long> normalized = cartItemIds.stream()
+        List<Long> positiveIds = cartItemIds.stream()
                 .filter(id -> id != null && id > 0)
-                .distinct()
+                .collect(Collectors.toList());
+        if (positiveIds.size() != cartItemIds.size()) {
+            throw new IllegalArgumentException("Invalid checkout items selected");
+        }
+        if (positiveIds.size() > Math.max(1, maxCheckoutLines)
+                || new HashSet<>(positiveIds).size() != positiveIds.size()) {
+            throw new IllegalArgumentException("Too many checkout items selected");
+        }
+        List<Long> normalized = positiveIds.stream()
                 .limit(Math.max(1, maxCheckoutLines))
                 .collect(Collectors.toList());
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("No checkout items selected");
-        }
-        if (new HashSet<>(normalized).size() != normalized.size() || cartItemIds.size() > maxCheckoutLines) {
-            throw new IllegalArgumentException("Too many checkout items selected");
         }
         return normalized;
     }
@@ -581,6 +594,9 @@ public class OrderService {
         Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
+        }
+        if (!"PENDING_PAYMENT".equals(order.getStatus())) {
+            throw new IllegalStateException("Only pending-payment orders can be cancelled directly. Use refund flow for paid orders.");
         }
         assertNextStatus(order.getStatus(), "CANCELLED");
         int updated = orderRepository.updateStatusIfCurrent(id, order.getStatus(), "CANCELLED");
@@ -826,8 +842,7 @@ public class OrderService {
                 "RETURN_APPROVED", "RETURN_SHIPPED",
                 "RETURN_SHIPPED", "RETURNED"
         );
-        if ("CANCELLED".equals(nextStatus)
-                && ("PENDING_PAYMENT".equals(currentStatus) || "PENDING_SHIPMENT".equals(currentStatus))) {
+        if ("CANCELLED".equals(nextStatus) && "PENDING_PAYMENT".equals(currentStatus)) {
             return;
         }
         if ("REFUNDED".equals(nextStatus)

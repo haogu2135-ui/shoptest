@@ -1,8 +1,10 @@
 package com.example.shop.repository;
 
 import com.example.shop.entity.Product;
+import javax.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +19,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findActiveByCategoryId(@Param("categoryId") Long categoryId, Pageable pageable);
     List<Product> findByCategoryIdIn(List<Long> categoryIds);
     List<Product> findByNameContainingIgnoreCase(String keyword);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.id in :ids")
+    List<Product> findAllByIdForUpdate(@Param("ids") List<Long> ids);
 
     @Modifying
     @Query(value = "update products set stock = stock - ?2, updated_at = current_timestamp where id = ?1 and stock >= ?2",

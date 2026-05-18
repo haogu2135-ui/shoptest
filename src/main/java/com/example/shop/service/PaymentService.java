@@ -6,12 +6,14 @@ import com.example.shop.dto.PaymentCreateRequest;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
 import com.example.shop.repository.PaymentRepository;
+import com.example.shop.util.GatewayUrlValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,6 +86,9 @@ public class PaymentService {
 
     @Value("${payment.simulation-allow-production:false}")
     private boolean paymentSimulationAllowProduction;
+
+    @Value("${payment.gateway-allow-local:false}")
+    private boolean paymentGatewayAllowLocal;
 
     @Value("${stripe.secret-key:}")
     private String stripeSecretKey;
@@ -192,6 +197,7 @@ public class PaymentService {
 
     @Transactional
     public Payment handleCallback(PaymentCallbackRequest request) {
+        assertProductionCallbackSecretConfigured();
         String channel = normalizeConfiguredChannel(request.getChannel());
         Payment payment = paymentRepository.findByOrderNoAndChannel(request.getOrderNo(), channel);
         if (payment == null) {
@@ -288,14 +294,39 @@ public class PaymentService {
     @Transactional
     public List<Payment> findByOrderId(Long orderId) {
         List<Payment> payments = paymentRepository.findByOrderId(orderId);
-        boolean expiredAny = false;
+        boolean changedAny = false;
         for (Payment payment : payments) {
-            if (payment != null && isExpired(payment)) {
+            if (payment == null) {
+                continue;
+            }
+            Payment synced = syncProviderPaymentState(payment);
+            if (synced != null) {
+                changedAny = true;
+                continue;
+            }
+            if (isExpired(payment)) {
                 expirePayment(payment);
-                expiredAny = true;
+                changedAny = true;
             }
         }
-        return expiredAny ? paymentRepository.findByOrderId(orderId) : payments;
+        return changedAny ? paymentRepository.findByOrderId(orderId) : payments;
+    }
+
+    @Transactional
+    public Payment syncPayment(Long paymentId) {
+        Payment payment = paymentRepository.findById(paymentId);
+        if (payment == null) {
+            throw new IllegalArgumentException("Payment not found");
+        }
+        Payment synced = syncProviderPaymentState(payment);
+        if (synced != null) {
+            return synced;
+        }
+        if (isExpired(payment)) {
+            expirePayment(payment);
+            return paymentRepository.findById(paymentId);
+        }
+        return payment;
     }
 
     public Payment findById(Long paymentId) {
@@ -305,6 +336,10 @@ public class PaymentService {
     @Transactional
     public Payment findLatestByOrderId(Long orderId) {
         Payment payment = paymentRepository.findLatestByOrderId(orderId);
+        Payment synced = syncProviderPaymentState(payment);
+        if (synced != null) {
+            return synced;
+        }
         if (payment != null && isExpired(payment)) {
             expirePayment(payment);
             return paymentRepository.findById(payment.getId());
@@ -350,6 +385,7 @@ public class PaymentService {
     }
 
     public String expectedSignature(PaymentCallbackRequest request) {
+        assertProductionCallbackSecretConfigured();
         String payload = request.getOrderNo() + "|" + normalizeConfiguredChannel(request.getChannel()) + "|"
                 + request.getTransactionId() + "|" + request.getStatus().toUpperCase(Locale.ROOT) + "|"
                 + request.getAmount().stripTrailingZeros().toPlainString() + "|"
@@ -413,7 +449,11 @@ public class PaymentService {
         }
         try {
             Stripe.apiKey = stripeSecretKey;
-            Session session = Session.create(buildStripeCheckoutSession(order, channelConfig));
+            Session session = Session.create(
+                    buildStripeCheckoutSession(order, channelConfig),
+                    RequestOptions.builder()
+                            .setIdempotencyKey("checkout-session-" + order.getId() + "-" + channelConfig.getCode())
+                            .build());
             Payment payment = new Payment();
             payment.setOrderId(order.getId());
             payment.setOrderNo(order.getOrderNo());
@@ -439,7 +479,11 @@ public class PaymentService {
         }
         try {
             Stripe.apiKey = stripeSecretKey;
-            Session session = Session.create(buildStripeCheckoutSession(order, channelConfig));
+            Session session = Session.create(
+                    buildStripeCheckoutSession(order, channelConfig),
+                    RequestOptions.builder()
+                            .setIdempotencyKey("checkout-session-refresh-" + order.getId() + "-" + payment.getId() + "-" + now.toString())
+                            .build());
             payment.setAmount(order.getTotalAmount());
             payment.setChannel(channelConfig.getCode());
             payment.setStatus(PENDING);
@@ -464,6 +508,7 @@ public class PaymentService {
         if (createUrl == null) {
             throw new IllegalStateException("Create payment URL is not configured for channel " + channelConfig.getCode());
         }
+        createUrl = GatewayUrlValidator.requireOutboundHttpUrl(createUrl, paymentGatewayAllowLocal, "Create payment URL");
         ResponseEntity<String> response = requestGenericApiPayment(order, channelConfig, createUrl);
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new IllegalStateException("Gateway create payment failed with status " + response.getStatusCodeValue());
@@ -490,6 +535,7 @@ public class PaymentService {
         if (createUrl == null) {
             throw new IllegalStateException("Create payment URL is not configured for channel " + channelConfig.getCode());
         }
+        createUrl = GatewayUrlValidator.requireOutboundHttpUrl(createUrl, paymentGatewayAllowLocal, "Create payment URL");
         ResponseEntity<String> response = requestGenericApiPayment(order, channelConfig, createUrl);
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new IllegalStateException("Gateway create payment failed with status " + response.getStatusCodeValue());
@@ -611,6 +657,44 @@ public class PaymentService {
                 .build();
     }
 
+    private Payment syncProviderPaymentState(Payment payment) {
+        if (payment == null || !PENDING.equals(payment.getStatus()) || isBlank(stripeSecretKey)) {
+            return null;
+        }
+        PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
+        if (channel == null || !channel.isStripeProvider()) {
+            return null;
+        }
+        String sessionId = firstNonBlank(payment.getProviderReference(), payment.getTransactionId());
+        if (!sessionId.startsWith("cs_")) {
+            return null;
+        }
+        try {
+            Stripe.apiKey = stripeSecretKey;
+            Session session = Session.retrieve(sessionId);
+            String sessionStatus = session.getStatus() == null ? "" : session.getStatus().toLowerCase(Locale.ROOT);
+            String paymentStatus = session.getPaymentStatus() == null ? "" : session.getPaymentStatus().toLowerCase(Locale.ROOT);
+            if ("complete".equals(sessionStatus) && "paid".equals(paymentStatus)) {
+                int updated = paymentRepository.markPaidDetailed(
+                        payment.getId(),
+                        firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
+                        session.getId(),
+                        LocalDateTime.now(ZoneOffset.UTC));
+                if (updated > 0) {
+                    orderService.updateOrderStatus(payment.getOrderId(), "PENDING_SHIPMENT");
+                }
+                return paymentRepository.findById(payment.getId());
+            }
+            if ("expired".equals(sessionStatus)) {
+                expirePayment(payment);
+                return paymentRepository.findById(payment.getId());
+            }
+            return null;
+        } catch (StripeException e) {
+            return null;
+        }
+    }
+
     private boolean verifySignature(PaymentCallbackRequest request) {
         String signature = trimToNull(request.getSignature());
         if (signature == null) {
@@ -716,6 +800,16 @@ public class PaymentService {
     private void assertPaymentSimulationEnabled() {
         if (!isPaymentSimulationEnabled()) {
             throw new IllegalStateException("Payment simulation is disabled");
+        }
+    }
+
+    private void assertProductionCallbackSecretConfigured() {
+        if (!isProductionMode()) {
+            return;
+        }
+        String secret = trimToNull(callbackSecret);
+        if (secret == null || "dev-payment-secret".equals(secret) || secret.length() < 32) {
+            throw new IllegalStateException("Payment callback secret is not configured for production");
         }
     }
 

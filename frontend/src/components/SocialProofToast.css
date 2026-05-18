@@ -1,4 +1,4 @@
-.social-proof-toast {
+﻿.social-proof-toast {
   position: fixed;
   right: 92px;
   bottom: 24px;
@@ -39,7 +39,7 @@
 }
 
 .social-proof-toast span span {
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   line-height: 17px;
 }

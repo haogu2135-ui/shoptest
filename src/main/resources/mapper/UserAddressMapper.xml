@@ -37,10 +37,11 @@
             is_default = #{isDefault},
             updated_at = #{updatedAt}
         WHERE id = #{id}
+          AND user_id = #{userId}
     </update>
 
-    <delete id="deleteById">
-        DELETE FROM user_addresses WHERE id = #{id}
+    <delete id="deleteByIdAndUserId">
+        DELETE FROM user_addresses WHERE id = #{id} AND user_id = #{userId}
     </delete>
 
     <update id="clearDefault">

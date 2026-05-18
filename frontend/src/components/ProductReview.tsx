@@ -3,9 +3,18 @@ import { Rate, Input, Button, List, Avatar, Space, message, Select, Empty, Typog
 import { UserOutlined } from '@ant-design/icons';
 import { useLanguage } from '../i18n';
 import type { Order } from '../types';
+import { formatSafeDate, formatSafeDateTime } from '../utils/dateFormat';
 
 const { TextArea } = Input;
 const { Text } = Typography;
+
+const readReviewToken = () => {
+    try {
+        return localStorage.getItem('token');
+    } catch {
+        return null;
+    }
+};
 
 interface Review {
     id: number;
@@ -32,15 +41,20 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     reviewableOrders,
     onAddReview,
 }) => {
-    const isLoggedIn = !!localStorage.getItem('token');
+    const isLoggedIn = !!readReviewToken();
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState('');
     const [orderId, setOrderId] = useState<number | undefined>(reviewableOrders[0]?.id);
     const [submitting, setSubmitting] = useState(false);
     const { t, language } = useLanguage();
+    const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
 
     useEffect(() => {
-        setOrderId((current) => current || reviewableOrders[0]?.id);
+        setOrderId((current) =>
+            current && reviewableOrders.some((order) => order.id === current)
+                ? current
+                : reviewableOrders[0]?.id
+        );
     }, [reviewableOrders]);
 
     const handleSubmit = async () => {
@@ -85,7 +99,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 style={{ width: '100%', maxWidth: 360 }}
                                 options={reviewableOrders.map((order) => ({
                                     value: order.id,
-                                    label: `${order.orderNo || `#${order.id}`} - ${new Date(order.createdAt || '').toLocaleDateString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}`,
+                                    label: `${order.orderNo || `#${order.id}`}${formatSafeDate(order.createdAt, dateLocale, '') ? ` - ${formatSafeDate(order.createdAt, dateLocale)}` : ''}`,
                                 }))}
                             />
                             <Rate value={rating} onChange={setRating} />
@@ -130,7 +144,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                             <Text>{review.adminReply}</Text>
                                         </div>
                                     )}
-                                    <small>{new Date(review.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}</small>
+                                    <small>{formatSafeDateTime(review.createdAt, dateLocale, '-')}</small>
                                 </>
                             }
                         />

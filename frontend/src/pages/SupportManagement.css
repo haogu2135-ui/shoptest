@@ -1,4 +1,4 @@
-.support-management__header {
+﻿.support-management__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -15,7 +15,8 @@
   padding: 14px 16px;
   border: 1px solid #dce9df;
   border-radius: 8px;
-  background: linear-gradient(135deg, #f7fff8 0%, #fff7f0 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .support-management__insightIntro {
@@ -71,7 +72,7 @@
 .support-management__conversationPane {
   background: #fff;
   border: 1px solid rgba(18, 71, 52, 0.1);
-  border-radius: 18px;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--shadow-1);
 }
@@ -84,7 +85,7 @@
 
 .support-management__queueSection {
   border: 1px solid rgba(18, 71, 52, 0.08);
-  border-radius: 16px;
+  border-radius: 8px;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(252, 253, 251, 0.96) 0%, #ffffff 100%);
 }
@@ -96,7 +97,7 @@
   gap: 10px;
   padding: 10px 12px;
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
-  background: linear-gradient(135deg, #f7fff8 0%, #fff8f1 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
 }
 
 .support-management__queueSectionHeader > div {
@@ -112,7 +113,7 @@
 }
 
 .support-management__queueSectionHeader span {
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   line-height: 1.45;
 }
@@ -144,7 +145,7 @@
 }
 
 .support-management__queueItem.ant-list-item:hover {
-  background: #fff8f5;
+  background: #fff7f0;
 }
 
 .support-management__queueItem--critical.ant-list-item {
@@ -173,9 +174,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(238, 77, 45, 0.08), transparent 30%),
-    linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
 }
 
 .support-management__conversationIdentity {
@@ -192,7 +191,7 @@
 }
 
 .support-management__conversationIdentity span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
@@ -201,7 +200,7 @@
   gap: 9px;
   padding: 12px 16px;
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
-  background: linear-gradient(135deg, #f9fff9 0%, #fff8f2 100%);
+  background: linear-gradient(135deg, #f8fcf9 0%, #fff7f0 100%);
 }
 
 .support-management__progressRail > div:first-child {
@@ -212,7 +211,7 @@
 }
 
 .support-management__progressRail span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
@@ -243,7 +242,7 @@
   gap: 10px;
   padding: 14px 16px;
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
-  background: linear-gradient(135deg, #f7fff8 0%, #fff9f3 100%);
+  background: linear-gradient(135deg, #f8fcf9 0%, #f8fcf9 100%);
 }
 
 .support-management__summaryCard {
@@ -251,18 +250,18 @@
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(18, 71, 52, 0.08);
 }
 
 .support-management__summaryCard span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
 .support-management__summaryCard strong {
-  color: #1d1b16;
+  color: #173f2b;
   font-size: 13px;
   line-height: 1.45;
 }
@@ -272,7 +271,7 @@
   flex-wrap: wrap;
   gap: 8px;
   font-size: 12px;
-  color: #999;
+  color: #627064;
   margin-top: 4px;
 }
 
@@ -284,7 +283,7 @@
   border-radius: 999px;
   border: 1px solid rgba(18, 71, 52, 0.1);
   background: #fff;
-  color: #6c6a62;
+  color: #627064;
   font-size: 11px;
   font-weight: 700;
   line-height: 1.2;
@@ -311,7 +310,7 @@
 }
 
 .support-management__queueProgress > span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 11px;
   font-weight: 700;
 }
@@ -346,7 +345,7 @@
   border-radius: 999px;
   border: 1px solid rgba(18, 71, 52, 0.12);
   background: #fff;
-  color: #6c6a62;
+  color: #627064;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
@@ -366,7 +365,7 @@
 
 .support-management__queueLoopChip.is-primary {
   border-color: rgba(18, 71, 52, 0.16);
-  background: linear-gradient(135deg, #f8fff9 0%, #fffaf3 100%);
+  background: linear-gradient(135deg, #f8fcf9 0%, #f8fcf9 100%);
   color: #124734;
 }
 
@@ -376,7 +375,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 600;
-  background: #f5f5f5;
+  background: #f8fcf9;
 }
 
 .support-management__slaPill--critical {
@@ -385,7 +384,7 @@
 }
 
 .support-management__slaPill--high {
-  background: #fff7e6;
+  background: #fff7f0;
   color: #d46b08;
 }
 
@@ -401,15 +400,15 @@
   gap: 14px;
   padding: 12px 16px;
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
-  background: #fcfcfb;
+  background: #ffffff;
 }
 
 .support-management__workflowBar.is-critical {
-  background: linear-gradient(135deg, #fff2f0 0%, #fffaf7 100%);
+  background: linear-gradient(135deg, #fff2f0 0%, #ffffff 100%);
 }
 
 .support-management__workflowBar.is-high {
-  background: linear-gradient(135deg, #fff7e8 0%, #fffbf7 100%);
+  background: linear-gradient(135deg, #fff7e8 0%, #ffffff 100%);
 }
 
 .support-management__workflowIntro {
@@ -419,12 +418,12 @@
 }
 
 .support-management__workflowIntro > span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
 .support-management__workflowIntro strong {
-  color: #1d1b16;
+  color: #173f2b;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -443,11 +442,11 @@
   gap: 14px;
   padding: 12px 16px;
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
-  background: linear-gradient(135deg, #f7fff8 0%, #fffdf8 100%);
+  background: linear-gradient(135deg, #f8fcf9 0%, #ffffff 100%);
 }
 
 .support-management__focusCard.is-pending {
-  background: linear-gradient(135deg, #fff7f1 0%, #fffcf7 100%);
+  background: linear-gradient(135deg, #fff7f1 0%, #ffffff 100%);
 }
 
 .support-management__focusCardIntro,
@@ -459,27 +458,27 @@
 
 .support-management__focusCardIntro > span,
 .support-management__focusCardValue > span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
 .support-management__focusCardIntro strong,
 .support-management__focusCardValue strong {
-  color: #1d1b16;
+  color: #173f2b;
   font-size: 13px;
   line-height: 1.45;
 }
 
 .support-management__focusCardIntro p {
   margin: 0;
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   line-height: 1.5;
 }
 
 .support-management__focusCardValue {
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: 8px;
   border: 1px solid rgba(18, 71, 52, 0.1);
   background: rgba(255, 255, 255, 0.9);
   text-align: right;
@@ -491,7 +490,7 @@
   gap: 10px;
   padding: 12px 16px;
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
-  background: linear-gradient(180deg, #fffdf9 0%, #fff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #fff 100%);
 }
 
 .support-management__loopCard {
@@ -499,7 +498,7 @@
   gap: 4px;
   padding: 12px;
   border: 1px solid rgba(18, 71, 52, 0.1);
-  border-radius: 14px;
+  border-radius: 8px;
   background: #fff;
 }
 
@@ -513,19 +512,19 @@
 }
 
 .support-management__loopCard span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
 .support-management__loopCard strong {
-  color: #1d1b16;
+  color: #173f2b;
   font-size: 13px;
   line-height: 1.45;
 }
 
 .support-management__loopCard p {
   margin: 0;
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   line-height: 1.5;
 }
@@ -535,11 +534,11 @@
   gap: 3px;
   padding: 10px 16px 12px;
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
-  background: #fffefb;
+  background: #ffffff;
 }
 
 .support-management__actionTrace span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
@@ -551,7 +550,7 @@
 
 .support-management__actionTrace p {
   margin: 0;
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   line-height: 1.5;
 }
@@ -561,7 +560,7 @@
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
   background:
     radial-gradient(circle at 100% 0%, rgba(238, 77, 45, 0.08), transparent 34%),
-    linear-gradient(135deg, #f7fff8 0%, #fffaf4 100%);
+    linear-gradient(135deg, #f8fcf9 0%, #ffffff 100%);
 }
 
 .support-management__ticketCardHeader {
@@ -580,7 +579,7 @@
 
 .support-management__ticketCardHeader span,
 .support-management__ticketGrid span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
@@ -592,7 +591,7 @@
 
 .support-management__ticketCardHeader p {
   margin: 0;
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   line-height: 1.45;
 }
@@ -608,12 +607,12 @@
   gap: 3px;
   padding: 10px 11px;
   border: 1px solid rgba(18, 71, 52, 0.08);
-  border-radius: 14px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.88);
 }
 
 .support-management__ticketGrid strong {
-  color: #1d1b16;
+  color: #173f2b;
   font-size: 12px;
   line-height: 1.45;
 }
@@ -632,7 +631,7 @@
 .support-management__orderWorkflow {
   padding: 12px 16px;
   border-bottom: 1px solid rgba(18, 71, 52, 0.08);
-  background: #fffdfa;
+  background: #ffffff;
 }
 
 .support-management__orderWorkflowHeader {
@@ -642,12 +641,12 @@
 }
 
 .support-management__orderWorkflowHeader span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
 .support-management__orderWorkflowHeader strong {
-  color: #1d1b16;
+  color: #173f2b;
   font-size: 13px;
   line-height: 1.45;
 }
@@ -676,7 +675,7 @@
   gap: 4px;
   padding: 11px 12px;
   border: 1px solid rgba(18, 71, 52, 0.1);
-  border-radius: 14px;
+  border-radius: 8px;
   background: #ffffff;
   color: #124734;
   text-align: left;
@@ -692,12 +691,12 @@
 }
 
 .support-management__orderWorkflowCard strong {
-  color: #1d1b16;
+  color: #173f2b;
   font-size: 13px;
 }
 
 .support-management__orderWorkflowCard span {
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   line-height: 1.45;
 }
@@ -706,7 +705,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background: #fafafa;
+  background: #f8fcf9;
 }
 
 .support-management__messageRow.ant-list-item {
@@ -756,14 +755,14 @@
 
 .support-management__messageMeta {
   font-size: 12px;
-  color: #999;
+  color: #627064;
   margin-bottom: 3px;
 }
 
 .support-management__bubble {
   display: inline-block;
   padding: 11px 13px;
-  border-radius: 16px;
+  border-radius: 8px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -779,7 +778,7 @@
 
 .support-management__bubble.is-user {
   background: rgba(255, 255, 255, 0.96);
-  color: #333;
+  color: #173f2b;
   border: 1px solid rgba(18, 71, 52, 0.08);
   border-bottom-left-radius: 6px;
   box-shadow: var(--shadow-1);
@@ -790,12 +789,12 @@
   min-width: 220px;
   max-width: 100%;
   text-align: left;
-  border-radius: 14px;
+  border-radius: 8px;
 }
 
 .support-management__orderCard.is-mine.ant-card {
   border-color: #f6c1b3;
-  background: #fff7f4;
+  background: #fff7f0;
 }
 
 .support-management__contextCard.ant-card {
@@ -803,18 +802,18 @@
   min-width: 220px;
   max-width: 100%;
   text-align: left;
-  border-radius: 14px;
+  border-radius: 8px;
   box-shadow: var(--shadow-1);
 }
 
 .support-management__contextCard.is-user.ant-card {
   border-color: rgba(18, 71, 52, 0.12);
-  background: linear-gradient(180deg, #f7fff8 0%, #fff 100%);
+  background: linear-gradient(180deg, #f8fcf9 0%, #fff 100%);
 }
 
 .support-management__contextCard.is-mine.ant-card {
   border-color: #f6c1b3;
-  background: #fff7f4;
+  background: #fff7f0;
 }
 
 .support-management__ticketMessageCard.ant-card {
@@ -822,11 +821,11 @@
   min-width: 300px;
   max-width: min(520px, 100%);
   text-align: left;
-  border-radius: 18px;
+  border-radius: 8px;
   border-color: rgba(18, 71, 52, 0.12);
   background:
     radial-gradient(circle at 100% 0%, rgba(238, 77, 45, 0.1), transparent 32%),
-    linear-gradient(135deg, #f8fff9 0%, #fffaf4 100%);
+    linear-gradient(135deg, #f8fcf9 0%, #ffffff 100%);
   box-shadow: var(--shadow-1);
 }
 
@@ -847,7 +846,7 @@
 
 .support-management__ticketMessageLabel,
 .support-management__ticketMessageGrid span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
@@ -869,12 +868,12 @@
   gap: 3px;
   padding: 9px 10px;
   border: 1px solid rgba(18, 71, 52, 0.08);
-  border-radius: 13px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.84);
 }
 
 .support-management__ticketMessageGrid strong {
-  color: #1d1b16;
+  color: #173f2b;
   font-size: 12px;
   line-height: 1.45;
 }
@@ -885,18 +884,18 @@
 }
 
 .support-management__contextLabel {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
 .support-management__contextTitle {
-  color: #1d1b16;
+  color: #173f2b;
   font-weight: 700;
 }
 
 .support-management__contextText {
   margin-top: 3px;
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   line-height: 1.45;
 }
@@ -936,8 +935,8 @@
   margin-bottom: 10px;
   padding: 10px 12px;
   border: 1px solid rgba(18, 71, 52, 0.1);
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f7fff8 0%, #fff8f1 100%);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
 }
 
 .support-management__replyReadiness > div:first-child {
@@ -947,7 +946,7 @@
 }
 
 .support-management__replyReadiness span {
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
@@ -994,7 +993,7 @@
 .support-management__quickReplies > span {
   display: block;
   margin-bottom: 8px;
-  color: #7d7a71;
+  color: #627064;
   font-size: 12px;
 }
 
@@ -1022,7 +1021,7 @@
 }
 
 .support-management__textarea.ant-input-textarea textarea {
-  border-radius: 14px;
+  border-radius: 8px;
 }
 
 .support-management__composerActions {
@@ -1041,7 +1040,7 @@
   border-radius: 999px;
   border: 1px solid rgba(18, 71, 52, 0.1);
   background: #fff;
-  color: #6c6a62;
+  color: #627064;
   font-size: 12px;
   font-weight: 600;
 }
@@ -1152,4 +1151,118 @@
     align-items: stretch;
     flex-direction: column;
   }
+}
+
+.support-management__queuePane,
+.support-management__conversationPane,
+.support-management__queueSection,
+.support-management__summaryCard,
+.support-management__focusCardValue,
+.support-management__loopCard,
+.support-management__ticketGrid > div,
+.support-management__orderWorkflowCard,
+.support-management__ticketMessageGrid > div,
+.support-management__replyReadiness,
+.support-management__quickReplyChip,
+.support-management__sendReadiness {
+  border-color: #e4ebe4;
+  background: #ffffff;
+}
+
+.support-management__progressRail,
+.support-management__summaryBar,
+.support-management__focusCard,
+.support-management__loopBoard,
+.support-management__actionTrace,
+.support-management__ticketCard,
+.support-management__orderWorkflow,
+.support-management__messagesPane,
+.support-management__contextCard.is-user.ant-card,
+.support-management__ticketMessageCard.ant-card {
+  background: #f8fcf9;
+}
+
+.support-management__queueSectionHeader,
+.support-management__conversationHeader,
+.support-management__replyReadiness {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+}
+
+.support-management__queueSectionHeader span,
+.support-management__conversationIdentity span,
+.support-management__progressRail span,
+.support-management__summaryCard span,
+.support-management__queueReason,
+.support-management__queueProgress > span,
+.support-management__queueLoopChip,
+.support-management__workflowIntro > span,
+.support-management__focusCardIntro > span,
+.support-management__focusCardValue > span,
+.support-management__focusCardIntro p,
+.support-management__loopCard span,
+.support-management__loopCard p,
+.support-management__actionTrace span,
+.support-management__actionTrace p,
+.support-management__ticketCardHeader span,
+.support-management__ticketGrid span,
+.support-management__ticketCardHeader p,
+.support-management__orderWorkflowHeader span,
+.support-management__orderWorkflowCard span,
+.support-management__contextLabel,
+.support-management__contextText,
+.support-management__replyReadiness span,
+.support-management__quickReplies > span,
+.support-management__sendReadiness {
+  color: #627064;
+}
+
+.support-management__summaryCard strong,
+.support-management__workflowIntro strong,
+.support-management__focusCardIntro strong,
+.support-management__focusCardValue strong,
+.support-management__loopCard strong,
+.support-management__orderWorkflowHeader strong,
+.support-management__orderWorkflowCard strong,
+.support-management__ticketGrid strong,
+.support-management__ticketMessageGrid strong,
+.support-management__contextTitle {
+  color: #173f2b;
+}
+
+.support-management__queueItem.ant-list-item:hover {
+  background: #f8fcf9;
+}
+
+.support-management__queueItem.ant-list-item.is-active {
+  background: #fff7f0;
+}
+
+.support-management__ticketCard,
+.support-management__ticketMessageCard.ant-card {
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
+}
+
+.support-management--es,
+.support-management--es .ant-btn,
+.support-management--es .ant-select,
+.support-management--es .ant-input,
+.support-management--es .ant-typography,
+.support-management--es .ant-tag {
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+.support-management--es .support-management__quickReplyChip,
+.support-management--es .support-management__orderWorkflowCard,
+.support-management--es .support-management__replyReadinessChip,
+.support-management--es .support-management__sendReadiness,
+.support-management--es .support-management__queueReason {
+  white-space: normal;
+}
+
+.support-management--es .support-management__workflowActions .ant-btn,
+.support-management--es .support-management__composerActions .ant-btn,
+.support-management--es .support-management__insightActions .ant-btn {
+  min-height: 40px;
+  white-space: normal;
 }

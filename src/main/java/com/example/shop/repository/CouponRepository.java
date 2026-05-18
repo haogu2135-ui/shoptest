@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +15,14 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     List<Coupon> findByStatusOrderByIdDesc(String status);
     List<Coupon> findByScopeAndStatusOrderByIdDesc(String scope, String status);
     Optional<Coupon> findFirstByNameOrderByIdDesc(String name);
+
+    @Query("select c from Coupon c " +
+            "where c.scope = ?1 and c.status = ?2 " +
+            "and (c.startAt is null or c.startAt <= ?3) " +
+            "and (c.endAt is null or c.endAt >= ?3) " +
+            "and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity) " +
+            "order by c.id desc")
+    List<Coupon> findClaimableByScopeAndStatus(String scope, String status, LocalDateTime now);
 
     @Modifying
     @Query("update Coupon c set c.claimedQuantity = coalesce(c.claimedQuantity, 0) + 1, " +

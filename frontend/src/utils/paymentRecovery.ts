@@ -8,7 +8,7 @@ export type PaymentRecoveryState = {
 };
 
 export const getPaymentRecoveryState = (payment?: Pick<Payment, 'status' | 'expiresAt'> | null): PaymentRecoveryState => {
-  const isPaid = payment?.status === 'PAID';
+  const isPaid = String(payment?.status || '').trim().toUpperCase() === 'PAID';
   if (!payment?.expiresAt || isPaid) {
     return {
       isPaid,
@@ -37,9 +37,12 @@ export const getPaymentRecoveryState = (payment?: Pick<Payment, 'status' | 'expi
 };
 
 export const formatPaymentUrlLabel = (value?: string | null) => {
-  if (!value) return '-';
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '-';
+  if (!/^https?:\/\//i.test(trimmed)) return '-';
   try {
-    const url = new URL(value, window.location.origin);
+    const url = new URL(trimmed);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return '-';
     const path = url.pathname === '/' ? '' : url.pathname;
     const label = `${url.hostname}${path}`;
     return label.length > 54 ? `${label.slice(0, 51)}...` : label;

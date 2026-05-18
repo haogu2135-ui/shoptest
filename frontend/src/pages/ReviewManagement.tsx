@@ -173,7 +173,7 @@ const ReviewManagement: React.FC = () => {
   ];
 
   return (
-    <div className="review-management-page">
+    <div className={`review-management-page review-management-page--${language}`}>
       <Title level={4}>{t('pages.adminReviews.title')}</Title>
       <Divider />
       <section className="review-ops-panel">

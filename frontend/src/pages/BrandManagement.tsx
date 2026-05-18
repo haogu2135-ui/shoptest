@@ -18,22 +18,16 @@ import {
   Typography,
 } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
-import { apiBaseUrl, brandApi } from '../api';
+import { brandApi } from '../api';
 import type { Brand } from '../types';
 import { useLanguage } from '../i18n';
+import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import './BrandManagement.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
-const brandImageFallback = 'https://via.placeholder.com/80?text=LOGO';
-
-const resolveBrandImage = (imageUrl?: string) => {
-  if (!imageUrl) return brandImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const brandImageFallback = imageFallbacks.brand;
+const resolveBrandImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, brandImageFallback);
 
 const statusColors: Record<string, string> = {
   ACTIVE: 'green',
@@ -47,7 +41,7 @@ const BrandManagement: React.FC = () => {
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
   const [form] = Form.useForm();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const brandHealth = useMemo(() => {
     const active = brands.filter((brand) => (brand.status || 'ACTIVE') === 'ACTIVE').length;
@@ -223,7 +217,7 @@ const BrandManagement: React.FC = () => {
   ];
 
   return (
-    <div className="brand-management-page">
+    <div className={`brand-management-page brand-management-page--${language}`}>
       <Title level={3} style={{ marginBottom: 0 }}>{t('pages.brandAdmin.title')}</Title>
       <Divider />
 
@@ -283,7 +277,7 @@ const BrandManagement: React.FC = () => {
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.brandAdmin.brandName')} rules={[{ required: true, message: t('pages.brandAdmin.nameRequired') }]}>

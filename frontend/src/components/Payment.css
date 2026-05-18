@@ -1,13 +1,14 @@
-.payment-modal__content {
+﻿.payment-modal__content {
   width: 100%;
 }
 
 .payment-modal__summary {
   padding: 16px;
-  border: 1px solid #f0e1cf;
+  border: 1px solid #e4ebe4;
   border-radius: 8px;
-  background: linear-gradient(135deg, #fff8ed 0%, #f7fbf6 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
   text-align: center;
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
 }
 
 .payment-modal__summary .ant-typography {
@@ -15,7 +16,7 @@
 }
 
 .payment-modal__eyebrow {
-  color: #a05a00;
+  color: #124734;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;
@@ -47,6 +48,7 @@
 .payment-modal__method.ant-radio-button-wrapper-checked {
   border-color: #124734;
   color: #124734;
+  background: #f8fcf9;
   box-shadow: 0 0 0 1px rgba(18, 71, 52, 0.16);
 }
 
@@ -57,7 +59,7 @@
   padding: 12px;
   border: 1px solid #d8eadf;
   border-radius: 8px;
-  background: #f7fbf6;
+  background: #f8fcf9;
 }
 
 .payment-modal__confirm {

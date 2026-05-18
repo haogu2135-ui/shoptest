@@ -28,6 +28,12 @@ export interface DashboardStats {
     totalUsers: number;
     totalRevenue: number;
     grossOrderAmount?: number;
+    grossPaidRevenue?: number;
+    refundedOrders?: number;
+    refundedAmount?: number;
+    refundingPayments?: number;
+    netRevenue?: number;
+    refundRate?: number;
     paidOrders?: number;
     cancelledOrders?: number;
     pendingPaymentOrders?: number;
@@ -420,6 +426,8 @@ export interface PaymentChannel {
 export interface AppConfig {
     runtimeMode: 'production' | 'debug' | 'dev' | 'test' | string;
     paymentSimulationEnabled: boolean;
+    defaultShippingFee?: number;
+    freeShippingThreshold?: number;
 }
 
 export interface SecurityAuditLog {

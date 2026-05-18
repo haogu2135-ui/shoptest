@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Avatar, Button, Card, Col, Divider, List, Progress, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Avatar, Button, Card, Col, List, Progress, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
 import {
   ShopOutlined, ShoppingOutlined, TeamOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, WarningOutlined, RiseOutlined, TruckOutlined,
 } from '@ant-design/icons';
@@ -239,63 +239,24 @@ const AdminDashboard: React.FC = () => {
   const [loadError, setLoadError] = useState('');
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
-  const paymentRefundCopy = useMemo(() => {
-    if (language === 'zh') {
-      return {
-        title: '支付与回退运营闭环',
-        subtitle: '从待付款、售后申请、回寄、退款确认四个节点看今天最该处理的订单。',
-        pendingPayment: '待付款',
-        returnRequested: '待审核退货',
-        returnApproved: '待用户回寄',
-        returnShipped: '待确认退款',
-        refunded: '已退款',
-        paymentAction: '催付或检查支付链接',
-        returnAction: '进入退款工作台',
-        auditAction: '查看支付/退款日志',
-        healthReady: '流程健康',
-        healthWatch: '需要关注',
-        healthRisk: '优先处理',
-        guideTitle: '处理顺序',
-        guideText: '先看待付款恢复，再处理待审核售后，最后确认已回寄订单的退款。',
-      };
-    }
-    if (language === 'es') {
-      return {
-        title: 'Flujo de pagos y reembolsos',
-        subtitle: 'Prioriza pagos pendientes, solicitudes, devoluciones y confirmacion de reembolso.',
-        pendingPayment: 'Pago pendiente',
-        returnRequested: 'Por revisar',
-        returnApproved: 'Esperando devolucion',
-        returnShipped: 'Por reembolsar',
-        refunded: 'Reembolsado',
-        paymentAction: 'Revisar pagos',
-        returnAction: 'Abrir reembolsos',
-        auditAction: 'Ver auditoria',
-        healthReady: 'Sano',
-        healthWatch: 'Vigilar',
-        healthRisk: 'Prioridad alta',
-        guideTitle: 'Orden recomendado',
-        guideText: 'Primero pagos pendientes, luego solicitudes de devolucion y despues reembolsos listos.',
-      };
-    }
-    return {
-      title: 'Payment and return operations',
-      subtitle: 'Watch pending payment, return review, return shipment, and refund confirmation from one queue.',
-      pendingPayment: 'Pending payment',
-      returnRequested: 'Return review',
-      returnApproved: 'Awaiting return',
-      returnShipped: 'Ready to refund',
-      refunded: 'Refunded',
-      paymentAction: 'Review payments',
-      returnAction: 'Open refund workbench',
-      auditAction: 'Open audit logs',
-      healthReady: 'Healthy',
-      healthWatch: 'Watch',
-      healthRisk: 'Prioritize',
-      guideTitle: 'Recommended order',
-      guideText: 'Recover pending payments first, review return requests next, then close ready-to-refund orders.',
-    };
-  }, [language]);
+  const paymentRefundCopy = {
+    title: t('pages.adminDashboard.paymentReturnOps.title'),
+    subtitle: t('pages.adminDashboard.paymentReturnOps.subtitle'),
+    pendingPayment: t('pages.adminDashboard.paymentReturnOps.pendingPayment'),
+    returnRequested: t('pages.adminDashboard.paymentReturnOps.returnRequested'),
+    returnApproved: t('pages.adminDashboard.paymentReturnOps.returnApproved'),
+    returnShipped: t('pages.adminDashboard.paymentReturnOps.returnShipped'),
+    refunding: t('pages.adminDashboard.paymentReturnOps.refunding'),
+    refunded: t('pages.adminDashboard.paymentReturnOps.refunded'),
+    paymentAction: t('pages.adminDashboard.paymentReturnOps.paymentAction'),
+    returnAction: t('pages.adminDashboard.paymentReturnOps.returnAction'),
+    auditAction: t('pages.adminDashboard.paymentReturnOps.auditAction'),
+    healthReady: t('pages.adminDashboard.paymentReturnOps.healthReady'),
+    healthWatch: t('pages.adminDashboard.paymentReturnOps.healthWatch'),
+    healthRisk: t('pages.adminDashboard.paymentReturnOps.healthRisk'),
+    guideTitle: t('pages.adminDashboard.paymentReturnOps.guideTitle'),
+    guideText: t('pages.adminDashboard.paymentReturnOps.guideText'),
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -313,11 +274,18 @@ const AdminDashboard: React.FC = () => {
   }, [t]);
 
   if (loading) {
-    return <div style={{ textAlign: 'center', paddingTop: 100 }}><Spin size="large" /></div>;
+    return <div className="admin-dashboard__loading"><Spin size="large" /></div>;
   }
 
   if (!stats) {
-    return <div>{loadError || t('pages.adminDashboard.loadFailed')}</div>;
+    return (
+      <div className="admin-dashboard__error">
+        <WarningOutlined />
+        <Typography.Title level={4}>{t('pages.adminDashboard.loadFailed')}</Typography.Title>
+        <Typography.Text type="secondary">{loadError || t('pages.adminDashboard.loadFailed')}</Typography.Text>
+        <Button type="primary" onClick={() => window.location.reload()}>{t('common.refresh')}</Button>
+      </div>
+    );
   }
 
   const recentOrderColumns = [
@@ -346,7 +314,7 @@ const AdminDashboard: React.FC = () => {
   const maxPaymentCount = Math.max(...Object.values(stats.paymentMethodBreakdown || {}), 1);
   const shippedOrders = Number(stats.shippedOrders || 0);
   const ordersWithTracking = Number(stats.ordersWithTracking || 0);
-  const trackingCoverage = shippedOrders ? Math.round((ordersWithTracking / shippedOrders) * 100) : 0;
+  const trackingCoverage = shippedOrders ? Math.min(100, Math.round((ordersWithTracking / shippedOrders) * 100)) : 0;
   const pendingShipmentOrders = Number(stats.pendingShipmentOrders || 0);
   const pendingPaymentOrders = Number(stats.pendingPaymentOrders || 0);
   const lowStockProducts = Number(stats.lowStockProducts || 0);
@@ -355,7 +323,12 @@ const AdminDashboard: React.FC = () => {
   const returnApprovedOrders = Number(stats.orderStatusBreakdown?.RETURN_APPROVED || 0);
   const returnShippedOrders = Number(stats.orderStatusBreakdown?.RETURN_SHIPPED || 0);
   const returnedOrders = Number(stats.orderStatusBreakdown?.RETURNED || 0);
-  const paymentReturnRiskScore = pendingPaymentOrders + returnRequestedOrders * 2 + returnApprovedOrders * 2 + returnShippedOrders * 3;
+  const refundedOrders = Number(stats.refundedOrders || returnedOrders || 0);
+  const refundedAmount = Number(stats.refundedAmount || 0);
+  const netRevenue = Number(stats.netRevenue ?? stats.totalRevenue ?? 0);
+  const refundRate = Number(stats.refundRate || 0);
+  const refundingPayments = Number(stats.refundingPayments || 0);
+  const paymentReturnRiskScore = pendingPaymentOrders + returnRequestedOrders * 2 + returnApprovedOrders * 2 + returnShippedOrders * 3 + refundingPayments * 4;
   const paymentReturnHealth = paymentReturnRiskScore === 0
     ? paymentRefundCopy.healthReady
     : paymentReturnRiskScore >= 6
@@ -391,11 +364,18 @@ const AdminDashboard: React.FC = () => {
       target: '/admin/orders?status=RETURN_SHIPPED',
     },
     {
+      key: 'refunding',
+      value: refundingPayments,
+      label: paymentRefundCopy.refunding,
+      tone: refundingPayments > 0 ? 'danger' : 'ready',
+      target: '/admin/audit-logs?view=refunds',
+    },
+    {
       key: 'returned',
-      value: returnedOrders,
+      value: refundedOrders,
       label: paymentRefundCopy.refunded,
       tone: 'ready',
-      target: '/admin/orders?status=RETURNED',
+      target: '/admin/orders?quick=REFUNDED',
     },
   ];
   const operationalActions = [
@@ -405,6 +385,7 @@ const AdminDashboard: React.FC = () => {
       title: t('pages.adminDashboard.actionPendingPayment'),
       text: t('pages.adminDashboard.actionPendingPaymentText'),
       tone: pendingPaymentOrders > 0 ? 'warning' : 'calm',
+      target: '/admin/orders?status=PENDING_PAYMENT',
     },
     {
       key: 'shipment',
@@ -412,6 +393,7 @@ const AdminDashboard: React.FC = () => {
       title: t('pages.adminDashboard.actionPendingShipment'),
       text: t('pages.adminDashboard.actionPendingShipmentText'),
       tone: pendingShipmentOrders > 0 ? 'info' : 'calm',
+      target: '/admin/orders?status=PENDING_SHIPMENT',
     },
     {
       key: 'stock',
@@ -419,6 +401,7 @@ const AdminDashboard: React.FC = () => {
       title: t('pages.adminDashboard.actionLowStock'),
       text: t('pages.adminDashboard.actionLowStockText'),
       tone: lowStockProducts > 0 ? 'danger' : 'calm',
+      target: '/admin/products?stock=low',
     },
     {
       key: 'tracking',
@@ -426,8 +409,18 @@ const AdminDashboard: React.FC = () => {
       title: t('pages.adminDashboard.actionMissingTracking'),
       text: t('pages.adminDashboard.actionMissingTrackingText'),
       tone: missingTrackingOrders > 0 ? 'warning' : 'calm',
+      target: '/admin/orders?tracking=missing',
+    },
+    {
+      key: 'refunds',
+      value: refundedOrders,
+      title: t('pages.adminDashboard.actionRefunds'),
+      text: t('pages.adminDashboard.actionRefundsText', { amount: formatMoney(refundedAmount) }),
+      tone: refundedOrders > 0 ? 'warning' : 'calm',
+      target: '/admin/audit-logs?view=refunds',
     },
   ];
+  const openActionCount = operationalActions.filter((item) => item.value > 0).length;
   const statusChartData = [
     { label: t('status.PENDING_PAYMENT'), value: Number(stats.pendingPaymentOrders || 0), color: '#faad14' },
     { label: t('status.PENDING_SHIPMENT'), value: Number(stats.pendingShipmentOrders || 0), color: '#1677ff' },
@@ -455,11 +448,25 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="admin-dashboard">
-      <Title level={4}>{t('pages.adminDashboard.title')}</Title>
-      <Divider />
+    <div className={`admin-dashboard admin-dashboard--${language}`}>
+      <div className="admin-dashboard__hero">
+        <div>
+          <Typography.Text className="admin-dashboard__eyebrow">{t('adminLayout.dashboard')}</Typography.Text>
+          <Title level={3}>{t('pages.adminDashboard.title')}</Title>
+        </div>
+        <div className="admin-dashboard__heroMeta">
+          <span>
+            <strong>{openActionCount}</strong>
+            <small>{t('pages.adminDashboard.actionCenterTitle')}</small>
+          </span>
+          <span>
+            <strong>{trackingCoverage}%</strong>
+            <small>{t('pages.adminDashboard.trackingCoverage')}</small>
+          </span>
+        </div>
+      </div>
 
-      <div className="admin-dashboard__actionBar" aria-label={t('pages.adminDashboard.actionCenterTitle')}>
+      <div className={`admin-dashboard__actionBar admin-dashboard__actionBar--${openActionCount > 0 ? 'active' : 'calm'}`} aria-label={t('pages.adminDashboard.actionCenterTitle')}>
         <div className="admin-dashboard__actionIntro">
           <WarningOutlined />
           <div>
@@ -469,16 +476,21 @@ const AdminDashboard: React.FC = () => {
         </div>
         <div className="admin-dashboard__actionGrid">
           {operationalActions.map((item) => (
-            <div key={item.key} className={`admin-dashboard__actionCard admin-dashboard__actionCard--${item.tone}`}>
+            <button
+              key={item.key}
+              type="button"
+              className={`admin-dashboard__actionCard admin-dashboard__actionCard--${item.tone}`}
+              onClick={() => navigate(item.target)}
+            >
               <strong>{item.value}</strong>
               <span>{item.title}</span>
               <Typography.Text type="secondary">{item.text}</Typography.Text>
-            </div>
+            </button>
           ))}
         </div>
       </div>
 
-      <section className="admin-dashboard__paymentOps" aria-label={paymentRefundCopy.title}>
+      <section className={`admin-dashboard__paymentOps admin-dashboard__paymentOps--${paymentReturnRiskScore === 0 ? 'ready' : paymentReturnRiskScore >= 6 ? 'risk' : 'watch'}`} aria-label={paymentRefundCopy.title}>
         <div className="admin-dashboard__paymentOpsIntro">
           <Typography.Text strong>{paymentRefundCopy.title}</Typography.Text>
           <Typography.Text type="secondary">{paymentRefundCopy.subtitle}</Typography.Text>
@@ -512,55 +524,78 @@ const AdminDashboard: React.FC = () => {
         </div>
       </section>
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+      <Row gutter={[16, 16]} className="admin-dashboard__statRow">
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="admin-dashboard__statCard admin-dashboard__statCard--catalog">
             <Statistic title={t('pages.adminDashboard.products')} value={stats.totalProducts} prefix={<ShopOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="admin-dashboard__statCard admin-dashboard__statCard--orders">
             <Statistic title={t('pages.adminDashboard.orders')} value={stats.totalOrders} prefix={<ShoppingOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="admin-dashboard__statCard admin-dashboard__statCard--users">
             <Statistic title={t('pages.adminDashboard.users')} value={stats.totalUsers} prefix={<TeamOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic title={t('pages.adminDashboard.revenue')} value={Number(stats.totalRevenue || 0)} prefix={<DollarOutlined />} precision={2} />
+          <Card className="admin-dashboard__statCard admin-dashboard__statCard--money">
+            <Statistic title={t('pages.adminDashboard.revenue')} value={Number(stats.totalRevenue || 0)} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+      <Row gutter={[16, 16]} className="admin-dashboard__statRow">
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="admin-dashboard__statCard admin-dashboard__statCard--success">
             <Statistic title={t('pages.adminDashboard.paidOrders')} value={stats.paidOrders || 0} prefix={<CheckCircleOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className={pendingPaymentOrders > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
             <Statistic title={t('pages.adminDashboard.pendingPayment')} value={stats.pendingPaymentOrders || 0} prefix={<ClockCircleOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className={lowStockProducts > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--danger' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
             <Statistic title={t('pages.adminDashboard.lowStock')} value={stats.lowStockProducts || 0} prefix={<WarningOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="admin-dashboard__statCard admin-dashboard__statCard--growth">
             <Statistic title={t('pages.adminDashboard.conversionRate')} value={stats.conversionRate || 0} suffix="%" prefix={<RiseOutlined />} precision={2} />
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+      <Row gutter={[16, 16]} className="admin-dashboard__statRow">
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="admin-dashboard__statCard admin-dashboard__statCard--money">
+            <Statistic title={t('pages.adminDashboard.netRevenue')} value={netRevenue} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className={refundedAmount > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
+            <Statistic title={t('pages.adminDashboard.refundedAmount')} value={refundedAmount} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className={refundedOrders > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
+            <Statistic title={t('pages.adminDashboard.refundedOrders')} value={refundedOrders} prefix={<WarningOutlined />} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className={refundRate > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
+            <Statistic title={t('pages.adminDashboard.refundRate')} value={refundRate} suffix="%" prefix={<RiseOutlined />} precision={2} />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={8}>
-          <Card title={t('pages.adminDashboard.orderStatus')}>
+          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.orderStatus')}>
             <DonutChart
               data={statusChartData}
               labels={{
@@ -572,19 +607,19 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title={t('pages.adminDashboard.logisticsHealth')}>
+          <Card className={trackingCoverage < 80 ? 'admin-dashboard__panel admin-dashboard__panel--watch' : 'admin-dashboard__panel admin-dashboard__panel--ready'} title={t('pages.adminDashboard.logisticsHealth')}>
             <Statistic title={t('pages.adminDashboard.trackingCoverage')} value={trackingCoverage} suffix="%" prefix={<TruckOutlined />} />
             <Progress percent={trackingCoverage} strokeColor={trackingCoverage < 80 ? '#faad14' : '#52c41a'} />
-            <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Space direction="vertical" className="admin-dashboard__metricList">
+              <div>
                 <span>{t('pages.adminDashboard.shippedOrders')}</span>
                 <strong>{shippedOrders}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div>
                 <span>{t('pages.adminDashboard.withTracking')}</span>
                 <strong>{ordersWithTracking}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className={missingTrackingOrders > 0 ? 'admin-dashboard__metricRow--warning' : undefined}>
                 <span>{t('pages.adminDashboard.missingTracking')}</span>
                 <strong>{stats.ordersWithoutTracking || 0}</strong>
               </div>
@@ -592,15 +627,15 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title={t('pages.adminDashboard.trackShipment')}>
+          <Card className="admin-dashboard__panel admin-dashboard__trackingPanel" title={t('pages.adminDashboard.trackShipment')}>
             <SeventeenTrackWidget height={420} />
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+      <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={16}>
-          <Card title={t('pages.adminDashboard.salesTrend')}>
+          <Card className="admin-dashboard__panel admin-dashboard__trendPanel" title={t('pages.adminDashboard.salesTrend')}>
             <TrendChart
               data={stats.salesTrend || []}
               formatMoney={formatMoney}
@@ -615,11 +650,11 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title={t('pages.adminDashboard.paymentMethods')}>
-            <Space direction="vertical" style={{ width: '100%' }}>
+          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.paymentMethods')}>
+            <Space direction="vertical" className="admin-dashboard__paymentMethods">
               {Object.entries(stats.paymentMethodBreakdown || {}).map(([method, count]) => (
-                <div key={method}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div key={method} className="admin-dashboard__paymentMethod">
+                  <div>
                     <span>{paymentMethodLabel(method, t)}</span>
                     <strong>{count}</strong>
                   </div>
@@ -627,55 +662,58 @@ const AdminDashboard: React.FC = () => {
                 </div>
               ))}
               {Object.keys(stats.paymentMethodBreakdown || {}).length === 0 && (
-                <div style={{ color: '#999', textAlign: 'center', padding: 20 }}>{t('pages.adminDashboard.noOrderData')}</div>
+                <div className="admin-dashboard__emptyState">{t('pages.adminDashboard.noOrderData')}</div>
               )}
             </Space>
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={16}>
+      <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={16}>
-          <Card title={t('pages.adminDashboard.recentOrders')}>
+          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.recentOrders')}>
             <Table
               columns={recentOrderColumns}
               dataSource={stats.recentOrders}
               rowKey="id"
               pagination={false}
               size="small"
+              scroll={{ x: 720 }}
             />
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title={t('pages.adminDashboard.statusBreakdown')}>
+          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.statusBreakdown')}>
             {Object.entries(stats.orderStatusBreakdown || {}).map(([status, count]) => (
-              <div key={status} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+              <div key={status} className="admin-dashboard__statusRow">
                 <Tag color={statusColors[status] || 'default'}>{t(`status.${status}`) === `status.${status}` ? status : t(`status.${status}`)}</Tag>
-                <span style={{ fontWeight: 600 }}>{count}</span>
+                <span>{count}</span>
               </div>
             ))}
             {Object.keys(stats.orderStatusBreakdown || {}).length === 0 && (
-              <div style={{ color: '#999', textAlign: 'center', padding: 20 }}>{t('pages.adminDashboard.noOrderData')}</div>
+              <div className="admin-dashboard__emptyState">{t('pages.adminDashboard.noOrderData')}</div>
             )}
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={16} style={{ marginTop: 24 }}>
+      <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={16}>
-          <Card title={t('pages.adminDashboard.topProducts')}>
+          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.topProducts')}>
             <Table
               columns={topProductColumns}
               dataSource={stats.topProducts || []}
               rowKey="productId"
               pagination={false}
               size="small"
+              scroll={{ x: 620 }}
             />
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title={t('pages.adminDashboard.lowStockList')}>
+          <Card className={lowStockProducts > 0 ? 'admin-dashboard__panel admin-dashboard__panel--watch' : 'admin-dashboard__panel admin-dashboard__panel--ready'} title={t('pages.adminDashboard.lowStockList')}>
             <List
+              className="admin-dashboard__lowStockList"
               dataSource={stats.lowStockList || []}
               locale={{ emptyText: t('pages.adminDashboard.noLowStock') }}
               renderItem={(item) => (

@@ -21,6 +21,11 @@ public class CartController {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         return cartService.getCartItems(userId);
     }
+
+    @GetMapping("/me")
+    public List<CartItem> getMyCartItems(Authentication authentication) {
+        return cartService.getCartItems(SecurityUtils.requireUser(authentication).getId());
+    }
     
     @PostMapping("/add")
     public ResponseEntity<?> addToCart(@RequestParam Long userId,
@@ -31,6 +36,19 @@ public class CartController {
         try {
             SecurityUtils.assertSelfOrAdmin(authentication, userId);
             cartService.addToCart(userId, productId, quantity, selectedSpecs);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/me/add")
+    public ResponseEntity<?> addToMyCart(@RequestParam Long productId,
+                         @RequestParam Integer quantity,
+                         @RequestParam(required = false) String selectedSpecs,
+                         Authentication authentication) {
+        try {
+            cartService.addToCart(SecurityUtils.requireUser(authentication).getId(), productId, quantity, selectedSpecs);
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -82,5 +100,10 @@ public class CartController {
     public void clearCart(@RequestParam Long userId, Authentication authentication) {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         cartService.clearCart(userId);
+    }
+
+    @DeleteMapping("/me/clear")
+    public void clearMyCart(Authentication authentication) {
+        cartService.clearCart(SecurityUtils.requireUser(authentication).getId());
     }
 } 

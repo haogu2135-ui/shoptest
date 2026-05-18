@@ -1,4 +1,4 @@
-﻿package com.example.shop.controller;
+package com.example.shop.controller;
 
 import com.example.shop.dto.CouponGrantRequest;
 import com.example.shop.dto.CouponUpsertRequest;
@@ -27,7 +27,9 @@ import com.example.shop.service.ReviewService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.UserService;
 import com.example.shop.service.LogisticsCarrierService;
+import com.example.shop.repository.PaymentRepository;
 import com.example.shop.util.CsvUtils;
+import com.example.shop.util.ProductStatusUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -77,6 +79,12 @@ public class AdminController {
     private final LogisticsCarrierService logisticsCarrierService;
     private final SecurityAuditLogService auditLogService;
     private final AdminRoleService adminRoleService;
+    private final PaymentRepository paymentRepository;
+
+    @GetMapping("/products")
+    public ResponseEntity<List<Product>> getProducts() {
+        return ResponseEntity.ok(productService.findAll());
+    }
 
     // ==================== Dashboard ====================
 
@@ -96,12 +104,24 @@ public class AdminController {
         BigDecimal paidRevenue = paidOrders.stream()
                 .map(order -> amountOf(order.getTotalAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<Order> refundedOrders = orders.stream()
+                .filter(order -> "REFUNDED".equals(order.getStatus()) || "RETURNED".equals(order.getStatus()) || order.getRefundedAt() != null)
+                .collect(Collectors.toList());
+        BigDecimal refundedAmount = refundedOrders.stream()
+                .map(order -> amountOf(order.getTotalAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal grossPaidRevenue = paidRevenue.add(refundedAmount);
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("totalProducts", products.size());
         stats.put("totalOrders", orders.size());
         stats.put("totalUsers", users.size());
         stats.put("totalRevenue", paidRevenue);
+        stats.put("grossPaidRevenue", grossPaidRevenue);
+        stats.put("refundedOrders", refundedOrders.size());
+        stats.put("refundedAmount", refundedAmount);
+        stats.put("refundingPayments", paymentRepository.countByStatus("REFUNDING"));
+        stats.put("netRevenue", paidRevenue);
         stats.put("grossOrderAmount", orders.stream()
                 .map(order -> amountOf(order.getOriginalAmount() != null ? order.getOriginalAmount() : order.getTotalAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
@@ -145,6 +165,10 @@ public class AdminController {
                 ? BigDecimal.ZERO
                 : BigDecimal.valueOf(paidOrders.size() * 100L)
                         .divide(BigDecimal.valueOf(orders.size()), 2, java.math.RoundingMode.HALF_UP));
+        stats.put("refundRate", grossPaidRevenue.compareTo(BigDecimal.ZERO) == 0
+                ? BigDecimal.ZERO
+                : refundedAmount.multiply(BigDecimal.valueOf(100L))
+                        .divide(grossPaidRevenue, 2, java.math.RoundingMode.HALF_UP));
 
         List<Order> recentOrders = orders.stream()
                 .sorted(Comparator.comparing(Order::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())).reversed())
@@ -231,6 +255,10 @@ public class AdminController {
 
     private String normalizeStatus(String status) {
         return status == null || status.isBlank() ? "UNKNOWN" : status;
+    }
+
+    private String normalizeProductStatus(String status) {
+        return ProductStatusUtils.normalizeProductStatus(status);
     }
 
     // ==================== Coupon Management ====================
@@ -532,7 +560,7 @@ public class AdminController {
         boolean restock = body != null && Boolean.parseBoolean(String.valueOf(body.getOrDefault("restock", "false")));
         try {
             Payment payment = orderService.refundOrder(id, reason, restock);
-            auditLogService.record("ORDER_REFUND", "SUCCESS", authentication, "ORDER", id, request,
+            auditLogService.record("REFUND_COMPLETE", "SUCCESS", authentication, "ORDER", id, request,
                     "Order refunded",
                     "paymentId=" + payment.getId() + ",channel=" + payment.getChannel() + ",reference=" + payment.getRefundReference() + ",restock=" + restock);
             return ResponseEntity.ok(Map.of(
@@ -540,7 +568,7 @@ public class AdminController {
                     "payment", payment
             ));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            auditLogService.record("ORDER_REFUND", "FAILURE", authentication, "ORDER", id, request,
+            auditLogService.record("REFUND_COMPLETE", "FAILURE", authentication, "ORDER", id, request,
                     e.getMessage(), "restock=" + restock);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -621,9 +649,12 @@ public class AdminController {
 
     @PutMapping("/products/{id}/status")
     public ResponseEntity<?> updateProductStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String status = body.get("status") == null ? "" : body.get("status").trim();
-        if (status.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "status is required"));
+        if (body == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "status must be one of " + ProductStatusUtils.PRODUCT_STATUSES));
+        }
+        String status = normalizeProductStatus(body.get("status"));
+        if (status == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "status must be one of " + ProductStatusUtils.PRODUCT_STATUSES));
         }
         return productService.findById(id)
                 .map(product -> {
@@ -636,9 +667,12 @@ public class AdminController {
 
     @PostMapping("/products/batch-status")
     public ResponseEntity<?> batchUpdateProductStatus(@RequestBody Map<String, Object> body) {
+        if (body == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "productIds and status are required"));
+        }
         Object idsValue = body.get("productIds");
-        String status = body.get("status") == null ? "" : String.valueOf(body.get("status")).trim();
-        if (!(idsValue instanceof List<?>) || status.isEmpty() || "null".equals(status)) {
+        String status = normalizeProductStatus(body.get("status") == null ? null : String.valueOf(body.get("status")));
+        if (!(idsValue instanceof List<?>) || status == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "productIds and status are required"));
         }
 
@@ -692,7 +726,8 @@ public class AdminController {
         StringBuilder csv = new StringBuilder("\uFEFF");
         csv.append(CsvUtils.row(Arrays.asList(
                 "id", "orderNo", "userId", "totalAmount", "status",
-                "shippingAddress", "paymentMethod", "createdAt", "updatedAt", "items"
+                "shippingAddress", "paymentMethod", "trackingNumber", "returnTrackingNumber",
+                "returnReason", "refundedAt", "createdAt", "updatedAt", "items"
         ))).append("\r\n");
 
         for (Order order : orders) {
@@ -708,6 +743,10 @@ public class AdminController {
                     order.getStatus(),
                     order.getShippingAddress(),
                     order.getPaymentMethod(),
+                    order.getTrackingNumber(),
+                    order.getReturnTrackingNumber(),
+                    order.getReturnReason(),
+                    order.getRefundedAt(),
                     order.getCreatedAt(),
                     order.getUpdatedAt(),
                     itemSummary

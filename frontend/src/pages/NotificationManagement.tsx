@@ -4,6 +4,7 @@ import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, SendOutlined, 
 import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './NotificationManagement.css';
 
 const { Title, Text } = Typography;
@@ -13,10 +14,12 @@ const samplePromotionHtml = `<p><strong>Limited-time offer</strong>: free shippi
 <p>Use coupon <strong>SHOPMX20</strong> for an extra discount.</p>
 <p><a href="/coupons">Claim coupons now</a></p>`;
 
+const conversionHookPattern = /(coupon|discount|offer|shipping|birthday|limited|bundle|save|\u4f18\u60e0|\u6298\u6263|\u5238|\u5305\u90ae|\u751f\u65e5|\u9650\u65f6|\u5957\u88c5|ahorro|oferta|cup[o\u00f3]n|env[i\u00ed]o)/i;
+
 const NotificationManagement: React.FC = () => {
   const [form] = Form.useForm();
   const [sending, setSending] = useState(false);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const contentFormat = Form.useWatch('contentFormat', form) || 'HTML';
   const notificationTitle = Form.useWatch('title', form) || '';
   const messageContent = Form.useWatch('message', form) || '';
@@ -32,7 +35,7 @@ const NotificationManagement: React.FC = () => {
     const hasTitle = notificationTitle.trim().length >= 6 && notificationTitle.trim().length <= 80;
     const hasContent = plainContent.length >= 30;
     const hasLink = /href=|https?:\/\/|\/(products|coupons|cart|checkout)/i.test(messageContent);
-    const hasConversionHook = /(coupon|discount|offer|shipping|birthday|limited|bundle|save|优惠|折扣|券|包邮|生日|限时|套装|ahorro|oferta|cupon|envio)/i.test(normalized);
+    const hasConversionHook = conversionHookPattern.test(normalized);
     const readyCount = [hasTitle, hasContent, hasLink, hasConversionHook].filter(Boolean).length;
     return { hasTitle, hasContent, hasLink, hasConversionHook, readyCount };
   }, [messageContent, notificationTitle, plainContent]);
@@ -47,7 +50,7 @@ const NotificationManagement: React.FC = () => {
       };
       const res = await adminApi.broadcastNotification(payload);
       message.success(t('pages.notificationAdmin.sent', { count: res.data.sent }));
-      window.dispatchEvent(new Event('shop:notifications-updated'));
+      dispatchDomEvent('shop:notifications-updated');
       form.resetFields();
       form.setFieldsValue({ type: 'PROMOTION', contentFormat: 'HTML' });
     } catch (error: any) {
@@ -68,7 +71,7 @@ const NotificationManagement: React.FC = () => {
   };
 
   return (
-    <div className="notification-management-page">
+    <div className={`notification-management-page notification-management-page--${language}`}>
       <Space align="center">
         <NotificationOutlined style={{ fontSize: 24 }} />
         <Title level={3} style={{ margin: 0 }}>{t('pages.notificationAdmin.title')}</Title>

@@ -17,6 +17,7 @@ export const orderStatusColors: Record<string, string> = {
   RETURN_APPROVED: 'geekblue',
   RETURN_SHIPPED: 'cyan',
   RETURNED: 'purple',
+  REFUNDING: 'magenta',
   REFUNDED: 'purple',
 };
 

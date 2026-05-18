@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, InputNumber, message, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiBaseUrl, cartApi, productApi } from '../api';
+import { cartApi, productApi } from '../api';
 import type { CartItem, Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -15,34 +15,30 @@ import {
   saveCartItemForLater,
   type SavedForLaterItem,
 } from '../utils/saveForLater';
-import { conversionConfig, getLowStockCount } from '../utils/conversionConfig';
+import { conversionConfig } from '../utils/conversionConfig';
 import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefits';
 import { loadProductViewPreferences } from '../utils/productViewPreferences';
 import { needsOptionSelection } from '../utils/productOptions';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
+import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
+import { dispatchDomEvent } from '../utils/domEvents';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Cart.css';
 
 const { Title, Text } = Typography;
-const cartImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-const resolveCartPageImage = (imageUrl?: string) => {
-  if (!imageUrl) return cartImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;
+const recentProductsCache = new Map<string, { expiresAt: number; products: Product[] }>();
 
-const isAvailable = (item: CartItem) =>
-  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock > 0);
-const canCheckout = (item: CartItem) =>
-  isAvailable(item) && (item.stock === undefined || item.stock >= item.quantity);
-const getCartItemLowStockCount = (item: CartItem) => getLowStockCount(item.stock, item.quantity);
 const getSavedAgeDays = (savedAt?: number) => {
   if (!savedAt) return 0;
   return Math.max(0, Math.floor((Date.now() - savedAt) / 86400000));
+};
+
+const getCartQuantityLimit = (stock?: number | null) => {
+  if (stock === undefined || stock === null) return 99;
+  return Math.max(1, stock);
 };
 
 const Cart: React.FC = () => {
@@ -92,15 +88,25 @@ const Cart: React.FC = () => {
         return;
       }
       try {
-        const response = await productApi.getByIds(preferences.recent.slice(0, conversionConfig.cartRecentlyViewed.maxItems * 2));
+        const recentIds = preferences.recent.slice(0, conversionConfig.cartRecentlyViewed.maxItems * 2);
+        const cacheKey = `${language}|${recentIds.join(',')}`;
+        const cached = recentProductsCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+          setRecentProducts(cached.products);
+          return;
+        }
+        const response = await productApi.getByIds(recentIds);
         const productById = new Map(response.data.map((product) => [product.id, localizeProduct(product, language)]));
-        setRecentProducts(
-          preferences.recent
+        const nextRecentProducts = preferences.recent
             .map((productId) => productById.get(productId))
             .filter((product): product is Product => Boolean(product))
             .filter((product) => (product.status || 'ACTIVE') === 'ACTIVE' && (product.stock === undefined || product.stock > 0))
-            .slice(0, conversionConfig.cartRecentlyViewed.maxItems),
-        );
+            .slice(0, conversionConfig.cartRecentlyViewed.maxItems);
+        recentProductsCache.set(cacheKey, {
+          expiresAt: Date.now() + RECENT_PRODUCTS_CACHE_MS,
+          products: nextRecentProducts,
+        });
+        setRecentProducts(nextRecentProducts);
       } catch {
         setRecentProducts([]);
       }
@@ -130,7 +136,7 @@ const Cart: React.FC = () => {
   const updateQuantity = async (itemId: number, quantity: number) => {
     if (updatingItemIds.includes(itemId)) return;
     const targetItem = cartItems.find((item) => item.id === itemId);
-    const normalizedQuantity = Math.max(1, Math.min(Number(quantity) || 1, targetItem?.stock || 99));
+    const normalizedQuantity = Math.max(1, Math.min(Number(quantity) || 1, getCartQuantityLimit(targetItem?.stock)));
     if (targetItem && normalizedQuantity === targetItem.quantity) return;
     try {
       setUpdatingItemIds((ids) => Array.from(new Set([...ids, itemId])));
@@ -141,7 +147,7 @@ const Cart: React.FC = () => {
       } else {
         setCartItems(updateGuestCartQuantity(itemId, normalizedQuantity));
       }
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
       message.error(err.response?.data?.error || t('pages.cart.quantityFailed'));
     } finally {
@@ -162,7 +168,7 @@ const Cart: React.FC = () => {
       }
       message.success(t('messages.deleteSuccess'));
       setSelectedIds((ids) => ids.filter((id) => id !== itemId));
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.deleteFailed'));
     } finally {
@@ -184,7 +190,7 @@ const Cart: React.FC = () => {
       setSelectedIds((ids) => ids.filter((id) => id !== item.id));
       setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.savedForLater'));
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -217,7 +223,7 @@ const Cart: React.FC = () => {
       removeSavedForLaterProduct(item.productId, item.selectedSpecs);
       setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.movedToCart'));
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -255,7 +261,7 @@ const Cart: React.FC = () => {
       targetItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
       setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.movedSavedBatch', { count: targetItems.length }));
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));
     } finally {
@@ -282,7 +288,7 @@ const Cart: React.FC = () => {
       }
       setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
       message.success(successMessage);
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('messages.deleteFailed'));
     } finally {
@@ -310,47 +316,18 @@ const Cart: React.FC = () => {
   const freeShippingPercent = freeShippingThreshold > 0
     ? Math.min(100, Math.round((selectedTotal / freeShippingThreshold) * 100))
     : 100;
-  const selectedPurchasableCount = selectedIds.filter((id) => purchasableItems.some((item) => item.id === id)).length;
+  const selectedPurchasableIds = selectedIds.filter((id) => purchasableItems.some((item) => item.id === id));
+  const selectedPurchasableCount = selectedPurchasableIds.length;
   const allSelected = purchasableItems.length > 0 && selectedPurchasableCount === purchasableItems.length;
   const selectedUnitCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const selectedLowStockCount = selectedItems.filter((item) => canCheckout(item) && getCartItemLowStockCount(item) !== null).length;
   const savedItemsTotal = savedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const checkoutBlocked = selectedIds.length === 0 || selectedItems.some((item) => !canCheckout(item));
-  const checkoutConfidenceItems = [
-    {
-      key: 'selection',
-      ready: selectedItems.length > 0,
-      label: t('pages.cart.confidenceSelection'),
-      text: selectedItems.length > 0
-        ? t('pages.cart.confidenceSelectionReady', { count: selectedUnitCount })
-        : t('pages.cart.confidenceSelectionNeeded'),
-    },
-    {
-      key: 'stock',
-      ready: selectedItems.length > 0 && selectedLowStockCount === 0 && selectedItems.every(canCheckout),
-      label: t('pages.cart.confidenceStock'),
-      text: selectedLowStockCount > 0
-        ? t('pages.cart.confidenceStockLow', { count: selectedLowStockCount })
-        : selectedItems.every(canCheckout)
-          ? t('pages.cart.confidenceStockReady')
-          : t('pages.cart.confidenceStockBlocked'),
-    },
-    {
-      key: 'shipping',
-      ready: freeShippingRemaining <= 0,
-      label: t('pages.cart.confidenceShipping'),
-      text: freeShippingRemaining <= 0
-        ? t('pages.cart.confidenceShippingReady')
-        : t('pages.cart.confidenceShippingGap', { amount: formatMoney(freeShippingRemaining) }),
-    },
-  ];
-  const checkoutConfidenceReadyCount = checkoutConfidenceItems.filter((item) => item.ready).length;
+  const checkoutBlocked = selectedPurchasableCount === 0 || selectedItems.some((item) => !canCheckout(item));
   const toggleAll = (checked: boolean) => {
     setSelectedIds(checked ? purchasableItems.map((item) => item.id) : []);
   };
 
   const toggleOne = (itemId: number, checked: boolean) => {
-    setSelectedIds((ids) => (checked ? [...ids, itemId] : ids.filter((id) => id !== itemId)));
+    setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, itemId])) : ids.filter((id) => id !== itemId)));
   };
 
   const goCheckout = () => {
@@ -475,7 +452,7 @@ const Cart: React.FC = () => {
         .filter((item) => item.productId === product.id && canCheckout(item))
         .map((item) => item.id);
       setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
-      window.dispatchEvent(new Event('shop:cart-updated'));
+      dispatchDomEvent('shop:cart-updated');
       return;
     }
     addGuestCartItem(product, 1);
@@ -527,9 +504,9 @@ const Cart: React.FC = () => {
       render: (name: string, record: CartItem) => (
         <Space>
           <img
-            src={resolveCartPageImage(record.imageUrl)}
+            src={resolveCartImage(record.imageUrl)}
             alt={name}
-            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
+            className="cart-page__tableImage"
             loading="lazy"
             decoding="async"
             onError={(event) => {
@@ -558,7 +535,7 @@ const Cart: React.FC = () => {
       dataIndex: 'price',
       key: 'price',
       width: 110,
-      render: (price: number) => <Text style={{ color: '#ee4d2d' }}>{formatMoney(price)}</Text>,
+      render: (price: number) => <Text className="cart-page__priceText">{formatMoney(price)}</Text>,
     },
     {
       title: t('common.quantity'),
@@ -568,7 +545,7 @@ const Cart: React.FC = () => {
       render: (_: unknown, record: CartItem) => (
         <InputNumber
           min={1}
-          max={record.stock || undefined}
+          max={record.stock ?? undefined}
           disabled={!isAvailable(record) || updatingItemIds.includes(record.id) || removingItemIds.includes(record.id)}
           value={record.quantity}
           size="small"
@@ -580,7 +557,7 @@ const Cart: React.FC = () => {
       title: t('common.subtotal'),
       key: 'subtotal',
       width: 120,
-      render: (_: unknown, record: CartItem) => <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(record.price * record.quantity)}</Text>,
+      render: (_: unknown, record: CartItem) => <Text strong className="cart-page__priceText">{formatMoney(record.price * record.quantity)}</Text>,
     },
     {
       title: t('common.actions'),
@@ -601,7 +578,7 @@ const Cart: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="cart-page">
+      <div className={`cart-page cart-page--${language}`}>
         <section className="cart-page__hero">
           <div className="cart-page__heroContent">
             <div className="shimmer" style={{ width: 100, height: 18, borderRadius: 999 }} />
@@ -628,7 +605,7 @@ const Cart: React.FC = () => {
 
   if (!loading && cartItems.length === 0 && savedItems.length === 0 && recentProducts.length === 0) {
     return (
-      <div className="cart-page cart-page--empty">
+      <div className={`cart-page cart-page--empty cart-page--${language}`}>
         <Empty image={<ShoppingOutlined style={{ fontSize: 64, color: '#ccc' }} />} description={t('pages.cart.empty')}>
           <Button type="primary" onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
         </Empty>
@@ -637,7 +614,7 @@ const Cart: React.FC = () => {
   }
 
   return (
-    <div className="cart-page">
+    <div className={`cart-page cart-page--${language}`}>
       <section className="cart-page__hero">
         <div className="cart-page__heroContent">
           <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
@@ -670,7 +647,7 @@ const Cart: React.FC = () => {
         ))}
       </section>
       {showRecentlyViewedRecovery ? (
-        <Card className="cart-page__recentRecovery" style={{ marginBottom: 16 }}>
+        <Card className="cart-page__recentRecovery">
           <div className="cart-page__recentRecoveryHeader">
             <div>
               <Text strong>{t('pages.cart.recentRecoveryTitle')}</Text>
@@ -686,7 +663,7 @@ const Cart: React.FC = () => {
               >
                 <button type="button" className="cart-page__recentLink" onClick={() => navigate(`/products/${product.id}`)}>
                   <img
-                    src={resolveCartPageImage(product.imageUrl)}
+                    src={resolveCartImage(product.imageUrl)}
                     alt={product.name}
                     loading="lazy"
                     decoding="async"
@@ -717,7 +694,7 @@ const Cart: React.FC = () => {
       ) : null}
       {cartItems.length > 0 ? (
         <>
-          <Card size="small" style={{ marginBottom: 16 }}>
+          <Card size="small" className="cart-page__bulkActions">
             <Space wrap>
               <Popconfirm
                 title={t('pages.cart.deleteSelectedConfirm', { count: selectedIds.length })}
@@ -776,42 +753,22 @@ const Cart: React.FC = () => {
               ) : null}
             </div>
           </div>
-          <details className="cart-page__confidencePanel">
-            <summary>
-              <span className="cart-page__confidenceIntro">
-                <Text strong>{t('pages.cart.confidenceTitle')}</Text>
-                <Text type="secondary">{t('pages.cart.confidenceSubtitle')}</Text>
+          {cartNextAction.tone !== 'ready' ? (
+            <div className={`cart-page__nextAction cart-page__nextAction--${cartNextAction.tone}`}>
+              <span>
+                <Text type="secondary">{t('pages.cart.nextActionEyebrow')}</Text>
+                <Text strong>{cartNextAction.title}</Text>
+                <Text type="secondary">{cartNextAction.text}</Text>
               </span>
-              <Tag color={checkoutConfidenceReadyCount === checkoutConfidenceItems.length ? 'green' : 'orange'}>
-                {checkoutConfidenceReadyCount}/{checkoutConfidenceItems.length}
-              </Tag>
-            </summary>
-            <div className="cart-page__confidenceGrid">
-              {checkoutConfidenceItems.map((item) => (
-                <div className={item.ready ? 'cart-page__confidenceItem cart-page__confidenceItem--ready' : 'cart-page__confidenceItem'} key={item.key}>
-                  <CheckCircleOutlined />
-                  <span>
-                    <Text strong>{item.label}</Text>
-                    <Text type="secondary">{item.text}</Text>
-                  </span>
-                </div>
-              ))}
+              <Button
+                type="default"
+                onClick={cartNextAction.action}
+                loading={cartNextAction.key === 'saved' && restoringSaved}
+              >
+                {cartNextAction.label}
+              </Button>
             </div>
-          </details>
-          <div className={`cart-page__nextAction cart-page__nextAction--${cartNextAction.tone}`}>
-            <span>
-              <Text type="secondary">{t('pages.cart.nextActionEyebrow')}</Text>
-              <Text strong>{cartNextAction.title}</Text>
-              <Text type="secondary">{cartNextAction.text}</Text>
-            </span>
-            <Button
-              type={cartNextAction.tone === 'ready' ? 'primary' : 'default'}
-              onClick={cartNextAction.action}
-              loading={cartNextAction.key === 'saved' && restoringSaved}
-            >
-              {cartNextAction.label}
-            </Button>
-          </div>
+          ) : null}
           <div className="cart-page__table">
             <Table columns={columns} dataSource={cartItems} rowKey="id" loading={loading} pagination={false} />
           </div>
@@ -825,7 +782,7 @@ const Cart: React.FC = () => {
                 onChange={(e) => toggleOne(item.id, e.target.checked)}
               />
               <img
-                src={resolveCartPageImage(item.imageUrl)}
+                src={resolveCartImage(item.imageUrl)}
                 alt={item.productName}
                 loading="lazy"
                 decoding="async"
@@ -852,13 +809,13 @@ const Cart: React.FC = () => {
             <div className="cart-page__mobileItemBottom">
               <InputNumber
                 min={1}
-                max={item.stock || undefined}
+                max={item.stock ?? undefined}
                 disabled={!isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id)}
                 value={item.quantity}
                 size="small"
                 onChange={(value) => updateQuantity(item.id, value || 1)}
               />
-              <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(item.price * item.quantity)}</Text>
+              <Text strong className="cart-page__priceText">{formatMoney(item.price * item.quantity)}</Text>
               <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
                 {t('pages.cart.saveForLaterShort')}
               </Button>
@@ -869,23 +826,23 @@ const Cart: React.FC = () => {
           </Card>
             ))}
           </div>
-          <Card className="cart-page__summary" style={{ marginTop: 16 }}>
-            <div style={{ marginBottom: 16 }}>
+          <Card className="cart-page__summary">
+            <div className="cart-page__summaryProgress">
               <Text strong>
                 {freeShippingRemaining > 0
                   ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingRemaining) })
                   : t('pages.cart.freeShippingUnlocked')}
               </Text>
-              <Progress percent={freeShippingPercent} showInfo={false} strokeColor="#124734" style={{ marginTop: 8 }} />
+              <Progress percent={freeShippingPercent} showInfo={false} strokeColor="#124734" />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div className="cart-page__summaryFooter">
               <div>
                 <Text>{t('pages.cart.selectedSummary', { count: selectedUnitCount })}</Text>
                 <Text className="cart-page__total">
-                  {t('common.total')}: <Text strong style={{ color: '#ee4d2d', fontSize: 24 }}>{formatMoney(selectedTotal)}</Text>
+                  {t('common.total')}: <Text strong className="cart-page__totalAmount">{formatMoney(selectedTotal)}</Text>
                 </Text>
               </div>
-              <Button type="primary" size="large" onClick={goCheckout} disabled={selectedIds.length === 0}>
+              <Button type="primary" size="large" onClick={goCheckout} disabled={checkoutBlocked}>
                 {t('pages.cart.checkout')}
               </Button>
             </div>
@@ -955,7 +912,7 @@ const Cart: React.FC = () => {
               <div className="cart-page__savedItem" key={item.id}>
                 <Link to={`/products/${item.productId}`}>
                   <img
-                    src={resolveCartPageImage(item.imageUrl)}
+                    src={resolveCartImage(item.imageUrl)}
                     alt={item.productName}
                     loading="lazy"
                     decoding="async"

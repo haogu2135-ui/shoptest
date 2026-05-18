@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input } from 'antd';
 import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi, userApi } from '../api';
 import type { AdminRole, User } from '../types';
 import { useLanguage } from '../i18n';
 import { getEffectiveRole, isAdminRole, isSuperAdminRole, roleColor } from '../utils/roles';
@@ -16,8 +16,8 @@ const UserManagement: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const currentUserId = Number(localStorage.getItem('userId'));
-  const currentRole = localStorage.getItem('role') || '';
+  const [currentUserId, setCurrentUserId] = useState(0);
+  const [currentRole, setCurrentRole] = useState('');
   const canManageRoles = isSuperAdminRole(currentRole);
   const { t, language } = useLanguage();
 
@@ -63,6 +63,19 @@ const UserManagement: React.FC = () => {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    if (!localStorage.getItem('token')) return;
+    userApi.getProfile()
+      .then((res) => {
+        setCurrentUserId(Number(res.data.id || 0));
+        setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
+      })
+      .catch(() => {
+        setCurrentUserId(0);
+        setCurrentRole('');
+      });
+  }, []);
 
   useEffect(() => {
     adminApi.getRoles()
@@ -245,8 +258,8 @@ const UserManagement: React.FC = () => {
     <div className="user-management-page">
       <Title level={4}>{t('pages.adminUsers.title')}</Title>
       <Divider />
-      <Card style={{ marginBottom: 16 }}>
-        <Space wrap>
+      <Card className="user-management-page__toolbar">
+        <Space wrap className="user-management-page__filters">
           <Input
             allowClear
             prefix={<SearchOutlined />}
@@ -298,26 +311,26 @@ const UserManagement: React.FC = () => {
           <Text type="secondary">{t('pages.adminUsers.healthScore')}</Text>
         </div>
         <div className="user-management-page__healthGrid">
-          <Card className="user-management-page__healthItem">
+          <div className="user-management-page__healthItem">
             <TeamOutlined />
             <strong>{userHealth.activeUsers}</strong>
             <span>{t('pages.adminUsers.activeUsers')}</span>
-          </Card>
-          <Card className={`user-management-page__healthItem ${userHealth.admins > 2 ? 'is-risk' : ''}`}>
+          </div>
+          <div className={`user-management-page__healthItem ${userHealth.admins > 2 ? 'is-risk' : ''}`}>
             <SafetyCertificateOutlined />
             <strong>{userHealth.admins}</strong>
             <span>{t('pages.adminUsers.adminUsers')}</span>
-          </Card>
-          <Card className={`user-management-page__healthItem ${userHealth.missingEmail ? 'is-risk' : ''}`}>
+          </div>
+          <div className={`user-management-page__healthItem ${userHealth.missingEmail ? 'is-risk' : ''}`}>
             <MailOutlined />
             <strong>{userHealth.missingEmail}</strong>
             <span>{t('pages.adminUsers.missingEmail')}</span>
-          </Card>
-          <Card className={`user-management-page__healthItem ${userHealth.missingPhone ? 'is-risk' : ''}`}>
+          </div>
+          <div className={`user-management-page__healthItem ${userHealth.missingPhone ? 'is-risk' : ''}`}>
             <PhoneOutlined />
             <strong>{userHealth.missingPhone}</strong>
             <span>{t('pages.adminUsers.missingPhone')}</span>
-          </Card>
+          </div>
         </div>
       </section>
       <Table

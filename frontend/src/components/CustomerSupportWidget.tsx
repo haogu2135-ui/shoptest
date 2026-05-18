@@ -1,30 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
-import { CloseOutlined, CustomerServiceOutlined, SendOutlined, ShoppingOutlined, SoundOutlined } from '@ant-design/icons';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { apiBaseUrl, orderApi, supportApi, supportWebSocketUrl, userApi } from '../api';
+import { Avatar, Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
+import { CloseOutlined, CustomerServiceOutlined, SendOutlined, ShoppingOutlined, SoundOutlined, UserOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { orderApi, supportApi, supportWebSocketUrl } from '../api';
 import type { Order, OrderItem, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { parseSupportSocketPayload, supportChatConfig } from '../utils/supportChatConfig';
+import { buildSupportOrderWorkflowActions, type SupportOrderWorkflowAction } from '../utils/supportWorkflow';
+import { getApiErrorMessage } from '../utils/apiError';
+import { decodeSupportOrderMessage, encodeSupportOrderMessage, type SupportOrderContext } from '../utils/supportOrderMessage';
+import { formatSafeDate, formatSafeDateTime, formatSafeTime, getSafeTime } from '../utils/dateFormat';
 import './CustomerSupportWidget.css';
 
 const { Text } = Typography;
-const ORDER_PREFIX = '[ORDER]';
 const SUPPORT_BUTTON_POSITION_KEY = 'shop-support-button-position';
 const SUPPORT_BUTTON_SIZE = 56;
 const SUPPORT_BUTTON_MARGIN = 12;
 const SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN = 20;
-const supportOrderImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveSupportOrderImage = (imageUrl?: string) => {
-  if (!imageUrl) return supportOrderImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const supportOrderImageFallback = productImageFallback;
+const resolveSupportOrderImage = resolveProductImage;
 
 type SupportButtonPosition = {
   left: number;
@@ -33,6 +30,14 @@ type SupportButtonPosition = {
 
 const getSupportButtonBottomMargin = () =>
   window.innerWidth <= 720 ? SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN : 24;
+
+const readSupportToken = () => {
+  try {
+    return localStorage.getItem('token');
+  } catch {
+    return null;
+  }
+};
 
 const CustomerSupportWidget: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -52,6 +57,9 @@ const CustomerSupportWidget: React.FC = () => {
   const [content, setContent] = useState('');
   const [unread, setUnread] = useState(0);
   const [buttonPosition, setButtonPosition] = useState<SupportButtonPosition | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth <= 720
+  );
   const dragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -66,10 +74,10 @@ const CustomerSupportWidget: React.FC = () => {
   const reconnectTimerRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
-  const token = localStorage.getItem('token');
+  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const token = readSupportToken();
   const activeSessionId = session?.id;
   const quickReplies = useMemo(() => [
     t('pages.support.quickShipping'),
@@ -79,10 +87,16 @@ const CustomerSupportWidget: React.FC = () => {
   const trimmedContent = content.trim();
   const messageLength = trimmedContent.length;
   const messageTooLong = messageLength > supportChatConfig.maxMessageChars;
-  const hasSharedOrder = useMemo(
-    () => messages.some((item) => item.senderRole === 'USER' && item.content.startsWith(ORDER_PREFIX)),
-    [messages]
-  );
+  const sharedOrderContext = useMemo<SupportOrderContext | null>(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const item = messages[index];
+      if (item.senderRole !== 'USER') continue;
+      const order = decodeSupportOrderMessage(item.content);
+      if (order) return order;
+    }
+    return null;
+  }, [messages]);
+  const hasSharedOrder = Boolean(sharedOrderContext);
   const supportIntent = useMemo(() => {
     const normalizedContent = trimmedContent.toLowerCase();
     const matchedQuickReplyIndex = quickReplies.findIndex((reply) => normalizedContent.includes(reply.toLowerCase()));
@@ -116,6 +130,13 @@ const CustomerSupportWidget: React.FC = () => {
       : t('pages.support.messageDraftHint');
 
   const latestOrder = orders[0];
+  const workflowOrder = sharedOrderContext || latestOrder || null;
+  const workflowActions = useMemo(
+    () => workflowOrder
+      ? buildSupportOrderWorkflowActions(workflowOrder, language, t(`status.${workflowOrder.status}`))
+      : [],
+    [language, t, workflowOrder]
+  );
   const conversationUpdatedAt = session?.lastMessageAt || session?.updatedAt || session?.createdAt;
   const assignedAgentText = session?.assignedAdminName || t('pages.support.unassignedAgent');
 
@@ -124,8 +145,8 @@ const CustomerSupportWidget: React.FC = () => {
       const leftOpen = left.status === 'OPEN' ? 1 : 0;
       const rightOpen = right.status === 'OPEN' ? 1 : 0;
       if (leftOpen !== rightOpen) return rightOpen - leftOpen;
-      const leftTime = left.updatedAt ? new Date(left.updatedAt).getTime() : 0;
-      const rightTime = right.updatedAt ? new Date(right.updatedAt).getTime() : 0;
+      const leftTime = getSafeTime(left.updatedAt);
+      const rightTime = getSafeTime(right.updatedAt);
       return rightTime - leftTime || right.id - left.id;
     }), []);
 
@@ -162,15 +183,32 @@ const CustomerSupportWidget: React.FC = () => {
 
   useEffect(() => {
     const handleResize = () => {
+      setIsMobileViewport(window.innerWidth <= 720);
       setButtonPosition((position) => {
         const next = clampButtonPosition(position || getDefaultButtonPosition());
-        localStorage.setItem(SUPPORT_BUTTON_POSITION_KEY, JSON.stringify(next));
+        try {
+          localStorage.setItem(SUPPORT_BUTTON_POSITION_KEY, JSON.stringify(next));
+        } catch {
+          // Button position persistence is best-effort in restricted storage modes.
+        }
         return next;
       });
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [clampButtonPosition, getDefaultButtonPosition]);
+
+  useEffect(() => {
+    if (!open || !isMobileViewport) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.touchAction = previousTouchAction;
+    };
+  }, [isMobileViewport, open]);
 
   useEffect(() => {
     if (!token) return;
@@ -180,40 +218,16 @@ const CustomerSupportWidget: React.FC = () => {
   }, [token]);
 
   const fetchSupportOrders = useCallback(async () => {
-    if (!localStorage.getItem('token')) return;
+    if (!readSupportToken()) return;
     setOrdersLoading(true);
     setOrdersLoadFailed(false);
     try {
-      let ordersData: Order[] = [];
-      let currentUserId = Number(localStorage.getItem('userId') || 0);
-      try {
-        const res = await orderApi.getMine();
-        ordersData = res.data || [];
-      } catch {
-        ordersData = [];
-      }
-
-      if (ordersData.length === 0) {
-        if (!currentUserId) {
-          const profileRes = await userApi.getProfile();
-          currentUserId = Number(profileRes.data.id || 0);
-          if (currentUserId) {
-            localStorage.setItem('userId', String(currentUserId));
-            if (profileRes.data.username) localStorage.setItem('username', profileRes.data.username);
-            if (profileRes.data.roleCode || profileRes.data.role) {
-              localStorage.setItem('role', profileRes.data.roleCode || profileRes.data.role);
-            }
-          }
-        }
-        if (currentUserId) {
-          const res = await orderApi.getByUser(currentUserId);
-          ordersData = res.data || [];
-        }
-      }
+      const res = await orderApi.getMine();
+      const ordersData = res.data || [];
 
       const sortedOrders = [...ordersData].sort((left, right) => {
-        const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
-        const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+        const leftTime = getSafeTime(left.createdAt);
+        const rightTime = getSafeTime(right.createdAt);
         return rightTime - leftTime || right.id - left.id;
       });
       setOrders(sortedOrders.slice(0, 30));
@@ -255,46 +269,35 @@ const CustomerSupportWidget: React.FC = () => {
     }
   };
 
-  const encodeOrderMessage = (order: Order) => `${ORDER_PREFIX}${JSON.stringify({
-    id: order.id,
-    orderNo: order.orderNo,
-    status: order.status,
-    totalAmount: order.totalAmount,
-    originalAmount: order.originalAmount,
-    discountAmount: order.discountAmount,
-    paymentMethod: order.paymentMethod,
-    createdAt: order.createdAt,
-  })}`;
-
-  const decodeOrderMessage = (text: string) => {
-    if (!text.startsWith(ORDER_PREFIX)) return null;
-    try {
-      return JSON.parse(text.slice(ORDER_PREFIX.length));
-    } catch {
-      return null;
-    }
-  };
+  const encodeOrderMessage = encodeSupportOrderMessage;
+  const decodeOrderMessage = decodeSupportOrderMessage;
 
   const orderOptions = useMemo(() => orders.map((order) => ({
     value: order.id,
-    label: `${order.createdAt ? new Date(order.createdAt).toLocaleDateString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') + ' - ' : ''}${order.orderNo || `#${order.id}`} - ${formatMoney(order.totalAmount)}`,
-  })), [orders, formatMoney, language]);
+    label: `${formatSafeDate(order.createdAt, dateLocale, '') ? `${formatSafeDate(order.createdAt, dateLocale)} - ` : ''}${order.orderNo || `#${order.id}`} - ${formatMoney(order.totalAmount)}`,
+  })), [orders, formatMoney, dateLocale]);
 
   useEffect(() => {
     if (!open || !token) return;
+    let disposed = false;
 
     const load = async () => {
       try {
         const sessionRes = await supportApi.getSession();
+        if (disposed) return;
         setSession(sessionRes.data);
         upsertSessionHistory(sessionRes.data);
         const messagesRes = await supportApi.getMessages(sessionRes.data.id);
+        if (disposed) return;
         setMessages(messagesRes.data);
         supportApi.getSessions()
-          .then((res) => setSessionHistory(sortSupportSessions(res.data || [])))
+          .then((res) => {
+            if (!disposed) setSessionHistory(sortSupportSessions(res.data || []));
+          })
           .catch(() => undefined);
         setUnread(0);
       } catch {
+        if (disposed) return;
         message.error(t('pages.support.loadFailed'));
       }
     };
@@ -348,6 +351,7 @@ const CustomerSupportWidget: React.FC = () => {
     load();
     connect();
     return () => {
+      disposed = true;
       shouldReconnect = false;
       if (reconnectTimerRef.current) {
         window.clearTimeout(reconnectTimerRef.current);
@@ -360,12 +364,14 @@ const CustomerSupportWidget: React.FC = () => {
 
   useEffect(() => {
     if (!open || !activeSessionId) return;
+    let disposed = false;
     const timer = window.setInterval(async () => {
       try {
         const [messagesRes, sessionsRes] = await Promise.all([
           supportApi.getMessages(activeSessionId),
           supportApi.getSessions(),
         ]);
+        if (disposed || sessionRef.current?.id !== activeSessionId) return;
         const sortedSessions = sortSupportSessions(sessionsRes.data || []);
         const selectedSession = sortedSessions.find((item) => item.id === activeSessionId);
         if (selectedSession) {
@@ -379,7 +385,10 @@ const CustomerSupportWidget: React.FC = () => {
         // The socket path handles transient failures; polling is best-effort.
       }
     }, 10000);
-    return () => window.clearInterval(timer);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
   }, [open, activeSessionId, sortSupportSessions]);
 
   useEffect(() => {
@@ -387,13 +396,12 @@ const CustomerSupportWidget: React.FC = () => {
   }, [messages, open]);
 
   const openPanel = () => {
-    if (!localStorage.getItem('token')) {
+    if (!readSupportToken()) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
     }
     setOpen(true);
-    fetchSupportOrders();
   };
 
   const handleSupportButtonPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -434,7 +442,11 @@ const CustomerSupportWidget: React.FC = () => {
     }
     setButtonPosition((position) => {
       const next = clampButtonPosition(position || getDefaultButtonPosition());
-      localStorage.setItem(SUPPORT_BUTTON_POSITION_KEY, JSON.stringify(next));
+      try {
+        localStorage.setItem(SUPPORT_BUTTON_POSITION_KEY, JSON.stringify(next));
+      } catch {
+        // Keep the support entry usable when browser storage is unavailable.
+      }
       return next;
     });
     if (!moved) {
@@ -444,13 +456,12 @@ const CustomerSupportWidget: React.FC = () => {
 
   useEffect(() => {
     const handleOpenSupport = () => {
-      if (!localStorage.getItem('token')) {
+      if (!readSupportToken()) {
         message.warning(t('messages.loginRequired'));
         navigate('/login');
         return;
       }
       setOpen(true);
-      fetchSupportOrders();
     };
     window.addEventListener('shop:open-support', handleOpenSupport);
     return () => window.removeEventListener('shop:open-support', handleOpenSupport);
@@ -488,13 +499,14 @@ const CustomerSupportWidget: React.FC = () => {
       setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
       setContent('');
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.support.connectFailed'));
+      message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
     } finally {
       setSending(false);
     }
   };
 
   const sendOrder = async (orderId: number) => {
+    if (!Number.isSafeInteger(orderId) || orderId <= 0) return;
     const order = orders.find((item) => item.id === orderId);
     if (!order) return;
     setSendingOrderId(orderId);
@@ -521,9 +533,17 @@ const CustomerSupportWidget: React.FC = () => {
       }
       message.success(t('pages.support.orderSent'));
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.support.connectFailed'));
+      message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
     } finally {
       setSendingOrderId(null);
+    }
+  };
+
+  const applyWorkflowAction = (action: SupportOrderWorkflowAction, order: SupportOrderContext) => {
+    const nextText = action.customerPrefill;
+    setContent((current) => current.trim() ? `${current.trim()}\n${nextText}` : nextText);
+    if (!sharedOrderContext || sharedOrderContext.id !== order.id) {
+      void sendOrder(order.id);
     }
   };
 
@@ -560,13 +580,13 @@ const CustomerSupportWidget: React.FC = () => {
     }
   };
 
-  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const sessionOptions = sessionHistory.map((item) => ({
     value: item.id,
-    label: `${item.status === 'OPEN' ? t('status.OPEN') : t('status.CLOSED')} - ${item.lastMessageAt ? new Date(item.lastMessageAt).toLocaleString(dateLocale) : `#${item.id}`}`,
+    label: `${item.status === 'OPEN' ? t('status.OPEN') : t('status.CLOSED')} - ${formatSafeDateTime(item.lastMessageAt, dateLocale, `#${item.id}`)}`,
   }));
 
   const switchSession = async (sessionId: number) => {
+    if (!Number.isSafeInteger(sessionId) || sessionId <= 0) return;
     const target = sessionHistory.find((item) => item.id === sessionId);
     if (target) {
       setSession(target);
@@ -582,47 +602,67 @@ const CustomerSupportWidget: React.FC = () => {
       message.error(t('pages.support.loadFailed'));
     }
   };
-  const isMobileViewport = typeof window !== 'undefined' && window.innerWidth <= 720;
-  const isCatalogSurface = location.pathname === '/' || location.pathname.startsWith('/products');
-  const hideFloatingButton = isMobileViewport && isCatalogSurface;
-
   return (
     <>
-      {!hideFloatingButton ? (
-        <button
-          type="button"
-          className="customer-support-widget__button"
-          onPointerDown={handleSupportButtonPointerDown}
-          onPointerMove={handleSupportButtonPointerMove}
-          onPointerUp={finishSupportButtonPointer}
-          onPointerCancel={finishSupportButtonPointer}
-          aria-label={t('pages.support.title')}
-          style={{
-            position: 'fixed',
-            left: isMobileViewport ? 'auto' : buttonPosition?.left ?? 'auto',
-            top: isMobileViewport ? 'auto' : buttonPosition?.top ?? 'auto',
-            right: isMobileViewport ? 18 : buttonPosition ? 'auto' : 24,
-            bottom: isMobileViewport ? 'calc(20px + env(safe-area-inset-bottom))' : buttonPosition ? 'auto' : 24,
-            width: isMobileViewport ? 46 : SUPPORT_BUTTON_SIZE,
-            height: isMobileViewport ? 46 : SUPPORT_BUTTON_SIZE,
-            fontSize: isMobileViewport ? 20 : 24,
-          }}
-        >
-          <Badge count={unread} size="small">
-            <CustomerServiceOutlined style={{ color: '#fff' }} />
-          </Badge>
-        </button>
+      <button
+        type="button"
+        className={`customer-support-widget__button customer-support-widget__button--${language}${open ? ' customer-support-widget__button--open' : ''}`}
+        onPointerDown={handleSupportButtonPointerDown}
+        onPointerMove={handleSupportButtonPointerMove}
+        onPointerUp={finishSupportButtonPointer}
+        onPointerCancel={finishSupportButtonPointer}
+        aria-label={t('pages.support.title')}
+        aria-expanded={open}
+        style={{
+          position: 'fixed',
+          left: isMobileViewport ? 'auto' : buttonPosition?.left ?? 'auto',
+          top: isMobileViewport ? 'auto' : buttonPosition?.top ?? 'auto',
+          right: isMobileViewport ? 16 : buttonPosition ? 'auto' : 24,
+          bottom: isMobileViewport ? 'calc(76px + env(safe-area-inset-bottom))' : buttonPosition ? 'auto' : 24,
+          width: isMobileViewport ? 52 : SUPPORT_BUTTON_SIZE,
+          height: isMobileViewport ? 52 : SUPPORT_BUTTON_SIZE,
+          fontSize: isMobileViewport ? 22 : 24,
+        }}
+      >
+        <Badge count={unread} size="small">
+          <CustomerServiceOutlined style={{ color: '#fff' }} />
+        </Badge>
+      </button>
+
+      {open ? (
+        <div
+          className="customer-support-widget__backdrop"
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+        />
       ) : null}
 
       {open && (
-        <div className="customer-support-widget__panel">
+        <div
+          className={`customer-support-widget__panel customer-support-widget__panel--${language}`}
+          role="dialog"
+          aria-modal={isMobileViewport}
+          aria-label={t('pages.support.title')}
+        >
           <div className="customer-support-widget__header">
             <Space>
-              <CustomerServiceOutlined />
-              <Text className="customer-support-widget__headerTitle" strong>{t('pages.support.title')}</Text>
+              <span className="customer-support-widget__headerIcon" aria-hidden="true">
+                <CustomerServiceOutlined />
+              </span>
+              <span className="customer-support-widget__headerCopy">
+                <Text className="customer-support-widget__headerTitle" strong>{t('pages.support.title')}</Text>
+                <Text className="customer-support-widget__headerSubtitle">
+                  {assignedAgentText}
+                </Text>
+              </span>
               <Badge status={connected ? 'success' : 'default'} text={<span className="customer-support-widget__presenceText">{connected ? t('pages.support.online') : t('pages.support.offline')}</span>} />
             </Space>
-            <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<CloseOutlined />} onClick={() => setOpen(false)} />
+            <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<CloseOutlined />} aria-label={t('common.close')} onClick={() => setOpen(false)} />
+          </div>
+          <div className="customer-support-widget__mobileStatus" aria-label={t('pages.support.conversationBrief')}>
+            <span className={connected ? 'is-online' : ''}>{connected ? t('pages.support.online') : t('pages.support.offline')}</span>
+            <span>{hasSharedOrder ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}</span>
+            {unread > 0 ? <span>{unread}</span> : null}
           </div>
           {sessionHistory.length > 1 ? (
             <div className="customer-support-widget__sessionPicker">
@@ -648,7 +688,7 @@ const CustomerSupportWidget: React.FC = () => {
               <Tag color={hasSharedOrder ? 'green' : 'default'}>{hasSharedOrder ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}</Tag>
               {conversationUpdatedAt ? (
                 <Text type="secondary" className="customer-support-widget__briefMeta">
-                  {t('pages.support.lastUpdated')}: {new Date(conversationUpdatedAt).toLocaleString(dateLocale)}
+                  {t('pages.support.lastUpdated')}: {formatSafeDateTime(conversationUpdatedAt, dateLocale, '-')}
                 </Text>
               ) : null}
             </div>
@@ -656,7 +696,25 @@ const CustomerSupportWidget: React.FC = () => {
 
           <div ref={listRef} className="customer-support-widget__messages">
             {messages.length === 0 ? (
-              <Empty description={t('pages.support.welcome')} />
+              <div className="customer-support-widget__emptyState">
+                <div className="customer-support-widget__welcomeCard">
+                  <div className="customer-support-widget__welcomeIcon">
+                    <CustomerServiceOutlined />
+                  </div>
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.support.welcome')} />
+                  <div className="customer-support-widget__welcomeQuickReplies">
+                    {quickReplies.map((reply) => (
+                      <button
+                        key={reply}
+                        type="button"
+                        onClick={() => setContent(reply)}
+                      >
+                        {reply}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             ) : (
               <List
                 dataSource={messages}
@@ -665,33 +723,40 @@ const CustomerSupportWidget: React.FC = () => {
                   const order = decodeOrderMessage(item.content);
                   return (
                     <List.Item className={`customer-support-widget__messageRow ${mine ? 'customer-support-widget__messageRow--mine' : ''}`}>
-                      <div className={`customer-support-widget__message ${mine ? 'customer-support-widget__message--mine' : ''}`}>
-                        <div className="customer-support-widget__messageMeta">
-                          {mine ? t('pages.support.you') : t('pages.support.agent')}
-                          {item.createdAt ? ` - ${new Date(item.createdAt).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}` : ''}
-                        </div>
-                        {order ? (
-                          <Card size="small" className={`customer-support-widget__orderCard ${mine ? 'customer-support-widget__orderCard--mine' : ''}`}>
-                            <Space align="start">
-                              <ShoppingOutlined className="customer-support-widget__orderIcon" />
-                              <div>
-                                <div className="customer-support-widget__orderTitle">{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
-                                <div className="customer-support-widget__orderAmount">{formatMoney(order.totalAmount)}</div>
-                                <div className="customer-support-widget__orderTags">
-                                  <Tag color="blue">{order.status}</Tag>
-                                  {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
-                                </div>
-                                <Button className="customer-support-widget__linkButton" type="link" size="small" onClick={() => openOrderDetail(order.id)}>
-                                  {t('pages.support.viewOrder')}
-                                </Button>
-                              </div>
-                            </Space>
-                          </Card>
-                        ) : (
-                          <div className={`customer-support-widget__bubble ${mine ? 'customer-support-widget__bubble--mine' : ''}`}>
-                            {item.content}
+                      <div className={`customer-support-widget__messageShell ${mine ? 'customer-support-widget__messageShell--mine' : ''}`}>
+                        <Avatar
+                          size={30}
+                          className={`customer-support-widget__avatar ${mine ? 'customer-support-widget__avatar--mine' : ''}`}
+                          icon={mine ? <UserOutlined /> : <CustomerServiceOutlined />}
+                        />
+                        <div className={`customer-support-widget__message ${mine ? 'customer-support-widget__message--mine' : ''}`}>
+                          <div className="customer-support-widget__messageMeta">
+                            {mine ? t('pages.support.you') : t('pages.support.agent')}
+                            {formatSafeTime(item.createdAt, dateLocale, { hour: '2-digit', minute: '2-digit' }, '') ? ` - ${formatSafeTime(item.createdAt, dateLocale, { hour: '2-digit', minute: '2-digit' })}` : ''}
                           </div>
-                        )}
+                          {order ? (
+                            <Card size="small" className={`customer-support-widget__orderCard ${mine ? 'customer-support-widget__orderCard--mine' : ''}`}>
+                              <Space align="start">
+                                <ShoppingOutlined className="customer-support-widget__orderIcon" />
+                                <div>
+                                  <div className="customer-support-widget__orderTitle">{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
+                                  <div className="customer-support-widget__orderAmount">{formatMoney(order.totalAmount)}</div>
+                                  <div className="customer-support-widget__orderTags">
+                                    <Tag color="blue">{t(`status.${order.status}`)}</Tag>
+                                    {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
+                                  </div>
+                                  <Button className="customer-support-widget__linkButton" type="link" size="small" onClick={() => openOrderDetail(order.id)}>
+                                    {t('pages.support.viewOrder')}
+                                  </Button>
+                                </div>
+                              </Space>
+                            </Card>
+                          ) : (
+                            <div className={`customer-support-widget__bubble ${mine ? 'customer-support-widget__bubble--mine' : ''}`}>
+                              {item.content}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </List.Item>
                   );
@@ -737,6 +802,27 @@ const CustomerSupportWidget: React.FC = () => {
                 </Button>
               ) : null}
             </div>
+            {workflowOrder && workflowActions.length > 0 ? (
+              <div className="customer-support-widget__workflowActions">
+                <Text type="secondary" className="customer-support-widget__workflowLabel">
+                  {hasSharedOrder ? t('pages.support.recommendedActions') : t('pages.support.recommendedActionsWithOrder')}
+                </Text>
+                <div className="customer-support-widget__workflowList">
+                  {workflowActions.map((action) => (
+                    <button
+                      key={action.key}
+                      type="button"
+                      className="customer-support-widget__workflowChip"
+                      disabled={sendingOrderId !== null}
+                      onClick={() => applyWorkflowAction(action, workflowOrder)}
+                    >
+                      <strong>{action.label}</strong>
+                      <span>{action.helper}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="customer-support-widget__quickReplies">
               {quickReplies.map((reply) => (
                 <Button
@@ -759,6 +845,8 @@ const CustomerSupportWidget: React.FC = () => {
                 className="customer-support-widget__orderSelect"
                 placeholder={t('pages.support.pickOrder')}
                 options={orderOptions}
+                listHeight={isMobileViewport ? 220 : 256}
+                popupMatchSelectWidth={!isMobileViewport}
                 open={orderSelectOpen}
                 onSelect={(value) => {
                   setOrderSelectOpen(false);
@@ -770,7 +858,7 @@ const CustomerSupportWidget: React.FC = () => {
                     fetchSupportOrders();
                   }
                 }}
-                popupClassName="support-order-select-popup"
+                classNames={{ popup: { root: 'support-order-select-popup' } }}
                 getPopupContainer={() => document.body}
                 notFoundContent={ordersLoading ? <Spin size="small" /> : ordersLoadFailed ? t('messages.operationFailed') : t('pages.support.noOrderItems')}
                 loading={ordersLoading || sendingOrderId !== null}
@@ -788,6 +876,7 @@ const CustomerSupportWidget: React.FC = () => {
                 }
               }}
               placeholder={t('pages.support.inputPlaceholder')}
+              className="customer-support-widget__messageInput"
               autoSize={{ minRows: 2, maxRows: 4 }}
             />
             <div className="customer-support-widget__actions">
@@ -798,6 +887,8 @@ const CustomerSupportWidget: React.FC = () => {
         </div>
       )}
       <Modal
+        className="customer-support-widget__orderModal"
+        width={isMobileViewport ? 'calc(100vw - 20px)' : 520}
         title={detailOrder ? `${t('pages.support.order')} ${detailOrder.orderNo || `#${detailOrder.id}`}` : t('pages.support.order')}
         open={!!detailOrder || detailLoading}
         onCancel={() => {

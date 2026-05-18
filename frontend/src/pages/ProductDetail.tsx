@@ -11,6 +11,7 @@ import type { ProductQuestion } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import ProductRichDetail from '../components/ProductRichDetail';
 import { localizeProduct } from '../utils/localizedProduct';
+import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
 import { addGuestCartItem } from '../utils/guestCart';
 import { getBundleInfo } from '../utils/bundle';
 import { recordProductView } from '../utils/productViewPreferences';
@@ -18,10 +19,10 @@ import { addStockAlert, hasStockAlert, removeStockAlert } from '../utils/stockAl
 import { conversionConfig, estimatePetSize, getDeliveryPromise } from '../utils/conversionConfig';
 import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueHasVariant, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
 import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './ProductDetail.css';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 
 interface Review {
   id: number;
@@ -37,6 +38,8 @@ interface Review {
 }
 
 const fallbackProductImage = 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=900&q=80';
+const PRODUCT_RECOMMENDATIONS_CACHE_TTL = 2 * 60 * 1000;
+const productRecommendationsCache = new Map<string, { expiresAt: number; items: Product[] }>();
 
 const parseImageList = (value: unknown): string[] => {
   if (Array.isArray(value)) return value;
@@ -121,8 +124,7 @@ const ProductDetail: React.FC = () => {
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [sizeCalculatorBreed, setSizeCalculatorBreed] = useState('');
   const [sizeCalculatorWeight, setSizeCalculatorWeight] = useState('');
-  const [purchaseMode, setPurchaseMode] = useState<'once' | 'subscribe' | 'bundle'>('once');
-  const [subscriptionInterval, setSubscriptionInterval] = useState(conversionConfig.subscription.defaultInterval);
+  const [purchaseMode, setPurchaseMode] = useState<'once' | 'bundle'>('once');
   const [purchaseSubmitting, setPurchaseSubmitting] = useState<'cart' | 'buy' | null>(null);
   const [pinchZoom, setPinchZoom] = useState({ active: false, scale: 1, originX: 50, originY: 50 });
   const [isAlerted, setIsAlerted] = useState(false);
@@ -133,11 +135,6 @@ const ProductDetail: React.FC = () => {
   const imageResumeTimerRef = useRef<number | null>(null);
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
-  const subscriptionDiscountPercent = conversionConfig.subscription.discountPercent;
-  const subscriptionOptions = useMemo(() => conversionConfig.subscription.intervals.map((interval) => ({
-    label: t(`subscription.interval${interval}`),
-    value: interval,
-  })), [t]);
   const trustBadges = conversionConfig.productTrustBadges.enabled ? conversionConfig.productTrustBadges.badges : [];
   const deliveryPromise = useMemo(
     () => getDeliveryPromise({ currency, locale: market.locale }),
@@ -189,17 +186,12 @@ const ProductDetail: React.FC = () => {
   const selectedSpecsPayload = useMemo(() => JSON.stringify({
     ...selectedOptions,
     ...(selectedVariant?.sku ? { _variantSku: selectedVariant.sku } : {}),
-    ...(purchaseMode === 'subscribe' ? {
-      _purchaseMode: 'subscribe',
-      _subscriptionInterval: subscriptionInterval,
-      _subscriptionDiscountPercent: String(subscriptionDiscountPercent),
-    } : {}),
     ...(purchaseMode === 'bundle' && bundleInfo ? {
       _purchaseMode: 'bundle',
       _bundleTitle: bundleInfo.title,
       _bundleItems: bundleInfo.items.map((item) => `${item.name} x${item.quantity || 1}`).join(', '),
     } : {}),
-  }), [bundleInfo, purchaseMode, selectedOptions, selectedVariant, subscriptionDiscountPercent, subscriptionInterval]);
+  }), [bundleInfo, purchaseMode, selectedOptions, selectedVariant]);
 
   const validateOptions = () => {
     const missing = optionGroups.find((group) => !selectedOptions[group.name]);
@@ -251,8 +243,19 @@ const ProductDetail: React.FC = () => {
 
   const fetchRecommendations = useCallback(async () => {
     try {
+      const cacheKey = `${language}|${id}`;
+      const cached = productRecommendationsCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        setRecommendations(cached.items);
+        return;
+      }
       const res = await productApi.getRecommendations(Number(id));
-      setRecommendations(res.data.map((item: Product) => localizeProduct(item, language)));
+      const items = res.data.map((item: Product) => localizeProduct(item, language));
+      productRecommendationsCache.set(cacheKey, {
+        expiresAt: Date.now() + PRODUCT_RECOMMENDATIONS_CACHE_TTL,
+        items,
+      });
+      setRecommendations(items);
     } catch {
       // ignore
     }
@@ -280,11 +283,10 @@ const ProductDetail: React.FC = () => {
     if (nonCriticalLoadedRef.current) return;
     nonCriticalLoadedRef.current = true;
     const token = localStorage.getItem('token');
-    const uid = localStorage.getItem('userId');
     fetchReviews();
     fetchQuestions();
     fetchRecommendations();
-    if (token && uid) {
+    if (token) {
       fetchReviewableOrders();
     }
   }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews]);
@@ -297,7 +299,6 @@ const ProductDetail: React.FC = () => {
     setReviewableOrders([]);
     setAverageRating(0);
     const token = localStorage.getItem('token');
-    const uid = localStorage.getItem('userId');
     const fetchProduct = async () => {
       setLoading(true);
       try {
@@ -313,8 +314,8 @@ const ProductDetail: React.FC = () => {
       }
     };
     fetchProduct();
-    if (token && uid) {
-      wishlistApi.check(Number(uid), Number(id))
+    if (token) {
+      wishlistApi.check(0, Number(id))
         .then(res => setIsWishlisted(res.data.wishlisted))
         .catch(() => {});
     }
@@ -367,7 +368,6 @@ const ProductDetail: React.FC = () => {
   const handleAddToCart = async () => {
     if (purchaseSubmitting) return;
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
     try {
       if (!validateOptions()) return;
       if (selectedStock !== undefined && selectedStock < quantity) {
@@ -376,14 +376,14 @@ const ProductDetail: React.FC = () => {
       }
       setPurchaseSubmitting('cart');
       const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
-      if (token && userId) {
-        await cartApi.addItem(Number(userId), Number(id), quantity, specs);
-        window.dispatchEvent(new Event('shop:cart-updated'));
+      if (token) {
+        await cartApi.addItem(0, Number(id), quantity, specs);
+        dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
       }
       message.success(t('messages.addCartSuccess'));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:open-cart');
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.addFailed'));
     } finally {
@@ -401,7 +401,6 @@ const ProductDetail: React.FC = () => {
   const handleBuyNow = async () => {
     if (purchaseSubmitting) return;
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
     try {
       if (!validateOptions()) return;
       if (selectedStock !== undefined && selectedStock < quantity) {
@@ -410,10 +409,10 @@ const ProductDetail: React.FC = () => {
       }
       setPurchaseSubmitting('buy');
       const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
-      if (token && userId) {
-        await cartApi.addItem(Number(userId), Number(id), quantity, specs);
-        window.dispatchEvent(new Event('shop:cart-updated'));
-        const cartRes = await cartApi.getItems(Number(userId));
+      if (token) {
+        await cartApi.addItem(0, Number(id), quantity, specs);
+        dispatchDomEvent('shop:cart-updated');
+        const cartRes = await cartApi.getItems(0);
         const cartItem = findCheckoutCartItem(cartRes.data, specs);
         if (cartItem) {
           syncCheckoutCartItemIds([cartItem]);
@@ -437,16 +436,15 @@ const ProductDetail: React.FC = () => {
 
   const handleFavorite = async () => {
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    if (!token || !userId) {
+    if (!token) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
     }
     try {
-      const res = await wishlistApi.toggle(Number(userId), Number(id));
+      const res = await wishlistApi.toggle(0, Number(id));
       setIsWishlisted(res.data.wishlisted);
-      window.dispatchEvent(new Event('shop:wishlist-updated'));
+      dispatchDomEvent('shop:wishlist-updated');
       message.success(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
     } catch {
       message.error(t('messages.operationFailed'));
@@ -469,8 +467,7 @@ const ProductDetail: React.FC = () => {
     await reviewApi.create(Number(id), orderId, rating, comment);
     await fetchReviews();
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    if (token && userId) {
+    if (token) {
       await fetchReviewableOrders();
     }
   };
@@ -545,45 +542,41 @@ const ProductDetail: React.FC = () => {
   const stockLabel = selectedStock !== undefined ? selectedStock : t('pages.productDetail.enough');
   const displayedRating = Number(averageRating || product.rating || 0);
   const activePrice = selectedVariant?.price ?? product.effectivePrice ?? product.price;
-  const subscribePrice = Math.round(activePrice * (100 - subscriptionDiscountPercent)) / 100;
-  const displayPrice = purchaseMode === 'bundle' && bundleInfo ? bundleInfo.price : purchaseMode === 'subscribe' ? subscribePrice : activePrice;
-  const subscriptionSavings = Math.max(0, activePrice - subscribePrice);
+  const displayPrice = purchaseMode === 'bundle' && bundleInfo ? bundleInfo.price : activePrice;
   const bundleSavings = bundleInfo ? Math.max(0, activePrice - bundleInfo.price) : 0;
   const purchaseSubtotal = displayPrice * quantity;
-  const purchaseSavings = purchaseMode === 'subscribe'
-    ? subscriptionSavings * quantity
-    : purchaseMode === 'bundle'
-      ? bundleSavings * quantity
-      : 0;
-  const purchaseModeLabel = purchaseMode === 'subscribe'
-    ? t('subscription.subscribeSave', { percent: subscriptionDiscountPercent })
-    : purchaseMode === 'bundle'
+  const purchaseSavings = purchaseMode === 'bundle'
+    ? bundleSavings * quantity
+    : 0;
+  const purchaseModeLabel = purchaseMode === 'bundle'
       ? t('bundle.bundleDeal')
       : t('pages.productDetail.oneTimePurchase');
-  const replenishmentIntervalLabel = t(`subscription.interval${subscriptionInterval}`);
-  const replenishmentNudgeText = purchaseMode === 'subscribe'
-    ? t('pages.productDetail.replenishmentActiveText', {
-      interval: replenishmentIntervalLabel,
-      amount: formatMoney(subscriptionSavings * quantity),
-    })
-    : t('pages.productDetail.replenishmentPassiveText', {
-      interval: replenishmentIntervalLabel,
-      percent: subscriptionDiscountPercent,
-    });
   const discountPercent = product.effectiveDiscountPercent || product.discount || 0;
   const limitedTimeEnd = product.limitedTimeEndAt ? new Date(product.limitedTimeEndAt).getTime() : 0;
   const limitedTimeRemaining = product.activeLimitedTimeDiscount && limitedTimeEnd > now ? limitedTimeEnd - now : 0;
   const hasCompleteOptions = optionGroups.every((group) => selectedOptions[group.name]);
   const hasUnavailableSelectedVariant = variants.length > 0 && hasCompleteOptions && !selectedVariant;
+  const optionsMissing = optionGroups.length > 0 && !hasCompleteOptions;
+  const purchaseSelectionBlocked = optionsMissing || hasUnavailableSelectedVariant;
+  const mobilePurchaseBlocked = !isOutOfStock && (purchaseSelectionBlocked || purchaseSubmitting !== null);
+  const buyNowBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;
   const selectedOptionTags = optionGroups
-    .map((group) => ({ name: group.name, value: selectedOptions[group.name] }))
+    .map((group) => ({
+      name: group.name,
+      label: getLocalizedOptionLabel(group.name, language),
+      value: selectedOptions[group.name],
+      valueLabel: getLocalizedOptionLabel(selectedOptions[group.name] || '', language),
+    }))
     .filter((item) => item.value);
   const sizeOptionGroup = optionGroups.find((group) => group.name.toLowerCase().includes('size') || group.name.includes('尺码'));
   const recommendedSize = estimatePetSize(sizeCalculatorBreed, Number(sizeCalculatorWeight || 0));
   const recommendedSizeValue = sizeOptionGroup?.values.find((value) => value.toLowerCase() === String(recommendedSize || '').toLowerCase());
+  const recommendedSizeLabel = recommendedSizeValue
+    ? getLocalizedOptionLabel(recommendedSizeValue, language)
+    : getLocalizedOptionLabel(String(recommendedSize || ''), language);
   const fitConfidenceText = sizeOptionGroup
     ? recommendedSizeValue
-      ? t('pages.productDetail.fitConfidenceMatched', { size: recommendedSizeValue })
+      ? t('pages.productDetail.fitConfidenceMatched', { size: recommendedSizeLabel })
       : hasCompleteOptions
         ? t('pages.productDetail.fitConfidenceSelected')
         : t('pages.productDetail.fitConfidenceNeedSize')
@@ -660,62 +653,15 @@ const ProductDetail: React.FC = () => {
           : t('pages.productDetail.decisionValueStableText'),
     },
   ];
-  const routineCarePattern = /food|feed|litter|filter|refill|supplement|treat|wipes|shampoo|alimento|arena|filtro|recarga|suplemento/i;
-  const isRoutineCareProduct = routineCarePattern.test(`${product.name || ''} ${product.description || ''} ${product.tag || ''}`);
-  const recommendedPurchaseMode: 'once' | 'subscribe' | 'bundle' = bundleInfo && bundleSavings > subscriptionSavings
+  const recommendedPurchaseMode: 'once' | 'bundle' = bundleInfo && bundleSavings > 0
     ? 'bundle'
-    : conversionConfig.subscription.enabled && isRoutineCareProduct && subscriptionSavings > 0
-      ? 'subscribe'
-      : 'once';
+    : 'once';
   const recommendedPathTitle = recommendedPurchaseMode === 'bundle'
     ? t('pages.productDetail.pathBundleTitle')
-    : recommendedPurchaseMode === 'subscribe'
-      ? t('pages.productDetail.pathSubscribeTitle')
-      : t('pages.productDetail.pathOnceTitle');
+    : t('pages.productDetail.pathOnceTitle');
   const recommendedPathText = recommendedPurchaseMode === 'bundle' && bundleInfo
     ? t('pages.productDetail.pathBundleText', { amount: formatMoney(bundleSavings * quantity) })
-    : recommendedPurchaseMode === 'subscribe'
-      ? t('pages.productDetail.pathSubscribeText', { amount: formatMoney(subscriptionSavings * quantity), interval: replenishmentIntervalLabel })
-      : t('pages.productDetail.pathOnceText');
-  const heroStats = [
-    { key: 'rating', label: `${displayedRating.toFixed(1)} ${t('pages.productDetail.rating')}` },
-    { key: 'stock', label: `${t('pages.productDetail.stock')}: ${stockLabel}` },
-    deliveryPromise.enabled ? { key: 'delivery', label: t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText }) } : null,
-  ].filter(Boolean) as Array<{ key: string; label: string }>;
-  const productJourneyCards = [
-    {
-      key: 'subtotal',
-      title: t('pages.productDetail.purchaseSubtotal'),
-      text: formatMoney(purchaseSubtotal),
-    },
-    {
-      key: 'mode',
-      title: t('pages.productDetail.purchaseMode'),
-      text: purchaseModeLabel,
-    },
-    {
-      key: 'confidence',
-      title: t('pages.productDetail.rating'),
-      text: `${displayedRating.toFixed(1)} / 5 · ${reviews.length || Number(product?.reviewCount || 0)} ${t('adminLayout.reviews')}`,
-    },
-  ];
-  const purchaseSnapshotItems = [
-    {
-      key: 'stock',
-      label: t('pages.productDetail.stock'),
-      value: isOutOfStock ? t('pages.productDetail.soldOut') : String(stockLabel),
-    },
-    {
-      key: 'qty',
-      label: t('pages.productDetail.purchaseQuantity'),
-      value: String(quantity),
-    },
-    {
-      key: 'total',
-      label: t('pages.productDetail.purchaseSubtotal'),
-      value: formatMoney(purchaseSubtotal),
-    },
-  ];
+    : t('pages.productDetail.pathOnceText');
 
   const handleQuantityChange = (value: number) => {
     const maxQuantity = selectedStock !== undefined ? selectedStock : 999;
@@ -751,17 +697,16 @@ const ProductDetail: React.FC = () => {
     }
 
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
     try {
       setRecommendationAddingId(item.id);
-      if (token && userId) {
-        await cartApi.addItem(Number(userId), Number(item.id), 1);
-        window.dispatchEvent(new Event('shop:cart-updated'));
+      if (token) {
+        await cartApi.addItem(0, Number(item.id), 1);
+        dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem(item, 1, undefined, item.effectivePrice ?? item.price);
       }
       message.success(t('messages.addCartSuccess'));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:open-cart');
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('messages.addFailed'));
     } finally {
@@ -773,10 +718,16 @@ const ProductDetail: React.FC = () => {
     .filter((item) => !isRecommendationUnavailable(item))
     .filter((item) => item.id !== product.id)
     .slice(0, 2);
-  const mobileBuybarMeta = t('pages.productDetail.mobileBuybarMeta', {
-    price: formatMoney(displayPrice),
-    stock: isOutOfStock ? t('pages.productDetail.soldOut') : stockLabel,
-  });
+  const mobilePurchaseStatus = isOutOfStock
+    ? t('pages.productDetail.soldOut')
+    : hasUnavailableSelectedVariant
+      ? t('pages.productDetail.selectedVariantUnavailable')
+      : optionsMissing
+        ? t('pages.productDetail.decisionOptionsMissingText')
+        : t('pages.productDetail.decisionReady');
+  const mobileBuybarPrice = formatMoney(displayPrice);
+  const mobileBuybarStatus = mobilePurchaseStatus;
+  const shouldShowDecisionChecklist = optionsMissing || hasUnavailableSelectedVariant || isOutOfStock;
 
   const selectGalleryImage = (image: string, index: number) => {
     setSelectedImage(image);
@@ -837,55 +788,31 @@ const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="product-detail-page">
+    <div className={`product-detail-page product-detail-page--${language}`}>
       <div className="product-detail-shell">
-        <Breadcrumb className="product-detail-breadcrumb">
-          <Breadcrumb.Item>
-            <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/')}>
-              <HomeOutlined />
-            </button>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>
-            <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/products')}>
-              {t('pages.productDetail.product')}
-            </button>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>{product.name}</Breadcrumb.Item>
-        </Breadcrumb>
-
-        <section className="product-detail-hero">
-          <div className="product-detail-hero__content">
-            {product.brand ? <span className="product-detail-hero__eyebrow">{product.brand}</span> : null}
-            <h1>{product.name}</h1>
-            <Text>{recommendedPathText}</Text>
-            <div className="product-detail-hero__stats">
-              {heroStats.map((item) => (
-                <span key={item.key}>{item.label}</span>
-              ))}
-            </div>
-          </div>
-          <div className="product-detail-hero__aside">
-            <strong>{formatMoney(displayPrice)}</strong>
-            <Text type="secondary">
-              {purchaseSavings > 0
-                ? t('pages.productDetail.decisionValueSavingsText', { amount: formatMoney(purchaseSavings) })
-                : deliveryPromise.enabled
-                  ? t('pages.productDetail.decisionDeliveryText', { window: deliveryPromise.windowText })
-                  : t('pages.productDetail.defaultShipping')}
-            </Text>
-          </div>
-        </section>
-        <section className="product-detail-journey">
-          {productJourneyCards.map((item) => (
-            <article key={item.key} className="product-detail-journey__card">
-              <strong>{item.title}</strong>
-              <span>{item.text}</span>
-            </article>
-          ))}
-        </section>
+        <Breadcrumb
+          className="product-detail-breadcrumb"
+          items={[
+            {
+              title: (
+                <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/')}>
+                  <HomeOutlined />
+                </button>
+              ),
+            },
+            {
+              title: (
+                <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/products')}>
+                  {t('pages.productDetail.product')}
+                </button>
+              ),
+            },
+            { title: product.name },
+          ]}
+        />
 
         <Row gutter={24}>
-          {/* 商品图片区 */}
+          {/* Product media gallery */}
           <Col span={12}>
             <Card className="product-gallery-card">
               <div
@@ -982,7 +909,7 @@ const ProductDetail: React.FC = () => {
                 </div>
               )}
               {galleryImages.length > 1 && (
-                <div className="product-mobile-thumbs" aria-label="Product image thumbnails">
+                <div className="product-mobile-thumbs" aria-label={`${t('pages.productDetail.product')} ${t('common.image')}`}>
                   {galleryImages.map((image: string, index: number) => (
                     <button
                       key={`mobile-thumb-${image}-${index}`}
@@ -1007,7 +934,7 @@ const ProductDetail: React.FC = () => {
             </Card>
           </Col>
 
-          {/* 商品信息区 */}
+          {/* Product purchase summary */}
           <Col span={12}>
             <Card className="product-summary-card">
               <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -1025,12 +952,7 @@ const ProductDetail: React.FC = () => {
                   </div>
                   <div className="product-price-line">
                     {formatMoney(displayPrice)}
-                    {purchaseMode === 'subscribe' && (
-                      <Text delete className="product-price-line__original">
-                        {formatMoney(activePrice)}
-                      </Text>
-                    )}
-                    {purchaseMode !== 'subscribe' && product.originalPrice && product.originalPrice > activePrice && (
+                    {product.originalPrice && product.originalPrice > activePrice && (
                       <Text delete className="product-price-line__original">
                         {formatMoney(product.originalPrice)}
                       </Text>
@@ -1043,12 +965,7 @@ const ProductDetail: React.FC = () => {
                     <span>{limitedTimeRemaining > 0 ? t('pages.productDetail.limitedTimeCountdown') : t('pages.productDetail.freeShipping')}</span>
                     <strong>{limitedTimeRemaining > 0 ? formatCountdown(limitedTimeRemaining) : t('pages.productDetail.authentic')}</strong>
                   </div>
-                  {limitedTimeRemaining > 0 && (
-                    <div className="product-limited-time-badge">
-                      <span>{t('pages.productDetail.limitedTimeCountdown')}</span>
-                      <span>{formatCountdown(limitedTimeRemaining)}</span>
-                    </div>
-                  )}
+
                   <div className="product-compact-signals">
                     <span>{t('pages.productDetail.stock')}: {stockLabel}</span>
                     {deliveryPromise.enabled ? <span>{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</span> : null}
@@ -1059,7 +976,7 @@ const ProductDetail: React.FC = () => {
                 {optionGroups.map((group) => (
                   <div key={group.name}>
                     <div className="product-option-header">
-                      <Text strong>{group.name}</Text>
+                      <Text strong>{getLocalizedOptionLabel(group.name, language)}</Text>
                       {group.name.toLowerCase().includes('size') ? (
                         <Button size="small" type="link" onClick={() => setSizeGuideOpen(true)}>{t('pages.productDetail.sizeGuide')}</Button>
                       ) : null}
@@ -1073,7 +990,7 @@ const ProductDetail: React.FC = () => {
                         const disabled = !optionValueHasVariant(variants, group.name, value);
                         return (
                           <Radio.Button key={value} value={value} disabled={disabled}>
-                            {value}
+                            {getLocalizedOptionLabel(value, language)}
                           </Radio.Button>
                         );
                       })}
@@ -1102,7 +1019,7 @@ const ProductDetail: React.FC = () => {
                     </div>
                     <Space wrap size={[6, 6]}>
                       {selectedOptionTags.length > 0 ? selectedOptionTags.map((item) => (
-                        <Tag key={item.name}>{item.name}: {item.value}</Tag>
+                        <Tag key={item.name}>{item.label}: {item.valueLabel}</Tag>
                       )) : (
                         <Tag>{t('pages.productDetail.selectedOptionsEmpty')}</Tag>
                       )}
@@ -1143,7 +1060,7 @@ const ProductDetail: React.FC = () => {
                       <Alert
                         type={recommendedSizeValue ? 'success' : 'info'}
                         showIcon
-                        message={t('pages.productDetail.sizeCalculatorResult', { size: recommendedSize })}
+                        message={t('pages.productDetail.sizeCalculatorResult', { size: recommendedSizeLabel })}
                         description={recommendedSizeValue
                           ? t('pages.productDetail.sizeCalculatorMatch')
                           : t('pages.productDetail.sizeCalculatorNoMatch')}
@@ -1164,6 +1081,7 @@ const ProductDetail: React.FC = () => {
                   </details>
                 ) : null}
 
+                {bundleInfo ? (
                 <div className="product-value-callout">
                   <span className="product-value-callout__icon"><ThunderboltOutlined /></span>
                   <div className="product-value-callout__copy">
@@ -1178,73 +1096,57 @@ const ProductDetail: React.FC = () => {
                     <Tag color="green">{t('pages.productDetail.decisionReady')}</Tag>
                   )}
                 </div>
+                ) : null}
 
-                <div className="product-purchase-mode">
-                  <Segmented
-                    block
-                    value={purchaseMode}
-                    onChange={(value) => setPurchaseMode(value as 'once' | 'subscribe' | 'bundle')}
-                    options={[
-                      { label: t('pages.productDetail.oneTimePurchase'), value: 'once' },
-                      ...(conversionConfig.subscription.enabled ? [{ label: t('subscription.subscribeSave', { percent: subscriptionDiscountPercent }), value: 'subscribe' }] : []),
-                      ...(bundleInfo ? [{ label: t('bundle.bundleDeal'), value: 'bundle' }] : []),
-                    ]}
-                  />
-                  {purchaseMode === 'subscribe' ? (
-                    <div className="product-purchase-mode__details">
-                      <Radio.Group
-                        value={subscriptionInterval}
-                        onChange={(event) => setSubscriptionInterval(event.target.value)}
-                        optionType="button"
-                        buttonStyle="solid"
-                        options={subscriptionOptions}
-                      />
-                      <div className="product-purchase-mode__summary">
-                        <Text strong>{t('pages.productDetail.subscriptionSavings', { amount: formatMoney(subscriptionSavings), percent: subscriptionDiscountPercent })}</Text>
-                        <Text type="secondary">{t('pages.productDetail.subscriptionHint')}</Text>
-                        <Space wrap size={[6, 6]}>
-                          <Tag color="green">{t('pages.productDetail.subscriptionSkip')}</Tag>
-                          <Tag color="green">{t('pages.productDetail.subscriptionCancel')}</Tag>
-                        </Space>
+                {bundleInfo ? (
+                  <div className="product-purchase-mode">
+                    <Segmented
+                      block
+                      value={purchaseMode}
+                      onChange={(value) => setPurchaseMode(value as 'once' | 'bundle')}
+                      options={[
+                        { label: t('pages.productDetail.oneTimePurchase'), value: 'once' },
+                        { label: t('bundle.bundleDeal'), value: 'bundle' },
+                      ]}
+                    />
+                    {purchaseMode === 'bundle' ? (
+                      <div className="product-purchase-mode__details">
+                        <div className="product-purchase-mode__summary">
+                          <Text strong>{t('bundle.includes')}</Text>
+                          <Space wrap size={[6, 6]}>
+                            {bundleInfo.items.map((item) => (
+                              <Tag key={item.name}>{item.name} x{item.quantity || 1}</Tag>
+                            ))}
+                          </Space>
+                          <Text type="secondary">
+                            {bundleSavings > 0
+                              ? t('bundle.saveWithBundle', { amount: formatMoney(bundleSavings) })
+                              : t('bundle.bundleHint')}
+                          </Text>
+                        </div>
                       </div>
-                    </div>
-                  ) : purchaseMode === 'bundle' && bundleInfo ? (
-                    <div className="product-purchase-mode__details">
-                      <div className="product-purchase-mode__summary">
-                        <Text strong>{t('bundle.includes')}</Text>
-                        <Space wrap size={[6, 6]}>
-                          {bundleInfo.items.map((item) => (
-                            <Tag key={item.name}>{item.name} x{item.quantity || 1}</Tag>
-                          ))}
-                        </Space>
-                        <Text type="secondary">
-                          {bundleSavings > 0
-                            ? t('bundle.saveWithBundle', { amount: formatMoney(bundleSavings) })
-                            : t('bundle.bundleHint')}
-                        </Text>
-                      </div>
-                    </div>
-                  ) : (
-                    <Text type="secondary">{t('pages.productDetail.oneTimeHint')}</Text>
-                  )}
-                </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div>
                   <Text strong className="product-quantity-label">{t('pages.productDetail.quantity')}</Text>
                   <div className="product-quantity-row">
-                    <Button.Group>
+                    <Space.Compact>
                       <Button onClick={() => handleQuantityChange(quantity - 1)} disabled={quantity <= 1}>-</Button>
                       <Button className="product-quantity__value">{quantity}</Button>
                       <Button onClick={() => handleQuantityChange(quantity + 1)} disabled={selectedStock !== undefined && quantity >= selectedStock}>+</Button>
-                    </Button.Group>
+                    </Space.Compact>
                   </div>
                 </div>
 
                 <div className="product-purchase-summary">
-                  <div className="product-purchase-summary__line">
-                    <Text type="secondary">{t('pages.productDetail.purchaseMode')}</Text>
-                    <Text strong>{purchaseModeLabel}</Text>
-                  </div>
+                  {bundleInfo ? (
+                    <div className="product-purchase-summary__line">
+                      <Text type="secondary">{t('pages.productDetail.purchaseMode')}</Text>
+                      <Text strong>{purchaseModeLabel}</Text>
+                    </div>
+                  ) : null}
                   <div className="product-purchase-summary__line">
                     <Text type="secondary">{t('pages.productDetail.unitPrice')}</Text>
                     <Text>{formatMoney(displayPrice)}</Text>
@@ -1263,14 +1165,6 @@ const ProductDetail: React.FC = () => {
                     <Text strong>{t('pages.productDetail.purchaseSubtotal')}</Text>
                     <Text strong>{formatMoney(purchaseSubtotal)}</Text>
                   </div>
-                </div>
-                <div className="product-purchase-snapshot">
-                  {purchaseSnapshotItems.map((item) => (
-                    <div key={item.key} className="product-purchase-snapshot__item">
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </div>
-                  ))}
                 </div>
 
                 {completeSetItems.length > 0 ? (
@@ -1327,45 +1221,36 @@ const ProductDetail: React.FC = () => {
                   </div>
                 ) : null}
 
-                <details className="product-detail-disclosure">
-                  <summary>
-                    <span>{t('pages.productDetail.decisionTitle')}</span>
-                    <Tag color={isOutOfStock || hasUnavailableSelectedVariant ? 'orange' : 'green'}>
-                      {isOutOfStock || hasUnavailableSelectedVariant
-                        ? t('pages.productDetail.decisionNeedsReview')
-                        : t('pages.productDetail.decisionReady')}
-                    </Tag>
-                  </summary>
-                  <div className="product-conversion-nudges">
-                    <div className="product-conversion-nudge">
-                      <span className="product-conversion-nudge__icon"><ThunderboltOutlined /></span>
-                      <span>
-                        <Text strong>{t('pages.productDetail.replenishmentTitle')}</Text>
-                        <Text type="secondary">{replenishmentNudgeText}</Text>
-                      </span>
+                {shouldShowDecisionChecklist ? (
+                  <details className="product-detail-disclosure">
+                    <summary>
+                      <span>{t('pages.productDetail.decisionTitle')}</span>
+                      <Tag color="orange">{t('pages.productDetail.decisionNeedsReview')}</Tag>
+                    </summary>
+                    <div className="product-conversion-nudges">
+                      <div className="product-conversion-nudge">
+                        <span className="product-conversion-nudge__icon"><SafetyCertificateOutlined /></span>
+                        <span>
+                          <Text strong>{t('pages.productDetail.fitConfidenceTitle')}</Text>
+                          <Text type="secondary">{fitConfidenceText}</Text>
+                        </span>
+                      </div>
                     </div>
-                    <div className="product-conversion-nudge">
-                      <span className="product-conversion-nudge__icon"><SafetyCertificateOutlined /></span>
-                      <span>
-                        <Text strong>{t('pages.productDetail.fitConfidenceTitle')}</Text>
-                        <Text type="secondary">{fitConfidenceText}</Text>
-                      </span>
+                    <div className="product-decision-card">
+                      <div className="product-decision-card__grid">
+                        {decisionChecklist.map((item) => (
+                          <div className={`product-decision-item${item.ready ? ' product-decision-item--ready' : ' product-decision-item--pending'}`} key={item.key}>
+                            <span className="product-decision-item__icon">{item.icon}</span>
+                            <span>
+                              <Text strong>{item.title}</Text>
+                              <Text type="secondary">{item.text}</Text>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="product-decision-card">
-                    <div className="product-decision-card__grid">
-                      {decisionChecklist.map((item) => (
-                        <div className={`product-decision-item${item.ready ? ' product-decision-item--ready' : ' product-decision-item--pending'}`} key={item.key}>
-                          <span className="product-decision-item__icon">{item.icon}</span>
-                          <span>
-                            <Text strong>{item.title}</Text>
-                            <Text type="secondary">{item.text}</Text>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </details>
+                  </details>
+                ) : null}
 
                 {isOutOfStock && (
                   <Space wrap>
@@ -1452,43 +1337,58 @@ const ProductDetail: React.FC = () => {
           </Col>
         </Row>
 
-        {/* 商品详情和规格参数 */}
+        {/* Product details and specifications */}
         <div ref={detailContentRef} className="product-detail-content-anchor" />
         <Card className="product-tabs-card" id="product-service-tabs">
-          <Tabs defaultActiveKey="1">
-            <TabPane tab={t('pages.productDetail.details')} key="1">
-              <div className="product-tab-content">
-                <ProductRichDetail detailContent={product.detailContent} fallback={product.description} />
-              </div>
-            </TabPane>
-            <TabPane tab={t('pages.productDetail.specs')} key="2">
-              <div className="product-tab-content">
-                {product.specifications && Object.entries(product.specifications)
-                  .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.') && !key.startsWith('bundle.'))
-                  .map(([key, value]) => (
-                  <div key={key} className="product-spec-row">
-                    <Text strong>{key}: </Text>
-                    <Text>{value as string}</Text>
+          <Tabs
+            defaultActiveKey="1"
+            items={[
+              {
+                key: '1',
+                label: t('pages.productDetail.details'),
+                children: (
+                  <div className="product-tab-content">
+                    <ProductRichDetail detailContent={product.detailContent} fallback={product.description} />
                   </div>
-                ))}
-              </div>
-            </TabPane>
-            <TabPane tab={t('pages.productDetail.service')} key="3">
-              <div className="product-tab-content">
-                <div className="product-warranty-row">
-                  <Text strong>{t('pages.productDetail.warranty')}</Text>
-                  <Text>{product.warranty || t('pages.productDetail.defaultWarranty')}</Text>
-                </div>
-                <div>
-                  <Text strong>{t('pages.productDetail.shipping')}</Text>
-                  <Text>{product.shipping || t('pages.productDetail.defaultShipping')}</Text>
-                </div>
-              </div>
-            </TabPane>
-          </Tabs>
+                ),
+              },
+              {
+                key: '2',
+                label: t('pages.productDetail.specs'),
+                children: (
+                  <div className="product-tab-content">
+                    {product.specifications && Object.entries(product.specifications)
+                      .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.') && !key.startsWith('bundle.'))
+                      .map(([key, value]) => (
+                        <div key={key} className="product-spec-row">
+                          <Text strong>{key}: </Text>
+                          <Text>{value as string}</Text>
+                        </div>
+                      ))}
+                  </div>
+                ),
+              },
+              {
+                key: '3',
+                label: t('pages.productDetail.service'),
+                children: (
+                  <div className="product-tab-content">
+                    <div className="product-warranty-row">
+                      <Text strong>{t('pages.productDetail.warranty')}</Text>
+                      <Text>{product.warranty || t('pages.productDetail.defaultWarranty')}</Text>
+                    </div>
+                    <div>
+                      <Text strong>{t('pages.productDetail.shipping')}</Text>
+                      <Text>{product.shipping || t('pages.productDetail.defaultShipping')}</Text>
+                    </div>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </Card>
 
-        {/* 商品评价 */}
+        {/* Product reviews */}
         <Card className="product-review-card" id="product-reviews-card">
           <ProductReview
             productId={Number(id)}
@@ -1549,7 +1449,7 @@ const ProductDetail: React.FC = () => {
           />
         </Card>
 
-        {/* 相关推荐 */}
+        {/* Related recommendations */}
         {recommendations.length > 0 && (
           <div className="product-recommendations">
             <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
@@ -1627,7 +1527,10 @@ const ProductDetail: React.FC = () => {
       </div>
 
       <div className="product-mobile-buybar">
-        <div className="product-mobile-buybar__meta">{mobileBuybarMeta}</div>
+        <div className="product-mobile-buybar__meta" title={`${mobileBuybarPrice} - ${mobileBuybarStatus}`}>
+          <strong>{mobileBuybarPrice}</strong>
+          <span>{mobileBuybarStatus}</span>
+        </div>
         <button type="button" className="product-mobile-buybar__tool" onClick={() => navigate('/')}>
           <HomeOutlined />
           <span>{t('nav.ariaHome')}</span>
@@ -1641,16 +1544,16 @@ const ProductDetail: React.FC = () => {
           icon={isOutOfStock ? <BellOutlined /> : <ShoppingCartOutlined />}
           onClick={isOutOfStock ? handleStockAlert : handleAddToCart}
           loading={purchaseSubmitting === 'cart'}
-          disabled={!isOutOfStock && purchaseSubmitting !== null}
+          disabled={mobilePurchaseBlocked}
         >
           {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
         </Button>
-        <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={isOutOfStock || purchaseSubmitting !== null}>
+        <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
           {t('pages.productDetail.buyNow')}
         </Button>
       </div>
 
-      {/* 图片放大Modal */}
+      {/* Image preview modal */}
       <Modal
         open={isModalVisible}
         footer={null}

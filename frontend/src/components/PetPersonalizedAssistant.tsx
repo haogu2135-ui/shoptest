@@ -2,23 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Skeleton, Tag, Typography, message } from 'antd';
 import { CompassOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { apiBaseUrl, petProfileApi, productApi } from '../api';
+import { petProfileApi, productApi } from '../api';
 import type { PetProfile, Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { needsOptionSelection } from '../utils/productOptions';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import './PetPersonalizedAssistant.css';
 
 const { Text, Title } = Typography;
-
-const personalizedImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveAssistantImage = (imageUrl?: string) => {
-  if (!imageUrl) return personalizedImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) return imageUrl;
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
 
 const isDealProduct = (product: Product) =>
   Boolean(product.activeLimitedTimeDiscount) ||
@@ -198,13 +191,13 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                 onClick={() => navigate(`/products/${product.id}`)}
               >
                 <img
-                  src={resolveAssistantImage(product.imageUrl)}
+                  src={resolveProductImage(product.imageUrl)}
                   alt={product.name}
                   loading="lazy"
                   decoding="async"
                   onError={(event) => {
-                    if (event.currentTarget.src !== personalizedImageFallback) {
-                      event.currentTarget.src = personalizedImageFallback;
+                    if (event.currentTarget.src !== productImageFallback) {
+                      event.currentTarget.src = productImageFallback;
                     }
                   }}
                 />

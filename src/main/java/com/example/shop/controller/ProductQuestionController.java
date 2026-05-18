@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
 import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.security.SecurityUtils;
 import com.example.shop.service.ProductQuestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -39,7 +40,8 @@ public class ProductQuestionController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         try {
-            UserDetailsImpl userDetails = requireUser(authentication);
+            UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+            SecurityUtils.assertAdmin(authentication);
             return ResponseEntity.ok(questionService.answer(questionId, userDetails.getId(), body.get("answer")));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

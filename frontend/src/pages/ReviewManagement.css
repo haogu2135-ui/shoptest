@@ -1,5 +1,11 @@
-.review-management-page {
+﻿.review-management-page {
   padding: 32px 24px;
+}
+
+.review-management-page .ant-table-wrapper,
+.review-management-page .ant-card {
+  border-color: #e4ebe4;
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
 }
 
 .review-ops-panel {
@@ -11,7 +17,8 @@
   padding: 16px;
   border: 1px solid #dfe7dc;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(255, 184, 77, 0.14), rgba(18, 71, 52, 0.08)), #fffdf8;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .review-ops-panel__copy {
@@ -36,7 +43,7 @@
 
 .review-ops-panel__copy p {
   margin: 0;
-  color: #667064;
+  color: #627064;
 }
 
 .review-ops-panel__metrics {
@@ -50,9 +57,16 @@
   gap: 5px;
   min-height: 92px;
   padding: 12px;
-  border: 1px solid #e5dfd3;
+  border: 1px solid #e4ebe4;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.review-ops-panel__metrics div:hover {
+  border-color: #124734;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
 }
 
 .review-ops-panel__metrics .anticon {
@@ -67,7 +81,7 @@
 }
 
 .review-ops-panel__metrics span {
-  color: #667064;
+  color: #627064;
   font-size: 12px;
   font-weight: 700;
 }
@@ -78,6 +92,24 @@
 
 .review-management-page .ant-table-cell {
   overflow-wrap: anywhere;
+}
+
+.review-management-page--es,
+.review-management-page--es .ant-btn,
+.review-management-page--es .ant-select,
+.review-management-page--es .ant-typography,
+.review-management-page--es .ant-table {
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+.review-management-page--es .review-ops-panel__metrics div {
+  min-height: 108px;
+}
+
+.review-management-page--es .review-management-page__toolbar .ant-select,
+.review-management-page--es .ant-table-cell .ant-btn {
+  min-height: 36px;
 }
 
 @media (max-width: 760px) {
@@ -97,5 +129,9 @@
   .review-management-page__toolbar,
   .review-management-page__toolbar .ant-select {
     width: 100%;
+  }
+
+  .review-management-page--es .review-management-page__toolbar {
+    align-items: stretch;
   }
 }

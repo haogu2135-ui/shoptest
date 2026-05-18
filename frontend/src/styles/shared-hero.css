@@ -1,4 +1,4 @@
-/* Shared hero banner pattern used across Cart, Checkout, ProductList, ProductDetail */
+﻿/* Shared hero banner pattern used across Cart, Checkout, ProductList, ProductDetail */
 
 .page-hero {
   display: grid;
@@ -9,7 +9,7 @@
   border: 1px solid #d6eadc;
   border-radius: var(--radius-card);
   background:
-    radial-gradient(circle at 100% 0, rgba(247, 201, 72, 0.16), transparent 26%),
+    radial-gradient(circle at 100% 0, rgba(238, 77, 45, 0.16), transparent 26%),
     linear-gradient(135deg, rgba(18, 71, 52, 0.98), rgba(18, 71, 52, 0.9) 54%, rgba(34, 90, 68, 0.92));
   box-shadow: var(--shadow-soft);
 }
@@ -26,8 +26,8 @@
   width: fit-content;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(247, 201, 72, 0.16);
-  color: #fff7d6;
+  background: rgba(238, 77, 45, 0.18);
+  color: #fff7f0;
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
@@ -49,7 +49,12 @@
 .page-hero__actions {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
   gap: 10px;
+}
+
+.page-hero__actions .ant-btn {
+  flex: 1 1 148px;
 }
 
 .page-hero__actions .ant-btn:not(.ant-btn-primary) {
@@ -68,12 +73,12 @@
   gap: 4px;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
 }
 
 .page-hero__stat strong {
-  color: #fff7d6;
+  color: #fff7f0;
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
@@ -87,7 +92,7 @@
   line-height: 1.45;
 }
 
-/* Summary strip — 3-column info cards below hero */
+/* Summary strip 鈥?3-column info cards below hero */
 .page-summary-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -101,8 +106,8 @@
   gap: 6px;
   align-content: center;
   padding: 16px 18px;
-  border: 1px solid #e6dfcf;
-  border-radius: 16px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(223, 245, 231, 0.72));
   box-shadow: 0 10px 22px rgba(18, 71, 52, 0.06);
   transition: box-shadow var(--transition-fast), transform var(--transition-fast);

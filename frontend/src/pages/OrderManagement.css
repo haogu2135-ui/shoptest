@@ -1,14 +1,31 @@
-.order-management-page {
+﻿.order-management-page {
   min-width: 0;
+}
+
+.order-management-page > h4.ant-typography {
+  margin-bottom: 0;
+  color: #173f2b;
+  font-weight: 800;
 }
 
 .order-management-page__toolbar .ant-space {
   width: 100%;
+  row-gap: 10px;
+}
+
+.order-management-page__toolbar.ant-card {
+  border-color: #dce9df;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 249, 0.94));
 }
 
 .order-management-page__table {
   overflow-x: auto;
   max-width: 100%;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
 .order-management-page__table .ant-table {
@@ -19,6 +36,16 @@
 .order-management-page__table .ant-table-tbody > tr > td {
   padding: 10px 8px;
   vertical-align: top;
+}
+
+.order-management-page__table .ant-table-tbody > tr > td:first-child,
+.order-management-page__table .ant-table-thead > tr > th:first-child {
+  padding-left: 12px;
+}
+
+.order-management-page__table .ant-table-tbody > tr > td:last-child,
+.order-management-page__table .ant-table-thead > tr > th:last-child {
+  padding-right: 12px;
 }
 
 .order-management-page__compactStack {
@@ -66,9 +93,10 @@
   justify-content: center;
   gap: 6px;
   padding: 16px 24px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid #e4ebe4;
   border-radius: 8px;
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
   text-align: left;
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
@@ -78,14 +106,15 @@
 .order-management-page__summaryCard:hover,
 .order-management-page__summaryCard--active {
   outline: none;
-  border-color: #ff7a45;
-  box-shadow: 0 8px 22px rgba(255, 122, 69, 0.16);
+  border-color: #124734;
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.12);
   transform: translateY(-1px);
 }
 
 .order-management-page__summaryCard span {
-  color: #666666;
+  color: #607166;
   font-size: 13px;
+  font-weight: 700;
 }
 
 .order-management-page__summaryCard strong {
@@ -124,13 +153,13 @@
   gap: 4px;
   padding: 10px;
   border: 1px solid #e7eadf;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #ffffff;
   text-align: center;
 }
 
 .order-management-page__refundStats strong {
-  color: #111;
+  color: #173f2b;
   font-size: 24px;
   line-height: 1;
 }
@@ -145,7 +174,7 @@
   gap: 12px;
   padding: 14px;
   border: 1px solid #e7eadf;
-  border-radius: 16px;
+  border-radius: 8px;
   background: #ffffff;
 }
 
@@ -175,7 +204,7 @@
   gap: 4px;
   padding: 10px 12px;
   border: 1px solid rgba(18, 71, 52, 0.08);
-  border-radius: 12px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.88);
 }
 
@@ -222,7 +251,7 @@
   border-color: #ffd8bf;
   background: #fff7f0;
   color: #d46b08;
-  box-shadow: 0 8px 16px rgba(255, 77, 0, 0.08);
+  box-shadow: 0 8px 16px rgba(238, 77, 45, 0.08);
 }
 
 .order-management-page__refundEmpty {
@@ -268,7 +297,7 @@
 
 .order-management-page__returnStage--pending {
   color: #d46b08;
-  background: #fff7e6;
+  background: #fff7f0;
   border-color: #ffd591;
 }
 
@@ -285,7 +314,7 @@
 }
 
 .order-management-page__amount {
-  color: #ff5722;
+  color: #ee4d2d;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -296,7 +325,7 @@
 }
 
 .order-management-page__completed {
-  color: #999;
+  color: #627064;
 }
 
 .order-management-page__nextAction {
@@ -304,9 +333,9 @@
   flex-direction: column;
   gap: 3px;
   padding: 8px;
-  border: 1px solid #eeeeee;
+  border: 1px solid #e4ebe4;
   border-radius: 8px;
-  background: #fafafa;
+  background: #fbfdfb;
   line-height: 1.35;
 }
 
@@ -345,6 +374,20 @@
   line-height: 1.35;
 }
 
+.order-management-page .ant-select-selector,
+.order-management-page .ant-input,
+.order-management-page .ant-input-affix-wrapper {
+  min-height: 34px;
+}
+
+.order-management-page__actions .ant-btn {
+  font-weight: 700;
+}
+
+.order-management-page__actions .ant-select {
+  min-width: 116px;
+}
+
 @media (max-width: 720px) {
   .order-management-page .ant-divider {
     margin: 12px 0;
@@ -372,6 +415,10 @@
   .order-management-page__summaryCard {
     min-height: 72px;
     padding: 12px;
+  }
+
+  .order-management-page__table {
+    margin-inline: -2px;
   }
 
   .order-management-page__summaryCard strong {

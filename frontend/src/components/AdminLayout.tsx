@@ -11,6 +11,7 @@ import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { adminApi, adminSupportApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
 import { isAdminRole, isSuperAdminRole } from '../utils/roles';
+import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -107,14 +108,22 @@ const AdminLayout: React.FC = () => {
       setSupportUnread(0);
       return;
     }
+    let disposed = false;
     const loadUnread = () => {
       adminSupportApi.getUnreadCount()
-        .then((res) => setSupportUnread(res.data.count))
-        .catch(() => setSupportUnread(0));
+        .then((res) => {
+          if (!disposed) setSupportUnread(res.data.count);
+        })
+        .catch(() => {
+          if (!disposed) setSupportUnread(0);
+        });
     };
     loadUnread();
     const timer = window.setInterval(loadUnread, 15000);
-    return () => window.clearInterval(timer);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
   }, [checking, canSeeSupport, location.pathname]);
 
   const handleLogout = () => {
@@ -129,23 +138,24 @@ const AdminLayout: React.FC = () => {
 
   if (checking) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div className="admin-layout__loading">
         <Spin size="large" tip={t('adminLayout.checking')} />
       </div>
     );
   }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout className="admin-layout">
       <Sider
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
         theme="dark"
         width={200}
+        className="admin-layout__sider"
       >
-        <div style={{ height: 48, margin: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Title level={4} style={{ color: '#fff', margin: 0, whiteSpace: 'nowrap' }}>
+        <div className="admin-layout__brand">
+          <Title level={4}>
             {collapsed ? t('adminLayout.titleShort') : t('adminLayout.title')}
           </Title>
         </div>
@@ -155,18 +165,12 @@ const AdminLayout: React.FC = () => {
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
+          className="admin-layout__menu"
         />
       </Sider>
       <Layout>
-        <Header style={{
-          background: '#fff',
-          padding: '0 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 1px 4px rgba(0,0,0,.08)',
-        }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Header className="admin-layout__header">
+          <Link to="/" className="admin-layout__storeLink">
             <ArrowLeftOutlined />
             <span>{t('adminLayout.backStore')}</span>
           </Link>
@@ -174,7 +178,7 @@ const AdminLayout: React.FC = () => {
             {t('adminLayout.logout')}
           </Button>
         </Header>
-        <Content style={{ margin: 24, padding: 24, background: '#f5f5f5', minHeight: 280 }}>
+        <Content className="admin-layout__content">
           <Outlet />
         </Content>
       </Layout>

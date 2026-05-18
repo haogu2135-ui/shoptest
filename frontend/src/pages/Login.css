@@ -1,10 +1,9 @@
-.shopee-login-root {
+﻿.shopee-login-root {
   width: 100%;
   min-height: 100vh;
   padding: 24px;
   background:
-    radial-gradient(circle at 8% 0%, rgba(247, 201, 72, 0.18), transparent 24%),
-    linear-gradient(180deg, #f7f4ee 0%, #ffffff 55%, #fff 100%);
+    linear-gradient(180deg, #ffffff 0%, #f6f8f6 52%, #f1f6f3 100%);
 }
 
 .shopee-login-shell {
@@ -24,10 +23,10 @@
   justify-content: center;
   gap: 14px;
   overflow: hidden;
-  border-radius: var(--radius-tile);
+  border-radius: 8px;
   padding: 46px;
   background:
-    linear-gradient(90deg, rgba(18, 71, 52, 0.94), rgba(18, 71, 52, 0.56)),
+    linear-gradient(90deg, rgba(18, 71, 52, 0.95), rgba(18, 71, 52, 0.58)),
     url('https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1400&q=80');
   background-position: center;
   background-size: cover;
@@ -85,7 +84,7 @@
   gap: 4px;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 12px;
+  border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
   backdrop-filter: blur(8px);
   transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
@@ -93,12 +92,12 @@
 
 .shopee-login-panel__spotlightCard:hover {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-  border-color: rgba(247, 201, 72, 0.4);
+  border-color: rgba(238, 77, 45, 0.4);
   transform: translateY(-2px);
 }
 
 .shopee-login-panel__spotlightCard strong {
-  color: #f7c948;
+  color: #ffb39f;
   font-size: 22px;
   line-height: 1;
 }
@@ -117,7 +116,7 @@
   gap: 8px;
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 12px;
+  border-radius: 8px;
   background: rgba(10, 33, 24, 0.38);
   color: #fff;
   font-size: 13px;
@@ -132,7 +131,7 @@
 }
 
 .shopee-login-panel__feature .anticon {
-  color: #f7c948;
+  color: #ffb39f;
   font-size: 18px;
 }
 
@@ -146,7 +145,7 @@
 .shopee-login-panel__actions .ant-btn {
   min-width: 146px;
   min-height: 44px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 700;
 }
 
@@ -156,15 +155,15 @@
   background: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* ── Login card ── */
+/* 鈹€鈹€ Login card 鈹€鈹€ */
 .shopee-login-card {
   width: 100%;
   max-width: 420px;
   padding: 32px 28px 24px;
   border: 1px solid rgba(226, 234, 220, 0.9);
-  border-radius: 20px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 24px 48px rgba(18, 71, 52, 0.12), 0 4px 12px rgba(18, 71, 52, 0.06);
+  box-shadow: 0 18px 42px rgba(18, 71, 52, 0.12), 0 4px 12px rgba(18, 71, 52, 0.06);
   backdrop-filter: blur(10px);
 }
 
@@ -187,7 +186,7 @@
 
 .shopee-login-subtitle {
   margin-top: 8px;
-  color: #666;
+  color: #627064;
   font-size: 14px;
 }
 
@@ -210,9 +209,9 @@
   align-content: center;
   gap: 4px;
   padding: 12px;
-  border: 1px solid #eee4d3;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffffff 0%, #fff9f2 100%);
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fcf9 100%);
   text-align: center;
   transition: box-shadow var(--transition-fast), transform var(--transition-fast);
 }
@@ -241,9 +240,9 @@
   gap: 8px;
   margin-bottom: 18px;
   padding: 12px;
-  border: 1px solid #f0e1cf;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #fff8ed 0%, #f7fbf6 100%);
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8fcf9 0%, #f7fbf8 100%);
 }
 
 .shopee-login-trust {
@@ -272,7 +271,7 @@
   color: #124734;
 }
 
-/* ── Form inputs ── */
+/* 鈹€鈹€ Form inputs 鈹€鈹€ */
 .shopee-login-form {
   width: 100%;
 }
@@ -280,14 +279,14 @@
 .shopee-login-card .ant-input,
 .shopee-login-card .ant-input-affix-wrapper,
 .shopee-login-card .ant-select-selector {
-  border-radius: 10px !important;
+  border-radius: 8px !important;
   min-height: 44px;
   font-size: 14px;
 }
 
 .shopee-login-card .ant-btn-primary {
   min-height: 44px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 800;
   font-size: 15px;
   box-shadow: 0 8px 20px rgba(238, 77, 45, 0.22);
@@ -299,7 +298,7 @@
   box-shadow: 0 12px 26px rgba(238, 77, 45, 0.3);
 }
 
-/* ── Quick links ── */
+/* 鈹€鈹€ Quick links 鈹€鈹€ */
 .shopee-login-quickLinks {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -314,9 +313,9 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid #eee4d3;
-  border-radius: 10px;
-  background: #fff9f2;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: #f8fcf9;
   color: #173f2b;
   font-size: 13px;
   font-weight: 700;
@@ -328,8 +327,8 @@
 .shopee-login-quickLinks a:hover,
 .shopee-login-quickLinks button:hover {
   color: #ee4d2d;
-  border-color: #f7c948;
-  background: #fffbf0;
+  border-color: #f6c1b3;
+  background: #fff7f0;
   box-shadow: 0 6px 16px rgba(18, 71, 52, 0.08);
   transform: translateY(-1px);
   text-decoration: none;
@@ -378,7 +377,7 @@
 
   .shopee-login-card {
     padding: 24px 18px 20px;
-    border-radius: 16px;
+    border-radius: 8px;
   }
 
   .shopee-login-card__stats,
@@ -405,7 +404,7 @@
   .shopee-login-panel {
     min-height: 340px;
     padding: 28px;
-    border-radius: 12px;
+    border-radius: 8px;
   }
 
   .shopee-login-panel h1.ant-typography {
@@ -416,4 +415,30 @@
   .shopee-login-panel__featureList {
     grid-template-columns: 1fr;
   }
+}
+
+.shopee-login-card__stat,
+.shopee-login-trust,
+.shopee-login-reset-guide,
+.shopee-login-quickLinks a,
+.shopee-login-quickLinks button {
+  border-color: #e4ebe4;
+  background: #ffffff;
+}
+
+.shopee-login-trust,
+.shopee-login-reset-guide {
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.04);
+}
+
+.shopee-login-card__stat span,
+.shopee-login-subtitle,
+.shopee-login-card__intro {
+  color: #627064;
+}
+
+.shopee-login-quickLinks a:hover,
+.shopee-login-quickLinks button:hover {
+  border-color: #124734;
+  background: #f8fcf9;
 }

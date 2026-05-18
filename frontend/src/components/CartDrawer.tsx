@@ -1,41 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Drawer, Empty, InputNumber, List, message, Progress, Space, Tag, Typography } from 'antd';
 import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, GoogleOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { apiBaseUrl, cartApi } from '../api';
+import { cartApi } from '../api';
 import type { CartItem, Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { addGuestCartItem, getGuestCartItems, removeGuestCartItem, removeGuestCartItems, updateGuestCartQuantity } from '../utils/guestCart';
 import { saveCartItemForLater } from '../utils/saveForLater';
-import { getLowStockCount } from '../utils/conversionConfig';
 import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefits';
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
+import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
+import { dispatchDomEvent } from '../utils/domEvents';
 import AddOnAssistant from './AddOnAssistant';
 import PetPersonalizedAssistant from './PetPersonalizedAssistant';
 import './CartDrawer.css';
 
 const { Text } = Typography;
-const cartDrawerImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-
-const resolveCartImage = (imageUrl?: string) => {
-  if (!imageUrl) return cartDrawerImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
-
-const isAvailable = (item: CartItem) =>
-  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock > 0);
-
-const canCheckout = (item: CartItem) =>
-  isAvailable(item) && (item.stock === undefined || item.stock >= item.quantity);
-
-const getCartItemLowStockCount = (item: CartItem) => getLowStockCount(item.stock, item.quantity);
-
 const expressPaymentCodesByCurrency: Record<string, string[]> = {
   MXN: ['MERCADO_PAGO', 'SPEI', 'OXXO', 'MX_LOCAL_CARD'],
   USD: ['SHOP_PAY', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY'],
@@ -51,28 +34,45 @@ const expressPaymentIcon = (code: string) => {
   return <WalletOutlined />;
 };
 
+const readCartToken = () => {
+  try {
+    return localStorage.getItem('token');
+  } catch {
+    return null;
+  }
+};
+
 const CartDrawer: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const mountedRef = useRef(true);
+  const loadCartRequestRef = useRef(0);
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
 
   const loadCart = useCallback(async () => {
+    const requestId = loadCartRequestRef.current + 1;
+    loadCartRequestRef.current = requestId;
     const userId = getAuthenticatedCartUserId();
     if (!userId) {
-      setItems(getGuestCartItems());
+      if (mountedRef.current) setItems(getGuestCartItems());
       return;
     }
-    setLoading(true);
+    if (mountedRef.current) setLoading(true);
     try {
       const res = await cartApi.getItems(userId);
+      if (!mountedRef.current || loadCartRequestRef.current !== requestId) return;
       setItems(res.data);
     } catch {
-      message.error(t('pages.cart.fetchFailed'));
+      if (mountedRef.current && loadCartRequestRef.current === requestId) {
+        message.error(t('pages.cart.fetchFailed'));
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current && loadCartRequestRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, [t]);
 
@@ -85,7 +85,7 @@ const CartDrawer: React.FC = () => {
       loadCart();
     };
     const refreshGuestCartFromStorage = (event: StorageEvent) => {
-      if (event.key === 'shop-guest-cart' && !localStorage.getItem('token')) {
+      if (event.key === 'shop-guest-cart' && !readCartToken()) {
         loadCart();
       }
     };
@@ -98,6 +98,10 @@ const CartDrawer: React.FC = () => {
       window.removeEventListener('storage', refreshGuestCartFromStorage);
     };
   }, [loadCart]);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   const checkoutItems = useMemo(() => items.filter(canCheckout), [items]);
   const blockedItems = useMemo(() => items.filter((item) => !canCheckout(item)), [items]);
@@ -113,6 +117,10 @@ const CartDrawer: React.FC = () => {
     ? Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100))
     : 100;
   const drawerReady = checkoutItems.length > 0 && blockedCount === 0;
+  const shippingStatusText = [
+    drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle'),
+    t('pages.cart.drawerReadyText', { count: checkoutUnitCount, blocked: blockedCount, low: lowStockCount }),
+  ].join(' · ');
   const expressHint = checkoutItems.length === 0
     ? t('pages.cart.drawerExpressEmpty')
     : blockedCount > 0
@@ -150,7 +158,7 @@ const CartDrawer: React.FC = () => {
       } else {
         setItems(updateGuestCartQuantity(item.id, quantity));
       }
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('pages.cart.quantityFailed'));
     }
@@ -165,7 +173,7 @@ const CartDrawer: React.FC = () => {
       } else {
         setItems(removeGuestCartItem(item.id));
       }
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.deleteFailed'));
     }
@@ -182,7 +190,7 @@ const CartDrawer: React.FC = () => {
         setItems(removeGuestCartItem(item.id));
       }
       message.success(t('pages.cart.savedForLater'));
-      if (userId) window.dispatchEvent(new Event('shop:cart-updated'));
+      if (userId) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -198,10 +206,14 @@ const CartDrawer: React.FC = () => {
       return;
     }
     syncCheckoutCartItemIds(checkoutItems);
-    if (paymentMethod) {
-      sessionStorage.setItem('checkoutPaymentMethod', paymentMethod);
-    } else {
-      sessionStorage.removeItem('checkoutPaymentMethod');
+    try {
+      if (paymentMethod) {
+        sessionStorage.setItem('checkoutPaymentMethod', paymentMethod);
+      } else {
+        sessionStorage.removeItem('checkoutPaymentMethod');
+      }
+    } catch {
+      // Checkout can continue; the payment method will fall back to the checkout default.
     }
     setOpen(false);
     navigate('/checkout');
@@ -214,7 +226,7 @@ const CartDrawer: React.FC = () => {
       if (userId) {
         await Promise.all(blockedItems.map((item) => cartApi.removeItem(item.id)));
         setItems((current) => current.filter(canCheckout));
-        window.dispatchEvent(new Event('shop:cart-updated'));
+        dispatchDomEvent('shop:cart-updated');
       } else {
         setItems(removeGuestCartItems(blockedItems.map((item) => item.id)));
       }
@@ -228,7 +240,7 @@ const CartDrawer: React.FC = () => {
     const userId = getAuthenticatedCartUserId();
     if (userId) {
       await cartApi.addItem(userId, product.id, 1);
-      window.dispatchEvent(new Event('shop:cart-updated'));
+      dispatchDomEvent('shop:cart-updated');
       return;
     }
     addGuestCartItem(product, 1);
@@ -242,7 +254,7 @@ const CartDrawer: React.FC = () => {
       width="min(420px, 100vw)"
       open={open}
       onClose={() => setOpen(false)}
-      className="cart-drawer"
+      className={`cart-drawer cart-drawer--${language}`}
       styles={{ body: { padding: 16 } }}
       extra={<Text strong>{formatMoney(subtotal)}</Text>}
     >
@@ -255,17 +267,23 @@ const CartDrawer: React.FC = () => {
         ))}
       </section>
 
-      <div className={`cart-drawer__shipping${drawerReady ? ' cart-drawer__shipping--ready' : ''}`}>
+      <div className={`cart-drawer__shipping${drawerReady ? ' cart-drawer__shipping--ready' : ''}`} role="status" aria-live="polite">
         <div className="cart-drawer__shippingHeader">
           <CheckCircleOutlined className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
           <div className="cart-drawer__shippingText">
             <Text strong>{remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}</Text>
             <Text type="secondary" className="cart-drawer__shippingStatus">
-              {drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle')} · {t('pages.cart.drawerReadyText', { count: checkoutUnitCount, blocked: blockedCount, low: lowStockCount })}
+              {shippingStatusText}
             </Text>
           </div>
         </div>
-        <Progress percent={progress} showInfo={false} strokeColor="#124734" size="small" />
+        <Progress
+          percent={progress}
+          showInfo={false}
+          strokeColor="#124734"
+          size="small"
+          aria-label={remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}
+        />
         {giftUnlocked ? (
           <Text type="secondary" className="cart-drawer__shippingGift">{t('pages.cart.drawerGiftUnlocked')}</Text>
         ) : null}
@@ -335,8 +353,8 @@ const CartDrawer: React.FC = () => {
                     loading="lazy"
                     decoding="async"
                     onError={(event) => {
-                      if (event.currentTarget.src !== cartDrawerImageFallback) {
-                        event.currentTarget.src = cartDrawerImageFallback;
+                      if (event.currentTarget.src !== cartImageFallback) {
+                        event.currentTarget.src = cartImageFallback;
                       }
                     }}
                   />
@@ -354,7 +372,7 @@ const CartDrawer: React.FC = () => {
                     <Text>{formatMoney(item.price)}</Text>
                     <InputNumber
                       min={1}
-                      max={item.stock || undefined}
+                      max={item.stock ?? undefined}
                       size="small"
                       value={item.quantity}
                       disabled={!isAvailable(item)}

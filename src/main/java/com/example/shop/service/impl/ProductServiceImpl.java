@@ -10,6 +10,7 @@ import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.ReviewRepository;
 import com.example.shop.service.ProductService;
 import com.example.shop.util.CsvUtils;
+import com.example.shop.util.ProductStatusUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -62,6 +63,15 @@ public class ProductServiceImpl implements ProductService {
     @Value("${product.search-cache-max-entries:80}")
     private int searchCacheMaxEntries;
 
+    @Value("${product.add-on-price-floor-ratio:0.45}")
+    private BigDecimal addOnPriceFloorRatio;
+
+    @Value("${product.add-on-price-ceiling-ratio:1.35}")
+    private BigDecimal addOnPriceCeilingRatio;
+
+    @Value("${product.add-on-price-ceiling:260}")
+    private BigDecimal addOnPriceCeiling;
+
     private final ConcurrentMap<String, ProductSearchCacheEntry> productSearchCache = new ConcurrentHashMap<>();
 
     @Override
@@ -70,8 +80,48 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<Product> findPublicProducts() {
+        return getCachedProducts("public", () -> enrichReviewStats(productRepository.findAll().stream()
+                .filter(ProductStatusUtils::isPublicProduct)
+                .collect(Collectors.toList())));
+    }
+
+    @Override
     public Optional<Product> findById(Long id) {
         return productRepository.findById(id).map(this::enrichReviewStats);
+    }
+
+    @Override
+    public Optional<Product> findPublicById(Long id) {
+        return findById(id).filter(ProductStatusUtils::isPublicProduct);
+    }
+
+    @Override
+    public List<Product> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Long> normalizedIds = ids.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .limit(40)
+                .collect(Collectors.toList());
+        if (normalizedIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Product> productById = enrichReviewStats(productRepository.findAllById(normalizedIds)).stream()
+                .collect(Collectors.toMap(Product::getId, product -> product, (left, right) -> left));
+        return normalizedIds.stream()
+                .map(productById::get)
+                .filter(product -> product != null)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Product> findPublicByIds(List<Long> ids) {
+        return findByIds(ids).stream()
+                .filter(ProductStatusUtils::isPublicProduct)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -95,8 +145,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<Product> findPublicFeaturedProducts() {
+        return getCachedProducts("featured:public", () -> enrichReviewStats(productRepository.findByIsFeaturedTrueOrderByIdAsc().stream()
+                .filter(ProductStatusUtils::isPublicProduct)
+                .collect(Collectors.toList())));
+    }
+
+    @Override
     public List<Product> findDiscountProducts() {
         return getCachedProducts("discount", () -> enrichReviewStats(productRepository.findAll().stream()
+                .filter(ProductStatusUtils::isPublicProduct)
                 .filter(product -> {
                     if (product.getDiscount() != null && product.getDiscount() > 0) {
                         return true;
@@ -125,8 +183,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<Product> findAddOnCandidatesUncached(BigDecimal normalizedTarget, Set<Long> excludedIds, int normalizedLimit) {
-        BigDecimal floor = normalizedTarget.multiply(BigDecimal.valueOf(0.45));
-        BigDecimal ceiling = normalizedTarget.multiply(BigDecimal.valueOf(1.35)).max(BigDecimal.valueOf(260));
+        BigDecimal floor = normalizedTarget.multiply(safePositiveRatio(addOnPriceFloorRatio, BigDecimal.valueOf(0.45)));
+        BigDecimal ceiling = normalizedTarget
+                .multiply(safePositiveRatio(addOnPriceCeilingRatio, BigDecimal.valueOf(1.35)))
+                .max(safePositiveAmount(addOnPriceCeiling, BigDecimal.valueOf(260)));
 
         return enrichReviewStats(productRepository.findAll().stream()
                 .filter(product -> !excludedIds.contains(product.getId()))
@@ -156,9 +216,12 @@ public class ProductServiceImpl implements ProductService {
             candidates = productRepository.findAll();
         }
         if (normalizedKeyword.isEmpty()) {
-            return enrichReviewStats(candidates);
+            return enrichReviewStats(candidates.stream()
+                    .filter(ProductStatusUtils::isPublicProduct)
+                    .collect(Collectors.toList()));
         }
         return enrichReviewStats(candidates.stream()
+                .filter(ProductStatusUtils::isPublicProduct)
                 .filter(product -> matchesNormalizedKeyword(product, normalizedKeyword))
                 .collect(Collectors.toList()));
     }
@@ -201,7 +264,7 @@ public class ProductServiceImpl implements ProductService {
         Map<Long, Category> categories = categoryRepository.findAll().stream()
                 .collect(Collectors.toMap(Category::getId, category -> category));
         List<Product> products = productRepository.findAll().stream()
-                .filter(product -> product.getStatus() == null || "ACTIVE".equalsIgnoreCase(product.getStatus()))
+                .filter(ProductStatusUtils::isPublicProduct)
                 .filter(product -> product.getStock() == null || product.getStock() > 0)
                 .collect(Collectors.toList());
 
@@ -494,7 +557,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private boolean isQuickAddReady(Product product) {
-        if (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
+        if (!ProductStatusUtils.isPublicProduct(product)) {
             return false;
         }
         if (!hasSellableStock(product)) {
@@ -536,6 +599,14 @@ public class ProductServiceImpl implements ProductService {
 
     private BigDecimal effectivePrice(Product product) {
         return product.getEffectivePrice() == null ? product.getPrice() : product.getEffectivePrice();
+    }
+
+    private BigDecimal safePositiveRatio(BigDecimal value, BigDecimal fallback) {
+        return value == null || value.compareTo(BigDecimal.ZERO) <= 0 ? fallback : value;
+    }
+
+    private BigDecimal safePositiveAmount(BigDecimal value, BigDecimal fallback) {
+        return value == null || value.compareTo(BigDecimal.ZERO) <= 0 ? fallback : value;
     }
 
     private static class ProductScore {

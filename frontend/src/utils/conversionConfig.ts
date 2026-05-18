@@ -136,16 +136,21 @@ export const getDeliveryPromise = ({ currency = 'USD', locale = 'en-US', now = n
 export const getLowStockCount = (stock?: number | null, quantity = 1) => {
   if (!conversionConfig.cartUrgency.enabled || stock === undefined || stock === null) return null;
   const availableStock = Number(stock);
-  if (availableStock < Math.max(1, quantity)) return 0;
-  return availableStock <= conversionConfig.cartUrgency.lowStockThreshold ? availableStock : null;
+  if (!Number.isFinite(availableStock)) return null;
+  const requestedQuantity = Number(quantity);
+  const normalizedQuantity = Number.isFinite(requestedQuantity) ? Math.max(1, Math.floor(requestedQuantity)) : 1;
+  const normalizedStock = Math.max(0, Math.floor(availableStock));
+  if (normalizedStock < normalizedQuantity) return 0;
+  return normalizedStock <= conversionConfig.cartUrgency.lowStockThreshold ? normalizedStock : null;
 };
 
 export const estimatePetSize = (breed: string, weightKg?: number | null): RecommendedPetSize | null => {
-  const normalizedBreed = breed.trim().toLowerCase();
+  const normalizedBreed = String(breed || '').trim().toLowerCase();
   const breedMatch = conversionConfig.sizeCalculator.breedDefaults.find((entry) =>
     entry.tokens.some((token) => normalizedBreed.includes(token.toLowerCase())),
   );
   if (breedMatch) return breedMatch.size as RecommendedPetSize;
-  if (!weightKg || weightKg <= 0) return null;
-  return conversionConfig.sizeCalculator.weightBandsKg.find((band) => weightKg <= band.max)?.size as RecommendedPetSize;
+  const normalizedWeight = Number(weightKg);
+  if (!Number.isFinite(normalizedWeight) || normalizedWeight <= 0) return null;
+  return conversionConfig.sizeCalculator.weightBandsKg.find((band) => normalizedWeight <= band.max)?.size as RecommendedPetSize;
 };

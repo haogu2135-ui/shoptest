@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.UpdatePasswordRequest;
 import com.example.shop.entity.User;
 import com.example.shop.service.UserService;
 import com.example.shop.security.SecurityUtils;
@@ -14,6 +15,8 @@ import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import javax.validation.Valid;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 @RestController
 @RequestMapping("/users")
@@ -40,12 +43,10 @@ public class UserController {
     }
     
     @PutMapping("/password")
-    public void updatePassword(@RequestParam Long userId,
-                             @RequestParam String oldPassword,
-                             @RequestParam String newPassword,
-                             Authentication authentication) {
-        SecurityUtils.assertSelfOrAdmin(authentication, userId);
-        userService.updatePassword(userId, oldPassword, newPassword);
+    public void updatePassword(@Valid @RequestBody UpdatePasswordRequest request,
+                               Authentication authentication) {
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        userService.updatePassword(userDetails.getId(), request.getOldPassword(), request.getNewPassword());
     }
     
     @GetMapping("/profile")
@@ -70,9 +71,16 @@ public class UserController {
         if (isBlank(adminBootstrapToken)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin bootstrap is not configured");
         }
-        if (isBlank(bootstrapToken) || !adminBootstrapToken.equals(bootstrapToken.trim())) {
+        if (isBlank(bootstrapToken) || !constantTimeEquals(adminBootstrapToken, bootstrapToken.trim())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid admin bootstrap token");
         }
+    }
+
+    private boolean constantTimeEquals(String expected, String actual) {
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.UTF_8),
+                actual.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
     private boolean isBlank(String value) {

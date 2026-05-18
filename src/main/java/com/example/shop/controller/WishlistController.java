@@ -27,16 +27,31 @@ public class WishlistController {
         return wishlistService.getWishlist(userId);
     }
 
+    @GetMapping("/me")
+    public List<Wishlist> getMyWishlist(Authentication authentication) {
+        return wishlistService.getWishlist(SecurityUtils.requireUser(authentication).getId());
+    }
+
     @GetMapping("/check")
     public Map<String, Boolean> check(@RequestParam Long userId, @RequestParam Long productId, Authentication authentication) {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         return Map.of("wishlisted", wishlistService.isWishlisted(userId, productId));
     }
 
+    @GetMapping("/me/check")
+    public Map<String, Boolean> checkMine(@RequestParam Long productId, Authentication authentication) {
+        return Map.of("wishlisted", wishlistService.isWishlisted(SecurityUtils.requireUser(authentication).getId(), productId));
+    }
+
     @GetMapping("/count")
     public Map<String, Integer> getCount(@RequestParam Long userId, Authentication authentication) {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         return Map.of("count", wishlistService.getCount(userId));
+    }
+
+    @GetMapping("/me/count")
+    public Map<String, Integer> getMyCount(Authentication authentication) {
+        return Map.of("count", wishlistService.getCount(SecurityUtils.requireUser(authentication).getId()));
     }
 
     @PostMapping("/toggle")
@@ -46,10 +61,23 @@ public class WishlistController {
         return Map.of("wishlisted", wishlistService.isWishlisted(userId, productId));
     }
 
+    @PostMapping("/me/toggle")
+    public Map<String, Object> toggleMine(@RequestParam Long productId, Authentication authentication) {
+        Long userId = SecurityUtils.requireUser(authentication).getId();
+        wishlistService.toggleWishlist(userId, productId);
+        return Map.of("wishlisted", wishlistService.isWishlisted(userId, productId));
+    }
+
     @DeleteMapping
     public Map<String, String> remove(@RequestParam Long userId, @RequestParam Long productId, Authentication authentication) {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         wishlistService.removeFromWishlist(userId, productId);
+        return Map.of("message", "Removed from wishlist");
+    }
+
+    @DeleteMapping("/me")
+    public Map<String, String> removeMine(@RequestParam Long productId, Authentication authentication) {
+        wishlistService.removeFromWishlist(SecurityUtils.requireUser(authentication).getId(), productId);
         return Map.of("message", "Removed from wishlist");
     }
 }

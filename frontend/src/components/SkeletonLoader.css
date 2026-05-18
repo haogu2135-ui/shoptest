@@ -1,8 +1,8 @@
-/* ========================================
-   SkeletonLoader — animated skeleton UI
+﻿/* ========================================
+   SkeletonLoader 鈥?animated skeleton UI
    ======================================== */
 
-/* ── Base shimmer keyframe ── */
+/* 鈹€鈹€ Base shimmer keyframe 鈹€鈹€ */
 @keyframes shimmer {
   0%   { background-position: -600px 0; }
   100% { background-position: 600px 0; }
@@ -18,19 +18,19 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Shimmer gradient (shared) ── */
+/* 鈹€鈹€ Shimmer gradient (shared) 鈹€鈹€ */
 .shimmer {
   background: linear-gradient(
     90deg,
-    #ede8de 0%,
-    #f5f1ea 40%,
-    #ede8de 80%
+    #e7efe8 0%,
+    #f4f8f5 40%,
+    #e7efe8 80%
   );
   background-size: 1200px 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* ── Stagger wrapper ── */
+/* 鈹€鈹€ Stagger wrapper 鈹€鈹€ */
 .skeleton--card > *,
 .skeleton--list > * {
   animation: slide-up 0.35s ease-out both;
@@ -53,7 +53,7 @@
 .skeleton--card > *:nth-child(8),
 .skeleton--list > *:nth-child(8) { animation-delay: 350ms; }
 
-/* ── Row layout ── */
+/* 鈹€鈹€ Row layout 鈹€鈹€ */
 .skeleton__row {
   display: flex;
   align-items: center;
@@ -61,7 +61,7 @@
   padding: 12px 0;
 }
 
-/* ── Avatar circle ── */
+/* 鈹€鈹€ Avatar circle 鈹€鈹€ */
 .skeleton__avatar {
   width: 44px;
   height: 44px;
@@ -69,7 +69,7 @@
   flex: 0 0 auto;
 }
 
-/* ── Lines block ── */
+/* 鈹€鈹€ Lines block 鈹€鈹€ */
 .skeleton__lines {
   display: flex;
   flex-direction: column;
@@ -84,13 +84,13 @@
 .skeleton__line--title { height: 14px; }
 .skeleton__line--meta  { height: 11px; }
 
-/* ── Image block (optional) ── */
+/* 鈹€鈹€ Image block (optional) 鈹€鈹€ */
 .skeleton__image {
   border-radius: 8px;
   flex: 0 0 auto;
 }
 
-/* ── Hero skeleton ── */
+/* 鈹€鈹€ Hero skeleton 鈹€鈹€ */
 .hero-skeleton {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 360px);
@@ -109,7 +109,7 @@
 }
 
 .hero-skeleton__right {
-  border-radius: 18px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -119,7 +119,7 @@
   margin-top: 8px;
 }
 
-/* ── Product card skeleton ── */
+/* 鈹€鈹€ Product card skeleton 鈹€鈹€ */
 .product-skeleton {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -127,8 +127,8 @@
 }
 
 .product-skeleton__card {
-  border: 1px solid #eee4d3;
-  border-radius: 10px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
   overflow: hidden;
   background: #fff;
 }
@@ -145,14 +145,14 @@
   padding: 10px;
 }
 
-/* ── Stats strip skeleton ── */
+/* 鈹€鈹€ Stats strip skeleton 鈹€鈹€ */
 .stats-strip-skeleton {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-/* ── Detail skeleton ── */
+/* 鈹€鈹€ Detail skeleton 鈹€鈹€ */
 .skeleton--detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
@@ -168,7 +168,7 @@
 
 .skeleton--detail .skeleton__main-image {
   aspect-ratio: 1 / 1;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .skeleton--detail .skeleton__thumbs {
@@ -193,7 +193,7 @@
   border-radius: 6px;
 }
 
-/* ── Responsive ── */
+/* 鈹€鈹€ Responsive 鈹€鈹€ */
 @media (max-width: 600px) {
   .hero-skeleton {
     grid-template-columns: 1fr;
@@ -224,12 +224,12 @@
   }
 }
 
-/* ── Reduced motion ── */
+/* 鈹€鈹€ Reduced motion 鈹€鈹€ */
 @media (prefers-reduced-motion: reduce) {
   .shimmer {
     animation: pulse-fade 1.6s ease-in-out infinite;
     background: none;
-    background-color: #ede8de;
+    background-color: #e7efe8;
   }
 
   .skeleton--card > *,

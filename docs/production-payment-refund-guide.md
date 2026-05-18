@@ -97,6 +97,7 @@ Set a strong callback secret:
 $env:PAYMENT_CALLBACK_SECRET="replace-with-a-long-random-secret"
 $env:PAYMENT_CALLBACK_MAX_SKEW_SECONDS="300"
 $env:PAYMENT_CHECKOUT_BASE_URL="https://your-provider-checkout.example.com/checkout"
+$env:PAYMENT_GATEWAY_ALLOW_LOCAL="false"
 $env:PAYMENT_SIMULATION_ENABLED="false"
 $env:APP_RUNTIME_MODE="production"
 ```
@@ -173,6 +174,10 @@ Recommended response:
 ```
 
 For `GENERIC_API` refunds, both a success status and a refund reference are required. A plain `2xx` response without a valid body is treated as a refund failure.
+
+The backend claims a paid payment as `REFUNDING` before calling Stripe or a generic refund API. This prevents duplicate refund clicks from sending duplicate provider requests. If the provider call fails, the payment is restored to `PAID`; if it succeeds, the payment is marked `REFUNDED` with the provider reference. Watch `refundingPayments` on the admin dashboard: anything that remains in `REFUNDING` after a provider timeout should be reconciled against the provider dashboard before retrying.
+
+Outbound gateway URLs are validated before the backend calls them. In production, localhost and private-network targets are blocked by default to reduce SSRF risk. Only set `PAYMENT_GATEWAY_ALLOW_LOCAL=true` in local QA when your adapter runs on your own machine.
 
 Per-channel checkout URLs are also supported:
 
@@ -336,4 +341,5 @@ Use deep links when wiring dashboard cards, support shortcuts, or incident playb
 - Payment link expired: create a fresh payment with the selected channel and keep the old payment in history.
 - Callback delayed: keep the order in pending payment until the callback or manual reconciliation confirms success.
 - Refund API failure: keep the order out of `RETURNED` until the provider refund succeeds or a manual refund reference is recorded.
+- Stuck `REFUNDING` payment: compare the idempotency key `return-refund-{orderId}-{paymentId}` with the provider dashboard, then retry the same payment or manually record the provider reference after finance confirms settlement.
 - Duplicate callbacks: rely on provider reference, transaction id, and idempotency keys; do not ship twice or refund twice.

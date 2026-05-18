@@ -192,6 +192,9 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
 
     private String normalizeContent(String content) {
         String normalized = content == null ? "" : content.trim();
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("Message content is required");
+        }
         if (normalized.length() > maxMessageChars) {
             throw new IllegalArgumentException("Message is too long");
         }

@@ -45,6 +45,19 @@ public class OrderController {
     @PostMapping("/checkout")
     public ResponseEntity<?> checkout(@Valid @RequestBody CheckoutRequest request, Authentication authentication) {
         try {
+            if (request.getUserId() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "userId is required"));
+            }
+            SecurityUtils.assertSelfOrAdmin(authentication, request.getUserId());
+            return ResponseEntity.ok(orderService.checkout(request));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/checkout/me")
+    public ResponseEntity<?> checkoutMine(@Valid @RequestBody CheckoutRequest request, Authentication authentication) {
+        try {
             UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
             request.setUserId(userDetails.getId());
             return ResponseEntity.ok(orderService.checkout(request));
@@ -125,10 +138,18 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<?> cancelOrder(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<?> cancelOrder(@PathVariable Long id,
+                                         @RequestBody(required = false) Map<String, String> body,
+                                         Authentication authentication) {
         try {
-            requireVisibleOrder(id, authentication);
-            orderService.cancelOrder(id);
+            Order order = orderService.getOrderById(id);
+            if (order == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+            }
+            assertCanCancelOrder(order, authentication, body == null ? null : body.get("guestEmail"));
+            if (!orderService.cancelOrder(id)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Order cancellation failed"));
+            }
             return ResponseEntity.ok(Map.of("message", "Order cancelled"));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -157,7 +178,9 @@ public class OrderController {
             SecurityUtils.assertAdmin(authentication);
             String trackingNumber = body != null ? body.get("trackingNumber") : null;
             String trackingCarrierCode = body != null ? body.get("trackingCarrierCode") : null;
-            orderService.shipOrder(id, trackingNumber, trackingCarrierCode);
+            if (!orderService.shipOrder(id, trackingNumber, trackingCarrierCode)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Order shipment failed"));
+            }
             return ResponseEntity.ok(Map.of("message", "Order shipped"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -170,7 +193,9 @@ public class OrderController {
     public ResponseEntity<?> confirmReceipt(@PathVariable Long id, Authentication authentication) {
         try {
             requireVisibleOrder(id, authentication);
-            orderService.updateOrderStatus(id, "COMPLETED");
+            if (!orderService.updateOrderStatus(id, "COMPLETED")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Order completion failed"));
+            }
             return ResponseEntity.ok(Map.of("message", "Order completed"));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -190,7 +215,11 @@ public class OrderController {
         String reason = body != null ? body.get("reason") : null;
         try {
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            orderService.requestReturn(id, userDetails.getId(), reason);
+            if (!orderService.requestReturn(id, userDetails.getId(), reason)) {
+                auditLogService.record("RETURN_REQUEST", "FAILURE", authentication, "ORDER", id, request,
+                        "Order not found or return request was not applied", reason == null ? null : "reason=" + reason);
+                return ResponseEntity.badRequest().body(Map.of("error", "Return request failed"));
+            }
             auditLogService.record("RETURN_REQUEST", "SUCCESS", authentication, "ORDER", id, request,
                     "Return requested", reason == null ? null : "reason=" + reason);
             return ResponseEntity.ok(Map.of("message", "Return requested"));
@@ -214,7 +243,11 @@ public class OrderController {
         String returnTrackingNumber = body != null ? body.get("returnTrackingNumber") : null;
         try {
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            orderService.submitReturnShipment(id, userDetails.getId(), returnTrackingNumber);
+            if (!orderService.submitReturnShipment(id, userDetails.getId(), returnTrackingNumber)) {
+                auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
+                        "Order not found or return shipment was not applied", "returnTrackingNumber=" + returnTrackingNumber);
+                return ResponseEntity.badRequest().body(Map.of("error", "Return shipment submit failed"));
+            }
             auditLogService.record("RETURN_SHIPMENT_SUBMIT", "SUCCESS", authentication, "ORDER", id, request,
                     "Return shipment submitted", "returnTrackingNumber=" + returnTrackingNumber);
             return ResponseEntity.ok(Map.of("message", "Return shipment submitted"));
@@ -236,5 +269,36 @@ public class OrderController {
         }
         SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
         return order;
+    }
+
+    private void assertCanCancelOrder(Order order, Authentication authentication, String guestEmail) {
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+            try {
+                SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
+                return;
+            } catch (ResponseStatusException e) {
+                if (isGuestOrder(order) && guestEmailMatches(order, guestEmail)) {
+                    return;
+                }
+                throw e;
+            }
+        }
+        if (!isGuestOrder(order) || !guestEmailMatches(order, guestEmail)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order cancellation is not available for this order");
+        }
+    }
+
+    private boolean isGuestOrder(Order order) {
+        String shippingAddress = order.getShippingAddress();
+        return shippingAddress != null && shippingAddress.startsWith("[Guest] ");
+    }
+
+    private boolean guestEmailMatches(Order order, String guestEmail) {
+        if (guestEmail == null || guestEmail.trim().isEmpty() || order.getShippingAddress() == null) {
+            return false;
+        }
+        String normalizedEmail = guestEmail.trim().toLowerCase();
+        String normalizedAddress = order.getShippingAddress().toLowerCase();
+        return normalizedAddress.contains(" / " + normalizedEmail + " / ");
     }
 }

@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +16,6 @@ import java.util.stream.Collectors;
 @Service
 public class ProductVariantService {
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final BigDecimal SUBSCRIBE_AND_SAVE_RATE = new BigDecimal("0.80");
     private static final String PURCHASE_MODE_BUNDLE = "bundle";
 
     public Optional<Map<String, Object>> findSelectedVariant(Product product, String selectedSpecs) {
@@ -28,10 +26,10 @@ public class ProductVariantService {
         }
         String selectedSku = selected.get("_variantSku");
         if (selectedSku != null && !selectedSku.isEmpty()) {
-            Optional<Map<String, Object>> bySku = variants.stream()
+            return variants.stream()
                     .filter(variant -> selectedSku.equals(String.valueOf(variant.getOrDefault("sku", ""))))
+                    .filter(variant -> selectedOptionsMatch(variant, selected))
                     .findFirst();
-            if (bySku.isPresent()) return bySku;
         }
         return variants.stream()
                 .filter(variant -> selectedOptionsMatch(variant, selected))
@@ -47,7 +45,7 @@ public class ProductVariantService {
                 .map(variant -> decimalValue(variant.get("price")))
                 .filter(resolvedPrice -> resolvedPrice.compareTo(BigDecimal.ZERO) > 0)
                 .orElse(product.getEffectivePrice());
-        return applyPurchaseModeDiscount(price, selectedSpecs);
+        return price;
     }
 
     public Integer resolveStock(Product product, String selectedSpecs) {
@@ -58,6 +56,10 @@ public class ProductVariantService {
 
     public void validateSelection(Product product, String selectedSpecs) {
         Map<String, String> selected = parseSelectedSpecs(selectedSpecs);
+        String purchaseMode = selected.get("_purchaseMode");
+        if (purchaseMode != null && !purchaseMode.trim().isEmpty() && !PURCHASE_MODE_BUNDLE.equals(purchaseMode)) {
+            throw new IllegalArgumentException("Selected purchase mode is unavailable");
+        }
         for (String optionName : requiredOptionNames(product)) {
             if (selected.get(optionName) == null || selected.get(optionName).trim().isEmpty()) {
                 throw new IllegalArgumentException("Please select " + optionName);
@@ -124,10 +126,6 @@ public class ProductVariantService {
         }
     }
 
-    public boolean isSubscribeAndSave(String selectedSpecs) {
-        return "subscribe".equals(parseSelectedSpecs(selectedSpecs).get("_purchaseMode"));
-    }
-
     private BigDecimal resolveBundlePrice(Product product, String selectedSpecs) {
         if (!PURCHASE_MODE_BUNDLE.equals(parseSelectedSpecs(selectedSpecs).get("_purchaseMode"))) {
             return null;
@@ -138,13 +136,6 @@ public class ProductVariantService {
         }
         BigDecimal bundlePrice = decimalValue(specs.get("bundle.price"));
         return bundlePrice.compareTo(BigDecimal.ZERO) > 0 ? bundlePrice : null;
-    }
-
-    private BigDecimal applyPurchaseModeDiscount(BigDecimal price, String selectedSpecs) {
-        if (price == null || !isSubscribeAndSave(selectedSpecs)) {
-            return price;
-        }
-        return price.multiply(SUBSCRIBE_AND_SAVE_RATE).setScale(2, RoundingMode.HALF_UP);
     }
 
     private boolean selectedOptionsMatch(Map<String, Object> variant, Map<String, String> selected) {
@@ -182,10 +173,10 @@ public class ProductVariantService {
         }
         String selectedSku = selected.get("_variantSku");
         if (selectedSku != null && !selectedSku.isEmpty()) {
-            Optional<Map<String, Object>> bySku = variants.stream()
+            return variants.stream()
                     .filter(variant -> selectedSku.equals(String.valueOf(variant.getOrDefault("sku", "")).trim()))
+                    .filter(variant -> selectedOptionsMatch(variant, selected))
                     .findFirst();
-            if (bySku.isPresent()) return bySku;
         }
         return variants.stream()
                 .filter(variant -> selectedOptionsMatch(variant, selected))

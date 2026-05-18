@@ -155,6 +155,7 @@ public class CartService {
     private void refreshCartItemSnapshot(CartItem item, Product product) {
         if (product == null) {
             item.setProductStatus("INACTIVE");
+            item.setProductName("Unavailable product");
             item.setStock(0);
             return;
         }

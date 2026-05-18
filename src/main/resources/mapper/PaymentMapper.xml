@@ -71,6 +71,10 @@
         LIMIT 1
     </select>
 
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM payments WHERE status = #{status}
+    </select>
+
     <select id="findPendingByOrderId" resultMap="paymentMap">
         SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'PENDING'
         ORDER BY id DESC
@@ -123,13 +127,27 @@
         WHERE id = #{id} AND status = 'PENDING'
     </update>
 
+    <update id="markRefunding">
+        UPDATE payments
+        SET status = 'REFUNDING',
+            updated_at = NOW()
+        WHERE id = #{id} AND status = 'PAID'
+    </update>
+
     <update id="markRefunded">
         UPDATE payments
         SET status = 'REFUNDED',
             refund_reference = #{refundReference},
             refunded_at = NOW(),
             updated_at = NOW()
-        WHERE id = #{id} AND status = 'PAID'
+        WHERE id = #{id} AND status = 'REFUNDING'
+    </update>
+
+    <update id="revertRefunding">
+        UPDATE payments
+        SET status = 'PAID',
+            updated_at = NOW()
+        WHERE id = #{id} AND status = 'REFUNDING'
     </update>
 
     <update id="markFailed">

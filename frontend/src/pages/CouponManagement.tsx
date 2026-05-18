@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api';
@@ -232,7 +232,7 @@ const CouponManagement: React.FC = () => {
       key: 'rule',
       render: (_: any, record: Coupon) => record.couponType === 'FULL_REDUCTION'
         ? `${formatMoney(record.thresholdAmount)} - ${formatMoney(record.reductionAmount)}`
-        : t('pages.coupons.discountPayable', { percent: record.discountPercent || 100 }) + (record.maxDiscountAmount ? `, ${t('pages.coupons.maxDiscount', { amount: formatMoney(record.maxDiscountAmount) })}` : ''),
+        : t('pages.coupons.discountPayable', { percent: record.discountPercent || 0 }) + (record.maxDiscountAmount ? `, ${t('pages.coupons.maxDiscount', { amount: formatMoney(record.maxDiscountAmount) })}` : ''),
     },
     { title: t('pages.adminCoupons.scope'), dataIndex: 'scope', key: 'scope', render: (scope: string) => <Tag>{scope === 'PUBLIC' ? t('pages.adminCoupons.publicClaim') : t('pages.adminCoupons.adminAssigned')}</Tag> },
     { title: t('pages.adminCoupons.status'), dataIndex: 'status', key: 'status', render: (status: string) => <Tag color={status === 'ACTIVE' ? 'green' : 'default'}>{t(`status.${status}`)}</Tag> },
@@ -471,6 +471,13 @@ const CouponManagement: React.FC = () => {
 
       <Modal title={grantCoupon ? t('pages.adminCoupons.grantCouponWithName', { name: grantCoupon.name }) : t('pages.adminCoupons.grantCoupon')} open={grantVisible} onOk={submitGrant} onCancel={() => setGrantVisible(false)} confirmLoading={grantSubmitting}>
         <Form form={grantForm} layout="vertical">
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={t('pages.adminCoupons.grantHelpTitle')}
+            description={t('pages.adminCoupons.grantHelpDescription')}
+          />
           <Form.Item name="userIds" label={t('pages.adminCoupons.users')} rules={[{ required: true, message: t('pages.adminCoupons.selectUsers') }]}>
             <Select
               mode="multiple"

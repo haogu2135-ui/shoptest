@@ -23,15 +23,18 @@ import {
   StarFilled,
   TruckOutlined,
 } from '@ant-design/icons';
-import { apiBaseUrl, cartApi, categoryApi, petGalleryApi, productApi, wishlistApi } from '../api';
+import { cartApi, categoryApi, petGalleryApi, productApi, wishlistApi } from '../api';
 import { useLanguage } from '../i18n';
 import type { Category, PetGalleryPhoto, PetGalleryQuota, Product } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
-import { getLocalizedCategoryValue } from '../utils/categoryTree';
+import { getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/categoryTree';
 import { clearProductViewHistory, loadProductViewPreferences } from '../utils/productViewPreferences';
 import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
+import { resolveApiAssetUrl } from '../utils/mediaAssets';
+import { getApiErrorMessage } from '../utils/apiError';
+import { dispatchDomEvent } from '../utils/domEvents';
 import SocialProofToast from '../components/SocialProofToast';
 import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
@@ -80,7 +83,11 @@ const readLocalPetGalleryLikes = () => {
 };
 
 const writeLocalPetGalleryLikes = (keys: string[]) => {
-  localStorage.setItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(keys))));
+  try {
+    localStorage.setItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(keys))));
+  } catch {
+    // Likes are optimistic UI state; persistence is best-effort in restricted storage modes.
+  }
 };
 
 const parseImageList = (value: unknown): string[] => {
@@ -94,13 +101,7 @@ const parseImageList = (value: unknown): string[] => {
   }
 };
 
-const resolveAssetImage = (imageUrl: string) => {
-  if (!imageUrl) return '';
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const resolveAssetImage = (imageUrl: string) => resolveApiAssetUrl(imageUrl);
 
 const normalizeProductImages = (product: Product, index: number) => {
   const rawImages = parseImageList(product.images);
@@ -120,11 +121,6 @@ const usePetGalleryImageFallback = (event: React.SyntheticEvent<HTMLImageElement
   if (event.currentTarget.src !== petGalleryImageFallback) {
     event.currentTarget.src = petGalleryImageFallback;
   }
-};
-
-const getApiErrorMessage = (error: unknown, fallback: string) => {
-  const responseMessage = (error as { response?: { data?: { error?: string; message?: string } } }).response?.data;
-  return responseMessage?.error || responseMessage?.message || fallback;
 };
 
 const Home: React.FC = () => {
@@ -151,9 +147,9 @@ const Home: React.FC = () => {
 
   const searchKeyword = (keyword: string) => navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
   const openDiscountProducts = () => navigate('/products?discount=true');
-  const isAuthenticated = Boolean(localStorage.getItem('token') && localStorage.getItem('userId'));
-  const currentUserId = Number(localStorage.getItem('userId') || 0);
-  const openSupport = () => window.dispatchEvent(new Event('shop:open-support'));
+  const isAuthenticated = Boolean(localStorage.getItem('token'));
+  const homeLanguageClass = `shopee-home shopee-home--${language}`;
+  const openSupport = () => dispatchDomEvent('shop:open-support');
   const openProduct = (productId: number) => navigate(`/products/${productId}`);
   const guestJourneyActions = !isAuthenticated
     ? [
@@ -194,7 +190,7 @@ const Home: React.FC = () => {
       key: 'cart',
       icon: <ShoppingCartOutlined />,
       label: t('pages.cart.title'),
-      onClick: () => window.dispatchEvent(new Event('shop:open-cart')),
+      onClick: () => dispatchDomEvent('shop:open-cart'),
     },
     {
       key: 'coupons',
@@ -235,14 +231,14 @@ const Home: React.FC = () => {
   ];
 
   useEffect(() => {
-    if (!isAuthenticated || !currentUserId) {
+    if (!isAuthenticated) {
       setWishlistedProductIds(new Set());
       return;
     }
-    wishlistApi.getByUser(currentUserId)
+    wishlistApi.getByUser(0)
       .then((response) => setWishlistedProductIds(new Set(response.data.map((item) => item.productId))))
       .catch(() => setWishlistedProductIds(new Set()));
-  }, [currentUserId, isAuthenticated]);
+  }, [isAuthenticated]);
 
   const refreshPetGallery = useCallback(async () => {
     try {
@@ -295,7 +291,7 @@ const Home: React.FC = () => {
       message.success(t('home.petUgcUploadSuccess'));
       await refreshPetGallery();
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcUploadFailed')));
+      message.error(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language));
     } finally {
       setUploadingPetPhoto(false);
     }
@@ -322,7 +318,7 @@ const Home: React.FC = () => {
       setPetGalleryPhotos((current) => current.map((photo) => photo.id === response.data.id ? response.data : photo));
       message.success(t('home.petUgcLiked'));
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcLikeFailed')));
+      message.error(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language));
     }
   };
 
@@ -333,7 +329,7 @@ const Home: React.FC = () => {
       message.success(t('home.petUgcDeleted'));
       await refreshPetGallery();
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcDeleteFailed')));
+      message.error(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language));
     }
   };
 
@@ -351,15 +347,15 @@ const Home: React.FC = () => {
 
     try {
       if (isAuthenticated) {
-        await cartApi.addItem(currentUserId, product.id, 1);
-        window.dispatchEvent(new Event('shop:cart-updated'));
+        await cartApi.addItem(0, product.id, 1);
+        dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem(product, 1);
       }
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:open-cart');
       message.success(t('messages.addCartSuccess'));
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('messages.addFailed')));
+      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
     }
   };
 
@@ -372,7 +368,7 @@ const Home: React.FC = () => {
     }
 
     try {
-      const response = await wishlistApi.toggle(currentUserId, product.id);
+      const response = await wishlistApi.toggle(0, product.id);
       setWishlistedProductIds((current) => {
         const next = new Set(current);
         if (response.data.wishlisted) {
@@ -382,10 +378,10 @@ const Home: React.FC = () => {
         }
         return next;
       });
-      window.dispatchEvent(new Event('shop:wishlist-updated'));
+      dispatchDomEvent('shop:wishlist-updated');
       message.success(response.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('messages.operationFailed')));
+      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     }
   };
 
@@ -410,7 +406,7 @@ const Home: React.FC = () => {
         const [featuredRes, productsRes, categoriesRes] = await Promise.all([
           productApi.getFeatured(),
           productApi.getAll(),
-          categoryApi.getTopLevel(),
+          categoryApi.getAll(),
         ]);
         setFeatured(featuredRes.data.map((product) => localizeProduct(product, language)));
         setProducts(productsRes.data.map((product) => localizeProduct(product, language)));
@@ -569,7 +565,8 @@ const Home: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [discoveryProducts.length]);
 
-  const categoryTiles = categories.slice(0, 8);
+  const displayCategoryRoots = useMemo(() => getDisplayCategoryRoots(categories), [categories]);
+  const categoryTiles = displayCategoryRoots.slice(0, 8);
   const heroCategoryTiles = categoryTiles.slice(0, 4);
   const petUploadRemaining = petGalleryQuota ? Math.max(0, petGalleryQuota.remaining) : 3;
   const petUploadButtonLabel = uploadingPetPhoto
@@ -579,14 +576,13 @@ const Home: React.FC = () => {
       : t('home.petUgcUploadRemaining', { count: petUploadRemaining });
   const petGalleryItems = useMemo<PetGalleryItem[]>(() => {
     const photoItems = petGalleryPhotos.map((photo) => {
-      const source = photo.source || 'USER_UPLOAD';
       return {
         key: `photo-${photo.id}`,
         image: resolvePetGalleryImage(photo.imageUrl),
         label: `@${photo.username || 'pet_parent'}`,
         likeCount: photo.likeCount || 0,
         likedByMe: Boolean(photo.likedByMe),
-        canDelete: Boolean(photo.canDelete || (currentUserId && photo.userId === currentUserId && source === 'USER_UPLOAD')),
+        canDelete: Boolean(photo.canDelete),
         photo,
       };
     });
@@ -603,7 +599,7 @@ const Home: React.FC = () => {
     return [...photoItems, ...fallbackItems]
       .sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label))
       .slice(0, 24);
-  }, [currentUserId, localPetGalleryLikes, petGalleryPhotos]);
+  }, [localPetGalleryLikes, petGalleryPhotos]);
   const addPersonalizedReadyProducts = async () => {
     if (personalizedReadyProducts.length === 0) {
       message.info(t('pages.compare.recommendationEmpty'));
@@ -611,15 +607,15 @@ const Home: React.FC = () => {
     }
     try {
       if (isAuthenticated) {
-        await Promise.all(personalizedReadyProducts.map((product) => cartApi.addItem(currentUserId, product.id, 1)));
-        window.dispatchEvent(new Event('shop:cart-updated'));
+        await Promise.all(personalizedReadyProducts.map((product) => cartApi.addItem(0, product.id, 1)));
+        dispatchDomEvent('shop:cart-updated');
       } else {
         personalizedReadyProducts.forEach((product) => addGuestCartItem(product, 1));
       }
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:open-cart');
       message.success(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }));
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('messages.addFailed')));
+      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
     }
   };
   const heroSpotlights = [
@@ -663,7 +659,7 @@ const Home: React.FC = () => {
       heroFeaturedProduct.stock !== undefined && heroFeaturedProduct.stock > 0
         ? t('home.stockAvailable', { count: heroFeaturedProduct.stock })
         : '',
-    ].filter(Boolean).join(' • ')
+    ].filter(Boolean).join(' / ')
     : '';
   const conversionHighlights = [
     {
@@ -703,7 +699,7 @@ const Home: React.FC = () => {
       key: 'ugc',
       icon: <CameraOutlined />,
       title: t('home.petUgcTitle'),
-      summary: `${petGalleryItems.length} ${t('home.viewAll').toLowerCase()} stories`,
+      summary: t('home.petUgcStoriesSummary', { count: petGalleryItems.length }),
       actionLabel: t('nav.petGallery'),
       action: () => navigate('/pet-gallery'),
     },
@@ -725,7 +721,11 @@ const Home: React.FC = () => {
       : t('home.inStock');
     return (
     <article
-      className="shopee-product"
+      className={[
+        'shopee-product',
+        compact ? 'shopee-product--compact' : '',
+        isSoldOut ? 'shopee-product--soldOut' : '',
+      ].filter(Boolean).join(' ')}
       role="button"
       tabIndex={0}
       onClick={() => openProduct(product.id)}
@@ -788,7 +788,11 @@ const Home: React.FC = () => {
         <span className="shopee-product__name">{product.name}</span>
         <span className="shopee-product__meta">
           <span className="shopee-product__price">{formatPrice(getPrice(product))}</span>
-          {!compact && !isSoldOut ? <span className="shopee-product__stock">{stockBadgeText}</span> : null}
+          {!compact && !isSoldOut ? (
+            <span className={product.stock !== undefined && product.stock <= 5 ? 'shopee-product__stockBadge shopee-product__stockBadge--low' : 'shopee-product__stockBadge shopee-product__stockBadge--ok'}>
+              {stockBadgeText}
+            </span>
+          ) : null}
         </span>
         {product.originalPrice && product.originalPrice > getPrice(product) ? (
           <span className="shopee-product__original">{formatPrice(product.originalPrice)}</span>
@@ -803,7 +807,7 @@ const Home: React.FC = () => {
 
   if (loading) {
     return (
-      <main className="shopee-home">
+      <main className={homeLanguageClass}>
         <section className="shopee-hero">
           <div className="shopee-container shopee-hero__grid">
             <HeroSkeleton />
@@ -825,7 +829,7 @@ const Home: React.FC = () => {
   }
 
   return (
-    <main className="shopee-home">
+    <main className={homeLanguageClass}>
       <section className="shopee-hero">
         <div className="shopee-container shopee-hero__grid">
           <div className="shopee-hero__main">
@@ -852,7 +856,7 @@ const Home: React.FC = () => {
                 </div>
               ) : null}
               {heroCategoryTiles.length ? (
-                <div className="shopee-hero__categoryRail">
+                <div className="shopee-hero__categoryRail" aria-label={t('home.categories')}>
                   {heroCategoryTiles.map((category) => (
                     <button
                       key={category.id}
@@ -865,12 +869,18 @@ const Home: React.FC = () => {
                 </div>
               ) : null}
               <div className="shopee-hero__signalRow">
-                <span>{t('home.bestSellers')}</span>
-                <strong>{bestSellers.length}</strong>
-                <span>{t('home.flashOffers')}</span>
-                <strong>{promoProducts.length}</strong>
-                <span>{t('home.categories')}</span>
-                <strong>{categories.length}</strong>
+                <span className="shopee-hero__signalMetric">
+                  <small>{t('home.bestSellers')}</small>
+                  <strong>{bestSellers.length}</strong>
+                </span>
+                <span className="shopee-hero__signalMetric">
+                  <small>{t('home.flashOffers')}</small>
+                  <strong>{promoProducts.length}</strong>
+                </span>
+                <span className="shopee-hero__signalMetric">
+                  <small>{t('home.categories')}</small>
+                  <strong>{displayCategoryRoots.length}</strong>
+                </span>
               </div>
               <div className="shopee-hero__trustPills" aria-label={t('home.trust.petSafe')}>
                 <span>{t('home.trust.freeShipping', { amount: formatPrice(market.freeShippingThreshold) })}</span>
@@ -900,7 +910,7 @@ const Home: React.FC = () => {
               </article>
             ) : null}
             {heroSpotlights.map((card) => (
-              <article key={card.key} className="shopee-hero__spotlight">
+              <article key={card.key} className={`shopee-hero__spotlight shopee-hero__spotlight--${card.key}`}>
                 <span className="shopee-hero__spotlightIcon">{card.icon}</span>
                 <div className="shopee-hero__spotlightBody">
                   <strong>{card.title}</strong>
@@ -951,7 +961,7 @@ const Home: React.FC = () => {
           ) : null}
           <div className="shopee-conversion-strip" aria-label={t('home.petRecommendations')}>
             {conversionHighlights.map((item) => (
-              <article key={item.key} className="shopee-conversion-strip__item">
+              <article key={item.key} className={`shopee-conversion-strip__item shopee-conversion-strip__item--${item.key}`}>
                 <strong>{item.value}</strong>
                 <span>{item.label}</span>
               </article>
@@ -975,7 +985,7 @@ const Home: React.FC = () => {
 
         <section className="shopee-story-grid" aria-label={t('home.bestSellers')}>
           {curatedStoryCards.map((card) => (
-            <article key={card.key} className="shopee-story-card">
+            <article key={card.key} className={`shopee-story-card shopee-story-card--${card.key}`}>
               <span className="shopee-story-card__icon">{card.icon}</span>
               <div className="shopee-story-card__body">
                 <strong>{card.title}</strong>
@@ -1113,7 +1123,7 @@ const Home: React.FC = () => {
                       [<AppstoreOutlined />, <MobileOutlined />, <ShopOutlined />, <GiftOutlined />, <StarFilled />][index % 5]
                     )}
                   </span>
-                  <Text ellipsis>{getLocalizedCategoryValue(category, language, 'name')}</Text>
+                  <Text className="shopee-categories__name">{getLocalizedCategoryValue(category, language, 'name')}</Text>
                 </button>
               ))}
             </div>
@@ -1224,7 +1234,7 @@ const Home: React.FC = () => {
                 >
                   <img
                     src={item.image}
-                    alt={`Pet customer story ${index + 1}`}
+                    alt={t('home.petUgcImageAlt', { count: index + 1 })}
                     loading="lazy"
                     decoding="async"
                     onError={usePetGalleryImageFallback}
@@ -1266,7 +1276,7 @@ const Home: React.FC = () => {
         centered
         width={720}
         className="pet-ugc-preview"
-        destroyOnClose
+        destroyOnHidden
         onCancel={() => setPetPreviewItem(null)}
       >
         {petPreviewItem ? (

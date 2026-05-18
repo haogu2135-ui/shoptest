@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Empty, Input, message, Popconfirm, Spin, Tag } from 'antd';
 import { ClockCircleOutlined, DeleteOutlined, FireOutlined, HistoryOutlined, SearchOutlined, ShoppingCartOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { apiBaseUrl, cartApi, productApi } from '../api';
+import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import type { Product } from '../types';
@@ -10,6 +10,8 @@ import { localizeProduct } from '../utils/localizedProduct';
 import { getLowStockCount } from '../utils/conversionConfig';
 import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { dispatchDomEvent } from '../utils/domEvents';
 import {
   clearProductViewHistory,
   loadProductViewPreferences,
@@ -17,14 +19,9 @@ import {
 } from '../utils/productViewPreferences';
 import './BrowsingHistory.css';
 
-const fallbackImage = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
+const fallbackImage = productImageFallback;
 type HistoryQuickFilter = 'all' | 'recent' | 'deals' | 'lowStock';
-
-const resolveHistoryImage = (imageUrl?: string) => {
-  if (!imageUrl) return fallbackImage;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) return imageUrl;
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const resolveHistoryImage = resolveProductImage;
 
 const isDealProduct = (product: Product) => {
   const activePrice = Number(product.effectivePrice ?? product.price ?? 0);
@@ -163,16 +160,15 @@ const BrowsingHistory: React.FC = () => {
       return;
     }
     const token = localStorage.getItem('token');
-    const userId = Number(localStorage.getItem('userId') || 0);
     try {
-      if (token && userId) {
-        await cartApi.addItem(userId, product.id, 1);
+      if (token) {
+        await cartApi.addItem(0, product.id, 1);
       } else {
         addGuestCartItem(product, 1, undefined, product.effectivePrice ?? product.price);
       }
       message.success(t('messages.addCartSuccess'));
-      window.dispatchEvent(new Event('shop:cart-updated'));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:cart-updated');
+      dispatchDomEvent('shop:open-cart');
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('messages.addFailed'));
     }
@@ -226,14 +222,14 @@ const BrowsingHistory: React.FC = () => {
 
   if (loading) {
     return (
-      <main className="browsing-history browsing-history--loading">
+      <main className={`browsing-history browsing-history--${language} browsing-history--loading`}>
         <Spin size="large" />
       </main>
     );
   }
 
   return (
-    <main className="browsing-history">
+    <main className={`browsing-history browsing-history--${language}`}>
       <section className="browsing-history__hero">
         <div>
           <span className="browsing-history__eyebrow">

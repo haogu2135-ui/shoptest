@@ -7,7 +7,7 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
   SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined,
 } from '@ant-design/icons';
-import { apiBaseUrl, productApi, categoryApi, adminApi, brandApi } from '../api';
+import { productApi, categoryApi, adminApi, brandApi } from '../api';
 import type { Product, Category, Brand } from '../types';
 import { buildCategoryTree, descendantIdSet, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
@@ -15,19 +15,13 @@ import dayjs from 'dayjs';
 import ProductRichDetailEditor from '../components/ProductRichDetailEditor';
 import ProductRichDetail, { isHttpMediaUrl } from '../components/ProductRichDetail';
 import { useMarket } from '../hooks/useMarket';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import './ProductManagement.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
-const productAdminImageFallback = 'https://via.placeholder.com/80?text=IMG';
-
-const resolveProductAdminImage = (imageUrl?: string) => {
-  if (!imageUrl) return productAdminImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const productAdminImageFallback = productImageFallback;
+const resolveProductAdminImage = resolveProductImage;
 
 const tagColorMap: Record<string, string> = { hot: 'red', new: 'blue', discount: 'orange' };
 const productStatusColors: Record<string, string> = {
@@ -260,7 +254,7 @@ const ProductManagement: React.FC = () => {
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await productApi.getAll();
+      const response = await adminApi.getProducts();
       setProducts(response.data);
     } catch (error) {
       message.error(t('pages.productAdmin.fetchProductsFailed'));
@@ -1087,7 +1081,7 @@ const ProductManagement: React.FC = () => {
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
         width="min(1280px, 96vw)"
-        destroyOnClose
+        destroyOnHidden
         className="shopify-product-modal"
         okText={editingProduct ? t('pages.productAdmin.saveProduct') : t('pages.productAdmin.addProduct')}
         confirmLoading={productSubmitting}
@@ -1155,7 +1149,7 @@ const ProductManagement: React.FC = () => {
                 <div className="shopify-media-grid">
                   <div className="shopify-media-tile">
                     {imagePreviewUrl ? (
-                      <Image src={imagePreviewUrl} width="100%" height="100%" style={{ objectFit: 'cover' }} fallback="https://via.placeholder.com/240" />
+                      <Image src={resolveProductAdminImage(imagePreviewUrl)} width="100%" height="100%" style={{ objectFit: 'cover' }} fallback={productAdminImageFallback} />
                     ) : (
                       <span>{t('pages.productAdmin.mediaPreview')}</span>
                     )}

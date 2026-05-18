@@ -6,6 +6,7 @@ import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './Notifications.css';
 
 const { Text, Title } = Typography;
@@ -18,7 +19,7 @@ const typeColors: Record<string, string> = {
 };
 
 const notifyNavbarChanged = () => {
-  window.dispatchEvent(new Event('shop:notifications-updated'));
+  dispatchDomEvent('shop:notifications-updated');
 };
 
 const sortNotifications = (items: AppNotification[]) =>
@@ -34,32 +35,31 @@ const Notifications: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [quickFilter, setQuickFilter] = useState<'ALL' | 'UNREAD' | 'PROMOTION' | 'ORDER' | 'DELIVERY'>('ALL');
   const navigate = useNavigate();
-  const userId = Number(localStorage.getItem('userId'));
   const { t, language } = useLanguage();
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await notificationApi.getByUser(userId);
+      const res = await notificationApi.getByUser();
       setNotifications(sortNotifications(res.data));
     } catch {
       message.error(t('pages.notifications.fetchFailed'));
     } finally {
       setLoading(false);
     }
-  }, [t, userId]);
+  }, [t]);
 
   useEffect(() => {
-    if (!userId) {
+    if (!localStorage.getItem('token')) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
     }
     fetchNotifications();
-  }, [fetchNotifications, userId, navigate, t]);
+  }, [fetchNotifications, navigate, t]);
 
   const handleMarkAsRead = async (id: number) => {
     try {
-      await notificationApi.markAsRead(id, userId);
+      await notificationApi.markAsRead(id);
       setNotifications((current) => current.map(n => n.id === id ? { ...n, isRead: true } : n));
       notifyNavbarChanged();
     } catch {
@@ -69,7 +69,7 @@ const Notifications: React.FC = () => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      await notificationApi.markAllAsRead(userId);
+      await notificationApi.markAllAsRead();
       setNotifications((current) => current.map(n => ({ ...n, isRead: true })));
       notifyNavbarChanged();
       message.success(t('pages.notifications.allRead'));
@@ -80,7 +80,7 @@ const Notifications: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await notificationApi.delete(id, userId);
+      await notificationApi.delete(id);
       setNotifications((current) => current.filter(n => n.id !== id));
       notifyNavbarChanged();
       message.success(t('messages.deleteSuccess'));

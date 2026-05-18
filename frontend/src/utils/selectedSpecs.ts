@@ -6,7 +6,9 @@ export const parseSelectedSpecs = (value?: string | null): Record<string, string
     return Object.entries(parsed).reduce((result: Record<string, string>, [key, option]) => {
       const normalizedKey = String(key || '').trim();
       if (!normalizedKey || option === undefined || option === null) return result;
-      result[normalizedKey] = typeof option === 'string' ? option : String(option);
+      if (typeof option === 'object') return result;
+      const normalizedOption = String(option).trim();
+      if (normalizedOption) result[normalizedKey] = normalizedOption;
       return result;
     }, {});
   } catch {
@@ -31,17 +33,19 @@ export const getSubscriptionIntervalLabel = (value?: string | null, t?: Translat
 };
 
 export const formatSelectedSpecs = (value?: string | null, t?: Translate) =>
-  [
-    ...Object.entries(parseSelectedSpecs(value))
+  {
+    const specs = parseSelectedSpecs(value);
+    return [
+      ...Object.entries(specs)
     .filter(([name]) => !name.startsWith('_'))
     .filter(([, option]) => option)
       .map(([name, option]) => `${name}: ${option}`),
-    ...(isBundlePurchase(value)
+      ...(specs._purchaseMode === 'bundle'
       ? [
         t ? t('bundle.bundleDeal') : 'Bundle deal',
-        parseSelectedSpecs(value)._bundleItems,
+        specs._bundleItems,
       ].filter(Boolean)
       : []),
-    ...(isSubscribeAndSave(value) ? [t ? t('subscription.subscribeSave') : 'Subscribe & Save 20%', getSubscriptionIntervalLabel(value, t)] : []),
-  ]
-    .join(' / ');
+      ...(specs._purchaseMode === 'subscribe' ? [t ? t('subscription.subscribeSave') : 'Refill deal 20% off', getSubscriptionIntervalLabel(value, t)] : []),
+    ].join(' / ');
+  };

@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import type { ProductDetailBlock } from '../types';
 import { useLanguage } from '../i18n';
+import { imageFallbacks } from '../utils/mediaAssets';
 import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, resolveRichMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
 
 const { Text } = Typography;
@@ -159,7 +160,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                         src={resolveRichMediaUrl(block.url) || undefined}
                         width={180}
                         style={{ borderRadius: 6, objectFit: 'cover' }}
-                        fallback="https://via.placeholder.com/180x120?text=Image"
+                        fallback={imageFallbacks.media}
                       />
                     ) : (
                       <Text type="danger">{t('pages.productAdmin.richInvalidUrl')}</Text>

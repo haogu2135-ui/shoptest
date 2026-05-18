@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAppConfig } from './useAppConfig';
 import {
   CURRENCY_CHANGED_EVENT,
   CurrencyCode,
@@ -6,10 +7,12 @@ import {
   getCurrency,
   getMarket,
   setCurrency as persistCurrency,
+  withShippingConfig,
 } from '../utils/market';
 
 export const useMarket = () => {
   const [currency, setCurrencyState] = useState<CurrencyCode>(() => getCurrency());
+  const { config } = useAppConfig();
 
   useEffect(() => {
     const syncCurrency = () => setCurrencyState(getCurrency());
@@ -26,7 +29,7 @@ export const useMarket = () => {
     setCurrencyState(nextCurrency);
   }, []);
 
-  const market = useMemo(() => getMarket(currency), [currency]);
+  const market = useMemo(() => withShippingConfig(getMarket(currency), config), [currency, config]);
   const formatMoney = useCallback((value?: number | null) => formatMarketMoney(value, currency), [currency]);
 
   return { currency, market, setCurrency, formatMoney };

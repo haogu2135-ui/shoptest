@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, Image, message, Rate, Space, Spin, Switch, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, FireOutlined, SettingOutlined, ShoppingCartOutlined, StarOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiBaseUrl, cartApi, productApi } from '../api';
+import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import type { Product } from '../types';
@@ -10,18 +10,14 @@ import { addGuestCartItem } from '../utils/guestCart';
 import { localizeProduct } from '../utils/localizedProduct';
 import { clearCompareProducts, readCompareProductIds, removeCompareProduct } from '../utils/productCompare';
 import { needsOptionSelection } from '../utils/productOptions';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './ProductCompare.css';
 
 const { Title, Text } = Typography;
 
-const compareImageFallback = 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80';
-const resolveCompareImage = (imageUrl?: string) => {
-  if (!imageUrl) return compareImageFallback;
-  if (/^(https?:|data:|blob:)/i.test(imageUrl)) {
-    return imageUrl;
-  }
-  return `${apiBaseUrl}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
-};
+const compareImageFallback = productImageFallback;
+const resolveCompareImage = resolveProductImage;
 
 const getPrice = (product: Product) => product.effectivePrice ?? product.price;
 const HIDDEN_SPEC_PREFIXES = ['options.', 'i18n.', 'bundle.'];
@@ -181,16 +177,15 @@ const ProductCompare: React.FC = () => {
       return;
     }
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
     try {
-      if (token && userId) {
-        await cartApi.addItem(Number(userId), product.id, 1);
-        window.dispatchEvent(new Event('shop:cart-updated'));
+      if (token) {
+        await cartApi.addItem(0, product.id, 1);
+        dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem({ ...product, imageUrl: resolveCompareImage(product.imageUrl) }, 1, undefined, getPrice(product));
       }
       message.success(t('messages.addCartSuccess'));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:open-cart');
     } catch {
       message.error(t('messages.addFailed'));
     }
@@ -202,18 +197,17 @@ const ProductCompare: React.FC = () => {
       return;
     }
     const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
     try {
-      if (token && userId) {
-        await Promise.all(directReadyProducts.map((product) => cartApi.addItem(Number(userId), product.id, 1)));
-        window.dispatchEvent(new Event('shop:cart-updated'));
+      if (token) {
+        await Promise.all(directReadyProducts.map((product) => cartApi.addItem(0, product.id, 1)));
+        dispatchDomEvent('shop:cart-updated');
       } else {
         directReadyProducts.forEach((product) => {
           addGuestCartItem({ ...product, imageUrl: resolveCompareImage(product.imageUrl) }, 1, undefined, getPrice(product));
         });
       }
       message.success(t('pages.wishlist.addedAllToCart', { count: directReadyProducts.length }));
-      window.dispatchEvent(new Event('shop:open-cart'));
+      dispatchDomEvent('shop:open-cart');
     } catch {
       message.error(t('messages.addFailed'));
     }

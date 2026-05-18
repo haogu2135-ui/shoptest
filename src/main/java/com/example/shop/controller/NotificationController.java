@@ -29,10 +29,20 @@ public class NotificationController {
         return notificationService.getNotifications(userId);
     }
 
+    @GetMapping("/me")
+    public List<Notification> getMyNotifications(Authentication authentication) {
+        return notificationService.getNotifications(SecurityUtils.requireUser(authentication).getId());
+    }
+
     @GetMapping("/unread-count")
     public Map<String, Integer> getUnreadCount(@RequestParam Long userId, Authentication authentication) {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         return Map.of("count", notificationService.getUnreadCount(userId));
+    }
+
+    @GetMapping("/me/unread-count")
+    public Map<String, Integer> getMyUnreadCount(Authentication authentication) {
+        return Map.of("count", notificationService.getUnreadCount(SecurityUtils.requireUser(authentication).getId()));
     }
 
     @PutMapping("/{id}/read")
@@ -50,6 +60,12 @@ public class NotificationController {
     public Map<String, String> markAllAsRead(@RequestParam Long userId, Authentication authentication) {
         SecurityUtils.assertSelfOrAdmin(authentication, userId);
         notificationService.markAllAsRead(userId);
+        return Map.of("message", "All read");
+    }
+
+    @PutMapping("/me/read-all")
+    public Map<String, String> markAllMineAsRead(Authentication authentication) {
+        notificationService.markAllAsRead(SecurityUtils.requireUser(authentication).getId());
         return Map.of("message", "All read");
     }
 

@@ -3,10 +3,13 @@ package com.example.shop.controller;
 import com.example.shop.entity.Product;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.ProductService;
+import com.example.shop.util.ProductStatusUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -30,12 +33,12 @@ public class ProductController {
         if (keyword != null || categoryId != null) {
             return ResponseEntity.ok(productService.search(keyword, categoryId));
         }
-        return ResponseEntity.ok(productService.findAll());
+        return ResponseEntity.ok(productService.findPublicProducts());
     }
 
     @GetMapping("/featured")
     public ResponseEntity<List<Product>> getFeaturedProducts() {
-        return ResponseEntity.ok(productService.findByIsFeaturedTrueOrderByIdAsc());
+        return ResponseEntity.ok(productService.findPublicFeaturedProducts());
     }
 
     @GetMapping("/personalized-recommendations")
@@ -55,16 +58,23 @@ public class ProductController {
         return ResponseEntity.ok(productService.findAddOnCandidates(targetAmount, excludedIds, limit == null ? 3 : limit));
     }
 
+    @GetMapping("/by-ids")
+    public ResponseEntity<List<Product>> getProductsByIds(@RequestParam(required = false) List<Long> ids) {
+        return ResponseEntity.ok(productService.findPublicByIds(ids));
+    }
+
     @GetMapping("/{id}/recommendations")
     public ResponseEntity<List<Product>> getRecommendations(@PathVariable Long id) {
-        Product product = productService.findById(id).orElse(null);
-        if (product == null) return ResponseEntity.ok(List.of());
+        Product product = productService.findPublicById(id).orElse(null);
+        if (product == null) {
+            return ResponseEntity.ok(List.of());
+        }
         return ResponseEntity.ok(productService.findRelatedProducts(id, product.getCategoryId()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        return productService.findById(id)
+        return productService.findPublicById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -72,6 +82,7 @@ public class ProductController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Product> createProduct(@RequestBody Product product) {
+        product.setStatus(normalizeProductStatus(product.getStatus()));
         return ResponseEntity.ok(productService.save(product));
     }
 
@@ -101,7 +112,7 @@ public class ProductController {
         existingProduct.setLimitedTimeStartAt(product.getLimitedTimeStartAt());
         existingProduct.setLimitedTimeEndAt(product.getLimitedTimeEndAt());
         existingProduct.setTag(product.getTag());
-        if (product.getStatus() != null) existingProduct.setStatus(product.getStatus());
+        if (product.getStatus() != null) existingProduct.setStatus(normalizeProductStatus(product.getStatus()));
         existingProduct.setImages(product.getImages());
         existingProduct.setSpecifications(product.getSpecifications());
         existingProduct.setDetailContent(product.getDetailContent());
@@ -110,6 +121,17 @@ public class ProductController {
         existingProduct.setShipping(product.getShipping());
         existingProduct.setFreeShipping(product.getFreeShipping());
         existingProduct.setFreeShippingThreshold(product.getFreeShippingThreshold());
+    }
+
+    private String normalizeProductStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "ACTIVE";
+        }
+        String normalized = ProductStatusUtils.normalizeProductStatus(status);
+        if (normalized == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be one of " + ProductStatusUtils.PRODUCT_STATUSES);
+        }
+        return normalized;
     }
 
     @DeleteMapping("/{id}")

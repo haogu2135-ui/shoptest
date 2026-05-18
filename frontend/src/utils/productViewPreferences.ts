@@ -1,4 +1,5 @@
 import type { Product } from '../types';
+import { dispatchDomEvent } from './domEvents';
 
 export const PRODUCT_VIEW_PREFERENCES_KEY = 'shop-product-view-preferences';
 
@@ -19,33 +20,48 @@ const emptyPreferences = (): ProductViewPreferences => ({
   recentEntries: [],
 });
 
+const normalizeScoreBucket = (value: unknown): Record<string, number> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .map(([key, score]) => [String(key), Math.max(0, Math.min(Number(score) || 0, 999))] as const)
+      .filter(([key, score]) => key && Number.isFinite(score) && score > 0),
+  );
+};
+
 const normalizeRecentEntries = (value: unknown, recent: number[]) => {
   if (!Array.isArray(value)) {
     return recent.map((productId) => ({ productId, viewedAt: 0 }));
   }
 
+  const seen = new Set<number>();
   return value
     .map((entry) => ({
       productId: Number(entry?.productId ?? entry?.id),
       viewedAt: Number(entry?.viewedAt ?? 0),
     }))
-    .filter((entry) => Number.isFinite(entry.productId) && entry.productId > 0);
+    .filter((entry) => {
+      if (!Number.isSafeInteger(entry.productId) || entry.productId <= 0 || seen.has(entry.productId)) return false;
+      seen.add(entry.productId);
+      return true;
+    })
+    .slice(0, 30);
 };
 
 export const loadProductViewPreferences = (): ProductViewPreferences => {
   try {
     const parsed = JSON.parse(localStorage.getItem(PRODUCT_VIEW_PREFERENCES_KEY) || '{}');
-    const recent = Array.isArray(parsed.recent)
-      ? parsed.recent.map(Number).filter((id: number) => Number.isFinite(id) && id > 0)
+    const recent: number[] = Array.isArray(parsed.recent)
+      ? parsed.recent.map(Number).filter((id: number) => Number.isSafeInteger(id) && id > 0)
       : [];
     const recentEntries = normalizeRecentEntries(parsed.recentEntries, recent);
     return {
-      categories: parsed.categories || {},
-      brands: parsed.brands || {},
-      tags: parsed.tags || {},
-      recent,
+      categories: normalizeScoreBucket(parsed.categories),
+      brands: normalizeScoreBucket(parsed.brands),
+      tags: normalizeScoreBucket(parsed.tags),
+      recent: Array.from(new Set(recent)).slice(0, 30),
       recentEntries,
-      updatedAt: parsed.updatedAt,
+      updatedAt: Number.isFinite(Number(parsed.updatedAt)) ? Number(parsed.updatedAt) : undefined,
     };
   } catch {
     return emptyPreferences();
@@ -53,8 +69,12 @@ export const loadProductViewPreferences = (): ProductViewPreferences => {
 };
 
 const saveProductViewPreferences = (preferences: ProductViewPreferences) => {
-  localStorage.setItem(PRODUCT_VIEW_PREFERENCES_KEY, JSON.stringify(preferences));
-  window.dispatchEvent(new Event('shop:product-view-preferences-updated'));
+  try {
+    localStorage.setItem(PRODUCT_VIEW_PREFERENCES_KEY, JSON.stringify(preferences));
+  } catch {
+    // Product-view tracking is best-effort when storage is unavailable or full.
+  }
+  dispatchDomEvent('shop:product-view-preferences-updated');
 };
 
 export const recordProductView = (product: Pick<Product, 'id' | 'categoryId' | 'brand' | 'tag'>) => {
@@ -62,7 +82,7 @@ export const recordProductView = (product: Pick<Product, 'id' | 'categoryId' | '
     const preferences = loadProductViewPreferences();
     const now = Date.now();
     const productId = Number(product.id);
-    if (!Number.isFinite(productId) || productId <= 0) return;
+    if (!Number.isSafeInteger(productId) || productId <= 0) return;
 
     const bump = (bucket: Record<string, number>, value?: string | number) => {
       if (value === undefined || value === null || value === '') return;
@@ -99,11 +119,13 @@ export const clearProductViewHistory = () => {
 };
 
 export const removeProductViewHistoryItem = (productId: number) => {
+  const normalizedProductId = Number(productId);
+  if (!Number.isSafeInteger(normalizedProductId) || normalizedProductId <= 0) return;
   const preferences = loadProductViewPreferences();
   saveProductViewPreferences({
     ...preferences,
-    recent: preferences.recent.filter((id) => id !== productId),
-    recentEntries: preferences.recentEntries.filter((entry) => entry.productId !== productId),
+    recent: preferences.recent.filter((id) => id !== normalizedProductId),
+    recentEntries: preferences.recentEntries.filter((entry) => entry.productId !== normalizedProductId),
     updatedAt: Date.now(),
   });
 };
