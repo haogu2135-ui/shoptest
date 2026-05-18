@@ -1,7 +1,6 @@
 package com.example.shop.service;
 
 import com.example.shop.entity.Notification;
-import com.example.shop.entity.User;
 import com.example.shop.repository.NotificationMapper;
 import com.example.shop.repository.UserMapper;
 import org.springframework.stereotype.Service;
@@ -17,6 +16,7 @@ import java.util.stream.Collectors;
 public class NotificationService {
     private final NotificationMapper notificationMapper;
     private final UserMapper userMapper;
+    private static final int BROADCAST_BATCH_SIZE = 500;
 
     public List<Notification> getNotifications(Long userId) {
         return notificationMapper.findByUserId(userId);
@@ -53,12 +53,14 @@ public class NotificationService {
         }
         String normalizedFormat = normalizeFormat(contentFormat);
         LocalDateTime now = LocalDateTime.now();
-        List<Notification> notifications = userMapper.findAll().stream()
-                .filter(user -> "USER".equals(user.getRole()))
-                .filter(user -> user.getStatus() == null || "ACTIVE".equals(user.getStatus()))
-                .map(user -> {
+        List<Long> customerIds = userMapper.findActiveCustomerIds();
+        int sent = 0;
+        for (int start = 0; start < customerIds.size(); start += BROADCAST_BATCH_SIZE) {
+            List<Notification> notifications = customerIds.subList(start, Math.min(start + BROADCAST_BATCH_SIZE, customerIds.size()))
+                .stream()
+                .map(userId -> {
                     Notification n = new Notification();
-                    n.setUserId(user.getId());
+                    n.setUserId(userId);
                     n.setType(normalizeType(type));
                     n.setTitle(title.trim());
                     n.setMessage(message.trim());
@@ -68,10 +70,11 @@ public class NotificationService {
                     return n;
                 })
                 .collect(Collectors.toList());
-        if (notifications.isEmpty()) {
-            return 0;
+            if (!notifications.isEmpty()) {
+                sent += notificationMapper.insertBatch(notifications);
+            }
         }
-        return notificationMapper.insertBatch(notifications);
+        return sent;
     }
 
     @Transactional

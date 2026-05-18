@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -20,6 +21,9 @@ public class JwtService {
 
     @Value("${app.jwtExpirationInMs}")
     private int jwtExpirationInMs;
+
+    @Value("${app.runtime-mode:production}")
+    private String runtimeMode;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -35,6 +39,7 @@ public class JwtService {
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        ensureJwtSecretConfigured();
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
@@ -58,9 +63,28 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
+        ensureJwtSecretConfigured();
         return Jwts.parser()
                 .setSigningKey(jwtSecret)
                 .parseClaimsJws(token)
                 .getBody();
     }
-} 
+
+    private void ensureJwtSecretConfigured() {
+        if (!isProductionMode()) {
+            return;
+        }
+        String secret = jwtSecret == null ? "" : jwtSecret.trim();
+        if (secret.isEmpty()
+                || "your-secret-key".equals(secret)
+                || "your-secret-key-here".equals(secret)
+                || secret.length() < 32) {
+            throw new IllegalStateException("JWT secret is not configured for production");
+        }
+    }
+
+    private boolean isProductionMode() {
+        String mode = runtimeMode == null ? "production" : runtimeMode.trim().toLowerCase(Locale.ROOT);
+        return "production".equals(mode) || "prod".equals(mode);
+    }
+}

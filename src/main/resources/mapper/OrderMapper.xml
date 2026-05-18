@@ -36,6 +36,99 @@
         SELECT * FROM orders
     </select>
 
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM orders
+    </select>
+
+    <select id="sumTotalAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_amount), 0) FROM orders
+    </select>
+
+    <select id="countByStatusGroup" resultType="java.util.HashMap">
+        SELECT COALESCE(status, 'UNKNOWN') AS status, COUNT(*) AS count
+        FROM orders
+        GROUP BY COALESCE(status, 'UNKNOWN')
+        ORDER BY count DESC, status ASC
+    </select>
+
+    <sql id="adminOrderFilters">
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="search != null and search != ''">
+                AND (
+                    CAST(id AS CHAR) LIKE CONCAT('%', #{search}, '%')
+                    OR order_no LIKE CONCAT('%', #{search}, '%')
+                    OR CAST(user_id AS CHAR) LIKE CONCAT('%', #{search}, '%')
+                    OR status LIKE CONCAT('%', #{search}, '%')
+                    OR shipping_address LIKE CONCAT('%', #{search}, '%')
+                    OR payment_method LIKE CONCAT('%', #{search}, '%')
+                    OR tracking_number LIKE CONCAT('%', #{search}, '%')
+                    OR tracking_carrier_name LIKE CONCAT('%', #{search}, '%')
+                    OR return_tracking_number LIKE CONCAT('%', #{search}, '%')
+                    OR return_reason LIKE CONCAT('%', #{search}, '%')
+                )
+            </if>
+            <if test="quick != null and quick != ''">
+                <choose>
+                    <when test="quick == 'NEEDS_ACTION'">
+                        AND status IN ('PENDING_PAYMENT', 'PENDING_SHIPMENT', 'RETURN_REQUESTED', 'RETURN_SHIPPED')
+                    </when>
+                    <when test="quick == 'SLA_OVERDUE'">
+                        AND (
+                            (status = 'PENDING_PAYMENT' AND created_at &lt; DATE_SUB(NOW(), INTERVAL 30 MINUTE))
+                            OR (status = 'PENDING_SHIPMENT' AND COALESCE(updated_at, created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                            OR (status = 'RETURN_APPROVED' AND COALESCE(return_approved_at, updated_at, created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
+                            OR (status = 'RETURN_SHIPPED' AND COALESCE(return_shipped_at, updated_at, created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                        )
+                    </when>
+                    <when test="quick == 'SLA_DUE_SOON'">
+                        AND (
+                            (status = 'PENDING_PAYMENT' AND created_at BETWEEN DATE_SUB(NOW(), INTERVAL 30 MINUTE) AND DATE_SUB(NOW(), INTERVAL 20 MINUTE))
+                            OR (status = 'PENDING_SHIPMENT' AND COALESCE(updated_at, created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
+                            OR (status = 'RETURN_APPROVED' AND COALESCE(return_approved_at, updated_at, created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 2 DAY))
+                            OR (status = 'RETURN_SHIPPED' AND COALESCE(return_shipped_at, updated_at, created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
+                        )
+                    </when>
+                    <when test="quick == 'REFUNDED'">
+                        AND (status IN ('REFUNDED', 'RETURNED') OR refunded_at IS NOT NULL)
+                    </when>
+                    <otherwise>
+                        AND status = #{quick}
+                    </otherwise>
+                </choose>
+            </if>
+        </where>
+    </sql>
+
+    <select id="searchAdminOrders" resultMap="orderMap">
+        SELECT * FROM orders
+        <include refid="adminOrderFilters"/>
+        ORDER BY
+            CASE status
+                WHEN 'PENDING_PAYMENT' THEN 1
+                WHEN 'PENDING_SHIPMENT' THEN 2
+                WHEN 'RETURN_REQUESTED' THEN 3
+                WHEN 'RETURN_SHIPPED' THEN 4
+                WHEN 'RETURN_APPROVED' THEN 5
+                WHEN 'SHIPPED' THEN 6
+                WHEN 'COMPLETED' THEN 7
+                WHEN 'RETURNED' THEN 8
+                WHEN 'REFUNDED' THEN 9
+                WHEN 'CANCELLED' THEN 10
+                ELSE 99
+            END,
+            created_at DESC,
+            id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminOrders" resultType="int">
+        SELECT COUNT(*) FROM orders
+        <include refid="adminOrderFilters"/>
+    </select>
+
     <select id="findById" resultMap="orderMap">
         SELECT * FROM orders WHERE id = #{id}
     </select>

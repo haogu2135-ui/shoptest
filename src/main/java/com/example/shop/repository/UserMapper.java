@@ -14,6 +14,8 @@ public interface UserMapper {
     User findByUsernameOrPhone(@Param("login") String login);
     User findByUsernameOrPhoneOrEmail(@Param("login") String login);
     List<User> findAll();
+    long countAll();
+    List<Long> findActiveCustomerIds();
     List<User> search(@Param("keyword") String keyword, @Param("role") String role, @Param("status") String status);
     int insert(User user);
     int update(User user);

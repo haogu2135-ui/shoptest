@@ -61,8 +61,13 @@ const findBestCoupon = (coupons: UserCoupon[], cartTotal: number) =>
     .filter((item) => Number.isFinite(item.discount) && item.discount > 0)
     .sort((left, right) => right.discount - left.discount || toSafeMoney(left.coupon.thresholdAmount) - toSafeMoney(right.coupon.thresholdAmount))[0] || null;
 
+const sanitizeCheckoutControlChars = (value: string) =>
+  Array.from(value, (char) => {
+    const code = char.charCodeAt(0);
+    return code <= 31 || code === 127 ? ' ' : char;
+  }).join('');
 const normalizeCheckoutText = (value: unknown, maxLength: number) =>
-  String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+  sanitizeCheckoutControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
 
 const getBrowserStorageItem = (storage: Storage | undefined, key: string) => {
   try {

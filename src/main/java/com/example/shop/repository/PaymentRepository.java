@@ -32,4 +32,5 @@ public interface PaymentRepository {
     int revertRefunding(@Param("id") Long id);
     int markFailed(@Param("id") Long id);
     int markExpired(@Param("id") Long id);
+    int markPendingCancelledByOrderId(Long orderId);
 }

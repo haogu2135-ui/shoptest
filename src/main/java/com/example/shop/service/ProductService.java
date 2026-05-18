@@ -26,5 +26,10 @@ public interface ProductService {
     void clearPersonalizedRecommendationCache(Long userId);
     List<Product> findDiscountProducts();
     List<Product> findAddOnCandidates(BigDecimal targetAmount, List<Long> excludedProductIds, int limit);
+    long countProducts();
+    long countActiveProducts();
+    long countPendingReviewProducts();
+    long countLowStockProducts();
+    List<Product> findLowStockProducts(int limit);
     ProductImportResult importCsv(MultipartFile file);
 } 

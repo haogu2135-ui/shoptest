@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
-import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig } from '../types';
+import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig, AdminOrderPage } from '../types';
 import { dispatchDomEvent } from '../utils/domEvents';
 
 const resolveApiBaseUrl = () => {
@@ -34,8 +34,19 @@ const normalizeQuantityParam = (value: unknown) => {
     return Number.isFinite(numeric) ? Math.max(1, Math.floor(numeric)) : 1;
 };
 
+const normalizeBoundedPositiveInt = (value: unknown, fallback: number, max: number) => {
+    const normalized = normalizePositiveInt(value);
+    return normalized ? Math.min(normalized, max) : fallback;
+};
+
+const stripControlChars = (value: string) =>
+    Array.from(value, (char) => {
+        const code = char.charCodeAt(0);
+        return code <= 31 || code === 127 ? ' ' : char;
+    }).join('');
+
 const normalizeTextParam = (value: unknown, maxLength = 120) =>
-    String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+    stripControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
 
 const normalizeEmailParam = (value: unknown) => {
     const email = normalizeTextParam(value, 180).toLowerCase();
@@ -97,6 +108,8 @@ const personalizedRecommendationCache = new Map<string, { expiresAt: number; res
 const personalizedRecommendationRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
 const productAddOnCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
 const productAddOnRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
+const productRecommendationsCache = new Map<number, { expiresAt: number; response: AxiosResponse<Product[]> }>();
+const productRecommendationsRequests = new Map<number, Promise<AxiosResponse<Product[]>>>();
 let appConfigCache: { expiresAt: number; response: AxiosResponse<AppConfig> } | null = null;
 let appConfigRequest: Promise<AxiosResponse<AppConfig>> | null = null;
 let adminPermissionsCache: { expiresAt: number; response: AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }> } | null = null;
@@ -131,6 +144,8 @@ const clearProductCache = (id?: number) => {
     personalizedRecommendationRequests.clear();
     productAddOnCache.clear();
     productAddOnRequests.clear();
+    productRecommendationsCache.clear();
+    productRecommendationsRequests.clear();
     if (id === undefined) {
         productDetailCache.clear();
         productDetailRequests.clear();
@@ -292,7 +307,26 @@ export const productApi = {
                 return response;
             });
     },
-    getFeatured: () => api.get<Product[]>('/products/featured'),
+    getFeatured: () => {
+        const cacheKey = '__featured__';
+        const cached = productListCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return Promise.resolve(cached.response);
+        }
+        const pending = productListRequests.get(cacheKey);
+        if (pending) return pending;
+        const request = api.get<Product[]>('/products/featured')
+            .then((response) => {
+                productListCache.set(cacheKey, {
+                    response,
+                    expiresAt: Date.now() + PRODUCT_LIST_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => productListRequests.delete(cacheKey));
+        productListRequests.set(cacheKey, request);
+        return request;
+    },
     getPersonalizedRecommendations: () => {
         const token = getStoredItem('token') || '';
         const cacheKey = `personalized:${token.slice(-16) || 'guest'}`;
@@ -345,7 +379,27 @@ export const productApi = {
     create: (product: Partial<Product>) => api.post<Product>('/products', product).finally(() => clearProductCache()),
     update: (id: number, product: Partial<Product>) => api.put<Product>(`/products/${toPathId(id)}`, product).finally(() => clearProductCache(toPathId(id))),
     delete: (id: number) => api.delete(`/products/${toPathId(id)}`).finally(() => clearProductCache(toPathId(id))),
-    getRecommendations: (id: number) => api.get<Product[]>(`/products/${toPathId(id)}/recommendations`)
+    getRecommendations: (id: number) => {
+        const productId = normalizePositiveInt(id);
+        if (!productId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<Product[]>);
+        const cached = productRecommendationsCache.get(productId);
+        if (cached && cached.expiresAt > Date.now()) {
+            return Promise.resolve(cached.response);
+        }
+        const pending = productRecommendationsRequests.get(productId);
+        if (pending) return pending;
+        const request = api.get<Product[]>(`/products/${productId}/recommendations`)
+            .then((response) => {
+                productRecommendationsCache.set(productId, {
+                    response,
+                    expiresAt: Date.now() + PRODUCT_LIST_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => productRecommendationsRequests.delete(productId));
+        productRecommendationsRequests.set(productId, request);
+        return request;
+    }
 };
 
 // 购物车相关 API
@@ -449,6 +503,7 @@ export const paymentApi = {
     }),
     simulatePaid: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${normalizePositiveInt(paymentId) || 0}/simulate-paid`, normalizeEmailParam(guestEmail) ? { guestEmail: normalizeEmailParam(guestEmail) } : undefined),
     simulateCallback: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${normalizePositiveInt(paymentId) || 0}/simulate-callback`, normalizeEmailParam(guestEmail) ? { guestEmail: normalizeEmailParam(guestEmail) } : undefined),
+    sync: (paymentId: number, guestEmail?: string) => api.post<Payment>(`/payments/${normalizePositiveInt(paymentId) || 0}/sync`, normalizeEmailParam(guestEmail) ? { guestEmail: normalizeEmailParam(guestEmail) } : undefined),
     callback: (payload: {
         orderNo: string;
         channel: string;
@@ -548,8 +603,22 @@ export const adminApi = {
     getOrders: (status?: string) => api.get<Order[]>('/admin/orders', {
         params: status ? { status } : undefined,
     }),
-    exportOrders: (status?: string) => api.get('/admin/orders/export', {
-        params: status ? { status } : undefined,
+    getOrdersPage: (params?: { status?: string; search?: string; quick?: string; page?: number; size?: number }) =>
+        api.get<AdminOrderPage>('/admin/orders/page', {
+            params: {
+                status: normalizeTextParam(params?.status, 40) || undefined,
+                search: normalizeTextParam(params?.search, 120) || undefined,
+                quick: normalizeTextParam(params?.quick, 40) || undefined,
+                page: normalizeBoundedPositiveInt(params?.page, 1, 100000),
+                size: normalizeBoundedPositiveInt(params?.size, 20, 100),
+            },
+        }),
+    exportOrders: (status?: string, search?: string, quick?: string) => api.get('/admin/orders/export', {
+        params: {
+            status: normalizeTextParam(status, 40) || undefined,
+            search: normalizeTextParam(search, 120) || undefined,
+            quick: normalizeTextParam(quick, 40) || undefined,
+        },
         responseType: 'blob',
     }),
     getAuditLogs: (params?: Record<string, unknown>) => api.get<SecurityAuditLog[]>('/admin/audit-logs', { params }),
@@ -564,10 +633,11 @@ export const adminApi = {
             trackingCarrierCode: normalizeTextParam(trackingCarrierCode, 40) || undefined,
         }),
     getProducts: () => api.get<Product[]>('/admin/products'),
-    refundOrder: (id: number, payload: { reason?: string; restock?: boolean }) =>
+    refundOrder: (id: number, payload: { reason?: string; restock?: boolean; manualRefundReference?: string }) =>
         api.post<{ message: string; payment: Payment }>(`/admin/orders/${toPathId(id)}/refund`, {
             reason: normalizeTextParam(payload.reason, 1000) || undefined,
             restock: Boolean(payload.restock),
+            manualRefundReference: normalizeTextParam(payload.manualRefundReference, 128) || undefined,
         }),
     batchShipOrders: (orderIds: number[], trackingPrefix: string, trackingCarrierCode?: string) =>
         api.post('/admin/orders/batch-ship', {
@@ -576,15 +646,15 @@ export const adminApi = {
             trackingCarrierCode: normalizeTextParam(trackingCarrierCode, 40) || undefined,
         }),
     updateProductStatus: (id: number, status: string) =>
-        api.put(`/admin/products/${toPathId(id)}/status`, { status: normalizeTextParam(status, 40) }),
+        api.put(`/admin/products/${toPathId(id)}/status`, { status: normalizeTextParam(status, 40) }).finally(() => clearProductCache(toPathId(id))),
     batchUpdateProductStatus: (productIds: number[], status: string) =>
-        api.post('/admin/products/batch-status', { productIds: normalizePositiveIntList(productIds, 100), status: normalizeTextParam(status, 40) }),
+        api.post('/admin/products/batch-status', { productIds: normalizePositiveIntList(productIds, 100), status: normalizeTextParam(status, 40) }).finally(() => clearProductCache()),
     importProducts: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
         return api.post<ProductImportResult>('/admin/products/import', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        }).finally(() => clearProductCache());
     },
     getReviews: () => api.get<Review[]>('/admin/reviews'),
     deleteReview: (id: number) => api.delete(`/admin/reviews/${toPathId(id)}`),

@@ -217,9 +217,13 @@ public class PaymentService {
         if (EXPIRED.equals(payment.getStatus())) {
             throw new IllegalStateException("Payment has expired");
         }
+        if (!PENDING.equals(payment.getStatus())) {
+            throw new IllegalStateException("Payment is not pending");
+        }
 
         String callbackStatus = request.getStatus().toUpperCase(Locale.ROOT);
         if (PAID.equals(callbackStatus) || "SUCCESS".equals(callbackStatus)) {
+            assertOrderStillAwaitingPayment(payment.getOrderId());
             if (isExpired(payment)) {
                 expirePayment(payment);
                 throw new IllegalStateException("Payment has expired");
@@ -272,6 +276,10 @@ public class PaymentService {
             if (PAID.equals(payment.getStatus())) {
                 return payment;
             }
+            if (!PENDING.equals(payment.getStatus())) {
+                throw new IllegalStateException("Payment is not pending");
+            }
+            assertOrderStillAwaitingPayment(payment.getOrderId());
             int updated = paymentRepository.markPaidDetailed(
                     payment.getId(),
                     firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
@@ -675,6 +683,7 @@ public class PaymentService {
             String sessionStatus = session.getStatus() == null ? "" : session.getStatus().toLowerCase(Locale.ROOT);
             String paymentStatus = session.getPaymentStatus() == null ? "" : session.getPaymentStatus().toLowerCase(Locale.ROOT);
             if ("complete".equals(sessionStatus) && "paid".equals(paymentStatus)) {
+                assertOrderStillAwaitingPayment(payment.getOrderId());
                 int updated = paymentRepository.markPaidDetailed(
                         payment.getId(),
                         firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
@@ -715,6 +724,16 @@ public class PaymentService {
         }
         if (expectedReference != null && requestReference != null && !expectedReference.equals(requestReference)) {
             throw new IllegalArgumentException("Paid payment providerReference mismatch");
+        }
+    }
+
+    private void assertOrderStillAwaitingPayment(Long orderId) {
+        Order order = orderService.getOrderById(orderId);
+        if (order == null) {
+            throw new IllegalStateException("Order not found");
+        }
+        if (!"PENDING_PAYMENT".equals(order.getStatus())) {
+            throw new IllegalStateException("Order is no longer awaiting payment");
         }
     }
 

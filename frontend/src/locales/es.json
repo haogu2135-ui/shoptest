@@ -579,6 +579,7 @@
       "moveAllToCart": "Mover todo",
       "movedToCart": "Movido al carrito",
       "movedSavedBatch": "Se movieron {count} artículos guardados al carrito",
+      "movedSavedBatchPartial": "Se movieron {count} artículos guardados al carrito; {failed} aún requieren revisión.",
       "savedDaysAgo": "Guardado hace {count} d",
       "savedReminderTitle": "{count} favoritos guardados te esperan",
       "savedReminderText": "Devuélvelos al carrito antes de pagar para mantener la rutina de tu mascota.",
@@ -1419,6 +1420,21 @@
         "healthRisk": "Prioridad alta",
         "guideTitle": "Orden recomendado",
         "guideText": "Primero pagos pendientes, luego solicitudes de devolución y después reembolsos listos."
+      },
+      "operationsSla": {
+        "title": "Cola de riesgo SLA",
+        "subtitle": "Detecta pagos, envíos, devoluciones y reembolsos vencidos antes de que lleguen a soporte.",
+        "healthy": "SLA sano",
+        "watch": "Requiere seguimiento",
+        "risk": "Alto riesgo",
+        "stalePendingPayment": "Pagos vencidos",
+        "delayedShipment": "Envíos demorados",
+        "returnAwaitingShipment": "Devoluciones sin envío",
+        "refundDue": "Reembolsos vencidos",
+        "stalePendingPaymentText": "Pago pendiente por más de 30 minutos. Revisa el enlace o contacta al cliente.",
+        "delayedShipmentText": "Pedidos pagados esperando más de 24 horas. Prioriza preparación y envío.",
+        "returnAwaitingShipmentText": "Devoluciones aprobadas sin guía por más de 3 días.",
+        "refundDueText": "Productos devueltos esperando más de 24 horas para confirmar reembolso."
       }
     },
     "adminUsers": {
@@ -1468,6 +1484,7 @@
       "exportOrders": "Exportar pedidos",
       "exportVisibleOrders": "Exportar resultados actuales",
       "exportFailed": "No se pudieron exportar pedidos",
+      "exportTruncated": "Se exportaron {returned} de {total} pedidos coincidentes. Ajusta los filtros para exportar el resto.",
       "total": "Total: {count} pedidos",
       "needsAction": "Requiere acción",
       "slaOverdueCard": "Vencidos",
@@ -1553,12 +1570,16 @@
       "refundCompletedWithReference": "Reembolso completado. Referencia: {reference}",
       "refundConfirmHint": "Reembolsa el pedido {orderNo} por {amount}. Úsalo solo después de confirmar que el cliente debe recibir el dinero.",
       "refundReasonPlaceholder": "Motivo de reembolso para auditoría y soporte",
+      "manualRefundReferencePlaceholder": "Referencia manual de reembolso, como pasarela, banco o ticket de soporte",
       "restockRefundItems": "Regresar artículos al inventario",
       "paymentHistory": "Historial de pagos",
       "refundReference": "Referencia de reembolso",
       "refundPaymentEvidence": "Evidencia de pago",
       "refundProcessingHint": "Ya hay un reembolso en proceso para este pedido.",
-      "noPaidPaymentForRefund": "No hay un pago confirmado disponible para reembolsar."
+      "noPaidPaymentForRefund": "No hay un pago confirmado disponible para reembolsar.",
+      "syncPayment": "Sincronizar estado",
+      "paymentSynced": "Estado de pago sincronizado",
+      "paymentSyncFailed": "No se pudo sincronizar el pago"
     },
     "logisticsCarriers": {
       "title": "Configuración de paqueterías",

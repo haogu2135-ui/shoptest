@@ -39,6 +39,18 @@
         SELECT * FROM users
     </select>
 
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM users
+    </select>
+
+    <select id="findActiveCustomerIds" resultType="long">
+        SELECT id
+        FROM users
+        WHERE UPPER(role) = 'USER'
+          AND (status IS NULL OR UPPER(status) = 'ACTIVE')
+        ORDER BY id ASC
+    </select>
+
     <select id="search" resultMap="userMap">
         SELECT * FROM users
         <where>

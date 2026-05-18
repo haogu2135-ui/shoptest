@@ -118,9 +118,9 @@ public class UserService {
 
     public List<User> search(String keyword, String role, String status) {
         return userMapper.search(
-                normalizeBlank(keyword),
-                normalizeBlank(role),
-                normalizeBlank(status));
+                normalizeText(keyword, 120),
+                normalizeText(role, 40),
+                normalizeText(status, 40));
     }
 
     @Transactional
@@ -129,13 +129,19 @@ public class UserService {
     }
 
     public long count() {
-        return userMapper.findAll().size();
+        return userMapper.countAll();
     }
 
-    private String normalizeBlank(String value) {
+    private String normalizeText(String value, int maxLength) {
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
-        return value.trim();
+        String normalized = value.replaceAll("\\p{Cntrl}", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
     }
 } 

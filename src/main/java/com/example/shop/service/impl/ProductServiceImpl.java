@@ -72,6 +72,12 @@ public class ProductServiceImpl implements ProductService {
     @Value("${product.add-on-price-ceiling:260}")
     private BigDecimal addOnPriceCeiling;
 
+    @Value("${product.import.max-file-size-bytes:1048576}")
+    private long importMaxFileSizeBytes;
+
+    @Value("${product.import.max-rows:1000}")
+    private int importMaxRows;
+
     private final ConcurrentMap<String, ProductSearchCacheEntry> productSearchCache = new ConcurrentHashMap<>();
 
     @Override
@@ -84,6 +90,34 @@ public class ProductServiceImpl implements ProductService {
         return getCachedProducts("public", () -> enrichReviewStats(productRepository.findAll().stream()
                 .filter(ProductStatusUtils::isPublicProduct)
                 .collect(Collectors.toList())));
+    }
+
+    @Override
+    public long countProducts() {
+        return productRepository.count();
+    }
+
+    @Override
+    public long countActiveProducts() {
+        return productRepository.countActiveProducts();
+    }
+
+    @Override
+    public long countPendingReviewProducts() {
+        return productRepository.countPendingReviewProducts();
+    }
+
+    @Override
+    public long countLowStockProducts() {
+        return productRepository.countLowStockProducts();
+    }
+
+    @Override
+    public List<Product> findLowStockProducts(int limit) {
+        if (limit <= 0) {
+            return List.of();
+        }
+        return productRepository.findLowStockProducts(PageRequest.of(0, Math.min(limit, 50)));
     }
 
     @Override
@@ -285,6 +319,9 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductImportResult importCsv(MultipartFile file) {
         ProductImportResult result = new ProductImportResult();
+        if (!validateImportFile(file, result)) {
+            return result;
+        }
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             int rowNumber = 0;
@@ -298,6 +335,10 @@ public class ProductServiceImpl implements ProductService {
                 }
                 if (line.trim().isEmpty()) {
                     continue;
+                }
+                if (result.getTotalRows() >= normalizedImportMaxRows()) {
+                    result.addError(rowNumber, "CSV row limit exceeded. Maximum rows: " + normalizedImportMaxRows());
+                    break;
                 }
 
                 result.setTotalRows(result.getTotalRows() + 1);
@@ -328,6 +369,28 @@ public class ProductServiceImpl implements ProductService {
         return result;
     }
 
+    private boolean validateImportFile(MultipartFile file, ProductImportResult result) {
+        if (file == null || file.isEmpty()) {
+            result.addError(0, "CSV file is required");
+            return false;
+        }
+        long maxBytes = Math.max(1024L, importMaxFileSizeBytes);
+        if (file.getSize() > maxBytes) {
+            result.addError(0, "CSV file is too large. Maximum size: " + maxBytes + " bytes");
+            return false;
+        }
+        String filename = String.valueOf(file.getOriginalFilename() == null ? "" : file.getOriginalFilename()).trim().toLowerCase(Locale.ROOT);
+        if (!filename.endsWith(".csv")) {
+            result.addError(0, "Only .csv product imports are supported");
+            return false;
+        }
+        return true;
+    }
+
+    private int normalizedImportMaxRows() {
+        return Math.max(1, importMaxRows);
+    }
+
     private Product toProduct(List<String> values) {
         if (values.size() < 6) {
             throw new IllegalArgumentException("Expected at least 6 columns: id,name,description,price,stock,categoryId");
@@ -351,7 +414,7 @@ public class ProductServiceImpl implements ProductService {
         product.setTag(value(values, 14));
         boolean hasDetailContentColumn = values.size() > 20;
         String status = value(values, hasDetailContentColumn ? 20 : 19);
-        product.setStatus(status == null || status.isEmpty() ? "ACTIVE" : status);
+        product.setStatus(normalizeImportedStatus(status));
         product.setImages(value(values, 15));
         product.setSpecifications(value(values, 16));
         product.setDetailContent(hasDetailContentColumn ? value(values, 17) : null);
@@ -390,7 +453,27 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private String value(List<String> values, int index) {
-        return index < values.size() ? values.get(index).trim() : null;
+        return index < values.size() ? normalizeImportText(values.get(index)) : null;
+    }
+
+    private String normalizeImportText(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replaceAll("\\p{Cntrl}", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private String normalizeImportedStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "ACTIVE";
+        }
+        String normalized = ProductStatusUtils.normalizeProductStatus(status);
+        if (normalized == null) {
+            throw new IllegalArgumentException("status must be one of " + ProductStatusUtils.PRODUCT_STATUSES);
+        }
+        return normalized;
     }
 
     private String required(String value, String field) {
@@ -851,11 +934,14 @@ public class ProductServiceImpl implements ProductService {
         if (product == null || product.getId() == null) {
             return product;
         }
-        ProductReviewStats stats = new ProductReviewStats(
-                reviewRepository.countByProduct_IdAndStatus(product.getId(), "APPROVED"),
-                reviewRepository.countByProduct_IdAndStatusAndRatingGreaterThanEqual(product.getId(), "APPROVED", 4),
-                reviewRepository.findAverageRatingByProductId(product.getId())
-        );
+        ProductReviewStats stats = reviewRepository.summarizeApprovedReviewsByProductIds(List.of(product.getId())).stream()
+                .findFirst()
+                .map(row -> new ProductReviewStats(
+                        ((Number) row[1]).longValue(),
+                        row[2] == null ? 0L : ((Number) row[2]).longValue(),
+                        row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()
+                ))
+                .orElse(null);
         applyReviewStats(product, stats);
         return product;
     }

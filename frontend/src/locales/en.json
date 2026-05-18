@@ -599,6 +599,7 @@
       "moveAllToCart": "Move all",
       "movedToCart": "Moved to cart",
       "movedSavedBatch": "Moved {count} saved items to cart",
+      "movedSavedBatchPartial": "Moved {count} saved items to cart; {failed} still need review.",
       "savedDaysAgo": "Saved {count}d ago",
       "savedReminderTitle": "{count} saved picks are waiting",
       "savedReminderText": "Bring them back before checkout so your pet's routine stays covered.",
@@ -1052,6 +1053,21 @@
         "healthRisk": "Prioritize",
         "guideTitle": "Recommended order",
         "guideText": "Recover pending payments first, review return requests next, then close ready-to-refund orders."
+      },
+      "operationsSla": {
+        "title": "Operations SLA risk queue",
+        "subtitle": "Flags overdue payment, fulfillment, return shipment, and refund tasks before they become support tickets.",
+        "healthy": "SLA healthy",
+        "watch": "Needs follow-up",
+        "risk": "High risk",
+        "stalePendingPayment": "Stale pending payments",
+        "delayedShipment": "Delayed shipments",
+        "returnAwaitingShipment": "Returns not shipped",
+        "refundDue": "Refunds overdue",
+        "stalePendingPaymentText": "Pending payment for more than 30 minutes. Review link or follow up.",
+        "delayedShipmentText": "Paid orders waiting more than 24 hours. Prioritize fulfillment.",
+        "returnAwaitingShipmentText": "Approved returns without shipment for more than 3 days.",
+        "refundDueText": "Returned items waiting more than 24 hours for refund confirmation."
       }
     },
     "adminUsers": {
@@ -1440,6 +1456,7 @@
       "exportOrders": "Export orders",
       "exportVisibleOrders": "Export current results",
       "exportFailed": "Failed to export orders",
+      "exportTruncated": "Exported {returned} of {total} matching orders. Narrow filters to export the rest.",
       "total": "Total: {count} orders",
       "needsAction": "Needs action",
       "slaOverdueCard": "Overdue",
@@ -1525,12 +1542,16 @@
       "refundCompletedWithReference": "Refund completed. Reference: {reference}",
       "refundConfirmHint": "Refund order {orderNo} for {amount}. Use this only after confirming the customer should receive funds back.",
       "refundReasonPlaceholder": "Refund reason for audit and support notes",
+      "manualRefundReferencePlaceholder": "Manual refund reference, such as gateway, bank or support ticket ID",
       "restockRefundItems": "Return items to inventory",
       "paymentHistory": "Payment history",
       "refundReference": "Refund reference",
       "refundPaymentEvidence": "Payment evidence",
       "refundProcessingHint": "A refund is already being processed for this order.",
-      "noPaidPaymentForRefund": "No paid payment record is available to refund."
+      "noPaidPaymentForRefund": "No paid payment record is available to refund.",
+      "syncPayment": "Sync status",
+      "paymentSynced": "Payment status synced",
+      "paymentSyncFailed": "Payment status sync failed"
     },
     "logisticsCarriers": {
       "title": "Carrier configuration",

@@ -51,6 +51,13 @@ public class RefundService {
 
     @Transactional
     public Payment refundPaidPayment(Order order, String reason) {
+        return refundPaidPayment(order, reason, null);
+    }
+
+    @Transactional
+    public Payment refundPaidPayment(Order order, String reason, String manualRefundReference) {
+        String normalizedReason = normalizeReason(reason);
+        String normalizedManualReference = normalizeManualRefundReference(manualRefundReference);
         Payment payment = paymentRepository.findLatestPaidByOrderId(order.getId());
         if (payment == null) {
             Payment refunded = paymentRepository.findLatestRefundedByOrderId(order.getId());
@@ -76,14 +83,13 @@ public class RefundService {
         }
         PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
         String refundReference = null;
-        String normalizedReason = normalizeReason(reason);
         try {
             if (shouldRefundViaStripe(payment, channel)) {
                 refundReference = refundStripePayment(order, payment);
             } else if (shouldRefundViaGenericApi(channel)) {
                 refundReference = refundGenericApiPayment(order, payment, channel, normalizedReason);
             } else {
-                refundReference = "MANUAL-" + order.getId() + "-" + payment.getId();
+                refundReference = firstNonBlank(normalizedManualReference, "MANUAL-" + order.getId() + "-" + payment.getId());
             }
         } catch (RuntimeException e) {
             paymentRepository.revertRefunding(payment.getId());
@@ -257,6 +263,17 @@ public class RefundService {
             return null;
         }
         return normalized.length() > 500 ? normalized.substring(0, 500) : normalized;
+    }
+
+    private String normalizeManualRefundReference(String reference) {
+        String normalized = trimToNull(reference);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.length() > 128) {
+            throw new IllegalArgumentException("Manual refund reference must be 128 characters or less");
+        }
+        return normalized;
     }
 
     private String firstNonBlank(String... values) {

@@ -235,8 +235,14 @@ const Cart: React.FC = () => {
     setRestoringSaved(true);
     try {
       const userId = getAuthenticatedCartUserId();
+      let restoredItems = targetItems;
       if (userId) {
-        await Promise.all(targetItems.map((item) => cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs)));
+        const results = await Promise.allSettled(targetItems.map((item) => cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs)));
+        restoredItems = targetItems.filter((_, index) => results[index].status === 'fulfilled');
+        if (restoredItems.length === 0) {
+          message.error(t('messages.operationFailed'));
+          return;
+        }
         const response = await cartApi.getItems(userId);
         setCartItems(response.data);
         setSelectedIds(response.data.filter(canCheckout).map((cartItem) => cartItem.id));
@@ -258,9 +264,13 @@ const Cart: React.FC = () => {
         setCartItems(nextItems);
         setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       }
-      targetItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
+      restoredItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
       setSavedItems(getSavedForLaterItems());
-      message.success(t('pages.cart.movedSavedBatch', { count: targetItems.length }));
+      if (restoredItems.length === targetItems.length) {
+        message.success(t('pages.cart.movedSavedBatch', { count: restoredItems.length }));
+      } else {
+        message.warning(t('pages.cart.movedSavedBatchPartial', { count: restoredItems.length, failed: targetItems.length - restoredItems.length }));
+      }
       if (userId) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));

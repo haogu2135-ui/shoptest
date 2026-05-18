@@ -31,6 +31,7 @@ import com.example.shop.repository.PaymentRepository;
 import com.example.shop.util.CsvUtils;
 import com.example.shop.util.ProductStatusUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +56,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +81,15 @@ public class AdminController {
     private final AdminRoleService adminRoleService;
     private final PaymentRepository paymentRepository;
 
+    @Value("${admin.orders.page-max-size:100}")
+    private int adminOrdersPageMaxSize;
+
+    @Value("${admin.orders.export-max-rows:5000}")
+    private int adminOrdersExportMaxRows;
+
+    @Value("${admin.orders.batch-ship-max-size:100}")
+    private int adminOrdersBatchShipMaxSize;
+
     @GetMapping("/products")
     public ResponseEntity<List<Product>> getProducts() {
         return ResponseEntity.ok(productService.findAll());
@@ -90,10 +99,7 @@ public class AdminController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> getDashboard() {
-        List<Product> products = productService.findAll();
         List<Order> orders = orderService.getAllOrders();
-        List<User> users = userService.findAll();
-        List<OrderItem> orderItems = orderItemService.getAllOrderItems();
         Set<String> revenueStatuses = Set.of(
                 "PENDING_SHIPMENT", "SHIPPED", "COMPLETED",
                 "RETURN_REQUESTED", "RETURN_APPROVED", "RETURN_SHIPPED");
@@ -113,9 +119,9 @@ public class AdminController {
         BigDecimal grossPaidRevenue = paidRevenue.add(refundedAmount);
 
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalProducts", products.size());
+        stats.put("totalProducts", productService.countProducts());
         stats.put("totalOrders", orders.size());
-        stats.put("totalUsers", users.size());
+        stats.put("totalUsers", userService.count());
         stats.put("totalRevenue", paidRevenue);
         stats.put("grossPaidRevenue", grossPaidRevenue);
         stats.put("refundedOrders", refundedOrders.size());
@@ -149,15 +155,9 @@ public class AdminController {
         stats.put("completedOrders", orders.stream()
                 .filter(order -> "COMPLETED".equals(order.getStatus()))
                 .count());
-        stats.put("activeProducts", products.stream()
-                .filter(product -> "ACTIVE".equals(product.getStatus()))
-                .count());
-        stats.put("pendingProducts", products.stream()
-                .filter(product -> "PENDING_REVIEW".equals(product.getStatus()))
-                .count());
-        stats.put("lowStockProducts", products.stream()
-                .filter(product -> product.getStock() != null && product.getStock() < 10)
-                .count());
+        stats.put("activeProducts", productService.countActiveProducts());
+        stats.put("pendingProducts", productService.countPendingReviewProducts());
+        stats.put("lowStockProducts", productService.countLowStockProducts());
         stats.put("averageOrderValue", paidOrders.isEmpty()
                 ? BigDecimal.ZERO
                 : paidRevenue.divide(BigDecimal.valueOf(paidOrders.size()), 2, java.math.RoundingMode.HALF_UP));
@@ -169,6 +169,13 @@ public class AdminController {
                 ? BigDecimal.ZERO
                 : refundedAmount.multiply(BigDecimal.valueOf(100L))
                         .divide(grossPaidRevenue, 2, java.math.RoundingMode.HALF_UP));
+        Map<String, Object> slaRisks = buildOperationsSlaRisks(orders);
+        stats.put("operationsSlaRisks", slaRisks);
+        stats.put("operationsSlaRiskTotal", slaRisks.values().stream()
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .mapToLong(Number::longValue)
+                .sum());
 
         List<Order> recentOrders = orders.stream()
                 .sorted(Comparator.comparing(Order::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())).reversed())
@@ -179,14 +186,40 @@ public class AdminController {
         stats.put("paymentMethodBreakdown", orders.stream()
                 .filter(order -> order.getPaymentMethod() != null && !order.getPaymentMethod().isEmpty())
                 .collect(Collectors.groupingBy(Order::getPaymentMethod, LinkedHashMap::new, Collectors.counting())));
-        stats.put("topProducts", buildTopProducts(orderItems, orders, revenueStatuses));
-        stats.put("lowStockList", products.stream()
-                .filter(product -> product.getStock() != null && product.getStock() < 10)
-                .sorted(Comparator.comparing(product -> product.getStock() == null ? 0 : product.getStock()))
-                .limit(8)
-                .collect(Collectors.toList()));
+        stats.put("topProducts", orderItemService.getTopProductsByPaidStatuses(List.copyOf(revenueStatuses), 8));
+        stats.put("lowStockList", productService.findLowStockProducts(8));
 
         return ResponseEntity.ok(stats);
+    }
+
+    private Map<String, Object> buildOperationsSlaRisks(List<Order> orders) {
+        LocalDateTime now = LocalDateTime.now();
+        Map<String, Object> risks = new LinkedHashMap<>();
+        risks.put("stalePendingPayment", orders.stream()
+                .filter(order -> "PENDING_PAYMENT".equals(order.getStatus()))
+                .filter(order -> isBefore(order.getCreatedAt(), now.minusMinutes(30)))
+                .count());
+        risks.put("delayedShipment", orders.stream()
+                .filter(order -> "PENDING_SHIPMENT".equals(order.getStatus()))
+                .filter(order -> isBefore(firstNonNull(order.getUpdatedAt(), order.getCreatedAt()), now.minusHours(24)))
+                .count());
+        risks.put("returnAwaitingShipment", orders.stream()
+                .filter(order -> "RETURN_APPROVED".equals(order.getStatus()))
+                .filter(order -> isBefore(firstNonNull(order.getReturnApprovedAt(), order.getUpdatedAt()), now.minusDays(3)))
+                .count());
+        risks.put("refundDue", orders.stream()
+                .filter(order -> "RETURN_SHIPPED".equals(order.getStatus()))
+                .filter(order -> isBefore(firstNonNull(order.getReturnShippedAt(), order.getUpdatedAt()), now.minusHours(24)))
+                .count());
+        return risks;
+    }
+
+    private LocalDateTime firstNonNull(LocalDateTime first, LocalDateTime second) {
+        return first != null ? first : second;
+    }
+
+    private boolean isBefore(LocalDateTime value, LocalDateTime threshold) {
+        return value != null && value.isBefore(threshold);
     }
 
     private List<Map<String, Object>> buildSalesTrend(List<Order> orders, Set<String> revenueStatuses) {
@@ -208,44 +241,6 @@ public class AdminController {
                     item.put("revenue", revenue);
                     return item;
                 })
-                .collect(Collectors.toList());
-    }
-
-    private List<Map<String, Object>> buildTopProducts(List<OrderItem> orderItems, List<Order> orders, Set<String> revenueStatuses) {
-        Set<Long> paidOrderIds = orders.stream()
-                .filter(order -> revenueStatuses.contains(order.getStatus()))
-                .map(Order::getId)
-                .filter(id -> id != null)
-                .collect(Collectors.toSet());
-        Map<Long, Map<String, Object>> productMap = new HashMap<>();
-        for (OrderItem item : orderItems) {
-            if (item.getProductId() == null) {
-                continue;
-            }
-            if (!paidOrderIds.contains(item.getOrderId())) {
-                continue;
-            }
-            Map<String, Object> product = productMap.computeIfAbsent(item.getProductId(), id -> {
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("productId", item.getProductId());
-                row.put("productName", item.getProductName());
-                row.put("imageUrl", item.getImageUrl());
-                row.put("quantity", 0);
-                row.put("revenue", BigDecimal.ZERO);
-                return row;
-            });
-            Integer quantity = (Integer) product.get("quantity");
-            BigDecimal revenue = (BigDecimal) product.get("revenue");
-            int itemQuantity = item.getQuantity() == null ? 0 : item.getQuantity();
-            BigDecimal itemRevenue = item.getPrice() == null
-                    ? BigDecimal.ZERO
-                    : item.getPrice().multiply(BigDecimal.valueOf(itemQuantity));
-            product.put("quantity", quantity + itemQuantity);
-            product.put("revenue", revenue.add(itemRevenue));
-        }
-        return productMap.values().stream()
-                .sorted((left, right) -> ((BigDecimal) right.get("revenue")).compareTo((BigDecimal) left.get("revenue")))
-                .limit(8)
                 .collect(Collectors.toList());
     }
 
@@ -490,6 +485,33 @@ public class AdminController {
         return ResponseEntity.ok(orders);
     }
 
+    @GetMapping("/orders/page")
+    public ResponseEntity<Map<String, Object>> getOrdersPage(@RequestParam(required = false) String status,
+                                                             @RequestParam(required = false) String search,
+                                                             @RequestParam(required = false) String quick,
+                                                             @RequestParam(required = false, defaultValue = "1") int page,
+                                                             @RequestParam(required = false, defaultValue = "20") int size) {
+        int safeSize = Math.max(1, Math.min(size <= 0 ? 20 : size, Math.max(1, adminOrdersPageMaxSize)));
+        int safePage = Math.max(1, page);
+        String safeStatus = normalizeAdminFilter(status, 40);
+        String safeSearch = normalizeAdminFilter(search, 120);
+        String safeQuick = normalizeAdminFilter(quick, 40);
+        int total = orderService.countAdminOrders(safeStatus, safeSearch, safeQuick);
+        int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / safeSize);
+        if (totalPages > 0 && safePage > totalPages) {
+            safePage = totalPages;
+        }
+        List<Order> orders = orderService.searchAdminOrders(safeStatus, safeSearch, safeQuick, safePage, safeSize);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("items", orders);
+        response.put("total", total);
+        response.put("page", safePage);
+        response.put("size", safeSize);
+        response.put("totalPages", totalPages);
+        response.put("summary", buildAdminOrderSummary(safeStatus, safeSearch));
+        return ResponseEntity.ok(response);
+    }
+
     @PutMapping("/orders/{id}/status")
     public ResponseEntity<?> updateOrderStatus(@PathVariable Long id,
                                                @RequestBody Map<String, String> body,
@@ -558,8 +580,9 @@ public class AdminController {
                                          HttpServletRequest request) {
         String reason = body == null || body.get("reason") == null ? "" : String.valueOf(body.get("reason"));
         boolean restock = body != null && Boolean.parseBoolean(String.valueOf(body.getOrDefault("restock", "false")));
+        String manualRefundReference = body == null || body.get("manualRefundReference") == null ? null : String.valueOf(body.get("manualRefundReference"));
         try {
-            Payment payment = orderService.refundOrder(id, reason, restock);
+            Payment payment = orderService.refundOrder(id, reason, restock, manualRefundReference);
             auditLogService.record("REFUND_COMPLETE", "SUCCESS", authentication, "ORDER", id, request,
                     "Order refunded",
                     "paymentId=" + payment.getId() + ",channel=" + payment.getChannel() + ",reference=" + payment.getRefundReference() + ",restock=" + restock);
@@ -578,19 +601,34 @@ public class AdminController {
     public ResponseEntity<?> batchShipOrders(@RequestBody Map<String, Object> body,
                                              Authentication authentication,
                                              HttpServletRequest request) {
+        if (body == null) {
+            auditLogService.record("ORDER_BATCH_SHIP", "FAILURE", authentication, "ORDER", null, request,
+                    "request body is required", null);
+            return ResponseEntity.badRequest().body(Map.of("error", "request body is required"));
+        }
         Object idsValue = body.get("orderIds");
-        String trackingPrefix = String.valueOf(body.getOrDefault("trackingPrefix", "BATCH"));
-        String trackingCarrierCode = body.get("trackingCarrierCode") == null ? null : String.valueOf(body.get("trackingCarrierCode"));
+        String trackingPrefix = normalizeAdminFilter(String.valueOf(body.getOrDefault("trackingPrefix", "BATCH")), 80);
+        if (trackingPrefix == null) {
+            trackingPrefix = "BATCH";
+        }
+        String trackingCarrierCode = body.get("trackingCarrierCode") == null ? null : normalizeAdminFilter(String.valueOf(body.get("trackingCarrierCode")), 40);
         if (!(idsValue instanceof List<?>)) {
             auditLogService.record("ORDER_BATCH_SHIP", "FAILURE", authentication, "ORDER", null, request,
                     "orderIds is required", "trackingPrefix=" + trackingPrefix + ",carrier=" + trackingCarrierCode);
             return ResponseEntity.badRequest().body(Map.of("error", "orderIds is required"));
         }
+        List<?> rawIds = (List<?>) idsValue;
+        int maxBatchSize = Math.max(1, Math.min(adminOrdersBatchShipMaxSize, 500));
+        if (rawIds.size() > maxBatchSize) {
+            auditLogService.record("ORDER_BATCH_SHIP", "FAILURE", authentication, "ORDER", null, request,
+                    "too many orderIds", "requested=" + rawIds.size() + ",max=" + maxBatchSize);
+            return ResponseEntity.badRequest().body(Map.of("error", "too many orderIds", "max", maxBatchSize));
+        }
 
         int success = 0;
         int failed = 0;
         StringBuilder failedIds = new StringBuilder();
-        for (Object idValue : (List<?>) idsValue) {
+        for (Object idValue : rawIds) {
             try {
                 Long id = parseBatchId(idValue);
                 orderService.shipOrder(id, trackingPrefix + "-" + id, trackingCarrierCode);
@@ -714,14 +752,19 @@ public class AdminController {
 
     @GetMapping("/orders/export")
     public ResponseEntity<byte[]> exportOrders(@RequestParam(required = false) String status,
+                                               @RequestParam(required = false) String search,
+                                               @RequestParam(required = false) String quick,
                                                Authentication authentication,
                                                HttpServletRequest request) {
-        List<Order> orders = orderService.getAllOrders();
-        if (status != null && !status.isEmpty()) {
-            orders = orders.stream()
-                    .filter(o -> status.equalsIgnoreCase(o.getStatus()))
-                    .collect(Collectors.toList());
-        }
+        String safeStatus = normalizeAdminFilter(status, 40);
+        String safeSearch = normalizeAdminFilter(search, 120);
+        String safeQuick = normalizeAdminFilter(quick, 40);
+        int exportLimit = Math.max(1, Math.min(adminOrdersExportMaxRows, 50000));
+        int total = orderService.countAdminOrders(safeStatus, safeSearch, safeQuick);
+        List<Order> orders = orderService.searchAdminOrders(safeStatus, safeSearch, safeQuick, 1, exportLimit);
+        Map<Long, List<OrderItem>> itemsByOrderId = orderItemService.getOrderItemsByOrderIds(orders.stream()
+                .map(Order::getId)
+                .collect(Collectors.toList()));
 
         StringBuilder csv = new StringBuilder("\uFEFF");
         csv.append(CsvUtils.row(Arrays.asList(
@@ -731,7 +774,7 @@ public class AdminController {
         ))).append("\r\n");
 
         for (Order order : orders) {
-            List<OrderItem> items = orderItemService.getOrderItemsByOrderId(order.getId());
+            List<OrderItem> items = itemsByOrderId.getOrDefault(order.getId(), List.of());
             String itemSummary = items.stream()
                     .map(item -> item.getProductName() + " x " + item.getQuantity() + " @ " + item.getPrice())
                     .collect(Collectors.joining("; "));
@@ -755,9 +798,13 @@ public class AdminController {
 
         byte[] body = csv.toString().getBytes(StandardCharsets.UTF_8);
         auditLogService.record("ORDER_EXPORT", "SUCCESS", authentication, "ORDER", null, request,
-                "Orders exported", "status=" + status + ",count=" + orders.size());
+                "Orders exported", "status=" + safeStatus + ",quick=" + safeQuick + ",search=" + safeSearch + ",count=" + orders.size() + ",total=" + total);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=orders.csv")
+                .header("X-Export-Total", String.valueOf(total))
+                .header("X-Export-Returned", String.valueOf(orders.size()))
+                .header("X-Export-Truncated", String.valueOf(total > orders.size()))
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition,X-Export-Total,X-Export-Returned,X-Export-Truncated")
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .body(body);
     }
@@ -846,6 +893,34 @@ public class AdminController {
             return "RETURN_REJECT";
         }
         return "ORDER_STATUS_UPDATE";
+    }
+
+    private String normalizeAdminFilter(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.replaceAll("\\p{Cntrl}", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
+    }
+
+    private Map<String, Long> buildAdminOrderSummary(String status, String search) {
+        Map<String, Long> summary = new LinkedHashMap<>();
+        for (String quick : List.of(
+                "NEEDS_ACTION",
+                "SLA_OVERDUE",
+                "SLA_DUE_SOON",
+                "PENDING_SHIPMENT",
+                "RETURN_REQUESTED",
+                "RETURN_SHIPPED",
+                "REFUNDED")) {
+            summary.put(quick, (long) orderService.countAdminOrders(status, search, quick));
+        }
+        return summary;
     }
 
     private String paymentMetadata(Payment payment) {

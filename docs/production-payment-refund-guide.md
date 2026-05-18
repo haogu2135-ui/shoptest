@@ -193,6 +193,8 @@ Refund behavior is controlled by `refund-mode`:
 - `GENERIC_API`: call your configured refund API and store the returned `refundReference`.
 - `MANUAL`: mark the payment `REFUNDED` after the admin completes the return; use this when the external gateway refund is handled in its dashboard or back office.
 
+For `MANUAL` refunds, operators should enter the real gateway, bank, or support-ticket reference in the admin refund modal. If left blank, the backend stores a deterministic `MANUAL-{orderId}-{paymentId}` fallback so the order can still close, but finance should replace that with the external reference during reconciliation.
+
 When you add a custom provider integration later, keep the public channel code stable and change only `provider`, `checkout-url`, and `refund-mode` while preserving the callback payload contract.
 
 The simulation endpoints are for local testing only. Code defaults to production mode when `app.runtime-mode` is absent. In `application.properties`, set:
@@ -278,6 +280,7 @@ Use the same customer-facing loop in checkout, profile orders, and support:
 3. Give one next action only: open payment link, regenerate payment, contact support, submit return tracking, track return shipment, or wait for refund confirmation.
 4. Keep the latest payment link visible, but always provide a refresh path for expired or missing links.
 5. Keep the after-sales promise visible after payment succeeds, so the customer knows where to return later if needed.
+6. In admin order details, sync pending payments before refunding or manually confirming a suspicious order so delayed gateway state is reconciled first.
 
 Recommended UI behavior:
 
@@ -340,6 +343,7 @@ Use deep links when wiring dashboard cards, support shortcuts, or incident playb
 - Payment record missing after order creation: regenerate the payment for the same order, do not create another order.
 - Payment link expired: create a fresh payment with the selected channel and keep the old payment in history.
 - Callback delayed: keep the order in pending payment until the callback or manual reconciliation confirms success.
+- Customer cancels a pending-payment order: the backend restores stock/coupons and marks local pending payments as `CANCELLED`; delayed success callbacks for that order are rejected unless finance manually reconciles them.
 - Refund API failure: keep the order out of `RETURNED` until the provider refund succeeds or a manual refund reference is recorded.
 - Stuck `REFUNDING` payment: compare the idempotency key `return-refund-{orderId}-{paymentId}` with the provider dashboard, then retry the same payment or manually record the provider reference after finance confirms settlement.
 - Duplicate callbacks: rely on provider reference, transaction id, and idempotency keys; do not ship twice or refund twice.

@@ -101,6 +101,12 @@ public class OrderService {
     @Value("${order.guest-phone-max-chars:40}")
     private int guestPhoneMaxChars;
 
+    @Value("${order.return-reason-max-chars:500}")
+    private int returnReasonMaxChars;
+
+    @Value("${order.tracking-number-max-chars:120}")
+    private int trackingNumberMaxChars;
+
     /**
      * 创建新订单
      */
@@ -452,7 +458,7 @@ public class OrderService {
     }
 
     private String normalizeRequiredText(String value, String field, int maxLength) {
-        String normalized = value == null ? "" : value.trim().replaceAll("\\s+", " ");
+        String normalized = normalizeText(value);
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException(field + " is required");
         }
@@ -462,6 +468,21 @@ public class OrderService {
         return normalized;
     }
 
+    private String normalizeOptionalText(String value, String field, int maxLength) {
+        String normalized = normalizeText(value);
+        if (normalized.length() > Math.max(1, maxLength)) {
+            throw new IllegalArgumentException(field + " is too long");
+        }
+        return normalized;
+    }
+
+    private String normalizeText(String value) {
+        return String.valueOf(value == null ? "" : value)
+                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
+    }
+
     /**
      * 获取所有订单
      */
@@ -469,6 +490,25 @@ public class OrderService {
         return orderRepository.findAll().stream()
                 .map(this::enrichReturnInfo)
                 .collect(Collectors.toList());
+    }
+
+    public List<Order> searchAdminOrders(String status, String search, String quick, int page, int size) {
+        int safeSize = Math.max(1, Math.min(size, 5000));
+        int safePage = Math.max(1, page);
+        int offset = (safePage - 1) * safeSize;
+        return orderRepository.searchAdminOrders(blankToNull(status), blankToNull(search), blankToNull(quick), offset, safeSize)
+                .stream()
+                .map(this::enrichReturnInfo)
+                .collect(Collectors.toList());
+    }
+
+    public int countAdminOrders(String status, String search, String quick) {
+        return orderRepository.countAdminOrders(blankToNull(status), blankToNull(search), blankToNull(quick));
+    }
+
+    private String blankToNull(String value) {
+        String normalized = normalizeText(value);
+        return normalized.isEmpty() ? null : normalized;
     }
 
     /**
@@ -607,6 +647,7 @@ public class OrderService {
         for (OrderItem item : items) {
             restoreStock(item);
         }
+        paymentRepository.markPendingCancelledByOrderId(id);
         if ("PENDING_PAYMENT".equals(order.getStatus())) {
             couponService.releaseUsedCoupon(order.getUserCouponId());
         }
@@ -660,10 +701,7 @@ public class OrderService {
         if (deadline == null || LocalDateTime.now().isAfter(deadline)) {
             throw new IllegalStateException("Return window has expired");
         }
-        String cleanedReason = reason == null ? "" : reason.trim();
-        if (cleanedReason.length() > 500) {
-            throw new IllegalArgumentException("Return reason must be 500 characters or less");
-        }
+        String cleanedReason = normalizeOptionalText(reason, "Return reason", returnReasonMaxChars);
         return orderRepository.requestReturnIfCurrent(id, "COMPLETED", cleanedReason) > 0;
     }
 
@@ -703,10 +741,8 @@ public class OrderService {
         if (!"RETURN_APPROVED".equals(order.getStatus())) {
             throw new IllegalStateException("Only approved return orders can submit return shipment");
         }
-        if (returnTrackingNumber == null || returnTrackingNumber.trim().isEmpty()) {
-            throw new IllegalArgumentException("Return tracking number is required");
-        }
-        return orderRepository.updateReturnTracking(id, "RETURN_SHIPPED", returnTrackingNumber.trim()) > 0;
+        String cleanedTrackingNumber = normalizeRequiredText(returnTrackingNumber, "Return tracking number", trackingNumberMaxChars);
+        return orderRepository.updateReturnTracking(id, "RETURN_SHIPPED", cleanedTrackingNumber) > 0;
     }
 
     @Transactional
@@ -744,6 +780,11 @@ public class OrderService {
 
     @Transactional
     public Payment refundOrder(Long id, String reason, boolean restock) {
+        return refundOrder(id, reason, restock, null);
+    }
+
+    @Transactional
+    public Payment refundOrder(Long id, String reason, boolean restock, String manualRefundReference) {
         Order order = orderRepository.findById(id);
         if (order == null) {
             throw new IllegalArgumentException("Order not found");
@@ -766,12 +807,9 @@ public class OrderService {
         if (!refundableStatuses.contains(order.getStatus())) {
             throw new IllegalStateException("Order is not refundable in current status: " + order.getStatus());
         }
-        String cleanedReason = reason == null ? "" : reason.trim();
-        if (cleanedReason.length() > 500) {
-            throw new IllegalArgumentException("Refund reason must be 500 characters or less");
-        }
+        String cleanedReason = normalizeOptionalText(reason, "Refund reason", returnReasonMaxChars);
 
-        Payment refundedPayment = refundService.refundPaidPayment(order, cleanedReason);
+        Payment refundedPayment = refundService.refundPaidPayment(order, cleanedReason, manualRefundReference);
         int updated = orderRepository.markRefunded(order.getId(), order.getStatus(), cleanedReason);
         if (updated == 0) {
             Order latest = orderRepository.findById(order.getId());
@@ -811,9 +849,7 @@ public class OrderService {
         if (order == null) {
             return false;
         }
-        if (trackingNumber == null || trackingNumber.trim().isEmpty()) {
-            throw new IllegalArgumentException("Tracking number is required");
-        }
+        String cleanedTrackingNumber = normalizeRequiredText(trackingNumber, "Tracking number", trackingNumberMaxChars);
         String carrierCode = trackingCarrierCode == null ? null : trackingCarrierCode.trim();
         String carrierName = null;
         if (carrierCode != null && !carrierCode.isEmpty()) {
@@ -829,7 +865,7 @@ public class OrderService {
             carrierName = carrier.getName();
         }
         assertNextStatus(order.getStatus(), "SHIPPED");
-        return orderRepository.updateShipping(id, "SHIPPED", trackingNumber.trim(), carrierCode, carrierName) > 0;
+        return orderRepository.updateShipping(id, "SHIPPED", cleanedTrackingNumber, carrierCode, carrierName) > 0;
     }
 
     public void assertNextStatus(String currentStatus, String nextStatus) {
@@ -883,18 +919,24 @@ public class OrderService {
     }
 
     public long count() {
-        return orderRepository.findAll().size();
+        return orderRepository.countAll();
     }
 
     public BigDecimal getTotalRevenue() {
-        return orderRepository.findAll().stream()
-                .map(Order::getTotalAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = orderRepository.sumTotalAmount();
+        return total == null ? BigDecimal.ZERO : total;
     }
 
     public Map<String, Long> getStatusBreakdown() {
-        return orderRepository.findAll().stream()
-                .collect(Collectors.groupingBy(Order::getStatus, LinkedHashMap::new, Collectors.counting()));
+        Map<String, Long> breakdown = new LinkedHashMap<>();
+        for (Map<String, Object> row : orderRepository.countByStatusGroup()) {
+            Object status = row.get("status");
+            Object count = row.get("count");
+            if (status != null && count instanceof Number) {
+                breakdown.put(String.valueOf(status), ((Number) count).longValue());
+            }
+        }
+        return breakdown;
     }
 
     private Order enrichReturnInfo(Order order) {

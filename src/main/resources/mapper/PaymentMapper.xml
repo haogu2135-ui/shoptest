@@ -163,4 +163,13 @@
             updated_at = NOW()
         WHERE id = #{id} AND status = 'PENDING'
     </update>
+
+    <update id="markPendingCancelledByOrderId">
+        UPDATE payments
+        SET status = 'CANCELLED',
+            payment_url = NULL,
+            expires_at = NULL,
+            updated_at = NOW()
+        WHERE order_id = #{orderId} AND status = 'PENDING'
+    </update>
 </mapper>

@@ -12,6 +12,7 @@ import com.example.shop.repository.ReviewRepository;
 import com.example.shop.repository.UserRepository;
 import com.example.shop.service.ReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,12 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Autowired
     private OrderItemRepository orderItemRepository;
+
+    @Value("${review.max-comment-chars:1000}")
+    private int maxCommentChars;
+
+    @Value("${review.max-reply-chars:1000}")
+    private int maxReplyChars;
 
     @Override
     public List<Review> getReviewsByProductId(Long productId, Long currentUserId) {
@@ -100,7 +107,8 @@ public class ReviewServiceImpl implements ReviewService {
         if (rating < 1 || rating > 5) {
             throw new IllegalArgumentException("Rating must be between 1 and 5");
         }
-        if (comment == null || comment.trim().isEmpty()) {
+        String normalizedComment = normalizeReviewText(comment, normalizedMaxCommentChars(), "Comment");
+        if (normalizedComment.isEmpty()) {
             throw new IllegalArgumentException("Comment is required");
         }
 
@@ -127,7 +135,7 @@ public class ReviewServiceImpl implements ReviewService {
         review.setUser(userOpt.get());
         review.setOrderId(orderId);
         review.setRating(rating);
-        review.setComment(comment.trim());
+        review.setComment(normalizedComment);
         review.setStatus("PENDING");
 
         return reviewRepository.save(review);
@@ -147,10 +155,11 @@ public class ReviewServiceImpl implements ReviewService {
     public Review replyReview(Long id, String reply) {
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Review not found"));
-        if (reply == null || reply.trim().isEmpty()) {
+        String normalizedReply = normalizeReviewText(reply, normalizedMaxReplyChars(), "Reply");
+        if (normalizedReply.isEmpty()) {
             throw new IllegalArgumentException("Reply is required");
         }
-        review.setAdminReply(reply.trim());
+        review.setAdminReply(normalizedReply);
         review.setRepliedAt(LocalDateTime.now());
         return reviewRepository.save(review);
     }
@@ -166,5 +175,24 @@ public class ReviewServiceImpl implements ReviewService {
         }
         review.setStatus(normalized);
         return reviewRepository.save(review);
+    }
+
+    private String normalizeReviewText(String value, int maxChars, String label) {
+        String normalized = String.valueOf(value == null ? "" : value)
+                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
+        if (normalized.length() > maxChars) {
+            throw new IllegalArgumentException(label + " is too long");
+        }
+        return normalized;
+    }
+
+    private int normalizedMaxCommentChars() {
+        return Math.max(20, maxCommentChars);
+    }
+
+    private int normalizedMaxReplyChars() {
+        return Math.max(20, maxReplyChars);
     }
 } 

@@ -48,10 +48,20 @@ public final class CsvUtils {
         if (value == null) {
             return "";
         }
-        String text = String.valueOf(value);
+        String text = preventFormulaInjection(String.valueOf(value));
         if (text.contains(",") || text.contains("\"") || text.contains("\r") || text.contains("\n")) {
             return "\"" + text.replace("\"", "\"\"") + "\"";
         }
         return text;
+    }
+
+    private static String preventFormulaInjection(String value) {
+        if (value.isEmpty()) {
+            return value;
+        }
+        char first = value.charAt(0);
+        return first == '=' || first == '+' || first == '-' || first == '@'
+                ? "'" + value
+                : value;
     }
 }

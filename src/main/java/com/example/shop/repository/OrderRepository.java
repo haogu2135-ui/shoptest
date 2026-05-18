@@ -5,10 +5,22 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface OrderRepository {
     List<Order> findAll();
+    long countAll();
+    java.math.BigDecimal sumTotalAmount();
+    List<Map<String, Object>> countByStatusGroup();
+    List<Order> searchAdminOrders(@Param("status") String status,
+                                  @Param("search") String search,
+                                  @Param("quick") String quick,
+                                  @Param("offset") int offset,
+                                  @Param("limit") int limit);
+    int countAdminOrders(@Param("status") String status,
+                         @Param("search") String search,
+                         @Param("quick") String quick);
     Order findById(Long id);
     Order findByOrderNo(String orderNo);
     Order findByOrderNoAndEmail(@Param("orderNo") String orderNo, @Param("email") String email);

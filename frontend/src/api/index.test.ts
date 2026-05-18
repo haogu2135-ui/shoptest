@@ -152,7 +152,7 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[1][0]).toBe('/admin/support/sessions/0/messages');
   });
 
-  it('normalizes product path params for mutations and recommendation requests', async () => {
+  it('normalizes product path params and short-circuits invalid recommendation requests', async () => {
     const { productApi } = require('./index');
 
     await productApi.update(2.2, { name: 'bad id' });
@@ -161,7 +161,7 @@ describe('api parameter normalization', () => {
 
     expect(mockPut.mock.calls[0][0]).toBe('/products/0');
     expect(mockDelete.mock.calls[0][0]).toBe('/products/4');
-    expect(mockGet.mock.calls[0][0]).toBe('/products/0/recommendations');
+    expect(mockGet).not.toHaveBeenCalled();
   });
 
   it('normalizes order paths, checkout ids, guest email, and return text fields', async () => {
@@ -220,13 +220,19 @@ describe('api parameter normalization', () => {
   it('normalizes admin mutation and batch payload ids', async () => {
     const { adminApi } = require('./index');
 
-    await adminApi.updateOrderStatus(3.1, ' SHIPPED ', '  TN   1 ', '  DHL ');
+    await adminApi.updateOrderStatus(3.1, ' SHIPPED ', '  TN\u0000   1 ', '  DHL ');
+    await adminApi.getOrdersPage({ status: ' PENDING_SHIPMENT ', search: '  TN\u0000   1 ', quick: ' SLA_OVERDUE ', page: 2, size: 200 });
+    await adminApi.exportOrders(' REFUNDED ', '  order   9 ', ' REFUNDED ');
     await adminApi.batchShipOrders([1, '2', 2, -4, 5.5] as unknown as number[], '  PKG   ', '  UPS  ');
     await adminApi.batchUpdateProductStatus([7, 7, Infinity, 8] as unknown as number[], ' INACTIVE ');
     await adminApi.grantCoupon(9.2, [10, 10, '11', -2] as unknown as number[]);
 
     expect(mockPut.mock.calls[0][0]).toBe('/admin/orders/0/status');
     expect(mockPut.mock.calls[0][1]).toEqual({ status: 'SHIPPED', trackingNumber: 'TN 1', trackingCarrierCode: 'DHL' });
+    expect(mockGet.mock.calls[0][0]).toBe('/admin/orders/page');
+    expect(mockGet.mock.calls[0][1]).toEqual({ params: { status: 'PENDING_SHIPMENT', search: 'TN 1', quick: 'SLA_OVERDUE', page: 2, size: 100 } });
+    expect(mockGet.mock.calls[1][0]).toBe('/admin/orders/export');
+    expect(mockGet.mock.calls[1][1]).toEqual({ params: { status: 'REFUNDED', search: 'order 9', quick: 'REFUNDED' }, responseType: 'blob' });
     expect(mockPost.mock.calls[0][1]).toEqual({ orderIds: [1, 2], trackingPrefix: 'PKG', trackingCarrierCode: 'UPS' });
     expect(mockPost.mock.calls[1][1]).toEqual({ productIds: [7, 8], status: 'INACTIVE' });
     expect(mockPost.mock.calls[2][0]).toBe('/admin/coupons/0/grant');

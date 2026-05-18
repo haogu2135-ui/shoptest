@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Divider, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
@@ -29,6 +29,9 @@ const OrderManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | undefined>(() => searchParams.get('status') || undefined);
   const [quickFilter, setQuickFilter] = useState<string | undefined>(() => searchParams.get('quick') || undefined);
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
+  const [orderPage, setOrderPage] = useState({ page: 1, size: 20, total: 0, totalPages: 0 });
+  const [orderSummary, setOrderSummary] = useState<Record<string, number>>({});
   const [shippingOrder, setShippingOrder] = useState<Order | null>(null);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingCarrierCode, setTrackingCarrierCode] = useState<string | undefined>();
@@ -48,23 +51,46 @@ const OrderManagement: React.FC = () => {
   const [selectedTrackingCarrierCode, setSelectedTrackingCarrierCode] = useState<string | undefined>();
   const [refundOrder, setRefundOrder] = useState<Order | null>(null);
   const [refundReason, setRefundReason] = useState('');
+  const [manualRefundReference, setManualRefundReference] = useState('');
   const [refundRestock, setRefundRestock] = useState(false);
   const [refunding, setRefunding] = useState(false);
   const [refundPayments, setRefundPayments] = useState<Payment[]>([]);
   const [refundPaymentsLoading, setRefundPaymentsLoading] = useState(false);
   const [orderPayments, setOrderPayments] = useState<Payment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [syncingPaymentIds, setSyncingPaymentIds] = useState<React.Key[]>([]);
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
   const [statusUpdatingIds, setStatusUpdatingIds] = useState<React.Key[]>([]);
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const { formatMoney } = useMarket();
+  const pageSizeRef = useRef(20);
 
-  const fetchOrders = useCallback(async (status?: string) => {
+  const fetchOrders = useCallback(async (params: {
+    status?: string;
+    quick?: string;
+    search?: string;
+    page?: number;
+    size?: number;
+  } = {}) => {
     try {
       setLoading(true);
-      const res = await adminApi.getOrders(status);
-      setOrders(res.data);
+      const res = await adminApi.getOrdersPage({
+        status: params.status,
+        quick: params.quick,
+        search: params.search,
+        page: params.page || 1,
+        size: params.size || 20,
+      });
+      setOrders(res.data.items || []);
+      setOrderPage({
+        page: res.data.page || 1,
+        size: res.data.size || params.size || 20,
+        total: res.data.total || 0,
+        totalPages: res.data.totalPages || 0,
+      });
+      pageSizeRef.current = res.data.size || params.size || pageSizeRef.current;
+      setOrderSummary(res.data.summary || {});
     } catch {
       message.error(t('pages.adminOrders.fetchFailed'));
     } finally {
@@ -73,8 +99,15 @@ const OrderManagement: React.FC = () => {
   }, [t]);
 
   useEffect(() => {
-    fetchOrders(filterStatus);
-  }, [fetchOrders, filterStatus]);
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchText(searchText.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchText]);
+
+  useEffect(() => {
+    fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: 1, size: pageSizeRef.current });
+  }, [debouncedSearchText, fetchOrders, filterStatus, quickFilter]);
 
   useEffect(() => {
     const nextStatus = searchParams.get('status') || undefined;
@@ -85,7 +118,7 @@ const OrderManagement: React.FC = () => {
 
   useEffect(() => {
     setSelectedOrderIds([]);
-  }, [filterStatus, quickFilter, searchText]);
+  }, [filterStatus, quickFilter, debouncedSearchText]);
 
   useEffect(() => {
     logisticsCarrierApi.getAll(true)
@@ -106,7 +139,7 @@ const OrderManagement: React.FC = () => {
       setStatusUpdatingIds((current) => [...current, orderId]);
       await adminApi.updateOrderStatus(orderId, newStatus);
       message.success(t('pages.adminOrders.statusUpdated'));
-      fetchOrders(filterStatus);
+      fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
       const msg = err.response?.data?.error || t('messages.updateFailed');
       message.error(msg);
@@ -283,7 +316,7 @@ const OrderManagement: React.FC = () => {
       setShippingOrder(null);
       setTrackingNumber('');
       setTrackingCarrierCode(undefined);
-      fetchOrders(filterStatus);
+      fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
       printWindow?.close();
       const msg = err.response?.data?.error || t('messages.updateFailed');
@@ -341,13 +374,15 @@ const OrderManagement: React.FC = () => {
       const res = await adminApi.refundOrder(refundOrder.id, {
         reason: refundReason.trim(),
         restock: refundRestock,
+        manualRefundReference: manualRefundReference.trim(),
       });
       message.success(t('pages.adminOrders.refundCompletedWithReference', { reference: res.data.payment.refundReference || res.data.payment.id }));
       setRefundOrder(null);
       setRefundReason('');
+      setManualRefundReference('');
       setRefundRestock(false);
       setRefundPayments([]);
-      fetchOrders(filterStatus);
+      fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
       message.error(err.response?.data?.error || t('pages.adminOrders.refundFailed'));
     } finally {
@@ -358,6 +393,30 @@ const OrderManagement: React.FC = () => {
   const hasLoadedRefundPayments = refundPayments.length > 0;
   const hasPaidRefundPayment = refundPayments.some((payment) => payment.status === 'PAID');
   const refundAlreadyProcessing = refundPayments.some((payment) => payment.status === 'REFUNDING');
+
+  const mergePayment = (payments: Payment[], syncedPayment: Payment) =>
+    payments.map((payment) => payment.id === syncedPayment.id ? syncedPayment : payment);
+
+  const handleSyncPayment = async (payment: Payment, scope: 'detail' | 'refund') => {
+    if (syncingPaymentIds.includes(payment.id)) {
+      return;
+    }
+    try {
+      setSyncingPaymentIds((current) => [...current, payment.id]);
+      const res = await paymentApi.sync(payment.id);
+      if (scope === 'refund') {
+        setRefundPayments((current) => mergePayment(current, res.data));
+      } else {
+        setOrderPayments((current) => mergePayment(current, res.data));
+      }
+      message.success(t('pages.adminOrders.paymentSynced'));
+      fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
+    } catch (err: any) {
+      message.error(err.response?.data?.error || t('pages.adminOrders.paymentSyncFailed'));
+    } finally {
+      setSyncingPaymentIds((current) => current.filter((id) => id !== payment.id));
+    }
+  };
 
   const handleBatchShip = async () => {
     if (selectedVisibleShippableIds.length === 0) {
@@ -370,7 +429,7 @@ const OrderManagement: React.FC = () => {
       message.success(t('pages.adminOrders.batchShipResult', { success: res.data.success, failed: res.data.failed }));
       setBatchShipOpen(false);
       setSelectedOrderIds([]);
-      fetchOrders(filterStatus);
+      fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.operationFailed'));
     } finally {
@@ -380,63 +439,24 @@ const OrderManagement: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      if (quickFilter || normalizedSearchText) {
-        exportVisibleOrders();
-        return;
-      }
-      const res = await adminApi.exportOrders(filterStatus);
+      const res = await adminApi.exportOrders(filterStatus, debouncedSearchText, quickFilter);
       const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
+      const suffix = [filterStatus, quickFilter, debouncedSearchText ? 'search' : ''].filter(Boolean).join('-');
       link.href = url;
-      link.download = `orders${filterStatus ? '-' + filterStatus : ''}.csv`;
+      link.download = `orders${suffix ? '-' + suffix : ''}.csv`;
       link.click();
       URL.revokeObjectURL(url);
+      if (String(res.headers?.['x-export-truncated']) === 'true') {
+        message.warning(t('pages.adminOrders.exportTruncated', {
+          returned: res.headers?.['x-export-returned'] || '',
+          total: res.headers?.['x-export-total'] || '',
+        }));
+      }
     } catch {
       message.error(t('pages.adminOrders.exportFailed'));
     }
-  };
-
-  const escapeCsv = (value: unknown) => {
-    const text = String(value ?? '');
-    return `"${text.replace(/"/g, '""')}"`;
-  };
-
-  const exportVisibleOrders = () => {
-    const header = [
-      t('pages.adminOrders.orderId'),
-      t('common.userId'),
-      t('common.status'),
-      t('common.amount'),
-      t('pages.adminOrders.paymentMethod'),
-      t('pages.adminOrders.tracking'),
-      t('pages.adminOrders.returnTracking'),
-      t('pages.adminOrders.returnReason'),
-      t('pages.adminOrders.refundedAt'),
-      t('pages.adminOrders.address'),
-      t('pages.adminOrders.createdAt'),
-    ];
-    const rows = sortedFilteredOrders.map((order) => [
-      order.orderNo || order.id,
-      order.userId,
-      t(`status.${order.status}`),
-      order.totalAmount,
-      order.paymentMethod || '',
-      order.trackingNumber || '',
-      order.returnTrackingNumber || '',
-      order.returnReason || '',
-      order.refundedAt ? new Date(order.refundedAt).toLocaleString(dateLocale) : '',
-      order.shippingAddress || '',
-      order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '',
-    ]);
-    const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
-    const blob = new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `orders-visible-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   const handleTrackShipment = (trackingNo?: string, carrierCode?: string) => {
@@ -471,39 +491,8 @@ const OrderManagement: React.FC = () => {
     };
   };
 
-  const matchesQuickFilter = (order: Order, filter?: string) => {
-    if (!filter) return true;
-    if (filter === 'NEEDS_ACTION') {
-      return isOrderNeedsAction(order);
-    }
-    if (filter === 'SLA_OVERDUE') {
-      return Boolean(getOrderSla(order)?.overdue);
-    }
-    if (filter === 'SLA_DUE_SOON') {
-      return Boolean(getOrderSla(order)?.dueSoon);
-    }
-    if (filter === 'REFUNDED') {
-      return isOrderRefunded(order);
-    }
-    return order.status === filter;
-  };
-  const normalizedSearchText = searchText.trim().toLowerCase();
-  const quickFilteredOrders = orders.filter((order) => matchesQuickFilter(order, quickFilter));
-  const filteredOrders = normalizedSearchText
-    ? quickFilteredOrders.filter((order) => [
-        order.id,
-        order.orderNo,
-        order.userId,
-        order.status,
-        order.shippingAddress,
-        order.paymentMethod,
-        order.trackingNumber,
-        order.trackingCarrierName,
-        order.returnTrackingNumber,
-        order.returnReason,
-      ].some((value) => String(value || '').toLowerCase().includes(normalizedSearchText)))
-    : quickFilteredOrders;
-  const sortedFilteredOrders = [...filteredOrders].sort((left, right) => {
+  const normalizedSearchText = debouncedSearchText.trim().toLowerCase();
+  const sortedFilteredOrders = [...orders].sort((left, right) => {
     const priorityDelta = (orderPriority[left.status] ?? 99) - (orderPriority[right.status] ?? 99);
     if (priorityDelta !== 0) return priorityDelta;
     const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
@@ -517,49 +506,49 @@ const OrderManagement: React.FC = () => {
     {
       key: 'needsAction',
       label: t('pages.adminOrders.needsAction'),
-      value: orders.filter(isOrderNeedsAction).length,
+      value: orderSummary.NEEDS_ACTION ?? orders.filter(isOrderNeedsAction).length,
       color: '#cf1322',
       filter: 'NEEDS_ACTION',
     },
     {
       key: 'slaOverdue',
       label: t('pages.adminOrders.slaOverdueCard'),
-      value: orders.filter((order) => getOrderSla(order)?.overdue).length,
+      value: orderSummary.SLA_OVERDUE ?? orders.filter((order) => getOrderSla(order)?.overdue).length,
       color: '#a8071a',
       filter: 'SLA_OVERDUE',
     },
     {
       key: 'slaDueSoon',
       label: t('pages.adminOrders.slaDueSoonCard'),
-      value: orders.filter((order) => getOrderSla(order)?.dueSoon).length,
+      value: orderSummary.SLA_DUE_SOON ?? orders.filter((order) => getOrderSla(order)?.dueSoon).length,
       color: '#fa8c16',
       filter: 'SLA_DUE_SOON',
     },
     {
       key: 'pendingShipment',
       label: t('status.PENDING_SHIPMENT'),
-      value: orders.filter(isOrderShippable).length,
+      value: orderSummary.PENDING_SHIPMENT ?? orders.filter(isOrderShippable).length,
       color: '#1677ff',
       filter: 'PENDING_SHIPMENT',
     },
     {
       key: 'returnRequested',
       label: t('status.RETURN_REQUESTED'),
-      value: orders.filter((order) => order.status === 'RETURN_REQUESTED').length,
+      value: orderSummary.RETURN_REQUESTED ?? orders.filter((order) => order.status === 'RETURN_REQUESTED').length,
       color: '#d48806',
       filter: 'RETURN_REQUESTED',
     },
     {
       key: 'returnShipped',
       label: t('status.RETURN_SHIPPED'),
-      value: orders.filter((order) => order.status === 'RETURN_SHIPPED').length,
+      value: orderSummary.RETURN_SHIPPED ?? orders.filter((order) => order.status === 'RETURN_SHIPPED').length,
       color: '#08979c',
       filter: 'RETURN_SHIPPED',
     },
     {
       key: 'refunded',
       label: t('status.REFUNDED'),
-      value: orders.filter(isOrderRefunded).length,
+      value: orderSummary.REFUNDED ?? orders.filter(isOrderRefunded).length,
       color: '#722ed1',
       filter: 'REFUNDED',
     },
@@ -807,7 +796,8 @@ const OrderManagement: React.FC = () => {
           <Input.Search
             allowClear
             value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
+            maxLength={120}
+            onChange={(event) => setSearchText(event.target.value.slice(0, 120))}
             placeholder={t('pages.adminOrders.searchPlaceholder')}
             style={{ width: 260 }}
           />
@@ -833,6 +823,9 @@ const OrderManagement: React.FC = () => {
               {t('pages.adminOrders.quickFilterActive', { filter: activeQuickFilterLabel })}
             </Tag>
           ) : null}
+          <Tag color="blue">
+            {t('pages.adminOrders.total', { count: orderPage.total })} | {orderPage.totalPages ? `${orderPage.page}/${orderPage.totalPages}` : '0/0'}
+          </Tag>
         </Space>
       </Card>
       <div className="order-management-page__table">
@@ -848,7 +841,15 @@ const OrderManagement: React.FC = () => {
             }),
           }}
           loading={loading}
-          pagination={{ pageSize: 10, showTotal: (total) => t('pages.adminOrders.total', { count: total }) }}
+          pagination={{
+            current: orderPage.page,
+            pageSize: orderPage.size,
+            total: orderPage.total,
+            showSizeChanger: true,
+            pageSizeOptions: [10, 20, 50, 100],
+            showTotal: (total) => t('pages.adminOrders.total', { count: total }),
+            onChange: (page, size) => fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page, size }),
+          }}
           bordered
           size="middle"
           scroll={{ x: 1500 }}
@@ -894,12 +895,13 @@ const OrderManagement: React.FC = () => {
         okText={t('pages.adminOrders.refundNow')}
         okButtonProps={{
           danger: true,
-          disabled: hasLoadedRefundPayments && !hasPaidRefundPayment,
+          disabled: refundPaymentsLoading || (hasLoadedRefundPayments && !hasPaidRefundPayment),
         }}
         onOk={handleRefundOrder}
         onCancel={() => {
           setRefundOrder(null);
           setRefundReason('');
+          setManualRefundReference('');
           setRefundRestock(false);
           setRefundPayments([]);
         }}
@@ -918,6 +920,13 @@ const OrderManagement: React.FC = () => {
             maxLength={500}
             showCount
             rows={4}
+          />
+          <Input
+            value={manualRefundReference}
+            onChange={(event) => setManualRefundReference(event.target.value)}
+            placeholder={t('pages.adminOrders.manualRefundReferencePlaceholder')}
+            maxLength={128}
+            allowClear
           />
           <Checkbox checked={refundRestock} onChange={(event) => setRefundRestock(event.target.checked)}>
             {t('pages.adminOrders.restockRefundItems')}
@@ -963,6 +972,22 @@ const OrderManagement: React.FC = () => {
                   dataIndex: 'refundReference',
                   key: 'refundReference',
                   render: (value: string) => value || '-',
+                },
+                {
+                  title: t('common.actions'),
+                  key: 'actions',
+                  width: 120,
+                  render: (_: any, payment: Payment) => (
+                    <Button
+                      size="small"
+                      type="link"
+                      loading={syncingPaymentIds.includes(payment.id)}
+                      disabled={payment.status !== 'PENDING'}
+                      onClick={() => handleSyncPayment(payment, 'refund')}
+                    >
+                      {t('pages.adminOrders.syncPayment')}
+                    </Button>
+                  ),
                 },
               ]}
             />
@@ -1086,6 +1111,22 @@ const OrderManagement: React.FC = () => {
                   key: 'createdAt',
                   width: 145,
                   render: (value: string) => value ? new Date(value).toLocaleString(dateLocale) : '-',
+                },
+                {
+                  title: t('common.actions'),
+                  key: 'actions',
+                  width: 120,
+                  render: (_: any, payment: Payment) => (
+                    <Button
+                      size="small"
+                      type="link"
+                      loading={syncingPaymentIds.includes(payment.id)}
+                      disabled={payment.status !== 'PENDING'}
+                      onClick={() => handleSyncPayment(payment, 'detail')}
+                    >
+                      {t('pages.adminOrders.syncPayment')}
+                    </Button>
+                  ),
                 },
               ]}
             />

@@ -324,6 +324,133 @@
   border-top: 1px solid rgba(18, 71, 52, 0.08);
 }
 
+.admin-dashboard__sla {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.4fr);
+  gap: 14px;
+  align-items: stretch;
+  padding: 14px 16px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+}
+
+.admin-dashboard__sla--watch {
+  border-color: #ffe0b8;
+  background: linear-gradient(135deg, #ffffff 0%, #fff8ef 100%);
+}
+
+.admin-dashboard__sla--risk {
+  border-color: #ffccc7;
+  background: linear-gradient(135deg, #ffffff 0%, #fff5f3 100%);
+}
+
+.admin-dashboard__sla--ready {
+  box-shadow: none;
+}
+
+.admin-dashboard__slaIntro {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  align-content: center;
+  align-items: center;
+}
+
+.admin-dashboard__slaIntro > .anticon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #124734;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.admin-dashboard__slaIntro > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.admin-dashboard__slaIntro .ant-tag {
+  grid-column: 2;
+  width: fit-content;
+  margin: 0;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.admin-dashboard__slaGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-dashboard__slaCard {
+  min-height: 108px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: #ffffff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.admin-dashboard__slaCard:hover,
+.admin-dashboard__slaCard:focus-visible {
+  outline: none;
+  border-color: #124734;
+  box-shadow: 0 10px 22px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
+}
+
+.admin-dashboard__slaCard--warning {
+  border-color: #ffe0b8;
+  background: #fff8ef;
+}
+
+.admin-dashboard__slaCard--danger {
+  border-color: #ffccc7;
+  background: #fff5f3;
+}
+
+.admin-dashboard__slaCard--info {
+  border-color: #b7ebff;
+  background: #f0fbff;
+}
+
+.admin-dashboard__slaCard--ready {
+  border-color: #dce9df;
+  background: #ffffff;
+}
+
+.admin-dashboard__slaCard strong {
+  color: #173f2b;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.admin-dashboard__slaCard span {
+  color: #173f2b;
+  font-weight: 800;
+}
+
+.admin-dashboard__slaCard .ant-typography {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .admin-dashboard__statRow,
 .admin-dashboard__contentRow {
   margin-bottom: 6px;
@@ -465,6 +592,7 @@
   .admin-dashboard__hero,
   .admin-dashboard__actionBar,
   .admin-dashboard__paymentOps,
+  .admin-dashboard__sla,
   .admin-dashboard__paymentOpsActions {
     grid-template-columns: 1fr;
   }
@@ -474,6 +602,10 @@
   }
 
   .admin-dashboard__paymentOpsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-dashboard__slaGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -490,13 +622,15 @@
 
   .admin-dashboard__hero,
   .admin-dashboard__actionBar,
-  .admin-dashboard__paymentOps {
+  .admin-dashboard__paymentOps,
+  .admin-dashboard__sla {
     padding: 12px;
   }
 
   .admin-dashboard__heroMeta,
   .admin-dashboard__actionGrid,
-  .admin-dashboard__paymentOpsGrid {
+  .admin-dashboard__paymentOpsGrid,
+  .admin-dashboard__slaGrid {
     grid-template-columns: 1fr;
   }
 
@@ -516,13 +650,15 @@
 }
 
 .admin-dashboard--es .admin-dashboard__actionCard,
-.admin-dashboard--es .admin-dashboard__paymentOpsCard {
+.admin-dashboard--es .admin-dashboard__paymentOpsCard,
+.admin-dashboard--es .admin-dashboard__slaCard {
   min-height: 116px;
 }
 
 .admin-dashboard--es .admin-dashboard__paymentOpsActions .ant-btn,
 .admin-dashboard--es .admin-dashboard__actionCard span,
 .admin-dashboard--es .admin-dashboard__paymentOpsCard span,
+.admin-dashboard--es .admin-dashboard__slaCard span,
 .admin-dashboard--es .admin-dashboard__metricList span {
   white-space: normal;
 }

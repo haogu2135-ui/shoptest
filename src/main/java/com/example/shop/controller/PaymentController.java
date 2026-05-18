@@ -107,6 +107,28 @@ public class PaymentController {
         }
     }
 
+    @PostMapping("/{id}/sync")
+    public ResponseEntity<?> syncPayment(@PathVariable Long id,
+                                         @RequestBody(required = false) Map<String, String> body,
+                                         Authentication authentication,
+                                         HttpServletRequest request) {
+        try {
+            assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null);
+            Payment payment = paymentService.syncPayment(id);
+            auditLogService.record("PAYMENT_SYNC", "SUCCESS", authentication, "PAYMENT", id, request,
+                    "Payment state synced", payment.getOrderNo());
+            return ResponseEntity.ok(payment);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
+                    e.getMessage(), null);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (ResponseStatusException e) {
+            auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
+                    reasonOf(e), null);
+            throw e;
+        }
+    }
+
     @PostMapping("/callback")
     public ResponseEntity<?> callback(@Valid @RequestBody PaymentCallbackRequest request, HttpServletRequest httpRequest) {
         try {

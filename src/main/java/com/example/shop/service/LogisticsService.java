@@ -64,16 +64,22 @@ public class LogisticsService {
     @Value("${kuaidi100.lang:zh_CN}")
     private String kuaidi100Lang;
 
+    @Value("${logistics.tracking-number-max-chars:120}")
+    private int trackingNumberMaxChars;
+
+    @Value("${logistics.carrier-max-chars:40}")
+    private int carrierMaxChars;
+
     public LogisticsTrackResponse track(String trackingNumber, String carrier) {
         return track(trackingNumber, carrier, null);
     }
 
     public LogisticsTrackResponse track(String trackingNumber, String carrier, Long orderId) {
-        if (trackingNumber == null || trackingNumber.trim().isEmpty()) {
-            throw new IllegalArgumentException("Tracking number is required");
+        String normalizedTrackingNumber = normalizeRequiredText(trackingNumber, "Tracking number", trackingNumberMaxChars);
+        String normalizedCarrier = normalizeOptionalText(carrier, carrierMaxChars);
+        if (normalizedCarrier == null) {
+            normalizedCarrier = "STANDARD";
         }
-        String normalizedTrackingNumber = trackingNumber.trim();
-        String normalizedCarrier = carrier == null || carrier.trim().isEmpty() ? "STANDARD" : carrier.trim();
         Order order = orderId == null ? null : orderRepository.findById(orderId);
 
         if (shouldUseKuaidi100(order)) {
@@ -342,6 +348,37 @@ public class LogisticsService {
 
     private String stringValue(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
+    }
+
+    private String normalizeRequiredText(String value, String fieldName, int maxChars) {
+        String cleaned = normalizeText(value);
+        if (cleaned == null || cleaned.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        if (cleaned.length() > maxChars) {
+            throw new IllegalArgumentException(fieldName + " must be at most " + maxChars + " characters");
+        }
+        return cleaned;
+    }
+
+    private String normalizeOptionalText(String value, int maxChars) {
+        String cleaned = normalizeText(value);
+        if (cleaned == null || cleaned.isEmpty()) {
+            return null;
+        }
+        if (cleaned.length() > maxChars) {
+            throw new IllegalArgumentException("Carrier must be at most " + maxChars + " characters");
+        }
+        return cleaned;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replaceAll("\\p{Cntrl}", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     private boolean isBlank(String value) {

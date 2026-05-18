@@ -122,7 +122,10 @@ public class SupportService {
     }
 
     private String normalizeContent(String content) {
-        String normalized = content == null ? "" : content.trim();
+        String normalized = String.valueOf(content == null ? "" : content)
+                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
         int maxChars = maxMessageChars > 0 ? maxMessageChars : 1000;
         if (normalized.length() > maxChars) {
             throw new IllegalArgumentException("Message is too long");

@@ -257,6 +257,21 @@ const AdminDashboard: React.FC = () => {
     guideTitle: t('pages.adminDashboard.paymentReturnOps.guideTitle'),
     guideText: t('pages.adminDashboard.paymentReturnOps.guideText'),
   };
+  const slaCopy = {
+    title: t('pages.adminDashboard.operationsSla.title'),
+    subtitle: t('pages.adminDashboard.operationsSla.subtitle'),
+    healthy: t('pages.adminDashboard.operationsSla.healthy'),
+    watch: t('pages.adminDashboard.operationsSla.watch'),
+    risk: t('pages.adminDashboard.operationsSla.risk'),
+    stalePendingPayment: t('pages.adminDashboard.operationsSla.stalePendingPayment'),
+    delayedShipment: t('pages.adminDashboard.operationsSla.delayedShipment'),
+    returnAwaitingShipment: t('pages.adminDashboard.operationsSla.returnAwaitingShipment'),
+    refundDue: t('pages.adminDashboard.operationsSla.refundDue'),
+    stalePendingPaymentText: t('pages.adminDashboard.operationsSla.stalePendingPaymentText'),
+    delayedShipmentText: t('pages.adminDashboard.operationsSla.delayedShipmentText'),
+    returnAwaitingShipmentText: t('pages.adminDashboard.operationsSla.returnAwaitingShipmentText'),
+    refundDueText: t('pages.adminDashboard.operationsSla.refundDueText'),
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -376,6 +391,47 @@ const AdminDashboard: React.FC = () => {
       label: paymentRefundCopy.refunded,
       tone: 'ready',
       target: '/admin/orders?quick=REFUNDED',
+    },
+  ];
+  const operationsSlaRisks = stats.operationsSlaRisks || {};
+  const operationsSlaRiskTotal = Number(stats.operationsSlaRiskTotal || 0);
+  const operationsSlaHealth = operationsSlaRiskTotal === 0
+    ? slaCopy.healthy
+    : operationsSlaRiskTotal >= 4
+      ? slaCopy.risk
+      : slaCopy.watch;
+  const operationsSlaCards = [
+    {
+      key: 'stale-pending-payment',
+      value: Number(operationsSlaRisks.stalePendingPayment || 0),
+      title: slaCopy.stalePendingPayment,
+      text: slaCopy.stalePendingPaymentText,
+      target: '/admin/orders?status=PENDING_PAYMENT',
+      tone: Number(operationsSlaRisks.stalePendingPayment || 0) > 0 ? 'warning' : 'ready',
+    },
+    {
+      key: 'delayed-shipment',
+      value: Number(operationsSlaRisks.delayedShipment || 0),
+      title: slaCopy.delayedShipment,
+      text: slaCopy.delayedShipmentText,
+      target: '/admin/orders?status=PENDING_SHIPMENT',
+      tone: Number(operationsSlaRisks.delayedShipment || 0) > 0 ? 'danger' : 'ready',
+    },
+    {
+      key: 'return-awaiting-shipment',
+      value: Number(operationsSlaRisks.returnAwaitingShipment || 0),
+      title: slaCopy.returnAwaitingShipment,
+      text: slaCopy.returnAwaitingShipmentText,
+      target: '/admin/orders?status=RETURN_APPROVED',
+      tone: Number(operationsSlaRisks.returnAwaitingShipment || 0) > 0 ? 'info' : 'ready',
+    },
+    {
+      key: 'refund-due',
+      value: Number(operationsSlaRisks.refundDue || 0),
+      title: slaCopy.refundDue,
+      text: slaCopy.refundDueText,
+      target: '/admin/orders?status=RETURN_SHIPPED',
+      tone: Number(operationsSlaRisks.refundDue || 0) > 0 ? 'danger' : 'ready',
     },
   ];
   const operationalActions = [
@@ -521,6 +577,33 @@ const AdminDashboard: React.FC = () => {
             <Button size="small" type="primary" onClick={() => navigate('/admin/orders?quick=RETURN_SHIPPED')}>{paymentRefundCopy.returnAction}</Button>
             <Button size="small" onClick={() => navigate('/admin/audit-logs?view=payment-failures')}>{paymentRefundCopy.auditAction}</Button>
           </Space>
+        </div>
+      </section>
+
+      <section className={`admin-dashboard__sla admin-dashboard__sla--${operationsSlaRiskTotal === 0 ? 'ready' : operationsSlaRiskTotal >= 4 ? 'risk' : 'watch'}`} aria-label={slaCopy.title}>
+        <div className="admin-dashboard__slaIntro">
+          <ClockCircleOutlined />
+          <div>
+            <Typography.Text strong>{slaCopy.title}</Typography.Text>
+            <Typography.Text type="secondary">{slaCopy.subtitle}</Typography.Text>
+          </div>
+          <Tag color={operationsSlaRiskTotal === 0 ? 'green' : operationsSlaRiskTotal >= 4 ? 'red' : 'orange'}>
+            {operationsSlaHealth}
+          </Tag>
+        </div>
+        <div className="admin-dashboard__slaGrid">
+          {operationsSlaCards.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`admin-dashboard__slaCard admin-dashboard__slaCard--${item.tone}`}
+              onClick={() => navigate(item.target)}
+            >
+              <strong>{item.value}</strong>
+              <span>{item.title}</span>
+              <Typography.Text type="secondary">{item.text}</Typography.Text>
+            </button>
+          ))}
         </div>
       </section>
 

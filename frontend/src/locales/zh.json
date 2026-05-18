@@ -577,6 +577,7 @@
       "moveAllToCart": "全部移回",
       "movedToCart": "已移回购物车",
       "movedSavedBatch": "已将 {count} 件稍后购买商品移回购物车",
+      "movedSavedBatchPartial": "已将 {count} 件稍后购买商品移回购物车，{failed} 件仍需确认。",
       "savedDaysAgo": "已保存 {count} 天",
       "savedReminderTitle": "{count} 件稍后购买商品还在等您",
       "savedReminderText": "结算前把它们移回购物车，别漏掉宠物日常需要的用品。",
@@ -1248,6 +1249,21 @@
         "healthRisk": "优先处理",
         "guideTitle": "处理顺序",
         "guideText": "先看待付款恢复，再处理待审核售后，最后确认已回寄订单的退款。"
+      },
+      "operationsSla": {
+        "title": "运营 SLA 风险队列",
+        "subtitle": "自动识别超时待付款、待发货、退货回寄和待退款订单，避免问题变成客服工单。",
+        "healthy": "SLA 正常",
+        "watch": "需要跟进",
+        "risk": "高风险",
+        "stalePendingPayment": "超时待付款",
+        "delayedShipment": "超时待发货",
+        "returnAwaitingShipment": "退货未回寄",
+        "refundDue": "待退款超时",
+        "stalePendingPaymentText": "待付款超过 30 分钟，请检查支付链接或跟进客户。",
+        "delayedShipmentText": "已支付订单超过 24 小时未发货，请优先履约。",
+        "returnAwaitingShipmentText": "退货已同意超过 3 天仍未回寄，请提醒客户。",
+        "refundDueText": "退货已回寄超过 24 小时未退款，请尽快确认。"
       }
     },
     "adminUsers": {
@@ -1297,6 +1313,7 @@
       "exportOrders": "导出订单",
       "exportVisibleOrders": "导出当前结果",
       "exportFailed": "订单导出失败",
+      "exportTruncated": "已导出 {returned}/{total} 个匹配订单，请缩小筛选后导出剩余结果。",
       "total": "共 {count} 个订单",
       "needsAction": "待处理",
       "slaOverdueCard": "已超时",
@@ -1382,12 +1399,16 @@
       "refundCompletedWithReference": "退款已完成，凭证：{reference}",
       "refundConfirmHint": "将为订单 {orderNo} 退款 {amount}。请仅在确认应向客户退回款项后操作。",
       "refundReasonPlaceholder": "填写退款原因，用于审计和客服备注",
+      "manualRefundReferencePlaceholder": "人工退款凭证，可填写网关/银行/客服工单号",
       "restockRefundItems": "退款后回补库存",
       "paymentHistory": "支付记录",
       "refundReference": "退款凭证",
       "refundPaymentEvidence": "支付凭证",
       "refundProcessingHint": "该订单已有退款正在处理中。",
-      "noPaidPaymentForRefund": "未找到可退款的已支付记录。"
+      "noPaidPaymentForRefund": "未找到可退款的已支付记录。",
+      "syncPayment": "刷新状态",
+      "paymentSynced": "支付状态已刷新",
+      "paymentSyncFailed": "刷新支付状态失败"
     },
     "logisticsCarriers": {
       "title": "快递公司配置",

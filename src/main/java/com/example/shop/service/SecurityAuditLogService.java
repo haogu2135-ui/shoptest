@@ -29,17 +29,17 @@ public class SecurityAuditLogService {
                        String message,
                        String metadata) {
         SecurityAuditLog auditLog = new SecurityAuditLog();
-        auditLog.setAction(limit(action, 50));
-        auditLog.setResult(limit(result, 20));
+        auditLog.setAction(limit(normalizeLogText(action), 50));
+        auditLog.setResult(limit(normalizeLogText(result), 20));
         auditLog.setActorUserId(actorUserId);
-        auditLog.setActorUsername(limit(actorUsername, 100));
-        auditLog.setActorRole(limit(actorRole, 30));
-        auditLog.setResourceType(limit(resourceType, 50));
-        auditLog.setResourceId(resourceId == null ? null : limit(String.valueOf(resourceId), 100));
-        auditLog.setIpAddress(limit(resolveClientIp(request), 45));
-        auditLog.setUserAgent(limit(request == null ? null : request.getHeader("User-Agent"), 500));
-        auditLog.setMessage(limit(message, 1000));
-        auditLog.setMetadata(limit(metadata, 2000));
+        auditLog.setActorUsername(limit(normalizeLogText(actorUsername), 100));
+        auditLog.setActorRole(limit(normalizeLogText(actorRole), 30));
+        auditLog.setResourceType(limit(normalizeLogText(resourceType), 50));
+        auditLog.setResourceId(resourceId == null ? null : limit(normalizeLogText(String.valueOf(resourceId)), 100));
+        auditLog.setIpAddress(limit(normalizeLogText(resolveClientIp(request)), 45));
+        auditLog.setUserAgent(limit(normalizeLogText(request == null ? null : request.getHeader("User-Agent")), 500));
+        auditLog.setMessage(limit(normalizeLogText(message), 1000));
+        auditLog.setMetadata(limit(normalizeLogText(metadata), 2000));
         auditLog.setCreatedAt(LocalDateTime.now());
         try {
             auditLogMapper.insert(auditLog);
@@ -107,7 +107,17 @@ public class SecurityAuditLogService {
     }
 
     private String blankToNull(String value) {
-        return value == null || value.trim().isEmpty() ? null : value.trim();
+        String normalized = normalizeLogText(value);
+        return normalized == null || normalized.isEmpty() ? null : limit(normalized, 100);
+    }
+
+    private String normalizeLogText(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replaceAll("\\p{Cntrl}", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     private static class Actor {

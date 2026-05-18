@@ -34,6 +34,13 @@ export interface DashboardStats {
     refundingPayments?: number;
     netRevenue?: number;
     refundRate?: number;
+    operationsSlaRiskTotal?: number;
+    operationsSlaRisks?: {
+        stalePendingPayment?: number;
+        delayedShipment?: number;
+        returnAwaitingShipment?: number;
+        refundDue?: number;
+    };
     paidOrders?: number;
     cancelledOrders?: number;
     pendingPaymentOrders?: number;
@@ -189,6 +196,15 @@ export interface Order {
     username?: string;
     orderItems?: OrderItem[];
     createdAt?: string;
+}
+
+export interface AdminOrderPage {
+    items: Order[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
+    summary?: Record<string, number>;
 }
 
 export interface LogisticsTrackEvent {

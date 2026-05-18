@@ -19,6 +19,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findActiveByCategoryId(@Param("categoryId") Long categoryId, Pageable pageable);
     List<Product> findByCategoryIdIn(List<Long> categoryIds);
     List<Product> findByNameContainingIgnoreCase(String keyword);
+    @Query("select count(p) from Product p where upper(coalesce(p.status, '')) = 'ACTIVE'")
+    long countActiveProducts();
+    @Query("select count(p) from Product p where upper(coalesce(p.status, '')) = 'PENDING_REVIEW'")
+    long countPendingReviewProducts();
+    @Query("select count(p) from Product p where p.stock is not null and p.stock < 10")
+    long countLowStockProducts();
+    @Query("select p from Product p where p.stock is not null and p.stock < 10 order by p.stock asc, p.id asc")
+    List<Product> findLowStockProducts(Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Product p where p.id in :ids")
