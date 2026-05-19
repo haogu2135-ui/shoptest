@@ -61,3 +61,51 @@ export const resolveApiAssetUrl = (assetUrl?: string | null, fallback = '') => {
   if (/^[a-z][a-z\d+.-]*:/i.test(value) || value.startsWith('//')) return fallback;
   return `${apiBaseUrl}${value.startsWith('/') ? value : `/${value}`}`;
 };
+
+export const buildResponsiveImageSrcSet = (
+  imageUrl?: string | null,
+  widths = [320, 480, 720, 960, 1200],
+) => {
+  const value = String(imageUrl || '').trim();
+  if (!value || /^data:/i.test(value) || /^blob:/i.test(value) || value.startsWith('//')) {
+    return undefined;
+  }
+  try {
+    const url = new URL(value, window.location.origin);
+    const canResize = url.hostname.includes('images.unsplash.com') || url.searchParams.has('w');
+    if (!canResize) return undefined;
+    return widths
+      .map((width) => {
+        const nextUrl = new URL(url.toString());
+        nextUrl.searchParams.set('auto', 'format');
+        nextUrl.searchParams.set('w', String(width));
+        nextUrl.searchParams.set('q', width >= 960 ? '80' : '76');
+        return `${nextUrl.toString()} ${width}w`;
+      })
+      .join(', ');
+  } catch {
+    return undefined;
+  }
+};
+
+export const getOptimizedImageUrl = (
+  imageUrl?: string | null,
+  width = 900,
+) => {
+  const value = String(imageUrl || '').trim();
+  if (!value || /^data:/i.test(value) || /^blob:/i.test(value) || value.startsWith('//')) {
+    return value || '';
+  }
+  try {
+    const url = new URL(value, window.location.origin);
+    const canResize = url.hostname.includes('images.unsplash.com') || url.searchParams.has('w');
+    if (!canResize) return value;
+    const safeWidth = Math.max(96, Math.min(Math.floor(Number(width) || 900), 2000));
+    url.searchParams.set('auto', 'format');
+    url.searchParams.set('w', String(safeWidth));
+    url.searchParams.set('q', safeWidth >= 960 ? '80' : '76');
+    return url.toString();
+  } catch {
+    return value;
+  }
+};

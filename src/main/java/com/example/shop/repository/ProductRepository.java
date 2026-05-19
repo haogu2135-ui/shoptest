@@ -32,6 +32,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("select p from Product p where p.id in :ids")
     List<Product> findAllByIdForUpdate(@Param("ids") List<Long> ids);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.id = :id")
+    Product findByIdForUpdate(@Param("id") Long id);
+
     @Modifying
     @Query(value = "update products set stock = stock - ?2, updated_at = current_timestamp where id = ?1 and stock >= ?2",
             nativeQuery = true)

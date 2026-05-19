@@ -3,19 +3,19 @@ import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty,
 import { BarChartOutlined, BellOutlined, CheckCircleOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi } from '../api';
-import type { Product, Category } from '../types';
+import type { CartItem, Product, Category } from '../types';
 import { flattenCategoryTree, getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
-import { addGuestCartItem } from '../utils/guestCart';
+import { addGuestCartItem, getGuestCartItems } from '../utils/guestCart';
 import { buildBundleSpecs, getBundleInfo } from '../utils/bundle';
 import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
 import { addStockAlert, readStockAlerts, removeStockAlert } from '../utils/stockAlerts';
 import { conversionConfig, getLowStockCount } from '../utils/conversionConfig';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import { loadProductViewPreferences } from '../utils/productViewPreferences';
-import { getProductOptionGroups, getProductVariants, optionValueHasVariant, selectCompatibleProductOption } from '../utils/productOptions';
+import { getProductOptionGroups, getProductVariants, optionValueIsCompatible, selectCompatibleProductOption } from '../utils/productOptions';
 import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -561,7 +561,7 @@ const ProductList: React.FC = () => {
           options={group.values.map((value) => ({
             value,
             label: getLocalizedOptionLabel(value, language),
-            disabled: !optionValueHasVariant(quickAddVariants, group.name, value),
+            disabled: !optionValueIsCompatible(quickAddVariants, quickAddOptions, group.name, value),
           }))}
           style={{ width: '100%' }}
         />
@@ -601,6 +601,20 @@ const ProductList: React.FC = () => {
       message.error(t('pages.productDetail.insufficientStock'));
       return;
     }
+    const openCartWithSnapshot = async (token: string | null) => {
+      let items: CartItem[] | undefined;
+      if (token) {
+        try {
+          const response = await cartApi.getItems(0);
+          items = response.data;
+        } catch {
+          items = undefined;
+        }
+      } else {
+        items = getGuestCartItems();
+      }
+      dispatchDomEvent('shop:open-cart', items ? { items } : undefined);
+    };
     const bundleInfo = getBundleInfo(quickAddProduct);
     if (bundleInfo) {
       const token = localStorage.getItem('token');
@@ -615,7 +629,7 @@ const ProductList: React.FC = () => {
         }
         message.success(t('messages.addCartSuccess'));
         setQuickAddProduct(null);
-        dispatchDomEvent('shop:open-cart');
+        await openCartWithSnapshot(token);
       } catch {
         message.error(t('messages.addFailed'));
       }
@@ -639,7 +653,7 @@ const ProductList: React.FC = () => {
       }
       message.success(t('messages.addCartSuccess'));
       setQuickAddProduct(null);
-      dispatchDomEvent('shop:open-cart');
+      await openCartWithSnapshot(token);
     } catch {
       message.error(t('messages.addFailed'));
     }

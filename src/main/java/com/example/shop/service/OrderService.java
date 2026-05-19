@@ -229,13 +229,12 @@ public class OrderService {
     private List<CartItem> prepareCheckoutItems(Long userId, List<Long> cartItemIds, boolean reserveStock) {
         cartItemIds = normalizeCheckoutItemIds(cartItemIds);
         List<CartItem> selectedItems = cartItemMapper.findByIds(cartItemIds);
-        if (selectedItems.size() != cartItemIds.size()) {
-            throw new IllegalArgumentException("Some selected cart items do not exist");
-        }
-        if (selectedItems.stream().anyMatch(item -> !userId.equals(item.getUserId()))) {
-            throw new IllegalArgumentException("Selected cart items do not belong to this user");
-        }
+        assertCheckoutItemOwnership(userId, cartItemIds, selectedItems);
         Map<Long, Product> productById = loadProductsForCartItems(selectedItems, reserveStock);
+        if (reserveStock) {
+            selectedItems = cartItemMapper.findByIdsForUpdate(cartItemIds);
+            assertCheckoutItemOwnership(userId, cartItemIds, selectedItems);
+        }
         for (CartItem item : selectedItems) {
             Product product = productById.get(item.getProductId());
             if (product == null) {
@@ -251,12 +250,7 @@ public class OrderService {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
             if (reserveStock) {
-                productVariantService.decreaseVariantStock(product, item.getSelectedSpecs(), item.getQuantity());
-                if (product.getStock() == null || product.getStock() < item.getQuantity()) {
-                    throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
-                }
-                product.setStock(product.getStock() - item.getQuantity());
-                productRepository.save(product);
+                reserveProductStock(product, item.getSelectedSpecs(), item.getQuantity());
             }
             BigDecimal effectivePrice = productVariantService.resolvePrice(product, item.getSelectedSpecs());
             item.setPrice(effectivePrice);
@@ -264,11 +258,21 @@ public class OrderService {
         return selectedItems;
     }
 
+    private void assertCheckoutItemOwnership(Long userId, List<Long> cartItemIds, List<CartItem> selectedItems) {
+        if (selectedItems.size() != cartItemIds.size()) {
+            throw new IllegalArgumentException("Some selected cart items do not exist");
+        }
+        if (selectedItems.stream().anyMatch(item -> !userId.equals(item.getUserId()))) {
+            throw new IllegalArgumentException("Selected cart items do not belong to this user");
+        }
+    }
+
     private List<CartItem> prepareGuestCheckoutItems(Long userId, List<GuestCheckoutItemRequest> items, boolean reserveStock) {
         List<Long> productIds = items.stream()
                 .map(GuestCheckoutItemRequest::getProductId)
                 .filter(id -> id != null && id > 0)
                 .distinct()
+                .sorted()
                 .collect(Collectors.toList());
         Map<Long, Product> productById = (reserveStock
                 ? productRepository.findAllByIdForUpdate(productIds)
@@ -290,12 +294,7 @@ public class OrderService {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
             if (reserveStock) {
-                productVariantService.decreaseVariantStock(product, normalizedSpecs, normalizedQuantity);
-                if (product.getStock() == null || product.getStock() < normalizedQuantity) {
-                    throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
-                }
-                product.setStock(product.getStock() - normalizedQuantity);
-                productRepository.save(product);
+                reserveProductStock(product, normalizedSpecs, normalizedQuantity);
             }
             CartItem item = new CartItem();
             item.setUserId(userId);
@@ -309,6 +308,20 @@ public class OrderService {
             item.setProductStatus(product.getStatus());
             return item;
         }).collect(Collectors.toList());
+    }
+
+    private void reserveProductStock(Product product, String selectedSpecs, int quantity) {
+        if (product.getStock() != null) {
+            if (product.getStock() < quantity) {
+                throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
+            }
+            product.setStock(product.getStock() - quantity);
+        }
+        boolean reservedVariantStock = productVariantService.decreaseVariantStock(product, selectedSpecs, quantity);
+        if (product.getStock() == null && !reservedVariantStock) {
+            throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
+        }
+        productRepository.save(product);
     }
 
     private Long getOrCreateGuestUser(GuestCheckoutRequest request) {
@@ -385,6 +398,7 @@ public class OrderService {
                 .map(CartItem::getProductId)
                 .filter(id -> id != null && id > 0)
                 .distinct()
+                .sorted()
                 .collect(Collectors.toList());
         return (forUpdate
                 ? productRepository.findAllByIdForUpdate(productIds)
@@ -833,8 +847,12 @@ public class OrderService {
             return;
         }
         Product product = productOpt.get();
-        productVariantService.increaseVariantStock(product, item.getSelectedSpecs(), item.getQuantity());
-        product.setStock((product.getStock() == null ? 0 : product.getStock()) + item.getQuantity());
+        boolean restoredVariantStock = productVariantService.increaseVariantStock(product, item.getSelectedSpecs(), item.getQuantity());
+        if (product.getStock() != null) {
+            product.setStock(product.getStock() + item.getQuantity());
+        } else if (!restoredVariantStock) {
+            product.setStock(item.getQuantity());
+        }
         productRepository.save(product);
     }
 

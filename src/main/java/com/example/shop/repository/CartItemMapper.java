@@ -12,6 +12,8 @@ public interface CartItemMapper {
     
     CartItem findById(Long id);
 
+    CartItem findByIdForUpdate(Long id);
+
     CartItem findByUserIdAndProductId(@Param("userId") Long userId, @Param("productId") Long productId);
 
     CartItem findByUserIdAndProductIdAndSelectedSpecs(
@@ -19,7 +21,14 @@ public interface CartItemMapper {
             @Param("productId") Long productId,
             @Param("selectedSpecs") String selectedSpecs);
 
+    CartItem findByUserIdAndProductIdAndSelectedSpecsForUpdate(
+            @Param("userId") Long userId,
+            @Param("productId") Long productId,
+            @Param("selectedSpecs") String selectedSpecs);
+
     List<CartItem> findByIds(@Param("ids") List<Long> ids);
+
+    List<CartItem> findByIdsForUpdate(@Param("ids") List<Long> ids);
     
     int insert(CartItem cartItem);
     

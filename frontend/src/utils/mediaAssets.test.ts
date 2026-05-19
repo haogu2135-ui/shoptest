@@ -2,7 +2,7 @@ jest.mock('../api', () => ({
   apiBaseUrl: 'https://api.example.com',
 }));
 
-import { createSvgPlaceholder, resolveApiAssetUrl } from './mediaAssets';
+import { buildResponsiveImageSrcSet, createSvgPlaceholder, getOptimizedImageUrl, resolveApiAssetUrl } from './mediaAssets';
 
 describe('mediaAssets', () => {
   it('clamps placeholder dimensions and strips unsafe label characters', () => {
@@ -34,5 +34,26 @@ describe('mediaAssets', () => {
     expect(resolveApiAssetUrl('data:image/png;base64,abc')).toBe('data:image/png;base64,abc');
     expect(resolveApiAssetUrl('blob:https://app.example.com/id')).toBe('blob:https://app.example.com/id');
     expect(resolveApiAssetUrl('/uploads/a.png')).toBe('https://api.example.com/uploads/a.png');
+  });
+
+  it('builds responsive next-gen image candidates only for resize-aware URLs', () => {
+    const srcSet = buildResponsiveImageSrcSet('https://images.unsplash.com/photo-1?fit=crop&w=900&q=80', [320, 640]);
+
+    expect(srcSet).toContain('auto=format');
+    expect(srcSet).toContain('w=320');
+    expect(srcSet).toContain('320w');
+    expect(srcSet).toContain('w=640');
+    expect(srcSet).toContain('640w');
+    expect(buildResponsiveImageSrcSet('https://cdn.example.com/pet.jpg')).toBeUndefined();
+    expect(buildResponsiveImageSrcSet('data:image/png;base64,abc')).toBeUndefined();
+  });
+
+  it('returns optimized primary image URLs for resize-aware providers', () => {
+    const optimized = getOptimizedImageUrl('https://images.unsplash.com/photo-1?fit=crop&w=900&q=80', 640);
+
+    expect(optimized).toContain('auto=format');
+    expect(optimized).toContain('w=640');
+    expect(optimized).toContain('q=76');
+    expect(getOptimizedImageUrl('https://cdn.example.com/pet.jpg', 640)).toBe('https://cdn.example.com/pet.jpg');
   });
 });

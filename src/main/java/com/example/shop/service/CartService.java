@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -47,13 +46,13 @@ public class CartService {
     @Transactional
     public void addToCart(Long userId, Long productId, Integer quantity, String selectedSpecs) {
         int normalizedQuantity = normalizeQuantity(quantity);
-        Product product = requirePurchasableProduct(productId, normalizedQuantity);
+        Product product = requirePurchasableProductForUpdate(productId, normalizedQuantity);
         String normalizedSpecs = normalizeSelectedSpecs(selectedSpecs);
         productVariantService.validateSelection(product, normalizedSpecs);
         if (productVariantService.resolvePrice(product, normalizedSpecs) == null) {
             throw new IllegalStateException("Invalid product price");
         }
-        CartItem existingItem = cartItemMapper.findByUserIdAndProductIdAndSelectedSpecs(userId, productId, normalizedSpecs);
+        CartItem existingItem = cartItemMapper.findByUserIdAndProductIdAndSelectedSpecsForUpdate(userId, productId, normalizedSpecs);
         int existingQuantity = existingItem != null && existingItem.getQuantity() != null ? existingItem.getQuantity() : 0;
         int requestedQuantity = normalizeQuantity(existingQuantity + normalizedQuantity);
         Integer availableStock = productVariantService.resolveStock(product, normalizedSpecs);
@@ -81,10 +80,17 @@ public class CartService {
 
     @Transactional
     public void updateQuantity(Long cartItemId, Integer quantity) {
-        CartItem cartItem = cartItemMapper.findById(cartItemId);
+        CartItem cartItemSnapshot = cartItemMapper.findById(cartItemId);
+        if (cartItemSnapshot == null) {
+            return;
+        }
+        Product product = requirePurchasableProductForUpdate(cartItemSnapshot.getProductId(), quantity);
+        CartItem cartItem = cartItemMapper.findByIdForUpdate(cartItemId);
         if (cartItem != null) {
             int normalizedQuantity = normalizeQuantity(quantity);
-            Product product = requirePurchasableProduct(cartItem.getProductId(), normalizedQuantity);
+            if (!cartItemSnapshot.getProductId().equals(cartItem.getProductId())) {
+                throw new IllegalStateException("Cart item changed while updating");
+            }
             productVariantService.validateSelection(product, cartItem.getSelectedSpecs());
             Integer availableStock = productVariantService.resolveStock(product, cartItem.getSelectedSpecs());
             if (availableStock == null || availableStock < normalizedQuantity) {
@@ -170,18 +176,14 @@ public class CartService {
         }
     }
 
-    private Product requirePurchasableProduct(Long productId, Integer quantity) {
+    private Product requirePurchasableProductForUpdate(Long productId, Integer quantity) {
         normalizeQuantity(quantity);
-        Optional<Product> productOpt = productRepository.findById(productId);
-        if (!productOpt.isPresent()) {
+        Product product = productRepository.findByIdForUpdate(productId);
+        if (product == null) {
             throw new IllegalArgumentException("Product not found");
         }
-        Product product = productOpt.get();
         if (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
             throw new IllegalStateException("Product is not available");
-        }
-        if (product.getStock() == null || product.getStock() < quantity) {
-            throw new IllegalStateException("Insufficient stock for product: " + product.getName());
         }
         return product;
     }

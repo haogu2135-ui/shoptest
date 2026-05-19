@@ -1,15 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Row, Col, Card, Button, Tag, Typography, Spin, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Empty, Alert } from 'antd';
 import { HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined } from '@ant-design/icons';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
-import { ProductReview } from '../components/ProductReview';
 import { useLanguage } from '../i18n';
 import type { CartItem, Order, Product } from '../types';
 import type { ProductQuestion } from '../types';
 import { useMarket } from '../hooks/useMarket';
-import ProductRichDetail from '../components/ProductRichDetail';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
 import { addGuestCartItem } from '../utils/guestCart';
@@ -17,12 +15,15 @@ import { getBundleInfo } from '../utils/bundle';
 import { recordProductView } from '../utils/productViewPreferences';
 import { addStockAlert, hasStockAlert, removeStockAlert } from '../utils/stockAlerts';
 import { conversionConfig, estimatePetSize, getDeliveryPromise } from '../utils/conversionConfig';
-import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueHasVariant, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
+import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueIsCompatible, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
 import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import './ProductDetail.css';
 
 const { Title, Text } = Typography;
+const ProductRichDetail = React.lazy(() => import('../components/ProductRichDetail'));
+const ProductReview = React.lazy(() => import('../components/ProductReview').then((module) => ({ default: module.ProductReview })));
 
 interface Review {
   id: number;
@@ -40,6 +41,8 @@ interface Review {
 const fallbackProductImage = 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=900&q=80';
 const PRODUCT_RECOMMENDATIONS_CACHE_TTL = 2 * 60 * 1000;
 const productRecommendationsCache = new Map<string, { expiresAt: number; items: Product[] }>();
+const eagerImagePriorityProps = { fetchPriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
+const lazyImagePriorityProps = { fetchPriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
 
 const parseImageList = (value: unknown): string[] => {
   if (Array.isArray(value)) return value;
@@ -72,6 +75,12 @@ const handleGalleryZoomMove = (event: React.MouseEvent<HTMLImageElement>) => {
 
 const handleGalleryZoomLeave = (event: React.MouseEvent<HTMLImageElement>) => {
   event.currentTarget.style.transformOrigin = 'center center';
+};
+
+const applyImageFallback = (event: React.SyntheticEvent<HTMLImageElement>, fallback: string) => {
+  if (event.currentTarget.src === fallback) return;
+  event.currentTarget.removeAttribute('srcset');
+  event.currentTarget.src = fallback;
 };
 
 const getTouchDistance = (first: React.Touch, second: React.Touch) =>
@@ -133,6 +142,9 @@ const ProductDetail: React.FC = () => {
   const nonCriticalLoadedRef = useRef(false);
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
   const imageResumeTimerRef = useRef<number | null>(null);
+  const purchaseRequestKeyRef = useRef<string | null>(null);
+  const recommendationRequestIdsRef = useRef<Set<number>>(new Set());
+  const galleryScrollRafRef = useRef<number | null>(null);
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
   const trustBadges = conversionConfig.productTrustBadges.enabled ? conversionConfig.productTrustBadges.badges : [];
@@ -172,6 +184,13 @@ const ProductDetail: React.FC = () => {
   }, [clearImageResumeTimer]);
 
   useEffect(() => clearImageResumeTimer, [clearImageResumeTimer]);
+
+  useEffect(() => () => {
+    if (galleryScrollRafRef.current !== null) {
+      window.cancelAnimationFrame(galleryScrollRafRef.current);
+      galleryScrollRafRef.current = null;
+    }
+  }, []);
 
   const productImages = useMemo(() => product ? normalizeProductImages(product) : [], [product]);
   const galleryImages = useMemo(() => productImages.slice(0, -1), [productImages]);
@@ -366,7 +385,7 @@ const ProductDetail: React.FC = () => {
   }, [id]);
 
   const handleAddToCart = async () => {
-    if (purchaseSubmitting) return;
+    if (purchaseSubmitting || purchaseRequestKeyRef.current) return;
     const token = localStorage.getItem('token');
     try {
       if (!validateOptions()) return;
@@ -374,8 +393,9 @@ const ProductDetail: React.FC = () => {
         message.error(t('pages.productDetail.insufficientStock'));
         return;
       }
-      setPurchaseSubmitting('cart');
       const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
+      purchaseRequestKeyRef.current = `cart:${id}:${quantity}:${specs || ''}`;
+      setPurchaseSubmitting('cart');
       if (token) {
         await cartApi.addItem(0, Number(id), quantity, specs);
         dispatchDomEvent('shop:cart-updated');
@@ -387,6 +407,7 @@ const ProductDetail: React.FC = () => {
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.addFailed'));
     } finally {
+      purchaseRequestKeyRef.current = null;
       setPurchaseSubmitting(null);
     }
   };
@@ -399,7 +420,7 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleBuyNow = async () => {
-    if (purchaseSubmitting) return;
+    if (purchaseSubmitting || purchaseRequestKeyRef.current) return;
     const token = localStorage.getItem('token');
     try {
       if (!validateOptions()) return;
@@ -407,8 +428,9 @@ const ProductDetail: React.FC = () => {
         message.error(t('pages.productDetail.insufficientStock'));
         return;
       }
-      setPurchaseSubmitting('buy');
       const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
+      purchaseRequestKeyRef.current = `buy:${id}:${quantity}:${specs || ''}`;
+      setPurchaseSubmitting('buy');
       if (token) {
         await cartApi.addItem(0, Number(id), quantity, specs);
         dispatchDomEvent('shop:cart-updated');
@@ -430,6 +452,7 @@ const ProductDetail: React.FC = () => {
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.operationFailed'));
     } finally {
+      purchaseRequestKeyRef.current = null;
       setPurchaseSubmitting(null);
     }
   };
@@ -686,6 +709,10 @@ const ProductDetail: React.FC = () => {
 
   const handleAddRecommendationToCart = async (event: React.MouseEvent<HTMLElement>, item: Product | any) => {
     event.stopPropagation();
+    const recommendationId = Number(item.id);
+    if (!Number.isFinite(recommendationId) || recommendationRequestIdsRef.current.has(recommendationId)) {
+      return;
+    }
     if (isRecommendationUnavailable(item)) {
       message.warning(t('pages.productDetail.soldOut'));
       return;
@@ -698,9 +725,10 @@ const ProductDetail: React.FC = () => {
 
     const token = localStorage.getItem('token');
     try {
-      setRecommendationAddingId(item.id);
+      recommendationRequestIdsRef.current.add(recommendationId);
+      setRecommendationAddingId(recommendationId);
       if (token) {
-        await cartApi.addItem(0, Number(item.id), 1);
+        await cartApi.addItem(0, recommendationId, 1);
         dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem(item, 1, undefined, item.effectivePrice ?? item.price);
@@ -710,6 +738,7 @@ const ProductDetail: React.FC = () => {
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('messages.addFailed'));
     } finally {
+      recommendationRequestIdsRef.current.delete(recommendationId);
       setRecommendationAddingId(null);
     }
   };
@@ -739,15 +768,19 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleMobileGalleryScroll = () => {
-    const gallery = mobileGalleryRef.current;
-    if (!gallery || galleryImages.length <= 1) return;
-    const index = Math.round(gallery.scrollLeft / gallery.clientWidth);
-    const safeIndex = Math.min(Math.max(index, 0), galleryImages.length - 1);
-    const image = galleryImages[safeIndex];
-    setActiveMobileImageIndex(safeIndex);
-    if (image && image !== selectedImage) {
-      setSelectedImage(image);
-    }
+    if (galleryScrollRafRef.current !== null) return;
+    galleryScrollRafRef.current = window.requestAnimationFrame(() => {
+      galleryScrollRafRef.current = null;
+      const gallery = mobileGalleryRef.current;
+      if (!gallery || galleryImages.length <= 1) return;
+      const index = Math.round(gallery.scrollLeft / gallery.clientWidth);
+      const safeIndex = Math.min(Math.max(index, 0), galleryImages.length - 1);
+      const image = galleryImages[safeIndex];
+      setActiveMobileImageIndex(safeIndex);
+      if (image) {
+        setSelectedImage((currentImage) => (image === currentImage ? currentImage : image));
+      }
+    });
   };
 
   const getPinchOrigin = (first: React.Touch, second: React.Touch) => {
@@ -838,34 +871,46 @@ const ProductDetail: React.FC = () => {
                       className="product-mobile-gallery__slide"
                     >
                       <img
-                        src={image}
+                        src={getOptimizedImageUrl(image, index === 0 ? 720 : 540)}
+                        srcSet={buildResponsiveImageSrcSet(image, [360, 540, 720, 900])}
+                        sizes="100vw"
                         alt={`${product.name} - ${index + 1}`}
                         className="product-mobile-gallery__img"
-                        loading="lazy"
+                        width={900}
+                        height={900}
+                        loading={index === 0 ? 'eager' : 'lazy'}
                         decoding="async"
+                        {...(index === 0 ? eagerImagePriorityProps : lazyImagePriorityProps)}
                         style={pinchZoom.active && index === activeMobileImageIndex ? {
                           transform: `scale(${pinchZoom.scale})`,
                           transformOrigin: `${pinchZoom.originX}% ${pinchZoom.originY}%`,
                           transition: 'none',
                         } : undefined}
                         onError={(event) => {
-                          event.currentTarget.src = productImages[productImages.length - 1];
+                          applyImageFallback(event, productImages[productImages.length - 1]);
                         }}
                       />
                     </div>
                   ))}
                 </div>
                 <img
-                  src={selectedImage}
+                  src={getOptimizedImageUrl(selectedImage, 900)}
+                  srcSet={buildResponsiveImageSrcSet(selectedImage, [480, 720, 900, 1200])}
+                  sizes="(max-width: 768px) 100vw, 560px"
                   alt={product.name}
                   className="product-detail-main-image__img"
+                  width={900}
+                  height={900}
                   loading="eager"
                   decoding="async"
+                  {...eagerImagePriorityProps}
                   onClick={() => setIsModalVisible(true)}
                   onMouseMove={handleGalleryZoomMove}
                   onMouseLeave={handleGalleryZoomLeave}
-                  onError={() => {
-                    setSelectedImage(productImages[productImages.length - 1]);
+                  onError={(event) => {
+                    const fallback = productImages[productImages.length - 1];
+                    applyImageFallback(event, fallback);
+                    setSelectedImage(fallback);
                   }}
                 />
                 {discountPercent > 0 && (
@@ -889,9 +934,13 @@ const ProductDetail: React.FC = () => {
                     {galleryImages.map((image: string, index: number) => (
                       <div key={index} className="product-detail-thumbs__slide">
                         <img
-                          src={image}
+                          src={getOptimizedImageUrl(image, 144)}
+                          srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
+                          sizes="120px"
                           alt={`${product.name} - ${index + 1}`}
                           className={`product-detail-thumbs__img${selectedImage === image ? ' product-detail-thumbs__img--active' : ''}`}
+                          width={160}
+                          height={160}
                           loading="lazy"
                           decoding="async"
                           onClick={() => {
@@ -900,7 +949,7 @@ const ProductDetail: React.FC = () => {
                             scheduleImageRotationResume(5000);
                           }}
                           onError={(event) => {
-                            event.currentTarget.src = productImages[productImages.length - 1];
+                            applyImageFallback(event, productImages[productImages.length - 1]);
                           }}
                         />
                       </div>
@@ -918,13 +967,17 @@ const ProductDetail: React.FC = () => {
                       onClick={() => selectGalleryImage(image, index)}
                     >
                       <img
-                        src={image}
+                        src={getOptimizedImageUrl(image, 96)}
+                        srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
+                        sizes="56px"
                         alt={`${product.name} - ${index + 1}`}
                         className="product-mobile-thumbs__img"
+                        width={96}
+                        height={96}
                         loading="lazy"
                         decoding="async"
                         onError={(event) => {
-                          event.currentTarget.src = productImages[productImages.length - 1];
+                          applyImageFallback(event, productImages[productImages.length - 1]);
                         }}
                       />
                     </button>
@@ -987,7 +1040,7 @@ const ProductDetail: React.FC = () => {
                       className="product-option-radio"
                     >
                       {group.values.map((value) => {
-                        const disabled = !optionValueHasVariant(variants, group.name, value);
+                        const disabled = !optionValueIsCompatible(variants, selectedOptions, group.name, value);
                         return (
                           <Radio.Button key={value} value={value} disabled={disabled}>
                             {getLocalizedOptionLabel(value, language)}
@@ -1191,14 +1244,16 @@ const ProductDetail: React.FC = () => {
                             }}
                           >
                             <img
-                              src={item.imageUrl || fallbackProductImage}
+                              src={getOptimizedImageUrl(item.imageUrl || fallbackProductImage, 144)}
+                              srcSet={buildResponsiveImageSrcSet(item.imageUrl || fallbackProductImage, [96, 144, 192, 288])}
+                              sizes="48px"
                               alt={item.name}
+                              width={96}
+                              height={96}
                               loading="lazy"
                               decoding="async"
                               onError={(event) => {
-                                if (event.currentTarget.src !== fallbackProductImage) {
-                                  event.currentTarget.src = fallbackProductImage;
-                                }
+                                applyImageFallback(event, fallbackProductImage);
                               }}
                             />
                             <span className="product-complete-set__copy">
@@ -1348,7 +1403,9 @@ const ProductDetail: React.FC = () => {
                 label: t('pages.productDetail.details'),
                 children: (
                   <div className="product-tab-content">
-                    <ProductRichDetail detailContent={product.detailContent} fallback={product.description} />
+                    <Suspense fallback={<Spin />}>
+                      <ProductRichDetail detailContent={product.detailContent} fallback={product.description} />
+                    </Suspense>
                   </div>
                 ),
               },
@@ -1390,12 +1447,14 @@ const ProductDetail: React.FC = () => {
 
         {/* Product reviews */}
         <Card className="product-review-card" id="product-reviews-card">
-          <ProductReview
-            productId={Number(id)}
-            reviews={reviews}
-            reviewableOrders={reviewableOrders}
-            onAddReview={handleAddReview}
-          />
+          <Suspense fallback={<Spin />}>
+            <ProductReview
+              productId={Number(id)}
+              reviews={reviews}
+              reviewableOrders={reviewableOrders}
+              onAddReview={handleAddReview}
+            />
+          </Suspense>
         </Card>
 
         <Card className="product-qa-card" id="product-qa-card">
@@ -1473,8 +1532,12 @@ const ProductDetail: React.FC = () => {
                       cover={
                         <img
                           alt={rec.name}
-                          src={rec.imageUrl || fallbackProductImage}
+                          src={getOptimizedImageUrl(rec.imageUrl || fallbackProductImage, 520)}
+                          srcSet={buildResponsiveImageSrcSet(rec.imageUrl || fallbackProductImage, [240, 360, 520, 720])}
+                          sizes="(max-width: 520px) 90vw, (max-width: 768px) 45vw, 260px"
                           className="product-recommendations__image"
+                          width={520}
+                          height={360}
                           loading="lazy"
                           decoding="async"
                           onClick={(event) => {
@@ -1482,9 +1545,7 @@ const ProductDetail: React.FC = () => {
                             navigate(`/products/${rec.id}`);
                           }}
                           onError={(event) => {
-                            if (event.currentTarget.src !== fallbackProductImage) {
-                              event.currentTarget.src = fallbackProductImage;
-                            }
+                            applyImageFallback(event, fallbackProductImage);
                           }}
                         />
                       }
@@ -1562,9 +1623,17 @@ const ProductDetail: React.FC = () => {
         centered
       >
         <img
-          src={selectedImage}
+          src={getOptimizedImageUrl(selectedImage, 1200)}
+          srcSet={buildResponsiveImageSrcSet(selectedImage, [480, 720, 960, 1200, 1600])}
+          sizes="min(800px, 100vw)"
           alt={product.name}
+          width={1200}
+          height={1200}
+          decoding="async"
           style={{ width: '100%', height: 'auto' }}
+          onError={(event) => {
+            applyImageFallback(event, productImages[productImages.length - 1]);
+          }}
         />
       </Modal>
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Drawer, Empty, InputNumber, List, message, Progress, Space, Tag, Typography } from 'antd';
 import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, GoogleOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -14,11 +14,12 @@ import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
-import AddOnAssistant from './AddOnAssistant';
-import PetPersonalizedAssistant from './PetPersonalizedAssistant';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import './CartDrawer.css';
 
 const { Text } = Typography;
+const AddOnAssistant = React.lazy(() => import('./AddOnAssistant'));
+const PetPersonalizedAssistant = React.lazy(() => import('./PetPersonalizedAssistant'));
 const expressPaymentCodesByCurrency: Record<string, string[]> = {
   MXN: ['MERCADO_PAGO', 'SPEI', 'OXXO', 'MX_LOCAL_CARD'],
   USD: ['SHOP_PAY', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY'],
@@ -42,15 +43,44 @@ const readCartToken = () => {
   }
 };
 
+const normalizeCartQuantity = (item: CartItem, quantity: number) => {
+  const parsedQuantity = Math.floor(Number(quantity));
+  const safeQuantity = Number.isFinite(parsedQuantity) ? parsedQuantity : 1;
+  const normalizedQuantity = Math.max(1, safeQuantity);
+  const stock = item.stock === undefined || item.stock === null ? null : Math.floor(Number(item.stock));
+  return stock && Number.isFinite(stock) && stock > 0
+    ? Math.min(normalizedQuantity, stock)
+    : normalizedQuantity;
+};
+
+const applyCartImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
+  if (event.currentTarget.src === cartImageFallback) return;
+  event.currentTarget.removeAttribute('srcset');
+  event.currentTarget.src = cartImageFallback;
+};
+
 const CartDrawer: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
+  const [updatingQuantityIds, setUpdatingQuantityIds] = useState<Record<number, boolean>>({});
   const mountedRef = useRef(true);
   const loadCartRequestRef = useRef(0);
+  const quantityTimersRef = useRef<Record<number, number>>({});
+  const quantityRequestPromisesRef = useRef<Record<number, Promise<void> | undefined>>({});
+  const quantityRequestVersionRef = useRef<Record<number, number>>({});
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
+
+  const clearQuantityTimer = useCallback((itemId: number) => {
+    const timerId = quantityTimersRef.current[itemId];
+    if (timerId !== undefined) {
+      window.clearTimeout(timerId);
+      delete quantityTimersRef.current[itemId];
+    }
+  }, []);
 
   const loadCart = useCallback(async () => {
     const requestId = loadCartRequestRef.current + 1;
@@ -77,8 +107,14 @@ const CartDrawer: React.FC = () => {
   }, [t]);
 
   useEffect(() => {
-    const openCart = () => {
+    const openCart = (event: Event) => {
       setOpen(true);
+      const detailItems = (event as CustomEvent<{ items?: CartItem[] }>).detail?.items;
+      if (Array.isArray(detailItems)) {
+        setItems(detailItems);
+        setLoading(false);
+        return;
+      }
       loadCart();
     };
     const refreshCart = () => {
@@ -101,6 +137,8 @@ const CartDrawer: React.FC = () => {
 
   useEffect(() => () => {
     mountedRef.current = false;
+    Object.values(quantityTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
+    quantityTimersRef.current = {};
   }, []);
 
   const checkoutItems = useMemo(() => items.filter(canCheckout), [items]);
@@ -149,22 +187,105 @@ const CartDrawer: React.FC = () => {
     },
   ];
 
-  const updateQuantity = async (item: CartItem, quantity: number) => {
-    try {
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
-        await cartApi.updateQuantity(item.id, quantity);
-        setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, quantity } : entry));
-      } else {
-        setItems(updateGuestCartQuantity(item.id, quantity));
+  const updateQuantity = (item: CartItem, quantity: number) => {
+    const normalizedQuantity = normalizeCartQuantity(item, quantity);
+    const userId = getAuthenticatedCartUserId();
+    if (!userId) {
+      setItems(updateGuestCartQuantity(item.id, normalizedQuantity));
+      return;
+    }
+
+    setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, quantity: normalizedQuantity } : entry));
+    clearQuantityTimer(item.id);
+    const requestVersion = (quantityRequestVersionRef.current[item.id] || 0) + 1;
+    quantityRequestVersionRef.current[item.id] = requestVersion;
+    setUpdatingQuantityIds((current) => ({ ...current, [item.id]: true }));
+    quantityTimersRef.current[item.id] = window.setTimeout(() => {
+      delete quantityTimersRef.current[item.id];
+      const syncPromise = cartApi.updateQuantity(item.id, normalizedQuantity)
+        .then(() => {
+          if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
+          dispatchDomEvent('shop:cart-updated');
+        })
+        .catch((err: any) => {
+          if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
+          message.error(err?.response?.data?.error || t('pages.cart.quantityFailed'));
+          loadCart();
+          throw err;
+        })
+        .finally(() => {
+          if (quantityRequestVersionRef.current[item.id] === requestVersion) {
+            delete quantityRequestPromisesRef.current[item.id];
+          }
+          if (mountedRef.current && quantityRequestVersionRef.current[item.id] === requestVersion) {
+            setUpdatingQuantityIds((current) => {
+              const next = { ...current };
+              delete next[item.id];
+              return next;
+            });
+          }
+        });
+      quantityRequestPromisesRef.current[item.id] = syncPromise;
+      void syncPromise.catch(() => undefined);
+    }, 350);
+  };
+
+  const clearQuantityPendingState = (itemIds: number[]) => {
+    if (!mountedRef.current || itemIds.length === 0) return;
+    setUpdatingQuantityIds((current) => {
+      const next = { ...current };
+      itemIds.forEach((itemId) => {
+        delete next[itemId];
+      });
+      return next;
+    });
+  };
+
+  const flushPendingQuantityUpdates = async (checkoutSnapshot: CartItem[]) => {
+    const userId = getAuthenticatedCartUserId();
+    if (!userId) return;
+    const affectedIds = new Set<number>();
+    const inFlightPromises = checkoutSnapshot
+      .map((item) => {
+        const promise = quantityRequestPromisesRef.current[item.id];
+        if (promise) affectedIds.add(item.id);
+        return promise;
+      })
+      .filter((promise): promise is Promise<void> => Boolean(promise));
+
+    checkoutSnapshot.forEach((item) => {
+      if (quantityTimersRef.current[item.id] !== undefined) {
+        affectedIds.add(item.id);
+        clearQuantityTimer(item.id);
       }
-      if (userId) dispatchDomEvent('shop:cart-updated');
+    });
+    if (affectedIds.size === 0) return;
+
+    if (inFlightPromises.length > 0) {
+      await Promise.allSettled(inFlightPromises);
+    }
+    const itemsToSync = checkoutSnapshot.filter((item) => affectedIds.has(item.id));
+    itemsToSync.forEach((item) => {
+      quantityRequestVersionRef.current[item.id] = (quantityRequestVersionRef.current[item.id] || 0) + 1;
+      delete quantityRequestPromisesRef.current[item.id];
+    });
+    try {
+      await Promise.all(itemsToSync.map((item) => cartApi.updateQuantity(item.id, normalizeCartQuantity(item, item.quantity))));
+      dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('pages.cart.quantityFailed'));
+      await loadCart();
+      throw err;
+    } finally {
+      clearQuantityPendingState(itemsToSync.map((item) => item.id));
     }
   };
 
   const removeItem = async (item: CartItem) => {
+    clearQuantityTimer(item.id);
+    quantityRequestVersionRef.current[item.id] = (quantityRequestVersionRef.current[item.id] || 0) + 1;
+    delete quantityRequestPromisesRef.current[item.id];
+    clearQuantityPendingState([item.id]);
     try {
       const userId = getAuthenticatedCartUserId();
       if (userId) {
@@ -180,6 +301,10 @@ const CartDrawer: React.FC = () => {
   };
 
   const saveForLater = async (item: CartItem) => {
+    clearQuantityTimer(item.id);
+    quantityRequestVersionRef.current[item.id] = (quantityRequestVersionRef.current[item.id] || 0) + 1;
+    delete quantityRequestPromisesRef.current[item.id];
+    clearQuantityPendingState([item.id]);
     try {
       saveCartItemForLater(item);
       const userId = getAuthenticatedCartUserId();
@@ -196,7 +321,8 @@ const CartDrawer: React.FC = () => {
     }
   };
 
-  const goCheckout = (paymentMethod?: string) => {
+  const goCheckout = async (paymentMethod?: string) => {
+    if (checkoutSubmitting) return;
     if (checkoutItems.length === 0) {
       message.warning(t('pages.cart.chooseItems'));
       return;
@@ -205,18 +331,26 @@ const CartDrawer: React.FC = () => {
       message.warning(t('pages.cart.drawerExpressBlocked', { count: blockedCount }));
       return;
     }
-    syncCheckoutCartItemIds(checkoutItems);
+    setCheckoutSubmitting(true);
     try {
-      if (paymentMethod) {
-        sessionStorage.setItem('checkoutPaymentMethod', paymentMethod);
-      } else {
-        sessionStorage.removeItem('checkoutPaymentMethod');
+      await flushPendingQuantityUpdates(checkoutItems);
+      syncCheckoutCartItemIds(checkoutItems);
+      try {
+        if (paymentMethod) {
+          sessionStorage.setItem('checkoutPaymentMethod', paymentMethod);
+        } else {
+          sessionStorage.removeItem('checkoutPaymentMethod');
+        }
+      } catch {
+        // Checkout can continue; the payment method will fall back to the checkout default.
       }
+      setOpen(false);
+      navigate('/checkout');
     } catch {
-      // Checkout can continue; the payment method will fall back to the checkout default.
+      return;
+    } finally {
+      if (mountedRef.current) setCheckoutSubmitting(false);
     }
-    setOpen(false);
-    navigate('/checkout');
   };
 
   const clearBlockedItems = async () => {
@@ -315,12 +449,14 @@ const CartDrawer: React.FC = () => {
             </Space.Compact>
           </div>
           {checkoutItems.length > 0 && benefitTarget ? (
-            <AddOnAssistant
-              cartProductIds={checkoutItems.map((item) => item.productId)}
-              remainingAmount={benefitTarget.remainingAmount}
-              reason={benefitTarget.reason}
-              onAdd={addSuggestedProduct}
-            />
+            <Suspense fallback={null}>
+              <AddOnAssistant
+                cartProductIds={checkoutItems.map((item) => item.productId)}
+                remainingAmount={benefitTarget.remainingAmount}
+                reason={benefitTarget.reason}
+                onAdd={addSuggestedProduct}
+              />
+            </Suspense>
           ) : null}
         </details>
       ) : null}
@@ -347,16 +483,16 @@ const CartDrawer: React.FC = () => {
               <List.Item.Meta
                 avatar={
                   <img
-                    src={resolveCartImage(item.imageUrl)}
+                    src={getOptimizedImageUrl(resolveCartImage(item.imageUrl), 144)}
+                    srcSet={buildResponsiveImageSrcSet(resolveCartImage(item.imageUrl), [96, 144, 192, 288])}
+                    sizes="72px"
                     alt={item.productName}
                     className="cart-drawer__image"
+                    width={72}
+                    height={72}
                     loading="lazy"
                     decoding="async"
-                    onError={(event) => {
-                      if (event.currentTarget.src !== cartImageFallback) {
-                        event.currentTarget.src = cartImageFallback;
-                      }
-                    }}
+                    onError={applyCartImageFallback}
                   />
                 }
                 title={<button type="button" className="cart-drawer__productLink" onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{item.productName}</button>}
@@ -376,6 +512,7 @@ const CartDrawer: React.FC = () => {
                       size="small"
                       value={item.quantity}
                       disabled={!isAvailable(item)}
+                      status={updatingQuantityIds[item.id] ? 'warning' : undefined}
                       onChange={(value) => updateQuantity(item, value || 1)}
                     />
                   </Space>
@@ -386,11 +523,15 @@ const CartDrawer: React.FC = () => {
         />
       )}
 
-      <PetPersonalizedAssistant
-        variant="compact"
-        excludedProductIds={items.map((item) => item.productId)}
-        onAdd={addSuggestedProduct}
-      />
+      {open && items.length > 0 ? (
+        <Suspense fallback={null}>
+          <PetPersonalizedAssistant
+            variant="compact"
+            excludedProductIds={items.map((item) => item.productId)}
+            onAdd={addSuggestedProduct}
+          />
+        </Suspense>
+      ) : null}
 
       <div className="cart-drawer__footer">
         <Space direction="vertical" style={{ width: '100%' }}>
@@ -398,9 +539,22 @@ const CartDrawer: React.FC = () => {
             <Text>{t('common.subtotal')}</Text>
             <Text strong>{formatMoney(subtotal)}</Text>
           </div>
-          <Button type="primary" block size="large" onClick={() => goCheckout()} disabled={checkoutItems.length === 0}>
+          <Button
+            type="primary"
+            block
+            size="large"
+            className="cart-drawer__checkoutButton"
+            onClick={() => goCheckout()}
+            loading={checkoutSubmitting}
+            disabled={checkoutItems.length === 0 || checkoutSubmitting}
+          >
             {t('pages.cart.checkout')}
           </Button>
+          <div className="cart-drawer__trustRow" aria-label={t('pages.checkout.trustSecureTitle')}>
+            <span><CheckCircleOutlined /> {t('pages.checkout.trustSecureTitle')}</span>
+            <span><ShoppingOutlined /> {t('pages.productDetail.trustShippingTitle')}</span>
+            <span><ClockCircleOutlined /> {t('pages.productDetail.trustReturnsTitle')}</span>
+          </div>
           <Text type="secondary" className="cart-drawer__footerHint">
             {t('pages.cart.drawerFooterHint')}
           </Text>

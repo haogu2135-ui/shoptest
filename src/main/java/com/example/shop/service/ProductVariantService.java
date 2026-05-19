@@ -6,17 +6,29 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class ProductVariantService {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final String PURCHASE_MODE_BUNDLE = "bundle";
+    private static final int MAX_OPTION_GROUPS = 6;
+    private static final int MAX_OPTION_VALUES_PER_GROUP = 40;
+    private static final int MAX_OPTION_COMBINATIONS = 500;
+    private static final int MAX_VARIANTS_PER_PRODUCT = 500;
+    private static final Set<String> ALLOWED_METADATA_KEYS = Set.of(
+            "_variantSku",
+            "_purchaseMode",
+            "_bundleTitle",
+            "_bundleItems"
+    );
 
     public Optional<Map<String, Object>> findSelectedVariant(Product product, String selectedSpecs) {
         List<Map<String, Object>> variants = product.getVariantsList();
@@ -55,12 +67,15 @@ public class ProductVariantService {
     }
 
     public void validateSelection(Product product, String selectedSpecs) {
+        validateVariantCatalog(product);
         Map<String, String> selected = parseSelectedSpecs(selectedSpecs);
+        List<String> requiredOptions = requiredOptionNames(product);
+        rejectUnknownSelectedKeys(selected, requiredOptions);
         String purchaseMode = selected.get("_purchaseMode");
         if (purchaseMode != null && !purchaseMode.trim().isEmpty() && !PURCHASE_MODE_BUNDLE.equals(purchaseMode)) {
             throw new IllegalArgumentException("Selected purchase mode is unavailable");
         }
-        for (String optionName : requiredOptionNames(product)) {
+        for (String optionName : requiredOptions) {
             if (selected.get(optionName) == null || selected.get(optionName).trim().isEmpty()) {
                 throw new IllegalArgumentException("Please select " + optionName);
             }
@@ -117,13 +132,98 @@ public class ProductVariantService {
         }
         Map<String, String> selected = parseSelectedSpecs(selectedSpecs);
         if (selected.isEmpty()) {
-            return selectedSpecs.trim();
+            return null;
         }
         try {
             return mapper.writeValueAsString(selected);
         } catch (Exception e) {
-            return selectedSpecs.trim();
+            return null;
         }
+    }
+
+    private void validateVariantCatalog(Product product) {
+        List<String> requiredOptions = requiredOptionNames(product);
+        if (requiredOptions.size() > MAX_OPTION_GROUPS) {
+            throw new IllegalArgumentException("Too many product option groups");
+        }
+
+        long combinationCount = 1;
+        Map<String, String> specs = product.getSpecificationsMap();
+        if (specs != null) {
+            for (String optionName : requiredOptions) {
+                List<String> values = optionValues(specs.get("options." + optionName));
+                if (values.size() > MAX_OPTION_VALUES_PER_GROUP) {
+                    throw new IllegalArgumentException("Too many values for option: " + optionName);
+                }
+                combinationCount *= Math.max(1, values.size());
+                if (combinationCount > MAX_OPTION_COMBINATIONS) {
+                    throw new IllegalArgumentException("Too many product option combinations");
+                }
+            }
+        }
+
+        List<Map<String, Object>> variants = product.getVariantsList();
+        if (variants == null || variants.isEmpty()) {
+            return;
+        }
+        if (variants.size() > MAX_VARIANTS_PER_PRODUCT) {
+            throw new IllegalArgumentException("Too many product variants");
+        }
+
+        Set<String> seenSkus = new HashSet<>();
+        Set<String> seenCombinations = new HashSet<>();
+        for (Map<String, Object> variant : variants) {
+            String sku = String.valueOf(variant.getOrDefault("sku", "")).trim();
+            if (!sku.isEmpty() && !seenSkus.add(sku)) {
+                throw new IllegalArgumentException("Duplicate product variant SKU");
+            }
+            Map<String, String> options = parseVariantOptions(variant);
+            if (options.isEmpty()) {
+                throw new IllegalArgumentException("Product variant options are required");
+            }
+            for (String optionName : requiredOptions) {
+                if (options.get(optionName) == null || options.get(optionName).trim().isEmpty()) {
+                    throw new IllegalArgumentException("Product variant is missing option: " + optionName);
+                }
+            }
+            for (String optionName : options.keySet()) {
+                if (!requiredOptions.contains(optionName)) {
+                    throw new IllegalArgumentException("Product variant has unknown option: " + optionName);
+                }
+            }
+            String combinationKey = requiredOptions.stream()
+                    .map(optionName -> optionName + "=" + options.get(optionName))
+                    .collect(Collectors.joining("|"));
+            if (!seenCombinations.add(combinationKey)) {
+                throw new IllegalArgumentException("Duplicate product variant option combination");
+            }
+        }
+    }
+
+    private void rejectUnknownSelectedKeys(Map<String, String> selected, List<String> requiredOptions) {
+        for (String key : selected.keySet()) {
+            if (requiredOptions.contains(key)) {
+                continue;
+            }
+            if (ALLOWED_METADATA_KEYS.contains(key)) {
+                continue;
+            }
+            throw new IllegalArgumentException("Selected option is unavailable: " + key);
+        }
+    }
+
+    private List<String> optionValues(String rawValue) {
+        if (rawValue == null || rawValue.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        Set<String> values = new HashSet<>();
+        for (String token : rawValue.split("[,\\uFF0C\\u3001\\n]")) {
+            String value = token == null ? "" : token.trim();
+            if (!value.isEmpty()) {
+                values.add(value);
+            }
+        }
+        return new ArrayList<>(values);
     }
 
     private BigDecimal resolveBundlePrice(Product product, String selectedSpecs) {
@@ -155,14 +255,26 @@ public class ProductVariantService {
 
     private List<String> requiredOptionNames(Product product) {
         Map<String, String> specs = product.getSpecificationsMap();
-        if (specs == null || specs.isEmpty()) {
+        if (specs != null && !specs.isEmpty()) {
+            List<String> configuredOptions = specs.entrySet().stream()
+                    .filter(entry -> entry.getKey() != null && entry.getKey().startsWith("options."))
+                    .filter(entry -> entry.getValue() != null && !entry.getValue().trim().isEmpty())
+                    .map(entry -> entry.getKey().replaceFirst("^options\\.", ""))
+                    .filter(name -> !name.trim().isEmpty())
+                    .collect(Collectors.toList());
+            if (!configuredOptions.isEmpty()) {
+                return configuredOptions;
+            }
+        }
+
+        List<Map<String, Object>> variants = product.getVariantsList();
+        if (variants == null || variants.isEmpty()) {
             return new ArrayList<>();
         }
-        return specs.entrySet().stream()
-                .filter(entry -> entry.getKey() != null && entry.getKey().startsWith("options."))
-                .filter(entry -> entry.getValue() != null && !entry.getValue().trim().isEmpty())
-                .map(entry -> entry.getKey().replaceFirst("^options\\.", ""))
-                .filter(name -> !name.trim().isEmpty())
+        return variants.stream()
+                .flatMap(variant -> parseVariantOptions(variant).keySet().stream())
+                .filter(name -> name != null && !name.trim().isEmpty())
+                .distinct()
                 .collect(Collectors.toList());
     }
 

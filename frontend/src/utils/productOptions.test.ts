@@ -1,4 +1,4 @@
-import { getProductOptionGroups, getProductVariants } from './productOptions';
+import { getProductOptionGroups, getProductVariants, optionValueIsCompatible } from './productOptions';
 import type { Product } from '../types';
 
 describe('productOptions', () => {
@@ -38,5 +38,17 @@ describe('productOptions', () => {
       { options: { Size: 'S' }, price: 12, stock: 0, imageUrl: undefined, sku: undefined },
       { options: { Size: 'M', Color: 'Orange' }, price: 14, stock: 3, imageUrl: undefined, sku: undefined },
     ]);
+  });
+
+  it('checks option compatibility against the current partial selection', () => {
+    const variants = getProductVariants({
+      variants: JSON.stringify([
+        { options: { Size: 'S', Color: 'Blue' }, price: 12, stock: 2 },
+        { options: { Size: 'M', Color: 'Red' }, price: 14, stock: 1 },
+      ]),
+    } as unknown as Partial<Product>);
+
+    expect(optionValueIsCompatible(variants, { Size: 'S' }, 'Color', 'Blue')).toBe(true);
+    expect(optionValueIsCompatible(variants, { Size: 'S' }, 'Color', 'Red')).toBe(false);
   });
 });

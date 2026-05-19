@@ -35,6 +35,14 @@
         WHERE ci.id = #{id}
     </select>
 
+    <select id="findByIdForUpdate" resultMap="cartItemMap">
+        SELECT <include refid="cartItemColumns"/>
+        FROM cart_items ci
+        LEFT JOIN products p ON ci.product_id = p.id
+        WHERE ci.id = #{id}
+        FOR UPDATE
+    </select>
+
     <select id="findByUserIdAndProductId" resultMap="cartItemMap">
         SELECT <include refid="cartItemColumns"/>
         FROM cart_items ci
@@ -53,8 +61,22 @@
           AND (
             (#{selectedSpecs} IS NULL AND ci.selected_specs IS NULL)
             OR ci.selected_specs = #{selectedSpecs}
+        )
+        LIMIT 1
+    </select>
+
+    <select id="findByUserIdAndProductIdAndSelectedSpecsForUpdate" resultMap="cartItemMap">
+        SELECT <include refid="cartItemColumns"/>
+        FROM cart_items ci
+        LEFT JOIN products p ON ci.product_id = p.id
+        WHERE ci.user_id = #{userId}
+          AND ci.product_id = #{productId}
+          AND (
+            (#{selectedSpecs} IS NULL AND ci.selected_specs IS NULL)
+            OR ci.selected_specs = #{selectedSpecs}
           )
         LIMIT 1
+        FOR UPDATE
     </select>
 
     <select id="findByIds" resultMap="cartItemMap">
@@ -65,6 +87,18 @@
         <foreach collection="ids" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
+    </select>
+
+    <select id="findByIdsForUpdate" resultMap="cartItemMap">
+        SELECT <include refid="cartItemColumns"/>
+        FROM cart_items ci
+        LEFT JOIN products p ON ci.product_id = p.id
+        WHERE ci.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY ci.id
+        FOR UPDATE
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.CartItem" useGeneratedKeys="true" keyProperty="id">

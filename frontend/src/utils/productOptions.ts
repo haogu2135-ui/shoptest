@@ -102,6 +102,17 @@ export const optionValueHasVariant = (
   return variants.some((variant) => variant.options?.[groupName] === value);
 };
 
+export const optionValueIsCompatible = (
+  variants: ProductVariant[],
+  selectedOptions: Record<string, string>,
+  groupName: string,
+  value: string,
+) => {
+  if (!variants.length) return true;
+  const candidateOptions = { ...selectedOptions, [groupName]: value };
+  return variantMatchesSelectedOptions(variants, candidateOptions);
+};
+
 export const selectCompatibleProductOption = (
   optionGroups: ProductOptionGroup[],
   variants: ProductVariant[],

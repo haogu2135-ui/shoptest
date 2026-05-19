@@ -1,7 +1,7 @@
 import React from 'react';
 import { Empty, Typography } from 'antd';
 import type { ProductDetailBlock } from '../types';
-import { resolveApiAssetUrl } from '../utils/mediaAssets';
+import { buildResponsiveImageSrcSet, resolveApiAssetUrl } from '../utils/mediaAssets';
 import './ProductRichDetail.css';
 
 const { Paragraph, Text } = Typography;
@@ -110,6 +110,10 @@ const handleImageZoomLeave = (event: React.MouseEvent<HTMLImageElement>) => {
   event.currentTarget.style.transformOrigin = 'center center';
 };
 
+const handleRichImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+  event.currentTarget.removeAttribute('srcset');
+};
+
 const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fallback, emptyText = 'No details' }) => {
   const blocks = parseDetailContent(detailContent).filter((block) => {
     if (block.type === 'text') return !!block.content?.trim();
@@ -137,10 +141,16 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
             <figure key={index} className="product-rich-detail__figure">
               <img
                 src={mediaUrl}
+                srcSet={buildResponsiveImageSrcSet(mediaUrl, [480, 720, 960, 1200, 1600])}
+                sizes="min(860px, 100vw)"
                 alt={block.caption || 'Product detail'}
+                width={1200}
+                height={900}
                 loading="lazy"
+                decoding="async"
                 onMouseMove={handleImageZoomMove}
                 onMouseLeave={handleImageZoomLeave}
+                onError={handleRichImageError}
               />
               {block.caption ? <figcaption>{block.caption}</figcaption> : null}
             </figure>
