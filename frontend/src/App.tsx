@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { Layout, Spin } from 'antd';
 import { GiftOutlined, UserAddOutlined, FileSearchOutlined } from '@ant-design/icons';
 import CartDrawer from './components/CartDrawer';
@@ -49,6 +49,37 @@ const LoadingFallback = () => (
     <Spin size="large" />
   </div>
 );
+
+const RouteScrollReset: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
+
+  useEffect(() => {
+    if (location.hash) return;
+
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+
+    resetScroll();
+    const frameId = window.requestAnimationFrame(resetScroll);
+    const timeoutId = window.setTimeout(resetScroll, 120);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [location.pathname, location.search, location.hash]);
+
+  return null;
+};
 
 const StorefrontLayout: React.FC = () => {
   const { t } = useLanguage();
@@ -136,6 +167,7 @@ const StorefrontLayout: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
+      <RouteScrollReset />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/" element={<StorefrontLayout />}>
