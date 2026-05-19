@@ -19,6 +19,7 @@ import { getProductOptionGroups, getProductVariants, optionValueIsCompatible, se
 import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import './ProductList.css';
 
 const { Text } = Typography;
@@ -90,6 +91,21 @@ const matchesSmartDeviceCollection = (product: Product) => {
   return SMART_DEVICE_TERMS.some((term) => text.includes(term));
 };
 
+const matchesDiscountFilter = (product: Product) =>
+  Boolean(product.activeLimitedTimeDiscount) ||
+  Number(product.effectiveDiscountPercent || product.discount || 0) > 0 ||
+  (product.originalPrice !== undefined && Number(product.originalPrice) > Number(product.effectivePrice ?? product.price ?? 0));
+
+const filterSnapshotProducts = (products: Product[], keyword?: string, categoryId?: number, discount?: boolean) => {
+  const normalizedKeyword = normalizeSearchValue(keyword || '').toLowerCase();
+  return products.filter((product) => {
+    if (normalizedKeyword && !productSearchText(product).includes(normalizedKeyword)) return false;
+    if (categoryId && Number(product.categoryId) !== categoryId) return false;
+    if (discount && !matchesDiscountFilter(product)) return false;
+    return true;
+  });
+};
+
 type ProductListUrlOverrides = Partial<{
   collection: string;
   keyword: string;
@@ -106,6 +122,7 @@ const ProductList: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [usingCatalogSnapshot, setUsingCatalogSnapshot] = useState(false);
   const [keyword, setKeyword] = useState(normalizeSearchValue(searchParams.get('keyword') || ''));
   const [categoryId, setCategoryId] = useState<number | undefined>(parsePositiveId(searchParams.get('categoryId')));
   const [discount, setDiscount] = useState(searchParams.get('discount') === 'true');
@@ -438,13 +455,25 @@ const ProductList: React.FC = () => {
       setLoading(true);
       const res = await productApi.getAll(kw || undefined, cid, disc);
       if (productRequestSeqRef.current !== requestSeq) return;
+      saveProductCatalogSnapshot(res.data);
       setProducts(res.data.map((product) => localizeProduct(product, language)));
       setLoadFailed(false);
+      setUsingCatalogSnapshot(false);
       setCurrentPage(1);
     } catch {
       if (productRequestSeqRef.current !== requestSeq) return;
+      const snapshot = loadProductCatalogSnapshot();
+      if (snapshot) {
+        setProducts(filterSnapshotProducts(snapshot.products, kw, cid, disc).map((product) => localizeProduct(product, language)));
+        setLoadFailed(false);
+        setUsingCatalogSnapshot(true);
+        setCurrentPage(1);
+        message.warning(t('pages.productList.snapshotNotice'));
+        return;
+      }
       setProducts([]);
       setLoadFailed(true);
+      setUsingCatalogSnapshot(false);
       message.error(t('pages.productList.fetchFailed'));
     } finally {
       if (productRequestSeqRef.current === requestSeq) {
@@ -739,6 +768,8 @@ const ProductList: React.FC = () => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     return getConversionSortScore(b) - getConversionSortScore(a);
   });
+  const checkoutPathProducts = sortedProducts.filter((product) => !isProductSoldOut(product)).slice(0, 3);
+  const checkoutPathReadyCount = checkoutPathProducts.filter(isQuickAddReady).length;
 
   const productListInsightTotals = filteredProducts.reduce((summary, product) => {
     if (isBestValueProduct(product)) summary.bestValueCount += 1;
@@ -947,6 +978,61 @@ const ProductList: React.FC = () => {
       </div>
     </Space>
   );
+  const emptyDiscoveryActions = [
+    {
+      key: 'catalog',
+      icon: <FilterOutlined />,
+      title: activeFilterCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.allCategories'),
+      text: t('pages.productList.loadRecoveryTipFilters'),
+      primary: true,
+      onClick: () => {
+        if (activeFilterCount > 0) {
+          resetFilters();
+          return;
+        }
+        navigate('/products');
+      },
+    },
+    {
+      key: 'deals',
+      icon: <FireOutlined />,
+      title: t('pages.productList.shopBestDeals'),
+      text: t('pages.productList.guideStart'),
+      onClick: () => navigate('/products?discount=true'),
+    },
+    {
+      key: 'coupons',
+      icon: <GiftOutlined />,
+      title: t('pages.productList.loadRecoveryCoupons'),
+      text: t('pages.productList.loadRecoveryText'),
+      onClick: () => navigate('/coupons'),
+    },
+    {
+      key: 'support',
+      icon: <CustomerServiceOutlined />,
+      title: t('pages.productList.loadRecoverySupport'),
+      text: t('pages.productList.loadRecoveryTipSupport'),
+      onClick: () => dispatchDomEvent('shop:open-support'),
+    },
+  ];
+  const renderDiscoveryActions = () => (
+    <div className="product-list__emptyDiscovery" aria-label={t('pages.productList.guideTitle')}>
+      {emptyDiscoveryActions.map((action) => (
+        <button
+          key={action.key}
+          type="button"
+          className={`product-list__emptyDiscoveryCard${action.primary ? ' product-list__emptyDiscoveryCard--primary' : ''}`}
+          onClick={action.onClick}
+        >
+          <span className="product-list__emptyDiscoveryIcon">{action.icon}</span>
+          <span>
+            <strong>{action.title}</strong>
+            <small>{action.text}</small>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className={`product-list product-list--${language}`}>
@@ -1067,6 +1153,21 @@ const ProductList: React.FC = () => {
           </Card>
           {!loading && !loadFailed ? (
             <>
+              {usingCatalogSnapshot ? (
+                <section className="product-list__snapshotNotice" role="status" aria-live="polite">
+                  <div>
+                    <Text strong>{t('pages.productList.snapshotTitle')}</Text>
+                    <Text type="secondary">{t('pages.productList.snapshotText')}</Text>
+                  </div>
+                  <Button
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    onClick={() => fetchProducts(collection ? undefined : keyword, categoryId, discount)}
+                  >
+                    {t('common.refresh')}
+                  </Button>
+                </section>
+              ) : null}
               <section className="product-list__smartBar" aria-label={t('pages.productList.insightTitle')}>
                 <div className="product-list__smartBarLeft">
                   <CheckCircleOutlined />
@@ -1111,6 +1212,52 @@ const ProductList: React.FC = () => {
                   )}
                 </div>
               </section>
+              {checkoutPathProducts.length > 0 ? (
+                <section className="product-list__checkoutPath" aria-label={t('pages.productList.checkoutPathEyebrow')}>
+                  <div className="product-list__checkoutPathCopy">
+                    <Text className="product-list__checkoutPathEyebrow">{t('pages.productList.checkoutPathEyebrow')}</Text>
+                    <strong>{t('pages.productList.checkoutPathTitle')}</strong>
+                    <Text>{t('pages.productList.checkoutPathText', { count: checkoutPathProducts.length, ready: checkoutPathReadyCount })}</Text>
+                  </div>
+                  <div className="product-list__checkoutPathItems">
+                    {checkoutPathProducts.map((product) => {
+                      const quickReady = isQuickAddReady(product);
+                      const lowStock = getLowStockCount(product.stock);
+                      const tagLabel = quickReady
+                        ? t('pages.productList.cardQuickReady')
+                        : lowStock !== null
+                          ? t('pages.productList.cardLowStock', { count: lowStock })
+                          : t('pages.productList.cardOptionsNeeded');
+                      const tagColor = quickReady ? 'green' : lowStock !== null ? 'red' : 'blue';
+                      const savings = getSavingsAmount(product);
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          className="product-list__checkoutPathItem"
+                          aria-label={`${t('pages.productList.viewPick')}: ${product.name}`}
+                          onClick={(event) => {
+                            if (quickReady) {
+                              openQuickAdd(event, product);
+                              return;
+                            }
+                            openProductDetail(product.id);
+                          }}
+                        >
+                          <span>
+                            <strong>{product.name}</strong>
+                            <small>
+                              {formatMoney(getPrice(product))}
+                              {savings > 0 ? ` - ${t('pages.productList.bestValueSavings', { amount: formatMoney(savings) })}` : ''}
+                            </small>
+                          </span>
+                          <Tag color={tagColor}>{tagLabel}</Tag>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : null}
             </>
           ) : null}
           {loading ? (
@@ -1148,21 +1295,25 @@ const ProductList: React.FC = () => {
                     <span>{t('pages.productList.loadRecoveryTipFilters')}</span>
                     <span>{t('pages.productList.loadRecoveryTipSupport')}</span>
                   </div>
+                  {renderDiscoveryActions()}
                 </div>
               </Empty>
             </div>
           ) : paginatedProducts.length === 0 ? (
             <Empty description={t('pages.productList.empty')} className="product-list__empty">
-              <Space wrap>
-                {activeFilterCount > 0 ? (
-                  <Button onClick={resetFilters}>{t('pages.productList.resetFilters')}</Button>
+              <div className="product-list__emptyContent">
+                {renderDiscoveryActions()}
+                {(keyword || categoryId || collection || activeFilterCount > 0) ? (
+                  <Space wrap className="product-list__emptyActions">
+                    <Button type="link" onClick={() => navigate('/products')}>
+                      {t('pages.productList.allCategories')}
+                    </Button>
+                    <Button type="link" onClick={resetFilters}>
+                      {t('pages.productList.resetFilters')}
+                    </Button>
+                  </Space>
                 ) : null}
-                {(keyword || categoryId || collection) ? (
-                  <Button type="primary" onClick={() => navigate('/products')}>
-                    {t('pages.productList.allCategories')}
-                  </Button>
-                ) : null}
-              </Space>
+              </div>
             </Empty>
           ) : (
             <>

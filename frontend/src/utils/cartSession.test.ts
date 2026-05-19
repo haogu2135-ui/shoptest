@@ -1,4 +1,10 @@
-import { clearCheckoutCartItemIds, getAuthenticatedCartUserId, readCheckoutCartItemIds, syncCheckoutCartItemIds } from './cartSession';
+import {
+  clearCheckoutCartItemIds,
+  getAuthenticatedCartUserId,
+  hasAuthenticatedCartSession,
+  readCheckoutCartItemIds,
+  syncCheckoutCartItemIds,
+} from './cartSession';
 
 describe('cartSession', () => {
   beforeEach(() => {
@@ -61,6 +67,7 @@ describe('cartSession', () => {
     localStorage.setItem('token', 'token-without-user');
 
     expect(getAuthenticatedCartUserId()).toBeNull();
+    expect(hasAuthenticatedCartSession()).toBe(true);
   });
 
   it('keeps checkout ids scoped by token when a token exists but user id is missing', () => {
@@ -85,6 +92,20 @@ describe('cartSession', () => {
     expect(() => syncCheckoutCartItemIds([{ id: 2 }])).not.toThrow();
 
     setItemSpy.mockRestore();
+  });
+
+  it('keeps cart-session reads safe when browser storage reads are unavailable', () => {
+    const getItemSpy = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+
+    expect(getAuthenticatedCartUserId()).toBeNull();
+    expect(hasAuthenticatedCartSession()).toBe(false);
+    expect(readCheckoutCartItemIds()).toEqual([]);
+    expect(() => syncCheckoutCartItemIds([{ id: 2 }])).not.toThrow();
+    expect(() => clearCheckoutCartItemIds()).not.toThrow();
+
+    getItemSpy.mockRestore();
   });
 
   it('does not throw when checkout selection cleanup storage is unavailable', () => {

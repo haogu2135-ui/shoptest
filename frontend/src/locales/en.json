@@ -1964,7 +1964,10 @@
       "noReviewsYet": "New item - no reviews yet",
       "checkoutPathEyebrow": "Fastest checkout path",
       "checkoutPathTitle": "Start with these picks",
-      "checkoutPathText": "{count} products lead the current results, and {ready} can go straight to cart."
+      "checkoutPathText": "{count} products lead the current results, and {ready} can go straight to cart.",
+      "snapshotNotice": "Showing your latest saved catalog while the live catalog reconnects.",
+      "snapshotTitle": "Temporary catalog",
+      "snapshotText": "Prices and stock may refresh when the live catalog is back."
     },
     "compare": {
       "title": "Product comparison",

@@ -308,6 +308,7 @@ const Navbar: React.FC = () => {
 
   const renderPetNavButton = (item: typeof petNavItems[number]) => (
     <button
+      key={item.key}
       type="button"
       aria-current={item.active ? 'page' : undefined}
       className={item.active ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}
@@ -519,7 +520,7 @@ const Navbar: React.FC = () => {
                     label: renderCurrentMenuLabel(language === item.value, item.label),
                     onClick: () => setLanguage(item.value as Language),
                   })),
-                  { type: 'divider' },
+                  { key: 'locale-divider', type: 'divider' },
                   { key: 'currency-title', label: t('nav.currency'), disabled: true },
                   ...currencyOptions.map((item) => ({
                     key: `currency-${item.value}`,

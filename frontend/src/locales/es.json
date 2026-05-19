@@ -867,7 +867,10 @@
       "noReviewsYet": "Sin reseñas aún",
       "checkoutPathEyebrow": "Listo para pagar",
       "checkoutPathTitle": "Empieza con estas opciones",
-      "checkoutPathText": "{count} destacan ahora; {ready} van directo al carrito."
+      "checkoutPathText": "{count} destacan ahora; {ready} van directo al carrito.",
+      "snapshotNotice": "Mostramos tu catálogo guardado mientras vuelve el catálogo en vivo.",
+      "snapshotTitle": "Catálogo temporal",
+      "snapshotText": "Precios e inventario pueden actualizarse cuando vuelva la conexión."
     },
     "compare": {
       "title": "Comparación de productos",

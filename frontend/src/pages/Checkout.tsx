@@ -250,7 +250,7 @@ const Checkout: React.FC = () => {
 
   useEffect(() => {
     if (selectedAddressId !== 'new') {
-      const address = addresses.find((item) => item.id === selectedAddressId);
+      const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
       if (address) {
         form.setFieldsValue({
           recipientName: address.recipientName,
@@ -462,7 +462,9 @@ const Checkout: React.FC = () => {
           : t('pages.checkout.savingsCouponEmpty'),
     } : null,
   ].filter(Boolean) as Array<{ key: string; icon: React.ReactNode; ready: boolean; title: string; text: string }>;
-  const selectedAddress = selectedAddressId === 'new' ? null : addresses.find((address) => address.id === selectedAddressId) || null;
+  const selectedSavedAddress = selectedAddressId === 'new'
+    ? null
+    : addresses.find((address) => String(address.id) === String(selectedAddressId)) || null;
   const newAddressReady = Boolean(
     normalizeCheckoutText(watchedRecipientName, 80)
       && isLikelyPhone(watchedPhone)
@@ -472,7 +474,11 @@ const Checkout: React.FC = () => {
   );
   const selectedAddressReady = selectedAddressId === 'new'
     ? newAddressReady
-    : Boolean(selectedAddress?.recipientName && isLikelyPhone(selectedAddress?.phone) && selectedAddress?.address);
+    : Boolean(
+      selectedSavedAddress
+        && normalizeCheckoutText(selectedSavedAddress.recipientName, 80)
+        && normalizeCheckoutText(selectedSavedAddress.address, 260),
+    );
   const selectedPaymentDetail = paymentMethodDetails.find((method) => method.value === watchedPaymentMethod);
   const checkoutReadinessItems = [
     {
@@ -625,7 +631,7 @@ const Checkout: React.FC = () => {
 
   const buildAddress = (values: any) => {
     if (selectedAddressId !== 'new') {
-      const address = addresses.find((item) => item.id === selectedAddressId);
+      const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
       if (!address) throw new Error(t('pages.checkout.addressRequired'));
       return normalizeCheckoutText(`${address.recipientName} / ${address.phone} / ${address.address}`, 500);
     }
@@ -1122,17 +1128,6 @@ const Checkout: React.FC = () => {
           <Tag color={checkoutNextAction ? 'orange' : 'green'}>{checkoutReadinessScore}%</Tag>
         </summary>
 
-        {addOnTarget ? (
-          <div id="checkout-add-on-assistant">
-            <AddOnAssistant
-              cartProductIds={cartItems.map((item) => item.productId)}
-              remainingAmount={addOnTarget.remainingAmount}
-              reason={addOnTarget.reason}
-              onAdd={addSuggestedProduct}
-            />
-          </div>
-        ) : null}
-
         <Card className="checkout-page__savingsCoach">
           <div className="checkout-page__savingsCoachHeader">
             <div>
@@ -1141,7 +1136,7 @@ const Checkout: React.FC = () => {
               <Text type="secondary">{t('pages.checkout.savingsCoachSubtitle')}</Text>
             </div>
             {addOnTarget ? (
-              <Button size="small" onClick={scrollToAddOns}>
+              <Button size="small" icon={<SwapOutlined />} className="checkout-page__addOnButton" onClick={scrollToAddOns}>
                 {t('pages.checkout.savingsShopAddOns')}
               </Button>
             ) : null}
@@ -1159,13 +1154,30 @@ const Checkout: React.FC = () => {
           </div>
         </Card>
 
+        {addOnTarget ? (
+          <div id="checkout-add-on-assistant" className="checkout-page__addOnDock">
+            <AddOnAssistant
+              cartProductIds={cartItems.map((item) => item.productId)}
+              remainingAmount={addOnTarget.remainingAmount}
+              reason={addOnTarget.reason}
+              onAdd={addSuggestedProduct}
+            />
+          </div>
+        ) : null}
+
         {couponOpportunity ? (
           <Card className={couponOpportunity.type === 'ready' ? 'checkout-page__couponOpportunity checkout-page__couponOpportunity--ready' : 'checkout-page__couponOpportunity'}>
             <div>
               <Text strong>{couponOpportunity.title}</Text>
               <Text type="secondary">{couponOpportunity.text}</Text>
             </div>
-            <Button size="small" type={couponOpportunity.type === 'ready' ? 'default' : 'primary'} onClick={handleCouponOpportunityAction}>
+            <Button
+              size="small"
+              type={couponOpportunity.type === 'ready' ? 'default' : 'primary'}
+              icon={couponOpportunity.type === 'build' && addOnTarget ? <SwapOutlined /> : undefined}
+              className="checkout-page__addOnButton"
+              onClick={handleCouponOpportunityAction}
+            >
               {couponOpportunity.action}
             </Button>
           </Card>
@@ -1271,7 +1283,7 @@ const Checkout: React.FC = () => {
                 <Radio
                   key={address.id}
                   value={address.id}
-                  className={selectedAddressId === address.id ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
+                  className={String(selectedAddressId) === String(address.id) ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
                 >
                   <Space>
                     <Text strong>{address.recipientName}</Text>

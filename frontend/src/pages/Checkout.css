@@ -594,6 +594,14 @@
   scroll-margin-top: 24px;
 }
 
+.checkout-page__addOnDock {
+  min-width: 0;
+}
+
+.checkout-page__addOnDock .add-on-assistant {
+  margin-bottom: 0;
+}
+
 .checkout-page__supportPanel {
   display: grid;
   gap: 12px;
@@ -674,24 +682,42 @@
 }
 
 .checkout-page__savingsCoachHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
 
 .checkout-page__savingsCoachHeader > div {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 2px;
   min-width: 0;
-  flex: 1;
 }
 
 .checkout-page__savingsCoachHeader .ant-typography {
   display: block;
   line-height: 1.35;
+}
+
+.checkout-page__addOnButton {
+  flex: 0 0 auto;
+  max-width: min(100%, 180px);
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-inline: 12px;
+  border-radius: 999px !important;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.checkout-page__addOnButton > span:not(.anticon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .checkout-page__savingsCoachGrid {
@@ -1006,6 +1032,11 @@
 
   .checkout-page__savingsCoachHeader .ant-btn {
     width: 100%;
+  }
+
+  .checkout-page__addOnButton {
+    width: 100%;
+    white-space: normal;
   }
 
   .checkout-page__readinessHeader {

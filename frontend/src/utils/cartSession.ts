@@ -2,6 +2,14 @@ import type { CartItem } from '../types';
 
 const CHECKOUT_CART_ITEM_IDS_KEY = 'checkoutCartItemIds';
 
+const getStoredValue = (storage: Storage | undefined, key: string) => {
+  try {
+    return storage?.getItem(key) || null;
+  } catch {
+    return null;
+  }
+};
+
 const getTokenScopedCheckoutCartItemIdsKey = (token: string) => {
   let hash = 0;
   for (let index = 0; index < token.length; index += 1) {
@@ -11,9 +19,9 @@ const getTokenScopedCheckoutCartItemIdsKey = (token: string) => {
 };
 
 const getCheckoutCartItemIdsKey = () => {
-  const token = localStorage.getItem('token');
+  const token = getStoredValue(localStorage, 'token');
   if (!token) return `${CHECKOUT_CART_ITEM_IDS_KEY}:guest`;
-  const userId = Number(localStorage.getItem('userId'));
+  const userId = Number(getStoredValue(localStorage, 'userId'));
   if (Number.isFinite(userId) && userId > 0) {
     return `${CHECKOUT_CART_ITEM_IDS_KEY}:auth:${userId}`;
   }
@@ -21,14 +29,16 @@ const getCheckoutCartItemIdsKey = () => {
 };
 
 export const getAuthenticatedCartUserId = () => {
-  const token = localStorage.getItem('token');
-  const userId = Number(localStorage.getItem('userId'));
+  const token = getStoredValue(localStorage, 'token');
+  const userId = Number(getStoredValue(localStorage, 'userId'));
   return token && Number.isFinite(userId) && userId > 0 ? userId : null;
 };
 
+export const hasAuthenticatedCartSession = () => Boolean(getStoredValue(localStorage, 'token'));
+
 export const readCheckoutCartItemIds = () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = getStoredValue(localStorage, 'token');
     const legacyTokenKey = token ? getTokenScopedCheckoutCartItemIdsKey(token) : null;
     const raw = sessionStorage.getItem(getCheckoutCartItemIdsKey())
       || (legacyTokenKey ? sessionStorage.getItem(legacyTokenKey) : null)
@@ -45,7 +55,7 @@ export const readCheckoutCartItemIds = () => {
 
 export const syncCheckoutCartItemIds = (items: Pick<CartItem, 'id'>[]) => {
   try {
-    const token = localStorage.getItem('token');
+    const token = getStoredValue(localStorage, 'token');
     const currentKey = getCheckoutCartItemIdsKey();
     const ids = Array.from(new Set(
       items
@@ -67,7 +77,7 @@ export const syncCheckoutCartItemIds = (items: Pick<CartItem, 'id'>[]) => {
 
 export const clearCheckoutCartItemIds = () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = getStoredValue(localStorage, 'token');
     const currentKey = getCheckoutCartItemIdsKey();
     sessionStorage.removeItem(currentKey);
     if (token) {

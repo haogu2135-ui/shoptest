@@ -20,7 +20,7 @@ import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefi
 import { loadProductViewPreferences } from '../utils/productViewPreferences';
 import { needsOptionSelection } from '../utils/productOptions';
 import { localizeProduct } from '../utils/localizedProduct';
-import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
+import { hasAuthenticatedCartSession, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
 import AddOnAssistant from '../components/AddOnAssistant';
@@ -56,8 +56,8 @@ const Cart: React.FC = () => {
   const { currency, market, formatMoney } = useMarket();
 
   const fetchCartItems = useCallback(async () => {
-    const userId = getAuthenticatedCartUserId();
-    if (!userId) {
+    const authenticated = hasAuthenticatedCartSession();
+    if (!authenticated) {
       const guestItems = getGuestCartItems();
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
@@ -65,7 +65,7 @@ const Cart: React.FC = () => {
       return;
     }
     try {
-      const response = await cartApi.getItems(userId);
+      const response = await cartApi.getItems(0);
       setCartItems(response.data);
       setSelectedIds(response.data.filter(canCheckout).map((item) => item.id));
     } catch {
@@ -140,14 +140,14 @@ const Cart: React.FC = () => {
     if (targetItem && normalizedQuantity === targetItem.quantity) return;
     try {
       setUpdatingItemIds((ids) => Array.from(new Set([...ids, itemId])));
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
         await cartApi.updateQuantity(itemId, normalizedQuantity);
         setCartItems((items) => items.map((item) => (item.id === itemId ? { ...item, quantity: normalizedQuantity } : item)));
       } else {
         setCartItems(updateGuestCartQuantity(itemId, normalizedQuantity));
       }
-      if (userId) dispatchDomEvent('shop:cart-updated');
+      if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
       message.error(err.response?.data?.error || t('pages.cart.quantityFailed'));
     } finally {
@@ -159,8 +159,8 @@ const Cart: React.FC = () => {
     if (removingItemIds.includes(itemId)) return;
     try {
       setRemovingItemIds((ids) => Array.from(new Set([...ids, itemId])));
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
         await cartApi.removeItem(itemId);
         setCartItems((items) => items.filter((item) => item.id !== itemId));
       } else {
@@ -168,7 +168,7 @@ const Cart: React.FC = () => {
       }
       message.success(t('messages.deleteSuccess'));
       setSelectedIds((ids) => ids.filter((id) => id !== itemId));
-      if (userId) dispatchDomEvent('shop:cart-updated');
+      if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.deleteFailed'));
     } finally {
@@ -178,8 +178,8 @@ const Cart: React.FC = () => {
 
   const saveForLater = async (item: CartItem) => {
     try {
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
         await cartApi.removeItem(item.id);
         saveCartItemForLater(item);
         setCartItems((items) => items.filter((cartItem) => cartItem.id !== item.id));
@@ -190,7 +190,7 @@ const Cart: React.FC = () => {
       setSelectedIds((ids) => ids.filter((id) => id !== item.id));
       setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.savedForLater'));
-      if (userId) dispatchDomEvent('shop:cart-updated');
+      if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -198,10 +198,10 @@ const Cart: React.FC = () => {
 
   const moveSavedItemToCart = async (item: SavedForLaterItem) => {
     try {
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
-        await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
-        const response = await cartApi.getItems(userId);
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
+        await cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs);
+        const response = await cartApi.getItems(0);
         setCartItems(response.data);
         setSelectedIds(response.data.filter(canCheckout).map((cartItem) => cartItem.id));
       } else {
@@ -223,7 +223,7 @@ const Cart: React.FC = () => {
       removeSavedForLaterProduct(item.productId, item.selectedSpecs);
       setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.movedToCart'));
-      if (userId) dispatchDomEvent('shop:cart-updated');
+      if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -234,16 +234,16 @@ const Cart: React.FC = () => {
     const targetItems = items.slice(0, conversionConfig.saveForLater.maxBulkRestoreItems);
     setRestoringSaved(true);
     try {
-      const userId = getAuthenticatedCartUserId();
+      const authenticated = hasAuthenticatedCartSession();
       let restoredItems = targetItems;
-      if (userId) {
-        const results = await Promise.allSettled(targetItems.map((item) => cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs)));
+      if (authenticated) {
+        const results = await Promise.allSettled(targetItems.map((item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs)));
         restoredItems = targetItems.filter((_, index) => results[index].status === 'fulfilled');
         if (restoredItems.length === 0) {
           message.error(t('messages.operationFailed'));
           return;
         }
-        const response = await cartApi.getItems(userId);
+        const response = await cartApi.getItems(0);
         setCartItems(response.data);
         setSelectedIds(response.data.filter(canCheckout).map((cartItem) => cartItem.id));
       } else {
@@ -271,7 +271,7 @@ const Cart: React.FC = () => {
       } else {
         message.warning(t('pages.cart.movedSavedBatchPartial', { count: restoredItems.length, failed: targetItems.length - restoredItems.length }));
       }
-      if (userId) dispatchDomEvent('shop:cart-updated');
+      if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));
     } finally {
@@ -289,8 +289,8 @@ const Cart: React.FC = () => {
     const normalizedIds = Array.from(new Set(itemIds));
     try {
       setRemovingItemIds((ids) => Array.from(new Set([...ids, ...normalizedIds])));
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
         await cartApi.removeItems(normalizedIds);
         setCartItems((items) => items.filter((item) => !normalizedIds.includes(item.id)));
       } else {
@@ -298,7 +298,7 @@ const Cart: React.FC = () => {
       }
       setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
       message.success(successMessage);
-      if (userId) dispatchDomEvent('shop:cart-updated');
+      if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('messages.deleteFailed'));
     } finally {
@@ -453,10 +453,10 @@ const Cart: React.FC = () => {
   ];
 
   const addSuggestedProduct = async (product: Product) => {
-    const userId = getAuthenticatedCartUserId();
-    if (userId) {
-      await cartApi.addItem(userId, product.id, 1);
-      const response = await cartApi.getItems(userId);
+    const authenticated = hasAuthenticatedCartSession();
+    if (authenticated) {
+      await cartApi.addItem(0, product.id, 1);
+      const response = await cartApi.getItems(0);
       setCartItems(response.data);
       const addedItemIds = response.data
         .filter((item) => item.productId === product.id && canCheckout(item))
@@ -472,6 +472,7 @@ const Cart: React.FC = () => {
       .filter((item) => item.productId === product.id && canCheckout(item))
       .map((item) => item.id);
     setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
+    dispatchDomEvent('shop:cart-updated');
   };
 
   const addRecentProduct = async (product: Product) => {

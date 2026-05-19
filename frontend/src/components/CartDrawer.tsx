@@ -11,7 +11,7 @@ import { addGuestCartItem, getGuestCartItems, removeGuestCartItem, removeGuestCa
 import { saveCartItemForLater } from '../utils/saveForLater';
 import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefits';
 import { paymentMethodLabel } from '../utils/paymentMethods';
-import { getAuthenticatedCartUserId, syncCheckoutCartItemIds } from '../utils/cartSession';
+import { hasAuthenticatedCartSession, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
@@ -85,14 +85,14 @@ const CartDrawer: React.FC = () => {
   const loadCart = useCallback(async () => {
     const requestId = loadCartRequestRef.current + 1;
     loadCartRequestRef.current = requestId;
-    const userId = getAuthenticatedCartUserId();
-    if (!userId) {
+    const authenticated = hasAuthenticatedCartSession();
+    if (!authenticated) {
       if (mountedRef.current) setItems(getGuestCartItems());
       return;
     }
     if (mountedRef.current) setLoading(true);
     try {
-      const res = await cartApi.getItems(userId);
+      const res = await cartApi.getItems(0);
       if (!mountedRef.current || loadCartRequestRef.current !== requestId) return;
       setItems(res.data);
     } catch {
@@ -189,8 +189,8 @@ const CartDrawer: React.FC = () => {
 
   const updateQuantity = (item: CartItem, quantity: number) => {
     const normalizedQuantity = normalizeCartQuantity(item, quantity);
-    const userId = getAuthenticatedCartUserId();
-    if (!userId) {
+    const authenticated = hasAuthenticatedCartSession();
+    if (!authenticated) {
       setItems(updateGuestCartQuantity(item.id, normalizedQuantity));
       return;
     }
@@ -242,8 +242,7 @@ const CartDrawer: React.FC = () => {
   };
 
   const flushPendingQuantityUpdates = async (checkoutSnapshot: CartItem[]) => {
-    const userId = getAuthenticatedCartUserId();
-    if (!userId) return;
+    if (!hasAuthenticatedCartSession()) return;
     const affectedIds = new Set<number>();
     const inFlightPromises = checkoutSnapshot
       .map((item) => {
@@ -287,14 +286,14 @@ const CartDrawer: React.FC = () => {
     delete quantityRequestPromisesRef.current[item.id];
     clearQuantityPendingState([item.id]);
     try {
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
         await cartApi.removeItem(item.id);
         setItems((current) => current.filter((entry) => entry.id !== item.id));
       } else {
         setItems(removeGuestCartItem(item.id));
       }
-      if (userId) dispatchDomEvent('shop:cart-updated');
+      if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.deleteFailed'));
     }
@@ -307,15 +306,15 @@ const CartDrawer: React.FC = () => {
     clearQuantityPendingState([item.id]);
     try {
       saveCartItemForLater(item);
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
         await cartApi.removeItem(item.id);
         setItems((current) => current.filter((entry) => entry.id !== item.id));
       } else {
         setItems(removeGuestCartItem(item.id));
       }
       message.success(t('pages.cart.savedForLater'));
-      if (userId) dispatchDomEvent('shop:cart-updated');
+      if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch {
       message.error(t('messages.operationFailed'));
     }
@@ -356,8 +355,8 @@ const CartDrawer: React.FC = () => {
   const clearBlockedItems = async () => {
     if (blockedItems.length === 0) return;
     try {
-      const userId = getAuthenticatedCartUserId();
-      if (userId) {
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
         await Promise.all(blockedItems.map((item) => cartApi.removeItem(item.id)));
         setItems((current) => current.filter(canCheckout));
         dispatchDomEvent('shop:cart-updated');
@@ -371,9 +370,9 @@ const CartDrawer: React.FC = () => {
   };
 
   const addSuggestedProduct = async (product: Product) => {
-    const userId = getAuthenticatedCartUserId();
-    if (userId) {
-      await cartApi.addItem(userId, product.id, 1);
+    const authenticated = hasAuthenticatedCartSession();
+    if (authenticated) {
+      await cartApi.addItem(0, product.id, 1);
       dispatchDomEvent('shop:cart-updated');
       return;
     }

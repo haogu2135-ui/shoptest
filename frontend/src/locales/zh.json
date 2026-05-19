@@ -863,7 +863,10 @@
       "noReviewsYet": "新品，暂无评价",
       "checkoutPathEyebrow": "最快下单路径",
       "checkoutPathTitle": "优先查看这几件",
-      "checkoutPathText": "{count} 件商品位于当前结果前列，其中 {ready} 件可直接加购。"
+      "checkoutPathText": "{count} 件商品位于当前结果前列，其中 {ready} 件可直接加购。",
+      "snapshotNotice": "实时目录恢复前，正在展示最近保存的商品目录。",
+      "snapshotTitle": "临时目录",
+      "snapshotText": "实时目录恢复后，价格和库存可能会更新。"
     },
     "compare": {
       "title": "商品对比",
