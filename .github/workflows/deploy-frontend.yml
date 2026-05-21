@@ -1,0 +1,76 @@
+name: Deploy Static Frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-static-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DEPLOY_HOST: ${{ secrets.FRONTEND_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.FRONTEND_DEPLOY_USER }}
+      DEPLOY_PASSWORD: ${{ secrets.FRONTEND_DEPLOY_PASSWORD }}
+      DEPLOY_PORT: ${{ secrets.FRONTEND_DEPLOY_PORT }}
+      DEPLOY_TARGET: ${{ secrets.FRONTEND_DEPLOY_TARGET }}
+    steps:
+      - name: Check deployment secrets
+        id: preflight
+        run: |
+          missing=()
+          if [[ -z "$DEPLOY_HOST" ]]; then missing+=("FRONTEND_DEPLOY_HOST"); fi
+          if [[ -z "$DEPLOY_USER" ]]; then missing+=("FRONTEND_DEPLOY_USER"); fi
+          if [[ -z "$DEPLOY_PASSWORD" ]]; then missing+=("FRONTEND_DEPLOY_PASSWORD"); fi
+
+          if (( ${#missing[@]} > 0 )); then
+            echo "::warning::Skipping frontend deployment. Missing GitHub Secrets: ${missing[*]}"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "DEPLOY_PORT=${DEPLOY_PORT:-22}" >> "$GITHUB_ENV"
+          echo "DEPLOY_TARGET=${DEPLOY_TARGET:-/var/www/shoptest/}" >> "$GITHUB_ENV"
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: steps.preflight.outputs.deploy == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: steps.preflight.outputs.deploy == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deployment tools
+        if: steps.preflight.outputs.deploy == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync sshpass
+
+      - name: Install frontend dependencies
+        if: steps.preflight.outputs.deploy == 'true'
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        if: steps.preflight.outputs.deploy == 'true'
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload frontend build
+        if: steps.preflight.outputs.deploy == 'true'
+        run: |
+          SSHPASS="$DEPLOY_PASSWORD" sshpass -e rsync -az --delete --delay-updates \
+            -e "ssh -p $DEPLOY_PORT -o StrictHostKeyChecking=accept-new" \
+            frontend/build/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET"

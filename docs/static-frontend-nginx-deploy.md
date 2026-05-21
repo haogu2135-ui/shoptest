@@ -34,6 +34,44 @@ On Windows you can also build and prepare the static artifact:
 
 This creates `artifacts/frontend-build`.
 
+To build and upload directly to a server with rsync, create a private config file first:
+
+```powershell
+Copy-Item deploy\frontend-upload.env.example deploy\frontend-upload.local.env
+notepad deploy\frontend-upload.local.env
+```
+
+Then run:
+
+```powershell
+.\scripts\DeployStaticFrontend.ps1
+```
+
+For Linux or CI runners:
+
+```bash
+bash scripts/deploy-static-frontend.sh
+```
+
+`deploy/frontend-upload.local.env` is ignored by git. Both scripts run `npm ci`, `npm run build`, then upload `frontend/build/` to `DEPLOY_USER@DEPLOY_HOST:DEPLOY_TARGET`. Password upload uses `sshpass`, so the local machine or CI runner must have `rsync` and `sshpass` installed.
+
+## GitHub Actions Auto Deploy
+
+The workflow `.github/workflows/deploy-frontend.yml` runs on every push to `main` and can also be started manually from the GitHub Actions page.
+
+Configure these repository secrets in GitHub:
+
+- `FRONTEND_DEPLOY_HOST`: server public IP or domain
+- `FRONTEND_DEPLOY_USER`: usually `root`
+- `FRONTEND_DEPLOY_PASSWORD`: SSH password
+
+Optional secrets:
+
+- `FRONTEND_DEPLOY_PORT`: default `22`
+- `FRONTEND_DEPLOY_TARGET`: default `/var/www/shoptest/`
+
+If required secrets are missing, the workflow skips deployment with a warning instead of failing. After secrets are configured, pushing to `main` automatically builds `frontend` and uploads `frontend/build/` to the server.
+
 ## Upload Static Files
 
 Copy the contents of `frontend/build` to the server:
