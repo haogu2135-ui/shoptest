@@ -1,0 +1,19 @@
+[Unit]
+Description=Shoptest Spring Boot API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=shoptest
+Group=shoptest
+WorkingDirectory=/opt/shoptest
+EnvironmentFile=/etc/shoptest/backend.env
+ExecStart=/usr/bin/java -Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8 -jar /opt/shoptest/shop.jar
+Restart=always
+RestartSec=5
+SuccessExitStatus=143
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

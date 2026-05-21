@@ -9,6 +9,10 @@ const resolveApiBaseUrl = () => {
         return configured.replace(/\/$/, '');
     }
 
+    if (process.env.NODE_ENV === 'production') {
+        return '/api';
+    }
+
     const { protocol, hostname } = window.location;
     return `${protocol}//${hostname}:8081`;
 };

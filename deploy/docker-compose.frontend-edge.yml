@@ -1,0 +1,14 @@
+services:
+  shoptest-frontend:
+    image: nginx:1.27-alpine
+    container_name: shoptest-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-_}
+      BACKEND_ORIGIN: ${BACKEND_ORIGIN:?Set BACKEND_ORIGIN, for example http://10.0.0.20:8081}
+      CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-6m}
+    volumes:
+      - ../artifacts/frontend-build:/usr/share/nginx/html:ro
+      - ./nginx/shoptest-edge.conf.template:/etc/nginx/templates/default.conf.template:ro

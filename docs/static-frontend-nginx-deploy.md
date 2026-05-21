@@ -1,0 +1,168 @@
+# Static Frontend + Nginx Deployment
+
+This deployment keeps the 2-core / 1 GB server focused on Nginx and the Spring Boot API. The React storefront is built into static files and does not run as a Node process in production.
+
+## Should Nginx Be On Another Server?
+
+Usually no for the first production version. Nginx serving a React build is very light; the real pressure on a 2-core / 1 GB server comes from the Java API, MySQL, image uploads, and uncached dynamic requests.
+
+Use this order:
+
+1. First choice: one low-cost server runs Nginx static files plus Spring Boot API. Do not run `npm start` in production.
+2. Better split: frontend server runs only Nginx static files; backend server runs Spring Boot and MySQL/API. Customers still see one domain because Nginx proxies `/api`, `/ws`, and `/uploads`.
+3. Best scale path: move static files and images to CDN/object storage, keep the backend API private behind Nginx or a load balancer.
+
+If the current machine is 2-core / 1 GB, the most useful immediate change is removing the Node frontend process. Moving Nginx itself to another machine only matters after static traffic or image traffic becomes large.
+
+## Build Frontend
+
+Build on your local machine or in GitHub Actions:
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+Production builds use `/api` by default, so the browser calls the same domain and Nginx forwards API traffic to Spring Boot.
+
+On Windows you can also build and prepare the static artifact:
+
+```powershell
+.\scripts\BuildStaticFrontend.ps1
+```
+
+This creates `artifacts/frontend-build`.
+
+## Upload Static Files
+
+Copy the contents of `frontend/build` to the server:
+
+```bash
+sudo mkdir -p /var/www/shoptest
+sudo rsync -av --delete frontend/build/ /var/www/shoptest/
+```
+
+Do not run `npm start` or `serve -s build` on the 1 GB server.
+
+## Install Nginx Config
+
+Copy `deploy/nginx/shoptest-static.conf` to Nginx:
+
+```bash
+sudo cp deploy/nginx/shoptest-static.conf /etc/nginx/sites-available/shoptest
+sudo ln -sf /etc/nginx/sites-available/shoptest /etc/nginx/sites-enabled/shoptest
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Replace `server_name _;` with your real domain when DNS is ready.
+
+## Run Backend With Low Memory
+
+Run Spring Boot on localhost port `8081`:
+
+```bash
+export SERVER_ADDRESS=127.0.0.1
+export JWT_SECRET='replace-with-at-least-32-random-characters'
+export DB_URL='jdbc:mysql://127.0.0.1:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true'
+export DB_USERNAME='shop'
+export DB_PASSWORD='replace-me'
+
+java -Xms128m -Xmx512m -jar shop.jar
+```
+
+Use a systemd service for production so the backend restarts automatically.
+
+## Request Routing
+
+Nginx serves:
+
+- `/` from `/var/www/shoptest/index.html`
+- `/static/**` from hashed React assets with long cache
+- `/api/**` to `http://127.0.0.1:8081/**`
+- `/ws/**` to Spring Boot WebSocket endpoints
+- `/uploads/**` to Spring Boot uploaded media
+
+The customer sees one storefront domain, while the server avoids running a Node frontend process.
+
+## Split Frontend And Backend Machines
+
+Use this when the 2-core / 1 GB machine should only serve the storefront and proxy traffic to a stronger backend machine.
+
+Architecture:
+
+- Frontend machine: Nginx only, serving `artifacts/frontend-build`
+- Backend machine: Spring Boot on `:8081`, plus database or a private database connection
+- Browser URL: still one storefront domain, for example `https://shop.example.com`
+- Internal proxy: `/api/**`, `/ws/**`, and `/uploads/**` go from Nginx to the backend machine
+
+### Frontend Machine
+
+Copy the repository deployment folder and the built artifact to the frontend server:
+
+```bash
+rsync -av deploy/ user@frontend-server:/opt/shoptest/deploy/
+rsync -av --delete artifacts/frontend-build/ user@frontend-server:/opt/shoptest/artifacts/frontend-build/
+```
+
+Create `/opt/shoptest/deploy/.env`:
+
+```bash
+SERVER_NAME=shop.example.com
+BACKEND_ORIGIN=http://10.0.0.20:8081
+CLIENT_MAX_BODY_SIZE=6m
+```
+
+Start Nginx as the static frontend container:
+
+```bash
+cd /opt/shoptest/deploy
+docker compose -f docker-compose.frontend-edge.yml up -d
+```
+
+The template `deploy/nginx/shoptest-edge.conf.template` is rendered by the official Nginx container at startup. Change `BACKEND_ORIGIN` to your backend machine's private IP or private DNS name.
+
+### Backend Machine
+
+Run Spring Boot on the backend machine and allow access only from the frontend server security group/firewall.
+
+Copy `deploy/backend.env.example` to `/etc/shoptest/backend.env`, then edit secrets, database credentials, and domain:
+
+```bash
+sudo mkdir -p /etc/shoptest
+sudo cp deploy/backend.env.example /etc/shoptest/backend.env
+sudo chmod 600 /etc/shoptest/backend.env
+```
+
+Install the low-memory service:
+
+```bash
+sudo mkdir -p /opt/shoptest
+sudo cp target/shop-0.0.1-SNAPSHOT.jar /opt/shoptest/shop.jar
+sudo cp deploy/shoptest-backend.service /etc/systemd/system/shoptest-backend.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now shoptest-backend
+```
+
+For this split mode, `SERVER_ADDRESS=0.0.0.0` is acceptable only if the firewall restricts port `8081` to the frontend server. If backend and Nginx are on the same machine, use `SERVER_ADDRESS=127.0.0.1`.
+
+Or run the backend as a container:
+
+```bash
+./mvnw clean package -DskipTests
+cp deploy/backend.env.example deploy/backend.env
+cp deploy/backend-compose.env.example deploy/.env
+cd deploy
+docker compose -f docker-compose.backend.yml up -d --build
+```
+
+`deploy/.env` controls compose-level values such as `BACKEND_BIND_IP` and `BACKEND_HOST_PORT`; `deploy/backend.env` controls Spring Boot values such as database credentials, JWT secret, and CORS origins. Keep `SERVER_PORT=8081` for the container unless you also change the container port mapping.
+
+## Resource Notes For 2-Core / 1 GB
+
+- Keep frontend as static files. Never run `npm start`, `react-scripts start`, or `serve -s build` in production.
+- Cap Java memory with `-Xmx512m` or lower if MySQL is on the same machine.
+- Prefer CDN/object storage for `/uploads` once pet gallery or product media grows.
+- Keep database on a separate managed service if budget allows; MySQL plus Java on 1 GB is the tightest part.
+- Put only Nginx on the public internet; keep Spring Boot and MySQL private.
