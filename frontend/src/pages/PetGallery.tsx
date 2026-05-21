@@ -17,6 +17,7 @@ import { useLanguage } from '../i18n';
 import type { PetGalleryPhoto, PetGalleryQuota } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
+import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import './PetGallery.css';
 
 const { Paragraph, Text, Title } = Typography;
@@ -46,7 +47,7 @@ type GalleryItem = {
 
 const readLocalLikes = () => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(PET_GALLERY_LOCAL_LIKES_KEY) || '[]');
+    const parsed = JSON.parse(getLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY) || '[]');
     return Array.isArray(parsed) ? parsed.map(String) : [];
   } catch {
     return [];
@@ -54,11 +55,7 @@ const readLocalLikes = () => {
 };
 
 const writeLocalLikes = (likes: string[]) => {
-  try {
-    localStorage.setItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(likes))));
-  } catch {
-    // Keep the gallery usable when browser storage is unavailable.
-  }
+  setLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(likes))));
 };
 
 const resolvePhotoUrl = (imageUrl: string) => resolveApiAssetUrl(imageUrl, petGalleryImageFallback);
@@ -82,7 +79,7 @@ const PetGallery: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
 
-  const isAuthenticated = Boolean(localStorage.getItem('token'));
+  const isAuthenticated = hasStoredValue('token');
 
   const refreshGallery = useCallback(async (force = false) => {
     try {

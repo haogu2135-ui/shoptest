@@ -1,6 +1,7 @@
 import type { CartItem, Product } from '../types';
 import { createLocalId } from './localIds';
 import { dispatchDomEvent } from './domEvents';
+import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 const GUEST_CART_KEY = 'shop-guest-cart';
 const MAX_GUEST_CART_QUANTITY = 99;
@@ -54,7 +55,7 @@ const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
 
 const readGuestCart = (): CartItem[] => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || '[]');
+    const parsed = JSON.parse(getLocalStorageItem(GUEST_CART_KEY) || '[]');
     return Array.isArray(parsed) ? parsed.map(normalizeCartItem).filter(Boolean) as CartItem[] : [];
   } catch {
     return [];
@@ -62,11 +63,7 @@ const readGuestCart = (): CartItem[] => {
 };
 
 const writeGuestCart = (items: CartItem[]) => {
-  try {
-    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items.map(normalizeCartItem).filter(Boolean)));
-  } catch {
-    // Guest-cart persistence is best-effort in restricted browser storage modes.
-  }
+  setLocalStorageItem(GUEST_CART_KEY, JSON.stringify(items.map(normalizeCartItem).filter(Boolean)));
   dispatchDomEvent('shop:cart-updated');
 };
 

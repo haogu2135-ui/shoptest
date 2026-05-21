@@ -27,6 +27,10 @@ public class UserService {
     public User findByUsernameOrPhone(String login) {
         return userMapper.findByUsernameOrPhone(login);
     }
+
+    public User findByUsernameOrPhoneOrEmail(String login) {
+        return userMapper.findByUsernameOrPhoneOrEmail(login);
+    }
     
     public User findById(Long id) {
         return userMapper.findById(id);

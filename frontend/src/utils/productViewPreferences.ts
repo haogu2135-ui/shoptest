@@ -1,5 +1,6 @@
 import type { Product } from '../types';
 import { dispatchDomEvent } from './domEvents';
+import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 export const PRODUCT_VIEW_PREFERENCES_KEY = 'shop-product-view-preferences';
 
@@ -50,7 +51,7 @@ const normalizeRecentEntries = (value: unknown, recent: number[]) => {
 
 export const loadProductViewPreferences = (): ProductViewPreferences => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(PRODUCT_VIEW_PREFERENCES_KEY) || '{}');
+    const parsed = JSON.parse(getLocalStorageItem(PRODUCT_VIEW_PREFERENCES_KEY) || '{}');
     const recent: number[] = Array.isArray(parsed.recent)
       ? parsed.recent.map(Number).filter((id: number) => Number.isSafeInteger(id) && id > 0)
       : [];
@@ -69,11 +70,7 @@ export const loadProductViewPreferences = (): ProductViewPreferences => {
 };
 
 const saveProductViewPreferences = (preferences: ProductViewPreferences) => {
-  try {
-    localStorage.setItem(PRODUCT_VIEW_PREFERENCES_KEY, JSON.stringify(preferences));
-  } catch {
-    // Product-view tracking is best-effort when storage is unavailable or full.
-  }
+  setLocalStorageItem(PRODUCT_VIEW_PREFERENCES_KEY, JSON.stringify(preferences));
   dispatchDomEvent('shop:product-view-preferences-updated');
 };
 

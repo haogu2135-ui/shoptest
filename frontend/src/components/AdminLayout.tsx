@@ -11,6 +11,7 @@ import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { adminApi, adminSupportApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
 import { isAdminRole, isSuperAdminRole } from '../utils/roles';
+import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
@@ -62,7 +63,7 @@ const AdminLayout: React.FC = () => {
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const token = localStorage.getItem('token');
+      const token = getLocalStorageItem('token');
       if (!token) {
         message.warning(t('messages.loginRequired'));
         navigate('/login');
@@ -76,7 +77,7 @@ const AdminLayout: React.FC = () => {
           navigate('/');
           return;
         }
-        localStorage.setItem('role', effectiveRole);
+        setLocalStorageItem('role', effectiveRole);
         setCurrentRole(effectiveRole);
         const permissionsRes = await adminApi.getMyPermissions();
         const nextPermissions = permissionsRes.data.permissions || [];
@@ -97,7 +98,7 @@ const AdminLayout: React.FC = () => {
       navigate('/', { replace: true });
       return;
     }
-    localStorage.setItem('adminDefaultPath', defaultAdminPath);
+    setLocalStorageItem('adminDefaultPath', defaultAdminPath);
     if (location.pathname === '/admin' || !menuItems.some((item) => item.key === location.pathname)) {
       navigate(defaultAdminPath, { replace: true });
     }
@@ -128,11 +129,11 @@ const AdminLayout: React.FC = () => {
 
   const handleLogout = () => {
     userApi.logout().catch(() => undefined);
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('username');
-    localStorage.removeItem('role');
-    localStorage.removeItem('adminDefaultPath');
+    removeLocalStorageItem('token');
+    removeLocalStorageItem('userId');
+    removeLocalStorageItem('username');
+    removeLocalStorageItem('role');
+    removeLocalStorageItem('adminDefaultPath');
     navigate('/login');
   };
 

@@ -1,5 +1,6 @@
 import type { Product } from '../types';
 import { dispatchDomEvent } from './domEvents';
+import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 const STORAGE_KEY = 'shop-stock-alerts';
 const MAX_ALERTS = 50;
@@ -23,7 +24,7 @@ export type StockAlertItem = {
 
 const readRaw = (): StockAlertItem[] => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(getLocalStorageItem(STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     const seenProductIds = new Set<number>();
     return parsed
@@ -60,11 +61,7 @@ const writeRaw = (items: StockAlertItem[]) => {
     seenProductIds.add(item.productId);
     return true;
   }).slice(0, MAX_ALERTS) as StockAlertItem[];
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedItems));
-  } catch {
-    // Stock alert persistence is best-effort in restricted browser storage modes.
-  }
+  setLocalStorageItem(STORAGE_KEY, JSON.stringify(normalizedItems));
   dispatchDomEvent('shop:stock-alerts-updated');
 };
 

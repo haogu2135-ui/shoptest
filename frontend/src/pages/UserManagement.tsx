@@ -5,6 +5,7 @@ import { adminApi, userApi } from '../api';
 import type { AdminRole, User } from '../types';
 import { useLanguage } from '../i18n';
 import { getEffectiveRole, isAdminRole, isSuperAdminRole, roleColor } from '../utils/roles';
+import { hasStoredValue } from '../utils/safeStorage';
 import './UserManagement.css';
 
 const { Title, Text } = Typography;
@@ -65,7 +66,7 @@ const UserManagement: React.FC = () => {
   }, [fetchUsers]);
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) return;
+    if (!hasStoredValue('token')) return;
     userApi.getProfile()
       .then((res) => {
         setCurrentUserId(Number(res.data.id || 0));

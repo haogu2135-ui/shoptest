@@ -4,17 +4,10 @@ import { UserOutlined } from '@ant-design/icons';
 import { useLanguage } from '../i18n';
 import type { Order } from '../types';
 import { formatSafeDate, formatSafeDateTime } from '../utils/dateFormat';
+import { getLocalStorageItem } from '../utils/safeStorage';
 
 const { TextArea } = Input;
 const { Text } = Typography;
-
-const readReviewToken = () => {
-    try {
-        return localStorage.getItem('token');
-    } catch {
-        return null;
-    }
-};
 
 interface Review {
     id: number;
@@ -41,7 +34,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     reviewableOrders,
     onAddReview,
 }) => {
-    const isLoggedIn = !!readReviewToken();
+    const isLoggedIn = !!getLocalStorageItem('token');
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState('');
     const [orderId, setOrderId] = useState<number | undefined>(reviewableOrders[0]?.id);

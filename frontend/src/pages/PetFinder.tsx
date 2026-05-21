@@ -7,6 +7,7 @@ import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import type { Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
+import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './PetFinder.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -41,7 +42,7 @@ const keywordMap: Record<Exclude<PetType, 'all'> | Exclude<NeedType, 'all'>, str
 
 const readPreferences = () => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(FINDER_STORAGE_KEY) || '{}');
+    const parsed = JSON.parse(getLocalStorageItem(FINDER_STORAGE_KEY) || '{}');
     return {
       petType: (parsed.petType || 'all') as PetType,
       need: (parsed.need || 'all') as NeedType,
@@ -97,11 +98,7 @@ const PetFinder: React.FC = () => {
   }, [language, t]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(FINDER_STORAGE_KEY, JSON.stringify({ petType, need, budget, priority }));
-    } catch {
-      // Finder preferences are a convenience; do not block the current session.
-    }
+    setLocalStorageItem(FINDER_STORAGE_KEY, JSON.stringify({ petType, need, budget, priority }));
   }, [budget, need, petType, priority]);
 
   useEffect(() => {

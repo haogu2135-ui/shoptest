@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo, useState } from 'react';
 import enLocale from './locales/en.json';
 import esLocale from './locales/es.json';
 import zhLocale from './locales/zh.json';
+import { getLocalStorageItem, setLocalStorageItem } from './utils/safeStorage';
 
 export type Language = 'es' | 'zh' | 'en';
 
@@ -74,12 +75,7 @@ const translate = (language: Language, key: string, params?: TranslationParams) 
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    let storedLanguage: string | null = null;
-    try {
-      storedLanguage = localStorage.getItem(STORAGE_KEY);
-    } catch {
-      storedLanguage = null;
-    }
+    const storedLanguage = getLocalStorageItem(STORAGE_KEY);
     if (isLanguage(storedLanguage)) return storedLanguage;
     const locale = navigator.language || '';
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -87,11 +83,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const setLanguage = (nextLanguage: Language) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, nextLanguage);
-    } catch {
-      // Language switching should still work when persistence is unavailable.
-    }
+    setLocalStorageItem(STORAGE_KEY, nextLanguage);
     setLanguageState(nextLanguage);
   };
 

@@ -12,6 +12,7 @@ import { clearCompareProducts, readCompareProductIds, removeCompareProduct } fro
 import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { getLocalStorageItem } from '../utils/safeStorage';
 import './ProductCompare.css';
 
 const { Title, Text } = Typography;
@@ -176,7 +177,7 @@ const ProductCompare: React.FC = () => {
       message.error(t('pages.productDetail.insufficientStock'));
       return;
     }
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     try {
       if (token) {
         await cartApi.addItem(0, product.id, 1);
@@ -196,7 +197,7 @@ const ProductCompare: React.FC = () => {
       message.info(t('pages.compare.recommendationEmpty'));
       return;
     }
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     try {
       if (token) {
         await Promise.all(directReadyProducts.map((product) => cartApi.addItem(0, product.id, 1)));

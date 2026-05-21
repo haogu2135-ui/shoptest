@@ -7,6 +7,7 @@ import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { hasStoredValue } from '../utils/safeStorage';
 import './Notifications.css';
 
 const { Text, Title } = Typography;
@@ -49,7 +50,7 @@ const Notifications: React.FC = () => {
   }, [t]);
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) {
+    if (!hasStoredValue('token')) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;

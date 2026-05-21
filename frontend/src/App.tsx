@@ -7,6 +7,7 @@ import CustomerSupportWidget from './components/CustomerSupportWidget';
 import Navbar from './components/Navbar';
 import { useLanguage } from './i18n';
 import { dispatchDomEvent } from './utils/domEvents';
+import { hasStoredValue } from './utils/safeStorage';
 import './App.css';
 
 const { Content, Footer } = Layout;
@@ -83,7 +84,7 @@ const RouteScrollReset: React.FC = () => {
 
 const StorefrontLayout: React.FC = () => {
   const { t } = useLanguage();
-  const isAuthenticated = Boolean(localStorage.getItem('token'));
+  const isAuthenticated = hasStoredValue('token');
   const footerActionCards = [
     {
       key: 'track',

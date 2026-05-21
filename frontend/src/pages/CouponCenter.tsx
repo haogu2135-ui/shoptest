@@ -9,6 +9,7 @@ import { useMarket } from '../hooks/useMarket';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getGuestCartItems } from '../utils/guestCart';
 import { getCouponUiText } from '../utils/couponUiText';
+import { getLocalStorageItem } from '../utils/safeStorage';
 import {
   filterPublicCoupons,
   getCartItemCount,
@@ -36,15 +37,6 @@ const couponStatusColor: Record<string, string> = {
 type WalletFilter = 'all' | 'UNUSED' | 'USED' | 'EXPIRED';
 const CLAIM_BATCH_SIZE = 4;
 
-const readStoredToken = () => {
-  if (typeof window === 'undefined') return '';
-  try {
-    return window.localStorage.getItem('token') || '';
-  } catch {
-    return '';
-  }
-};
-
 const getCouponDisplayName = (coupon: Coupon | UserCoupon) =>
   'couponName' in coupon ? coupon.couponName : coupon.name;
 
@@ -60,7 +52,7 @@ const claimCouponsInBatches = async (coupons: Coupon[]) => {
 const CouponCenter: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const token = readStoredToken();
+  const token = getLocalStorageItem('token') || '';
   const isAuthenticated = Boolean(token);
   const mountedRef = useRef(true);
   const loadCouponsRequestRef = useRef(0);

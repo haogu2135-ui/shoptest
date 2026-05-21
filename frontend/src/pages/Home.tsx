@@ -35,6 +35,7 @@ import { needsOptionSelection } from '../utils/productOptions';
 import { resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import SocialProofToast from '../components/SocialProofToast';
 import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
@@ -75,7 +76,7 @@ type PetGalleryItem = {
 
 const readLocalPetGalleryLikes = () => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(PET_GALLERY_LOCAL_LIKES_KEY) || '[]');
+    const parsed = JSON.parse(getLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY) || '[]');
     return Array.isArray(parsed) ? parsed.map(String) : [];
   } catch {
     return [];
@@ -83,11 +84,7 @@ const readLocalPetGalleryLikes = () => {
 };
 
 const writeLocalPetGalleryLikes = (keys: string[]) => {
-  try {
-    localStorage.setItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(keys))));
-  } catch {
-    // Likes are optimistic UI state; persistence is best-effort in restricted storage modes.
-  }
+  setLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(keys))));
 };
 
 const parseImageList = (value: unknown): string[] => {
@@ -147,7 +144,7 @@ const Home: React.FC = () => {
 
   const searchKeyword = (keyword: string) => navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
   const openDiscountProducts = () => navigate('/products?discount=true');
-  const isAuthenticated = Boolean(localStorage.getItem('token'));
+  const isAuthenticated = hasStoredValue('token');
   const homeLanguageClass = `shopee-home shopee-home--${language}`;
   const openSupport = () => dispatchDomEvent('shop:open-support');
   const openProduct = (productId: number) => navigate(`/products/${productId}`);

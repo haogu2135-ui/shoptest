@@ -16,6 +16,8 @@ mysql-data-dev/
 .env.*
 !.env.example
 *.local.env
+config/application.properties
+config/*.local.properties
 
 .idea/
 .vscode/

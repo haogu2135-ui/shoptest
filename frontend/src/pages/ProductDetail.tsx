@@ -19,6 +19,7 @@ import { getProductOptionGroups, getProductVariants, needsOptionSelection, optio
 import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
+import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
 import './ProductDetail.css';
 
 const { Title, Text } = Typography;
@@ -349,7 +350,7 @@ const ProductDetail: React.FC = () => {
   const warmNonCriticalContent = useCallback(() => {
     if (nonCriticalLoadedRef.current) return;
     nonCriticalLoadedRef.current = true;
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     fetchReviews();
     fetchQuestions();
     fetchRecommendations();
@@ -365,7 +366,7 @@ const ProductDetail: React.FC = () => {
     setRecommendations([]);
     setReviewableOrders([]);
     setAverageRating(0);
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     const fetchProduct = async () => {
       setLoading(true);
       try {
@@ -434,7 +435,7 @@ const ProductDetail: React.FC = () => {
 
   const handleAddToCart = async () => {
     if (purchaseSubmitting || purchaseRequestKeyRef.current) return;
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     try {
       if (!validateOptions()) return;
       if (selectedStock !== undefined && selectedStock < quantity) {
@@ -469,7 +470,7 @@ const ProductDetail: React.FC = () => {
 
   const handleBuyNow = async () => {
     if (purchaseSubmitting || purchaseRequestKeyRef.current) return;
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     try {
       if (!validateOptions()) return;
       if (selectedStock !== undefined && selectedStock < quantity) {
@@ -495,7 +496,7 @@ const ProductDetail: React.FC = () => {
         const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
         syncCheckoutCartItemIds([cartItem]);
       }
-      sessionStorage.removeItem('checkoutPaymentMethod');
+      removeSessionStorageItem('checkoutPaymentMethod');
       navigate('/checkout');
     } catch (err: any) {
       message.error(err.response?.data?.error || t('messages.operationFailed'));
@@ -506,7 +507,7 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleFavorite = async () => {
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     if (!token) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
@@ -537,14 +538,14 @@ const ProductDetail: React.FC = () => {
   const handleAddReview = async (orderId: number, rating: number, comment: string) => {
     await reviewApi.create(Number(id), orderId, rating, comment);
     await fetchReviews();
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     if (token) {
       await fetchReviewableOrders();
     }
   };
 
   const handleAskQuestion = async () => {
-    if (!localStorage.getItem('token')) {
+    if (!hasStoredValue('token')) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
@@ -568,7 +569,7 @@ const ProductDetail: React.FC = () => {
 
   const handleAnswerQuestion = async (questionId: number) => {
     const text = (answerDrafts[questionId] || '').trim();
-    if (!localStorage.getItem('token')) {
+    if (!hasStoredValue('token')) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
@@ -771,7 +772,7 @@ const ProductDetail: React.FC = () => {
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     try {
       recommendationRequestIdsRef.current.add(recommendationId);
       setRecommendationAddingId(recommendationId);

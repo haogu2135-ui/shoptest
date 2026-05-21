@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { AxiosResponse } from 'axios';
 import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig, AdminOrderPage } from '../types';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { getLocalStorageItem, removeLocalStorageItem } from '../utils/safeStorage';
 
 const resolveApiBaseUrl = () => {
     const configured = process.env.REACT_APP_API_BASE_URL;
@@ -57,22 +58,30 @@ const normalizeEmailParam = (value: unknown) => {
     return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : undefined;
 };
 
+const normalizeOrderTrackingNumber = (value: unknown) =>
+    normalizeTextParam(value, 80).replace(/[^a-z0-9_-]/gi, '');
+
+const normalizeGuestCheckoutItems = (items: Array<{ productId: number; quantity: number; selectedSpecs?: string }> = []) =>
+    items
+        .map((item) => ({
+            productId: normalizePositiveInt(item?.productId) || 0,
+            quantity: normalizeQuantityParam(item?.quantity),
+            selectedSpecs: item?.selectedSpecs ? normalizeTextParam(item.selectedSpecs, 600) : undefined,
+        }))
+        .filter((item) => item.productId > 0)
+        .slice(0, 100);
+
+type ProductReviewSummary = {
+    reviews: Review[];
+    averageRating: number;
+};
+
 const getStoredItem = (key: string) => {
-    try {
-        return window.localStorage.getItem(key);
-    } catch {
-        return null;
-    }
+    return getLocalStorageItem(key);
 };
 
 const removeStoredItems = (keys: string[]) => {
-    keys.forEach((key) => {
-        try {
-            window.localStorage.removeItem(key);
-        } catch {
-            // Auth cleanup should not mask the original API error.
-        }
-    });
+    keys.forEach(removeLocalStorageItem);
 };
 
 export const supportWebSocketUrl = (token: string) => {
@@ -96,10 +105,27 @@ const NOTIFICATION_CACHE_MS = 15_000;
 const PERSONALIZED_RECOMMENDATION_CACHE_MS = 45_000;
 const PRODUCT_ADD_ON_CACHE_MS = 30_000;
 const APP_CONFIG_CACHE_MS = 60_000;
+const COUPON_CACHE_MS = 20_000;
+const PAYMENT_CHANNEL_CACHE_MS = 60_000;
+const ADDRESS_CACHE_MS = 20_000;
+const ORDER_ITEMS_CACHE_MS = 20_000;
+const LOGISTICS_TRACK_CACHE_MS = 30_000;
+const REVIEW_CACHE_MS = 20_000;
+const QUESTION_CACHE_MS = 20_000;
+const LOGISTICS_CARRIER_CACHE_MS = 60_000;
+const CATEGORY_CACHE_MS = 60_000;
+const BRAND_CACHE_MS = 60_000;
+const ADMIN_ROLE_CACHE_MS = 60_000;
+const ADMIN_USER_CACHE_MS = 15_000;
+const ADMIN_DASHBOARD_CACHE_MS = 20_000;
+const ADMIN_ORDER_CACHE_MS = 15_000;
+const ADMIN_REVIEW_CACHE_MS = 20_000;
 const productListCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
 const productListRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
 const productDetailCache = new Map<number, { expiresAt: number; response: AxiosResponse<Product> }>();
 const productDetailRequests = new Map<number, Promise<AxiosResponse<Product>>>();
+const productByIdsCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
+const productByIdsRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
 const orderTrackCache = new Map<string, { expiresAt: number; response: AxiosResponse<{ order: Order; items: OrderItem[] }> }>();
 const orderTrackRequests = new Map<string, Promise<AxiosResponse<{ order: Order; items: OrderItem[] }>>>();
 const petGalleryCache = new Map<string, { expiresAt: number; response: AxiosResponse<PetGalleryPhoto[]> | AxiosResponse<PetGalleryQuota> }>();
@@ -114,10 +140,63 @@ const productAddOnCache = new Map<string, { expiresAt: number; response: AxiosRe
 const productAddOnRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
 const productRecommendationsCache = new Map<number, { expiresAt: number; response: AxiosResponse<Product[]> }>();
 const productRecommendationsRequests = new Map<number, Promise<AxiosResponse<Product[]>>>();
+const publicCouponCache = new Map<string, { expiresAt: number; response: AxiosResponse<Coupon[]> }>();
+const publicCouponRequests = new Map<string, Promise<AxiosResponse<Coupon[]>>>();
+const userCouponCache = new Map<string, { expiresAt: number; response: AxiosResponse<UserCoupon[]> }>();
+const userCouponRequests = new Map<string, Promise<AxiosResponse<UserCoupon[]>>>();
+const addressCache = new Map<string, { expiresAt: number; response: AxiosResponse<UserAddress> | AxiosResponse<UserAddress[]> }>();
+const addressRequests = new Map<string, Promise<AxiosResponse<UserAddress> | AxiosResponse<UserAddress[]>>>();
+const orderItemsCache = new Map<number, { expiresAt: number; response: AxiosResponse<OrderItem[]> }>();
+const orderItemsRequests = new Map<number, Promise<AxiosResponse<OrderItem[]>>>();
+const logisticsTrackCache = new Map<string, { expiresAt: number; response: AxiosResponse<LogisticsTrackResponse> }>();
+const logisticsTrackRequests = new Map<string, Promise<AxiosResponse<LogisticsTrackResponse>>>();
+const reviewCache = new Map<number, { expiresAt: number; response: AxiosResponse<ProductReviewSummary> }>();
+const reviewRequests = new Map<number, Promise<AxiosResponse<ProductReviewSummary>>>();
+const questionCache = new Map<number, { expiresAt: number; response: AxiosResponse<ProductQuestion[]> }>();
+const questionRequests = new Map<number, Promise<AxiosResponse<ProductQuestion[]>>>();
+const logisticsCarrierCache = new Map<string, { expiresAt: number; response: AxiosResponse<LogisticsCarrier[]> }>();
+const logisticsCarrierRequests = new Map<string, Promise<AxiosResponse<LogisticsCarrier[]>>>();
+const categoryCache = new Map<string, { expiresAt: number; response: AxiosResponse<Category[]> }>();
+const categoryRequests = new Map<string, Promise<AxiosResponse<Category[]>>>();
+const brandCache = new Map<string, { expiresAt: number; response: AxiosResponse<Brand[]> }>();
+const brandRequests = new Map<string, Promise<AxiosResponse<Brand[]>>>();
+const adminRoleCache = new Map<string, { expiresAt: number; response: AxiosResponse<AdminRole[]> }>();
+const adminRoleRequests = new Map<string, Promise<AxiosResponse<AdminRole[]>>>();
+const adminUserCache = new Map<string, { expiresAt: number; response: AxiosResponse<User[]> }>();
+const adminUserRequests = new Map<string, Promise<AxiosResponse<User[]>>>();
+const adminOrderCache = new Map<string, { expiresAt: number; response: AxiosResponse<Order[]> | AxiosResponse<AdminOrderPage> }>();
+const adminOrderRequests = new Map<string, Promise<AxiosResponse<Order[]> | AxiosResponse<AdminOrderPage>>>();
+const adminReviewCache = new Map<string, { expiresAt: number; response: AxiosResponse<Review[]> }>();
+const adminReviewRequests = new Map<string, Promise<AxiosResponse<Review[]>>>();
+let paymentChannelCache: { expiresAt: number; response: AxiosResponse<PaymentChannel[]> } | null = null;
+let paymentChannelRequest: Promise<AxiosResponse<PaymentChannel[]>> | null = null;
 let appConfigCache: { expiresAt: number; response: AxiosResponse<AppConfig> } | null = null;
 let appConfigRequest: Promise<AxiosResponse<AppConfig>> | null = null;
 let adminPermissionsCache: { expiresAt: number; response: AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }> } | null = null;
 let adminPermissionsRequest: Promise<AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }>> | null = null;
+let adminDashboardCache: { expiresAt: number; response: AxiosResponse<DashboardStats> } | null = null;
+let adminDashboardRequest: Promise<AxiosResponse<DashboardStats>> | null = null;
+
+const cachedGet = <T,>(
+    cache: Map<string, { expiresAt: number; response: AxiosResponse<T> }>,
+    requests: Map<string, Promise<AxiosResponse<T>>>,
+    cacheKey: string,
+    ttlMs: number,
+    loader: () => Promise<AxiosResponse<T>>,
+) => {
+    const cached = cache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
+    const pending = requests.get(cacheKey);
+    if (pending) return pending;
+    const request = loader()
+        .then((response) => {
+            cache.set(cacheKey, { response, expiresAt: Date.now() + ttlMs });
+            return response;
+        })
+        .finally(() => requests.delete(cacheKey));
+    requests.set(cacheKey, request);
+    return request;
+};
 
 export const appConfigApi = {
     get: () => {
@@ -153,10 +232,18 @@ const clearProductCache = (id?: number) => {
     if (id === undefined) {
         productDetailCache.clear();
         productDetailRequests.clear();
+        productByIdsCache.clear();
+        productByIdsRequests.clear();
         return;
     }
     productDetailCache.delete(id);
     productDetailRequests.delete(id);
+    productByIdsCache.forEach((cached, cacheKey) => {
+        if (cacheKey.split(',').includes(String(id))) productByIdsCache.delete(cacheKey);
+    });
+    productByIdsRequests.forEach((_request, cacheKey) => {
+        if (cacheKey.split(',').includes(String(id))) productByIdsRequests.delete(cacheKey);
+    });
 };
 
 const clearPetGalleryCache = () => {
@@ -184,6 +271,90 @@ const clearNotificationCache = (userId?: number) => {
         notificationCache.delete(key);
         notificationRequests.delete(key);
     });
+};
+
+const clearCouponCache = () => {
+    publicCouponCache.clear();
+    publicCouponRequests.clear();
+    userCouponCache.clear();
+    userCouponRequests.clear();
+};
+
+const clearAddressCache = () => {
+    addressCache.clear();
+    addressRequests.clear();
+};
+
+const clearOrderItemsCache = (orderId?: number) => {
+    if (orderId === undefined) {
+        orderItemsCache.clear();
+        orderItemsRequests.clear();
+        return;
+    }
+    orderItemsCache.delete(orderId);
+    orderItemsRequests.delete(orderId);
+};
+
+const clearReviewCache = (productId?: number) => {
+    if (productId === undefined) {
+        reviewCache.clear();
+        reviewRequests.clear();
+        return;
+    }
+    reviewCache.delete(productId);
+    reviewRequests.delete(productId);
+};
+
+const clearQuestionCache = (productId?: number) => {
+    if (productId === undefined) {
+        questionCache.clear();
+        questionRequests.clear();
+        return;
+    }
+    questionCache.delete(productId);
+    questionRequests.delete(productId);
+};
+
+const clearLogisticsCarrierCache = () => {
+    logisticsCarrierCache.clear();
+    logisticsCarrierRequests.clear();
+};
+
+const clearCategoryCache = () => {
+    categoryCache.clear();
+    categoryRequests.clear();
+};
+
+const clearBrandCache = () => {
+    brandCache.clear();
+    brandRequests.clear();
+};
+
+const clearAdminRoleCache = () => {
+    adminRoleCache.clear();
+    adminRoleRequests.clear();
+};
+
+const clearAdminUserCache = () => {
+    adminUserCache.clear();
+    adminUserRequests.clear();
+};
+
+const clearAdminDashboardCache = () => {
+    adminDashboardCache = null;
+    adminDashboardRequest = null;
+};
+
+const clearAdminOrderCache = () => {
+    adminOrderCache.clear();
+    adminOrderRequests.clear();
+    clearAdminDashboardCache();
+};
+
+const clearAdminReviewCache = () => {
+    adminReviewCache.clear();
+    adminReviewRequests.clear();
+    clearAdminDashboardCache();
 };
 
 export const clearAdminPermissionsCache = () => {
@@ -228,6 +399,9 @@ export const userApi = {
     register: (user: Partial<User>) => api.post('/auth/register', user),
     login: (username: string, password: string) =>
         api.post('/auth/login', { username, password }),
+    sendEmailLoginCode: (email: string) => api.post('/auth/email-code', { email }),
+    emailLogin: (email: string, code: string) =>
+        api.post('/auth/email-login', { email, code }),
     logout: () => api.post('/auth/logout'),
     forgotPassword: (payload: { login: string; email: string; newPassword: string }) =>
         api.post('/auth/forgot-password', payload),
@@ -240,9 +414,11 @@ export const userApi = {
 // 商品相关 API
 export const productApi = {
     getAll: (keyword?: string, categoryId?: number, discount?: boolean) => {
+        const normalizedKeyword = normalizeTextParam(keyword, 120);
+        const normalizedCategoryId = normalizePositiveInt(categoryId);
         const params = new URLSearchParams();
-        if (keyword) params.append('keyword', keyword);
-        if (categoryId) params.append('categoryId', categoryId.toString());
+        if (normalizedKeyword) params.append('keyword', normalizedKeyword);
+        if (normalizedCategoryId) params.append('categoryId', normalizedCategoryId.toString());
         if (discount) params.append('discount', 'true');
         const query = params.toString();
         const cacheKey = query || '__all__';
@@ -254,8 +430,8 @@ export const productApi = {
         if (pending) return pending;
         const request = api.get<Product[]>('/products', {
             params: {
-                ...(keyword ? { keyword } : {}),
-                ...(categoryId ? { categoryId } : {}),
+                ...(normalizedKeyword ? { keyword: normalizedKeyword } : {}),
+                ...(normalizedCategoryId ? { categoryId: normalizedCategoryId } : {}),
                 ...(discount ? { discount: true } : {}),
             },
         })
@@ -296,10 +472,21 @@ export const productApi = {
         if (uniqueIds.length === 0) {
             return Promise.resolve({ data: [] } as unknown as AxiosResponse<Product[]>);
         }
+        const cacheKey = uniqueIds.join(',');
+        const cached = productByIdsCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return Promise.resolve(cached.response);
+        }
+        const pending = productByIdsRequests.get(cacheKey);
+        if (pending) return pending;
         const params = new URLSearchParams();
         uniqueIds.forEach((id) => params.append('ids', String(id)));
-        return api.get<Product[]>('/products/by-ids', { params })
+        const request = api.get<Product[]>('/products/by-ids', { params })
             .then((response) => {
+                productByIdsCache.set(cacheKey, {
+                    response,
+                    expiresAt: Date.now() + PRODUCT_DETAIL_CACHE_MS,
+                });
                 response.data.forEach((product) => {
                     if (product.id) {
                         productDetailCache.set(product.id, {
@@ -309,7 +496,10 @@ export const productApi = {
                     }
                 });
                 return response;
-            });
+            })
+            .finally(() => productByIdsRequests.delete(cacheKey));
+        productByIdsRequests.set(cacheKey, request);
+        return request;
     },
     getFeatured: () => {
         const cacheKey = '__featured__';
@@ -435,8 +625,11 @@ export const orderApi = {
     getByUser: (_userId: number) => api.get<Order[]>('/orders/me'),
     getMine: () => api.get<Order[]>('/orders/me'),
     track: (orderNo: string, email: string) => {
-        const normalizedOrderNo = orderNo.trim();
-        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedOrderNo = normalizeOrderTrackingNumber(orderNo);
+        const normalizedEmail = normalizeEmailParam(email) || '';
+        if (!normalizedOrderNo || !normalizedEmail) {
+            return Promise.reject(new Error('Order number and email are required'));
+        }
         const cacheKey = `${normalizedOrderNo}:${normalizedEmail}`;
         const cached = orderTrackCache.get(cacheKey);
         if (cached && cached.expiresAt > Date.now()) {
@@ -472,7 +665,15 @@ export const orderApi = {
         shippingAddress: string;
         paymentMethod: string;
         items: Array<{ productId: number; quantity: number; selectedSpecs?: string }>;
-    }) => api.post<Order>('/orders/checkout/guest', payload),
+    }) => api.post<Order>('/orders/checkout/guest', {
+        ...payload,
+        guestEmail: normalizeEmailParam(payload.guestEmail) || '',
+        guestName: normalizeTextParam(payload.guestName, 120),
+        guestPhone: normalizeTextParam(payload.guestPhone, 60),
+        shippingAddress: normalizeTextParam(payload.shippingAddress, 1000),
+        paymentMethod: normalizeTextParam(payload.paymentMethod, 40),
+        items: normalizeGuestCheckoutItems(payload.items),
+    }),
     update: (id: number, order: Partial<Order>) => api.put<Order>(`/orders/${toPathId(id)}`, order),
     delete: (id: number) => api.delete(`/orders/${toPathId(id)}`),
     cancel: (id: number, guestEmail?: string) => api.put(`/orders/${toPathId(id)}/cancel`, normalizeEmailParam(guestEmail) ? { guestEmail: normalizeEmailParam(guestEmail) } : undefined),
@@ -482,15 +683,36 @@ export const orderApi = {
         api.put(`/orders/${toPathId(id)}/return-shipment`, { returnTrackingNumber: normalizeTextParam(returnTrackingNumber, 120) }),
     pay: (id: number) => api.put(`/orders/${toPathId(id)}/pay`),
     ship: (id: number) => api.put(`/orders/${toPathId(id)}/ship`),
-    getItems: (orderId: number) => api.get<OrderItem[]>(`/orders/${toPathId(orderId)}/items`),
-    addItem: (orderId: number, item: Partial<OrderItem>) => api.post(`/orders/${toPathId(orderId)}/items`, item),
+    getItems: (orderId: number) => {
+        const normalizedOrderId = toPathId(orderId);
+        if (!normalizedOrderId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<OrderItem[]>);
+        const cached = orderItemsCache.get(normalizedOrderId);
+        if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
+        const pending = orderItemsRequests.get(normalizedOrderId);
+        if (pending) return pending;
+        const request = api.get<OrderItem[]>(`/orders/${normalizedOrderId}/items`)
+            .then((response) => {
+                orderItemsCache.set(normalizedOrderId, {
+                    response,
+                    expiresAt: Date.now() + ORDER_ITEMS_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => orderItemsRequests.delete(normalizedOrderId));
+        orderItemsRequests.set(normalizedOrderId, request);
+        return request;
+    },
+    addItem: (orderId: number, item: Partial<OrderItem>) => {
+        const normalizedOrderId = toPathId(orderId);
+        return api.post(`/orders/${normalizedOrderId}/items`, item).finally(() => clearOrderItemsCache(normalizedOrderId));
+    },
 };
 
 export const couponApi = {
-    getPublic: () => api.get<Coupon[]>('/coupons/public'),
-    claim: (couponId: number, _userId: number) => api.post<UserCoupon>(`/coupons/me/${normalizePositiveInt(couponId) || 0}/claim`),
-    getByUser: (_userId: number) => api.get<UserCoupon[]>('/coupons/me'),
-    getAvailableByUser: (_userId: number) => api.get<UserCoupon[]>('/coupons/me/available'),
+    getPublic: () => cachedGet(publicCouponCache, publicCouponRequests, 'public', COUPON_CACHE_MS, () => api.get<Coupon[]>('/coupons/public')),
+    claim: (couponId: number, _userId: number) => api.post<UserCoupon>(`/coupons/me/${normalizePositiveInt(couponId) || 0}/claim`).finally(clearCouponCache),
+    getByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, 'mine', COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me')),
+    getAvailableByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, 'available', COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me/available')),
     quote: (payload: { cartItemIds: number[]; userCouponId?: number | null }) =>
         api.post<CouponQuote>('/coupons/me/quote', {
             cartItemIds: normalizePositiveIntList(payload.cartItemIds, 100),
@@ -499,7 +721,21 @@ export const couponApi = {
 };
 
 export const paymentApi = {
-    getChannels: () => api.get<PaymentChannel[]>('/payments/channels'),
+    getChannels: () => {
+        if (paymentChannelCache && paymentChannelCache.expiresAt > Date.now()) {
+            return Promise.resolve(paymentChannelCache.response);
+        }
+        if (paymentChannelRequest) return paymentChannelRequest;
+        paymentChannelRequest = api.get<PaymentChannel[]>('/payments/channels')
+            .then((response) => {
+                paymentChannelCache = { response, expiresAt: Date.now() + PAYMENT_CHANNEL_CACHE_MS };
+                return response;
+            })
+            .finally(() => {
+                paymentChannelRequest = null;
+            });
+        return paymentChannelRequest;
+    },
     create: (orderId: number, channel: string, guestEmail?: string) => api.post<Payment>('/payments', {
         orderId: normalizePositiveInt(orderId) || 0,
         channel: normalizeTextParam(channel, 40).toUpperCase(),
@@ -525,66 +761,164 @@ export const paymentApi = {
 
 // 评价相关 API
 export const reviewApi = {
-    getAll: (productId: number) => api.get(`/reviews/product/${toPathId(productId)}`),
+    getAll: (productId: number) => {
+        const normalizedProductId = toPathId(productId);
+        if (!normalizedProductId) return Promise.resolve({ data: { reviews: [], averageRating: 0 } } as unknown as AxiosResponse<ProductReviewSummary>);
+        const cached = reviewCache.get(normalizedProductId);
+        if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
+        const pending = reviewRequests.get(normalizedProductId);
+        if (pending) return pending;
+        const request = api.get<ProductReviewSummary>(`/reviews/product/${normalizedProductId}`)
+            .then((response) => {
+                reviewCache.set(normalizedProductId, { response, expiresAt: Date.now() + REVIEW_CACHE_MS });
+                return response;
+            })
+            .finally(() => reviewRequests.delete(normalizedProductId));
+        reviewRequests.set(normalizedProductId, request);
+        return request;
+    },
     getReviewableOrders: (productId: number) => api.get<Order[]>(`/reviews/product/${toPathId(productId)}/reviewable-orders`),
     create: (productId: number, orderId: number, rating: number, comment: string) =>
         api.post(`/reviews/product/${toPathId(productId)}`, {
             orderId: toPathId(orderId),
             rating: Math.max(1, Math.min(5, Math.floor(Number(rating) || 0))),
             comment: normalizeTextParam(comment, 2000),
-        }),
+        }).finally(() => clearReviewCache(toPathId(productId))),
 };
 
 export const questionApi = {
-    getByProduct: (productId: number) => api.get<ProductQuestion[]>(`/product-questions/product/${toPathId(productId)}`),
-    ask: (productId: number, question: string) => api.post<ProductQuestion>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, 1000) }),
-    answer: (questionId: number, answer: string) => api.post<ProductQuestion>(`/product-questions/${toPathId(questionId)}/answer`, { answer: normalizeTextParam(answer, 2000) }),
+    getByProduct: (productId: number) => {
+        const normalizedProductId = toPathId(productId);
+        if (!normalizedProductId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductQuestion[]>);
+        const cached = questionCache.get(normalizedProductId);
+        if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
+        const pending = questionRequests.get(normalizedProductId);
+        if (pending) return pending;
+        const request = api.get<ProductQuestion[]>(`/product-questions/product/${normalizedProductId}`)
+            .then((response) => {
+                questionCache.set(normalizedProductId, { response, expiresAt: Date.now() + QUESTION_CACHE_MS });
+                return response;
+            })
+            .finally(() => questionRequests.delete(normalizedProductId));
+        questionRequests.set(normalizedProductId, request);
+        return request;
+    },
+    ask: (productId: number, question: string) =>
+        api.post<ProductQuestion>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, 1000) })
+            .finally(() => clearQuestionCache(toPathId(productId))),
+    answer: (questionId: number, answer: string) =>
+        api.post<ProductQuestion>(`/product-questions/${toPathId(questionId)}/answer`, { answer: normalizeTextParam(answer, 2000) })
+            .finally(() => clearQuestionCache()),
 };
 
 export const categoryApi = {
-    getAll: (params?: { parentId?: number; level?: number }) => api.get<Category[]>('/categories', {
-        params: params ? {
+    getAll: (params?: { parentId?: number; level?: number }) => {
+        const normalizedParams = params ? {
             parentId: normalizePositiveInt(params.parentId) || undefined,
             level: normalizePositiveInt(params.level) || undefined,
-        } : undefined,
-    }),
-    getTopLevel: () => api.get<Category[]>('/categories', { params: { level: 1 } }),
-    getChildren: (parentId: number) => api.get<Category[]>('/categories', { params: { parentId: toPathId(parentId) } }),
+        } : undefined;
+        const cacheKey = `all:${normalizedParams?.parentId || ''}:${normalizedParams?.level || ''}`;
+        return cachedGet(categoryCache, categoryRequests, cacheKey, CATEGORY_CACHE_MS, () => api.get<Category[]>('/categories', { params: normalizedParams }));
+    },
+    getTopLevel: () => cachedGet(categoryCache, categoryRequests, 'top', CATEGORY_CACHE_MS, () => api.get<Category[]>('/categories', { params: { level: 1 } })),
+    getChildren: (parentId: number) => {
+        const normalizedParentId = toPathId(parentId);
+        if (!normalizedParentId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<Category[]>);
+        return cachedGet(categoryCache, categoryRequests, `children:${normalizedParentId}`, CATEGORY_CACHE_MS, () =>
+            api.get<Category[]>('/categories', { params: { parentId: normalizedParentId } }));
+    },
     getById: (id: number) => api.get<Category>(`/categories/${toPathId(id)}`),
-    create: (category: Partial<Category>) => api.post<Category>('/categories', category),
-    update: (id: number, category: Partial<Category>) => api.put<Category>(`/categories/${toPathId(id)}`, category),
-    delete: (id: number) => api.delete(`/categories/${toPathId(id)}`)
+    create: (category: Partial<Category>) => api.post<Category>('/categories', category).finally(() => {
+        clearCategoryCache();
+        clearProductCache();
+    }),
+    update: (id: number, category: Partial<Category>) => api.put<Category>(`/categories/${toPathId(id)}`, category).finally(() => {
+        clearCategoryCache();
+        clearProductCache();
+    }),
+    delete: (id: number) => api.delete(`/categories/${toPathId(id)}`).finally(() => {
+        clearCategoryCache();
+        clearProductCache();
+    })
 };
 
 export const brandApi = {
-    getAll: (params?: { activeOnly?: boolean }) => api.get<Brand[]>('/brands', { params }),
-    create: (brand: Partial<Brand>) => api.post<Brand>('/brands', brand),
-    update: (id: number, brand: Partial<Brand>) => api.put<Brand>(`/brands/${toPathId(id)}`, brand),
-    delete: (id: number) => api.delete(`/brands/${toPathId(id)}`),
+    getAll: (params?: { activeOnly?: boolean }) => {
+        const activeOnly = Boolean(params?.activeOnly);
+        const cacheKey = activeOnly ? 'active' : 'all';
+        return cachedGet(brandCache, brandRequests, cacheKey, BRAND_CACHE_MS, () => api.get<Brand[]>('/brands', { params: activeOnly ? { activeOnly: true } : undefined }));
+    },
+    create: (brand: Partial<Brand>) => api.post<Brand>('/brands', brand).finally(() => {
+        clearBrandCache();
+        clearProductCache();
+    }),
+    update: (id: number, brand: Partial<Brand>) => api.put<Brand>(`/brands/${toPathId(id)}`, brand).finally(() => {
+        clearBrandCache();
+        clearProductCache();
+    }),
+    delete: (id: number) => api.delete(`/brands/${toPathId(id)}`).finally(() => {
+        clearBrandCache();
+        clearProductCache();
+    }),
 };
 
 export const adminApi = {
-    getDashboard: () => api.get<DashboardStats>('/admin/dashboard'),
-    getUsers: (params?: { keyword?: string; role?: string; status?: string }) => api.get<User[]>('/admin/users', { params }),
-    exportUsers: (params?: { keyword?: string; role?: string; status?: string }) => api.get('/admin/users/export', { params, responseType: 'blob' }),
+    getDashboard: () => {
+        if (adminDashboardCache && adminDashboardCache.expiresAt > Date.now()) {
+            return Promise.resolve(adminDashboardCache.response);
+        }
+        if (adminDashboardRequest) return adminDashboardRequest;
+        adminDashboardRequest = api.get<DashboardStats>('/admin/dashboard')
+            .then((response) => {
+                adminDashboardCache = { response, expiresAt: Date.now() + ADMIN_DASHBOARD_CACHE_MS };
+                return response;
+            })
+            .finally(() => {
+                adminDashboardRequest = null;
+            });
+        return adminDashboardRequest;
+    },
+    getUsers: (params?: { keyword?: string; role?: string; status?: string }) => {
+        const normalizedParams = {
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+            role: normalizeTextParam(params?.role, 40) || undefined,
+            status: normalizeTextParam(params?.status, 40) || undefined,
+        };
+        const cacheKey = `${normalizedParams.keyword || ''}:${normalizedParams.role || ''}:${normalizedParams.status || ''}`;
+        return cachedGet(adminUserCache, adminUserRequests, cacheKey, ADMIN_USER_CACHE_MS, () => api.get<User[]>('/admin/users', { params: normalizedParams }));
+    },
+    exportUsers: (params?: { keyword?: string; role?: string; status?: string }) => api.get('/admin/users/export', {
+        params: {
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+            role: normalizeTextParam(params?.role, 40) || undefined,
+            status: normalizeTextParam(params?.status, 40) || undefined,
+        },
+        responseType: 'blob',
+    }),
     updateUser: (id: number, user: Partial<User>) => api.put(`/admin/users/${toPathId(id)}`, user)
         .then((response) => {
+            clearAdminUserCache();
             if (user.role || user.roleCode || user.status) {
                 clearAdminPermissionsCache();
+                clearAdminRoleCache();
                 dispatchDomEvent('shop:admin-permissions-updated');
             }
             return response;
         }),
     assignUserRole: (id: number, roleCode: string) => api.put<User>(`/admin/users/${toPathId(id)}/role-code`, { roleCode: normalizeTextParam(roleCode, 80) })
         .then((response) => {
+            clearAdminUserCache();
             clearAdminPermissionsCache();
+            clearAdminRoleCache();
             dispatchDomEvent('shop:admin-permissions-updated');
             return response;
         }),
-    deleteUser: (id: number) => api.delete(`/admin/users/${toPathId(id)}`),
-    getRoles: () => api.get<AdminRole[]>('/admin/roles'),
+    deleteUser: (id: number) => api.delete(`/admin/users/${toPathId(id)}`).finally(clearAdminUserCache),
+    getRoles: () => cachedGet(adminRoleCache, adminRoleRequests, 'roles', ADMIN_ROLE_CACHE_MS, () => api.get<AdminRole[]>('/admin/roles')),
     saveRole: (role: Partial<AdminRole>) => api.post<AdminRole>('/admin/roles', role)
         .then((response) => {
+            clearAdminRoleCache();
+            clearAdminUserCache();
             clearAdminPermissionsCache();
             dispatchDomEvent('shop:admin-permissions-updated');
             return response;
@@ -604,19 +938,33 @@ export const adminApi = {
             });
         return adminPermissionsRequest;
     },
-    getOrders: (status?: string) => api.get<Order[]>('/admin/orders', {
-        params: status ? { status } : undefined,
-    }),
-    getOrdersPage: (params?: { status?: string; search?: string; quick?: string; page?: number; size?: number }) =>
-        api.get<AdminOrderPage>('/admin/orders/page', {
-            params: {
-                status: normalizeTextParam(params?.status, 40) || undefined,
-                search: normalizeTextParam(params?.search, 120) || undefined,
-                quick: normalizeTextParam(params?.quick, 40) || undefined,
-                page: normalizeBoundedPositiveInt(params?.page, 1, 100000),
-                size: normalizeBoundedPositiveInt(params?.size, 20, 100),
-            },
-        }),
+    getOrders: (status?: string) => {
+        const normalizedStatus = normalizeTextParam(status, 40) || undefined;
+        return cachedGet(
+            adminOrderCache as Map<string, { expiresAt: number; response: AxiosResponse<Order[]> }>,
+            adminOrderRequests as Map<string, Promise<AxiosResponse<Order[]>>>,
+            `list:${normalizedStatus || ''}`,
+            ADMIN_ORDER_CACHE_MS,
+            () => api.get<Order[]>('/admin/orders', { params: normalizedStatus ? { status: normalizedStatus } : undefined }),
+        );
+    },
+    getOrdersPage: (params?: { status?: string; search?: string; quick?: string; page?: number; size?: number }) => {
+        const normalizedParams = {
+            status: normalizeTextParam(params?.status, 40) || undefined,
+            search: normalizeTextParam(params?.search, 120) || undefined,
+            quick: normalizeTextParam(params?.quick, 40) || undefined,
+            page: normalizeBoundedPositiveInt(params?.page, 1, 100000),
+            size: normalizeBoundedPositiveInt(params?.size, 20, 100),
+        };
+        const cacheKey = `page:${normalizedParams.status || ''}:${normalizedParams.search || ''}:${normalizedParams.quick || ''}:${normalizedParams.page}:${normalizedParams.size}`;
+        return cachedGet(
+            adminOrderCache as Map<string, { expiresAt: number; response: AxiosResponse<AdminOrderPage> }>,
+            adminOrderRequests as Map<string, Promise<AxiosResponse<AdminOrderPage>>>,
+            cacheKey,
+            ADMIN_ORDER_CACHE_MS,
+            () => api.get<AdminOrderPage>('/admin/orders/page', { params: normalizedParams }),
+        );
+    },
     exportOrders: (status?: string, search?: string, quick?: string) => api.get('/admin/orders/export', {
         params: {
             status: normalizeTextParam(status, 40) || undefined,
@@ -635,20 +983,20 @@ export const adminApi = {
             status: normalizeTextParam(status, 40),
             trackingNumber: normalizeTextParam(trackingNumber, 120) || undefined,
             trackingCarrierCode: normalizeTextParam(trackingCarrierCode, 40) || undefined,
-        }),
+        }).finally(clearAdminOrderCache),
     getProducts: () => api.get<Product[]>('/admin/products'),
     refundOrder: (id: number, payload: { reason?: string; restock?: boolean; manualRefundReference?: string }) =>
         api.post<{ message: string; payment: Payment }>(`/admin/orders/${toPathId(id)}/refund`, {
             reason: normalizeTextParam(payload.reason, 1000) || undefined,
             restock: Boolean(payload.restock),
             manualRefundReference: normalizeTextParam(payload.manualRefundReference, 128) || undefined,
-        }),
+        }).finally(clearAdminOrderCache),
     batchShipOrders: (orderIds: number[], trackingPrefix: string, trackingCarrierCode?: string) =>
         api.post('/admin/orders/batch-ship', {
             orderIds: normalizePositiveIntList(orderIds, 100),
             trackingPrefix: normalizeTextParam(trackingPrefix, 80),
             trackingCarrierCode: normalizeTextParam(trackingCarrierCode, 40) || undefined,
-        }),
+        }).finally(clearAdminOrderCache),
     updateProductStatus: (id: number, status: string) =>
         api.put(`/admin/products/${toPathId(id)}/status`, { status: normalizeTextParam(status, 40) }).finally(() => clearProductCache(toPathId(id))),
     batchUpdateProductStatus: (productIds: number[], status: string) =>
@@ -660,16 +1008,25 @@ export const adminApi = {
             headers: { 'Content-Type': 'multipart/form-data' },
         }).finally(() => clearProductCache());
     },
-    getReviews: () => api.get<Review[]>('/admin/reviews'),
-    deleteReview: (id: number) => api.delete(`/admin/reviews/${toPathId(id)}`),
-    replyReview: (id: number, reply: string) => api.put<Review>(`/admin/reviews/${toPathId(id)}/reply`, { reply: normalizeTextParam(reply, 2000) }),
-    updateReviewStatus: (id: number, status: string) => api.put<Review>(`/admin/reviews/${toPathId(id)}/status`, { status: normalizeTextParam(status, 40) }),
+    getReviews: () => cachedGet(adminReviewCache, adminReviewRequests, 'reviews', ADMIN_REVIEW_CACHE_MS, () => api.get<Review[]>('/admin/reviews')),
+    deleteReview: (id: number) => api.delete(`/admin/reviews/${toPathId(id)}`).finally(() => {
+        clearReviewCache();
+        clearAdminReviewCache();
+    }),
+    replyReview: (id: number, reply: string) => api.put<Review>(`/admin/reviews/${toPathId(id)}/reply`, { reply: normalizeTextParam(reply, 2000) }).finally(() => {
+        clearReviewCache();
+        clearAdminReviewCache();
+    }),
+    updateReviewStatus: (id: number, status: string) => api.put<Review>(`/admin/reviews/${toPathId(id)}/status`, { status: normalizeTextParam(status, 40) }).finally(() => {
+        clearReviewCache();
+        clearAdminReviewCache();
+    }),
     getCoupons: () => api.get<Coupon[]>('/admin/coupons'),
-    createCoupon: (coupon: Partial<Coupon>) => api.post<Coupon>('/admin/coupons', coupon),
-    updateCoupon: (id: number, coupon: Partial<Coupon>) => api.put<Coupon>(`/admin/coupons/${toPathId(id)}`, coupon),
-    deleteCoupon: (id: number) => api.delete(`/admin/coupons/${toPathId(id)}`),
-    grantCoupon: (id: number, userIds: number[]) => api.post<{ granted: number }>(`/admin/coupons/${toPathId(id)}/grant`, { userIds: normalizePositiveIntList(userIds, 100) }),
-    runPetBirthdayCoupons: () => api.post<{ granted: number }>('/admin/pet-birthday-coupons/run'),
+    createCoupon: (coupon: Partial<Coupon>) => api.post<Coupon>('/admin/coupons', coupon).finally(clearCouponCache),
+    updateCoupon: (id: number, coupon: Partial<Coupon>) => api.put<Coupon>(`/admin/coupons/${toPathId(id)}`, coupon).finally(clearCouponCache),
+    deleteCoupon: (id: number) => api.delete(`/admin/coupons/${toPathId(id)}`).finally(clearCouponCache),
+    grantCoupon: (id: number, userIds: number[]) => api.post<{ granted: number }>(`/admin/coupons/${toPathId(id)}/grant`, { userIds: normalizePositiveIntList(userIds, 100) }).finally(clearCouponCache),
+    runPetBirthdayCoupons: () => api.post<{ granted: number }>('/admin/pet-birthday-coupons/run').finally(clearCouponCache),
     getPetBirthdayCouponConfig: () => api.get<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config'),
     updatePetBirthdayCouponConfig: (config: Partial<PetBirthdayCouponConfig>) =>
         api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config),
@@ -678,20 +1035,26 @@ export const adminApi = {
 };
 
 export const logisticsCarrierApi = {
-    getAll: (activeOnly?: boolean) => api.get<LogisticsCarrier[]>('/admin/logistics-carriers', { params: activeOnly ? { activeOnly } : undefined }),
-    create: (carrier: Partial<LogisticsCarrier>) => api.post<LogisticsCarrier>('/admin/logistics-carriers', carrier),
-    update: (id: number, carrier: Partial<LogisticsCarrier>) => api.put<LogisticsCarrier>(`/admin/logistics-carriers/${toPathId(id)}`, carrier),
-    delete: (id: number) => api.delete(`/admin/logistics-carriers/${toPathId(id)}`),
+    getAll: (activeOnly?: boolean) => {
+        const cacheKey = activeOnly ? 'active' : 'all';
+        return cachedGet(logisticsCarrierCache, logisticsCarrierRequests, cacheKey, LOGISTICS_CARRIER_CACHE_MS, () =>
+            api.get<LogisticsCarrier[]>('/admin/logistics-carriers', { params: activeOnly ? { activeOnly: true } : undefined }));
+    },
+    create: (carrier: Partial<LogisticsCarrier>) => api.post<LogisticsCarrier>('/admin/logistics-carriers', carrier).finally(clearLogisticsCarrierCache),
+    update: (id: number, carrier: Partial<LogisticsCarrier>) => api.put<LogisticsCarrier>(`/admin/logistics-carriers/${toPathId(id)}`, carrier).finally(clearLogisticsCarrierCache),
+    delete: (id: number) => api.delete(`/admin/logistics-carriers/${toPathId(id)}`).finally(clearLogisticsCarrierCache),
 };
 
 export const addressApi = {
-    getByUser: (_userId: number) => api.get<UserAddress[]>('/addresses/me'),
+    getByUser: (_userId: number) =>
+        cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress[]> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress[]>>>, 'list', ADDRESS_CACHE_MS, () => api.get<UserAddress[]>('/addresses/me')),
     getById: (id: number) => api.get<UserAddress>(`/addresses/${toPathId(id)}`),
-    getDefault: (_userId: number) => api.get<UserAddress>('/addresses/me/default'),
-    create: (address: Partial<UserAddress>) => api.post<UserAddress>('/addresses', address),
-    update: (id: number, address: Partial<UserAddress>) => api.put<UserAddress>(`/addresses/${toPathId(id)}`, address),
-    delete: (id: number) => api.delete(`/addresses/${toPathId(id)}`),
-    setDefault: (id: number) => api.put(`/addresses/${toPathId(id)}/default`),
+    getDefault: (_userId: number) =>
+        cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress>>>, 'default', ADDRESS_CACHE_MS, () => api.get<UserAddress>('/addresses/me/default')),
+    create: (address: Partial<UserAddress>) => api.post<UserAddress>('/addresses', address).finally(clearAddressCache),
+    update: (id: number, address: Partial<UserAddress>) => api.put<UserAddress>(`/addresses/${toPathId(id)}`, address).finally(clearAddressCache),
+    delete: (id: number) => api.delete(`/addresses/${toPathId(id)}`).finally(clearAddressCache),
+    setDefault: (id: number) => api.put(`/addresses/${toPathId(id)}/default`).finally(clearAddressCache),
 };
 
 export const wishlistApi = {
@@ -841,14 +1204,27 @@ export const petGalleryApi = {
 };
 
 export const logisticsApi = {
-    track: (trackingNumber: string, carrier?: string, orderId?: number) =>
-        api.get<LogisticsTrackResponse>('/logistics/track', {
+    track: (trackingNumber: string, carrier?: string, orderId?: number) => {
+        const normalizedTrackingNumber = normalizeTextParam(trackingNumber, 120);
+        const normalizedCarrier = normalizeTextParam(carrier, 40) || undefined;
+        const normalizedOrderId = normalizePositiveInt(orderId) || undefined;
+        if (!normalizedTrackingNumber && !normalizedOrderId) {
+            return Promise.reject(new Error('Tracking number or order id is required'));
+        }
+        const params = {
+            trackingNumber: normalizedTrackingNumber,
+            carrier: normalizedCarrier,
+            orderId: normalizedOrderId,
+        };
+        const cacheKey = `${params.trackingNumber}:${params.carrier || ''}:${params.orderId || ''}`;
+        return cachedGet(logisticsTrackCache, logisticsTrackRequests, cacheKey, LOGISTICS_TRACK_CACHE_MS, () => api.get<LogisticsTrackResponse>('/logistics/track', {
             params: {
-                trackingNumber: normalizeTextParam(trackingNumber, 120),
-                carrier: normalizeTextParam(carrier, 40) || undefined,
-                orderId: normalizePositiveInt(orderId) || undefined,
+                trackingNumber: params.trackingNumber,
+                carrier: params.carrier,
+                orderId: params.orderId,
             },
-        }),
+        }));
+    },
 };
 
 export const supportApi = {

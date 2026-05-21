@@ -20,12 +20,14 @@ import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
+import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import './ProductList.css';
 
 const { Text } = Typography;
 const SEARCH_HISTORY_KEY = 'shop-product-search-history';
 const MAX_SEARCH_HISTORY = 6;
 const MAX_SEARCH_LENGTH = 80;
+const CATEGORY_CACHE_TTL = 5 * 60 * 1000;
 const DEFAULT_PRICE_RANGE: [number, number] = [0, 10000];
 const SMART_DEVICE_CATEGORY_IDS = new Set([10, 11]);
 const SMART_DEVICE_TERMS = ['smart', 'automatic', 'feeder', 'feeders', 'fountain', 'waterer', 'waterers', 'camera', 'tracker', 'sensor', 'device', 'connected'];
@@ -47,7 +49,7 @@ const resolveProductListImage = resolveProductImage;
 
 const readSearchHistory = () => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+    const parsed = JSON.parse(getLocalStorageItem(SEARCH_HISTORY_KEY) || '[]');
     return Array.isArray(parsed) ? parsed.map(String).filter(Boolean).slice(0, MAX_SEARCH_HISTORY) : [];
   } catch {
     return [];
@@ -55,11 +57,7 @@ const readSearchHistory = () => {
 };
 
 const writeSearchHistory = (history: string[]) => {
-  try {
-    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_SEARCH_HISTORY)));
-  } catch {
-    // Search should keep working even when browser storage is unavailable.
-  }
+  setLocalStorageItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_SEARCH_HISTORY)));
 };
 
 const normalizeSearchValue = (value: string) => value.replace(/\s+/g, ' ').trim().slice(0, MAX_SEARCH_LENGTH);
@@ -106,6 +104,9 @@ const filterSnapshotProducts = (products: Product[], keyword?: string, categoryI
   });
 };
 
+let categoryCache: { expiresAt: number; items: Category[] } | null = null;
+let categoryCacheRequest: Promise<Category[]> | null = null;
+
 type ProductListUrlOverrides = Partial<{
   collection: string;
   keyword: string;
@@ -150,7 +151,7 @@ const ProductList: React.FC = () => {
   const { formatMoney } = useMarket();
   const collection = normalizeCollectionValue(searchParams.get('collection'));
   const pageSize = 12;
-  const isAuthenticated = Boolean(localStorage.getItem('token'));
+  const isAuthenticated = hasStoredValue('token');
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const getPositiveRate = (product: Product) => product.positiveRate ?? 0;
@@ -184,7 +185,29 @@ const ProductList: React.FC = () => {
     { label: t('pages.productList.colorPink'), value: 'Pink' },
   ], [t]);
   useEffect(() => {
-    categoryApi.getAll().then(res => setCategories(res.data)).catch(() => {});
+    if (categoryCache && categoryCache.expiresAt > Date.now()) {
+      setCategories(categoryCache.items);
+      return;
+    }
+    let active = true;
+    if (!categoryCacheRequest) {
+      categoryCacheRequest = categoryApi.getAll()
+        .then((res) => {
+          categoryCache = { expiresAt: Date.now() + CATEGORY_CACHE_TTL, items: res.data };
+          return res.data;
+        })
+        .finally(() => {
+          categoryCacheRequest = null;
+        });
+    }
+    categoryCacheRequest
+      .then((items) => {
+        if (active) setCategories(items);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -217,8 +240,7 @@ const ProductList: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const isAuthenticated = Boolean(localStorage.getItem('token'));
-    if (!isAuthenticated) {
+    if (!hasStoredValue('token')) {
       setPersonalizedProducts([]);
       return;
     }
@@ -646,7 +668,7 @@ const ProductList: React.FC = () => {
     };
     const bundleInfo = getBundleInfo(quickAddProduct);
     if (bundleInfo) {
-      const token = localStorage.getItem('token');
+      const token = getLocalStorageItem('token');
       const selectedSpecs = buildBundleSpecs(quickAddProduct, quickAddOptions, quickAddVariant?.sku);
       const snapshot = buildQuickAddCartSnapshot();
       try {
@@ -664,7 +686,7 @@ const ProductList: React.FC = () => {
       }
       return;
     }
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     const selectedSpecs = quickAddOptionGroups.length
       ? JSON.stringify({
         ...quickAddOptions,

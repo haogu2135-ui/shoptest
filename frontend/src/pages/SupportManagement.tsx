@@ -11,6 +11,7 @@ import { buildSupportOrderWorkflowActions } from '../utils/supportWorkflow';
 import { getApiErrorMessage } from '../utils/apiError';
 import { decodeSupportOrderMessage, type SupportOrderContext } from '../utils/supportOrderMessage';
 import { formatSafeDateTime, formatSafeTime, getSafeTime } from '../utils/dateFormat';
+import { getLocalStorageItem } from '../utils/safeStorage';
 import './SupportManagement.css';
 
 const { Text, Title } = Typography;
@@ -18,11 +19,7 @@ const supportOrderImageFallback = productImageFallback;
 const resolveSupportOrderImage = resolveProductImage;
 
 const readAdminSupportToken = () => {
-  try {
-    return localStorage.getItem('token');
-  } catch {
-    return null;
-  }
+  return getLocalStorageItem('token');
 };
 
 const SupportManagement: React.FC = () => {

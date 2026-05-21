@@ -13,6 +13,7 @@ import { buildSupportOrderWorkflowActions, type SupportOrderWorkflowAction } fro
 import { getApiErrorMessage } from '../utils/apiError';
 import { decodeSupportOrderMessage, encodeSupportOrderMessage, type SupportOrderContext } from '../utils/supportOrderMessage';
 import { formatSafeDate, formatSafeDateTime, formatSafeTime, getSafeTime } from '../utils/dateFormat';
+import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './CustomerSupportWidget.css';
 
 const { Text } = Typography;
@@ -30,14 +31,6 @@ type SupportButtonPosition = {
 
 const getSupportButtonBottomMargin = () =>
   window.innerWidth <= 720 ? SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN : 24;
-
-const readSupportToken = () => {
-  try {
-    return localStorage.getItem('token');
-  } catch {
-    return null;
-  }
-};
 
 const CustomerSupportWidget: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -77,7 +70,7 @@ const CustomerSupportWidget: React.FC = () => {
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
-  const token = readSupportToken();
+  const token = getLocalStorageItem('token');
   const activeSessionId = session?.id;
   const quickReplies = useMemo(() => [
     t('pages.support.quickShipping'),
@@ -170,7 +163,7 @@ const CustomerSupportWidget: React.FC = () => {
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(SUPPORT_BUTTON_POSITION_KEY) || 'null');
+      const saved = JSON.parse(getLocalStorageItem(SUPPORT_BUTTON_POSITION_KEY) || 'null');
       if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
         setButtonPosition(clampButtonPosition(saved));
         return;
@@ -186,11 +179,7 @@ const CustomerSupportWidget: React.FC = () => {
       setIsMobileViewport(window.innerWidth <= 720);
       setButtonPosition((position) => {
         const next = clampButtonPosition(position || getDefaultButtonPosition());
-        try {
-          localStorage.setItem(SUPPORT_BUTTON_POSITION_KEY, JSON.stringify(next));
-        } catch {
-          // Button position persistence is best-effort in restricted storage modes.
-        }
+        setLocalStorageItem(SUPPORT_BUTTON_POSITION_KEY, JSON.stringify(next));
         return next;
       });
     };
@@ -218,7 +207,7 @@ const CustomerSupportWidget: React.FC = () => {
   }, [token]);
 
   const fetchSupportOrders = useCallback(async () => {
-    if (!readSupportToken()) return;
+    if (!getLocalStorageItem('token')) return;
     setOrdersLoading(true);
     setOrdersLoadFailed(false);
     try {
@@ -396,7 +385,7 @@ const CustomerSupportWidget: React.FC = () => {
   }, [messages, open]);
 
   const openPanel = () => {
-    if (!readSupportToken()) {
+    if (!getLocalStorageItem('token')) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
@@ -442,11 +431,7 @@ const CustomerSupportWidget: React.FC = () => {
     }
     setButtonPosition((position) => {
       const next = clampButtonPosition(position || getDefaultButtonPosition());
-      try {
-        localStorage.setItem(SUPPORT_BUTTON_POSITION_KEY, JSON.stringify(next));
-      } catch {
-        // Keep the support entry usable when browser storage is unavailable.
-      }
+      setLocalStorageItem(SUPPORT_BUTTON_POSITION_KEY, JSON.stringify(next));
       return next;
     });
     if (!moved) {
@@ -456,7 +441,7 @@ const CustomerSupportWidget: React.FC = () => {
 
   useEffect(() => {
     const handleOpenSupport = () => {
-      if (!readSupportToken()) {
+      if (!getLocalStorageItem('token')) {
         message.warning(t('messages.loginRequired'));
         navigate('/login');
         return;

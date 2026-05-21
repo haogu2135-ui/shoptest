@@ -15,6 +15,7 @@ import { navigateToSafeUrl } from '../utils/safeUrl';
 import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { getLocalStorageItem } from '../utils/safeStorage';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 
 const { Title, Text } = Typography;
@@ -163,7 +164,7 @@ const Profile: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     if (!token) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
@@ -245,7 +246,7 @@ const Profile: React.FC = () => {
   };
 
   const handleReorder = async () => {
-    if (!localStorage.getItem('token') || orderItems.length === 0) return;
+    if (!getLocalStorageItem('token') || orderItems.length === 0) return;
     setReordering(true);
     let added = 0;
     try {

@@ -12,6 +12,7 @@ import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { getLocalStorageItem } from '../utils/safeStorage';
 import {
   clearProductViewHistory,
   loadProductViewPreferences,
@@ -159,7 +160,7 @@ const BrowsingHistory: React.FC = () => {
       navigate(`/products/${product.id}`);
       return;
     }
-    const token = localStorage.getItem('token');
+    const token = getLocalStorageItem('token');
     try {
       if (token) {
         await cartApi.addItem(0, product.id, 1);

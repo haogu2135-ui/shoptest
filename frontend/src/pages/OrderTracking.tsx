@@ -13,6 +13,7 @@ import { navigateToSafeUrl } from '../utils/safeUrl';
 import { getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { addGuestCartItem } from '../utils/guestCart';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { hasStoredValue } from '../utils/safeStorage';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderTracking.css';
 
@@ -152,7 +153,7 @@ const OrderTracking: React.FC = () => {
   };
 
   const restoreTrackedItemsToCart = async () => {
-    if (localStorage.getItem('token')) {
+    if (hasStoredValue('token')) {
       const results = await Promise.allSettled(items.map((item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs)));
       results.forEach((result, index) => {
         if (result.status === 'fulfilled') return;

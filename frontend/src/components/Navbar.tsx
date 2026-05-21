@@ -28,6 +28,7 @@ import { getGuestCartItems } from '../utils/guestCart';
 import { readCompareProductIds } from '../utils/productCompare';
 import { getEffectiveRole, isAdminRole } from '../utils/roles';
 import { readStockAlerts } from '../utils/stockAlerts';
+import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './Navbar.css';
 
 const { Search } = Input;
@@ -51,10 +52,10 @@ const Navbar: React.FC = () => {
     (...terms: string[]) => isProductsActive && terms.some((term) => activeProductKeyword.includes(term)),
     [activeProductKeyword, isProductsActive],
   );
-  const token = localStorage.getItem('token');
-  const username = localStorage.getItem('username');
-  const [navRole, setNavRole] = useState(localStorage.getItem('role') || '');
-  const [adminPath, setAdminPath] = useState(localStorage.getItem('adminDefaultPath') || '/admin');
+  const token = getLocalStorageItem('token');
+  const username = getLocalStorageItem('username');
+  const [navRole, setNavRole] = useState(getLocalStorageItem('role') || '');
+  const [adminPath, setAdminPath] = useState(getLocalStorageItem('adminDefaultPath') || '/admin');
   const canAccessAdmin = isAdminRole(navRole);
   const [cartCount, setCartCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -100,10 +101,10 @@ const Navbar: React.FC = () => {
         .then((profileRes) => {
           if (disposed) return;
           const effectiveRole = getEffectiveRole(profileRes.data.role, profileRes.data.roleCode);
-          localStorage.setItem('role', effectiveRole);
+          setLocalStorageItem('role', effectiveRole);
           setNavRole(effectiveRole);
           if (!isAdminRole(effectiveRole)) {
-            localStorage.removeItem('adminDefaultPath');
+            removeLocalStorageItem('adminDefaultPath');
             setAdminPath('/admin');
             return null;
           }
@@ -113,17 +114,17 @@ const Navbar: React.FC = () => {
           if (disposed || !permissionsRes) return;
           const permissions = permissionsRes.data.permissions || [];
           const effectiveRole = getEffectiveRole(permissionsRes.data.role, permissionsRes.data.roleCode);
-          localStorage.setItem('role', effectiveRole);
+          setLocalStorageItem('role', effectiveRole);
           setNavRole(effectiveRole);
           const nextDefault = permissions[0] ? `/admin/${permissions[0]}` : '/admin';
-          localStorage.setItem('adminDefaultPath', nextDefault);
+          setLocalStorageItem('adminDefaultPath', nextDefault);
           setAdminPath(nextDefault);
         })
         .catch(() => {
           if (disposed) return;
-          const localRole = localStorage.getItem('role') || '';
+          const localRole = getLocalStorageItem('role') || '';
           setNavRole(localRole);
-          setAdminPath(localStorage.getItem('adminDefaultPath') || '/admin');
+          setAdminPath(getLocalStorageItem('adminDefaultPath') || '/admin');
         });
     };
     refreshAdminAccess();
@@ -247,11 +248,11 @@ const Navbar: React.FC = () => {
 
   const handleLogout = () => {
     userApi.logout().catch(() => undefined);
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    localStorage.removeItem('role');
-    localStorage.removeItem('adminDefaultPath');
-    localStorage.removeItem('userId');
+    removeLocalStorageItem('token');
+    removeLocalStorageItem('username');
+    removeLocalStorageItem('role');
+    removeLocalStorageItem('adminDefaultPath');
+    removeLocalStorageItem('userId');
     setCartCount(0);
     navigate('/login');
   };

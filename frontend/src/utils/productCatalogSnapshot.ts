@@ -1,4 +1,5 @@
 import type { Product, ProductVariant } from '../types';
+import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 export const PRODUCT_CATALOG_SNAPSHOT_KEY = 'shop-product-catalog-snapshot';
 export const PRODUCT_CATALOG_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000;
@@ -128,7 +129,7 @@ export const saveProductCatalogSnapshot = (products: Product[], now = Date.now()
       .filter((product): product is Product => Boolean(product))
       .slice(0, MAX_SNAPSHOT_PRODUCTS);
     if (normalizedProducts.length === 0) return;
-    localStorage.setItem(PRODUCT_CATALOG_SNAPSHOT_KEY, JSON.stringify({
+    setLocalStorageItem(PRODUCT_CATALOG_SNAPSHOT_KEY, JSON.stringify({
       savedAt: now,
       products: normalizedProducts,
     }));
@@ -139,7 +140,7 @@ export const saveProductCatalogSnapshot = (products: Product[], now = Date.now()
 
 export const loadProductCatalogSnapshot = (now = Date.now()): ProductCatalogSnapshot | null => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(PRODUCT_CATALOG_SNAPSHOT_KEY) || 'null');
+    const parsed = JSON.parse(getLocalStorageItem(PRODUCT_CATALOG_SNAPSHOT_KEY) || 'null');
     const savedAt = Number(parsed?.savedAt);
     if (!Number.isFinite(savedAt) || savedAt <= 0 || now - savedAt > PRODUCT_CATALOG_SNAPSHOT_TTL_MS) return null;
     const products = Array.isArray(parsed?.products)

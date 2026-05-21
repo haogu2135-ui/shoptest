@@ -36,4 +36,10 @@ describe('stripUnsafeHtml', () => {
 
     expect(html).toContain('rel="noopener noreferrer"');
   });
+
+  it('adds rel protection to case-insensitive blank targets', () => {
+    const html = stripUnsafeHtml('<a href="https://example.com" target="_BLANK">external</a>');
+
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
 });

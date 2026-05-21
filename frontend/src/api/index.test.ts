@@ -84,6 +84,27 @@ describe('api parameter normalization', () => {
     expect(params.getAll('ids')).toEqual(['1', '2']);
   });
 
+  it('normalizes product list query params before caching and requesting', async () => {
+    const { productApi } = require('./index');
+
+    await productApi.getAll('  leash\u0000   kit  ', -2, true);
+
+    expect(mockGet.mock.calls[0][0]).toBe('/products');
+    expect(mockGet.mock.calls[0][1]).toEqual({
+      params: { keyword: 'leash kit', discount: true },
+    });
+  });
+
+  it('reuses cached product id list responses for repeated normalized requests', async () => {
+    const { productApi } = require('./index');
+
+    mockGet.mockResolvedValueOnce({ data: [{ id: 21, name: 'Harness' }] });
+    await productApi.getByIds([21, 22, 21]);
+    await productApi.getByIds([21, 22, 21]);
+
+    expect(mockGet).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects invalid product detail ids before making a request', async () => {
     const { productApi } = require('./index');
 
@@ -124,6 +145,23 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[0][1]).toEqual({ cartItemIds: [4], userCouponId: null });
   });
 
+  it('caches coupon lists until a claim invalidates them', async () => {
+    const { couponApi } = require('./index');
+
+    await couponApi.getPublic();
+    await couponApi.getPublic();
+    await couponApi.getAvailableByUser(0);
+    await couponApi.getAvailableByUser(0);
+    await couponApi.claim(5, 0);
+    await couponApi.getPublic();
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/coupons/public',
+      '/coupons/me/available',
+      '/coupons/public',
+    ]);
+  });
+
   it('normalizes payment payloads and guest emails', async () => {
     const { paymentApi } = require('./index');
 
@@ -133,6 +171,16 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[0][1]).toEqual({ orderId: 7, channel: 'STRIPE', guestEmail: 'user@example.com' });
     expect(mockGet.mock.calls[0][0]).toBe('/payments/order/0');
     expect(mockGet.mock.calls[0][1]).toEqual({ params: undefined });
+  });
+
+  it('caches payment channels for repeated checkout renders', async () => {
+    const { paymentApi } = require('./index');
+
+    await paymentApi.getChannels();
+    await paymentApi.getChannels();
+
+    expect(mockGet).toHaveBeenCalledTimes(1);
+    expect(mockGet.mock.calls[0][0]).toBe('/payments/channels');
   });
 
   it('normalizes support session path params and optional session payloads', async () => {
@@ -170,7 +218,7 @@ describe('api parameter normalization', () => {
     await orderApi.checkout({ cartItemIds: [1, 1, 2.8, -2], shippingAddress: 'addr', paymentMethod: 'card', userCouponId: 7.3 });
     await orderApi.cancel('8' as unknown as number, ' USER@Example.COM ');
     await orderApi.submitReturnShipment(Infinity, '  TRACK   123  ');
-    await orderApi.getItems(10.5);
+    await orderApi.getItems(10);
 
     expect(mockPost.mock.calls[0][0]).toBe('/orders/checkout/me');
     expect(mockPost.mock.calls[0][1]).toEqual({
@@ -183,7 +231,49 @@ describe('api parameter normalization', () => {
     expect(mockPut.mock.calls[0][1]).toEqual({ guestEmail: 'user@example.com' });
     expect(mockPut.mock.calls[1][0]).toBe('/orders/0/return-shipment');
     expect(mockPut.mock.calls[1][1]).toEqual({ returnTrackingNumber: 'TRACK 123' });
-    expect(mockGet.mock.calls[0][0]).toBe('/orders/0/items');
+    expect(mockGet.mock.calls[0][0]).toBe('/orders/10/items');
+  });
+
+  it('caches order item lookups and short-circuits invalid order item ids', async () => {
+    const { orderApi } = require('./index');
+
+    await orderApi.getItems(22);
+    await orderApi.getItems(22);
+    const invalidResponse = await orderApi.getItems(22.5);
+
+    expect(mockGet).toHaveBeenCalledTimes(1);
+    expect(mockGet.mock.calls[0][0]).toBe('/orders/22/items');
+    expect(invalidResponse.data).toEqual([]);
+  });
+
+  it('normalizes guest checkout items and validates tracking inputs', async () => {
+    const { orderApi } = require('./index');
+
+    await orderApi.guestCheckout({
+      guestEmail: ' USER@Example.COM ',
+      guestName: '  Jane   Doe  ',
+      guestPhone: '  +52   555  ',
+      shippingAddress: '  Calle   1  ',
+      paymentMethod: ' stripe ',
+      items: [
+        { productId: 3.2, quantity: Number.NaN, selectedSpecs: '  Red   Large  ' },
+        { productId: 4, quantity: 2.8 },
+      ],
+    });
+    await expect(orderApi.track('   ', 'bad-email')).rejects.toThrow('Order number and email are required');
+    await orderApi.track(' ORD  123#! ', ' USER@Example.COM ');
+
+    expect(mockPost.mock.calls[0][0]).toBe('/orders/checkout/guest');
+    expect(mockPost.mock.calls[0][1]).toEqual({
+      guestEmail: 'user@example.com',
+      guestName: 'Jane Doe',
+      guestPhone: '+52 555',
+      shippingAddress: 'Calle 1',
+      paymentMethod: 'stripe',
+      items: [{ productId: 4, quantity: 2, selectedSpecs: undefined }],
+    });
+    expect(mockGet.mock.calls[0][0]).toBe('/orders/track');
+    expect(mockGet.mock.calls[0][1]).toEqual({ params: { orderNo: 'ORD123', email: 'user@example.com' } });
   });
 
   it('normalizes review and question params and text payloads', async () => {
@@ -201,6 +291,26 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[2][1]).toEqual({ answer: 'Yes it is' });
   });
 
+  it('caches product reviews and questions until content changes', async () => {
+    const { reviewApi, questionApi } = require('./index');
+
+    await reviewApi.getAll(777);
+    await reviewApi.getAll(777);
+    await questionApi.getByProduct(778);
+    await questionApi.getByProduct(778);
+    await reviewApi.create(777, 1, 5, '  Great  ');
+    await questionApi.ask(778, '  Washable?  ');
+    await reviewApi.getAll(777);
+    await questionApi.getByProduct(778);
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/reviews/product/777',
+      '/product-questions/product/778',
+      '/reviews/product/777',
+      '/product-questions/product/778',
+    ]);
+  });
+
   it('normalizes category, brand, address, and wishlist identifiers', async () => {
     const { categoryApi, brandApi, addressApi, wishlistApi } = require('./index');
 
@@ -215,6 +325,69 @@ describe('api parameter normalization', () => {
     expect(mockDelete.mock.calls[0][0]).toBe('/brands/0');
     expect(mockPut.mock.calls[0][0]).toBe('/addresses/0/default');
     expect(mockPost.mock.calls[0][2]).toEqual({ params: { productId: 14 } });
+  });
+
+  it('caches category and brand lists until catalog metadata changes', async () => {
+    const { categoryApi, brandApi } = require('./index');
+
+    await categoryApi.create({ name: 'Cache reset' });
+    await brandApi.create({ name: 'Cache reset' });
+    mockGet.mockClear();
+    mockPost.mockClear();
+
+    await categoryApi.getAll({ parentId: -2, level: 2.2 });
+    await categoryApi.getAll({ parentId: -2, level: 2.2 });
+    await categoryApi.getChildren(6);
+    await categoryApi.getChildren(6);
+    await brandApi.getAll({ activeOnly: true });
+    await brandApi.getAll({ activeOnly: true });
+    await categoryApi.create({ name: 'Beds' });
+    await brandApi.update(3, { name: 'Acme' });
+    await categoryApi.getAll({ parentId: -2, level: 2.2 });
+    await brandApi.getAll({ activeOnly: true });
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/categories',
+      '/categories',
+      '/brands',
+      '/categories',
+      '/brands',
+    ]);
+  });
+
+  it('caches address lookups until an address mutation invalidates them', async () => {
+    const { addressApi } = require('./index');
+
+    await addressApi.getByUser(0);
+    await addressApi.getByUser(0);
+    await addressApi.getDefault(0);
+    await addressApi.getDefault(0);
+    await addressApi.setDefault(3);
+    await addressApi.getByUser(0);
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/addresses/me',
+      '/addresses/me/default',
+      '/addresses/me',
+    ]);
+  });
+
+  it('clears storefront coupon caches after admin coupon changes', async () => {
+    const { adminApi, couponApi } = require('./index');
+
+    await couponApi.claim(99, 0);
+    mockGet.mockClear();
+    mockPost.mockClear();
+
+    await couponApi.getPublic();
+    await couponApi.getPublic();
+    await adminApi.createCoupon({ name: 'Spring' });
+    await couponApi.getPublic();
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/coupons/public',
+      '/coupons/public',
+    ]);
   });
 
   it('normalizes admin mutation and batch payload ids', async () => {
@@ -239,6 +412,78 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[2][1]).toEqual({ userIds: [10, 11] });
   });
 
+  it('caches admin dashboard and clears it after order mutations', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getDashboard();
+    await adminApi.getDashboard();
+    await adminApi.updateOrderStatus(10, 'SHIPPED');
+    await adminApi.getDashboard();
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/admin/dashboard',
+      '/admin/dashboard',
+    ]);
+  });
+
+  it('caches admin order lists while normalizing filters until order mutations', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getOrders(' PENDING ');
+    await adminApi.getOrders('PENDING');
+    await adminApi.getOrdersPage({ status: ' PAID ', search: '  order   7 ', quick: ' OVERDUE ', page: 1, size: 500 });
+    await adminApi.getOrdersPage({ status: 'PAID', search: 'order 7', quick: 'OVERDUE', page: 1, size: 100 });
+    await adminApi.batchShipOrders([1, 2], ' PKG ');
+    await adminApi.getOrders('PENDING');
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/admin/orders',
+      '/admin/orders/page',
+      '/admin/orders',
+    ]);
+    expect(mockGet.mock.calls[1][1]).toEqual({
+      params: { status: 'PAID', search: 'order 7', quick: 'OVERDUE', page: 1, size: 100 },
+    });
+  });
+
+  it('caches admin reviews until review moderation changes', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getReviews();
+    await adminApi.getReviews();
+    await adminApi.replyReview(5, '  Thanks   for sharing  ');
+    await adminApi.getReviews();
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/admin/reviews',
+      '/admin/reviews',
+    ]);
+    expect(mockPut.mock.calls[0][1]).toEqual({ reply: 'Thanks for sharing' });
+  });
+
+  it('caches admin users and roles while normalizing user filters', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getUsers({ keyword: '  jane\u0000   doe ', role: ' ADMIN ', status: ' ACTIVE ' });
+    await adminApi.getUsers({ keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' });
+    await adminApi.getRoles();
+    await adminApi.getRoles();
+    await adminApi.updateUser(9, { status: 'BANNED' });
+    await adminApi.getUsers({ keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' });
+    await adminApi.saveRole({ code: 'OPS' });
+    await adminApi.getRoles();
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/admin/users',
+      '/admin/roles',
+      '/admin/users',
+      '/admin/roles',
+    ]);
+    expect(mockGet.mock.calls[0][1]).toEqual({
+      params: { keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' },
+    });
+  });
+
   it('normalizes notification, pet profile, pet gallery, and logistics params', async () => {
     const { notificationApi, petProfileApi, petGalleryApi, logisticsApi } = require('./index');
 
@@ -252,5 +497,31 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[0][0]).toBe('/pet-gallery/0/like');
     expect(mockGet.mock.calls[0][0]).toBe('/logistics/track');
     expect(mockGet.mock.calls[0][1]).toEqual({ params: { trackingNumber: '1Z 999', carrier: 'UPS', orderId: undefined } });
+  });
+
+  it('caches logistics tracking and rejects empty tracking requests', async () => {
+    const { logisticsApi } = require('./index');
+
+    await expect(logisticsApi.track('   ')).rejects.toThrow('Tracking number or order id is required');
+    await logisticsApi.track('  2Z   999  ', '  UPS  ');
+    await logisticsApi.track('  2Z   999  ', '  UPS  ');
+
+    expect(mockGet).toHaveBeenCalledTimes(1);
+    expect(mockGet.mock.calls[0][0]).toBe('/logistics/track');
+  });
+
+  it('caches logistics carriers until carrier mutations invalidate them', async () => {
+    const { logisticsCarrierApi } = require('./index');
+
+    await logisticsCarrierApi.getAll(true);
+    await logisticsCarrierApi.getAll(true);
+    await logisticsCarrierApi.create({ code: 'DHL' });
+    await logisticsCarrierApi.getAll(true);
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/admin/logistics-carriers',
+      '/admin/logistics-carriers',
+    ]);
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/logistics-carriers');
   });
 });

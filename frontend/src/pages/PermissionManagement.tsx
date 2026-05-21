@@ -6,6 +6,7 @@ import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import type { AdminRole } from '../types';
 import { ADMIN_PAGE_PERMISSIONS, isSuperAdminRole } from '../utils/roles';
+import { getLocalStorageItem } from '../utils/safeStorage';
 
 const { Title, Text } = Typography;
 
@@ -16,7 +17,7 @@ const PermissionManagement: React.FC = () => {
   const [editingRole, setEditingRole] = useState<AdminRole | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
-  const currentRole = localStorage.getItem('role') || '';
+  const currentRole = getLocalStorageItem('role') || '';
   const navigate = useNavigate();
   const { t } = useLanguage();
 

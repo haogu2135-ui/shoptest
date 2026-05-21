@@ -1,6 +1,7 @@
 import type { CartItem } from '../types';
 import { createLocalId } from './localIds';
 import { dispatchDomEvent } from './domEvents';
+import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 const SAVE_FOR_LATER_KEY = 'shop-save-for-later';
 const MAX_SAVED_ITEM_QUANTITY = 99;
@@ -52,7 +53,7 @@ const normalizeSavedItem = (item: Partial<SavedForLaterItem>): SavedForLaterItem
 
 const readSavedItems = (): SavedForLaterItem[] => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(SAVE_FOR_LATER_KEY) || '[]');
+    const parsed = JSON.parse(getLocalStorageItem(SAVE_FOR_LATER_KEY) || '[]');
     return Array.isArray(parsed) ? parsed.map(normalizeSavedItem).filter(Boolean) as SavedForLaterItem[] : [];
   } catch {
     return [];
@@ -60,11 +61,7 @@ const readSavedItems = (): SavedForLaterItem[] => {
 };
 
 const writeSavedItems = (items: SavedForLaterItem[]) => {
-  try {
-    localStorage.setItem(SAVE_FOR_LATER_KEY, JSON.stringify(items.map(normalizeSavedItem).filter(Boolean)));
-  } catch {
-    // Save-for-later persistence is best-effort when browser storage is restricted.
-  }
+  setLocalStorageItem(SAVE_FOR_LATER_KEY, JSON.stringify(items.map(normalizeSavedItem).filter(Boolean)));
   dispatchDomEvent('shop:save-for-later-updated');
 };
 

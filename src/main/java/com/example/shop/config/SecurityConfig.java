@@ -43,7 +43,7 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.GET, "/app/config").permitAll()
             .antMatchers(HttpMethod.GET, "/payments/channels").permitAll()
             .antMatchers(HttpMethod.GET, "/payments/order/**").permitAll()
-            .antMatchers("/auth/login", "/auth/register", "/auth/forgot-password").permitAll()
+            .antMatchers("/auth/login", "/auth/register", "/auth/forgot-password", "/auth/email-code", "/auth/email-login").permitAll()
             .antMatchers("/ws/support").permitAll()
             .antMatchers(HttpMethod.GET, "/orders/track").permitAll()
             .antMatchers(HttpMethod.POST, "/orders/checkout/guest").permitAll()

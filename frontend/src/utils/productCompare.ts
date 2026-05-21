@@ -1,12 +1,13 @@
 import type { Product } from '../types';
 import { dispatchDomEvent } from './domEvents';
+import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 const COMPARE_STORAGE_KEY = 'shop-product-compare';
 export const MAX_COMPARE_ITEMS = 4;
 
 export const readCompareProductIds = (): number[] => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(COMPARE_STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(getLocalStorageItem(COMPARE_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     return Array.from(new Set(parsed.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))).slice(0, MAX_COMPARE_ITEMS);
   } catch {
@@ -16,11 +17,7 @@ export const readCompareProductIds = (): number[] => {
 
 const writeCompareProductIds = (ids: number[]) => {
   const normalizedIds = Array.from(new Set(ids.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))).slice(0, MAX_COMPARE_ITEMS);
-  try {
-    localStorage.setItem(COMPARE_STORAGE_KEY, JSON.stringify(normalizedIds));
-  } catch {
-    // Product compare persistence is best-effort when storage is unavailable or full.
-  }
+  setLocalStorageItem(COMPARE_STORAGE_KEY, JSON.stringify(normalizedIds));
   dispatchDomEvent('shop:compare-updated');
 };
 

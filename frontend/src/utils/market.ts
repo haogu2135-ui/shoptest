@@ -1,4 +1,5 @@
 import { dispatchDomEvent } from './domEvents';
+import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 export type CurrencyCode = 'USD' | 'MXN' | 'EUR' | 'GBP' | 'CAD';
 
@@ -26,19 +27,11 @@ export const isCurrencyCode = (value: string | null): value is CurrencyCode =>
   value === 'USD' || value === 'MXN' || value === 'EUR' || value === 'GBP' || value === 'CAD';
 
 const readStoredCurrency = () => {
-  try {
-    return localStorage.getItem(CURRENCY_STORAGE_KEY);
-  } catch {
-    return null;
-  }
+  return getLocalStorageItem(CURRENCY_STORAGE_KEY);
 };
 
 const writeStoredCurrency = (currency: CurrencyCode) => {
-  try {
-    localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
-  } catch {
-    // Currency state is still updated in memory by the caller; persistence is best-effort.
-  }
+  setLocalStorageItem(CURRENCY_STORAGE_KEY, currency);
 };
 
 export const detectDefaultCurrency = (): CurrencyCode => {

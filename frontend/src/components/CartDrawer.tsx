@@ -15,6 +15,7 @@ import { hasAuthenticatedCartSession, syncCheckoutCartItemIds } from '../utils/c
 import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
+import { getLocalStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
 import './CartDrawer.css';
 
 const { Text } = Typography;
@@ -33,14 +34,6 @@ const expressPaymentIcon = (code: string) => {
   if (code === 'GOOGLE_PAY') return <GoogleOutlined />;
   if (code === 'STRIPE' || code === 'MX_LOCAL_CARD') return <CreditCardOutlined />;
   return <WalletOutlined />;
-};
-
-const readCartToken = () => {
-  try {
-    return localStorage.getItem('token');
-  } catch {
-    return null;
-  }
 };
 
 const normalizeCartQuantity = (item: CartItem, quantity: number) => {
@@ -122,7 +115,7 @@ const CartDrawer: React.FC = () => {
       loadCart();
     };
     const refreshGuestCartFromStorage = (event: StorageEvent) => {
-      if (event.key === 'shop-guest-cart' && !readCartToken()) {
+      if (event.key === 'shop-guest-cart' && !getLocalStorageItem('token')) {
         loadCart();
       }
     };
@@ -339,14 +332,10 @@ const CartDrawer: React.FC = () => {
     try {
       await flushPendingQuantityUpdates(checkoutItems);
       syncCheckoutCartItemIds(checkoutItems);
-      try {
-        if (paymentMethod) {
-          sessionStorage.setItem('checkoutPaymentMethod', paymentMethod);
-        } else {
-          sessionStorage.removeItem('checkoutPaymentMethod');
-        }
-      } catch {
-        // Checkout can continue; the payment method will fall back to the checkout default.
+      if (paymentMethod) {
+        setSessionStorageItem('checkoutPaymentMethod', paymentMethod);
+      } else {
+        removeSessionStorageItem('checkoutPaymentMethod');
       }
       setOpen(false);
       navigate('/checkout');

@@ -23,6 +23,7 @@ import { localizeProduct } from '../utils/localizedProduct';
 import { hasAuthenticatedCartSession, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Cart.css';
@@ -119,7 +120,7 @@ const Cart: React.FC = () => {
   useEffect(() => {
     const refreshSavedItems = () => setSavedItems(getSavedForLaterItems());
     const refreshGuestCartFromStorage = (event: StorageEvent) => {
-      if (event.key !== 'shop-guest-cart' || localStorage.getItem('token')) return;
+      if (event.key !== 'shop-guest-cart' || getLocalStorageItem('token')) return;
       const guestItems = getGuestCartItems();
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
@@ -347,7 +348,7 @@ const Cart: React.FC = () => {
       return;
     }
     syncCheckoutCartItemIds(checkoutItems);
-    sessionStorage.removeItem('checkoutPaymentMethod');
+    removeSessionStorageItem('checkoutPaymentMethod');
     navigate('/checkout');
   };
 

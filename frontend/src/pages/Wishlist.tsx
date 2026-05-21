@@ -8,6 +8,7 @@ import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { hasStoredValue } from '../utils/safeStorage';
 import './Wishlist.css';
 
 const { Text, Title } = Typography;
@@ -90,7 +91,7 @@ const Wishlist: React.FC = () => {
   }, [t]);
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) {
+    if (!hasStoredValue('token')) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;

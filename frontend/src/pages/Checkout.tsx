@@ -18,6 +18,7 @@ import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/payment
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { getApiErrorMessage } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { useAppConfig } from '../hooks/useAppConfig';
 import './Checkout.css';
@@ -68,30 +69,6 @@ const sanitizeCheckoutControlChars = (value: string) =>
   }).join('');
 const normalizeCheckoutText = (value: unknown, maxLength: number) =>
   sanitizeCheckoutControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
-
-const getBrowserStorageItem = (storage: Storage | undefined, key: string) => {
-  try {
-    return storage?.getItem(key) || null;
-  } catch {
-    return null;
-  }
-};
-
-const setBrowserStorageItem = (storage: Storage | undefined, key: string, value: string) => {
-  try {
-    storage?.setItem(key, value);
-  } catch {
-    // Checkout should stay usable when browser storage is blocked or full.
-  }
-};
-
-const removeBrowserStorageItem = (storage: Storage | undefined, key: string) => {
-  try {
-    storage?.removeItem(key);
-  } catch {
-    // Checkout cleanup is best-effort in restricted storage modes.
-  }
-};
 
 const CHECKOUT_GUEST_DRAFT_KEY = 'checkoutGuestDraft';
 
@@ -157,7 +134,7 @@ const Checkout: React.FC = () => {
   const paymentMethodDetails = useMemo(() => createPaymentMethodDetails(paymentChannels), [paymentChannels]);
   const { currency, market, formatMoney } = useMarket();
   const { config: appConfig } = useAppConfig();
-  const isGuestCheckout = !getBrowserStorageItem(window.localStorage, 'token');
+  const isGuestCheckout = !getLocalStorageItem('token');
   const recommendedPaymentMethod = useMemo(
     () => getRecommendedPaymentMethod(paymentChannels, currency),
     [currency, paymentChannels],
@@ -173,7 +150,7 @@ const Checkout: React.FC = () => {
         const channels = res.data.length > 0 ? res.data : fallbackPaymentChannels;
         setPaymentChannels(channels);
         const current = form.getFieldValue('paymentMethod');
-        const rememberedMethod = getBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod');
+        const rememberedMethod = getSessionStorageItem('checkoutPaymentMethod');
         const bootstrapCandidate = rememberedMethod || (current && current !== 'STRIPE' ? current : null);
         const nextMethod = resolveCheckoutPaymentMethod(bootstrapCandidate, channels, currency);
         if (nextMethod && nextMethod !== current) {
@@ -183,7 +160,7 @@ const Checkout: React.FC = () => {
       .catch(() => {
         setPaymentChannels(fallbackPaymentChannels);
         const current = form.getFieldValue('paymentMethod');
-        const nextMethod = resolveCheckoutPaymentMethod(getBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod'), fallbackPaymentChannels, currency);
+        const nextMethod = resolveCheckoutPaymentMethod(getSessionStorageItem('checkoutPaymentMethod'), fallbackPaymentChannels, currency);
         if (nextMethod && nextMethod !== current) {
           form.setFieldsValue({ paymentMethod: nextMethod });
         }
@@ -195,7 +172,7 @@ const Checkout: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const token = getBrowserStorageItem(window.localStorage, 'token');
+    const token = getLocalStorageItem('token');
     if (!token) {
       const guestItems = getGuestCartItems().filter((item) => selectedCartItemIds.length === 0 || selectedCartItemIds.includes(item.id));
       const purchasableItems = guestItems.filter(isPurchasable);
@@ -206,7 +183,7 @@ const Checkout: React.FC = () => {
       }
       setCartItems(purchasableItems);
       setAddresses([]);
-      const preferredPaymentMethod = getBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod');
+      const preferredPaymentMethod = getSessionStorageItem('checkoutPaymentMethod');
       if (preferredPaymentMethod) {
         form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(preferredPaymentMethod, paymentChannels, currency) });
       }
@@ -234,7 +211,7 @@ const Checkout: React.FC = () => {
         setAddresses(addressRes.data);
         const defaultAddress = addressRes.data.find((address) => address.isDefault) || addressRes.data[0];
         if (defaultAddress) setSelectedAddressId(defaultAddress.id);
-        const preferredPaymentMethod = getBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod');
+        const preferredPaymentMethod = getSessionStorageItem('checkoutPaymentMethod');
         if (preferredPaymentMethod) {
           form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(preferredPaymentMethod, paymentChannels, currency) });
         }
@@ -265,10 +242,10 @@ const Checkout: React.FC = () => {
 
   useEffect(() => {
     if (!isGuestCheckout) {
-      removeBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
       return;
     }
-    const rawDraft = getBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+    const rawDraft = getSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
     if (!rawDraft) return;
     try {
       const draft = JSON.parse(rawDraft);
@@ -282,7 +259,7 @@ const Checkout: React.FC = () => {
         });
       }
     } catch {
-      removeBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
     }
   }, [form, isGuestCheckout]);
 
@@ -297,9 +274,9 @@ const Checkout: React.FC = () => {
     };
     const hasDraft = Object.values(draft).some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value));
     if (hasDraft) {
-      setBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));
+      setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));
     } else {
-      removeBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
     }
   }, [isGuestCheckout, watchedGuestEmail, watchedPhone, watchedRecipientName, watchedRegion, watchedShippingAddress]);
 
@@ -309,7 +286,7 @@ const Checkout: React.FC = () => {
   }, 0);
 
   useEffect(() => {
-    const token = getBrowserStorageItem(window.localStorage, 'token');
+    const token = getLocalStorageItem('token');
     if (!token || cartItems.length === 0) {
       setCouponQuote(null);
       return;
@@ -643,7 +620,7 @@ const Checkout: React.FC = () => {
   };
 
   const addSuggestedProduct = async (product: Product) => {
-    const token = getBrowserStorageItem(window.localStorage, 'token');
+    const token = getLocalStorageItem('token');
     if (token) {
       await cartApi.addItem(0, product.id, 1);
       const response = await cartApi.getItems(0);
@@ -660,7 +637,7 @@ const Checkout: React.FC = () => {
   };
 
   const handleSubmit = async (values: any) => {
-    const token = getBrowserStorageItem(window.localStorage, 'token');
+    const token = getLocalStorageItem('token');
     if (cartItems.length === 0) {
       message.error(t('pages.checkout.emptyCart'));
       return;
@@ -694,8 +671,8 @@ const Checkout: React.FC = () => {
             })),
           });
       clearCheckoutCartItemIds();
-      removeBrowserStorageItem(window.sessionStorage, 'checkoutPaymentMethod');
-      removeBrowserStorageItem(window.sessionStorage, CHECKOUT_GUEST_DRAFT_KEY);
+      removeSessionStorageItem('checkoutPaymentMethod');
+      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
       if (!token) {
         removeGuestCartItems(cartItems.map((item) => item.id));
       } else {
@@ -765,7 +742,7 @@ const Checkout: React.FC = () => {
     try {
       const paymentRes = await paymentApi.simulateCallback(payment.id, guestPaymentEmail);
       setPayment(paymentRes.data);
-      if (createdOrder?.id && getBrowserStorageItem(window.localStorage, 'token')) {
+      if (createdOrder?.id && getLocalStorageItem('token')) {
         const orderRes = await orderApi.getById(createdOrder.id);
         setCreatedOrder(orderRes.data);
       } else if (createdOrder) {
@@ -780,7 +757,7 @@ const Checkout: React.FC = () => {
   };
 
   const restoreSubmittedCartItems = async () => {
-    const token = getBrowserStorageItem(window.localStorage, 'token');
+    const token = getLocalStorageItem('token');
     if (token) {
       await Promise.all(cartItems.map((item) =>
         cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs),
@@ -832,7 +809,7 @@ const Checkout: React.FC = () => {
 
   useEffect(() => {
     if (!createdOrderId || paymentStatus !== 'PENDING') return undefined;
-    const shouldRefreshOrder = Boolean(getBrowserStorageItem(window.localStorage, 'token'));
+    const shouldRefreshOrder = Boolean(getLocalStorageItem('token'));
     let disposed = false;
     const timer = window.setInterval(async () => {
       try {

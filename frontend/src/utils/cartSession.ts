@@ -1,14 +1,7 @@
 import type { CartItem } from '../types';
+import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setSessionStorageItem } from './safeStorage';
 
 const CHECKOUT_CART_ITEM_IDS_KEY = 'checkoutCartItemIds';
-
-const getStoredValue = (storage: Storage | undefined, key: string) => {
-  try {
-    return storage?.getItem(key) || null;
-  } catch {
-    return null;
-  }
-};
 
 const getTokenScopedCheckoutCartItemIdsKey = (token: string) => {
   let hash = 0;
@@ -19,9 +12,9 @@ const getTokenScopedCheckoutCartItemIdsKey = (token: string) => {
 };
 
 const getCheckoutCartItemIdsKey = () => {
-  const token = getStoredValue(localStorage, 'token');
+  const token = getLocalStorageItem('token');
   if (!token) return `${CHECKOUT_CART_ITEM_IDS_KEY}:guest`;
-  const userId = Number(getStoredValue(localStorage, 'userId'));
+  const userId = Number(getLocalStorageItem('userId'));
   if (Number.isFinite(userId) && userId > 0) {
     return `${CHECKOUT_CART_ITEM_IDS_KEY}:auth:${userId}`;
   }
@@ -29,20 +22,20 @@ const getCheckoutCartItemIdsKey = () => {
 };
 
 export const getAuthenticatedCartUserId = () => {
-  const token = getStoredValue(localStorage, 'token');
-  const userId = Number(getStoredValue(localStorage, 'userId'));
+  const token = getLocalStorageItem('token');
+  const userId = Number(getLocalStorageItem('userId'));
   return token && Number.isFinite(userId) && userId > 0 ? userId : null;
 };
 
-export const hasAuthenticatedCartSession = () => Boolean(getStoredValue(localStorage, 'token'));
+export const hasAuthenticatedCartSession = () => Boolean(getLocalStorageItem('token'));
 
 export const readCheckoutCartItemIds = () => {
   try {
-    const token = getStoredValue(localStorage, 'token');
+    const token = getLocalStorageItem('token');
     const legacyTokenKey = token ? getTokenScopedCheckoutCartItemIdsKey(token) : null;
-    const raw = sessionStorage.getItem(getCheckoutCartItemIdsKey())
-      || (legacyTokenKey ? sessionStorage.getItem(legacyTokenKey) : null)
-      || sessionStorage.getItem(CHECKOUT_CART_ITEM_IDS_KEY);
+    const raw = getSessionStorageItem(getCheckoutCartItemIdsKey())
+      || (legacyTokenKey ? getSessionStorageItem(legacyTokenKey) : null)
+      || getSessionStorageItem(CHECKOUT_CART_ITEM_IDS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     const ids = Array.isArray(parsed)
       ? parsed.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
@@ -55,21 +48,21 @@ export const readCheckoutCartItemIds = () => {
 
 export const syncCheckoutCartItemIds = (items: Pick<CartItem, 'id'>[]) => {
   try {
-    const token = getStoredValue(localStorage, 'token');
+    const token = getLocalStorageItem('token');
     const currentKey = getCheckoutCartItemIdsKey();
     const ids = Array.from(new Set(
       items
         .map((item) => Number(item?.id))
         .filter((id) => Number.isSafeInteger(id) && id > 0),
     ));
-    sessionStorage.setItem(currentKey, JSON.stringify(ids));
+    setSessionStorageItem(currentKey, JSON.stringify(ids));
     if (token) {
       const legacyTokenKey = getTokenScopedCheckoutCartItemIdsKey(token);
       if (legacyTokenKey !== currentKey) {
-        sessionStorage.removeItem(legacyTokenKey);
+        removeSessionStorageItem(legacyTokenKey);
       }
     }
-    sessionStorage.removeItem(CHECKOUT_CART_ITEM_IDS_KEY);
+    removeSessionStorageItem(CHECKOUT_CART_ITEM_IDS_KEY);
   } catch {
     // Checkout selection storage is best-effort in restricted browser storage modes.
   }
@@ -77,16 +70,16 @@ export const syncCheckoutCartItemIds = (items: Pick<CartItem, 'id'>[]) => {
 
 export const clearCheckoutCartItemIds = () => {
   try {
-    const token = getStoredValue(localStorage, 'token');
+    const token = getLocalStorageItem('token');
     const currentKey = getCheckoutCartItemIdsKey();
-    sessionStorage.removeItem(currentKey);
+    removeSessionStorageItem(currentKey);
     if (token) {
       const legacyTokenKey = getTokenScopedCheckoutCartItemIdsKey(token);
       if (legacyTokenKey !== currentKey) {
-        sessionStorage.removeItem(legacyTokenKey);
+        removeSessionStorageItem(legacyTokenKey);
       }
     }
-    sessionStorage.removeItem(CHECKOUT_CART_ITEM_IDS_KEY);
+    removeSessionStorageItem(CHECKOUT_CART_ITEM_IDS_KEY);
   } catch {
     // Checkout selection cleanup is best-effort.
   }

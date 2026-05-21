@@ -9,6 +9,7 @@ import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { hasStoredValue } from '../utils/safeStorage';
 import './PetPersonalizedAssistant.css';
 
 const { Text, Title } = Typography;
@@ -36,7 +37,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
   const [petProfiles, setPetProfiles] = useState<PetProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [addingId, setAddingId] = useState<number | null>(null);
-  const isAuthenticated = Boolean(localStorage.getItem('token'));
+  const isAuthenticated = hasStoredValue('token');
   const excludedKey = useMemo(
     () => Array.from(new Set(excludedProductIds.map(Number).filter(Boolean))).sort((left, right) => left - right).join(','),
     [excludedProductIds],

@@ -1,20 +1,48 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Typography, message } from 'antd';
-import { CompassOutlined, LockOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { Form, Input, Button, Typography, message, Tabs } from 'antd';
+import { CompassOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import { getEffectiveRole } from '../utils/roles';
+import { removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './Login.css';
 
 const { Text, Title } = Typography;
 
+const normalizeEmail = (value: unknown) => String(value || '').trim().toLowerCase();
+const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
+const maskEmail = (value: unknown) => {
+  const email = normalizeEmail(value);
+  const [name, domain] = email.split('@');
+  if (!name || !domain) return email;
+  return `${name.charAt(0)}***@${domain}`;
+};
+
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [codeSending, setCodeSending] = useState(false);
+  const [sendCodeCountdown, setSendCodeCountdown] = useState(0);
+  const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
+  const [sentEmailHint, setSentEmailHint] = useState('');
+  const [activeLoginTab, setActiveLoginTab] = useState('password');
+  const [emailForm] = Form.useForm();
+  const watchedEmailCode = Form.useWatch('code', emailForm);
+  const codeInputRef = useRef<any>(null);
   const navigate = useNavigate();
   const { t } = useLanguage();
   const guestCartCount = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
+  const emailCodeLength = normalizeEmailCode(watchedEmailCode).length;
+  const canSubmitEmailCode = emailCodeLength === 6;
+
+  useEffect(() => {
+    if (sendCodeCountdown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setSendCodeCountdown((value) => Math.max(value - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [sendCodeCountdown]);
 
   const mergeGuestCart = async (userId: number) => {
     const guestItems = getGuestCartItems();
@@ -38,21 +66,78 @@ const Login: React.FC = () => {
     }
   };
 
+  const completeLogin = async (responseData: any) => {
+    const { token, id, username, role, roleCode } = responseData;
+    setLocalStorageItem('token', token);
+    setLocalStorageItem('userId', String(id));
+    setLocalStorageItem('username', username);
+    setLocalStorageItem('role', getEffectiveRole(role, roleCode));
+    removeLocalStorageItem('adminDefaultPath');
+    await mergeGuestCart(Number(id));
+    message.success(t('pages.auth.loginSuccess'));
+    navigate('/');
+  };
+
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
       const response = await userApi.login(values.username, values.password);
-      const { token, id, username, role, roleCode } = response.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('userId', id);
-      localStorage.setItem('username', username);
-      localStorage.setItem('role', getEffectiveRole(role, roleCode));
-      localStorage.removeItem('adminDefaultPath');
-      await mergeGuestCart(Number(id));
-      message.success(t('pages.auth.loginSuccess'));
-      navigate('/');
+      await completeLogin(response.data);
     } catch {
       message.error(t('pages.auth.loginFailed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendEmailCode = async () => {
+    try {
+      const { email } = await emailForm.validateFields(['email']);
+      const normalizedEmail = normalizeEmail(email);
+      emailForm.setFieldValue('email', normalizedEmail);
+      setCodeSending(true);
+      const response = await userApi.sendEmailLoginCode(normalizedEmail);
+      const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
+      const ttlMinutes = Number(response.data?.codeTtlMinutes);
+      setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
+      setCodeTtlMinutes(Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 0);
+      emailForm.setFieldValue('code', '');
+      setSentEmailHint(maskEmail(normalizedEmail));
+      window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
+      message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
+    } catch (error: any) {
+      if (!error?.errorFields) {
+        const errorCode = error?.response?.data?.code;
+        if (errorCode === 'RATE_LIMITED') {
+          const resendIntervalSeconds = Number(error?.response?.data?.resendIntervalSeconds);
+          setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
+        }
+        message.error(errorCode === 'RATE_LIMITED'
+          ? t('pages.auth.emailCodeRateLimited')
+          : t('pages.auth.emailCodeSendFailed'));
+      }
+    } finally {
+      setCodeSending(false);
+    }
+  };
+
+  const onEmailLogin = async (values: any) => {
+    const normalizedCode = normalizeEmailCode(values.code);
+    if (normalizedCode.length !== 6) {
+      emailForm.setFields([{ name: 'code', errors: [t('pages.auth.emailCodeLength')] }]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const normalizedEmail = normalizeEmail(values.email);
+      emailForm.setFieldsValue({ email: normalizedEmail, code: normalizedCode });
+      const response = await userApi.emailLogin(normalizedEmail, normalizedCode);
+      await completeLogin(response.data);
+    } catch (error: any) {
+      const errorCode = error?.response?.data?.code;
+      message.error(errorCode === 'INVALID_CODE'
+        ? t('pages.auth.emailCodeInvalid')
+        : t('pages.auth.emailLoginFailed'));
     } finally {
       setLoading(false);
     }
@@ -148,19 +233,156 @@ const Login: React.FC = () => {
             </div>
           </div>
 
-          <Form name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">
-            <Form.Item name="username" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
-              <Input prefix={<UserOutlined />} placeholder={t('pages.auth.username')} size="large" autoComplete="username" />
-            </Form.Item>
-            <Form.Item name="password" rules={[{ required: true, message: t('pages.auth.passwordRequired') }]}>
-              <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.password')} size="large" autoComplete="current-password" />
-            </Form.Item>
-            <Form.Item>
-              <Button type="primary" htmlType="submit" block size="large" loading={loading}>
-                {t('pages.auth.login')}
-              </Button>
-            </Form.Item>
-          </Form>
+          <Tabs
+            activeKey={activeLoginTab}
+            onChange={setActiveLoginTab}
+            className={`shopee-login-tabs shopee-login-tabs--${activeLoginTab}`}
+            centered
+            items={[
+              {
+                key: 'password',
+                label: t('pages.auth.passwordLogin'),
+                children: (
+                  <Form name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">
+                    <Form.Item name="username" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
+                      <Input prefix={<UserOutlined />} placeholder={t('pages.auth.username')} size="large" autoComplete="username" />
+                    </Form.Item>
+                    <Form.Item name="password" rules={[{ required: true, message: t('pages.auth.passwordRequired') }]}>
+                      <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.password')} size="large" autoComplete="current-password" />
+                    </Form.Item>
+                    <Form.Item>
+                      <Button type="primary" htmlType="submit" block size="large" loading={loading}>
+                        {t('pages.auth.login')}
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                ),
+              },
+              {
+                key: 'email',
+                label: t('pages.auth.emailLogin'),
+                children: (
+                  <Form
+                    form={emailForm}
+                    name="email-login"
+                    onFinish={onEmailLogin}
+                    onValuesChange={(changedValues) => {
+                      if (Object.prototype.hasOwnProperty.call(changedValues, 'email')) {
+                        setSentEmailHint('');
+                        setSendCodeCountdown(0);
+                        setCodeTtlMinutes(0);
+                        emailForm.setFieldValue('code', '');
+                      }
+                    }}
+                    layout="vertical"
+                    className="shopee-login-form shopee-login-form--email"
+                  >
+                    <div className="shopee-login-emailHint">
+                      <MailOutlined />
+                      <span>{t('pages.auth.emailLoginHint')}</span>
+                    </div>
+                    {sentEmailHint && (
+                      <div className="shopee-login-emailSent" role="status">
+                        <SafetyCertificateOutlined />
+                        <span>
+                          <strong>{t('pages.auth.emailCodeSentTo', { email: sentEmailHint })}</strong>
+                          {codeTtlMinutes > 0 && (
+                            <small>{t('pages.auth.emailCodeExpiresIn', { minutes: codeTtlMinutes })}</small>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    <Form.Item
+                      name="email"
+                      className="shopee-login-form__field"
+                      rules={[
+                        { required: true, message: t('pages.auth.emailRequired') },
+                        { type: 'email', message: t('pages.auth.emailInvalid') },
+                      ]}
+                    >
+                      <Input
+                        prefix={<MailOutlined />}
+                        placeholder={t('pages.auth.email')}
+                        size="large"
+                        autoComplete="email"
+                        allowClear
+                        disabled={loading}
+                        aria-label={t('pages.auth.email')}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="code"
+                      className="shopee-login-form__field shopee-login-form__field--code"
+                      rules={[
+                        { required: true, message: t('pages.auth.emailCodeRequired') },
+                        { len: 6, message: t('pages.auth.emailCodeLength') },
+                      ]}
+                    >
+                      <Input
+                        ref={codeInputRef}
+                        className="shopee-login-codeInput"
+                        prefix={<SafetyCertificateOutlined />}
+                        placeholder={t('pages.auth.verificationCode')}
+                        size="large"
+                        maxLength={6}
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        enterKeyHint="done"
+                        disabled={loading}
+                        aria-label={t('pages.auth.verificationCode')}
+                        onChange={(event) => {
+                          const normalized = normalizeEmailCode(event.target.value);
+                          if (normalized !== event.target.value) {
+                            emailForm.setFieldValue('code', normalized);
+                          }
+                        }}
+                        addonAfter={
+                          <Button
+                            type="link"
+                            size="small"
+                            className="shopee-login-codeButton"
+                            loading={codeSending}
+                            disabled={loading || codeSending || sendCodeCountdown > 0}
+                            onClick={sendEmailCode}
+                            aria-label={codeSending
+                              ? t('pages.auth.emailCodeSending')
+                              : sendCodeCountdown > 0
+                              ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
+                              : t('pages.auth.sendCode')}
+                          >
+                            {codeSending
+                              ? t('pages.auth.emailCodeSending')
+                              : sendCodeCountdown > 0
+                              ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
+                              : t('pages.auth.sendCode')}
+                          </Button>
+                        }
+                      />
+                    </Form.Item>
+                    <div className="shopee-login-codeProgress" aria-live="polite">
+                      {t('pages.auth.emailCodeProgress', { count: emailCodeLength })}
+                    </div>
+                    <div className="shopee-login-emailMeta" aria-label={t('pages.auth.emailLoginTrust')}>
+                      <span>
+                        <SafetyCertificateOutlined />
+                        {t('pages.auth.emailCodePrivacy')}
+                      </span>
+                      <span>
+                        <MailOutlined />
+                        {t('pages.auth.emailCodeFast')}
+                      </span>
+                    </div>
+                    <Form.Item>
+                      <Button className="shopee-login-emailSubmit" type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || !canSubmitEmailCode}>
+                        {t('pages.auth.emailLogin')}
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                ),
+              },
+            ]}
+          />
 
           <div className="shopee-login-quickLinks">
             <button type="button" onClick={() => navigate('/track-order')}>

@@ -4,6 +4,7 @@ import { userApi } from '../api';
 import { User } from '../types';
 import { useLanguage } from '../i18n';
 import { getEffectiveRole } from '../utils/roles';
+import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 
 interface AuthContextType {
     user: User | null;
@@ -24,10 +25,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
             const response = await userApi.login(username, password);
             const { token, id, username: name, role, roleCode } = response.data;
             const effectiveRole = getEffectiveRole(role, roleCode);
-            localStorage.setItem('token', token);
-            localStorage.setItem('userId', id);
-            localStorage.setItem('username', name);
-            localStorage.setItem('role', effectiveRole);
+            setLocalStorageItem('token', token);
+            setLocalStorageItem('userId', String(id));
+            setLocalStorageItem('username', name);
+            setLocalStorageItem('role', effectiveRole);
             setUser({ id, username: name, role, roleCode, email: response.data.email || '' });
             message.success(t('pages.auth.loginSuccess'));
         } catch (error) {
@@ -39,29 +40,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     const logout = () => {
         userApi.logout().catch(() => undefined);
         setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('username');
-        localStorage.removeItem('role');
+        removeLocalStorageItem('token');
+        removeLocalStorageItem('userId');
+        removeLocalStorageItem('username');
+        removeLocalStorageItem('role');
         message.success(t('pages.auth.logoutSuccess'));
     };
 
     React.useEffect(() => {
-        const token = localStorage.getItem('token');
+        const token = getLocalStorageItem('token');
         if (token) {
             userApi.getProfile()
                 .then(response => {
                     const effectiveRole = getEffectiveRole(response.data.role, response.data.roleCode);
                     setUser(response.data);
-                    localStorage.setItem('userId', String(response.data.id));
-                    localStorage.setItem('username', response.data.username);
-                    localStorage.setItem('role', effectiveRole);
+                    setLocalStorageItem('userId', String(response.data.id));
+                    setLocalStorageItem('username', response.data.username);
+                    setLocalStorageItem('role', effectiveRole);
                 })
                 .catch(() => {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('userId');
-                    localStorage.removeItem('username');
-                    localStorage.removeItem('role');
+                    removeLocalStorageItem('token');
+                    removeLocalStorageItem('userId');
+                    removeLocalStorageItem('username');
+                    removeLocalStorageItem('role');
                 })
                 .finally(() => {
                     setLoading(false);

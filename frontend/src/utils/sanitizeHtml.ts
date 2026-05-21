@@ -45,10 +45,11 @@ export const stripUnsafeHtml = (html: string) => {
     });
     if (node.tagName.toLowerCase() === 'a') {
       const target = node.getAttribute('target');
-      if (target && !allowedAnchorTargets.has(target.toLowerCase())) {
+      const normalizedTarget = target?.toLowerCase();
+      if (normalizedTarget && !allowedAnchorTargets.has(normalizedTarget)) {
         node.removeAttribute('target');
       }
-      if (node.getAttribute('target') === '_blank') {
+      if (normalizedTarget === '_blank') {
         node.setAttribute('rel', 'noopener noreferrer');
       }
     }
