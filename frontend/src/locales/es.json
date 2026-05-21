@@ -598,7 +598,9 @@
       "deleteSavedConfirm": "¿Quitar este artículo guardado?",
       "drawerExpressBlocked": "{count} productos necesitan revisión antes del pago rápido.",
       "drawerClearBlocked": "Quitar bloqueados",
-      "drawerClearedBlocked": "Se quitaron {count} productos no disponibles."
+      "drawerClearedBlocked": "Se quitaron {count} productos no disponibles.",
+      "drawerSyncingQuantity": "Sincronizando {count} cambio(s) de cantidad",
+      "checkoutSyncing": "Pagar tras sincronizar cantidades"
     },
     "addOnAssistant": {
       "title": "Sugerencias para completar",

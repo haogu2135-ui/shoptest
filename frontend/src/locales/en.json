@@ -618,7 +618,9 @@
       "deleteSavedConfirm": "Remove this saved item?",
       "drawerExpressBlocked": "{count} blocked item(s) need review before express checkout.",
       "drawerClearBlocked": "Clear blocked items",
-      "drawerClearedBlocked": "Cleared {count} blocked item(s)."
+      "drawerClearedBlocked": "Cleared {count} blocked item(s).",
+      "drawerSyncingQuantity": "Syncing {count} quantity update(s)",
+      "checkoutSyncing": "Checkout after quantity sync"
     },
     "addOnAssistant": {
       "title": "Smart add-on picks",

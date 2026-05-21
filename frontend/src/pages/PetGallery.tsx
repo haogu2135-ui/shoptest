@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
 import type { PetGalleryPhoto, PetGalleryQuota } from '../types';
-import { resolveApiAssetUrl } from '../utils/mediaAssets';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
 import './PetGallery.css';
 
@@ -62,6 +62,7 @@ const writeLocalLikes = (likes: string[]) => {
 };
 
 const resolvePhotoUrl = (imageUrl: string) => resolveApiAssetUrl(imageUrl, petGalleryImageFallback);
+const galleryCardImageSizes = '(max-width: 620px) 50vw, (max-width: 980px) 33vw, 25vw';
 
 const usePetGalleryImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
   if (event.currentTarget.src !== petGalleryImageFallback) {
@@ -410,7 +411,17 @@ const PetGallery: React.FC = () => {
                 aria-label={`${t('pages.petGallery.preview')} ${item.label}`}
                 onClick={() => setPreviewItem(item)}
               >
-                <img src={item.image} alt={`${t('pages.petGallery.photoAlt')} ${index + 1}`} loading="lazy" onError={usePetGalleryImageFallback} />
+                <img
+                  src={getOptimizedImageUrl(item.image, 520)}
+                  srcSet={buildResponsiveImageSrcSet(item.image, [320, 520, 720])}
+                  sizes={galleryCardImageSizes}
+                  alt={`${t('pages.petGallery.photoAlt')} ${index + 1}`}
+                  width={520}
+                  height={650}
+                  loading="lazy"
+                  decoding="async"
+                  onError={usePetGalleryImageFallback}
+                />
                 <span className="pet-gallery-card__owner">{item.label}</span>
               </button>
               <div className="pet-gallery-card__meta">
@@ -453,7 +464,16 @@ const PetGallery: React.FC = () => {
       >
         {activePreviewItem ? (
           <figure className="pet-gallery-preview__figure">
-            <img src={activePreviewItem.image} alt={activePreviewItem.label} onError={usePetGalleryImageFallback} />
+            <img
+              src={getOptimizedImageUrl(activePreviewItem.image, 1200)}
+              srcSet={buildResponsiveImageSrcSet(activePreviewItem.image, [720, 960, 1200, 1600])}
+              sizes="min(760px, 100vw)"
+              alt={activePreviewItem.label}
+              width={1200}
+              height={900}
+              decoding="async"
+              onError={usePetGalleryImageFallback}
+            />
             <figcaption>
               <span>{activePreviewItem.label}</span>
               <Space wrap>

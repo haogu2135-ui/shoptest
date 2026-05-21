@@ -2,11 +2,13 @@ package com.example.shop.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -38,6 +40,7 @@ public class WebConfig implements WebMvcConfigurer {
             petGalleryLocation = petGalleryLocation + "/";
         }
         registry.addResourceHandler("/uploads/pet-gallery/**")
-                .addResourceLocations(petGalleryLocation);
+                .addResourceLocations(petGalleryLocation)
+                .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
     }
 } 

@@ -313,6 +313,12 @@
   margin-inline-start: 0;
 }
 
+.cart-drawer__syncText {
+  display: block;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
 /* 鈹€鈹€ Footer 鈹€鈹€ */
 .cart-drawer__footer {
   position: sticky;

@@ -88,6 +88,24 @@ class ProductVariantServiceTest {
         );
     }
 
+    @Test
+    void acceptsLocalizedOptionTextDelimiters() {
+        Product product = new Product();
+        product.setName("Cooling Vest");
+        product.setPrice(new BigDecimal("30.00"));
+        product.setStock(null);
+        product.setSpecificationsMap(Map.of(
+                "options.Size", "S\uFF1BM",
+                "options.Color", "Blue\uFF0CGreen"
+        ));
+        product.setVariantsList(List.of(
+                Map.of("sku", "SKU-M-GREEN", "price", "28.00", "stock", 5, "optionText", "Size=M\uFF1BColor=Green")
+        ));
+
+        service.validateSelection(product, "{\"Size\":\"M\",\"Color\":\"Green\",\"_variantSku\":\"SKU-M-GREEN\"}");
+        assertTrue(service.findSelectedVariant(product, "{\"Size\":\"M\",\"Color\":\"Green\"}").isPresent());
+    }
+
     private Product baseVariantProduct() {
         Product product = new Product();
         product.setName("Harness");

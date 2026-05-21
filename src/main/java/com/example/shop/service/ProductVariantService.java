@@ -217,7 +217,7 @@ public class ProductVariantService {
             return new ArrayList<>();
         }
         Set<String> values = new HashSet<>();
-        for (String token : rawValue.split("[,\\uFF0C\\u3001\\n]")) {
+        for (String token : rawValue.split("[,\\uFF0C\\u3001;\\uFF1B\\n]")) {
             String value = token == null ? "" : token.trim();
             if (!value.isEmpty()) {
                 values.add(value);
@@ -334,7 +334,7 @@ public class ProductVariantService {
             return Map.of();
         }
         Map<String, String> result = new LinkedHashMap<>();
-        for (String token : String.valueOf(optionText).split(",")) {
+        for (String token : String.valueOf(optionText).split("[,\\uFF0C\\u3001;\\uFF1B\\n]")) {
             String[] parts = token.split("=", 2);
             if (parts.length != 2) {
                 continue;

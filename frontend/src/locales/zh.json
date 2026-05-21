@@ -598,7 +598,9 @@
       "drawerGiftUnlocked": "已解锁结账赠品",
       "drawerExpressBlocked": "{count} 件受阻商品需要先处理，才能使用快捷支付。",
       "drawerClearBlocked": "清理受阻商品",
-      "drawerClearedBlocked": "已清理 {count} 件受阻商品。"
+      "drawerClearedBlocked": "已清理 {count} 件受阻商品。",
+      "drawerSyncingQuantity": "正在同步 {count} 件商品数量",
+      "checkoutSyncing": "同步数量后结算"
     },
     "addOnAssistant": {
       "title": "智能凑单推荐",

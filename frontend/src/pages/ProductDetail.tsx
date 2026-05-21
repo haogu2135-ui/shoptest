@@ -139,6 +139,7 @@ const ProductDetail: React.FC = () => {
   const [isAlerted, setIsAlerted] = useState(false);
   const mobileGalleryRef = useRef<HTMLDivElement | null>(null);
   const detailContentRef = useRef<HTMLDivElement | null>(null);
+  const optionsSectionRef = useRef<HTMLDivElement | null>(null);
   const nonCriticalLoadedRef = useRef(false);
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
   const imageResumeTimerRef = useRef<number | null>(null);
@@ -152,6 +153,47 @@ const ProductDetail: React.FC = () => {
     () => getDeliveryPromise({ currency, locale: market.locale }),
     [currency, market.locale],
   );
+  const heroImage = useMemo(() => getOptimizedImageUrl(selectedImage || fallbackProductImage, 900), [selectedImage]);
+  const heroImageSrcSet = useMemo(() => buildResponsiveImageSrcSet(selectedImage || fallbackProductImage, [480, 720, 900, 1200]), [selectedImage]);
+  const shouldPreloadHeroImage = Boolean(selectedImage);
+  const heroImageSizes = '(max-width: 768px) 100vw, 560px';
+
+  useEffect(() => {
+    const links: HTMLLinkElement[] = [];
+    const addLink = (attributes: Record<string, string>) => {
+      const link = document.createElement('link');
+      Object.entries(attributes).forEach(([key, value]) => link.setAttribute(key, value));
+      document.head.appendChild(link);
+      links.push(link);
+      return link;
+    };
+
+    const pushPreconnect = (assetUrl: string) => {
+      try {
+        const origin = new URL(assetUrl, window.location.origin).origin;
+        if (!origin || origin === window.location.origin) return;
+        if (!Array.from(document.head.querySelectorAll('link[rel="preconnect"]')).some((link) => link.getAttribute('href') === origin)) {
+          addLink({ rel: 'preconnect', href: origin, crossOrigin: 'anonymous' });
+        }
+      } catch {
+        // ignore invalid URLs
+      }
+    };
+
+    if (shouldPreloadHeroImage && heroImage) {
+      pushPreconnect(heroImage);
+      addLink({
+        rel: 'preload',
+        as: 'image',
+        href: heroImage,
+        ...(heroImageSrcSet ? { imagesrcset: heroImageSrcSet, imagesizes: heroImageSizes } : {}),
+      });
+    }
+
+    return () => {
+      links.forEach((link) => link.remove());
+    };
+  }, [heroImage, heroImageSrcSet, shouldPreloadHeroImage]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -212,14 +254,20 @@ const ProductDetail: React.FC = () => {
     } : {}),
   }), [bundleInfo, purchaseMode, selectedOptions, selectedVariant]);
 
+  const focusOptionsSection = () => {
+    optionsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   const validateOptions = () => {
     const missing = optionGroups.find((group) => !selectedOptions[group.name]);
     if (missing) {
       message.warning(t('pages.productDetail.selectOption', { option: missing.name }));
+      focusOptionsSection();
       return false;
     }
     if (variants.length > 0 && !selectedVariant) {
       message.warning(t('pages.productDetail.variantUnavailable'));
+      focusOptionsSection();
       return false;
     }
     return true;
@@ -581,8 +629,8 @@ const ProductDetail: React.FC = () => {
   const hasUnavailableSelectedVariant = variants.length > 0 && hasCompleteOptions && !selectedVariant;
   const optionsMissing = optionGroups.length > 0 && !hasCompleteOptions;
   const purchaseSelectionBlocked = optionsMissing || hasUnavailableSelectedVariant;
-  const mobilePurchaseBlocked = !isOutOfStock && (purchaseSelectionBlocked || purchaseSubmitting !== null);
-  const buyNowBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;
+  const mobilePurchaseBlocked = !isOutOfStock && purchaseSubmitting !== null;
+  const buyNowBlocked = isOutOfStock || purchaseSubmitting !== null;
   const selectedOptionTags = optionGroups
     .map((group) => ({
       name: group.name,
@@ -894,9 +942,9 @@ const ProductDetail: React.FC = () => {
                   ))}
                 </div>
                 <img
-                  src={getOptimizedImageUrl(selectedImage, 900)}
-                  srcSet={buildResponsiveImageSrcSet(selectedImage, [480, 720, 900, 1200])}
-                  sizes="(max-width: 768px) 100vw, 560px"
+                  src={heroImage}
+                  srcSet={heroImageSrcSet}
+                  sizes={heroImageSizes}
                   alt={product.name}
                   className="product-detail-main-image__img"
                   width={900}
@@ -1026,30 +1074,35 @@ const ProductDetail: React.FC = () => {
                   </div>
                 </div>
 
-                {optionGroups.map((group) => (
-                  <div key={group.name}>
-                    <div className="product-option-header">
-                      <Text strong>{getLocalizedOptionLabel(group.name, language)}</Text>
-                      {group.name.toLowerCase().includes('size') ? (
-                        <Button size="small" type="link" onClick={() => setSizeGuideOpen(true)}>{t('pages.productDetail.sizeGuide')}</Button>
-                      ) : null}
+                <div
+                  ref={optionsSectionRef}
+                  className={purchaseSelectionBlocked ? 'product-options-anchor product-options-anchor--attention' : 'product-options-anchor'}
+                >
+                  {optionGroups.map((group) => (
+                    <div key={group.name}>
+                      <div className="product-option-header">
+                        <Text strong>{getLocalizedOptionLabel(group.name, language)}</Text>
+                        {group.name.toLowerCase().includes('size') ? (
+                          <Button size="small" type="link" onClick={() => setSizeGuideOpen(true)}>{t('pages.productDetail.sizeGuide')}</Button>
+                        ) : null}
+                      </div>
+                      <Radio.Group
+                        value={selectedOptions[group.name]}
+                        onChange={e => selectOptionValue(group.name, e.target.value)}
+                        className="product-option-radio"
+                      >
+                        {group.values.map((value) => {
+                          const disabled = !optionValueIsCompatible(variants, selectedOptions, group.name, value);
+                          return (
+                            <Radio.Button key={value} value={value} disabled={disabled}>
+                              {getLocalizedOptionLabel(value, language)}
+                            </Radio.Button>
+                          );
+                        })}
+                      </Radio.Group>
                     </div>
-                    <Radio.Group
-                      value={selectedOptions[group.name]}
-                      onChange={e => selectOptionValue(group.name, e.target.value)}
-                      className="product-option-radio"
-                    >
-                      {group.values.map((value) => {
-                        const disabled = !optionValueIsCompatible(variants, selectedOptions, group.name, value);
-                        return (
-                          <Radio.Button key={value} value={value} disabled={disabled}>
-                            {getLocalizedOptionLabel(value, language)}
-                          </Radio.Button>
-                        );
-                      })}
-                    </Radio.Group>
-                  </div>
-                ))}
+                  ))}
+                </div>
 
                 {optionGroups.length > 0 && (
                   <div className={`product-selected-summary${hasUnavailableSelectedVariant ? ' product-selected-summary--warning' : ''}`}>

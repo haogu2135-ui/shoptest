@@ -64,6 +64,7 @@ const CartDrawer: React.FC = () => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
+  const [checkoutPaymentSubmitting, setCheckoutPaymentSubmitting] = useState<string | null>(null);
   const [updatingQuantityIds, setUpdatingQuantityIds] = useState<Record<number, boolean>>({});
   const mountedRef = useRef(true);
   const loadCartRequestRef = useRef(0);
@@ -147,6 +148,8 @@ const CartDrawer: React.FC = () => {
   const blockedCount = blockedItems.length;
   const checkoutUnitCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
   const lowStockCount = checkoutItems.filter((item) => getCartItemLowStockCount(item) !== null).length;
+  const pendingQuantityCount = Object.values(updatingQuantityIds).filter(Boolean).length;
+  const hasPendingQuantityUpdates = pendingQuantityCount > 0;
   const freeShippingThreshold = market.freeShippingThreshold;
   const remaining = Math.max(0, freeShippingThreshold - subtotal);
   const benefitTarget = getNearestCartBenefitTarget(subtotal, freeShippingThreshold, currency);
@@ -158,6 +161,7 @@ const CartDrawer: React.FC = () => {
   const shippingStatusText = [
     drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle'),
     t('pages.cart.drawerReadyText', { count: checkoutUnitCount, blocked: blockedCount, low: lowStockCount }),
+    ...(hasPendingQuantityUpdates ? [t('pages.cart.drawerSyncingQuantity', { count: pendingQuantityCount })] : []),
   ].join(' · ');
   const expressHint = checkoutItems.length === 0
     ? t('pages.cart.drawerExpressEmpty')
@@ -331,6 +335,7 @@ const CartDrawer: React.FC = () => {
       return;
     }
     setCheckoutSubmitting(true);
+    setCheckoutPaymentSubmitting(paymentMethod || 'standard');
     try {
       await flushPendingQuantityUpdates(checkoutItems);
       syncCheckoutCartItemIds(checkoutItems);
@@ -348,7 +353,10 @@ const CartDrawer: React.FC = () => {
     } catch {
       return;
     } finally {
-      if (mountedRef.current) setCheckoutSubmitting(false);
+      if (mountedRef.current) {
+        setCheckoutSubmitting(false);
+        setCheckoutPaymentSubmitting(null);
+      }
     }
   };
 
@@ -441,7 +449,13 @@ const CartDrawer: React.FC = () => {
           <div className="cart-drawer__expressWrap">
             <Space.Compact block className="cart-drawer__express">
               {expressPaymentCodes.map((code) => (
-                <Button key={code} disabled={!drawerReady} icon={expressPaymentIcon(code)} onClick={() => goCheckout(code)}>
+                <Button
+                  key={code}
+                  disabled={!drawerReady || checkoutSubmitting}
+                  loading={checkoutPaymentSubmitting === code}
+                  icon={expressPaymentIcon(code)}
+                  onClick={() => goCheckout(code)}
+                >
                   {paymentMethodLabel(code, t)}
                 </Button>
               ))}
@@ -514,6 +528,11 @@ const CartDrawer: React.FC = () => {
                       status={updatingQuantityIds[item.id] ? 'warning' : undefined}
                       onChange={(value) => updateQuantity(item, value || 1)}
                     />
+                    {updatingQuantityIds[item.id] ? (
+                      <Text type="secondary" className="cart-drawer__syncText">
+                        {t('pages.cart.drawerSyncingQuantity', { count: 1 })}
+                      </Text>
+                    ) : null}
                   </Space>
                 }
               />
@@ -544,10 +563,10 @@ const CartDrawer: React.FC = () => {
             size="large"
             className="cart-drawer__checkoutButton"
             onClick={() => goCheckout()}
-            loading={checkoutSubmitting}
+            loading={checkoutPaymentSubmitting === 'standard'}
             disabled={checkoutItems.length === 0 || checkoutSubmitting}
           >
-            {t('pages.cart.checkout')}
+            {checkoutSubmitting && hasPendingQuantityUpdates ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
           </Button>
           <div className="cart-drawer__trustRow" aria-label={t('pages.checkout.trustSecureTitle')}>
             <span><CheckCircleOutlined /> {t('pages.checkout.trustSecureTitle')}</span>

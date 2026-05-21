@@ -5,7 +5,7 @@ export type ProductOptionGroup = {
   values: string[];
 };
 
-const OPTION_VALUE_DELIMITER = /[,，、;\n]/;
+const OPTION_VALUE_DELIMITER = /[,\uFF0C\u3001;\uFF1B\n]/;
 
 const splitOptionValues = (value: unknown) =>
   String(value || '')
