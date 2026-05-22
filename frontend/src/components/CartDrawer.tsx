@@ -137,7 +137,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       const detailItems = (event as CustomEvent<{ items?: CartItem[] }>).detail?.items;
       openCart(detailItems);
     };
-    const refreshCart = () => {
+    const refreshCart = (event: Event) => {
+      const detailItems = (event as CustomEvent<{ items?: CartItem[] }>).detail?.items;
+      if (Array.isArray(detailItems)) {
+        setItems(detailItems);
+        setLoading(false);
+        return;
+      }
       scheduleCartRefresh();
     };
     const refreshGuestCartFromStorage = (event: StorageEvent) => {
@@ -407,11 +413,17 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     const authenticated = hasAuthenticatedCartSession();
     if (authenticated) {
       await cartApi.addItem(0, product.id, 1);
-      dispatchDomEvent('shop:cart-updated');
+      const response = await cartApi.getItems(0);
+      if (mountedRef.current) {
+        setItems(response.data);
+      }
+      dispatchDomEvent('shop:cart-updated', { items: response.data });
       return;
     }
     addGuestCartItem(product, 1);
-    setItems(getGuestCartItems());
+    const nextItems = getGuestCartItems();
+    setItems(nextItems);
+    dispatchDomEvent('shop:cart-updated', { items: nextItems });
   };
 
   return (
@@ -463,6 +475,17 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         </div>
       ) : null}
 
+      {checkoutItems.length > 0 && benefitTarget ? (
+        <Suspense fallback={null}>
+          <AddOnAssistant
+            cartProductIds={checkoutItems.map((item) => item.productId)}
+            remainingAmount={benefitTarget.remainingAmount}
+            reason={benefitTarget.reason}
+            onAdd={addSuggestedProduct}
+          />
+        </Suspense>
+      ) : null}
+
       {items.length > 0 ? (
         <details className="cart-drawer__boostPanel">
           <summary>
@@ -487,16 +510,6 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               ))}
             </Space.Compact>
           </div>
-          {checkoutItems.length > 0 && benefitTarget ? (
-            <Suspense fallback={null}>
-              <AddOnAssistant
-                cartProductIds={checkoutItems.map((item) => item.productId)}
-                remainingAmount={benefitTarget.remainingAmount}
-                reason={benefitTarget.reason}
-                onAdd={addSuggestedProduct}
-              />
-            </Suspense>
-          ) : null}
         </details>
       ) : null}
 

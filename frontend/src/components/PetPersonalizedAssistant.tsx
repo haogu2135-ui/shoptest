@@ -7,6 +7,7 @@ import type { PetProfile, Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { hasStoredValue } from '../utils/safeStorage';
@@ -192,12 +193,17 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                 onClick={() => navigate(`/products/${product.id}`)}
               >
                 <img
-                  src={resolveProductImage(product.imageUrl)}
+                  src={getOptimizedImageUrl(resolveProductImage(product.imageUrl), variant === 'compact' ? 176 : 420)}
+                  srcSet={buildResponsiveImageSrcSet(resolveProductImage(product.imageUrl), variant === 'compact' ? [88, 176, 264] : [240, 360, 480])}
+                  sizes={variant === 'compact' ? '88px' : '(max-width: 900px) calc(100vw - 72px), 33vw'}
                   alt={product.name}
+                  width={variant === 'compact' ? 88 : 320}
+                  height={variant === 'compact' ? 88 : 320}
                   loading="lazy"
                   decoding="async"
                   onError={(event) => {
                     if (event.currentTarget.src !== productImageFallback) {
+                      event.currentTarget.removeAttribute('srcset');
                       event.currentTarget.src = productImageFallback;
                     }
                   }}

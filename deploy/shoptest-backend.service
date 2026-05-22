@@ -12,8 +12,14 @@ ExecStart=/usr/bin/java -Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m -XX:+UseG1GC
 Restart=always
 RestartSec=5
 SuccessExitStatus=143
+LimitNOFILE=65535
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/shoptest
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

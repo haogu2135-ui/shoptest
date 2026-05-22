@@ -26,6 +26,15 @@ jobs:
       BACKEND_JAR_NAME: ${{ secrets.BACKEND_JAR_NAME }}
       BACKEND_DEPLOY_OWNER: ${{ secrets.BACKEND_DEPLOY_OWNER }}
       BACKEND_HEALTHCHECK_URL: ${{ secrets.BACKEND_HEALTHCHECK_URL }}
+      BACKEND_RUNTIME_ENV_FILE: ${{ secrets.BACKEND_RUNTIME_ENV_FILE }}
+      BACKEND_SERVICE_USER: ${{ secrets.BACKEND_SERVICE_USER }}
+      BACKEND_SERVICE_GROUP: ${{ secrets.BACKEND_SERVICE_GROUP }}
+      BACKEND_JAVA_BIN: ${{ secrets.BACKEND_JAVA_BIN }}
+      BACKEND_JAVA_OPTS: ${{ secrets.BACKEND_JAVA_OPTS }}
+      BACKEND_REGISTER_SERVICE: ${{ secrets.BACKEND_REGISTER_SERVICE }}
+      BACKEND_ENABLE_SERVICE: ${{ secrets.BACKEND_ENABLE_SERVICE }}
+      BACKEND_HEALTHCHECK_RETRIES: ${{ secrets.BACKEND_HEALTHCHECK_RETRIES }}
+      BACKEND_HEALTHCHECK_INTERVAL_SECONDS: ${{ secrets.BACKEND_HEALTHCHECK_INTERVAL_SECONDS }}
     steps:
       - name: Check deployment secrets
         id: preflight
@@ -46,6 +55,15 @@ jobs:
           echo "BACKEND_DEPLOY_SERVICE=${BACKEND_DEPLOY_SERVICE:-shoptest-backend}" >> "$GITHUB_ENV"
           echo "BACKEND_REMOTE_TEMP_DIR=${BACKEND_REMOTE_TEMP_DIR:-/tmp/shoptest-backend-deploy}" >> "$GITHUB_ENV"
           echo "BACKEND_JAR_NAME=${BACKEND_JAR_NAME:-shop.jar}" >> "$GITHUB_ENV"
+          echo "BACKEND_RUNTIME_ENV_FILE=${BACKEND_RUNTIME_ENV_FILE:-/etc/shoptest/backend.env}" >> "$GITHUB_ENV"
+          echo "BACKEND_SERVICE_USER=${BACKEND_SERVICE_USER:-shoptest}" >> "$GITHUB_ENV"
+          echo "BACKEND_SERVICE_GROUP=${BACKEND_SERVICE_GROUP:-${BACKEND_SERVICE_USER:-shoptest}}" >> "$GITHUB_ENV"
+          echo "BACKEND_JAVA_BIN=${BACKEND_JAVA_BIN:-/usr/bin/java}" >> "$GITHUB_ENV"
+          echo "BACKEND_JAVA_OPTS=${BACKEND_JAVA_OPTS:--Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8}" >> "$GITHUB_ENV"
+          echo "BACKEND_REGISTER_SERVICE=${BACKEND_REGISTER_SERVICE:-true}" >> "$GITHUB_ENV"
+          echo "BACKEND_ENABLE_SERVICE=${BACKEND_ENABLE_SERVICE:-true}" >> "$GITHUB_ENV"
+          echo "BACKEND_HEALTHCHECK_RETRIES=${BACKEND_HEALTHCHECK_RETRIES:-10}" >> "$GITHUB_ENV"
+          echo "BACKEND_HEALTHCHECK_INTERVAL_SECONDS=${BACKEND_HEALTHCHECK_INTERVAL_SECONDS:-3}" >> "$GITHUB_ENV"
           echo "deploy=true" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
@@ -89,8 +107,11 @@ jobs:
           SSHPASS="$BACKEND_DEPLOY_PASSWORD" sshpass -e rsync -az --delay-updates \
             -e "$SSH_COMMAND" \
             target/shop-0.0.1-SNAPSHOT.jar "$REMOTE:$BACKEND_REMOTE_TEMP_DIR/$BACKEND_JAR_NAME.next"
+          SSHPASS="$BACKEND_DEPLOY_PASSWORD" sshpass -e rsync -az --delay-updates \
+            -e "$SSH_COMMAND" \
+            scripts/backend-remote-activate.sh "$REMOTE:$BACKEND_REMOTE_TEMP_DIR/backend-remote-activate.sh"
 
-      - name: Restart backend service
+      - name: Register and restart backend service
         if: steps.preflight.outputs.deploy == 'true'
         run: |
           set -euo pipefail
@@ -105,50 +126,18 @@ jobs:
           SERVICE_Q="$(remote_quote "$BACKEND_DEPLOY_SERVICE")"
           OWNER_Q="$(remote_quote "${BACKEND_DEPLOY_OWNER:-}")"
           HEALTHCHECK_Q="$(remote_quote "${BACKEND_HEALTHCHECK_URL:-}")"
-
-          REMOTE_SCRIPT=$(cat <<SCRIPT
-          set -euo pipefail
-          TARGET_DIR=${TARGET_DIR_Q}
-          TEMP_DIR=${TEMP_DIR_Q}
-          JAR_NAME=${JAR_NAME_Q}
-          SERVICE_NAME=${SERVICE_Q}
-          OWNER=${OWNER_Q}
-          HEALTHCHECK_URL=${HEALTHCHECK_Q}
-
-          if [ "\$(id -u)" -eq 0 ]; then
-            SUDO=""
-          else
-            SUDO="sudo -n"
-          fi
-
-          \$SUDO mkdir -p "\$TARGET_DIR"
-          \$SUDO mv "\$TEMP_DIR/\$JAR_NAME.next" "\$TARGET_DIR/\$JAR_NAME"
-          \$SUDO chmod 0644 "\$TARGET_DIR/\$JAR_NAME"
-          if [ -n "\$OWNER" ]; then
-            \$SUDO chown "\$OWNER" "\$TARGET_DIR/\$JAR_NAME"
-          fi
-          \$SUDO systemctl daemon-reload
-          \$SUDO systemctl restart "\$SERVICE_NAME"
-          \$SUDO systemctl is-active --quiet "\$SERVICE_NAME"
-
-          if [ -n "\$HEALTHCHECK_URL" ]; then
-            if ! command -v curl >/dev/null 2>&1; then
-              echo "curl was not found on the backend server; skipped health check."
-              exit 0
-            fi
-            for attempt in 1 2 3 4 5 6 7 8 9 10; do
-              if curl -fsS "\$HEALTHCHECK_URL" >/dev/null; then
-                echo "Backend health check passed."
-                exit 0
-              fi
-              sleep 3
-            done
-            echo "Backend health check failed: \$HEALTHCHECK_URL" >&2
-            exit 1
-          fi
-          SCRIPT
-          )
+          RUNTIME_ENV_FILE_Q="$(remote_quote "$BACKEND_RUNTIME_ENV_FILE")"
+          SERVICE_USER_Q="$(remote_quote "$BACKEND_SERVICE_USER")"
+          SERVICE_GROUP_Q="$(remote_quote "$BACKEND_SERVICE_GROUP")"
+          JAVA_BIN_Q="$(remote_quote "$BACKEND_JAVA_BIN")"
+          JAVA_OPTS_Q="$(remote_quote "$BACKEND_JAVA_OPTS")"
+          REGISTER_SERVICE_Q="$(remote_quote "$BACKEND_REGISTER_SERVICE")"
+          ENABLE_SERVICE_Q="$(remote_quote "$BACKEND_ENABLE_SERVICE")"
+          HEALTHCHECK_RETRIES_Q="$(remote_quote "$BACKEND_HEALTHCHECK_RETRIES")"
+          HEALTHCHECK_INTERVAL_Q="$(remote_quote "$BACKEND_HEALTHCHECK_INTERVAL_SECONDS")"
+          ACTIVATE_SCRIPT_Q="$(remote_quote "$BACKEND_REMOTE_TEMP_DIR/backend-remote-activate.sh")"
+          REMOTE_COMMAND="TARGET_DIR=${TARGET_DIR_Q} TEMP_DIR=${TEMP_DIR_Q} JAR_NAME=${JAR_NAME_Q} SERVICE_NAME=${SERVICE_Q} OWNER=${OWNER_Q} HEALTHCHECK_URL=${HEALTHCHECK_Q} RUNTIME_ENV_FILE=${RUNTIME_ENV_FILE_Q} SERVICE_USER=${SERVICE_USER_Q} SERVICE_GROUP=${SERVICE_GROUP_Q} JAVA_BIN=${JAVA_BIN_Q} JAVA_OPTS=${JAVA_OPTS_Q} REGISTER_SERVICE=${REGISTER_SERVICE_Q} ENABLE_SERVICE=${ENABLE_SERVICE_Q} HEALTHCHECK_RETRIES=${HEALTHCHECK_RETRIES_Q} HEALTHCHECK_INTERVAL_SECONDS=${HEALTHCHECK_INTERVAL_Q} bash ${ACTIVATE_SCRIPT_Q}"
 
           REMOTE="${BACKEND_DEPLOY_USER}@${BACKEND_DEPLOY_HOST}"
-          printf "%s\n" "$REMOTE_SCRIPT" | SSHPASS="$BACKEND_DEPLOY_PASSWORD" sshpass -e \
-            ssh -p "$BACKEND_DEPLOY_PORT" -o StrictHostKeyChecking=accept-new "$REMOTE" "bash -s"
+          SSHPASS="$BACKEND_DEPLOY_PASSWORD" sshpass -e \
+            ssh -p "$BACKEND_DEPLOY_PORT" -o StrictHostKeyChecking=accept-new "$REMOTE" "$REMOTE_COMMAND"

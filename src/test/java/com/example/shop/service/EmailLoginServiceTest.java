@@ -4,6 +4,8 @@ import com.example.shop.config.MailAccountProperties;
 import com.example.shop.service.EmailLoginService.EmailLoginException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.List;
 
@@ -19,7 +21,10 @@ class EmailLoginServiceTest {
     @BeforeEach
     void setUp() {
         userService = mock(UserService.class);
-        service = new EmailLoginService(userService, mailProperties());
+        @SuppressWarnings("unchecked")
+        ObjectProvider<StringRedisTemplate> redisTemplateProvider = mock(ObjectProvider.class);
+        when(redisTemplateProvider.getIfAvailable()).thenReturn(null);
+        service = new EmailLoginService(userService, mailProperties(), redisTemplateProvider);
     }
 
     @Test

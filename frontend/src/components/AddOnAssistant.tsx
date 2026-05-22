@@ -7,6 +7,8 @@ import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { conversionConfig } from '../utils/conversionConfig';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
+import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import './AddOnAssistant.css';
 
@@ -54,7 +56,10 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
       conversionConfig.addOnAssistant.maxSuggestions + conversionConfig.addOnAssistant.maxFallbackSuggestions,
     )
       .then((response) => {
-        const localizedProducts = response.data.map((product) => localizeProduct(product, language));
+        const localizedProducts = response.data
+          .map((product) => localizeProduct(product, language))
+          .filter((product) => !needsOptionSelection(product))
+          .filter((product) => (product.status || 'ACTIVE') === 'ACTIVE' && (product.stock === undefined || product.stock > 0));
         addOnCandidateCache.set(cacheKey, {
           expiresAt: Date.now() + ADD_ON_CACHE_TTL_MS,
           products: localizedProducts,
@@ -117,10 +122,17 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
         {suggestions.map((product) => (
           <article key={product.id} className="add-on-assistant__item">
             <img
-              src={resolveProductImage(product.imageUrl)}
+              src={getOptimizedImageUrl(resolveProductImage(product.imageUrl), 112)}
+              srcSet={buildResponsiveImageSrcSet(resolveProductImage(product.imageUrl), [80, 112, 160])}
+              sizes="56px"
               alt={product.name}
+              width={56}
+              height={56}
+              loading="lazy"
+              decoding="async"
               onError={(event) => {
                 if (event.currentTarget.src !== productImageFallback) {
+                  event.currentTarget.removeAttribute('srcset');
                   event.currentTarget.src = productImageFallback;
                 }
               }}
