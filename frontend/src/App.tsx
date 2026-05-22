@@ -1,11 +1,10 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { Layout, Spin } from 'antd';
-import { GiftOutlined, UserAddOutlined, FileSearchOutlined } from '@ant-design/icons';
-import CartDrawer from './components/CartDrawer';
-import CustomerSupportWidget from './components/CustomerSupportWidget';
+import { CustomerServiceOutlined, GiftOutlined, UserAddOutlined, FileSearchOutlined } from '@ant-design/icons';
 import Navbar from './components/Navbar';
 import { useLanguage } from './i18n';
+import type { CartItem } from './types';
 import { dispatchDomEvent } from './utils/domEvents';
 import { hasStoredValue } from './utils/safeStorage';
 import './App.css';
@@ -44,6 +43,19 @@ const StockAlerts = lazy(() => import('./pages/StockAlerts'));
 const SupportManagement = lazy(() => import('./pages/SupportManagement'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
+const loadCartDrawer = () => import('./components/CartDrawer');
+const loadCustomerSupportWidget = () => import('./components/CustomerSupportWidget');
+const LazyCartDrawer = lazy(loadCartDrawer);
+const LazyCustomerSupportWidget = lazy(loadCustomerSupportWidget);
+
+type CartDrawerOpenRequest = {
+  id: number;
+  items?: CartItem[];
+};
+
+type SupportOpenRequest = {
+  id: number;
+};
 
 const LoadingFallback = () => (
   <div className="app-route-loading">
@@ -80,6 +92,106 @@ const RouteScrollReset: React.FC = () => {
   }, [location.pathname, location.search, location.hash]);
 
   return null;
+};
+
+const LazyCartDrawerHost: React.FC = () => {
+  const [loaded, setLoaded] = useState(false);
+  const [drawerReady, setDrawerReady] = useState(false);
+  const [openRequest, setOpenRequest] = useState<CartDrawerOpenRequest | null>(null);
+  const requestSeqRef = useRef(0);
+
+  useEffect(() => {
+    if (drawerReady) return undefined;
+    const handleOpenCart = (event: Event) => {
+      const detailItems = (event as CustomEvent<{ items?: CartItem[] }>).detail?.items;
+      requestSeqRef.current += 1;
+      setOpenRequest({
+        id: requestSeqRef.current,
+        items: Array.isArray(detailItems) ? detailItems : undefined,
+      });
+      setLoaded(true);
+    };
+    const preloadCart = () => {
+      setLoaded(true);
+      void loadCartDrawer();
+    };
+    window.addEventListener('shop:open-cart', handleOpenCart);
+    window.addEventListener('shop:cart-updated', preloadCart);
+    return () => {
+      window.removeEventListener('shop:open-cart', handleOpenCart);
+      window.removeEventListener('shop:cart-updated', preloadCart);
+    };
+  }, [drawerReady]);
+
+  const handleDrawerReady = useCallback(() => setDrawerReady(true), []);
+
+  if (!loaded) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <LazyCartDrawer
+        initialOpenRequest={openRequest}
+        onReady={handleDrawerReady}
+      />
+    </Suspense>
+  );
+};
+
+const SupportLauncherButton: React.FC<{ loading?: boolean; onOpen: () => void; onPreload?: () => void }> = ({ loading = false, onOpen, onPreload }) => {
+  const { t } = useLanguage();
+
+  return (
+    <button
+      type="button"
+      className={`app-support-launcher${loading ? ' app-support-launcher--loading' : ''}`}
+      onClick={onOpen}
+      onFocus={onPreload}
+      onPointerEnter={onPreload}
+      aria-label={t('pages.support.title')}
+      aria-busy={loading}
+    >
+      <CustomerServiceOutlined />
+    </button>
+  );
+};
+
+const LazySupportWidgetHost: React.FC = () => {
+  const [loaded, setLoaded] = useState(false);
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [openRequest, setOpenRequest] = useState<SupportOpenRequest | null>(null);
+  const requestSeqRef = useRef(0);
+
+  const openSupport = useCallback(() => {
+    requestSeqRef.current += 1;
+    setOpenRequest({ id: requestSeqRef.current });
+    setLoaded(true);
+  }, []);
+
+  const preloadSupport = useCallback(() => {
+    setLoaded(true);
+    void loadCustomerSupportWidget();
+  }, []);
+
+  useEffect(() => {
+    if (widgetReady) return undefined;
+    window.addEventListener('shop:open-support', openSupport);
+    return () => window.removeEventListener('shop:open-support', openSupport);
+  }, [openSupport, widgetReady]);
+
+  const handleWidgetReady = useCallback(() => setWidgetReady(true), []);
+
+  if (!loaded) {
+    return <SupportLauncherButton onOpen={openSupport} onPreload={preloadSupport} />;
+  }
+
+  return (
+    <Suspense fallback={<SupportLauncherButton loading onOpen={openSupport} onPreload={preloadSupport} />}>
+      <LazyCustomerSupportWidget
+        initialOpenRequest={openRequest}
+        onReady={handleWidgetReady}
+      />
+    </Suspense>
+  );
 };
 
 const StorefrontLayout: React.FC = () => {
@@ -159,8 +271,8 @@ const StorefrontLayout: React.FC = () => {
           <div className="shop-footer__copy">{t('footer.rights')}</div>
         </div>
       </Footer>
-      <CartDrawer />
-      <CustomerSupportWidget />
+      <LazyCartDrawerHost />
+      <LazySupportWidgetHost />
     </Layout>
   );
 };

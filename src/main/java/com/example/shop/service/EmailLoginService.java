@@ -39,20 +39,36 @@ public class EmailLoginService {
     private final Clock clock = Clock.systemUTC();
     private final SecureRandom random = new SecureRandom();
     private final Map<String, VerificationCode> codes = new ConcurrentHashMap<>();
+    private final Map<String, Instant> sendCooldowns = new ConcurrentHashMap<>();
+    private final Map<String, RateBucket> sendBuckets = new ConcurrentHashMap<>();
+    private final Map<String, RateBucket> verifyBuckets = new ConcurrentHashMap<>();
     private final Map<String, JavaMailSenderImpl> mailSenderCache = new ConcurrentHashMap<>();
+    private final byte[] codePepper = createCodePepper();
 
     public void sendLoginCode(String email) {
+        sendLoginCode(email, "unknown");
+    }
+
+    public void sendLoginCode(String email, String clientKey) {
         String normalizedEmail = normalizeEmail(email);
         ensureMailConfigured();
+        Instant now = Instant.now(clock);
+        consumeRate(sendBuckets, rateKey("send-email", normalizedEmail), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
+        consumeRate(sendBuckets, rateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
+
+        Instant previousSend = sendCooldowns.get(normalizedEmail);
+        if (previousSend != null && Duration.between(previousSend, now).compareTo(resendInterval()) < 0) {
+            throw rateLimited("RATE_LIMITED", previousSend.plus(resendInterval()), now);
+        }
         User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
         if (user == null || isDisabled(user)) {
+            sendCooldowns.put(normalizedEmail, now);
             return;
         }
 
-        Instant now = Instant.now(clock);
         VerificationCode existing = codes.get(normalizedEmail);
         if (existing != null && Duration.between(existing.sentAt, now).compareTo(resendInterval()) < 0) {
-            throw new IllegalStateException("Please wait before requesting another code");
+            throw rateLimited("RATE_LIMITED", existing.sentAt.plus(resendInterval()), now);
         }
 
         String code = String.format("%06d", random.nextInt(1_000_000));
@@ -60,6 +76,7 @@ public class EmailLoginService {
         codes.put(normalizedEmail, pendingCode);
         try {
             sendMail(normalizedEmail, code);
+            sendCooldowns.put(normalizedEmail, now);
         } catch (RuntimeException e) {
             codes.remove(normalizedEmail, pendingCode);
             throw e;
@@ -67,16 +84,22 @@ public class EmailLoginService {
     }
 
     public User verifyLoginCode(String email, String code) {
+        return verifyLoginCode(email, code, "unknown");
+    }
+
+    public User verifyLoginCode(String email, String code, String clientKey) {
         String normalizedEmail = normalizeEmail(email);
         String normalizedCode = normalizeCode(code);
+        Instant now = Instant.now(clock);
+        consumeRate(verifyBuckets, rateKey("verify-email", normalizedEmail), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
+        consumeRate(verifyBuckets, rateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
         if (normalizedCode.length() != 6) {
-            throw new IllegalArgumentException("Verification code expired or invalid");
+            throw invalidCode();
         }
         VerificationCode verificationCode = codes.get(normalizedEmail);
-        Instant now = Instant.now(clock);
         if (verificationCode == null || verificationCode.expiresAt.isBefore(now)) {
             codes.remove(normalizedEmail);
-            throw new IllegalArgumentException("Verification code expired or invalid");
+            throw invalidCode();
         }
         if (!MessageDigest.isEqual(
                 verificationCode.codeHash.getBytes(StandardCharsets.UTF_8),
@@ -84,14 +107,16 @@ public class EmailLoginService {
             verificationCode.failedAttempts++;
             if (verificationCode.failedAttempts >= maxCodeAttempts()) {
                 codes.remove(normalizedEmail);
+                throw tooManyAttempts(now);
             }
-            throw new IllegalArgumentException("Verification code expired or invalid");
+            throw invalidCode();
         }
         codes.remove(normalizedEmail);
+        clearVerifyBuckets(normalizedEmail, clientKey);
 
         User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
         if (user == null || isDisabled(user)) {
-            throw new IllegalArgumentException("Email is not linked to an active account");
+            throw invalidCode();
         }
         return user;
     }
@@ -108,6 +133,9 @@ public class EmailLoginService {
     public void cleanupExpiredCodes() {
         Instant now = Instant.now(clock);
         codes.entrySet().removeIf(entry -> entry.getValue().expiresAt.isBefore(now));
+        sendCooldowns.entrySet().removeIf(entry -> entry.getValue().plus(resendInterval()).isBefore(now));
+        cleanupBuckets(sendBuckets, sendWindow(), now);
+        cleanupBuckets(verifyBuckets, verifyWindow(), now);
     }
 
     private void sendMail(String to, String code) {
@@ -205,6 +233,22 @@ public class EmailLoginService {
         return Math.max(1, mailAccountProperties.getMaxCodeAttempts());
     }
 
+    private Duration sendWindow() {
+        return Duration.ofMinutes(Math.max(1, mailAccountProperties.getSendWindowMinutes()));
+    }
+
+    private int maxSendAttemptsPerWindow() {
+        return Math.max(1, mailAccountProperties.getMaxSendAttemptsPerWindow());
+    }
+
+    private Duration verifyWindow() {
+        return Duration.ofMinutes(Math.max(1, mailAccountProperties.getVerifyWindowMinutes()));
+    }
+
+    private int maxVerifyFailuresPerWindow() {
+        return Math.max(1, mailAccountProperties.getMaxVerifyFailuresPerWindow());
+    }
+
     private String accountCacheKey(MailAccountProperties.Account account) {
         return normalizeForKey(account.getHost())
                 + "|" + account.getPort()
@@ -239,6 +283,44 @@ public class EmailLoginService {
 
     private String normalizeForKey(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeClientKey(String value) {
+        if (isBlank(value)) {
+            return "unknown";
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9:._-]", "");
+        if (normalized.isEmpty()) {
+            return "unknown";
+        }
+        return normalized.length() > 96 ? normalized.substring(0, 96) : normalized;
+    }
+
+    private String rateKey(String scope, String value) {
+        return scope + ":" + value;
+    }
+
+    private void consumeRate(Map<String, RateBucket> buckets, String key, Duration window, int maxAttempts, Instant now, String errorCode) {
+        RateBucket bucket = buckets.computeIfAbsent(key, ignored -> new RateBucket(now));
+        synchronized (bucket) {
+            if (Duration.between(bucket.windowStart, now).compareTo(window) >= 0) {
+                bucket.windowStart = now;
+                bucket.attempts = 0;
+            }
+            bucket.attempts++;
+            if (bucket.attempts > maxAttempts) {
+                throw rateLimited(errorCode, bucket.windowStart.plus(window), now);
+            }
+        }
+    }
+
+    private void clearVerifyBuckets(String email, String clientKey) {
+        verifyBuckets.remove(rateKey("verify-email", email));
+        verifyBuckets.remove(rateKey("verify-client", normalizeClientKey(clientKey)));
+    }
+
+    private void cleanupBuckets(Map<String, RateBucket> buckets, Duration window, Instant now) {
+        buckets.entrySet().removeIf(entry -> entry.getValue().windowStart.plus(window).isBefore(now));
     }
 
     private String maskEmail(String email) {
@@ -291,6 +373,7 @@ public class EmailLoginService {
     private String hashCode(String email, String code) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(codePepper);
             byte[] hashed = digest.digest((email + ":" + code).getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(hashed.length * 2);
             for (byte value : hashed) {
@@ -300,6 +383,26 @@ public class EmailLoginService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is not available", e);
         }
+    }
+
+    private byte[] createCodePepper() {
+        byte[] pepper = new byte[32];
+        new SecureRandom().nextBytes(pepper);
+        return pepper;
+    }
+
+    private EmailLoginException invalidCode() {
+        return new EmailLoginException("INVALID_CODE", "Verification code expired or invalid", 0);
+    }
+
+    private EmailLoginException tooManyAttempts(Instant now) {
+        return rateLimited("TOO_MANY_ATTEMPTS", now.plus(verifyWindow()), now);
+    }
+
+    private EmailLoginException rateLimited(String code, Instant retryAfter, Instant now) {
+        long remainingMillis = Duration.between(now, retryAfter).toMillis();
+        long seconds = Math.max(1, (remainingMillis + 999) / 1000);
+        return new EmailLoginException(code, "Please wait before trying again", seconds);
     }
 
     private static class VerificationCode {
@@ -312,6 +415,34 @@ public class EmailLoginService {
             this.codeHash = codeHash;
             this.expiresAt = expiresAt;
             this.sentAt = sentAt;
+        }
+    }
+
+    private static class RateBucket {
+        private Instant windowStart;
+        private int attempts;
+
+        private RateBucket(Instant windowStart) {
+            this.windowStart = windowStart;
+        }
+    }
+
+    public static class EmailLoginException extends RuntimeException {
+        private final String code;
+        private final long retryAfterSeconds;
+
+        public EmailLoginException(String code, String message, long retryAfterSeconds) {
+            super(message);
+            this.code = code;
+            this.retryAfterSeconds = retryAfterSeconds;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public long getRetryAfterSeconds() {
+            return retryAfterSeconds;
         }
     }
 }

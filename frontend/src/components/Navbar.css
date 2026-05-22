@@ -805,10 +805,33 @@
   }
 
   .shop-nav__mobile-auth {
-    display: none !important;
+    min-height: 32px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    padding: 0 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
   }
 
-  .shop-nav__secondary-action {
+  .shop-nav__mobile-auth--primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, #ff6d46, #ee4d2d);
+    color: #ffffff !important;
+    box-shadow: 0 8px 16px rgba(238, 77, 45, 0.18);
+  }
+
+  .shop-nav__secondary-action.shop-nav__more-trigger {
+    display: inline-flex !important;
+  }
+
+  .shop-nav__secondary-action:not(.shop-nav__more-trigger) {
     display: none !important;
   }
 

@@ -58,6 +58,9 @@ const normalizeEmailParam = (value: unknown) => {
     return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : undefined;
 };
 
+const normalizeEmailCodeParam = (value: unknown) =>
+    normalizeTextParam(value, 16).replace(/\D+/g, '').slice(0, 6);
+
 const normalizeOrderTrackingNumber = (value: unknown) =>
     normalizeTextParam(value, 80).replace(/[^a-z0-9_-]/gi, '');
 
@@ -196,6 +199,30 @@ const cachedGet = <T,>(
         .finally(() => requests.delete(cacheKey));
     requests.set(cacheKey, request);
     return request;
+};
+
+const cacheProductDetailFromList = (response: AxiosResponse<Product[]>) => {
+    const expiresAt = Date.now() + PRODUCT_DETAIL_CACHE_MS;
+    response.data.forEach((product) => {
+        if (!product.id) return;
+        productDetailCache.set(product.id, {
+            response: { ...response, data: product } as unknown as AxiosResponse<Product>,
+            expiresAt,
+        });
+    });
+};
+
+const cacheProductListResponse = (cacheKey: string, response: AxiosResponse<Product[]>, ttlMs = PRODUCT_LIST_CACHE_MS) => {
+    productListCache.set(cacheKey, {
+        response,
+        expiresAt: Date.now() + ttlMs,
+    });
+    cacheProductDetailFromList(response);
+};
+
+const getFreshProductListCache = (cacheKey: string) => {
+    const cached = productListCache.get(cacheKey);
+    return cached && cached.expiresAt > Date.now() ? cached : null;
 };
 
 export const appConfigApi = {
@@ -399,9 +426,9 @@ export const userApi = {
     register: (user: Partial<User>) => api.post('/auth/register', user),
     login: (username: string, password: string) =>
         api.post('/auth/login', { username, password }),
-    sendEmailLoginCode: (email: string) => api.post('/auth/email-code', { email }),
+    sendEmailLoginCode: (email: string) => api.post('/auth/email-code', { email: normalizeEmailParam(email) || '' }),
     emailLogin: (email: string, code: string) =>
-        api.post('/auth/email-login', { email, code }),
+        api.post('/auth/email-login', { email: normalizeEmailParam(email) || '', code: normalizeEmailCodeParam(code) }),
     logout: () => api.post('/auth/logout'),
     forgotPassword: (payload: { login: string; email: string; newPassword: string }) =>
         api.post('/auth/forgot-password', payload),
@@ -422,10 +449,8 @@ export const productApi = {
         if (discount) params.append('discount', 'true');
         const query = params.toString();
         const cacheKey = query || '__all__';
-        const cached = productListCache.get(cacheKey);
-        if (cached && cached.expiresAt > Date.now()) {
-            return Promise.resolve(cached.response);
-        }
+        const cached = getFreshProductListCache(cacheKey);
+        if (cached) return Promise.resolve(cached.response);
         const pending = productListRequests.get(cacheKey);
         if (pending) return pending;
         const request = api.get<Product[]>('/products', {
@@ -436,10 +461,7 @@ export const productApi = {
             },
         })
             .then((response) => {
-                productListCache.set(cacheKey, {
-                    response,
-                    expiresAt: Date.now() + PRODUCT_LIST_CACHE_MS,
-                });
+                cacheProductListResponse(cacheKey, response);
                 return response;
             })
             .finally(() => productListRequests.delete(cacheKey));
@@ -467,6 +489,25 @@ export const productApi = {
         productDetailRequests.set(productId, request);
         return request;
     },
+    prefetchById: (id: number) => {
+        const productId = normalizePositiveInt(id);
+        if (!productId) return Promise.resolve();
+        const cached = productDetailCache.get(productId);
+        if (cached && cached.expiresAt > Date.now()) return Promise.resolve();
+        const pending = productDetailRequests.get(productId);
+        if (pending) return pending.then(() => undefined).catch(() => undefined);
+        const request = api.get<Product>(`/products/${productId}`)
+            .then((response) => {
+                productDetailCache.set(productId, {
+                    response,
+                    expiresAt: Date.now() + PRODUCT_DETAIL_CACHE_MS,
+                });
+                return response;
+            })
+            .finally(() => productDetailRequests.delete(productId));
+        productDetailRequests.set(productId, request);
+        return request.then(() => undefined).catch(() => undefined);
+    },
     getByIds: (ids: number[]) => {
         const uniqueIds = normalizePositiveIntList(ids, 40);
         if (uniqueIds.length === 0) {
@@ -487,14 +528,7 @@ export const productApi = {
                     response,
                     expiresAt: Date.now() + PRODUCT_DETAIL_CACHE_MS,
                 });
-                response.data.forEach((product) => {
-                    if (product.id) {
-                        productDetailCache.set(product.id, {
-                            response: { ...response, data: product },
-                            expiresAt: Date.now() + PRODUCT_DETAIL_CACHE_MS,
-                        });
-                    }
-                });
+                cacheProductDetailFromList(response);
                 return response;
             })
             .finally(() => productByIdsRequests.delete(cacheKey));
@@ -503,18 +537,13 @@ export const productApi = {
     },
     getFeatured: () => {
         const cacheKey = '__featured__';
-        const cached = productListCache.get(cacheKey);
-        if (cached && cached.expiresAt > Date.now()) {
-            return Promise.resolve(cached.response);
-        }
+        const cached = getFreshProductListCache(cacheKey);
+        if (cached) return Promise.resolve(cached.response);
         const pending = productListRequests.get(cacheKey);
         if (pending) return pending;
         const request = api.get<Product[]>('/products/featured')
             .then((response) => {
-                productListCache.set(cacheKey, {
-                    response,
-                    expiresAt: Date.now() + PRODUCT_LIST_CACHE_MS,
-                });
+                cacheProductListResponse(cacheKey, response);
                 return response;
             })
             .finally(() => productListRequests.delete(cacheKey));
@@ -536,6 +565,7 @@ export const productApi = {
                     response,
                     expiresAt: Date.now() + PERSONALIZED_RECOMMENDATION_CACHE_MS,
                 });
+                cacheProductDetailFromList(response);
                 return response;
             })
             .finally(() => personalizedRecommendationRequests.delete(cacheKey));
@@ -564,6 +594,7 @@ export const productApi = {
                     response,
                     expiresAt: Date.now() + PRODUCT_ADD_ON_CACHE_MS,
                 });
+                cacheProductDetailFromList(response);
                 return response;
             })
             .finally(() => productAddOnRequests.delete(cacheKey));
@@ -588,6 +619,7 @@ export const productApi = {
                     response,
                     expiresAt: Date.now() + PRODUCT_LIST_CACHE_MS,
                 });
+                cacheProductDetailFromList(response);
                 return response;
             })
             .finally(() => productRecommendationsRequests.delete(productId));

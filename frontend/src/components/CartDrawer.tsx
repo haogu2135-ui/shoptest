@@ -52,7 +52,17 @@ const applyCartImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) =
   event.currentTarget.src = cartImageFallback;
 };
 
-const CartDrawer: React.FC = () => {
+type CartDrawerOpenRequest = {
+  id: number;
+  items?: CartItem[];
+};
+
+type CartDrawerProps = {
+  initialOpenRequest?: CartDrawerOpenRequest | null;
+  onReady?: () => void;
+};
+
+const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,9 +71,11 @@ const CartDrawer: React.FC = () => {
   const [updatingQuantityIds, setUpdatingQuantityIds] = useState<Record<number, boolean>>({});
   const mountedRef = useRef(true);
   const loadCartRequestRef = useRef(0);
+  const refreshCartTimerRef = useRef<number | null>(null);
   const quantityTimersRef = useRef<Record<number, number>>({});
   const quantityRequestPromisesRef = useRef<Record<number, Promise<void> | undefined>>({});
   const quantityRequestVersionRef = useRef<Record<number, number>>({});
+  const handledOpenRequestRef = useRef<number | null>(null);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
@@ -100,37 +112,62 @@ const CartDrawer: React.FC = () => {
     }
   }, [t]);
 
-  useEffect(() => {
-    const openCart = (event: Event) => {
-      setOpen(true);
-      const detailItems = (event as CustomEvent<{ items?: CartItem[] }>).detail?.items;
-      if (Array.isArray(detailItems)) {
-        setItems(detailItems);
-        setLoading(false);
-        return;
-      }
+  const openCart = useCallback((detailItems?: CartItem[]) => {
+    setOpen(true);
+    if (Array.isArray(detailItems)) {
+      setItems(detailItems);
+      setLoading(false);
+      return;
+    }
+    loadCart();
+  }, [loadCart]);
+
+  const scheduleCartRefresh = useCallback(() => {
+    if (refreshCartTimerRef.current !== null) {
+      window.clearTimeout(refreshCartTimerRef.current);
+    }
+    refreshCartTimerRef.current = window.setTimeout(() => {
+      refreshCartTimerRef.current = null;
       loadCart();
+    }, 220);
+  }, [loadCart]);
+
+  useEffect(() => {
+    const handleOpenCart = (event: Event) => {
+      const detailItems = (event as CustomEvent<{ items?: CartItem[] }>).detail?.items;
+      openCart(detailItems);
     };
     const refreshCart = () => {
-      loadCart();
+      scheduleCartRefresh();
     };
     const refreshGuestCartFromStorage = (event: StorageEvent) => {
       if (event.key === 'shop-guest-cart' && !getLocalStorageItem('token')) {
-        loadCart();
+        scheduleCartRefresh();
       }
     };
-    window.addEventListener('shop:open-cart', openCart);
+    window.addEventListener('shop:open-cart', handleOpenCart);
     window.addEventListener('shop:cart-updated', refreshCart);
     window.addEventListener('storage', refreshGuestCartFromStorage);
+    onReady?.();
     return () => {
-      window.removeEventListener('shop:open-cart', openCart);
+      window.removeEventListener('shop:open-cart', handleOpenCart);
       window.removeEventListener('shop:cart-updated', refreshCart);
       window.removeEventListener('storage', refreshGuestCartFromStorage);
     };
-  }, [loadCart]);
+  }, [onReady, openCart, scheduleCartRefresh]);
+
+  useEffect(() => {
+    if (!initialOpenRequest || handledOpenRequestRef.current === initialOpenRequest.id) return;
+    handledOpenRequestRef.current = initialOpenRequest.id;
+    openCart(initialOpenRequest.items);
+  }, [initialOpenRequest, openCart]);
 
   useEffect(() => () => {
     mountedRef.current = false;
+    if (refreshCartTimerRef.current !== null) {
+      window.clearTimeout(refreshCartTimerRef.current);
+      refreshCartTimerRef.current = null;
+    }
     Object.values(quantityTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
     quantityTimersRef.current = {};
   }, []);

@@ -32,10 +32,12 @@ import { getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/cat
 import { clearProductViewHistory, loadProductViewPreferences } from '../utils/productViewPreferences';
 import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
-import { resolveApiAssetUrl } from '../utils/mediaAssets';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
+import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
+import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import SocialProofToast from '../components/SocialProofToast';
 import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
@@ -44,6 +46,9 @@ const { Text } = Typography;
 const DISCOVERY_BATCH_SIZE = 12;
 const PET_GALLERY_MAX_FILE_SIZE = 5 * 1024 * 1024;
 const PET_GALLERY_LOCAL_LIKES_KEY = 'shop-pet-gallery-local-likes';
+const productTileImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 33vw, 17vw';
+const discoveryTileImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 33vw, 25vw';
+const petGalleryImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 25vw, 180px';
 
 const fallbackImages = [
   'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80',
@@ -116,6 +121,7 @@ const resolvePetGalleryImage = (imageUrl: string) => {
 
 const usePetGalleryImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
   if (event.currentTarget.src !== petGalleryImageFallback) {
+    event.currentTarget.removeAttribute('srcset');
     event.currentTarget.src = petGalleryImageFallback;
   }
 };
@@ -147,7 +153,11 @@ const Home: React.FC = () => {
   const isAuthenticated = hasStoredValue('token');
   const homeLanguageClass = `shopee-home shopee-home--${language}`;
   const openSupport = () => dispatchDomEvent('shop:open-support');
+  const prefetchProduct = useCallback((productId: number) => {
+    void productApi.prefetchById(productId);
+  }, []);
   const openProduct = (productId: number) => navigate(`/products/${productId}`);
+  const openCartWithSnapshot = useCallback(() => openCartDrawerWithSnapshot({ authenticated: isAuthenticated }), [isAuthenticated]);
   const guestJourneyActions = !isAuthenticated
     ? [
       {
@@ -187,7 +197,7 @@ const Home: React.FC = () => {
       key: 'cart',
       icon: <ShoppingCartOutlined />,
       label: t('pages.cart.title'),
-      onClick: () => dispatchDomEvent('shop:open-cart'),
+      onClick: openCartWithSnapshot,
     },
     {
       key: 'coupons',
@@ -349,7 +359,7 @@ const Home: React.FC = () => {
       } else {
         addGuestCartItem(product, 1);
       }
-      dispatchDomEvent('shop:open-cart');
+      await openCartWithSnapshot();
       message.success(t('messages.addCartSuccess'));
     } catch (error) {
       message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
@@ -383,7 +393,10 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
-    refreshPetGallery();
+    const task = scheduleIdleTask(() => {
+      void refreshPetGallery();
+    }, 1600);
+    return () => cancelIdleTask(task);
   }, [refreshPetGallery]);
 
   const formatViewedAt = (viewedAt?: number) => {
@@ -400,13 +413,13 @@ const Home: React.FC = () => {
     const fetchHome = async () => {
       setLoading(true);
       try {
-        const [featuredRes, productsRes, categoriesRes] = await Promise.all([
-          productApi.getFeatured(),
+        const [productsRes, categoriesRes] = await Promise.all([
           productApi.getAll(),
           categoryApi.getAll(),
         ]);
-        setFeatured(featuredRes.data.map((product) => localizeProduct(product, language)));
-        setProducts(productsRes.data.map((product) => localizeProduct(product, language)));
+        const localizedProducts = productsRes.data.map((product) => localizeProduct(product, language));
+        setFeatured(localizedProducts.filter((product) => product.isFeatured).slice(0, 12));
+        setProducts(localizedProducts);
         setCategories(categoriesRes.data);
         setVisibleCount(DISCOVERY_BATCH_SIZE);
       } catch {
@@ -422,6 +435,7 @@ const Home: React.FC = () => {
   }, [language]);
 
   useEffect(() => {
+    let disposed = false;
     const fetchPersonalizedProducts = async () => {
       if (!isAuthenticated) {
         setPersonalizedProducts([]);
@@ -429,13 +443,21 @@ const Home: React.FC = () => {
       }
       try {
         const response = await productApi.getPersonalizedRecommendations();
-        setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
+        if (!disposed) setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
       } catch {
-        setPersonalizedProducts([]);
+        if (!disposed) setPersonalizedProducts([]);
       }
     };
 
-    fetchPersonalizedProducts();
+    if (!isAuthenticated) {
+      setPersonalizedProducts([]);
+      return undefined;
+    }
+    const task = scheduleIdleTask(fetchPersonalizedProducts, 1500);
+    return () => {
+      disposed = true;
+      cancelIdleTask(task);
+    };
   }, [isAuthenticated, language]);
 
   useEffect(() => {
@@ -453,9 +475,21 @@ const Home: React.FC = () => {
       setRecentlyViewedDetails([]);
       return;
     }
-    productApi.getByIds(viewPreferences.recent.slice(0, 8))
-      .then((response) => setRecentlyViewedDetails(response.data.map((product) => localizeProduct(product, language))))
-      .catch(() => setRecentlyViewedDetails([]));
+    let disposed = false;
+    const recentProductIds = viewPreferences.recent.slice(0, 8);
+    const task = scheduleIdleTask(() => {
+      productApi.getByIds(recentProductIds)
+        .then((response) => {
+          if (!disposed) setRecentlyViewedDetails(response.data.map((product) => localizeProduct(product, language)));
+        })
+        .catch(() => {
+          if (!disposed) setRecentlyViewedDetails([]);
+        });
+    }, 1900);
+    return () => {
+      disposed = true;
+      cancelIdleTask(task);
+    };
   }, [language, viewPreferences.recent]);
 
   const promoProducts = useMemo(
@@ -551,15 +585,26 @@ const Home: React.FC = () => {
   const hasMoreDiscoveryProducts = visibleCount < discoveryProducts.length;
 
   useEffect(() => {
-    const handleScroll = () => {
+    let frameId: number | null = null;
+    const updateVisibleCount = () => {
+      frameId = null;
       const distanceToBottom = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
       if (distanceToBottom < 420) {
         setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length));
       }
     };
+    const handleScroll = () => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(updateVisibleCount);
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
+    updateVisibleCount();
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
   }, [discoveryProducts.length]);
 
   const displayCategoryRoots = useMemo(() => getDisplayCategoryRoots(categories), [categories]);
@@ -609,7 +654,7 @@ const Home: React.FC = () => {
       } else {
         personalizedReadyProducts.forEach((product) => addGuestCartItem(product, 1));
       }
-      dispatchDomEvent('shop:open-cart');
+      await openCartWithSnapshot();
       message.success(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }));
     } catch (error) {
       message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
@@ -709,6 +754,9 @@ const Home: React.FC = () => {
     viewedAt,
   }) => {
     const images = normalizeProductImages(product, index);
+    const primaryImage = images[0];
+    const fallbackImage = images[images.length - 1];
+    const imageWidth = compact ? 360 : 520;
     const isSoldOut = product.stock !== undefined && product.stock <= 0;
     const isWishlisted = wishlistedProductIds.has(product.id);
     const stockBadgeText = product.stock !== undefined && product.stock > 0
@@ -725,6 +773,8 @@ const Home: React.FC = () => {
       ].filter(Boolean).join(' ')}
       role="button"
       tabIndex={0}
+      onMouseEnter={() => prefetchProduct(product.id)}
+      onFocus={() => prefetchProduct(product.id)}
       onClick={() => openProduct(product.id)}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -736,14 +786,19 @@ const Home: React.FC = () => {
     >
       <span className="shopee-product__imageWrap">
         <img
-          src={images[0]}
+          src={getOptimizedImageUrl(primaryImage, imageWidth)}
+          srcSet={buildResponsiveImageSrcSet(primaryImage, compact ? [180, 240, 360, 520] : [240, 360, 520, 720])}
+          sizes={compact ? productTileImageSizes : discoveryTileImageSizes}
           alt={product.name}
           className="shopee-product__image"
+          width={imageWidth}
+          height={imageWidth}
           loading="lazy"
           decoding="async"
           onError={(event) => {
-            if (event.currentTarget.src !== images[images.length - 1]) {
-              event.currentTarget.src = images[images.length - 1];
+            if (event.currentTarget.src !== fallbackImage) {
+              event.currentTarget.removeAttribute('srcset');
+              event.currentTarget.src = fallbackImage;
             }
           }}
         />
@@ -756,6 +811,8 @@ const Home: React.FC = () => {
           <button
             type="button"
             aria-label={t('home.viewAll')}
+            onMouseEnter={() => prefetchProduct(product.id)}
+            onFocus={() => prefetchProduct(product.id)}
             onClick={(event) => {
               event.stopPropagation();
               openProduct(product.id);
@@ -897,7 +954,12 @@ const Home: React.FC = () => {
                   {heroFeaturedTag ? <small>{heroFeaturedTag}</small> : null}
                 </div>
                 <div className="shopee-hero__featuredActions">
-                  <Button type="primary" onClick={() => openProduct(heroFeaturedProduct.id)}>
+                <Button
+                  type="primary"
+                  onMouseEnter={() => prefetchProduct(heroFeaturedProduct.id)}
+                  onFocus={() => prefetchProduct(heroFeaturedProduct.id)}
+                  onClick={() => openProduct(heroFeaturedProduct.id)}
+                >
                     {t('home.buyNow')}
                   </Button>
                   <Button onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, heroFeaturedProduct)}>
@@ -1109,10 +1171,14 @@ const Home: React.FC = () => {
                   <span>
                     {category.imageUrl ? (
                       <img
-                        src={resolveAssetImage(category.imageUrl)}
+                        src={getOptimizedImageUrl(resolveAssetImage(category.imageUrl), 96)}
+                        srcSet={buildResponsiveImageSrcSet(resolveAssetImage(category.imageUrl), [64, 96, 144])}
+                        sizes="34px"
                         alt={getLocalizedCategoryValue(category, language, 'name')}
                         loading="lazy"
                         decoding="async"
+                        width={34}
+                        height={34}
                         style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 6 }}
                         onError={usePetGalleryImageFallback}
                       />
@@ -1230,8 +1296,12 @@ const Home: React.FC = () => {
                   onClick={() => setPetPreviewItem(item)}
                 >
                   <img
-                    src={item.image}
+                    src={getOptimizedImageUrl(item.image, 360)}
+                    srcSet={buildResponsiveImageSrcSet(item.image, [240, 360, 520])}
+                    sizes={petGalleryImageSizes}
                     alt={t('home.petUgcImageAlt', { count: index + 1 })}
+                    width={360}
+                    height={360}
                     loading="lazy"
                     decoding="async"
                     onError={usePetGalleryImageFallback}
@@ -1278,7 +1348,16 @@ const Home: React.FC = () => {
       >
         {petPreviewItem ? (
           <figure className="pet-ugc-preview__figure">
-            <img src={petPreviewItem.image} alt={petPreviewItem.label} onError={usePetGalleryImageFallback} />
+            <img
+              src={getOptimizedImageUrl(petPreviewItem.image, 960)}
+              srcSet={buildResponsiveImageSrcSet(petPreviewItem.image, [720, 960, 1200])}
+              sizes="min(720px, 100vw)"
+              alt={petPreviewItem.label}
+              width={960}
+              height={960}
+              decoding="async"
+              onError={usePetGalleryImageFallback}
+            />
             <figcaption>{petPreviewItem.label}</figcaption>
           </figure>
         ) : null}

@@ -29,10 +29,19 @@ type SupportButtonPosition = {
   top: number;
 };
 
+type SupportOpenRequest = {
+  id: number;
+};
+
+type CustomerSupportWidgetProps = {
+  initialOpenRequest?: SupportOpenRequest | null;
+  onReady?: () => void;
+};
+
 const getSupportButtonBottomMargin = () =>
   window.innerWidth <= 720 ? SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN : 24;
 
-const CustomerSupportWidget: React.FC = () => {
+const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOpenRequest, onReady }) => {
   const [open, setOpen] = useState(false);
   const [connected, setConnected] = useState(false);
   const [session, setSession] = useState<SupportSession | null>(null);
@@ -66,6 +75,7 @@ const CustomerSupportWidget: React.FC = () => {
   const sessionRef = useRef<SupportSession | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const handledOpenRequestRef = useRef<number | null>(null);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
@@ -384,14 +394,14 @@ const CustomerSupportWidget: React.FC = () => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, open]);
 
-  const openPanel = () => {
+  const openPanel = useCallback(() => {
     if (!getLocalStorageItem('token')) {
       message.warning(t('messages.loginRequired'));
       navigate('/login');
       return;
     }
     setOpen(true);
-  };
+  }, [navigate, t]);
 
   const handleSupportButtonPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     const position = buttonPosition || getDefaultButtonPosition();
@@ -440,17 +450,16 @@ const CustomerSupportWidget: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleOpenSupport = () => {
-      if (!getLocalStorageItem('token')) {
-        message.warning(t('messages.loginRequired'));
-        navigate('/login');
-        return;
-      }
-      setOpen(true);
-    };
-    window.addEventListener('shop:open-support', handleOpenSupport);
-    return () => window.removeEventListener('shop:open-support', handleOpenSupport);
-  }, [fetchSupportOrders, navigate, t]);
+    window.addEventListener('shop:open-support', openPanel);
+    onReady?.();
+    return () => window.removeEventListener('shop:open-support', openPanel);
+  }, [onReady, openPanel]);
+
+  useEffect(() => {
+    if (!initialOpenRequest || handledOpenRequestRef.current === initialOpenRequest.id) return;
+    handledOpenRequestRef.current = initialOpenRequest.id;
+    openPanel();
+  }, [initialOpenRequest, openPanel]);
 
   const send = async () => {
     if (sending) return;

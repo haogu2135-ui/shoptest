@@ -1,0 +1,154 @@
+name: Deploy Backend Service
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      BACKEND_DEPLOY_HOST: ${{ secrets.BACKEND_DEPLOY_HOST }}
+      BACKEND_DEPLOY_USER: ${{ secrets.BACKEND_DEPLOY_USER }}
+      BACKEND_DEPLOY_PASSWORD: ${{ secrets.BACKEND_DEPLOY_PASSWORD }}
+      BACKEND_DEPLOY_PORT: ${{ secrets.BACKEND_DEPLOY_PORT }}
+      BACKEND_DEPLOY_TARGET_DIR: ${{ secrets.BACKEND_DEPLOY_TARGET_DIR }}
+      BACKEND_DEPLOY_SERVICE: ${{ secrets.BACKEND_DEPLOY_SERVICE }}
+      BACKEND_REMOTE_TEMP_DIR: ${{ secrets.BACKEND_REMOTE_TEMP_DIR }}
+      BACKEND_JAR_NAME: ${{ secrets.BACKEND_JAR_NAME }}
+      BACKEND_DEPLOY_OWNER: ${{ secrets.BACKEND_DEPLOY_OWNER }}
+      BACKEND_HEALTHCHECK_URL: ${{ secrets.BACKEND_HEALTHCHECK_URL }}
+    steps:
+      - name: Check deployment secrets
+        id: preflight
+        run: |
+          missing=()
+          if [[ -z "$BACKEND_DEPLOY_HOST" ]]; then missing+=("BACKEND_DEPLOY_HOST"); fi
+          if [[ -z "$BACKEND_DEPLOY_USER" ]]; then missing+=("BACKEND_DEPLOY_USER"); fi
+          if [[ -z "$BACKEND_DEPLOY_PASSWORD" ]]; then missing+=("BACKEND_DEPLOY_PASSWORD"); fi
+
+          if (( ${#missing[@]} > 0 )); then
+            echo "::warning::Skipping backend deployment. Missing GitHub Secrets: ${missing[*]}"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "BACKEND_DEPLOY_PORT=${BACKEND_DEPLOY_PORT:-22}" >> "$GITHUB_ENV"
+          echo "BACKEND_DEPLOY_TARGET_DIR=${BACKEND_DEPLOY_TARGET_DIR:-/opt/shoptest}" >> "$GITHUB_ENV"
+          echo "BACKEND_DEPLOY_SERVICE=${BACKEND_DEPLOY_SERVICE:-shoptest-backend}" >> "$GITHUB_ENV"
+          echo "BACKEND_REMOTE_TEMP_DIR=${BACKEND_REMOTE_TEMP_DIR:-/tmp/shoptest-backend-deploy}" >> "$GITHUB_ENV"
+          echo "BACKEND_JAR_NAME=${BACKEND_JAR_NAME:-shop.jar}" >> "$GITHUB_ENV"
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: steps.preflight.outputs.deploy == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        if: steps.preflight.outputs.deploy == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: maven
+
+      - name: Install deployment tools
+        if: steps.preflight.outputs.deploy == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync sshpass
+
+      - name: Build backend jar
+        if: steps.preflight.outputs.deploy == 'true'
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -DskipTests package
+
+      - name: Upload backend jar
+        if: steps.preflight.outputs.deploy == 'true'
+        run: |
+          set -euo pipefail
+
+          remote_quote() {
+            printf "'%s'" "$(printf "%s" "$1" | sed "s/'/'\\\\''/g")"
+          }
+
+          REMOTE="${BACKEND_DEPLOY_USER}@${BACKEND_DEPLOY_HOST}"
+          SSH_COMMAND="ssh -p ${BACKEND_DEPLOY_PORT} -o StrictHostKeyChecking=accept-new"
+          REMOTE_TEMP_Q="$(remote_quote "$BACKEND_REMOTE_TEMP_DIR")"
+
+          SSHPASS="$BACKEND_DEPLOY_PASSWORD" sshpass -e $SSH_COMMAND "$REMOTE" "mkdir -p ${REMOTE_TEMP_Q}"
+          SSHPASS="$BACKEND_DEPLOY_PASSWORD" sshpass -e rsync -az --delay-updates \
+            -e "$SSH_COMMAND" \
+            target/shop-0.0.1-SNAPSHOT.jar "$REMOTE:$BACKEND_REMOTE_TEMP_DIR/$BACKEND_JAR_NAME.next"
+
+      - name: Restart backend service
+        if: steps.preflight.outputs.deploy == 'true'
+        run: |
+          set -euo pipefail
+
+          remote_quote() {
+            printf "'%s'" "$(printf "%s" "$1" | sed "s/'/'\\\\''/g")"
+          }
+
+          TARGET_DIR_Q="$(remote_quote "$BACKEND_DEPLOY_TARGET_DIR")"
+          TEMP_DIR_Q="$(remote_quote "$BACKEND_REMOTE_TEMP_DIR")"
+          JAR_NAME_Q="$(remote_quote "$BACKEND_JAR_NAME")"
+          SERVICE_Q="$(remote_quote "$BACKEND_DEPLOY_SERVICE")"
+          OWNER_Q="$(remote_quote "${BACKEND_DEPLOY_OWNER:-}")"
+          HEALTHCHECK_Q="$(remote_quote "${BACKEND_HEALTHCHECK_URL:-}")"
+
+          REMOTE_SCRIPT=$(cat <<SCRIPT
+          set -euo pipefail
+          TARGET_DIR=${TARGET_DIR_Q}
+          TEMP_DIR=${TEMP_DIR_Q}
+          JAR_NAME=${JAR_NAME_Q}
+          SERVICE_NAME=${SERVICE_Q}
+          OWNER=${OWNER_Q}
+          HEALTHCHECK_URL=${HEALTHCHECK_Q}
+
+          if [ "\$(id -u)" -eq 0 ]; then
+            SUDO=""
+          else
+            SUDO="sudo -n"
+          fi
+
+          \$SUDO mkdir -p "\$TARGET_DIR"
+          \$SUDO mv "\$TEMP_DIR/\$JAR_NAME.next" "\$TARGET_DIR/\$JAR_NAME"
+          \$SUDO chmod 0644 "\$TARGET_DIR/\$JAR_NAME"
+          if [ -n "\$OWNER" ]; then
+            \$SUDO chown "\$OWNER" "\$TARGET_DIR/\$JAR_NAME"
+          fi
+          \$SUDO systemctl daemon-reload
+          \$SUDO systemctl restart "\$SERVICE_NAME"
+          \$SUDO systemctl is-active --quiet "\$SERVICE_NAME"
+
+          if [ -n "\$HEALTHCHECK_URL" ]; then
+            if ! command -v curl >/dev/null 2>&1; then
+              echo "curl was not found on the backend server; skipped health check."
+              exit 0
+            fi
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if curl -fsS "\$HEALTHCHECK_URL" >/dev/null; then
+                echo "Backend health check passed."
+                exit 0
+              fi
+              sleep 3
+            done
+            echo "Backend health check failed: \$HEALTHCHECK_URL" >&2
+            exit 1
+          fi
+          SCRIPT
+          )
+
+          REMOTE="${BACKEND_DEPLOY_USER}@${BACKEND_DEPLOY_HOST}"
+          printf "%s\n" "$REMOTE_SCRIPT" | SSHPASS="$BACKEND_DEPLOY_PASSWORD" sshpass -e \
+            ssh -p "$BACKEND_DEPLOY_PORT" -o StrictHostKeyChecking=accept-new "$REMOTE" "bash -s"

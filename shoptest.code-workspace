@@ -1,0 +1,125 @@
+{
+  "folders": [
+    {
+      "name": "shoptest",
+      "path": "."
+    },
+    {
+      "name": "backend",
+      "path": "backend"
+    },
+    {
+      "name": "frontend",
+      "path": "frontend"
+    },
+    {
+      "name": "docs",
+      "path": "docs"
+    },
+    {
+      "name": "scripts",
+      "path": "scripts"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.git": true,
+      "**/.DS_Store": true,
+      "**/node_modules": true,
+      "**/target": true,
+      "**/build": true,
+      "**/mysql-data-dev": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/target": true,
+      "**/build": true,
+      "**/mysql-data-dev": true,
+      "**/backups": true,
+      "**/package-lock.json": true
+    },
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    "typescript.tsdk": "frontend/node_modules/typescript/lib",
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "npm.packageManager": "npm"
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "frontend: start",
+        "type": "shell",
+        "command": "npm start",
+        "options": {
+          "cwd": "${workspaceFolder:frontend}"
+        },
+        "isBackground": true,
+        "problemMatcher": "$tsc-watch",
+        "group": "build"
+      },
+      {
+        "label": "frontend: test",
+        "type": "shell",
+        "command": "npm test",
+        "options": {
+          "cwd": "${workspaceFolder:frontend}"
+        },
+        "problemMatcher": "$tsc",
+        "group": "test"
+      },
+      {
+        "label": "frontend: build",
+        "type": "shell",
+        "command": "npm run build",
+        "options": {
+          "cwd": "${workspaceFolder:frontend}"
+        },
+        "problemMatcher": "$tsc",
+        "group": "build"
+      },
+      {
+        "label": "backend: run",
+        "type": "shell",
+        "command": ".\\mvnw.cmd spring-boot:run",
+        "options": {
+          "cwd": "${workspaceFolder:shoptest}"
+        },
+        "isBackground": true,
+        "problemMatcher": [],
+        "group": "build"
+      },
+      {
+        "label": "backend: test",
+        "type": "shell",
+        "command": ".\\mvnw.cmd test",
+        "options": {
+          "cwd": "${workspaceFolder:shoptest}"
+        },
+        "problemMatcher": "$msCompile",
+        "group": "test"
+      },
+      {
+        "label": "backend: package",
+        "type": "shell",
+        "command": ".\\mvnw.cmd package",
+        "options": {
+          "cwd": "${workspaceFolder:shoptest}"
+        },
+        "problemMatcher": "$msCompile",
+        "group": "build"
+      }
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      "vscjava.vscode-java-pack",
+      "vmware.vscode-spring-boot",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode"
+    ]
+  }
+}

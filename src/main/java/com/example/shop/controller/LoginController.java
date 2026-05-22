@@ -4,6 +4,7 @@ import com.example.shop.dto.EmailLoginCodeRequest;
 import com.example.shop.dto.EmailLoginRequest;
 import com.example.shop.entity.User;
 import com.example.shop.service.EmailLoginService;
+import com.example.shop.service.EmailLoginService.EmailLoginException;
 import com.example.shop.service.UserService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.security.JwtService;
@@ -73,15 +74,15 @@ public class LoginController {
     }
 
     @PostMapping("/email-code")
-    public ResponseEntity<?> sendEmailCode(@Valid @RequestBody EmailLoginCodeRequest codeRequest) {
+    public ResponseEntity<?> sendEmailCode(@Valid @RequestBody EmailLoginCodeRequest codeRequest, HttpServletRequest request) {
         try {
-            emailLoginService.sendLoginCode(codeRequest.getEmail());
+            emailLoginService.sendLoginCode(codeRequest.getEmail(), clientKey(request));
             return ResponseEntity.ok(emailCodeResponse("Verification code sent"));
-        } catch (IllegalStateException e) {
+        } catch (EmailLoginException e) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(emailCodeError("RATE_LIMITED", "Please wait before requesting another code"));
+                    .body(emailCodeError(e.getCode(), e.getMessage(), e.getRetryAfterSeconds()));
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(emailCodeError("SEND_FAILED", "Unable to send verification code"));
         }
     }
@@ -89,7 +90,7 @@ public class LoginController {
     @PostMapping("/email-login")
     public ResponseEntity<?> emailLogin(@Valid @RequestBody EmailLoginRequest loginRequest, HttpServletRequest request) {
         try {
-            User user = emailLoginService.verifyLoginCode(loginRequest.getEmail(), loginRequest.getCode());
+            User user = emailLoginService.verifyLoginCode(loginRequest.getEmail(), loginRequest.getCode(), clientKey(request));
             UserDetailsImpl userDetails = UserDetailsImpl.build(user);
             String jwt = jwtService.generateToken(userDetails);
 
@@ -113,9 +114,15 @@ public class LoginController {
                     request,
                     "User email login failed",
                     null);
-            return ResponseEntity.badRequest().body(Map.of(
-                    "code", "INVALID_CODE",
-                    "error", "Verification code expired or invalid"));
+            if (e instanceof EmailLoginException) {
+                EmailLoginException loginException = (EmailLoginException) e;
+                HttpStatus status = "TOO_MANY_ATTEMPTS".equals(loginException.getCode())
+                        ? HttpStatus.TOO_MANY_REQUESTS
+                        : HttpStatus.BAD_REQUEST;
+                return ResponseEntity.status(status)
+                        .body(emailCodeError(loginException.getCode(), loginException.getMessage(), loginException.getRetryAfterSeconds()));
+            }
+            return ResponseEntity.badRequest().body(emailCodeError("INVALID_CODE", "Verification code expired or invalid"));
         }
     }
 
@@ -138,10 +145,29 @@ public class LoginController {
     }
 
     private Map<String, Object> emailCodeError(String code, String error) {
+        return emailCodeError(code, error, 0);
+    }
+
+    private Map<String, Object> emailCodeError(String code, String error, long retryAfterSeconds) {
         Map<String, Object> response = emailCodeResponse(error);
         response.put("code", code);
         response.put("error", error);
+        if (retryAfterSeconds > 0) {
+            response.put("retryAfterSeconds", retryAfterSeconds);
+        }
         return response;
+    }
+
+    private String clientKey(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.trim().isEmpty()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.trim().isEmpty()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 
     private Map<String, Object> buildLoginResponse(String jwt, UserDetailsImpl userDetails, User user) {

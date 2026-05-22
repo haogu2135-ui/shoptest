@@ -15,6 +15,10 @@ public class MailAccountProperties {
     private int codeTtlMinutes = 10;
     private int resendIntervalSeconds = 60;
     private int maxCodeAttempts = 5;
+    private int sendWindowMinutes = 15;
+    private int maxSendAttemptsPerWindow = 6;
+    private int verifyWindowMinutes = 15;
+    private int maxVerifyFailuresPerWindow = 10;
     private String brandName = "ShopMX";
 
     @Data

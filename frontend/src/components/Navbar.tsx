@@ -29,10 +29,12 @@ import { readCompareProductIds } from '../utils/productCompare';
 import { getEffectiveRole, isAdminRole } from '../utils/roles';
 import { readStockAlerts } from '../utils/stockAlerts';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
 import './Navbar.css';
 
 const { Search } = Input;
 const NAV_SEARCH_MAX_LENGTH = 80;
+const NAV_BADGE_REFRESH_DEBOUNCE_MS = 350;
 
 const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);
 
@@ -72,7 +74,7 @@ const Navbar: React.FC = () => {
   ];
   const currencyOptions = Object.values(markets).map((item) => ({ value: item.currency, label: item.label }));
   const communitySignalCount = wishlistCount + unreadCount + couponCount + compareCount + alertCount;
-  const utilityMenuCount = token ? couponCount + compareCount + alertCount : compareCount + alertCount;
+  const utilityMenuCount = token ? communitySignalCount : compareCount + alertCount;
   const navHighlights = [
     t('nav.freeShippingOver', { amount: formatMoney(market.freeShippingThreshold) }),
     t('nav.followDeals'),
@@ -138,6 +140,23 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     const refreshCompareCount = () => setCompareCount(readCompareProductIds().length);
     let disposed = false;
+    const idleTasks: ScheduledIdleTask[] = [];
+    const refreshTimers: Record<string, number | undefined> = {};
+    const queueIdleRefresh = (callback: () => void, timeout?: number) => {
+      idleTasks.push(scheduleIdleTask(() => {
+        if (!disposed) callback();
+      }, timeout));
+    };
+    const queueMergedRefresh = (key: string, callback: () => void) => {
+      const existingTimer = refreshTimers[key];
+      if (existingTimer !== undefined) {
+        window.clearTimeout(existingTimer);
+      }
+      refreshTimers[key] = window.setTimeout(() => {
+        delete refreshTimers[key];
+        if (!disposed) callback();
+      }, NAV_BADGE_REFRESH_DEBOUNCE_MS);
+    };
     const refreshAlertCount = () => {
       const alerts = readStockAlerts();
       if (alerts.length === 0) {
@@ -218,30 +237,48 @@ const Navbar: React.FC = () => {
     };
     const refreshLocalCountsFromStorage = (event: StorageEvent) => {
       if (event.key === 'shop-product-compare') refreshCompareCount();
-      if (event.key === 'shop-stock-alerts') refreshAlertCount();
-      if (event.key === 'shop-guest-cart') refreshCartCount();
+      if (event.key === 'shop-stock-alerts') queueMergedRefresh('alerts', refreshAlertCount);
+      if (event.key === 'shop-guest-cart') queueMergedRefresh('cart', refreshCartCount);
     };
+    const refreshCartCountFromEvent = () => queueMergedRefresh('cart', refreshCartCount);
+    const refreshAlertCountFromEvent = () => queueMergedRefresh('alerts', refreshAlertCount);
+    const refreshUnreadCountFromEvent = () => queueMergedRefresh('unread', refreshUnreadCount);
+    const refreshWishlistCountFromEvent = () => queueMergedRefresh('wishlist', refreshWishlistCount);
+    const refreshCouponCountFromEvent = () => queueMergedRefresh('coupons', refreshCouponCount);
+
     refreshCompareCount();
-    refreshAlertCount();
-    refreshCartCount();
-    refreshUnreadCount();
-    refreshWishlistCount();
-    refreshCouponCount();
-    window.addEventListener('shop:cart-updated', refreshCartCount);
+    if (!token) {
+      refreshGuestCartCount();
+      setUnreadCount(0);
+      setWishlistCount(0);
+      setCouponCount(0);
+    } else {
+      queueIdleRefresh(refreshCartCount, 650);
+      queueIdleRefresh(refreshUnreadCount, 1100);
+      queueIdleRefresh(refreshWishlistCount, 1400);
+      queueIdleRefresh(refreshCouponCount, 1700);
+    }
+    queueIdleRefresh(refreshAlertCount, token ? 1900 : 900);
+
+    window.addEventListener('shop:cart-updated', refreshCartCountFromEvent);
     window.addEventListener('shop:compare-updated', refreshCompareCount);
-    window.addEventListener('shop:stock-alerts-updated', refreshAlertCount);
-    window.addEventListener('shop:notifications-updated', refreshUnreadCount);
-    window.addEventListener('shop:wishlist-updated', refreshWishlistCount);
-    window.addEventListener('shop:coupons-updated', refreshCouponCount);
+    window.addEventListener('shop:stock-alerts-updated', refreshAlertCountFromEvent);
+    window.addEventListener('shop:notifications-updated', refreshUnreadCountFromEvent);
+    window.addEventListener('shop:wishlist-updated', refreshWishlistCountFromEvent);
+    window.addEventListener('shop:coupons-updated', refreshCouponCountFromEvent);
     window.addEventListener('storage', refreshLocalCountsFromStorage);
     return () => {
       disposed = true;
-      window.removeEventListener('shop:cart-updated', refreshCartCount);
+      idleTasks.forEach(cancelIdleTask);
+      Object.values(refreshTimers).forEach((timerId) => {
+        if (timerId !== undefined) window.clearTimeout(timerId);
+      });
+      window.removeEventListener('shop:cart-updated', refreshCartCountFromEvent);
       window.removeEventListener('shop:compare-updated', refreshCompareCount);
-      window.removeEventListener('shop:stock-alerts-updated', refreshAlertCount);
-      window.removeEventListener('shop:notifications-updated', refreshUnreadCount);
-      window.removeEventListener('shop:wishlist-updated', refreshWishlistCount);
-      window.removeEventListener('shop:coupons-updated', refreshCouponCount);
+      window.removeEventListener('shop:stock-alerts-updated', refreshAlertCountFromEvent);
+      window.removeEventListener('shop:notifications-updated', refreshUnreadCountFromEvent);
+      window.removeEventListener('shop:wishlist-updated', refreshWishlistCountFromEvent);
+      window.removeEventListener('shop:coupons-updated', refreshCouponCountFromEvent);
       window.removeEventListener('storage', refreshLocalCountsFromStorage);
     };
   }, [token]);

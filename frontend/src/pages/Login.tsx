@@ -24,6 +24,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [codeSending, setCodeSending] = useState(false);
   const [sendCodeCountdown, setSendCodeCountdown] = useState(0);
+  const [verifyRetryCountdown, setVerifyRetryCountdown] = useState(0);
   const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
   const [sentEmailHint, setSentEmailHint] = useState('');
   const [activeLoginTab, setActiveLoginTab] = useState('password');
@@ -34,7 +35,7 @@ const Login: React.FC = () => {
   const { t } = useLanguage();
   const guestCartCount = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
   const emailCodeLength = normalizeEmailCode(watchedEmailCode).length;
-  const canSubmitEmailCode = emailCodeLength === 6;
+  const canSubmitEmailCode = emailCodeLength === 6 && verifyRetryCountdown <= 0;
 
   useEffect(() => {
     if (sendCodeCountdown <= 0) return undefined;
@@ -43,6 +44,26 @@ const Login: React.FC = () => {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [sendCodeCountdown]);
+
+  useEffect(() => {
+    if (verifyRetryCountdown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setVerifyRetryCountdown((value) => Math.max(value - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [verifyRetryCountdown]);
+
+  const getRetryAfterSeconds = (error: any, fallback = 0) => {
+    const retryAfterSeconds = Number(error?.response?.data?.retryAfterSeconds);
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+      return Math.ceil(retryAfterSeconds);
+    }
+    const resendIntervalSeconds = Number(error?.response?.data?.resendIntervalSeconds);
+    if (Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0) {
+      return Math.ceil(resendIntervalSeconds);
+    }
+    return fallback;
+  };
 
   const mergeGuestCart = async (userId: number) => {
     const guestItems = getGuestCartItems();
@@ -102,6 +123,8 @@ const Login: React.FC = () => {
       setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
       setCodeTtlMinutes(Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 0);
       emailForm.setFieldValue('code', '');
+      emailForm.setFields([{ name: 'code', errors: [] }]);
+      setVerifyRetryCountdown(0);
       setSentEmailHint(maskEmail(normalizedEmail));
       window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
       message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
@@ -109,8 +132,7 @@ const Login: React.FC = () => {
       if (!error?.errorFields) {
         const errorCode = error?.response?.data?.code;
         if (errorCode === 'RATE_LIMITED') {
-          const resendIntervalSeconds = Number(error?.response?.data?.resendIntervalSeconds);
-          setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
+          setSendCodeCountdown(getRetryAfterSeconds(error, 60));
         }
         message.error(errorCode === 'RATE_LIMITED'
           ? t('pages.auth.emailCodeRateLimited')
@@ -135,9 +157,19 @@ const Login: React.FC = () => {
       await completeLogin(response.data);
     } catch (error: any) {
       const errorCode = error?.response?.data?.code;
-      message.error(errorCode === 'INVALID_CODE'
-        ? t('pages.auth.emailCodeInvalid')
-        : t('pages.auth.emailLoginFailed'));
+      if (errorCode === 'TOO_MANY_ATTEMPTS') {
+        const retryAfterSeconds = getRetryAfterSeconds(error, 60);
+        setVerifyRetryCountdown(retryAfterSeconds);
+        const errorMessage = t('pages.auth.emailCodeTooManyAttempts');
+        emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
+        message.error(errorMessage);
+      } else if (errorCode === 'INVALID_CODE') {
+        const errorMessage = t('pages.auth.emailCodeInvalid');
+        emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
+        message.error(errorMessage);
+      } else {
+        message.error(t('pages.auth.emailLoginFailed'));
+      }
     } finally {
       setLoading(false);
     }
@@ -270,6 +302,7 @@ const Login: React.FC = () => {
                       if (Object.prototype.hasOwnProperty.call(changedValues, 'email')) {
                         setSentEmailHint('');
                         setSendCodeCountdown(0);
+                        setVerifyRetryCountdown(0);
                         setCodeTtlMinutes(0);
                         emailForm.setFieldValue('code', '');
                       }
@@ -324,7 +357,7 @@ const Login: React.FC = () => {
                         prefix={<SafetyCertificateOutlined />}
                         placeholder={t('pages.auth.verificationCode')}
                         size="large"
-                        maxLength={6}
+                        maxLength={12}
                         autoComplete="one-time-code"
                         inputMode="numeric"
                         pattern="[0-9]*"
@@ -361,7 +394,9 @@ const Login: React.FC = () => {
                       />
                     </Form.Item>
                     <div className="shopee-login-codeProgress" aria-live="polite">
-                      {t('pages.auth.emailCodeProgress', { count: emailCodeLength })}
+                      {verifyRetryCountdown > 0
+                        ? t('pages.auth.emailCodeRetryIn', { seconds: verifyRetryCountdown })
+                        : t('pages.auth.emailCodeProgress', { count: emailCodeLength })}
                     </div>
                     <div className="shopee-login-emailMeta" aria-label={t('pages.auth.emailLoginTrust')}>
                       <span>
@@ -374,8 +409,10 @@ const Login: React.FC = () => {
                       </span>
                     </div>
                     <Form.Item>
-                      <Button className="shopee-login-emailSubmit" type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || !canSubmitEmailCode}>
-                        {t('pages.auth.emailLogin')}
+                      <Button className="shopee-login-emailSubmit" type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !canSubmitEmailCode}>
+                        {verifyRetryCountdown > 0
+                          ? t('pages.auth.emailCodeRetryIn', { seconds: verifyRetryCountdown })
+                          : t('pages.auth.emailLogin')}
                       </Button>
                     </Form.Item>
                   </Form>

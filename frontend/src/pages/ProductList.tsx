@@ -3,12 +3,12 @@ import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty,
 import { BarChartOutlined, BellOutlined, CheckCircleOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi } from '../api';
-import type { CartItem, Product, Category } from '../types';
+import type { Product, Category } from '../types';
 import { flattenCategoryTree, getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
-import { addGuestCartItem, getGuestCartItems } from '../utils/guestCart';
+import { addGuestCartItem } from '../utils/guestCart';
 import { buildBundleSpecs, getBundleInfo } from '../utils/bundle';
 import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
 import { addStockAlert, readStockAlerts, removeStockAlert } from '../utils/stockAlerts';
@@ -18,9 +18,11 @@ import { loadProductViewPreferences } from '../utils/productViewPreferences';
 import { getProductOptionGroups, getProductVariants, optionValueIsCompatible, selectCompatibleProductOption } from '../utils/productOptions';
 import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
+import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import './ProductList.css';
 
 const { Text } = Typography;
@@ -46,6 +48,9 @@ const VALID_SORT_VALUES = new Set([
 const VALID_PET_SIZES = new Set(['Small', 'Medium', 'Large']);
 const VALID_COLLECTIONS = new Set(['smart-devices']);
 const resolveProductListImage = resolveProductImage;
+const productListImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 33vw, 25vw';
+const eagerImagePriorityProps = { fetchPriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
+const lazyImagePriorityProps = { fetchPriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
 
 const readSearchHistory = () => {
   try {
@@ -136,6 +141,7 @@ const ProductList: React.FC = () => {
   const [colors, setColors] = useState<string[]>([]);
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
   const [quickAddOptions, setQuickAddOptions] = useState<Record<string, string>>({});
+  const [quickAddSubmitting, setQuickAddSubmitting] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => readSearchHistory());
   const [personalizedProducts, setPersonalizedProducts] = useState<Product[]>([]);
   const [viewPreferences, setViewPreferences] = useState(() => loadProductViewPreferences());
@@ -590,6 +596,7 @@ const ProductList: React.FC = () => {
 
   const openQuickAdd = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
+    setQuickAddSubmitting(false);
     setQuickAddProduct(product);
     setQuickAddOptions({});
   };
@@ -636,8 +643,13 @@ const ProductList: React.FC = () => {
     message.success(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'));
   };
 
+  const prefetchProduct = useCallback((productId: number) => {
+    void productApi.prefetchById(productId);
+  }, []);
+
   const submitQuickAdd = async () => {
     if (!quickAddProduct) return;
+    if (quickAddSubmitting) return;
     const missingOption = quickAddOptionGroups.find((group) => !quickAddOptions[group.name]);
     if (missingOption) {
       message.warning(t('pages.productDetail.selectOption', { option: missingOption.name }));
@@ -652,25 +664,12 @@ const ProductList: React.FC = () => {
       message.error(t('pages.productDetail.insufficientStock'));
       return;
     }
-    const openCartWithSnapshot = async (token: string | null) => {
-      let items: CartItem[] | undefined;
-      if (token) {
-        try {
-          const response = await cartApi.getItems(0);
-          items = response.data;
-        } catch {
-          items = undefined;
-        }
-      } else {
-        items = getGuestCartItems();
-      }
-      dispatchDomEvent('shop:open-cart', items ? { items } : undefined);
-    };
     const bundleInfo = getBundleInfo(quickAddProduct);
     if (bundleInfo) {
       const token = getLocalStorageItem('token');
       const selectedSpecs = buildBundleSpecs(quickAddProduct, quickAddOptions, quickAddVariant?.sku);
       const snapshot = buildQuickAddCartSnapshot();
+      setQuickAddSubmitting(true);
       try {
         if (token) {
           await cartApi.addItem(0, quickAddProduct.id, 1, selectedSpecs);
@@ -680,9 +679,11 @@ const ProductList: React.FC = () => {
         }
         message.success(t('messages.addCartSuccess'));
         setQuickAddProduct(null);
-        await openCartWithSnapshot(token);
+        await openCartDrawerWithSnapshot({ authenticated: Boolean(token) });
       } catch {
         message.error(t('messages.addFailed'));
+      } finally {
+        setQuickAddSubmitting(false);
       }
       return;
     }
@@ -695,6 +696,7 @@ const ProductList: React.FC = () => {
       : undefined;
     const selectedPrice = quickAddPrice;
     const snapshot = buildQuickAddCartSnapshot();
+    setQuickAddSubmitting(true);
     try {
       if (token) {
         await cartApi.addItem(0, quickAddProduct.id, 1, selectedSpecs);
@@ -704,9 +706,11 @@ const ProductList: React.FC = () => {
       }
       message.success(t('messages.addCartSuccess'));
       setQuickAddProduct(null);
-      await openCartWithSnapshot(token);
+      await openCartDrawerWithSnapshot({ authenticated: Boolean(token) });
     } catch {
       message.error(t('messages.addFailed'));
+    } finally {
+      setQuickAddSubmitting(false);
     }
   };
 
@@ -1099,7 +1103,13 @@ const ProductList: React.FC = () => {
               </div>
             </div>
             {heroProduct ? (
-              <button type="button" className="product-list__heroCard" onClick={() => openProductDetail(heroProduct.id)}>
+              <button
+                type="button"
+                className="product-list__heroCard"
+                onMouseEnter={() => prefetchProduct(heroProduct.id)}
+                onFocus={() => prefetchProduct(heroProduct.id)}
+                onClick={() => openProductDetail(heroProduct.id)}
+              >
                 <strong>{heroProduct.name}</strong>
                 <Text>{formatMoney(getPrice(heroProduct))}</Text>
                 <span>{renderBadges(heroProduct).slice(0, 2).map((badge) => badge.label).join(' / ') || t('pages.productList.viewPick')}</span>
@@ -1174,6 +1184,25 @@ const ProductList: React.FC = () => {
             )}
           </Card>
           {!loading && !loadFailed ? (
+            <section className="product-list__mobileConversionBar" aria-label={t('pages.productList.insightTitle')}>
+              <div className="product-list__mobileConversionStats">
+                <strong>{t('pages.productList.count', { count: filteredProducts.length })}</strong>
+                <span>{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</span>
+              </div>
+              <div className="product-list__mobileConversionActions">
+                <Button icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
+                  {t('pages.productList.filters')}
+                </Button>
+                <Button onClick={() => applySort('discount-desc')}>
+                  {t('pages.productList.shopBestDeals')}
+                </Button>
+                <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => applySort('quick-add-desc')}>
+                  {t('pages.productList.shopQuickAdd')}
+                </Button>
+              </div>
+            </section>
+          ) : null}
+          {!loading && !loadFailed ? (
             <>
               {usingCatalogSnapshot ? (
                 <section className="product-list__snapshotNotice" role="status" aria-live="polite">
@@ -1205,7 +1234,12 @@ const ProductList: React.FC = () => {
                 </div>
                 <Space wrap className="product-list__smartActions" size={[8, 8]}>
                   {heroProduct ? (
-                    <Button className="product-list__smartPick" onClick={() => openProductDetail(heroProduct.id)}>
+                    <Button
+                      className="product-list__smartPick"
+                      onMouseEnter={() => prefetchProduct(heroProduct.id)}
+                      onFocus={() => prefetchProduct(heroProduct.id)}
+                      onClick={() => openProductDetail(heroProduct.id)}
+                    >
                       <span>{t('pages.productList.viewPick')}</span>
                       <strong>{heroProduct.name}</strong>
                     </Button>
@@ -1258,6 +1292,8 @@ const ProductList: React.FC = () => {
                           type="button"
                           className="product-list__checkoutPathItem"
                           aria-label={`${t('pages.productList.viewPick')}: ${product.name}`}
+                          onMouseEnter={() => prefetchProduct(product.id)}
+                          onFocus={() => prefetchProduct(product.id)}
                           onClick={(event) => {
                             if (quickReady) {
                               openQuickAdd(event, product);
@@ -1340,13 +1376,18 @@ const ProductList: React.FC = () => {
           ) : (
             <>
               <Row gutter={[16, 16]}>
-                {paginatedProducts.map(product => (
+                {paginatedProducts.map((product, index) => {
+                  const imageUrl = resolveProductListImage(product.imageUrl);
+                  const priorityImage = currentPage === 1 && index < 4;
+                  return (
                   <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
                     <Card
                       className="product-list__card"
                       hoverable
                       role="button"
                       tabIndex={0}
+                      onMouseEnter={() => prefetchProduct(product.id)}
+                      onFocus={() => prefetchProduct(product.id)}
                       onClick={() => openProductDetail(product.id)}
                       onKeyDown={(event) => {
                         if (event.target !== event.currentTarget) return;
@@ -1359,12 +1400,18 @@ const ProductList: React.FC = () => {
                         <div className="product-list__imageWrap">
                           <img
                             alt={product.name}
-                            src={resolveProductListImage(product.imageUrl)}
+                            src={getOptimizedImageUrl(imageUrl, priorityImage ? 520 : 360)}
+                            srcSet={buildResponsiveImageSrcSet(imageUrl, [240, 360, 520, 720])}
+                            sizes={productListImageSizes}
                             className="product-list__image"
-                            loading="lazy"
+                            width={520}
+                            height={480}
+                            loading={priorityImage ? 'eager' : 'lazy'}
                             decoding="async"
+                            {...(priorityImage ? eagerImagePriorityProps : lazyImagePriorityProps)}
                             onError={(event) => {
                               if (event.currentTarget.src !== productImageFallback) {
+                                event.currentTarget.removeAttribute('srcset');
                                 event.currentTarget.src = productImageFallback;
                               }
                             }}
@@ -1445,7 +1492,8 @@ const ProductList: React.FC = () => {
                       />
                     </Card>
                   </Col>
-                ))}
+                  );
+                })}
               </Row>
               {sortedProducts.length > pageSize && (
                 <div className="product-list__pagination">
@@ -1490,11 +1538,15 @@ const ProductList: React.FC = () => {
       <Modal
         title={quickAddProduct ? t('pages.productList.quickAddTitle', { name: quickAddProduct.name }) : t('pages.productList.quickAdd')}
         open={!!quickAddProduct}
-        onCancel={() => setQuickAddProduct(null)}
+        onCancel={() => {
+          if (quickAddSubmitting) return;
+          setQuickAddProduct(null);
+        }}
         onOk={submitQuickAdd}
         okText={t('pages.productList.addToCart')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ disabled: quickAddSubmitDisabled }}
+        okButtonProps={{ disabled: quickAddSubmitDisabled || quickAddSubmitting, loading: quickAddSubmitting }}
+        cancelButtonProps={{ disabled: quickAddSubmitting }}
         className="product-list__quickAddModal"
       >
         <Space direction="vertical" style={{ width: '100%' }}>

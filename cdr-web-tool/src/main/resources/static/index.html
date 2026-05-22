@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CDR 批量查询工具</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d9e1ec;
+      --brand: #0f766e;
+      --brand-dark: #115e59;
+      --surface: #ffffff;
+      --wash: #f4f7fb;
+      --danger: #b42318;
+      --ok: #047857;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--wash);
+    }
+
+    main {
+      width: min(920px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 16px 38px rgba(23, 32, 51, 0.08);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    form {
+      padding: 28px 32px 24px;
+      display: grid;
+      gap: 20px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid #b8c4d4;
+      border-radius: 6px;
+      padding: 0 12px;
+      font: inherit;
+      color: var(--ink);
+      background: #fbfdff;
+    }
+
+    input[type="file"] {
+      min-height: 96px;
+      border-style: dashed;
+      padding: 28px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    .download {
+      min-height: 44px;
+      border: 0;
+      border-radius: 6px;
+      padding: 0 20px;
+      background: var(--brand);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:hover,
+    .download:hover { background: var(--brand-dark); }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .status {
+      color: var(--muted);
+      min-height: 24px;
+    }
+
+    .status.error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .status.done {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .progressWrap {
+      display: none;
+      padding: 0 32px 30px;
+    }
+
+    .progressMeta {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .progressBar {
+      height: 16px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e6edf5;
+      border: 1px solid var(--line);
+    }
+
+    .progressFill {
+      width: 0%;
+      height: 100%;
+      background: var(--brand);
+      transition: width 180ms ease;
+    }
+
+    .downloadRow {
+      display: none;
+      padding-top: 14px;
+    }
+
+    .notes {
+      border-top: 1px solid var(--line);
+      padding: 20px 32px 28px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+      background: #fbfdff;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #eef3f8;
+      color: #344054;
+    }
+
+    @media (max-width: 640px) {
+      main {
+        width: min(100% - 20px, 920px);
+        padding: 20px 0;
+      }
+
+      .header,
+      form,
+      .progressWrap,
+      .notes {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 23px; }
+
+      button,
+      .download { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="panel">
+    <div class="header">
+      <h1>CDR 批量查询工具</h1>
+      <p>上传每行一个号码的 txt 文件，选择查询日期和线程数，系统会显示执行进度，完成后下载 zip 结果。</p>
+    </div>
+
+    <form id="uploadForm">
+      <label>
+        号码文件
+        <input id="fileInput" name="file" type="file" accept=".txt,text/plain" required>
+      </label>
+
+      <div class="grid">
+        <label>
+          查询日期
+          <input id="dateInput" name="date" type="date" required>
+        </label>
+        <label>
+          线程数
+          <input id="threadsInput" name="threads" type="number" min="1" max="500" step="1" value="200" required>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="submitButton" type="submit">开始执行</button>
+        <span id="status" class="status"></span>
+      </div>
+    </form>
+
+    <div id="progressWrap" class="progressWrap">
+      <div class="progressMeta">
+        <span id="progressText">等待开始</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progressBar">
+        <div id="progressFill" class="progressFill"></div>
+      </div>
+      <div id="downloadRow" class="downloadRow">
+        <a id="downloadLink" class="download" href="#">下载结果 zip</a>
+      </div>
+    </div>
+
+    <div class="notes">
+      页面日期会转换为报文中的 <code>yyyyMMdd000000</code> 并替换 <code>StartTime</code>。
+      结果包包含 <code>voice.txt</code>、<code>SMS.txt</code>、<code>MMS.txt</code>、<code>GPRS.txt</code>、<code>withservice.txt</code>、<code>noservice.txt</code>、<code>failed.txt</code> 和 <code>summary.txt</code>。
+    </div>
+  </section>
+</main>
+
+<script>
+  const form = document.getElementById('uploadForm');
+  const fileInput = document.getElementById('fileInput');
+  const dateInput = document.getElementById('dateInput');
+  const threadsInput = document.getElementById('threadsInput');
+  const button = document.getElementById('submitButton');
+  const statusEl = document.getElementById('status');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressText = document.getElementById('progressText');
+  const progressPercent = document.getElementById('progressPercent');
+  const progressFill = document.getElementById('progressFill');
+  const downloadRow = document.getElementById('downloadRow');
+  const downloadLink = document.getElementById('downloadLink');
+  let pollTimer = null;
+
+  dateInput.value = new Date().toISOString().slice(0, 10);
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    clearInterval(pollTimer);
+    statusEl.className = 'status';
+    downloadRow.style.display = 'none';
+
+    if (!fileInput.files.length) {
+      showError('请选择 txt 文件');
+      return;
+    }
+
+    const threads = Number(threadsInput.value);
+    if (!Number.isInteger(threads) || threads < 1 || threads > 500) {
+      showError('线程数必须是 1 到 500 的整数');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('date', dateInput.value);
+    formData.append('threads', String(threads));
+
+    button.disabled = true;
+    statusEl.textContent = '任务已提交，正在初始化...';
+    progressWrap.style.display = 'block';
+    updateProgress({ completed: 0, total: 0, percent: 0, state: 'QUEUED' });
+
+    try {
+      const response = await fetch('/api/cdr/jobs', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text() || '任务提交失败');
+      }
+
+      const job = await response.json();
+      pollJob(job.id);
+      pollTimer = setInterval(() => pollJob(job.id), 1000);
+    } catch (error) {
+      showError(error.message || '任务提交失败');
+      button.disabled = false;
+    }
+  });
+
+  async function pollJob(id) {
+    try {
+      const response = await fetch(`/api/cdr/jobs/${id}`);
+      if (!response.ok) {
+        throw new Error(await response.text() || '获取进度失败');
+      }
+      const job = await response.json();
+      updateProgress(job);
+
+      if (job.state === 'DONE') {
+        clearInterval(pollTimer);
+        button.disabled = false;
+        statusEl.className = 'status done';
+        statusEl.textContent = '执行完成，可以下载结果';
+        downloadLink.href = `/api/cdr/jobs/${id}/download`;
+        downloadRow.style.display = 'block';
+      } else if (job.state === 'FAILED') {
+        clearInterval(pollTimer);
+        button.disabled = false;
+        showError(job.error || '任务执行失败');
+      } else {
+        statusEl.textContent = '正在执行，请保持页面打开...';
+      }
+    } catch (error) {
+      clearInterval(pollTimer);
+      button.disabled = false;
+      showError(error.message || '获取进度失败');
+    }
+  }
+
+  function updateProgress(job) {
+    const total = job.total || 0;
+    const completed = job.completed || 0;
+    const percent = job.percent || 0;
+    progressText.textContent = total ? `${job.state}：${completed}/${total}` : `${job.state}：等待统计`;
+    progressPercent.textContent = `${percent}%`;
+    progressFill.style.width = `${percent}%`;
+  }
+
+  function showError(message) {
+    statusEl.textContent = message;
+    statusEl.className = 'status error';
+  }
+</script>
+</body>
+</html>

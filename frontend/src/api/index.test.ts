@@ -38,6 +38,22 @@ describe('api parameter normalization', () => {
     expect(() => supportWebSocketUrl('   ')).toThrow('Support websocket token is required');
   });
 
+  it('normalizes email login payloads before sending', async () => {
+    const { userApi } = require('./index');
+
+    await userApi.sendEmailLoginCode('  USER@Example.COM  ');
+    await userApi.emailLogin('  USER@Example.COM  ', ' 12a34 567 ');
+
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/auth/email-code',
+      { email: 'user@example.com' },
+    ]);
+    expect(mockPost.mock.calls[1]).toEqual([
+      '/auth/email-login',
+      { email: 'user@example.com', code: '123456' },
+    ]);
+  });
+
   it('keeps cached API helpers usable when browser storage is unavailable', async () => {
     const originalStorage = window.localStorage;
     Object.defineProperty(window, 'localStorage', {

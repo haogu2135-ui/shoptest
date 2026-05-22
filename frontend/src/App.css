@@ -333,6 +333,52 @@
   outline-offset: 3px;
 }
 
+.app-support-launcher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1200;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #124734;
+  color: #ffffff;
+  font-size: 24px;
+  box-shadow: 0 8px 22px rgba(18, 71, 52, 0.24);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+}
+
+.app-support-launcher:hover,
+.app-support-launcher:focus-visible {
+  transform: translateY(-2px);
+  background: #173f2b;
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.28);
+}
+
+.app-support-launcher:focus-visible {
+  outline: 3px solid rgba(238, 77, 45, 0.42);
+  outline-offset: 3px;
+}
+
+.app-support-launcher--loading {
+  opacity: 0.82;
+  cursor: progress;
+}
+
+@media (max-width: 720px) {
+  .app-support-launcher {
+    right: 16px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    width: 52px;
+    height: 52px;
+    font-size: 22px;
+  }
+}
+
 .notification-rich-content {
   max-width: 100%;
   overflow-wrap: anywhere;
