@@ -112,9 +112,12 @@
     "verifyFailed": "No se pudieron verificar permisos, inicia sesión de nuevo",
     "brands": "Marcas",
     "notifications": "Notificaciones",
+    "announcements": "Anuncios",
     "logisticsCarriers": "Paqueterías",
     "auditLogs": "Registros de seguridad",
-    "permissions": "Permisos"
+      "permissions": "Permisos",
+      "registry": "Registro de servicios",
+      "system": "Monitor del sistema"
   },
   "nav": {
     "sell": "Centro vendedor",
@@ -837,6 +840,11 @@
       "quickAddCompleteOptions": "Elige {option} para continuar.",
       "quickAddSelectionReady": "Selección lista.",
       "quickAddUnavailable": "Esta combinación no está disponible.",
+      "quickPreview": "Vista rápida",
+      "viewDetails": "Ver detalles",
+      "previewNoDescription": "Revisa detalles, opciones y servicio antes de decidir.",
+      "previewStockReady": "{count} disponibles",
+      "previewSoldOut": "Agotado por ahora. Activa aviso de reposición.",
       "insightTitle": "Compra más fácil",
       "insightSubtitle": "Usa los resultados actuales para encontrar buenas opciones más rápido.",
       "quickAddReady": "{count} se agregan rápido",

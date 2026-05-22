@@ -4,12 +4,13 @@ import {
   DashboardOutlined, ShopOutlined, AppstoreOutlined,
   ShoppingOutlined, TeamOutlined, StarOutlined,
   ArrowLeftOutlined, LogoutOutlined, CustomerServiceOutlined, GiftOutlined,
-  NotificationOutlined, TagsOutlined, TruckOutlined,
-  SafetyCertificateOutlined,
+  NotificationOutlined, TagsOutlined, TruckOutlined, SoundOutlined,
+  SafetyCertificateOutlined, ApiOutlined, SettingOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { adminApi, adminSupportApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { isAdminRole, isSuperAdminRole } from '../utils/roles';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './AdminLayout.css';
@@ -46,7 +47,10 @@ const AdminLayout: React.FC = () => {
     canSee('reviews') ? { key: '/admin/reviews', icon: <StarOutlined />, label: t('adminLayout.reviews') } : null,
     canSee('coupons') ? { key: '/admin/coupons', icon: <GiftOutlined />, label: t('adminLayout.coupons') } : null,
     canSee('notifications') ? { key: '/admin/notifications', icon: <NotificationOutlined />, label: t('adminLayout.notifications') } : null,
+    canSee('announcements') ? { key: '/admin/announcements', icon: <SoundOutlined />, label: t('adminLayout.announcements') } : null,
     canSee('audit-logs') ? { key: '/admin/audit-logs', icon: <SafetyCertificateOutlined />, label: t('adminLayout.auditLogs') } : null,
+    canSee('registry') ? { key: '/admin/registry', icon: <ApiOutlined />, label: t('adminLayout.registry') } : null,
+    canSee('system') ? { key: '/admin/system', icon: <SettingOutlined />, label: t('adminLayout.system') } : null,
     canSee('support') ? {
       key: '/admin/support',
       icon: <CustomerServiceOutlined />,
@@ -66,7 +70,7 @@ const AdminLayout: React.FC = () => {
       const token = getLocalStorageItem('token');
       if (!token) {
         message.warning(t('messages.loginRequired'));
-        navigate('/login');
+        navigate(buildLoginUrlFromWindow());
         return;
       }
       try {
@@ -85,7 +89,7 @@ const AdminLayout: React.FC = () => {
         setChecking(false);
       } catch {
         message.error(t('adminLayout.verifyFailed'));
-        navigate('/login');
+        navigate(buildLoginUrlFromWindow());
       }
     };
     checkAdmin();
@@ -151,6 +155,8 @@ const AdminLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
+        breakpoint="lg"
+        collapsedWidth={72}
         theme="dark"
         width={200}
         className="admin-layout__sider"

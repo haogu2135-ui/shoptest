@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { wishlistApi, cartApi } from '../api';
 import type { WishlistItem } from '../types';
 import { useLanguage } from '../i18n';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -93,7 +94,7 @@ const Wishlist: React.FC = () => {
   useEffect(() => {
     if (!hasStoredValue('token')) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     fetchWishlist();

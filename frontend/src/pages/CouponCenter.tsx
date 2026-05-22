@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { cartApi, couponApi } from '../api';
 import type { CartItem, Coupon, UserCoupon } from '../types';
 import { useLanguage } from '../i18n';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { useMarket } from '../hooks/useMarket';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getGuestCartItems } from '../utils/guestCart';
@@ -198,7 +199,7 @@ const CouponCenter: React.FC = () => {
     if (claimingId != null || claimingAll) return;
     if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     setClaimingId(couponId);
@@ -219,7 +220,7 @@ const CouponCenter: React.FC = () => {
     if (claimingAll || claimingId != null) return;
     if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     if (claimableCoupons.length === 0) {
@@ -256,7 +257,7 @@ const CouponCenter: React.FC = () => {
         title: t('pages.coupons.nextActionLoginTitle'),
         text: t('pages.coupons.nextActionLoginText', { name: couponInsights.bestCoupon.name }),
         label: t('nav.login'),
-        action: () => navigate('/login'),
+        action: () => navigate(buildLoginUrlFromWindow()),
       };
     }
     if (couponInsights.bestCoupon && !couponInsights.nextToUse) {

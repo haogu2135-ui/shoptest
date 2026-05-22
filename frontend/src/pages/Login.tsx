@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Form, Input, Button, Typography, message, Tabs } from 'antd';
 import { CompassOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
+import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import { getEffectiveRole } from '../utils/roles';
-import { removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './Login.css';
 
 const { Text, Title } = Typography;
@@ -32,10 +33,18 @@ const Login: React.FC = () => {
   const watchedEmailCode = Form.useWatch('code', emailForm);
   const codeInputRef = useRef<any>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
   const guestCartCount = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
   const emailCodeLength = normalizeEmailCode(watchedEmailCode).length;
   const canSubmitEmailCode = emailCodeLength === 6 && verifyRetryCountdown <= 0;
+  const postLoginRedirectTarget = getPostLoginRedirectTarget(location.search);
+
+  useEffect(() => {
+    if (getLocalStorageItem('token')) {
+      navigate(postLoginRedirectTarget, { replace: true });
+    }
+  }, [navigate, postLoginRedirectTarget]);
 
   useEffect(() => {
     if (sendCodeCountdown <= 0) return undefined;
@@ -96,7 +105,7 @@ const Login: React.FC = () => {
     removeLocalStorageItem('adminDefaultPath');
     await mergeGuestCart(Number(id));
     message.success(t('pages.auth.loginSuccess'));
-    navigate('/');
+    navigate(postLoginRedirectTarget, { replace: true });
   };
 
   const onFinish = async (values: any) => {

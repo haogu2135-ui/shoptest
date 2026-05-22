@@ -13,6 +13,7 @@ const { Content, Footer } = Layout;
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
+const AnnouncementManagement = lazy(() => import('./pages/AnnouncementManagement'));
 const BrandManagement = lazy(() => import('./pages/BrandManagement'));
 const BrowsingHistory = lazy(() => import('./pages/BrowsingHistory'));
 const Cart = lazy(() => import('./pages/Cart'));
@@ -37,10 +38,12 @@ const ProductList = lazy(() => import('./pages/ProductList'));
 const ProductManagement = lazy(() => import('./pages/ProductManagement'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Register = lazy(() => import('./pages/Register'));
+const RegistryManagement = lazy(() => import('./pages/RegistryManagement'));
 const ReviewManagement = lazy(() => import('./pages/ReviewManagement'));
 const SecurityAuditLogManagement = lazy(() => import('./pages/SecurityAuditLogManagement'));
 const StockAlerts = lazy(() => import('./pages/StockAlerts'));
 const SupportManagement = lazy(() => import('./pages/SupportManagement'));
+const SystemMonitor = lazy(() => import('./pages/SystemMonitor'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
 const loadCartDrawer = () => import('./components/CartDrawer');
@@ -317,8 +320,11 @@ const App: React.FC = () => {
             <Route path="permissions" element={<PermissionManagement />} />
             <Route path="reviews" element={<ReviewManagement />} />
             <Route path="notifications" element={<NotificationManagement />} />
+            <Route path="announcements" element={<AnnouncementManagement />} />
             <Route path="support" element={<SupportManagement />} />
             <Route path="audit-logs" element={<SecurityAuditLogManagement />} />
+            <Route path="registry" element={<RegistryManagement />} />
+            <Route path="system" element={<SystemMonitor />} />
           </Route>
 
           <Route path="/product-management" element={<Navigate to="/admin/products" replace />} />

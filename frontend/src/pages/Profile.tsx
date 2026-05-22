@@ -6,6 +6,7 @@ import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } fro
 import type { Order, OrderItem, Payment, PetProfile, User, UserAddress } from '../types';
 import { findRegionPath, regionData } from '../regionData';
 import { useLanguage } from '../i18n';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { createPaymentMethodOptions, mexicoPaymentMethodDetails, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import './Profile.css';
@@ -167,7 +168,7 @@ const Profile: React.FC = () => {
     const token = getLocalStorageItem('token');
     if (!token) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     fetchUserInfo();

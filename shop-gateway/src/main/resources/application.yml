@@ -1,0 +1,121 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:shop-gateway}
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+    gateway:
+      httpclient:
+        connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
+        response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:30s}
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        corsConfigurations:
+          '[/**]':
+            allowedOriginPatterns: ${GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://10.*:*,http://172.*:*,http://192.168.*:*}
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - '*'
+            allowCredentials: true
+      routes:
+        - id: shop-app
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/app/**
+          filters:
+            - StripPrefix=2
+        - id: shop-identity
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/identity/**
+          filters:
+            - StripPrefix=2
+        - id: shop-catalog
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/catalog/**
+          filters:
+            - StripPrefix=2
+        - id: shop-customer
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/customer/**
+          filters:
+            - StripPrefix=2
+        - id: shop-commerce
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/commerce/**
+          filters:
+            - StripPrefix=2
+        - id: shop-order
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/order/**
+          filters:
+            - StripPrefix=2
+        - id: shop-payment
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/payment/**
+          filters:
+            - StripPrefix=2
+        - id: shop-support
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/support/**
+          filters:
+            - StripPrefix=2
+        - id: shop-notification
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/notification/**
+          filters:
+            - StripPrefix=2
+        - id: shop-logistics
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/logistics/**
+          filters:
+            - StripPrefix=2
+        - id: shop-admin
+          uri: lb://shop-backend
+          predicates:
+            - Path=/gateway/admin/**
+          filters:
+            - StripPrefix=2
+        - id: shop-uploads
+          uri: lb://shop-backend
+          predicates:
+            - Path=/uploads/**
+        - id: shop-support-websocket
+          uri: lb:ws://shop-backend
+          predicates:
+            - Path=/ws/support
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}

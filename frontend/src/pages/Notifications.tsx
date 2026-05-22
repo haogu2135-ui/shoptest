@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { hasStoredValue } from '../utils/safeStorage';
@@ -52,7 +53,7 @@ const Notifications: React.FC = () => {
   useEffect(() => {
     if (!hasStoredValue('token')) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     fetchNotifications();

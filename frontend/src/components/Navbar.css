@@ -1136,3 +1136,23 @@
     border-radius: 999px;
   }
 }
+
+/* CMS-powered announcement links */
+.shop-nav__ticker a {
+  color: inherit;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.shop-nav__ticker a:hover,
+.shop-nav__ticker a:focus-visible {
+  color: #ee4d2d;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 780px) {
+  .shop-nav__ticker a:not(:first-child) {
+    display: none;
+  }
+}

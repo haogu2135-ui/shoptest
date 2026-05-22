@@ -4,6 +4,8 @@ import com.example.shop.config.MailAccountProperties;
 import com.example.shop.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailPreparationException;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 public class EmailLoginService {
     private final UserService userService;
     private final MailAccountProperties mailAccountProperties;
+    private final ObjectProvider<StringRedisTemplate> redisTemplateProvider;
     private final Clock clock = Clock.systemUTC();
     private final SecureRandom random = new SecureRandom();
     private final Map<String, VerificationCode> codes = new ConcurrentHashMap<>();
@@ -43,7 +46,7 @@ public class EmailLoginService {
     private final Map<String, RateBucket> sendBuckets = new ConcurrentHashMap<>();
     private final Map<String, RateBucket> verifyBuckets = new ConcurrentHashMap<>();
     private final Map<String, JavaMailSenderImpl> mailSenderCache = new ConcurrentHashMap<>();
-    private final byte[] codePepper = createCodePepper();
+    private final byte[] localCodePepper = createCodePepper();
 
     public void sendLoginCode(String email) {
         sendLoginCode(email, "unknown");
@@ -52,6 +55,20 @@ public class EmailLoginService {
     public void sendLoginCode(String email, String clientKey) {
         String normalizedEmail = normalizeEmail(email);
         ensureMailConfigured();
+        if (shouldUseRedis()) {
+            try {
+                sendLoginCodeWithRedis(normalizedEmail, clientKey);
+                return;
+            } catch (EmailLoginException | MailException | IllegalStateException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                log.warn("Redis email code store is unavailable. Falling back to in-memory code store.", e);
+            }
+        }
+        sendLoginCodeInMemory(normalizedEmail, clientKey);
+    }
+
+    private void sendLoginCodeInMemory(String normalizedEmail, String clientKey) {
         Instant now = Instant.now(clock);
         consumeRate(sendBuckets, rateKey("send-email", normalizedEmail), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
         consumeRate(sendBuckets, rateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
@@ -83,6 +100,39 @@ public class EmailLoginService {
         }
     }
 
+    private void sendLoginCodeWithRedis(String normalizedEmail, String clientKey) {
+        StringRedisTemplate redisTemplate = redisTemplate();
+        Instant now = Instant.now(clock);
+        consumeRedisRate(redisTemplate, redisRateKey("send-email", normalizedEmail), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
+        consumeRedisRate(redisTemplate, redisRateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
+
+        String cooldownKey = redisKey("cooldown", normalizedEmail);
+        Long cooldownTtl = redisTemplate.getExpire(cooldownKey);
+        if (cooldownTtl != null && cooldownTtl > 0) {
+            throw rateLimited("RATE_LIMITED", now.plusSeconds(cooldownTtl), now);
+        }
+
+        User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        if (user == null || isDisabled(user)) {
+            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+            return;
+        }
+
+        String code = String.format("%06d", random.nextInt(1_000_000));
+        String codeKey = redisKey("code", normalizedEmail);
+        redisTemplate.opsForHash().put(codeKey, "hash", hashCode(normalizedEmail, code));
+        redisTemplate.opsForHash().put(codeKey, "sentAt", Long.toString(now.toEpochMilli()));
+        redisTemplate.opsForHash().put(codeKey, "failedAttempts", "0");
+        redisTemplate.expire(codeKey, codeTtl());
+        try {
+            sendMail(normalizedEmail, code);
+            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+        } catch (RuntimeException e) {
+            redisTemplate.delete(codeKey);
+            throw e;
+        }
+    }
+
     public User verifyLoginCode(String email, String code) {
         return verifyLoginCode(email, code, "unknown");
     }
@@ -90,6 +140,19 @@ public class EmailLoginService {
     public User verifyLoginCode(String email, String code, String clientKey) {
         String normalizedEmail = normalizeEmail(email);
         String normalizedCode = normalizeCode(code);
+        if (shouldUseRedis()) {
+            try {
+                return verifyLoginCodeWithRedis(normalizedEmail, normalizedCode, clientKey);
+            } catch (EmailLoginException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                log.warn("Redis email code store is unavailable. Falling back to in-memory code store.", e);
+            }
+        }
+        return verifyLoginCodeInMemory(normalizedEmail, normalizedCode, clientKey);
+    }
+
+    private User verifyLoginCodeInMemory(String normalizedEmail, String normalizedCode, String clientKey) {
         Instant now = Instant.now(clock);
         consumeRate(verifyBuckets, rateKey("verify-email", normalizedEmail), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
         consumeRate(verifyBuckets, rateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
@@ -113,6 +176,43 @@ public class EmailLoginService {
         }
         codes.remove(normalizedEmail);
         clearVerifyBuckets(normalizedEmail, clientKey);
+
+        User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        if (user == null || isDisabled(user)) {
+            throw invalidCode();
+        }
+        return user;
+    }
+
+    private User verifyLoginCodeWithRedis(String normalizedEmail, String normalizedCode, String clientKey) {
+        StringRedisTemplate redisTemplate = redisTemplate();
+        Instant now = Instant.now(clock);
+        consumeRedisRate(redisTemplate, redisRateKey("verify-email", normalizedEmail), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
+        consumeRedisRate(redisTemplate, redisRateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
+        if (normalizedCode.length() != 6) {
+            throw invalidCode();
+        }
+
+        String codeKey = redisKey("code", normalizedEmail);
+        Object storedHash = redisTemplate.opsForHash().get(codeKey, "hash");
+        if (storedHash == null) {
+            redisTemplate.delete(codeKey);
+            throw invalidCode();
+        }
+        if (!MessageDigest.isEqual(
+                storedHash.toString().getBytes(StandardCharsets.UTF_8),
+                hashCode(normalizedEmail, normalizedCode).getBytes(StandardCharsets.UTF_8))) {
+            Long failedAttempts = redisTemplate.opsForHash().increment(codeKey, "failedAttempts", 1);
+            if (failedAttempts != null && failedAttempts >= maxCodeAttempts()) {
+                redisTemplate.delete(codeKey);
+                throw tooManyAttempts(now);
+            }
+            throw invalidCode();
+        }
+
+        redisTemplate.delete(codeKey);
+        redisTemplate.delete(redisRateKey("verify-email", normalizedEmail));
+        redisTemplate.delete(redisRateKey("verify-client", normalizeClientKey(clientKey)));
 
         User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
         if (user == null || isDisabled(user)) {
@@ -300,6 +400,48 @@ public class EmailLoginService {
         return scope + ":" + value;
     }
 
+    private boolean shouldUseRedis() {
+        return mailAccountProperties.isRedisEnabled() && redisTemplateProvider.getIfAvailable() != null;
+    }
+
+    private StringRedisTemplate redisTemplate() {
+        StringRedisTemplate redisTemplate = redisTemplateProvider.getIfAvailable();
+        if (redisTemplate == null) {
+            throw new IllegalStateException("RedisTemplate is not configured");
+        }
+        return redisTemplate;
+    }
+
+    private String redisKey(String type, String value) {
+        return redisPrefix() + ":" + type + ":" + sha256Hex(value);
+    }
+
+    private String redisRateKey(String scope, String value) {
+        return redisPrefix() + ":rate:" + scope + ":" + sha256Hex(value);
+    }
+
+    private String redisPrefix() {
+        String prefix = mailAccountProperties.getRedisKeyPrefix();
+        if (isBlank(prefix)) {
+            return "shop:mail-code";
+        }
+        return prefix.trim().replaceAll("[^a-zA-Z0-9:._-]", "_");
+    }
+
+    private void consumeRedisRate(StringRedisTemplate redisTemplate, String key, Duration window, int maxAttempts, Instant now, String errorCode) {
+        Long attempts = redisTemplate.opsForValue().increment(key);
+        if (attempts != null && attempts == 1L) {
+            redisTemplate.expire(key, window);
+        }
+        if (attempts != null && attempts > maxAttempts) {
+            Long ttlSeconds = redisTemplate.getExpire(key);
+            if (ttlSeconds == null || ttlSeconds < 1) {
+                ttlSeconds = window.getSeconds();
+            }
+            throw rateLimited(errorCode, now.plusSeconds(ttlSeconds), now);
+        }
+    }
+
     private void consumeRate(Map<String, RateBucket> buckets, String key, Duration window, int maxAttempts, Instant now, String errorCode) {
         RateBucket bucket = buckets.computeIfAbsent(key, ignored -> new RateBucket(now));
         synchronized (bucket) {
@@ -373,7 +515,7 @@ public class EmailLoginService {
     private String hashCode(String email, String code) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            digest.update(codePepper);
+            digest.update(codePepper());
             byte[] hashed = digest.digest((email + ":" + code).getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(hashed.length * 2);
             for (byte value : hashed) {
@@ -383,6 +525,28 @@ public class EmailLoginService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is not available", e);
         }
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hashed.length * 2);
+            for (byte current : hashed) {
+                builder.append(String.format("%02x", current));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
+    }
+
+    private byte[] codePepper() {
+        String configuredPepper = mailAccountProperties.getCodePepper();
+        if (!isBlank(configuredPepper)) {
+            return configuredPepper.getBytes(StandardCharsets.UTF_8);
+        }
+        return localCodePepper;
     }
 
     private byte[] createCodePepper() {

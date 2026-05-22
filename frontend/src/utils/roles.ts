@@ -34,6 +34,9 @@ export const ADMIN_PAGE_PERMISSIONS = [
   'reviews',
   'coupons',
   'notifications',
+  'announcements',
   'audit-logs',
   'support',
+  'registry',
+  'system',
 ];

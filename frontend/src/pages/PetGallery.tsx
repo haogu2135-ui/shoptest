@@ -14,6 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import type { PetGalleryPhoto, PetGalleryQuota } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -148,7 +149,7 @@ const PetGallery: React.FC = () => {
   const handleUploadClick = useCallback(() => {
     if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     if (quota && !quota.canUpload) {
@@ -164,7 +165,7 @@ const PetGallery: React.FC = () => {
         title: t('pages.petGallery.uploadLoginTitle'),
         text: t('pages.petGallery.uploadLoginText'),
         action: t('pages.petGallery.loginToUpload'),
-        onClick: () => navigate('/login'),
+        onClick: () => navigate(buildLoginUrlFromWindow()),
       };
     }
     if (quota && !quota.canUpload) {
@@ -286,7 +287,7 @@ const PetGallery: React.FC = () => {
         </div>
         <Space wrap>
           {!isAuthenticated ? (
-            <Button icon={<UserAddOutlined />} onClick={() => navigate('/login')}>
+            <Button icon={<UserAddOutlined />} onClick={() => navigate(buildLoginUrlFromWindow())}>
               {t('pages.petGallery.loginToUpload')}
             </Button>
           ) : null}

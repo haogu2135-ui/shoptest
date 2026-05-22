@@ -19,8 +19,9 @@ import {
   ShoppingCartOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { adminApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
+import { adminApi, announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { Language, useLanguage } from '../i18n';
+import type { SiteAnnouncement } from '../types';
 import { CurrencyCode, markets } from '../utils/market';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { useMarket } from '../hooks/useMarket';
@@ -65,6 +66,7 @@ const Navbar: React.FC = () => {
   const [couponCount, setCouponCount] = useState(0);
   const [compareCount, setCompareCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
+  const [announcements, setAnnouncements] = useState<SiteAnnouncement[]>([]);
   const { language, setLanguage, t } = useLanguage();
   const { currency, setCurrency, market, formatMoney } = useMarket();
   const languageOptions = [
@@ -72,6 +74,20 @@ const Navbar: React.FC = () => {
     { value: 'zh', label: '中文' },
     { value: 'en', label: 'English' },
   ];
+
+  useEffect(() => {
+    let disposed = false;
+    announcementApi.getActive(4)
+      .then((response) => {
+        if (!disposed) setAnnouncements(response.data);
+      })
+      .catch(() => {
+        if (!disposed) setAnnouncements([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
   const currencyOptions = Object.values(markets).map((item) => ({ value: item.currency, label: item.label }));
   const communitySignalCount = wishlistCount + unreadCount + couponCount + compareCount + alertCount;
   const utilityMenuCount = token ? communitySignalCount : compareCount + alertCount;
@@ -364,14 +380,44 @@ const Navbar: React.FC = () => {
     </button>
   );
 
+  const renderAnnouncement = (announcement: SiteAnnouncement) => {
+    const text = announcement.content || announcement.title;
+    if (!announcement.linkUrl) {
+      return <span key={announcement.id || text}>{text}</span>;
+    }
+    if (/^https?:\/\//i.test(announcement.linkUrl)) {
+      return (
+        <a key={announcement.id || text} href={announcement.linkUrl} target="_blank" rel="noreferrer">
+          {text}
+        </a>
+      );
+    }
+    return (
+      <Link key={announcement.id || text} to={announcement.linkUrl}>
+        {text}
+      </Link>
+    );
+  };
+  const tickerAnnouncements = announcements.length > 0 && announcements.length < 3
+    ? Array.from({ length: Math.ceil(4 / announcements.length) }).flatMap(() => announcements)
+    : announcements;
+
   return (
     <header className={`shop-nav shop-nav--${language}`}>
       <div className="shop-nav__announcement">
         <div className="shop-nav__ticker">
-          <span>{t('nav.freeShippingOver', { amount: formatMoney(market.freeShippingThreshold) })}</span>
-          <span className="shop-nav__tickerAd">{t('nav.highlightDeal')}</span>
-          <span>{t('nav.springSale')}</span>
-          <span>{t('nav.easyReturns')}</span>
+          {tickerAnnouncements.length > 0 ? tickerAnnouncements.map((announcement, index) => (
+            <React.Fragment key={`${announcement.id || announcement.title}-${index}`}>
+              {renderAnnouncement(announcement)}
+            </React.Fragment>
+          )) : (
+            <>
+              <span>{t('nav.freeShippingOver', { amount: formatMoney(market.freeShippingThreshold) })}</span>
+              <span className="shop-nav__tickerAd">{t('nav.highlightDeal')}</span>
+              <span>{t('nav.springSale')}</span>
+              <span>{t('nav.easyReturns')}</span>
+            </>
+          )}
         </div>
       </div>
       <div className="shop-nav__top">

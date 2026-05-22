@@ -34,6 +34,7 @@ import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
@@ -174,7 +175,7 @@ const Home: React.FC = () => {
         title: t('nav.login'),
         text: t('pages.auth.loginTrustTitle'),
         actionLabel: t('nav.login'),
-        action: () => navigate('/login'),
+        action: () => navigate(buildLoginUrlFromWindow()),
       },
       {
         key: 'track',
@@ -191,7 +192,7 @@ const Home: React.FC = () => {
       key: 'orders',
       icon: <FileDoneOutlined />,
       label: t('pages.profile.allOrders'),
-      onClick: () => navigate(isAuthenticated ? '/profile?tab=orders' : '/login'),
+      onClick: () => navigate(isAuthenticated ? '/profile?tab=orders' : buildLoginUrlFromWindow()),
     },
     {
       key: 'cart',
@@ -209,7 +210,7 @@ const Home: React.FC = () => {
       key: 'wishlist',
       icon: <HeartOutlined />,
       label: t('nav.ariaFavorites'),
-      onClick: () => navigate(isAuthenticated ? '/wishlist' : '/login'),
+      onClick: () => navigate(isAuthenticated ? '/wishlist' : buildLoginUrlFromWindow()),
     },
     {
       key: 'track',
@@ -264,7 +265,7 @@ const Home: React.FC = () => {
   const handlePetUploadClick = () => {
     if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     if (petGalleryQuota && !petGalleryQuota.canUpload) {
@@ -370,7 +371,7 @@ const Home: React.FC = () => {
     event.stopPropagation();
     if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
 
@@ -904,7 +905,7 @@ const Home: React.FC = () => {
                   <Button size="large" type="primary" onClick={() => navigate('/register')}>
                     {t('nav.register')}
                   </Button>
-                  <Button size="large" ghost onClick={() => navigate('/login')}>
+                  <Button size="large" ghost onClick={() => navigate(buildLoginUrlFromWindow())}>
                     {t('nav.login')}
                   </Button>
                 </div>

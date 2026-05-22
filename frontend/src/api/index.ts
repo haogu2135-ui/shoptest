@@ -1,6 +1,8 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
-import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig, AdminOrderPage } from '../types';
+import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminRegistryStatus, AdminSystemStatus, SiteAnnouncement } from '../types';
+import { buildLoginUrl, getCurrentRelativeUrl } from '../utils/authRedirect';
+import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem, removeLocalStorageItem } from '../utils/safeStorage';
 
@@ -15,7 +17,7 @@ const resolveApiBaseUrl = () => {
     }
 
     const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:8081`;
+    return `${protocol}//${hostname}:8080`;
 };
 
 const api = axios.create({
@@ -94,7 +96,8 @@ export const supportWebSocketUrl = (token: string) => {
     }
     const base = new URL(apiBaseUrl, window.location.origin);
     base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
-    base.pathname = '/ws/support';
+    const basePath = base.pathname.replace(/\/$/, '');
+    base.pathname = `${basePath}/ws/support`.replace(/\/{2,}/g, '/');
     base.searchParams.set('token', normalizedToken);
     return base.toString();
 };
@@ -241,6 +244,10 @@ export const appConfigApi = {
             });
         return appConfigRequest;
     },
+};
+
+export const announcementApi = {
+    getActive: (limit = 5) => api.get<SiteAnnouncement[]>('/announcements/active', { params: { limit: normalizeBoundedPositiveInt(limit, 5, 10) } }),
 };
 
 const clearProductListCache = () => {
@@ -392,6 +399,7 @@ export const clearAdminPermissionsCache = () => {
 // 请求拦截器
 api.interceptors.request.use(
     (config) => {
+        config.url = resolveApiDispatcherUrl(config.url);
         const token = getStoredItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -414,7 +422,7 @@ api.interceptors.response.use(
             clearPersonalizedRecommendationCache();
             clearNotificationCache();
             if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
+                window.location.href = buildLoginUrl(getCurrentRelativeUrl(window.location));
             }
         }
         return Promise.reject(error);
@@ -910,6 +918,8 @@ export const adminApi = {
             });
         return adminDashboardRequest;
     },
+    getRegistryStatus: () => api.get<AdminRegistryStatus>('/admin/registry'),
+    getSystemStatus: () => api.get<AdminSystemStatus>('/admin/system/status'),
     getUsers: (params?: { keyword?: string; role?: string; status?: string }) => {
         const normalizedParams = {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
@@ -1064,6 +1074,10 @@ export const adminApi = {
         api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config),
     broadcastNotification: (payload: { type: string; title: string; message: string; contentFormat: 'TEXT' | 'HTML' }) =>
         api.post<{ sent: number }>('/admin/notifications/broadcast', payload),
+    getAnnouncements: () => api.get<SiteAnnouncement[]>('/admin/announcements'),
+    createAnnouncement: (announcement: Partial<SiteAnnouncement>) => api.post<SiteAnnouncement>('/admin/announcements', announcement),
+    updateAnnouncement: (id: number, announcement: Partial<SiteAnnouncement>) => api.put<SiteAnnouncement>(`/admin/announcements/${toPathId(id)}`, announcement),
+    deleteAnnouncement: (id: number) => api.delete(`/admin/announcements/${toPathId(id)}`),
 };
 
 export const logisticsCarrierApi = {

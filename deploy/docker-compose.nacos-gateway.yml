@@ -1,0 +1,73 @@
+services:
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: shop-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+
+  redis:
+    image: redis:7-alpine
+    container_name: shop-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/backend.Dockerfile
+    image: shoptest-backend:latest
+    container_name: shop-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend.env
+    environment:
+      SPRING_APPLICATION_NAME: shop-backend
+      NACOS_DISCOVERY_ENABLED: "true"
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_DISCOVERY_IP: ""
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*,http://10.*:*,http://172.*:*,http://192.168.*:*}
+      WEBSOCKET_ALLOWED_ORIGIN_PATTERNS: ${WEBSOCKET_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*,http://10.*:*,http://172.*:*,http://192.168.*:*}
+    ports:
+      - "${BACKEND_BIND_IP:-127.0.0.1}:${BACKEND_HOST_PORT:-8081}:8081"
+    volumes:
+      - ../uploads:/app/uploads
+    depends_on:
+      - nacos
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/gateway.Dockerfile
+    image: shop-gateway:latest
+    container_name: shop-gateway
+    restart: unless-stopped
+    env_file:
+      - ./gateway.env
+    environment:
+      NACOS_SERVER_ADDR: nacos:8848
+      GATEWAY_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - nacos
+      - backend
+
+volumes:
+  redis-data:

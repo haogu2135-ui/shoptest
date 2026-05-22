@@ -62,6 +62,99 @@ export interface DashboardStats {
     lowStockList?: Product[];
 }
 
+export interface AdminRegistryInstance {
+    serviceId: string;
+    host: string;
+    port: number;
+    secure: boolean;
+    uri: string;
+    metadata?: Record<string, string>;
+}
+
+export interface AdminRegistryServiceSummary {
+    serviceId: string;
+    instanceCount: number;
+    instances: AdminRegistryInstance[];
+}
+
+export interface AdminRegistryStatus {
+    applicationName: string;
+    discoveryEnabled: boolean;
+    registerEnabled: boolean;
+    nacosServerAddr: string;
+    namespace?: string;
+    group?: string;
+    serverPort?: string;
+    configuredIp?: string;
+    configuredPort?: string;
+    ephemeral?: boolean;
+    weight?: string;
+    discoveryClientDescription?: string;
+    profiles?: string[];
+    healthy?: boolean;
+    instanceCount?: number;
+    knownServices: string[];
+    serviceSummaries?: AdminRegistryServiceSummary[];
+    instances: AdminRegistryInstance[];
+}
+
+export interface AdminSystemStatus {
+    application: {
+        name: string;
+        runtimeMode: string;
+        serverPort: string;
+        profiles: string[];
+        time: string;
+    };
+    runtime: {
+        javaVersion: string;
+        javaVendor: string;
+        osName: string;
+        osVersion: string;
+        processors: number;
+        uptimeMs: number;
+        startTimeMs: number;
+    };
+    memory: {
+        maxBytes: number;
+        totalBytes: number;
+        freeBytes: number;
+        usedBytes: number;
+        usedPercent: number;
+    };
+    disk: {
+        path: string;
+        totalBytes: number;
+        freeBytes: number;
+        usedBytes: number;
+        usedPercent: number;
+    };
+    database: {
+        url: string;
+        driver: string;
+    };
+    nacos: {
+        serverAddr: string;
+        discoveryEnabled: boolean;
+        registerEnabled: boolean;
+        namespace?: string;
+        group?: string;
+    };
+}
+
+export interface SiteAnnouncement {
+    id?: number;
+    title: string;
+    content: string;
+    linkUrl?: string;
+    status: 'ACTIVE' | 'INACTIVE' | string;
+    sortOrder?: number;
+    startsAt?: string;
+    endsAt?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 export interface Product {
     id: number;
     name: string;

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Typography, Slider, Checkbox, Modal, Space, Drawer } from 'antd';
-import { BarChartOutlined, BellOutlined, CheckCircleOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { BarChartOutlined, BellOutlined, CheckCircleOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi } from '../api';
 import type { Product, Category } from '../types';
@@ -19,6 +19,7 @@ import { getProductOptionGroups, getProductVariants, optionValueIsCompatible, se
 import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
@@ -140,6 +141,7 @@ const ProductList: React.FC = () => {
   const [materials, setMaterials] = useState<string[]>([]);
   const [colors, setColors] = useState<string[]>([]);
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [quickAddOptions, setQuickAddOptions] = useState<Record<string, string>>({});
   const [quickAddSubmitting, setQuickAddSubmitting] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => readSearchHistory());
@@ -555,7 +557,7 @@ const ProductList: React.FC = () => {
     e.stopPropagation();
     if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     try {
@@ -646,6 +648,12 @@ const ProductList: React.FC = () => {
   const prefetchProduct = useCallback((productId: number) => {
     void productApi.prefetchById(productId);
   }, []);
+
+  const openProductPreview = (event: React.MouseEvent, product: Product) => {
+    event.stopPropagation();
+    setPreviewProduct(product);
+    prefetchProduct(product.id);
+  };
 
   const submitQuickAdd = async () => {
     if (!quickAddProduct) return;
@@ -1424,6 +1432,16 @@ const ProductList: React.FC = () => {
                               {t('pages.productList.soldOut')}
                             </div>
                           )}
+                          <div className="product-list__imageOverlay">
+                            <Button
+                              size="small"
+                              icon={<SearchOutlined />}
+                              className="product-list__previewTrigger"
+                              onClick={(event) => openProductPreview(event, product)}
+                            >
+                              {t('pages.productList.quickPreview')}
+                            </Button>
+                          </div>
                         </div>
                       }
                       actions={[
@@ -1582,6 +1600,106 @@ const ProductList: React.FC = () => {
             <Text type="secondary">{t('pages.productList.quickAddNoOptions')}</Text>
           )}
         </Space>
+      </Modal>
+      <Modal
+        title={null}
+        open={!!previewProduct}
+        footer={null}
+        onCancel={() => setPreviewProduct(null)}
+        width={860}
+        className="product-list__previewModal"
+        destroyOnClose
+      >
+        {previewProduct ? (
+          <div className="product-list__preview">
+            <div className="product-list__previewMedia">
+              <img
+                alt={previewProduct.name}
+                src={getOptimizedImageUrl(resolveProductListImage(previewProduct.imageUrl), 720)}
+                srcSet={buildResponsiveImageSrcSet(resolveProductListImage(previewProduct.imageUrl), [360, 520, 720, 960])}
+                sizes="(max-width: 720px) 100vw, 420px"
+                onError={(event) => {
+                  if (event.currentTarget.src !== productImageFallback) {
+                    event.currentTarget.removeAttribute('srcset');
+                    event.currentTarget.src = productImageFallback;
+                  }
+                }}
+              />
+              {getDiscountPercent(previewProduct) > 0 ? (
+                <span className="product-list__previewDiscount">
+                  -{getDiscountPercent(previewProduct)}%
+                </span>
+              ) : null}
+            </div>
+            <div className="product-list__previewBody">
+              <Space wrap size={[6, 6]} className="product-list__previewBadges">
+                {renderBadges(previewProduct).slice(0, 4).map((badge) => (
+                  <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>
+                ))}
+              </Space>
+              <Text type="secondary" className="product-list__previewBrand">
+                {previewProduct.brand || topCategoryName}
+              </Text>
+              <h2>{previewProduct.name}</h2>
+              <Text className="product-list__previewDescription">
+                {previewProduct.description || t('pages.productList.previewNoDescription')}
+              </Text>
+              <div className="product-list__previewPrice">
+                <strong>{formatMoney(getPrice(previewProduct))}</strong>
+                {previewProduct.originalPrice && previewProduct.originalPrice > getPrice(previewProduct) ? (
+                  <Text delete>{formatMoney(previewProduct.originalPrice)}</Text>
+                ) : null}
+              </div>
+              <div className="product-list__previewSignals">
+                <span>
+                  {isProductSoldOut(previewProduct)
+                    ? t('pages.productList.previewSoldOut')
+                    : previewProduct.stock !== undefined
+                      ? t('pages.productList.previewStockReady', { count: previewProduct.stock })
+                      : t('pages.productList.cardStockReady')}
+                </span>
+                <span>
+                  {hasReviewSignal(previewProduct)
+                    ? t('pages.productList.positiveRate', {
+                        rate: Math.round(previewProduct.positiveRate || 0).toString(),
+                        count: previewProduct.reviewCount || 0,
+                      })
+                    : t('pages.productList.noReviewsYet')}
+                </span>
+                {getSavingsAmount(previewProduct) > 0 ? (
+                  <span>{t('pages.productList.bestValueSavings', { amount: formatMoney(getSavingsAmount(previewProduct)) })}</span>
+                ) : null}
+              </div>
+              <div className="product-list__previewActions">
+                {isProductSoldOut(previewProduct) ? (
+                  <Button icon={<BellOutlined />} onClick={(event) => handleStockAlert(event, previewProduct)}>
+                    {alertedStockProductIds.has(previewProduct.id) ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
+                  </Button>
+                ) : (
+                  <Button
+                    type="primary"
+                    icon={<ShoppingCartOutlined />}
+                    onClick={(event) => {
+                      openQuickAdd(event, previewProduct);
+                      setPreviewProduct(null);
+                    }}
+                  >
+                    {isQuickAddReady(previewProduct) ? t('pages.productList.quickAdd') : t('pages.productList.chooseOptionsAction')}
+                  </Button>
+                )}
+                <Button onClick={() => openProductDetail(previewProduct.id)}>
+                  {t('pages.productList.viewDetails')}
+                </Button>
+                <Button
+                  icon={wishlistedProductIds.has(previewProduct.id) ? <HeartFilled /> : <HeartOutlined />}
+                  onClick={(event) => handleWishlistToggle(event, previewProduct)}
+                >
+                  {wishlistedProductIds.has(previewProduct.id) ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

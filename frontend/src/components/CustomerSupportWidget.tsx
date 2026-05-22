@@ -11,6 +11,7 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import { parseSupportSocketPayload, supportChatConfig } from '../utils/supportChatConfig';
 import { buildSupportOrderWorkflowActions, type SupportOrderWorkflowAction } from '../utils/supportWorkflow';
 import { getApiErrorMessage } from '../utils/apiError';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { decodeSupportOrderMessage, encodeSupportOrderMessage, type SupportOrderContext } from '../utils/supportOrderMessage';
 import { formatSafeDate, formatSafeDateTime, formatSafeTime, getSafeTime } from '../utils/dateFormat';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
@@ -397,7 +398,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const openPanel = useCallback(() => {
     if (!getLocalStorageItem('token')) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     setOpen(true);

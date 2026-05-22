@@ -20,6 +20,9 @@ public class MailAccountProperties {
     private int verifyWindowMinutes = 15;
     private int maxVerifyFailuresPerWindow = 10;
     private String brandName = "ShopMX";
+    private boolean redisEnabled = true;
+    private String redisKeyPrefix = "shop:mail-code";
+    private String codePepper = "";
 
     @Data
     public static class Account {

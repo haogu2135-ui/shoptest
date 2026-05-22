@@ -112,9 +112,12 @@
     "verifyFailed": "Permission check failed, please log in again",
     "brands": "Brands",
     "notifications": "Notifications",
+    "announcements": "Announcements",
     "logisticsCarriers": "Carriers",
     "auditLogs": "Security logs",
-    "permissions": "Permissions"
+      "permissions": "Permissions",
+      "registry": "Service registry",
+      "system": "System monitor"
   },
   "nav": {
     "sell": "Seller center",
@@ -1936,6 +1939,11 @@
       "quickAddCompleteOptions": "Choose {option} to continue.",
       "quickAddSelectionReady": "Selection ready.",
       "quickAddUnavailable": "This combination is unavailable.",
+      "quickPreview": "Quick preview",
+      "viewDetails": "View details",
+      "previewNoDescription": "Review details, options and service notes before deciding.",
+      "previewStockReady": "{count} in stock",
+      "previewSoldOut": "Sold out for now. Subscribe for a restock alert.",
       "insightTitle": "Smart shopping guide",
       "insightSubtitle": "Use the current results to find pet-ready picks faster.",
       "quickAddReady": "{count} quick-add ready",

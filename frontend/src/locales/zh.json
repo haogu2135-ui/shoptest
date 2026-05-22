@@ -112,9 +112,12 @@
     "verifyFailed": "权限验证失败，请重新登录",
     "brands": "品牌",
     "notifications": "通知",
+    "announcements": "公告",
     "logisticsCarriers": "快递公司",
     "auditLogs": "安全日志",
-    "permissions": "权限管理"
+      "permissions": "权限管理",
+      "registry": "服务注册",
+      "system": "系统监控"
   },
   "nav": {
     "sell": "卖家中心",
@@ -835,6 +838,11 @@
       "quickAddCompleteOptions": "请选择{option}后继续。",
       "quickAddSelectionReady": "规格已选好。",
       "quickAddUnavailable": "该组合暂不可选。",
+      "quickPreview": "快速预览",
+      "viewDetails": "查看详情",
+      "previewNoDescription": "查看商品详情、规格和售后信息后再决定。",
+      "previewStockReady": "库存 {count} 件",
+      "previewSoldOut": "暂时售罄，可订阅到货提醒",
       "insightTitle": "智能导购助手",
       "insightSubtitle": "基于当前结果，更快找到适合宠物的好物。",
       "quickAddReady": "{count} 件可快速加购",

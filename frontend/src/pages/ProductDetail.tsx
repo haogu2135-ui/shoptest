@@ -19,6 +19,7 @@ import { getProductOptionGroups, getProductVariants, needsOptionSelection, optio
 import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
 import './ProductDetail.css';
 
@@ -510,7 +511,7 @@ const ProductDetail: React.FC = () => {
     const token = getLocalStorageItem('token');
     if (!token) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     try {
@@ -547,7 +548,7 @@ const ProductDetail: React.FC = () => {
   const handleAskQuestion = async () => {
     if (!hasStoredValue('token')) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     if (!questionText.trim()) {
@@ -571,7 +572,7 @@ const ProductDetail: React.FC = () => {
     const text = (answerDrafts[questionId] || '').trim();
     if (!hasStoredValue('token')) {
       message.warning(t('messages.loginRequired'));
-      navigate('/login');
+      navigate(buildLoginUrlFromWindow());
       return;
     }
     if (!text) {

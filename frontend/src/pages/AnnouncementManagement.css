@@ -1,0 +1,65 @@
+.announcement-management {
+  display: grid;
+  gap: 18px;
+}
+
+.announcement-management__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid rgba(30, 85, 61, 0.12);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 8% 0, rgba(238, 77, 45, 0.13), transparent 28%),
+    linear-gradient(135deg, #f8fcf9 0%, #fff7ee 100%);
+  box-shadow: 0 18px 44px rgba(18, 71, 52, 0.08);
+}
+
+.announcement-management__hero h2 {
+  margin: 4px 0 6px;
+  color: #123f2c;
+  font-weight: 950;
+}
+
+.announcement-management__eyebrow {
+  color: #ee4d2d;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.announcement-management__card {
+  border-radius: 18px;
+  border-color: rgba(30, 85, 61, 0.12);
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.06);
+}
+
+@media (max-width: 720px) {
+  .announcement-management__hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* Responsive polish for dense admin CMS tables */
+.announcement-management .ant-table-cell {
+  vertical-align: top;
+}
+
+.announcement-management .ant-typography {
+  overflow-wrap: anywhere;
+}
+
+.announcement-management .ant-modal .ant-form-item-extra {
+  color: #6f7f74;
+}
+
+@media (max-width: 720px) {
+  .announcement-management__hero .ant-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

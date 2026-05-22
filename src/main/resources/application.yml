@@ -1,12 +1,30 @@
 server:
   address: ${SERVER_ADDRESS:0.0.0.0}
-  port: 8081
+  port: ${SERVER_PORT:8081}
 
 spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:shop-backend}
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        register-enabled: ${NACOS_REGISTER_ENABLED:${spring.cloud.nacos.discovery.enabled:true}}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        ip: ${NACOS_DISCOVERY_IP:}
+        port: ${NACOS_DISCOVERY_PORT:${server.port}}
+        ephemeral: ${NACOS_EPHEMERAL:true}
+        weight: ${NACOS_WEIGHT:1}
+        metadata:
+          app: shop
+          version: ${APP_VERSION:0.0.1-SNAPSHOT}
+          management.context-path: /actuator
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/shop?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:84813378}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   
   flyway:

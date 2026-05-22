@@ -16,6 +16,9 @@ mysql-data-dev/
 .env.*
 !.env.example
 *.local.env
+deploy/*.env
+deploy/*.local.env
+!deploy/*.env.example
 config/application.properties
 config/*.local.properties
 
@@ -27,6 +30,8 @@ config/*.local.properties
 *.log
 *.tmp
 *.class
+*.png
+frontend/visual-checks/
 
 .DS_Store
 Thumbs.db
