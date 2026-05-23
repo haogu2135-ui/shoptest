@@ -265,6 +265,17 @@
   transform: translateY(-1px);
 }
 
+.browsing-history__item--ready {
+  border-color: #d5e8d8;
+  background:
+    linear-gradient(90deg, rgba(18, 71, 52, 0.08) 0 4px, transparent 4px),
+    #ffffff;
+}
+
+.browsing-history__item--urgent {
+  border-color: #ffd8bf;
+}
+
 .browsing-history__image {
   overflow: hidden;
   aspect-ratio: 1 / 1;
@@ -332,13 +343,49 @@
   font-size: 12px;
 }
 
+.browsing-history__signals {
+  min-height: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.browsing-history__signals .ant-tag {
+  margin: 0;
+}
+
 .browsing-history__footer {
   justify-content: space-between;
 }
 
-.browsing-history__footer strong {
+.browsing-history__priceStack {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.browsing-history__priceStack strong {
   color: #ee4d2d;
   font-size: 20px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.browsing-history__priceStack span {
+  color: #8d998f;
+  font-size: 12px;
+  line-height: 1.2;
+  text-decoration: line-through;
+}
+
+.browsing-history__footer > div {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.browsing-history__mobileAction {
+  display: none;
 }
 
 .browsing-history__empty {
@@ -370,7 +417,8 @@
 
 .browsing-history--es .browsing-history__footer .ant-btn,
 .browsing-history--es .browsing-history__tools .ant-btn,
-.browsing-history--es .browsing-history__nextAction .ant-btn {
+.browsing-history--es .browsing-history__nextAction .ant-btn,
+.browsing-history--es .browsing-history__mobileAction .ant-btn {
   min-height: 40px;
   white-space: normal;
 }
@@ -393,6 +441,7 @@
   .browsing-history {
     width: calc(100% - 16px);
     padding-top: 14px;
+    padding-bottom: 112px;
   }
 
   .browsing-history__hero {
@@ -444,6 +493,72 @@
 
   .browsing-history__footer > div {
     justify-content: space-between;
+  }
+
+  .browsing-history__signals {
+    min-height: 0;
+  }
+
+  .browsing-history__priceStack {
+    align-self: flex-start;
+  }
+
+  .browsing-history__mobileAction {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(150px, 1.05fr);
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid #e4ebe4;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 -10px 26px rgba(18, 71, 52, 0.14);
+    backdrop-filter: blur(12px);
+  }
+
+  .browsing-history__mobileAction--options,
+  .browsing-history__mobileAction--urgent {
+    border-top-color: #ffd8bf;
+  }
+
+  .browsing-history__mobileAction > span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .browsing-history__mobileAction > span > span,
+  .browsing-history__mobileAction small {
+    color: #627064;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .browsing-history__mobileAction strong {
+    min-width: 0;
+    overflow: hidden;
+    color: #173f2b;
+    font-size: 13px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .browsing-history__mobileAction .ant-btn {
+    min-height: 48px;
+    border-radius: 8px;
+    font-weight: 800;
+    white-space: normal;
+    line-height: 1.15;
   }
 
   .browsing-history--es .browsing-history__footer > div .ant-btn {

@@ -284,6 +284,7 @@ const Checkout: React.FC = () => {
     const quantity = Number(item.quantity);
     return sum + toSafeMoney(item.price) * (Number.isFinite(quantity) ? Math.max(1, Math.floor(quantity)) : 1);
   }, 0);
+  const checkoutItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
     const token = getLocalStorageItem('token');
@@ -462,7 +463,7 @@ const Checkout: React.FC = () => {
       key: 'items',
       ready: cartItems.length > 0,
       label: t('pages.checkout.readinessItems'),
-      text: t('pages.checkout.readinessItemsText', { count: cartItems.reduce((sum, item) => sum + item.quantity, 0) }),
+      text: t('pages.checkout.readinessItemsText', { count: checkoutItemCount }),
     },
     {
       key: 'address',
@@ -982,6 +983,35 @@ const Checkout: React.FC = () => {
         ))}
       </section>
 
+      <section className={checkoutNextAction ? 'checkout-page__confirmationBand' : 'checkout-page__confirmationBand checkout-page__confirmationBand--ready'} aria-label={t('pages.checkout.readinessTitle')}>
+        <div className="checkout-page__confirmationScore">
+          <Progress type="circle" percent={checkoutReadinessScore} size={58} strokeColor="#124734" />
+          <span>
+            <Text strong>{checkoutNextAction ? t('pages.checkout.nextActionTitle') : t('pages.checkout.nextActionReadyTitle')}</Text>
+            <Text type="secondary">{checkoutNextAction ? checkoutNextAction.text : t('pages.checkout.nextActionReadyText')}</Text>
+          </span>
+        </div>
+        <div className="checkout-page__confirmationFacts">
+          <span>
+            <Text type="secondary">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</Text>
+            <Text strong>{formatMoney(payableAmount)}</Text>
+          </span>
+          <span>
+            <Text type="secondary">{t('pages.checkout.paymentMethod')}</Text>
+            <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
+          </span>
+        </div>
+        <Button
+          type="primary"
+          className="checkout-page__confirmationButton"
+          onClick={checkoutNextAction ? handleCheckoutNextAction : () => form.submit()}
+          loading={submitting}
+          disabled={!checkoutNextAction && checkoutSubmitDisabled}
+        >
+          {checkoutNextAction ? checkoutNextActionLabel : t('pages.checkout.submitWithAmount', { amount: formatMoney(payableAmount) })}
+        </Button>
+      </section>
+
       <div className="checkout-page__trustBar" aria-label={t('pages.checkout.trustTitle')}>
         <div className="checkout-page__trustItem">
           <SafetyCertificateOutlined />
@@ -1219,26 +1249,28 @@ const Checkout: React.FC = () => {
                     }}
                   />
                 }
-                title={item.productName}
+                title={<button type="button" className="checkout-page__itemLink" onClick={() => navigate(`/products/${item.productId}`)}>{item.productName}</button>}
                 description={
-                  <Space direction="vertical" size={0}>
+                  <div className="checkout-page__itemDescription">
                     {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
                     {getCartItemLowStockCount(item) !== null ? (
                       <Text type="warning" className="checkout-page__urgency">
                         {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
                       </Text>
                     ) : null}
-                    <Text type="secondary">{formatMoney(item.price)} x {item.quantity}</Text>
-                  </Space>
+                    <div className="checkout-page__itemCommerce">
+                      <Text type="secondary">{formatMoney(item.price)} x {item.quantity}</Text>
+                      <Text strong>{formatMoney(item.price * item.quantity)}</Text>
+                    </div>
+                  </div>
                 }
               />
-              <Text strong className="checkout-page__itemTotal">{formatMoney(item.price * item.quantity)}</Text>
             </List.Item>
           )}
         />
         <Divider />
         <div className="checkout-page__summaryLine">
-          <Text>{t('pages.checkout.itemSummary', { count: cartItems.reduce((sum, item) => sum + item.quantity, 0) })}</Text>
+          <Text>{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</Text>
           <Text strong className="checkout-page__summaryTotal"> {formatMoney(cartTotal)}</Text>
         </div>
       </Card>
@@ -1363,7 +1395,7 @@ const Checkout: React.FC = () => {
         <Card id="checkout-payment-card" title={t('pages.payment.title')}>
           <div className="checkout-page__submitReview">
             <div>
-              <Text type="secondary">{t('pages.checkout.itemSummary', { count: cartItems.reduce((sum, item) => sum + item.quantity, 0) })}</Text>
+              <Text type="secondary">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</Text>
               <Text strong>{formatMoney(payableAmount)}</Text>
             </div>
             <div>
@@ -1390,6 +1422,15 @@ const Checkout: React.FC = () => {
               {t('pages.checkout.submitWithAmount', { amount: formatMoney(payableAmount) })}
             </Button>
           </Form.Item>
+          <div className="checkout-page__mobilePayBar" aria-label={t('pages.checkout.paymentConfidenceTitle')}>
+            <span>
+              <Text type="secondary">{t('pages.checkout.payable')}</Text>
+              <Text strong>{formatMoney(payableAmount)}</Text>
+            </span>
+            <Button type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled}>
+              {t('pages.checkout.submitWithAmount', { amount: formatMoney(payableAmount) })}
+            </Button>
+          </div>
         </Card>
       </Form>
     </div>

@@ -2132,9 +2132,115 @@
   background: #f8fcf9;
 }
 
+.product-purchase-readiness {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #dfe9e2;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(18, 71, 52, 0.06);
+}
+
+.product-purchase-readiness__item {
+  min-width: 0;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: #f8fcf9;
+}
+
+.product-purchase-readiness__item--pending {
+  border-color: #ffd8bf;
+  background: #fff7f0;
+}
+
+.product-purchase-readiness__icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #124734;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.product-purchase-readiness__item--pending .product-purchase-readiness__icon {
+  background: #ee4d2d;
+}
+
+.product-purchase-readiness__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.product-purchase-readiness__copy .ant-typography {
+  min-width: 0;
+  display: block;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.product-purchase-readiness__copy .ant-typography:first-child {
+  color: #173f2b;
+  font-size: 12px;
+}
+
+.product-purchase-readiness__copy .ant-typography:last-child {
+  font-size: 11px;
+}
+
+.product-mobile-buybar__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #eaf4ef;
+  color: #124734 !important;
+}
+
+.product-mobile-buybar__status--attention {
+  background: #fff7f0;
+  color: #d63f24 !important;
+}
+
+.product-mobile-buybar__status .anticon {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
 @media (max-width: 768px) {
   .product-detail-page .product-detail-main-image {
     contain-intrinsic-size: 100vw 100vw;
+  }
+
+  .product-purchase-readiness {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 8px;
+  }
+
+  .product-purchase-readiness__item {
+    min-height: 64px;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .product-purchase-readiness__icon {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
   }
 
   .product-mobile-buybar {

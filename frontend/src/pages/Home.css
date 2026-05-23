@@ -1267,6 +1267,54 @@
   text-decoration: line-through;
 }
 
+.shopee-product__signalRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.shopee-product__signal {
+  min-width: 0;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid rgba(18, 71, 52, 0.08);
+  border-radius: 999px;
+  background: #f8fcf9;
+  color: #4f5d52;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.shopee-product__signal .anticon {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
+.shopee-product__signal--deal {
+  border-color: rgba(238, 77, 45, 0.18);
+  background: #fff4ed;
+  color: #c73719;
+}
+
+.shopee-product__signal--urgent {
+  border-color: rgba(207, 19, 34, 0.2);
+  background: #fff1f0;
+  color: #b42318;
+}
+
+.shopee-product__signal--ready {
+  border-color: rgba(18, 71, 52, 0.12);
+  background: #eaf4ef;
+  color: #124734;
+}
+
 /* Social proof badges on cards */
 .shopee-product__socialProof {
   display: flex;

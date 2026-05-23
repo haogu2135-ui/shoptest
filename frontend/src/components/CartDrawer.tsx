@@ -426,6 +426,47 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     dispatchDomEvent('shop:cart-updated', { items: nextItems });
   };
 
+  const drawerNextAction = (() => {
+    if (items.length === 0) {
+      return null;
+    }
+
+    if (blockedCount > 0) {
+      return {
+        tone: 'attention',
+        icon: <ClockCircleOutlined />,
+        title: t('pages.cart.nextActionClearTitle'),
+        text: t('pages.cart.nextActionClearText', { count: blockedCount }),
+        label: t('pages.cart.drawerClearBlocked'),
+        onClick: clearBlockedItems,
+      };
+    }
+
+    if (checkoutItems.length > 0 && benefitTarget) {
+      return {
+        tone: 'boost',
+        icon: <ShoppingOutlined />,
+        title: benefitTarget.reason === 'gift'
+          ? t('pages.cart.nextActionGiftTitle')
+          : t('pages.cart.nextActionShippingTitle'),
+        text: benefitTarget.reason === 'gift'
+          ? t('pages.cart.nextActionGiftText', { amount: formatMoney(benefitTarget.remainingAmount) })
+          : t('pages.cart.nextActionShippingText', { amount: formatMoney(benefitTarget.remainingAmount) }),
+        label: t('pages.cart.nextActionFindAddOn'),
+        onClick: () => navigate('/products'),
+      };
+    }
+
+    return {
+      tone: 'ready',
+      icon: <CheckCircleOutlined />,
+      title: t('pages.cart.nextActionCheckoutTitle'),
+      text: t('pages.cart.nextActionCheckoutText', { amount: formatMoney(subtotal) }),
+      label: t('pages.cart.checkout'),
+      onClick: () => goCheckout(),
+    };
+  })();
+
   return (
     <Drawer
       title={t('pages.cart.yourCart')}
@@ -467,6 +508,24 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           <Text type="secondary" className="cart-drawer__shippingGift">{t('pages.cart.drawerGiftUnlocked')}</Text>
         ) : null}
       </div>
+
+      {drawerNextAction ? (
+        <section className={`cart-drawer__nextAction cart-drawer__nextAction--${drawerNextAction.tone}`} aria-label={t('pages.cart.nextActionEyebrow')}>
+          <span className="cart-drawer__nextActionIcon">{drawerNextAction.icon}</span>
+          <span className="cart-drawer__nextActionCopy">
+            <Text strong>{drawerNextAction.title}</Text>
+            <Text type="secondary">{drawerNextAction.text}</Text>
+          </span>
+          <Button
+            size="small"
+            type={drawerNextAction.tone === 'ready' ? 'primary' : 'default'}
+            onClick={drawerNextAction.onClick}
+            disabled={checkoutSubmitting}
+          >
+            {drawerNextAction.label}
+          </Button>
+        </section>
+      ) : null}
 
       {blockedCount > 0 ? (
         <div className="cart-drawer__unavailable">
@@ -557,16 +616,22 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                         {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
                       </Tag>
                     ) : null}
-                    <Text>{formatMoney(item.price)}</Text>
-                    <InputNumber
-                      min={1}
-                      max={item.stock ?? undefined}
-                      size="small"
-                      value={item.quantity}
-                      disabled={!isAvailable(item)}
-                      status={updatingQuantityIds[item.id] ? 'warning' : undefined}
-                      onChange={(value) => updateQuantity(item, value || 1)}
-                    />
+                    <div className="cart-drawer__itemCommerce">
+                      <span className="cart-drawer__itemPrice">
+                        <Text>{formatMoney(item.price)}</Text>
+                        <Text type="secondary">x {item.quantity}</Text>
+                      </span>
+                      <InputNumber
+                        min={1}
+                        max={item.stock ?? undefined}
+                        size="small"
+                        value={item.quantity}
+                        disabled={!isAvailable(item)}
+                        status={updatingQuantityIds[item.id] ? 'warning' : undefined}
+                        onChange={(value) => updateQuantity(item, value || 1)}
+                      />
+                      <Text strong className="cart-drawer__lineTotal">{formatMoney(item.price * item.quantity)}</Text>
+                    </div>
                     {updatingQuantityIds[item.id] ? (
                       <Text type="secondary" className="cart-drawer__syncText">
                         {t('pages.cart.drawerSyncingQuantity', { count: 1 })}

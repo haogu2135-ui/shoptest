@@ -844,6 +844,15 @@ const ProductList: React.FC = () => {
       isQuickAddReady(heroProduct) ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded'),
     ].filter(Boolean)
     : [];
+  const mobileHeroSignal = heroProduct
+    ? [
+      formatMoney(getPrice(heroProduct)),
+      isQuickAddReady(heroProduct) ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded'),
+      getLowStockCount(heroProduct.stock) !== null
+        ? t('pages.productList.cardLowStock', { count: getLowStockCount(heroProduct.stock) as number })
+        : '',
+    ].filter(Boolean).join(' / ')
+    : t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount });
   const productListGuideText = activeFilterCount > 0
     ? t('pages.productList.guideRefineResults')
     : productListInsights.bestValueCount > 0
@@ -1194,8 +1203,9 @@ const ProductList: React.FC = () => {
           {!loading && !loadFailed ? (
             <section className="product-list__mobileConversionBar" aria-label={t('pages.productList.insightTitle')}>
               <div className="product-list__mobileConversionStats">
-                <strong>{t('pages.productList.count', { count: filteredProducts.length })}</strong>
-                <span>{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</span>
+                <span className="product-list__mobileConversionEyebrow">{t('pages.productList.viewPick')}</span>
+                <strong>{heroProduct?.name || t('pages.productList.count', { count: filteredProducts.length })}</strong>
+                <span>{mobileHeroSignal}</span>
               </div>
               <div className="product-list__mobileConversionActions">
                 <Button icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
@@ -1204,8 +1214,22 @@ const ProductList: React.FC = () => {
                 <Button onClick={() => applySort('discount-desc')}>
                   {t('pages.productList.shopBestDeals')}
                 </Button>
-                <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => applySort('quick-add-desc')}>
-                  {t('pages.productList.shopQuickAdd')}
+                <Button
+                  type="primary"
+                  icon={<ShoppingCartOutlined />}
+                  disabled={!heroProduct}
+                  onClick={(event) => {
+                    if (!heroProduct) return;
+                    if (isQuickAddReady(heroProduct)) {
+                      openQuickAdd(event, heroProduct);
+                      return;
+                    }
+                    openProductDetail(heroProduct.id);
+                  }}
+                >
+                  {heroProduct && !isQuickAddReady(heroProduct)
+                    ? t('pages.productList.chooseOptionsAction')
+                    : t('pages.productList.addToCart')}
                 </Button>
               </div>
             </section>

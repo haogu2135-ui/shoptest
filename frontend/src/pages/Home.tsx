@@ -760,6 +760,9 @@ const Home: React.FC = () => {
     const imageWidth = compact ? 360 : 520;
     const isSoldOut = product.stock !== undefined && product.stock <= 0;
     const isWishlisted = wishlistedProductIds.has(product.id);
+    const savingsAmount = Math.max(0, Number(product.originalPrice || 0) - getPrice(product));
+    const quickAddReady = !isSoldOut && !needsOptionSelection(product);
+    const lowStockCount = product.stock !== undefined && product.stock > 0 && product.stock <= 5 ? product.stock : null;
     const stockBadgeText = product.stock !== undefined && product.stock > 0
       ? product.stock <= 5
         ? t('pages.cart.lowStockLeft', { count: product.stock })
@@ -851,6 +854,24 @@ const Home: React.FC = () => {
         </span>
         {product.originalPrice && product.originalPrice > getPrice(product) ? (
           <span className="shopee-product__original">{formatPrice(product.originalPrice)}</span>
+        ) : null}
+        {!isSoldOut ? (
+          <span className="shopee-product__signalRow">
+            {savingsAmount > 0 ? (
+              <span className="shopee-product__signal shopee-product__signal--deal">
+                <FireOutlined />
+                {t('pages.productList.bestValueSavings', { amount: formatPrice(savingsAmount) })}
+              </span>
+            ) : null}
+            <span className={lowStockCount !== null ? 'shopee-product__signal shopee-product__signal--urgent' : 'shopee-product__signal shopee-product__signal--ready'}>
+              {lowStockCount !== null ? <FireOutlined /> : <CheckCircleOutlined />}
+              {lowStockCount !== null
+                ? t('pages.productList.cardLowStock', { count: lowStockCount })
+                : quickAddReady
+                  ? t('pages.productList.cardQuickReady')
+                  : t('pages.productList.cardOptionsNeeded')}
+            </span>
+          </span>
         ) : null}
         {viewedAt ? (
           <span className="shopee-product__lastViewed">{t('home.viewedAt', { time: formatViewedAt(viewedAt) })}</span>

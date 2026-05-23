@@ -345,8 +345,13 @@ const BrowsingHistory: React.FC = () => {
           {filteredProducts.map((product) => {
             const price = product.effectivePrice ?? product.price;
             const viewedAt = viewedAtById.get(product.id);
+            const productReadyToCart = isPurchasable(product) && !needsOptionSelection(product);
+            const productNeedsOptions = isPurchasable(product) && needsOptionSelection(product);
+            const productLowStock = getLowStockCount(product.stock, 1) !== null;
+            const productDeal = isDealProduct(product);
+            const originalPrice = Number(product.originalPrice || 0);
             return (
-              <article className="browsing-history__item" key={product.id}>
+              <article className={`browsing-history__item${productReadyToCart ? ' browsing-history__item--ready' : ''}${productLowStock ? ' browsing-history__item--urgent' : ''}`} key={product.id}>
                 <button type="button" className="browsing-history__image" onClick={() => navigate(`/products/${product.id}`)}>
                   <img
                     src={resolveHistoryImage(product.imageUrl)}
@@ -367,17 +372,26 @@ const BrowsingHistory: React.FC = () => {
                       <span>{formatViewedAt(viewedAt)}</span>
                       {product.brand ? <Tag>{product.brand}</Tag> : null}
                     </div>
+                    <div className="browsing-history__signals">
+                      {productDeal ? <Tag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</Tag> : null}
+                      {productLowStock ? <Tag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</Tag> : null}
+                      {productNeedsOptions ? <Tag color="blue">{t('pages.browsingHistory.resumeProduct')}</Tag> : null}
+                      {!isPurchasable(product) ? <Tag color="red">{t('pages.browsingHistory.unavailable')}</Tag> : null}
+                    </div>
                   </div>
                   <div className="browsing-history__footer">
-                    <strong>{formatMoney(price)}</strong>
+                    <span className="browsing-history__priceStack">
+                      <strong>{formatMoney(price)}</strong>
+                      {originalPrice > Number(price || 0) ? <span>{formatMoney(originalPrice)}</span> : null}
+                    </span>
                     <div>
-                      {isPurchasable(product) && !needsOptionSelection(product) ? (
+                      {productReadyToCart ? (
                         <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => addHistoryProductToCart(product)}>
                           {t('pages.browsingHistory.addToCart')}
                         </Button>
                       ) : null}
-                      <Button icon={<ShoppingOutlined />} onClick={() => navigate(`/products/${product.id}`)}>
-                        {t('pages.browsingHistory.viewProduct')}
+                      <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShoppingOutlined />} onClick={() => navigate(`/products/${product.id}`)}>
+                        {productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}
                       </Button>
                       <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeItem(product.id)} />
                     </div>
@@ -396,6 +410,20 @@ const BrowsingHistory: React.FC = () => {
           </Empty>
         </section>
       )}
+      <div className={`browsing-history__mobileAction browsing-history__mobileAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>
+        <span>
+          <span>{t('pages.browsingHistory.nextActionEyebrow')}</span>
+          <strong>{historyNextAction.title}</strong>
+          <small>{t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}</small>
+        </span>
+        <Button
+          type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
+          icon={historyNextAction.tone === 'ready' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}
+          onClick={historyNextAction.action}
+        >
+          {historyNextAction.label}
+        </Button>
+      </div>
     </main>
   );
 };

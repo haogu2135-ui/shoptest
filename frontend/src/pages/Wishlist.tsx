@@ -453,6 +453,20 @@ const Wishlist: React.FC = () => {
           );
         })}
       </Row>
+      <div className={`wishlist-page__mobileAction wishlist-page__mobileAction--${wishlistNextAction.tone}`} aria-label={t('pages.wishlist.nextActionEyebrow')}>
+        <span>
+          <Text type="secondary">{t('pages.wishlist.nextActionEyebrow')}</Text>
+          <Text strong>{wishlistNextAction.title}</Text>
+          <Text type="secondary">{t('pages.wishlist.readyValue', { amount: formatMoney(wishlistStats.readyValue) })}</Text>
+        </span>
+        <Button
+          type={wishlistNextAction.tone === 'ready' ? 'primary' : 'default'}
+          icon={wishlistNextAction.tone === 'options' ? <SettingOutlined /> : <ShoppingCartOutlined />}
+          onClick={wishlistNextAction.action}
+        >
+          {wishlistNextAction.label}
+        </Button>
+      </div>
     </div>
   );
 };

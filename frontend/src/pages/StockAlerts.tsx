@@ -275,6 +275,28 @@ const StockAlerts: React.FC = () => {
           </section>
         ) : null}
 
+        {alerts.length > 0 ? (
+          <div className={`stock-alerts__mobileAction stock-alerts__mobileAction--${restockNextAction.tone}`}>
+            <div className="stock-alerts__mobileActionCopy">
+              <span>{restockNextAction.title}</span>
+              <strong>
+                {restockNextAction.tone === 'ready'
+                  ? t('pages.stockAlerts.directReady', { count: stockAlertInsights.directAddItems.length })
+                  : restockNextAction.tone === 'options'
+                    ? t('pages.stockAlerts.optionReady', { count: stockAlertInsights.optionItems.length })
+                    : t('pages.stockAlerts.stillWatchingCount', { count: stockAlertInsights.waitingItems })}
+              </strong>
+            </div>
+            <Button
+              type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
+              icon={<ShoppingCartOutlined />}
+              onClick={restockNextAction.action}
+            >
+              {restockNextAction.label}
+            </Button>
+          </div>
+        ) : null}
+
         {alerts.length === 0 ? (
           <Empty description={t('pages.stockAlerts.empty')}>
             <Button type="primary" onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
@@ -286,9 +308,16 @@ const StockAlerts: React.FC = () => {
             renderItem={(item) => {
               const product = item.product;
               const ready = isBackInStock(product);
+              const needsSelection = Boolean(product && needsOptionSelection(product));
+              const lowStock = Boolean(ready && product?.stock !== undefined && product.stock > 0 && product.stock <= 5);
               return (
                 <List.Item
-                  className={ready ? 'stock-alerts__item' : 'stock-alerts__item stock-alerts__item--waiting'}
+                  className={[
+                    'stock-alerts__item',
+                    ready ? 'stock-alerts__item--ready' : 'stock-alerts__item--waiting',
+                    lowStock ? 'stock-alerts__item--lowStock' : '',
+                    needsSelection ? 'stock-alerts__item--options' : '',
+                  ].filter(Boolean).join(' ')}
                   actions={[
                     <Button
                       key="add"
@@ -299,7 +328,7 @@ const StockAlerts: React.FC = () => {
                       disabled={!ready}
                     >
                       {ready
-                        ? needsOptionSelection(product)
+                        ? needsSelection
                           ? t('pages.stockAlerts.selectOptions')
                           : t('pages.stockAlerts.addToCart')
                         : t('pages.productList.soldOut')}
@@ -328,17 +357,21 @@ const StockAlerts: React.FC = () => {
                     }
                     title={<Link to={`/products/${item.productId}`}>{product?.name || item.productName}</Link>}
                     description={
-                      <Space direction="vertical" size={4}>
-                        <Text type="secondary">{t('pages.stockAlerts.createdAt', { time: new Date(item.createdAt).toLocaleString(dateLocale) })}</Text>
+                      <div className="stock-alerts__itemDetails">
+                        <Text type="secondary" className="stock-alerts__watchTime">
+                          {t('pages.stockAlerts.createdAt', { time: new Date(item.createdAt).toLocaleString(dateLocale) })}
+                        </Text>
                         {product ? (
-                          <>
+                          <div className="stock-alerts__itemSignalRow">
                             <Text strong className="stock-alerts__price">{formatMoney(product.effectivePrice ?? product.price)}</Text>
                             <Tag color={ready ? 'green' : 'default'}>
                               {ready ? t('pages.productDetail.enough') : t('pages.productList.soldOut')}
                             </Tag>
-                          </>
+                            {lowStock ? <Tag color="volcano">{t('pages.stockAlerts.lowStockReady')}</Tag> : null}
+                            {ready && needsSelection ? <Tag color="gold">{t('pages.stockAlerts.selectOptions')}</Tag> : null}
+                          </div>
                         ) : null}
-                      </Space>
+                      </div>
                     }
                   />
                 </List.Item>

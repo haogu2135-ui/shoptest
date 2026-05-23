@@ -807,6 +807,50 @@ const ProductDetail: React.FC = () => {
   const mobileBuybarPrice = formatMoney(displayPrice);
   const mobileBuybarStatus = mobilePurchaseStatus;
   const shouldShowDecisionChecklist = optionsMissing || hasUnavailableSelectedVariant || isOutOfStock;
+  const purchaseReadinessItems = [
+    {
+      key: 'selection',
+      icon: <CheckCircleOutlined />,
+      ready: !purchaseSelectionBlocked,
+      title: optionGroups.length === 0
+        ? t('pages.productDetail.decisionNoOptionsTitle')
+        : purchaseSelectionBlocked
+          ? t('pages.productDetail.decisionOptionsMissingTitle')
+          : t('pages.productDetail.decisionOptionsReadyTitle'),
+      text: optionGroups.length === 0
+        ? t('pages.productDetail.decisionNoOptionsText')
+        : hasUnavailableSelectedVariant
+          ? t('pages.productDetail.selectedVariantUnavailable')
+          : hasCompleteOptions
+            ? t('pages.productDetail.selectedVariantStock', { stock: stockLabel })
+            : t('pages.productDetail.selectedOptionsEmpty'),
+    },
+    {
+      key: 'stock',
+      icon: <SafetyCertificateOutlined />,
+      ready: !isOutOfStock,
+      title: isOutOfStock ? t('pages.productDetail.decisionStockOutTitle') : t('pages.productDetail.decisionStockReadyTitle'),
+      text: isOutOfStock
+        ? t('pages.productDetail.decisionStockOutText')
+        : t('pages.productDetail.decisionStockReadyText', { stock: stockLabel }),
+    },
+    {
+      key: 'delivery',
+      icon: <TruckOutlined />,
+      ready: Boolean(deliveryPromise.enabled),
+      title: t('pages.productDetail.trustShippingTitle'),
+      text: deliveryPromise.enabled
+        ? t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })
+        : t('pages.productDetail.defaultShipping'),
+    },
+    {
+      key: 'value',
+      icon: <ThunderboltOutlined />,
+      ready: true,
+      title: purchaseSavings > 0 ? t('pages.productDetail.purchaseSavings') : t('pages.productDetail.purchaseSubtotal'),
+      text: purchaseSavings > 0 ? formatMoney(purchaseSavings) : formatMoney(purchaseSubtotal),
+    },
+  ];
 
   const selectGalleryImage = (image: string, index: number) => {
     setSelectedImage(image);
@@ -1074,6 +1118,22 @@ const ProductDetail: React.FC = () => {
                     {deliveryPromise.enabled ? <span>{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</span> : null}
                     {purchaseSavings > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: {formatMoney(purchaseSavings)}</span> : null}
                   </div>
+                </div>
+
+                <div className="product-purchase-readiness" role="list" aria-label={t('pages.productDetail.decisionTitle')}>
+                  {purchaseReadinessItems.map((item) => (
+                    <div
+                      key={item.key}
+                      role="listitem"
+                      className={`product-purchase-readiness__item${item.ready ? ' product-purchase-readiness__item--ready' : ' product-purchase-readiness__item--pending'}`}
+                    >
+                      <span className="product-purchase-readiness__icon">{item.icon}</span>
+                      <span className="product-purchase-readiness__copy">
+                        <Text strong>{item.title}</Text>
+                        <Text type="secondary">{item.text}</Text>
+                      </span>
+                    </div>
+                  ))}
                 </div>
 
                 <div
@@ -1645,7 +1705,10 @@ const ProductDetail: React.FC = () => {
       <div className="product-mobile-buybar">
         <div className="product-mobile-buybar__meta" title={`${mobileBuybarPrice} - ${mobileBuybarStatus}`}>
           <strong>{mobileBuybarPrice}</strong>
-          <span>{mobileBuybarStatus}</span>
+          <span className={`product-mobile-buybar__status${purchaseSelectionBlocked || isOutOfStock ? ' product-mobile-buybar__status--attention' : ''}`}>
+            {purchaseSelectionBlocked || isOutOfStock ? <BellOutlined /> : <CheckCircleOutlined />}
+            {mobileBuybarStatus}
+          </span>
         </div>
         <button type="button" className="product-mobile-buybar__tool" onClick={() => navigate('/')}>
           <HomeOutlined />

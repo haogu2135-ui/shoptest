@@ -513,6 +513,26 @@ const CouponCenter: React.FC = () => {
       </nav>
 
       <div className={hideMobileSecondaryAction ? 'coupon-center-page__mobileActionBar coupon-center-page__mobileActionBar--single' : 'coupon-center-page__mobileActionBar'}>
+        <div className="coupon-center-page__mobileActionInsight">
+          <span>{couponNextAction.title}</span>
+          <strong>
+            {hasCouponTarget
+              ? couponCartGap > 0
+                ? formatMoney(couponCartGap)
+                : t('pages.coupons.useNext')
+              : formatMoney(cartSubtotal)}
+          </strong>
+        </div>
+        <div
+          className="coupon-center-page__mobileActionProgress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={couponThresholdProgress}
+          style={{ ['--coupon-mobile-progress' as string]: `${couponThresholdProgress}%` }}
+        >
+          <span />
+        </div>
         <Button
           type="primary"
           loading={showClaimCta ? claimingAll : false}
