@@ -153,3 +153,217 @@
     width: 100%;
   }
 }
+
+/* Final mobile logistics carrier edge-fit pass */
+.logistics-carrier-page,
+.logistics-carrier-page *,
+.logistics-carrier-page *::before,
+.logistics-carrier-page *::after {
+  box-sizing: border-box;
+}
+
+.logistics-carrier-page,
+.logistics-carrier-page__intro,
+.logistics-carrier-page__health,
+.logistics-carrier-page__healthCopy,
+.logistics-carrier-page__score,
+.logistics-carrier-page__healthGrid,
+.logistics-carrier-page__healthItem,
+.logistics-carrier-page .ant-card,
+.logistics-carrier-page .ant-card-body,
+.logistics-carrier-page .ant-table-wrapper,
+.logistics-carrier-page .ant-space,
+.logistics-carrier-page .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.logistics-carrier-page {
+  overflow-x: clip;
+}
+
+.logistics-carrier-page__sortInput {
+  width: 100%;
+}
+
+.logistics-carrier-page .ant-table-wrapper {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.logistics-carrier-page .ant-table {
+  min-width: max-content;
+}
+
+.logistics-carrier-page__intro,
+.logistics-carrier-page__health,
+.logistics-carrier-page__healthCopy,
+.logistics-carrier-page__healthItem,
+.logistics-carrier-page .ant-btn,
+.logistics-carrier-page .ant-tag,
+.logistics-carrier-page .ant-typography,
+.logistics-carrier-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .logistics-carrier-page__intro {
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .logistics-carrier-page__intro .ant-card-body {
+    padding: 12px;
+  }
+
+  .logistics-carrier-page__intro .ant-space {
+    align-items: stretch;
+    gap: 8px !important;
+  }
+
+  .logistics-carrier-page__intro .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .logistics-carrier-page__health {
+    gap: 12px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .logistics-carrier-page__score {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .logistics-carrier-page h4.ant-typography {
+    font-size: 19px;
+    line-height: 1.25;
+  }
+
+  .logistics-carrier-page__healthCopy h5.ant-typography {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .logistics-carrier-page__score .ant-progress-circle {
+    width: 76px !important;
+    height: 76px !important;
+  }
+
+  .logistics-carrier-page__healthGrid {
+    display: flex;
+    gap: 8px;
+    margin-inline: -14px;
+    padding: 0 14px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .logistics-carrier-page__healthItem {
+    flex: 0 0 138px;
+    min-height: 82px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .logistics-carrier-page__healthItem strong {
+    font-size: 21px;
+  }
+
+  .logistics-carrier-page .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  .logistics-carrier-page__health {
+    padding: 12px;
+  }
+
+  .logistics-carrier-page__healthGrid {
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+
+  .logistics-carrier-page__healthItem {
+    flex-basis: 132px;
+  }
+
+  .logistics-carrier-page .ant-table-cell .ant-space {
+    gap: 6px !important;
+  }
+
+  .logistics-carrier-page .ant-table-cell .ant-btn {
+    min-height: 30px;
+    padding-inline: 8px;
+    white-space: normal;
+  }
+}
+
+/* Final mobile logistics carrier editor modal pass */
+@media (max-width: 560px) {
+  .logistics-carrier-page__editorModal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+    top: max(8px, env(safe-area-inset-top));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .logistics-carrier-page__editorModal,
+  .logistics-carrier-page__editorModal * {
+    box-sizing: border-box;
+  }
+
+  .logistics-carrier-page__editorModal .ant-modal-content {
+    max-height: calc(100dvh - 18px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .logistics-carrier-page__editorModal .ant-modal-header,
+  .logistics-carrier-page__editorModal .ant-modal-body,
+  .logistics-carrier-page__editorModal .ant-modal-footer {
+    padding-inline: 12px;
+  }
+
+  .logistics-carrier-page__editorModal .ant-modal-body {
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .logistics-carrier-page__editorModal .ant-form-item,
+  .logistics-carrier-page__editorModal .ant-form-item-control,
+  .logistics-carrier-page__editorModal .ant-input,
+  .logistics-carrier-page__editorModal .ant-input-number,
+  .logistics-carrier-page__editorModal .ant-select {
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .logistics-carrier-page__editorModal .ant-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .logistics-carrier-page__editorModal .ant-modal-footer .ant-btn {
+    flex: 1 1 128px;
+    min-height: 38px;
+    margin-inline-start: 0;
+    white-space: normal;
+  }
+}

@@ -351,7 +351,7 @@ const StockAlerts: React.FC = () => {
                           width={72}
                           height={72}
                           preview={false}
-                          style={{ objectFit: 'cover', borderRadius: 8 }}
+                          className="stock-alerts__image"
                         />
                       </Link>
                     }

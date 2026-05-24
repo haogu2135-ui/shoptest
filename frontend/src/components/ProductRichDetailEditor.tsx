@@ -12,6 +12,7 @@ import type { ProductDetailBlock } from '../types';
 import { useLanguage } from '../i18n';
 import { imageFallbacks } from '../utils/mediaAssets';
 import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, resolveRichMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
+import './ProductRichDetailEditor.css';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -46,15 +47,15 @@ const RichVideoPreview: React.FC<{ block: ProductDetailBlock; index: number }> =
   }
 
   return (
-    <div style={{ width: 280, maxWidth: '100%', aspectRatio: '16 / 9', overflow: 'hidden', borderRadius: 6, background: '#111' }}>
+    <div className="product-rich-detail-editor__videoPreview">
       {isDirectVideo(videoUrl) ? (
-        <video src={videoUrl} controls style={{ width: '100%', height: '100%' }} />
+        <video src={videoUrl} controls className="product-rich-detail-editor__videoFrame" />
       ) : (
         <iframe
           src={videoUrl}
           title={block.caption || `Rich media preview ${index + 1}`}
           allowFullScreen
-          style={{ width: '100%', height: '100%', border: 0 }}
+          className="product-rich-detail-editor__videoFrame"
         />
       )}
     </div>
@@ -95,8 +96,8 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
   };
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Space wrap>
+    <Space className="product-rich-detail-editor" direction="vertical" size="middle">
+      <Space className="product-rich-detail-editor__toolbar" wrap>
         <Button icon={<FontSizeOutlined />} onClick={() => addBlock('text')}>{t('pages.productAdmin.addRichText')}</Button>
         <Button icon={<FileImageOutlined />} onClick={() => addBlock('image')}>{t('pages.productAdmin.addRichImage')}</Button>
         <Button icon={<VideoCameraOutlined />} onClick={() => addBlock('video')}>{t('pages.productAdmin.addRichVideo')}</Button>
@@ -105,16 +106,17 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
       {blocks.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.productAdmin.richContent')} />
       ) : (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space className="product-rich-detail-editor__blocks" direction="vertical" size="middle">
           {blocks.map((block, index) => (
             <Card
+              className="product-rich-detail-editor__block"
               key={`${block.type}-${index}`}
               size="small"
               title={
-                <Space>
+                <Space className="product-rich-detail-editor__blockTitle">
                   <Select
+                    className="product-rich-detail-editor__typeSelect"
                     value={block.type}
-                    style={{ width: 120 }}
                     options={[
                       { value: 'text', label: t('pages.productAdmin.richText') },
                       { value: 'image', label: t('pages.productAdmin.richImage') },
@@ -126,7 +128,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                 </Space>
               }
               extra={
-                <Space>
+                <Space className="product-rich-detail-editor__blockActions">
                   <Button icon={<ArrowUpOutlined />} disabled={index === 0} onClick={() => moveBlock(index, -1)} />
                   <Button icon={<ArrowDownOutlined />} disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)} />
                   <Button danger icon={<DeleteOutlined />} onClick={() => removeBlock(index)} />
@@ -142,7 +144,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                   onBlur={normalizeBeforeBlur}
                 />
               ) : (
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space className="product-rich-detail-editor__mediaFields" direction="vertical" size="middle">
                   <Input
                     value={block.url}
                     placeholder={block.type === 'image' ? t('pages.productAdmin.richImagePlaceholder') : t('pages.productAdmin.richVideoPlaceholder')}
@@ -157,9 +159,8 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                   {block.type === 'image' && block.url ? (
                     isHttpMediaUrl(block.url) ? (
                       <Image
+                        className="product-rich-detail-editor__imagePreview"
                         src={resolveRichMediaUrl(block.url) || undefined}
-                        width={180}
-                        style={{ borderRadius: 6, objectFit: 'cover' }}
                         fallback={imageFallbacks.media}
                       />
                     ) : (

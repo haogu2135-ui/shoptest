@@ -180,7 +180,7 @@ const CategoryManagement: React.FC = () => {
         url ? (
           <Image src={resolveCategoryImage(url)} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={categoryImageFallback} />
         ) : (
-          <div style={{ width: 56, height: 56, borderRadius: 6, background: '#f2f3f5' }} />
+          <div className="category-management-page__imagePlaceholder" />
         ),
     },
     {
@@ -260,7 +260,7 @@ const CategoryManagement: React.FC = () => {
 
   return (
     <div className={`category-management-page category-management-page--${language}`}>
-      <Title level={3} style={{ marginBottom: 0 }}>
+      <Title level={3} className="category-management-page__title">
         {t('pages.categoryAdmin.title')}
       </Title>
       <Divider />
@@ -325,6 +325,7 @@ const CategoryManagement: React.FC = () => {
       />
 
       <Modal
+        className="category-management-page__editorModal"
         title={editingCategory ? t('pages.categoryAdmin.editTitle') : t('pages.categoryAdmin.addTitle')}
         open={modalVisible}
         onOk={handleSubmit}
@@ -398,7 +399,7 @@ const CategoryManagement: React.FC = () => {
           </Form.Item>
 
           {imagePreviewUrl ? (
-            <div style={{ marginBottom: 16, textAlign: 'center' }}>
+            <div className="category-management-page__preview">
               <Image src={resolveCategoryImage(imagePreviewUrl)} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={categoryImageFallback} />
             </div>
           ) : null}

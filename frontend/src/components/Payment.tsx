@@ -103,9 +103,9 @@ export const Payment: React.FC<PaymentProps> = ({
                 <Radio.Group
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    style={{ width: '100%' }}
+                    className="payment-modal__methodGroup"
                 >
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space direction="vertical" className="payment-modal__methodList">
                         {paymentOptions.map((option) => (
                             <Radio.Button key={option.value} value={option.value} className="payment-modal__method">
                                 <Space>{option.label}</Space>

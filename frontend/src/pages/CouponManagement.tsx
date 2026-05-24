@@ -407,7 +407,7 @@ const CouponManagement: React.FC = () => {
 
       <Table columns={columns} dataSource={coupons} rowKey="id" loading={loading} bordered scroll={{ x: 980 }} pagination={{ pageSize: 10 }} />
 
-      <Modal title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')} open={modalVisible} onOk={submitCoupon} onCancel={() => setModalVisible(false)} confirmLoading={couponSubmitting} width={720}>
+      <Modal className="coupon-management-page__editorModal" title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')} open={modalVisible} onOk={submitCoupon} onCancel={() => setModalVisible(false)} confirmLoading={couponSubmitting} width={720}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.adminCoupons.name')} rules={[{ required: true, message: t('pages.adminCoupons.nameRequired') }]}>
             <Input />
@@ -461,7 +461,7 @@ const CouponManagement: React.FC = () => {
             <Select options={[{ value: 'ACTIVE', label: t('status.ACTIVE') }, { value: 'INACTIVE', label: t('status.INACTIVE') }]} />
           </Form.Item>
           <Form.Item name="validRange" label={t('pages.adminCoupons.validTime')}>
-            <DatePicker.RangePicker showTime style={{ width: '100%' }} />
+            <DatePicker.RangePicker showTime className="coupon-management-page__rangePicker" />
           </Form.Item>
           <Form.Item name="description" label={t('pages.adminCoupons.description')}>
             <Input.TextArea rows={3} />
@@ -469,7 +469,7 @@ const CouponManagement: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal title={grantCoupon ? t('pages.adminCoupons.grantCouponWithName', { name: grantCoupon.name }) : t('pages.adminCoupons.grantCoupon')} open={grantVisible} onOk={submitGrant} onCancel={() => setGrantVisible(false)} confirmLoading={grantSubmitting}>
+      <Modal className="coupon-management-page__grantModal" title={grantCoupon ? t('pages.adminCoupons.grantCouponWithName', { name: grantCoupon.name }) : t('pages.adminCoupons.grantCoupon')} open={grantVisible} onOk={submitGrant} onCancel={() => setGrantVisible(false)} confirmLoading={grantSubmitting}>
         <Form form={grantForm} layout="vertical">
           <Alert
             type="info"

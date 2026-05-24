@@ -492,7 +492,7 @@ const SecurityAuditLogManagement: React.FC = () => {
             value={action}
             onChange={(value) => updateAuditFilters({ action: value, result, resourceType })}
             placeholder={t('pages.auditLogs.action')}
-            style={{ width: 210 }}
+            className="audit-log-page__actionFilter"
             options={auditActionOptions.map((value) => ({ value, label: actionLabel(value) }))}
           />
           <Select
@@ -500,7 +500,7 @@ const SecurityAuditLogManagement: React.FC = () => {
             value={result}
             onChange={(value) => updateAuditFilters({ action, result: value, resourceType })}
             placeholder={t('pages.auditLogs.result')}
-            style={{ width: 140 }}
+            className="audit-log-page__resultFilter"
             options={[
               { value: 'SUCCESS', label: t('pages.auditLogs.success') },
               { value: 'FAILURE', label: t('pages.auditLogs.failure') },
@@ -511,7 +511,7 @@ const SecurityAuditLogManagement: React.FC = () => {
             value={resourceType}
             onChange={(value) => updateAuditFilters({ action, result, resourceType: value })}
             placeholder={t('pages.auditLogs.resource')}
-            style={{ width: 150 }}
+            className="audit-log-page__resourceFilter"
             options={['USER', 'ORDER', 'PAYMENT', 'SECURITY_AUDIT_LOG'].map((value) => ({ value, label: resourceLabel(value) }))}
           />
           <Input
@@ -519,7 +519,7 @@ const SecurityAuditLogManagement: React.FC = () => {
             value={actorUsername}
             onChange={(event) => setActorUsername(event.target.value)}
             placeholder={t('pages.auditLogs.actor')}
-            style={{ width: 180 }}
+            className="audit-log-page__actorInput"
           />
           <RangePicker showTime value={range} onChange={setRange} />
           <Button icon={<SearchOutlined />} type="primary" onClick={fetchLogs}>

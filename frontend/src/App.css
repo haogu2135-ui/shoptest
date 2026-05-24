@@ -370,12 +370,33 @@
 }
 
 @media (max-width: 720px) {
+  .shop-app-shell .ant-layout-content {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .shop-app-shell--product-detail .ant-layout-content,
+  .shop-app-shell--checkout-flow .ant-layout-content,
+  .shop-app-shell--auth-flow .ant-layout-content {
+    padding-bottom: 0;
+  }
+
   .app-support-launcher {
-    right: 16px;
-    bottom: calc(76px + env(safe-area-inset-bottom));
-    width: 52px;
-    height: 52px;
-    font-size: 22px;
+    right: 12px;
+    bottom: calc(168px + env(safe-area-inset-bottom));
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-support-launcher {
+    right: calc(10px + env(safe-area-inset-right));
+    bottom: calc(158px + env(safe-area-inset-bottom));
+    width: 46px;
+    height: 46px;
+    display: grid;
+    font-size: 20px;
   }
 }
 
@@ -629,15 +650,65 @@
     overflow: auto;
   }
 
+  @supports (max-height: 100dvh) {
+    .ant-modal-content {
+      max-height: calc(100dvh - 20px);
+    }
+  }
+
+  .ant-modal-wrap {
+    padding: 10px 8px;
+  }
+
+  .ant-modal {
+    top: 0;
+    max-width: calc(100vw - 16px);
+    margin: 0 auto;
+  }
+
+  .ant-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-bottom: 0;
+    padding: 12px 14px;
+    background: #ffffff;
+  }
+
+  .ant-modal-body {
+    overscroll-behavior: contain;
+  }
+
   .ant-modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), #ffffff 34%);
+    box-shadow: 0 -10px 24px rgba(18, 71, 52, 0.08);
   }
 
   .ant-modal-footer .ant-btn {
     width: 100%;
+    min-height: 40px;
     margin-inline-start: 0 !important;
+    border-radius: 999px;
+  }
+
+  .ant-message {
+    top: calc(10px + env(safe-area-inset-top)) !important;
+    padding-inline: 8px;
+  }
+
+  .ant-message-notice-content {
+    max-width: calc(100vw - 24px);
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 1.35;
   }
 
   .ant-table-wrapper .ant-table-thead > tr > th,
@@ -941,7 +1012,7 @@
   max-width: calc(100% - 42px);
   color: #ffffff;
   font-size: 19px;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .shop-footer__ctaCard span {
@@ -960,7 +1031,7 @@
 
 .shop-footer h3 {
   color: #fff7f0;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
 }
 
 .shop-footer a,
@@ -1092,5 +1163,353 @@
 
   .shop-footer__ctaCopy strong {
     font-size: 18px;
+  }
+}
+
+/* Final mobile storefront footer pass */
+.shop-footer a.shop-footer__ctaCard {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .shop-footer {
+    margin-top: 18px;
+    padding: 34px 0 calc(92px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .shop-footer::before {
+    height: 58px;
+  }
+
+  .shop-footer__ctaStrip {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(168px, 52vw);
+    grid-template-columns: none;
+    gap: 10px;
+    margin: 0 -10px 18px 0;
+    overflow-x: auto;
+    padding: 0 10px 4px 0;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent);
+  }
+
+  .shop-footer__ctaStrip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shop-footer__ctaCard {
+    grid-template-columns: 34px minmax(0, 1fr);
+    min-height: 78px;
+    gap: 9px;
+    padding: 12px;
+    border-radius: 18px;
+    scroll-snap-align: start;
+  }
+
+  .shop-footer__ctaCard::after {
+    right: 10px;
+    top: 10px;
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+
+  .shop-footer__ctaIcon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+  .shop-footer__ctaCopy {
+    gap: 3px;
+    padding-right: 18px;
+  }
+
+  .shop-footer__ctaCopy strong {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.15;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .shop-footer__ctaCopy span {
+    font-size: 11px;
+    line-height: 1.25;
+    -webkit-line-clamp: 2;
+  }
+
+  .shop-footer__columns {
+    gap: 18px;
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .shop-footer a,
+  .shop-footer button {
+    min-height: 26px;
+    margin: 4px 0;
+    font-size: 13px;
+  }
+
+  .shop-footer a.shop-footer__ctaCard {
+    display: grid;
+    min-height: 78px;
+    margin: 0;
+  }
+
+  .shop-footer__copy {
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .shop-footer__inner {
+    width: min(100% - 14px, 1240px);
+  }
+
+  .shop-footer__ctaStrip {
+    grid-auto-columns: minmax(154px, 58vw);
+  }
+
+  .shop-footer__ctaCard {
+    min-height: 74px;
+  }
+
+  .shop-footer a.shop-footer__ctaCard {
+    min-height: 74px;
+  }
+}
+
+/* Mobile footer tactile refinement */
+.shop-footer__ctaCard strong {
+  letter-spacing: 0;
+}
+
+@media (max-width: 720px) {
+  .shop-footer__ctaStrip {
+    grid-auto-columns: minmax(172px, 64vw);
+    margin: 0 -10px 16px;
+    padding: 0 10px 5px;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scroll-padding-inline: 10px 22px;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, transparent 0, #000 8px, #000 calc(100% - 28px), transparent);
+  }
+
+  .shop-footer__ctaCard {
+    min-height: 76px;
+    border-radius: 16px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .shop-footer__ctaCard:active {
+    transform: scale(0.98);
+  }
+
+  .shop-footer__columns {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .shop-footer h3 {
+    margin-bottom: 8px;
+    letter-spacing: 0;
+  }
+
+  .shop-footer a,
+  .shop-footer button {
+    min-height: 30px;
+  }
+}
+
+@media (max-width: 360px) {
+  .shop-footer__ctaStrip {
+    grid-auto-columns: minmax(158px, 66vw);
+    gap: 8px;
+  }
+
+  .shop-footer__ctaCard {
+    min-height: 70px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .shop-footer__ctaIcon {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+}
+
+/* Final mobile footer edge-fit pass */
+@media (max-width: 720px) {
+  .shop-footer__ctaStrip {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 16px;
+    padding: 0 4px 5px;
+    scroll-padding-inline: 4px 20px;
+  }
+
+  .shop-footer__ctaCard {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .shop-footer__ctaCopy strong,
+  .shop-footer__ctaCopy span {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 380px) {
+  .shop-footer__ctaStrip {
+    grid-auto-columns: minmax(154px, 62vw);
+  }
+}
+
+/* Global mobile overlay tactile refinement */
+@media (max-width: 720px) {
+  .app-support-launcher {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .app-support-launcher:active {
+    transform: scale(0.94);
+  }
+
+  .support-order-select-popup {
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .support-order-select-popup::-webkit-scrollbar {
+    display: none;
+  }
+
+  .support-order-select-popup .ant-select-item {
+    border-radius: 10px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .app-support-launcher:hover,
+  .app-support-launcher:focus-visible,
+  .customer-support-widget__button:hover,
+  .customer-support-widget__button:focus-visible {
+    transform: none;
+  }
+}
+
+/* Final mobile footer rail target pass */
+@media (max-width: 720px) {
+  .shop-footer__ctaStrip {
+    grid-auto-columns: minmax(148px, 48vw);
+    gap: 8px;
+    padding: 0 2px 6px;
+    scroll-padding-inline: 2px 18px;
+  }
+
+  .shop-footer__ctaCard,
+  .shop-footer a.shop-footer__ctaCard {
+    min-height: 82px;
+  }
+
+  .shop-footer__ctaCard {
+    grid-template-columns: 32px minmax(0, 1fr);
+    padding: 11px 10px;
+  }
+
+  .shop-footer__ctaIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+  }
+
+  .shop-footer__ctaCopy {
+    padding-right: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .shop-footer__ctaStrip {
+    grid-auto-columns: minmax(142px, 46vw);
+  }
+}
+
+/* Final mobile footer text-link target pass */
+@media (max-width: 720px) {
+  .shop-footer__ctaStrip {
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-template-columns: 1fr;
+    margin: 0 0 18px;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .shop-footer__ctaCard,
+  .shop-footer a.shop-footer__ctaCard {
+    width: 100%;
+    min-width: 0;
+    scroll-snap-align: none;
+  }
+
+  .shop-footer__columns a,
+  .shop-footer__columns button {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    line-height: 1.25;
+  }
+}
+
+/* Mobile product-list floating action avoidance */
+@media (max-width: 720px) {
+  .shop-app-shell--product-list .app-support-launcher,
+  .shop-app-shell--product-list .customer-support-widget__button,
+  .shop-app-shell--product-detail .app-support-launcher,
+  .shop-app-shell--product-detail .customer-support-widget__button,
+  .shop-app-shell--checkout-flow .app-support-launcher,
+  .shop-app-shell--checkout-flow .customer-support-widget__button,
+  .shop-app-shell--auth-flow .app-support-launcher,
+  .shop-app-shell--auth-flow .customer-support-widget__button {
+    display: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .shop-app-shell--product-list .app-support-launcher,
+  .shop-app-shell--product-list .customer-support-widget__button,
+  .shop-app-shell--product-detail .app-support-launcher,
+  .shop-app-shell--product-detail .customer-support-widget__button,
+  .shop-app-shell--checkout-flow .app-support-launcher,
+  .shop-app-shell--checkout-flow .customer-support-widget__button,
+  .shop-app-shell--auth-flow .app-support-launcher,
+  .shop-app-shell--auth-flow .customer-support-widget__button {
+    bottom: calc(86px + env(safe-area-inset-bottom)) !important;
+    width: 32px !important;
+    height: 44px !important;
   }
 }

@@ -267,14 +267,14 @@ const Wishlist: React.FC = () => {
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
+    return <div className="wishlist-page__loading"><Spin size="large" /></div>;
   }
 
   if (items.length === 0) {
     return (
       <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
         <Empty description={t('pages.wishlist.empty')} />
-        <Button type="primary" style={{ marginTop: 16 }} onClick={() => navigate('/products')}>{t('pages.wishlist.browse')}</Button>
+        <Button type="primary" className="wishlist-page__emptyBrowse" onClick={() => navigate('/products')}>{t('pages.wishlist.browse')}</Button>
       </div>
     );
   }

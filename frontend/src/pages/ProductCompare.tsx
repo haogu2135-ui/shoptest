@@ -295,7 +295,7 @@ const ProductCompare: React.FC = () => {
             height={120}
             preview={false}
             fallback={compareImageFallback}
-            style={{ objectFit: 'cover', borderRadius: 8 }}
+            className="product-compare__image"
           />
         </Link>
       ),
@@ -419,14 +419,14 @@ const ProductCompare: React.FC = () => {
   ];
 
   return (
-    <div className="product-compare-page" style={{ width: 'min(1200px, calc(100% - 24px))', margin: '0 auto', padding: '24px 0' }}>
+    <div className="product-compare-page">
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
+        <div className="product-compare__header">
           <div>
             <Title level={2} style={{ margin: 0 }}>{t('pages.compare.title')}</Title>
             <Text type="secondary">{t('pages.compare.subtitle', { count: comparedIds.length })}</Text>
           </div>
-          <Space wrap>
+          <Space wrap className="product-compare__headerActions">
             <Button
               type="primary"
               icon={<ShoppingCartOutlined />}
@@ -440,7 +440,7 @@ const ProductCompare: React.FC = () => {
           </Space>
         </div>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
+          <div className="product-compare__loading"><Spin size="large" /></div>
         ) : products.length === 0 ? (
           <Empty description={t('pages.compare.empty')}>
             <Button type="primary" onClick={() => navigate('/products')}>{t('pages.compare.browse')}</Button>

@@ -209,7 +209,7 @@ const ReviewManagement: React.FC = () => {
         <Select
           allowClear
           placeholder={t('pages.adminReviews.statusFilter')}
-          style={{ width: 180 }}
+          className="review-management-page__statusFilter"
           value={statusFilter}
           onChange={setStatusFilter}
           options={[
@@ -230,6 +230,7 @@ const ReviewManagement: React.FC = () => {
         scroll={{ x: 1180 }}
       />
       <Modal
+        className="review-management-page__replyModal"
         open={!!replyTarget}
         onCancel={() => setReplyTarget(null)}
         onOk={handleReply}

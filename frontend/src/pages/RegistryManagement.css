@@ -27,7 +27,7 @@
   color: #ee4d2d;
   font-size: 12px;
   font-weight: 950;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -114,5 +114,170 @@
   .registry-management__grid,
   .registry-management__gateway {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Final mobile registry admin edge-fit pass */
+.registry-management,
+.registry-management *,
+.registry-management *::before,
+.registry-management *::after {
+  box-sizing: border-box;
+}
+
+.registry-management,
+.registry-management__hero,
+.registry-management__stats,
+.registry-management__grid,
+.registry-management__gateway,
+.registry-management__gateway > div,
+.registry-management__card,
+.registry-management__alert,
+.registry-management .ant-card,
+.registry-management .ant-card-body,
+.registry-management .ant-table-wrapper,
+.registry-management .ant-descriptions,
+.registry-management .ant-space,
+.registry-management .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.registry-management {
+  overflow-x: clip;
+}
+
+.registry-management__hero,
+.registry-management__gateway,
+.registry-management__gateway > div,
+.registry-management__card,
+.registry-management__alert,
+.registry-management .ant-btn,
+.registry-management .ant-tag,
+.registry-management .ant-typography,
+.registry-management .ant-table-cell,
+.registry-management .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
+}
+
+.registry-management .ant-table-wrapper {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.registry-management .ant-table {
+  min-width: max-content;
+}
+
+@media (max-width: 720px) {
+  .registry-management {
+    gap: 12px;
+  }
+
+  .registry-management__hero {
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .registry-management__hero h2 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .registry-management__hero .ant-btn {
+    width: 100%;
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .registry-management__stats {
+    display: flex;
+    gap: 8px;
+    margin-inline: -8px;
+    padding: 0 8px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .registry-management__stats .ant-card {
+    flex: 0 0 142px;
+    scroll-snap-align: start;
+  }
+
+  .registry-management__card,
+  .registry-management__alert,
+  .registry-management__stats .ant-card {
+    border-radius: 14px;
+  }
+
+  .registry-management__card .ant-card-body,
+  .registry-management__stats .ant-card-body {
+    padding: 12px;
+  }
+
+  .registry-management__gateway {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 430px) {
+  .registry-management__hero {
+    padding: 12px;
+  }
+
+  .registry-management__stats {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+
+  .registry-management__stats .ant-card {
+    flex-basis: 132px;
+  }
+
+  .registry-management .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
+/* Final mobile registry action stability pass */
+@media (max-width: 720px) {
+  .registry-management__stats {
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .registry-management__stats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .registry-management .ant-btn,
+  .registry-management__stats .ant-card {
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .registry-management .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .registry-management__stats .ant-statistic-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .registry-management .ant-table-wrapper {
+    max-width: calc(100vw - 12px);
+  }
+}
+
+@media (max-width: 360px) {
+  .registry-management__stats .ant-card {
+    flex-basis: 122px;
   }
 }

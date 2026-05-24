@@ -2,6 +2,7 @@ package com.example.shop.controller;
 
 import com.example.shop.entity.Review;
 import com.example.shop.service.ReviewService;
+import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,10 +34,7 @@ public class ReviewController {
 
     @GetMapping("/product/{productId}/reviewable-orders")
     public ResponseEntity<?> getReviewableOrders(@PathVariable Long productId, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
-            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
-        }
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         List<Order> orders = reviewService.getReviewableOrders(productId, userDetails.getId());
         return ResponseEntity.ok(orders);
     }
@@ -46,26 +44,17 @@ public class ReviewController {
             @PathVariable Long productId,
             @RequestBody Map<String, Object> request,
             Authentication authentication) {
-        try {
-            if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
-                return ResponseEntity.status(401).build();
-            }
-            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            Long orderId = parseLong(request.get("orderId"), "orderId");
-            Integer rating = parseRating(request.get("rating"));
-            Review review = reviewService.addReview(
-                productId,
-                userDetails.getId(),
-                orderId,
-                rating,
-                request.get("comment") == null ? "" : String.valueOf(request.get("comment"))
-            );
-            return ResponseEntity.ok(review);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Review failed"));
-        }
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        Long orderId = parseLong(request.get("orderId"), "orderId");
+        Integer rating = parseRating(request.get("rating"));
+        Review review = reviewService.addReview(
+            productId,
+            userDetails.getId(),
+            orderId,
+            rating,
+            request.get("comment") == null ? "" : String.valueOf(request.get("comment"))
+        );
+        return ResponseEntity.ok(review);
     }
 
     private Long parseLong(Object value, String field) {

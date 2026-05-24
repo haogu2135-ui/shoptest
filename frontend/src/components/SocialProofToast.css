@@ -46,6 +46,104 @@
 
 @media (max-width: 640px) {
   .social-proof-toast {
-    display: none;
+    right: 10px;
+    bottom: calc(140px + env(safe-area-inset-bottom));
+    width: min(292px, calc(100vw - 20px));
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 8px;
+    display: grid;
+    padding: 9px 10px;
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(18, 71, 52, 0.14);
+    pointer-events: none;
+  }
+
+  .social-proof-toast__icon {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+
+  .social-proof-toast strong {
+    margin-bottom: 1px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .social-proof-toast span span {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 10.5px;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+@media (max-width: 380px) {
+  .social-proof-toast {
+    width: min(260px, calc(100vw - 18px));
+    grid-template-columns: 28px minmax(0, 1fr);
+    padding: 8px;
+  }
+
+  .social-proof-toast__icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Final mobile social-proof edge-fit pass */
+@media (max-width: 640px) {
+  .social-proof-toast,
+  .social-proof-toast * {
+    box-sizing: border-box;
+  }
+
+  .social-proof-toast {
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
+    max-width: calc(100vw - max(16px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+    overflow: hidden;
+  }
+
+  .social-proof-toast > span:last-child,
+  .social-proof-toast strong,
+  .social-proof-toast span span {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 360px) {
+  .social-proof-toast {
+    bottom: calc(126px + env(safe-area-inset-bottom));
+    width: min(252px, calc(100vw - 16px));
+  }
+}
+
+/* Final mobile social-proof placement stability pass */
+@media (max-width: 640px) {
+  .shop-app-shell--checkout-flow .social-proof-toast,
+  .shop-app-shell--product-detail .social-proof-toast,
+  .shop-app-shell--auth-flow .social-proof-toast {
+    bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .social-proof-toast {
+    min-width: 0;
+    transform-origin: right bottom;
+  }
+}
+
+@media (max-width: 360px) {
+  .social-proof-toast strong {
+    font-size: 10.5px;
+  }
+
+  .social-proof-toast span span {
+    -webkit-line-clamp: 1;
   }
 }

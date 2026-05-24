@@ -147,7 +147,7 @@ const SystemMonitor: React.FC = () => {
 
             <div className="system-monitor__resourceGrid">
               <Card title="数据库" className="system-monitor__card">
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space direction="vertical" className="system-monitor__databaseInfo">
                   <DatabaseOutlined className="system-monitor__largeIcon" />
                   <Text copyable>{status.database.url || '-'}</Text>
                   <Text type="secondary">{status.database.driver || '-'}</Text>

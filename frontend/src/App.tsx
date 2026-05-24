@@ -199,7 +199,18 @@ const LazySupportWidgetHost: React.FC = () => {
 
 const StorefrontLayout: React.FC = () => {
   const { t } = useLanguage();
+  const location = useLocation();
   const isAuthenticated = hasStoredValue('token');
+  const shellClassName = [
+    'shop-app-shell',
+    location.pathname === '/products' ? 'shop-app-shell--product-list' : '',
+    location.pathname === '/products' || location.pathname.startsWith('/products/') ? 'shop-app-shell--product-area' : '',
+    location.pathname.startsWith('/products/') ? 'shop-app-shell--product-detail' : '',
+    location.pathname === '/cart' ? 'shop-app-shell--cart' : '',
+    location.pathname === '/checkout' ? 'shop-app-shell--checkout' : '',
+    location.pathname === '/cart' || location.pathname === '/checkout' ? 'shop-app-shell--checkout-flow' : '',
+    ['/login', '/register', '/forgot-password'].includes(location.pathname) ? 'shop-app-shell--auth-flow' : '',
+  ].filter(Boolean).join(' ');
   const footerActionCards = [
     {
       key: 'track',
@@ -233,7 +244,7 @@ const StorefrontLayout: React.FC = () => {
   ];
 
   return (
-    <Layout className="shop-app-shell" style={{ minHeight: '100vh' }}>
+    <Layout className={shellClassName} style={{ minHeight: '100vh' }}>
       <Navbar />
       <Content style={{ marginTop: 0, padding: 0 }}>
         <Outlet />

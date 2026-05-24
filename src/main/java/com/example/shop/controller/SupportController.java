@@ -6,10 +6,12 @@ import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.SupportService;
 import com.example.shop.service.PetBirthdayCouponService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -33,7 +35,7 @@ public class SupportController {
     @GetMapping("/support/sessions/{sessionId}/messages")
     public ResponseEntity<?> getMyMessages(@PathVariable Long sessionId) {
         if (!canAccessSession(sessionId)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
         supportService.markRead(sessionId, currentRole());
         return ResponseEntity.ok(supportService.getMessages(sessionId));
@@ -42,7 +44,7 @@ public class SupportController {
     @PutMapping("/support/sessions/{sessionId}/read")
     public ResponseEntity<?> markMyMessagesRead(@PathVariable Long sessionId) {
         if (!canAccessSession(sessionId)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
         supportService.markRead(sessionId, currentRole());
         return ResponseEntity.ok(Map.of("message", "OK"));
@@ -59,14 +61,14 @@ public class SupportController {
                     "session", supportService.getSession(sent.getSessionId())
             ));
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            throw ex;
         }
     }
 
     @PutMapping("/support/sessions/{sessionId}/close")
     public ResponseEntity<?> closeMySession(@PathVariable Long sessionId) {
         if (!canAccessSession(sessionId)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
         return ResponseEntity.ok(supportService.closeSession(sessionId));
     }
@@ -103,7 +105,7 @@ public class SupportController {
                     "session", supportService.getSession(sent.getSessionId())
             ));
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            throw ex;
         }
     }
 
@@ -117,7 +119,7 @@ public class SupportController {
         try {
             return ResponseEntity.ok(supportService.assignSession(sessionId, currentUserId()));
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            throw ex;
         }
     }
 
@@ -126,7 +128,7 @@ public class SupportController {
         try {
             return ResponseEntity.ok(supportService.reopenSession(sessionId, currentUserId()));
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            throw ex;
         }
     }
 
@@ -139,13 +141,13 @@ public class SupportController {
     public ResponseEntity<?> reissueBirthdayCoupon(@PathVariable Long sessionId) {
         SupportSession session = supportService.getSession(sessionId);
         if (session == null) {
-            return ResponseEntity.notFound().build();
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Support session not found");
         }
         try {
             int granted = petBirthdayCouponService.reissueBirthdayCoupons(session.getUserId(), java.time.LocalDate.now());
             return ResponseEntity.ok(Map.of("granted", granted));
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            throw ex;
         }
     }
 

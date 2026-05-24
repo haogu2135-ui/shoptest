@@ -249,3 +249,234 @@
     width: 100% !important;
   }
 }
+
+/* Final mobile audit log edge-fit pass */
+.audit-log-page,
+.audit-log-page *,
+.audit-log-page *::before,
+.audit-log-page *::after {
+  box-sizing: border-box;
+}
+
+.audit-log-page,
+.audit-log-page__insights,
+.audit-log-page__insightCopy,
+.audit-log-page__score,
+.audit-log-page__signalGrid,
+.audit-log-page__signal,
+.audit-log-page__toolbar,
+.audit-log-page__opsPanel,
+.audit-log-page__opsIntro,
+.audit-log-page__opsMetrics,
+.audit-log-page__opsActions,
+.audit-log-page .ant-card,
+.audit-log-page .ant-card-body,
+.audit-log-page .ant-table-wrapper {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.audit-log-page {
+  overflow-x: clip;
+}
+
+.audit-log-page__insights,
+.audit-log-page__signal,
+.audit-log-page__opsPanel,
+.audit-log-page__opsIntro,
+.audit-log-page__opsMetrics button,
+.audit-log-page__opsActions,
+.audit-log-page__toolbar,
+.audit-log-page .ant-btn,
+.audit-log-page .ant-tag,
+.audit-log-page .ant-typography,
+.audit-log-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+.audit-log-page .ant-table-wrapper {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.audit-log-page .ant-table {
+  min-width: max-content;
+}
+
+.audit-log-page__toolbar .ant-space,
+.audit-log-page__toolbar .ant-space-item,
+.audit-log-page__opsActions .ant-space,
+.audit-log-page__opsActions .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.audit-log-page__actionFilter {
+  width: 210px;
+}
+
+.audit-log-page__resultFilter {
+  width: 140px;
+}
+
+.audit-log-page__resourceFilter {
+  width: 150px;
+}
+
+.audit-log-page__actorInput {
+  width: 180px;
+}
+
+@media (max-width: 720px) {
+  .audit-log-page__insights,
+  .audit-log-page__opsPanel {
+    gap: 12px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .audit-log-page__toolbar {
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .audit-log-page__toolbar .ant-card-body {
+    padding: 12px;
+  }
+
+  .audit-log-page__toolbar .ant-space {
+    gap: 8px !important;
+  }
+
+  .audit-log-page__toolbar .ant-space-item,
+  .audit-log-page__actionFilter,
+  .audit-log-page__resultFilter,
+  .audit-log-page__resourceFilter,
+  .audit-log-page__actorInput,
+  .audit-log-page__toolbar .ant-picker,
+  .audit-log-page__toolbar .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .audit-log-page__opsActions {
+    align-items: stretch;
+  }
+
+  .audit-log-page__opsActions .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 560px) {
+  .audit-log-page__insightCopy h4.ant-typography {
+    font-size: 19px;
+    line-height: 1.25;
+  }
+
+  .audit-log-page__score {
+    align-items: flex-start;
+  }
+
+  .audit-log-page__score .ant-progress-circle {
+    width: 76px !important;
+    height: 76px !important;
+  }
+
+  .audit-log-page__signalGrid,
+  .audit-log-page__opsMetrics {
+    display: flex;
+    gap: 8px;
+    margin-inline: -14px;
+    padding: 0 14px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .audit-log-page__signal,
+  .audit-log-page__opsMetrics button {
+    flex: 0 0 138px;
+    min-height: 82px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .audit-log-page__signal strong,
+  .audit-log-page__opsMetrics strong {
+    font-size: 21px;
+  }
+
+  .audit-log-page .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  .audit-log-page__insights,
+  .audit-log-page__opsPanel {
+    padding: 12px;
+  }
+
+  .audit-log-page__signalGrid,
+  .audit-log-page__opsMetrics {
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+
+  .audit-log-page__signal,
+  .audit-log-page__opsMetrics button {
+    flex-basis: 132px;
+  }
+}
+
+/* Final mobile audit log action stability pass */
+@media (max-width: 720px) {
+  .audit-log-page__signalGrid,
+  .audit-log-page__opsMetrics {
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .audit-log-page__signalGrid::-webkit-scrollbar,
+  .audit-log-page__opsMetrics::-webkit-scrollbar {
+    display: none;
+  }
+
+  .audit-log-page__toolbar .ant-space,
+  .audit-log-page__opsActions .ant-space {
+    align-items: stretch;
+  }
+
+  .audit-log-page .ant-btn,
+  .audit-log-page__opsMetrics button {
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+    white-space: normal;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .audit-log-page .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .audit-log-page__opsMetrics button span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .audit-log-page .ant-table-wrapper {
+    max-width: calc(100vw - 12px);
+  }
+}
+
+@media (max-width: 360px) {
+  .audit-log-page__signal,
+  .audit-log-page__opsMetrics button {
+    flex-basis: 122px;
+  }
+}

@@ -204,6 +204,11 @@ const cachedGet = <T,>(
     return request;
 };
 
+const withArrayData = <T,>(response: AxiosResponse<T[]>): AxiosResponse<T[]> => ({
+    ...response,
+    data: Array.isArray(response.data) ? response.data : [],
+});
+
 const cacheProductDetailFromList = (response: AxiosResponse<Product[]>) => {
     const expiresAt = Date.now() + PRODUCT_DETAIL_CACHE_MS;
     response.data.forEach((product) => {
@@ -247,7 +252,7 @@ export const appConfigApi = {
 };
 
 export const announcementApi = {
-    getActive: (limit = 5) => api.get<SiteAnnouncement[]>('/announcements/active', { params: { limit: normalizeBoundedPositiveInt(limit, 5, 10) } }),
+    getActive: (limit = 5) => api.get<SiteAnnouncement[]>('/announcements/active', { params: { limit: normalizeBoundedPositiveInt(limit, 5, 10) } }).then(withArrayData),
 };
 
 const clearProductListCache = () => {
@@ -469,8 +474,9 @@ export const productApi = {
             },
         })
             .then((response) => {
-                cacheProductListResponse(cacheKey, response);
-                return response;
+                const normalized = withArrayData(response);
+                cacheProductListResponse(cacheKey, normalized);
+                return normalized;
             })
             .finally(() => productListRequests.delete(cacheKey));
         productListRequests.set(cacheKey, request);
@@ -532,12 +538,13 @@ export const productApi = {
         uniqueIds.forEach((id) => params.append('ids', String(id)));
         const request = api.get<Product[]>('/products/by-ids', { params })
             .then((response) => {
+                const normalized = withArrayData(response);
                 productByIdsCache.set(cacheKey, {
-                    response,
+                    response: normalized,
                     expiresAt: Date.now() + PRODUCT_DETAIL_CACHE_MS,
                 });
-                cacheProductDetailFromList(response);
-                return response;
+                cacheProductDetailFromList(normalized);
+                return normalized;
             })
             .finally(() => productByIdsRequests.delete(cacheKey));
         productByIdsRequests.set(cacheKey, request);
@@ -551,8 +558,9 @@ export const productApi = {
         if (pending) return pending;
         const request = api.get<Product[]>('/products/featured')
             .then((response) => {
-                cacheProductListResponse(cacheKey, response);
-                return response;
+                const normalized = withArrayData(response);
+                cacheProductListResponse(cacheKey, normalized);
+                return normalized;
             })
             .finally(() => productListRequests.delete(cacheKey));
         productListRequests.set(cacheKey, request);
@@ -569,12 +577,13 @@ export const productApi = {
         if (pending) return pending;
         const request = api.get<Product[]>('/products/personalized-recommendations')
             .then((response) => {
+                const normalized = withArrayData(response);
                 personalizedRecommendationCache.set(cacheKey, {
-                    response,
+                    response: normalized,
                     expiresAt: Date.now() + PERSONALIZED_RECOMMENDATION_CACHE_MS,
                 });
-                cacheProductDetailFromList(response);
-                return response;
+                cacheProductDetailFromList(normalized);
+                return normalized;
             })
             .finally(() => personalizedRecommendationRequests.delete(cacheKey));
         personalizedRecommendationRequests.set(cacheKey, request);
@@ -598,12 +607,13 @@ export const productApi = {
         if (pending) return pending;
         const request = api.get<Product[]>('/products/add-on-candidates', { params })
             .then((response) => {
+                const normalized = withArrayData(response);
                 productAddOnCache.set(cacheKey, {
-                    response,
+                    response: normalized,
                     expiresAt: Date.now() + PRODUCT_ADD_ON_CACHE_MS,
                 });
-                cacheProductDetailFromList(response);
-                return response;
+                cacheProductDetailFromList(normalized);
+                return normalized;
             })
             .finally(() => productAddOnRequests.delete(cacheKey));
         productAddOnRequests.set(cacheKey, request);
@@ -623,12 +633,13 @@ export const productApi = {
         if (pending) return pending;
         const request = api.get<Product[]>(`/products/${productId}/recommendations`)
             .then((response) => {
+                const normalized = withArrayData(response);
                 productRecommendationsCache.set(productId, {
-                    response,
+                    response: normalized,
                     expiresAt: Date.now() + PRODUCT_LIST_CACHE_MS,
                 });
-                cacheProductDetailFromList(response);
-                return response;
+                cacheProductDetailFromList(normalized);
+                return normalized;
             })
             .finally(() => productRecommendationsRequests.delete(productId));
         productRecommendationsRequests.set(productId, request);
@@ -638,7 +649,7 @@ export const productApi = {
 
 // 购物车相关 API
 export const cartApi = {
-    getItems: (_userId: number) => api.get<CartItem[]>('/cart/me'),
+    getItems: (_userId: number) => api.get<CartItem[]>('/cart/me').then(withArrayData),
     addItem: (_userId: number, productId: number, quantity: number, selectedSpecs?: string) =>
         api.post('/cart/me/add', null, {
             params: {
@@ -660,10 +671,10 @@ export const cartApi = {
 
 // 订单相关 API
 export const orderApi = {
-    getAll: () => api.get<Order[]>('/orders'),
+    getAll: () => api.get<Order[]>('/orders').then(withArrayData),
     getById: (id: number) => api.get<Order>(`/orders/${toPathId(id)}`),
-    getByUser: (_userId: number) => api.get<Order[]>('/orders/me'),
-    getMine: () => api.get<Order[]>('/orders/me'),
+    getByUser: (_userId: number) => api.get<Order[]>('/orders/me').then(withArrayData),
+    getMine: () => api.get<Order[]>('/orders/me').then(withArrayData),
     track: (orderNo: string, email: string) => {
         const normalizedOrderNo = normalizeOrderTrackingNumber(orderNo);
         const normalizedEmail = normalizeEmailParam(email) || '';
@@ -732,11 +743,12 @@ export const orderApi = {
         if (pending) return pending;
         const request = api.get<OrderItem[]>(`/orders/${normalizedOrderId}/items`)
             .then((response) => {
+                const normalized = withArrayData(response);
                 orderItemsCache.set(normalizedOrderId, {
-                    response,
+                    response: normalized,
                     expiresAt: Date.now() + ORDER_ITEMS_CACHE_MS,
                 });
-                return response;
+                return normalized;
             })
             .finally(() => orderItemsRequests.delete(normalizedOrderId));
         orderItemsRequests.set(normalizedOrderId, request);
@@ -749,10 +761,10 @@ export const orderApi = {
 };
 
 export const couponApi = {
-    getPublic: () => cachedGet(publicCouponCache, publicCouponRequests, 'public', COUPON_CACHE_MS, () => api.get<Coupon[]>('/coupons/public')),
+    getPublic: () => cachedGet(publicCouponCache, publicCouponRequests, 'public', COUPON_CACHE_MS, () => api.get<Coupon[]>('/coupons/public').then(withArrayData)),
     claim: (couponId: number, _userId: number) => api.post<UserCoupon>(`/coupons/me/${normalizePositiveInt(couponId) || 0}/claim`).finally(clearCouponCache),
-    getByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, 'mine', COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me')),
-    getAvailableByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, 'available', COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me/available')),
+    getByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, 'mine', COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me').then(withArrayData)),
+    getAvailableByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, 'available', COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me/available').then(withArrayData)),
     quote: (payload: { cartItemIds: number[]; userCouponId?: number | null }) =>
         api.post<CouponQuote>('/coupons/me/quote', {
             cartItemIds: normalizePositiveIntList(payload.cartItemIds, 100),
@@ -768,8 +780,9 @@ export const paymentApi = {
         if (paymentChannelRequest) return paymentChannelRequest;
         paymentChannelRequest = api.get<PaymentChannel[]>('/payments/channels')
             .then((response) => {
-                paymentChannelCache = { response, expiresAt: Date.now() + PAYMENT_CHANNEL_CACHE_MS };
-                return response;
+                const normalized = withArrayData(response);
+                paymentChannelCache = { response: normalized, expiresAt: Date.now() + PAYMENT_CHANNEL_CACHE_MS };
+                return normalized;
             })
             .finally(() => {
                 paymentChannelRequest = null;
@@ -794,7 +807,7 @@ export const paymentApi = {
         signature: string;
     }) => api.post<Payment>('/payments/callback', payload),
     getByOrder: (orderId: number, guestEmail?: string) =>
-        api.get<Payment[]>(`/payments/order/${normalizePositiveInt(orderId) || 0}`, { params: normalizeEmailParam(guestEmail) ? { guestEmail: normalizeEmailParam(guestEmail) } : undefined }),
+        api.get<Payment[]>(`/payments/order/${normalizePositiveInt(orderId) || 0}`, { params: normalizeEmailParam(guestEmail) ? { guestEmail: normalizeEmailParam(guestEmail) } : undefined }).then(withArrayData),
     getLatestByOrder: (orderId: number, guestEmail?: string) =>
         api.get<Payment>(`/payments/order/${normalizePositiveInt(orderId) || 0}/latest`, { params: normalizeEmailParam(guestEmail) ? { guestEmail: normalizeEmailParam(guestEmail) } : undefined }),
 };
@@ -817,7 +830,7 @@ export const reviewApi = {
         reviewRequests.set(normalizedProductId, request);
         return request;
     },
-    getReviewableOrders: (productId: number) => api.get<Order[]>(`/reviews/product/${toPathId(productId)}/reviewable-orders`),
+    getReviewableOrders: (productId: number) => api.get<Order[]>(`/reviews/product/${toPathId(productId)}/reviewable-orders`).then(withArrayData),
     create: (productId: number, orderId: number, rating: number, comment: string) =>
         api.post(`/reviews/product/${toPathId(productId)}`, {
             orderId: toPathId(orderId),
@@ -836,8 +849,9 @@ export const questionApi = {
         if (pending) return pending;
         const request = api.get<ProductQuestion[]>(`/product-questions/product/${normalizedProductId}`)
             .then((response) => {
-                questionCache.set(normalizedProductId, { response, expiresAt: Date.now() + QUESTION_CACHE_MS });
-                return response;
+                const normalized = withArrayData(response);
+                questionCache.set(normalizedProductId, { response: normalized, expiresAt: Date.now() + QUESTION_CACHE_MS });
+                return normalized;
             })
             .finally(() => questionRequests.delete(normalizedProductId));
         questionRequests.set(normalizedProductId, request);
@@ -858,14 +872,14 @@ export const categoryApi = {
             level: normalizePositiveInt(params.level) || undefined,
         } : undefined;
         const cacheKey = `all:${normalizedParams?.parentId || ''}:${normalizedParams?.level || ''}`;
-        return cachedGet(categoryCache, categoryRequests, cacheKey, CATEGORY_CACHE_MS, () => api.get<Category[]>('/categories', { params: normalizedParams }));
+        return cachedGet(categoryCache, categoryRequests, cacheKey, CATEGORY_CACHE_MS, () => api.get<Category[]>('/categories', { params: normalizedParams }).then(withArrayData));
     },
-    getTopLevel: () => cachedGet(categoryCache, categoryRequests, 'top', CATEGORY_CACHE_MS, () => api.get<Category[]>('/categories', { params: { level: 1 } })),
+    getTopLevel: () => cachedGet(categoryCache, categoryRequests, 'top', CATEGORY_CACHE_MS, () => api.get<Category[]>('/categories', { params: { level: 1 } }).then(withArrayData)),
     getChildren: (parentId: number) => {
         const normalizedParentId = toPathId(parentId);
         if (!normalizedParentId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<Category[]>);
         return cachedGet(categoryCache, categoryRequests, `children:${normalizedParentId}`, CATEGORY_CACHE_MS, () =>
-            api.get<Category[]>('/categories', { params: { parentId: normalizedParentId } }));
+            api.get<Category[]>('/categories', { params: { parentId: normalizedParentId } }).then(withArrayData));
     },
     getById: (id: number) => api.get<Category>(`/categories/${toPathId(id)}`),
     create: (category: Partial<Category>) => api.post<Category>('/categories', category).finally(() => {
@@ -886,7 +900,7 @@ export const brandApi = {
     getAll: (params?: { activeOnly?: boolean }) => {
         const activeOnly = Boolean(params?.activeOnly);
         const cacheKey = activeOnly ? 'active' : 'all';
-        return cachedGet(brandCache, brandRequests, cacheKey, BRAND_CACHE_MS, () => api.get<Brand[]>('/brands', { params: activeOnly ? { activeOnly: true } : undefined }));
+        return cachedGet(brandCache, brandRequests, cacheKey, BRAND_CACHE_MS, () => api.get<Brand[]>('/brands', { params: activeOnly ? { activeOnly: true } : undefined }).then(withArrayData));
     },
     create: (brand: Partial<Brand>) => api.post<Brand>('/brands', brand).finally(() => {
         clearBrandCache();
@@ -1084,7 +1098,7 @@ export const logisticsCarrierApi = {
     getAll: (activeOnly?: boolean) => {
         const cacheKey = activeOnly ? 'active' : 'all';
         return cachedGet(logisticsCarrierCache, logisticsCarrierRequests, cacheKey, LOGISTICS_CARRIER_CACHE_MS, () =>
-            api.get<LogisticsCarrier[]>('/admin/logistics-carriers', { params: activeOnly ? { activeOnly: true } : undefined }));
+            api.get<LogisticsCarrier[]>('/admin/logistics-carriers', { params: activeOnly ? { activeOnly: true } : undefined }).then(withArrayData));
     },
     create: (carrier: Partial<LogisticsCarrier>) => api.post<LogisticsCarrier>('/admin/logistics-carriers', carrier).finally(clearLogisticsCarrierCache),
     update: (id: number, carrier: Partial<LogisticsCarrier>) => api.put<LogisticsCarrier>(`/admin/logistics-carriers/${toPathId(id)}`, carrier).finally(clearLogisticsCarrierCache),
@@ -1093,7 +1107,7 @@ export const logisticsCarrierApi = {
 
 export const addressApi = {
     getByUser: (_userId: number) =>
-        cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress[]> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress[]>>>, 'list', ADDRESS_CACHE_MS, () => api.get<UserAddress[]>('/addresses/me')),
+        cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress[]> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress[]>>>, 'list', ADDRESS_CACHE_MS, () => api.get<UserAddress[]>('/addresses/me').then(withArrayData)),
     getById: (id: number) => api.get<UserAddress>(`/addresses/${toPathId(id)}`),
     getDefault: (_userId: number) =>
         cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress>>>, 'default', ADDRESS_CACHE_MS, () => api.get<UserAddress>('/addresses/me/default')),
@@ -1104,7 +1118,7 @@ export const addressApi = {
 };
 
 export const wishlistApi = {
-    getByUser: (_userId: number) => api.get<WishlistItem[]>('/wishlist/me'),
+    getByUser: (_userId: number) => api.get<WishlistItem[]>('/wishlist/me').then(withArrayData),
     check: (_userId: number, productId: number) =>
         api.get<{ wishlisted: boolean }>('/wishlist/me/check', { params: { productId: toPathId(productId) } }),
     getCount: (_userId: number) => api.get<{ count: number }>('/wishlist/me/count'),
@@ -1125,8 +1139,9 @@ export const notificationApi = {
         }
         const request = api.get<AppNotification[]>('/notifications/me')
             .then((response) => {
-                notificationCache.set(cacheKey, { response, expiresAt: Date.now() + NOTIFICATION_CACHE_MS });
-                return response;
+                const normalized = withArrayData(response);
+                notificationCache.set(cacheKey, { response: normalized, expiresAt: Date.now() + NOTIFICATION_CACHE_MS });
+                return normalized;
             })
             .finally(() => notificationRequests.delete(cacheKey));
         notificationRequests.set(cacheKey, request);
@@ -1167,11 +1182,12 @@ export const petProfileApi = {
         if (pending) return pending;
         const request = api.get<PetProfile[]>('/pet-profiles')
             .then((response) => {
+                const normalized = withArrayData(response);
                 petProfileCache.set(cacheKey, {
-                    response,
+                    response: normalized,
                     expiresAt: Date.now() + PET_PROFILE_CACHE_MS,
                 });
-                return response;
+                return normalized;
             })
             .finally(() => {
                 petProfileRequests.delete(cacheKey);
@@ -1206,11 +1222,12 @@ export const petGalleryApi = {
         }
         const request = api.get<PetGalleryPhoto[]>('/pet-gallery')
             .then((response) => {
+                const normalized = withArrayData(response);
                 petGalleryCache.set(cacheKey, {
-                    response,
+                    response: normalized,
                     expiresAt: Date.now() + PET_GALLERY_CACHE_MS,
                 });
-                return response;
+                return normalized;
             })
             .finally(() => petGalleryRequests.delete(cacheKey));
         petGalleryRequests.set(cacheKey, request);

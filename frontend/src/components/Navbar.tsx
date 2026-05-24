@@ -11,12 +11,14 @@ import {
   GlobalOutlined,
   HeartOutlined,
   HistoryOutlined,
+  HomeOutlined,
   LogoutOutlined,
   SearchOutlined,
   SettingOutlined,
   ShoppingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
+  UserAddOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { adminApi, announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
@@ -38,6 +40,10 @@ const NAV_SEARCH_MAX_LENGTH = 80;
 const NAV_BADGE_REFRESH_DEBOUNCE_MS = 350;
 
 const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);
+const normalizeBadgeCount = (value: unknown) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 0;
+};
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -47,6 +53,8 @@ const Navbar: React.FC = () => {
     [location.pathname],
   );
   const isProductsActive = location.pathname === '/products' || location.pathname.startsWith('/products/');
+  const isCouponsActive = isPathActive(['/coupons']);
+  const isAccountActive = isPathActive(['/profile', '/login', '/register']);
   const navSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const activeProductKeyword = (navSearchParams.get('keyword') || '').toLowerCase();
   const isDealsActive = isProductsActive && navSearchParams.get('discount') === 'true';
@@ -89,8 +97,14 @@ const Navbar: React.FC = () => {
     };
   }, []);
   const currencyOptions = Object.values(markets).map((item) => ({ value: item.currency, label: item.label }));
-  const communitySignalCount = wishlistCount + unreadCount + couponCount + compareCount + alertCount;
-  const utilityMenuCount = token ? communitySignalCount : compareCount + alertCount;
+  const safeCartCount = normalizeBadgeCount(cartCount);
+  const safeUnreadCount = normalizeBadgeCount(unreadCount);
+  const safeWishlistCount = normalizeBadgeCount(wishlistCount);
+  const safeCouponCount = normalizeBadgeCount(couponCount);
+  const safeCompareCount = normalizeBadgeCount(compareCount);
+  const safeAlertCount = normalizeBadgeCount(alertCount);
+  const communitySignalCount = safeWishlistCount + safeUnreadCount + safeCouponCount + safeCompareCount + safeAlertCount;
+  const utilityMenuCount = token ? communitySignalCount : safeCompareCount + safeAlertCount;
   const navHighlights = [
     t('nav.freeShippingOver', { amount: formatMoney(market.freeShippingThreshold) }),
     t('nav.followDeals'),
@@ -194,7 +208,7 @@ const Navbar: React.FC = () => {
         });
     };
     const refreshGuestCartCount = () => {
-      const count = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
+      const count = getGuestCartItems().reduce((sum, item) => sum + normalizeBadgeCount(item.quantity), 0);
       setCartCount(count);
     };
     const refreshCartCount = () => {
@@ -202,7 +216,7 @@ const Navbar: React.FC = () => {
         cartApi.getItems(0)
           .then((res) => {
             if (disposed) return;
-            const count = res.data.reduce((sum: number, item: any) => sum + item.quantity, 0);
+            const count = res.data.reduce((sum: number, item: any) => sum + normalizeBadgeCount(item.quantity), 0);
             setCartCount(count);
           })
           .catch(() => {
@@ -219,7 +233,7 @@ const Navbar: React.FC = () => {
       }
       notificationApi.getUnreadCount()
         .then((res) => {
-          if (!disposed) setUnreadCount(res.data.count);
+          if (!disposed) setUnreadCount(normalizeBadgeCount(res.data.count));
         })
         .catch(() => {
           if (!disposed) setUnreadCount(0);
@@ -232,7 +246,7 @@ const Navbar: React.FC = () => {
       }
       wishlistApi.getCount(0)
         .then((res) => {
-          if (!disposed) setWishlistCount(res.data.count);
+          if (!disposed) setWishlistCount(normalizeBadgeCount(res.data.count));
         })
         .catch(() => {
           if (!disposed) setWishlistCount(0);
@@ -245,7 +259,7 @@ const Navbar: React.FC = () => {
       }
       couponApi.getAvailableByUser(0)
         .then((res) => {
-          if (!disposed) setCouponCount(res.data.length);
+          if (!disposed) setCouponCount(normalizeBadgeCount(res.data.length));
         })
         .catch(() => {
           if (!disposed) setCouponCount(0);
@@ -623,14 +637,14 @@ const Navbar: React.FC = () => {
                 <button className="shop-nav__mobile-orders" onClick={() => navigate('/profile?tab=orders')} aria-label={t('pages.profile.allOrders')}>
                   <ShoppingOutlined />
                 </button>
-                <Link to="/profile" className="shop-nav__mobile-auth">{t('nav.account')}</Link>
+                <Link to="/profile" className="shop-nav__mobile-auth"><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.account')}</span></Link>
                 <button className="shop-nav__secondary-action" onClick={() => navigate('/wishlist')} aria-label={t('nav.ariaFavorites')}>
-                  <Badge count={wishlistCount} size="small">
+                    <Badge count={safeWishlistCount} size="small">
                     <HeartOutlined />
                   </Badge>
                 </button>
                 <button className="shop-nav__secondary-action" onClick={() => navigate('/notifications')} aria-label={t('nav.ariaNotifications')}>
-                  <Badge count={unreadCount} size="small">
+                    <Badge count={safeUnreadCount} size="small">
                     <BellOutlined />
                   </Badge>
                 </button>
@@ -652,7 +666,7 @@ const Navbar: React.FC = () => {
                   </button>
                 </Dropdown>
                 <button onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
-                  <Badge count={cartCount} size="small">
+                  <Badge count={safeCartCount} size="small">
                     <ShoppingCartOutlined />
                   </Badge>
                 </button>
@@ -667,12 +681,15 @@ const Navbar: React.FC = () => {
               </>
             ) : (
               <>
-                <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary">{t('nav.register')}</Link>
-                <Link to="/login" className="shop-nav__mobile-auth">{t('nav.login')}</Link>
+                <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary"><UserAddOutlined /><span className="shop-nav__mobile-authText">{t('nav.register')}</span></Link>
+                <Link to="/login" className="shop-nav__mobile-auth"><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.login')}</span></Link>
                 <Dropdown
                   trigger={['click']}
                   menu={{
                     items: [
+                      { key: 'login', icon: <UserOutlined />, label: t('nav.login'), onClick: () => navigate('/login') },
+                      { key: 'register', icon: <UserOutlined />, label: t('nav.register'), onClick: () => navigate('/register') },
+                      { key: 'guest-divider', type: 'divider' },
                       { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
                       { key: 'history', icon: <HistoryOutlined />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
                       { key: 'alerts', icon: <AlertOutlined />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
@@ -686,7 +703,7 @@ const Navbar: React.FC = () => {
                   </button>
                 </Dropdown>
                 <button onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
-                  <Badge count={cartCount} size="small">
+                  <Badge count={safeCartCount} size="small">
                     <ShoppingCartOutlined />
                   </Badge>
                 </button>
@@ -695,6 +712,33 @@ const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
+      <nav className="shop-nav__bottomBar" aria-label={t('home.categories')}>
+        <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}>
+          <HomeOutlined />
+          <span>{t('nav.ariaHome')}</span>
+        </Link>
+        <Link to="/products" className={isProductsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}>
+          <ShoppingOutlined />
+          <span>{t('nav.products')}</span>
+        </Link>
+        <Link to="/coupons" className={isCouponsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}>
+          <GiftOutlined />
+          <span>{t('nav.coupons')}</span>
+        </Link>
+        <button type="button" className="shop-nav__bottomItem" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
+          <Badge count={safeCartCount} size="small" overflowCount={99}>
+            <ShoppingCartOutlined />
+          </Badge>
+          <span>{t('pages.cart.title')}</span>
+        </button>
+        <Link
+          to={token ? '/profile' : '/login'}
+          className={isAccountActive ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}
+        >
+          <UserOutlined />
+          <span>{t('nav.account')}</span>
+        </Link>
+      </nav>
     </header>
   );
 };

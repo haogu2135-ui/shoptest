@@ -46,12 +46,12 @@ public class OrderController {
     public ResponseEntity<?> checkout(@Valid @RequestBody CheckoutRequest request, Authentication authentication) {
         try {
             if (request.getUserId() == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "userId is required"));
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
             }
             SecurityUtils.assertSelfOrAdmin(authentication, request.getUserId());
             return ResponseEntity.ok(orderService.checkout(request));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -62,7 +62,7 @@ public class OrderController {
             request.setUserId(userDetails.getId());
             return ResponseEntity.ok(orderService.checkout(request));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -71,7 +71,7 @@ public class OrderController {
         try {
             return ResponseEntity.ok(orderService.guestCheckout(request));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -81,16 +81,13 @@ public class OrderController {
             OrderTrackResponse response = orderService.trackOrder(orderNo, email);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
     @GetMapping("/me")
     public ResponseEntity<List<Order>> getMyOrders(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
-            return ResponseEntity.status(401).build();
-        }
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         return ResponseEntity.ok(orderService.getOrdersByUserId(userDetails.getId()));
     }
 
@@ -148,11 +145,11 @@ public class OrderController {
             }
             assertCanCancelOrder(order, authentication, body == null ? null : body.get("guestEmail"));
             if (!orderService.cancelOrder(id)) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Order cancellation failed"));
+                throw new IllegalStateException("Order cancellation failed");
             }
             return ResponseEntity.ok(Map.of("message", "Order cancelled"));
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -166,9 +163,9 @@ public class OrderController {
             Payment payment = orderService.confirmPayment(id, transactionId);
             return ResponseEntity.ok(Map.of("message", "Payment confirmed", "payment", payment));
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -179,13 +176,13 @@ public class OrderController {
             String trackingNumber = body != null ? body.get("trackingNumber") : null;
             String trackingCarrierCode = body != null ? body.get("trackingCarrierCode") : null;
             if (!orderService.shipOrder(id, trackingNumber, trackingCarrierCode)) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Order shipment failed"));
+                throw new IllegalStateException("Order shipment failed");
             }
             return ResponseEntity.ok(Map.of("message", "Order shipped"));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -194,11 +191,11 @@ public class OrderController {
         try {
             requireVisibleOrder(id, authentication);
             if (!orderService.updateOrderStatus(id, "COMPLETED")) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Order completion failed"));
+                throw new IllegalStateException("Order completion failed");
             }
             return ResponseEntity.ok(Map.of("message", "Order completed"));
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -210,7 +207,7 @@ public class OrderController {
         if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
             auditLogService.record("RETURN_REQUEST", "FAILURE", authentication, "ORDER", id, request,
                     "Authentication required", null);
-            return ResponseEntity.status(401).build();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
         String reason = body != null ? body.get("reason") : null;
         try {
@@ -218,7 +215,7 @@ public class OrderController {
             if (!orderService.requestReturn(id, userDetails.getId(), reason)) {
                 auditLogService.record("RETURN_REQUEST", "FAILURE", authentication, "ORDER", id, request,
                         "Order not found or return request was not applied", reason == null ? null : "reason=" + reason);
-                return ResponseEntity.badRequest().body(Map.of("error", "Return request failed"));
+                throw new IllegalStateException("Return request failed");
             }
             auditLogService.record("RETURN_REQUEST", "SUCCESS", authentication, "ORDER", id, request,
                     "Return requested", reason == null ? null : "reason=" + reason);
@@ -226,7 +223,7 @@ public class OrderController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("RETURN_REQUEST", "FAILURE", authentication, "ORDER", id, request,
                     e.getMessage(), reason == null ? null : "reason=" + reason);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -238,7 +235,7 @@ public class OrderController {
         if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
             auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
                     "Authentication required", null);
-            return ResponseEntity.status(401).build();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
         String returnTrackingNumber = body != null ? body.get("returnTrackingNumber") : null;
         try {
@@ -246,7 +243,7 @@ public class OrderController {
             if (!orderService.submitReturnShipment(id, userDetails.getId(), returnTrackingNumber)) {
                 auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
                         "Order not found or return shipment was not applied", "returnTrackingNumber=" + returnTrackingNumber);
-                return ResponseEntity.badRequest().body(Map.of("error", "Return shipment submit failed"));
+                throw new IllegalStateException("Return shipment submit failed");
             }
             auditLogService.record("RETURN_SHIPMENT_SUBMIT", "SUCCESS", authentication, "ORDER", id, request,
                     "Return shipment submitted", "returnTrackingNumber=" + returnTrackingNumber);
@@ -254,11 +251,11 @@ public class OrderController {
         } catch (IllegalArgumentException e) {
             auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
                     e.getMessage(), "returnTrackingNumber=" + returnTrackingNumber);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         } catch (IllegalStateException e) {
             auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
                     e.getMessage(), "returnTrackingNumber=" + returnTrackingNumber);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 

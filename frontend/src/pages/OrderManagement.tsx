@@ -723,7 +723,7 @@ const OrderManagement: React.FC = () => {
             ) : (
               <Select
                 size="small"
-                style={{ width: 116 }}
+                className="order-management-page__transitionSelect"
                 loading={statusUpdating}
                 disabled={statusUpdating}
                 placeholder={t('pages.adminOrders.changeStatus')}
@@ -771,13 +771,13 @@ const OrderManagement: React.FC = () => {
           </button>
         ))}
       </div>
-      <Card className="order-management-page__toolbar" style={{ marginBottom: 16 }}>
+      <Card className="order-management-page__toolbar">
         <Space wrap>
           <span>{t('pages.adminOrders.filter')}</span>
           <Select
             allowClear
             placeholder={t('pages.adminOrders.allStatus')}
-            style={{ width: 170 }}
+            className="order-management-page__statusFilter"
             value={filterStatus}
             onChange={(v) => setFilterStatus(v)}
             options={[
@@ -799,7 +799,7 @@ const OrderManagement: React.FC = () => {
             maxLength={120}
             onChange={(event) => setSearchText(event.target.value.slice(0, 120))}
             placeholder={t('pages.adminOrders.searchPlaceholder')}
-            style={{ width: 260 }}
+            className="order-management-page__searchInput"
           />
           <Button icon={<DownloadOutlined />} onClick={handleExport}>
             {quickFilter || normalizedSearchText ? t('pages.adminOrders.exportVisibleOrders') : t('pages.adminOrders.exportOrders')}
@@ -867,7 +867,7 @@ const OrderManagement: React.FC = () => {
           setTrackingCarrierCode(undefined);
         }}
       >
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction="vertical" className="order-management-page__modalStack">
           <Select
             allowClear
             showSearch
@@ -906,7 +906,7 @@ const OrderManagement: React.FC = () => {
           setRefundPayments([]);
         }}
       >
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction="vertical" className="order-management-page__modalStack">
           <Typography.Text type="secondary">
             {t('pages.adminOrders.refundConfirmHint', {
               orderNo: refundOrder?.orderNo || refundOrder?.id || '',
@@ -1016,7 +1016,7 @@ const OrderManagement: React.FC = () => {
           placeholder={t('pages.adminOrders.selectCarrier')}
           options={carrierOptions}
           optionFilterProp="label"
-          style={{ width: '100%', marginTop: 12 }}
+          className="order-management-page__batchCarrierSelect"
         />
       </Modal>
       <Modal
@@ -1039,7 +1039,7 @@ const OrderManagement: React.FC = () => {
         footer={null}
         width={720}
       >
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space direction="vertical" className="order-management-page__detailStack" size="middle">
           <Table
             rowKey="id"
             loading={itemsLoading}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, message } from 'antd';
-import { PlusOutlined, SoundOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { SiteAnnouncement } from '../types';
 import './AnnouncementManagement.css';
@@ -127,7 +127,7 @@ const AnnouncementManagement: React.FC = () => {
               render: (_, record) => (
                 <Space direction="vertical" size={2}>
                   <Text strong>{record.title}</Text>
-                  <Text type="secondary" ellipsis style={{ maxWidth: 520 }}>{record.content}</Text>
+                  <Text type="secondary" ellipsis className="announcement-management__contentPreview">{record.content}</Text>
                   {record.linkUrl ? <Text copyable type="secondary">{record.linkUrl}</Text> : null}
                 </Space>
               ),
@@ -198,7 +198,7 @@ const AnnouncementManagement: React.FC = () => {
             <Input placeholder="/coupons 或 https://example.com" />
           </Form.Item>
           <Space size="large" wrap>
-            <Form.Item name="status" label="状态" style={{ minWidth: 160 }}>
+            <Form.Item name="status" label="状态" className="announcement-management__statusField">
               <Select
                 options={[
                   { value: 'ACTIVE', label: '启用' },
@@ -206,7 +206,7 @@ const AnnouncementManagement: React.FC = () => {
                 ]}
               />
             </Form.Item>
-            <Form.Item name="sortOrder" label="排序" style={{ minWidth: 140 }}>
+            <Form.Item name="sortOrder" label="排序" className="announcement-management__sortField">
               <InputNumber min={0} max={9999} />
             </Form.Item>
           </Space>

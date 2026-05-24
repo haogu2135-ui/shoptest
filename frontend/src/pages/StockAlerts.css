@@ -284,6 +284,11 @@
   box-shadow: none !important;
 }
 
+.stock-alerts__image {
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .stock-alerts--es,
 .stock-alerts--es .ant-card,
 .stock-alerts--es .ant-btn,
@@ -461,5 +466,481 @@
 
   .stock-alerts--es .stock-alerts__item .ant-list-item-action > li {
     width: 100%;
+  }
+}
+
+/* Stock alert recovery polish */
+.stock-alerts__assistant,
+.stock-alerts__recovery,
+.stock-alerts__nextAction,
+.stock-alerts__item,
+.stock-alerts .ant-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stock-alerts__assistant::after,
+.stock-alerts__recovery::after,
+.stock-alerts__nextAction::after {
+  content: '';
+  position: absolute;
+  right: -38px;
+  bottom: -38px;
+  width: 116px;
+  height: 116px;
+  border-radius: 999px;
+  background: rgba(238, 77, 45, 0.08);
+  pointer-events: none;
+}
+
+.stock-alerts__assistant > *,
+.stock-alerts__recovery > *,
+.stock-alerts__nextAction > * {
+  position: relative;
+  z-index: 1;
+}
+
+.stock-alerts__header .ant-btn,
+.stock-alerts__recoveryActions .ant-btn,
+.stock-alerts__nextAction .ant-btn,
+.stock-alerts__item .ant-btn {
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.stock-alerts__header .ant-btn-primary,
+.stock-alerts__recoveryActions .ant-btn-primary,
+.stock-alerts__nextAction .ant-btn-primary,
+.stock-alerts__item .ant-btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, #ff7048, #ee4d2d);
+  box-shadow: 0 14px 28px rgba(238, 77, 45, 0.2);
+}
+
+.stock-alerts__signal,
+.stock-alerts__item {
+  min-width: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72), 0 8px 20px rgba(18, 71, 52, 0.05);
+}
+
+.stock-alerts__signal:hover,
+.stock-alerts__item:hover,
+.stock-alerts__item:focus-within {
+  border-color: rgba(238, 77, 45, 0.26);
+  box-shadow: 0 18px 34px rgba(18, 71, 52, 0.12);
+  transform: translateY(-3px);
+}
+
+.stock-alerts__item .ant-list-item-meta-avatar img,
+.stock-alerts__item img {
+  border: 1px solid #e4ebe4;
+  border-radius: 16px;
+  object-fit: contain;
+  padding: 5px;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(238, 77, 45, 0.08), transparent 5rem),
+    #ffffff;
+}
+
+.stock-alerts__price {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.stock-alerts__nextActionMeta .ant-tag {
+  border-radius: 999px;
+}
+
+@media (max-width: 640px) {
+  .stock-alerts__assistant::after,
+  .stock-alerts__recovery::after,
+  .stock-alerts__nextAction::after {
+    width: 92px;
+    height: 92px;
+  }
+
+  .stock-alerts .ant-card-body {
+    padding: 14px 12px;
+  }
+
+  .stock-alerts__header h2.ant-typography {
+    font-size: 22px;
+    line-height: 1.18;
+  }
+
+  .stock-alerts__signalGrid {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .stock-alerts__signal {
+    flex: 0 0 132px;
+    min-height: 82px;
+    scroll-snap-align: start;
+  }
+
+  .stock-alerts__nextActionMeta {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .stock-alerts__nextActionMeta .ant-space-item {
+    flex: 0 0 auto;
+  }
+
+  .stock-alerts__item.ant-list-item {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 8px !important;
+  }
+
+  .stock-alerts__item .ant-list-item-meta {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .stock-alerts__item .ant-list-item-action {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .stock-alerts__item .ant-list-item-action > li {
+    width: 100%;
+    padding: 0;
+  }
+
+  .stock-alerts__item .ant-list-item-action-split {
+    display: none;
+  }
+
+  .stock-alerts__item .ant-btn {
+    width: 100%;
+    min-height: 40px;
+    white-space: normal;
+  }
+
+  .stock-alerts__item .ant-image,
+  .stock-alerts__item .ant-image-img {
+    width: 64px !important;
+    height: 64px !important;
+  }
+}
+
+/* Final mobile stock-alert density pass */
+@media (max-width: 640px) {
+  .stock-alerts {
+    width: min(100% - 14px, 1200px);
+    padding: 8px 0 20px;
+  }
+
+  .stock-alerts .ant-card {
+    border-radius: 16px;
+  }
+
+  .stock-alerts .ant-card-body {
+    padding: 10px;
+  }
+
+  .stock-alerts__header {
+    gap: 9px;
+    margin-bottom: 10px;
+  }
+
+  .stock-alerts__header h2.ant-typography {
+    font-size: 20px;
+    line-height: 1.15;
+  }
+
+  .stock-alerts__header .ant-btn,
+  .stock-alerts__recoveryActions .ant-btn,
+  .stock-alerts__nextAction .ant-btn,
+  .stock-alerts__item .ant-btn {
+    min-height: 38px;
+  }
+
+  .stock-alerts__header .ant-space {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .stock-alerts__assistant,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction {
+    gap: 9px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .stock-alerts__assistantCopy h4.ant-typography,
+  .stock-alerts__recovery h4.ant-typography,
+  .stock-alerts__nextAction h4.ant-typography {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .stock-alerts__assistantCopy .ant-typography,
+  .stock-alerts__recovery .ant-typography,
+  .stock-alerts__nextAction .ant-typography {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .stock-alerts__signalGrid,
+  .stock-alerts__nextActionMeta {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    scroll-padding-inline: 10px;
+    scrollbar-width: none;
+  }
+
+  .stock-alerts__signalGrid::-webkit-scrollbar,
+  .stock-alerts__nextActionMeta::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stock-alerts__signal {
+    flex-basis: 112px;
+    min-height: 68px;
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .stock-alerts__signal strong {
+    font-size: 18px;
+  }
+
+  .stock-alerts__signal span {
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .stock-alerts__nextActionMeta .ant-tag {
+    min-height: 26px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .stock-alerts__item.ant-list-item {
+    gap: 8px;
+    padding: 10px 8px !important;
+    border-radius: 16px;
+  }
+
+  .stock-alerts__item .ant-list-item-meta-title {
+    margin-bottom: 3px;
+    font-size: 13px;
+    line-height: 1.28;
+  }
+
+  .stock-alerts__item .ant-list-item-meta-description {
+    font-size: 12px;
+  }
+
+  .stock-alerts__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 6px;
+  }
+
+  .stock-alerts__item .ant-list-item-action .ant-btn:not(.ant-btn-primary) {
+    width: 40px;
+    padding-inline: 0;
+  }
+
+  .stock-alerts__item .ant-list-item-action .ant-btn:not(.ant-btn-primary) .ant-btn-icon + span {
+    display: none;
+  }
+
+  .stock-alerts__item .ant-image,
+  .stock-alerts__item .ant-image-img {
+    width: 56px !important;
+    height: 56px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .stock-alerts__signal {
+    flex-basis: 104px;
+  }
+
+  .stock-alerts__item .ant-image,
+  .stock-alerts__item .ant-image-img {
+    width: 50px !important;
+    height: 50px !important;
+  }
+}
+
+/* Mobile stock-alert tactile refinement */
+@media (max-width: 640px) {
+  .stock-alerts__signalGrid,
+  .stock-alerts__nextActionMeta,
+  .stock-alerts__recoveryActions {
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .stock-alerts__signal,
+  .stock-alerts__item,
+  .stock-alerts__item .ant-btn,
+  .stock-alerts__header .ant-btn,
+  .stock-alerts__recoveryActions .ant-btn,
+  .stock-alerts__nextAction .ant-btn {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .stock-alerts__signal:active,
+  .stock-alerts__item:active,
+  .stock-alerts__item .ant-btn:active,
+  .stock-alerts__header .ant-btn:active,
+  .stock-alerts__recoveryActions .ant-btn:active,
+  .stock-alerts__nextAction .ant-btn:active {
+    transform: scale(0.985);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .stock-alerts__signal:hover,
+  .stock-alerts__item:hover,
+  .stock-alerts__item:focus-within {
+    transform: none;
+    box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+  }
+}
+
+/* Final mobile stock-alert edge-fit pass */
+@media (max-width: 640px) {
+  .stock-alerts,
+  .stock-alerts * {
+    box-sizing: border-box;
+  }
+
+  .stock-alerts {
+    width: min(100% - 12px, 1200px);
+    overflow-x: clip;
+  }
+
+  .stock-alerts__header,
+  .stock-alerts__assistant,
+  .stock-alerts__assistantCopy,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction,
+  .stock-alerts__item,
+  .stock-alerts__item .ant-list-item-meta,
+  .stock-alerts__item .ant-list-item-meta-content,
+  .stock-alerts__item .ant-list-item-meta-description,
+  .stock-alerts__item .ant-list-item-action {
+    min-width: 0;
+  }
+
+  .stock-alerts__header .ant-space,
+  .stock-alerts__header .ant-space-item,
+  .stock-alerts__header .ant-btn,
+  .stock-alerts__recoveryActions,
+  .stock-alerts__recoveryActions .ant-space-item,
+  .stock-alerts__recoveryActions .ant-btn,
+  .stock-alerts__nextAction .ant-btn {
+    min-width: 0;
+  }
+
+  .stock-alerts__header .ant-btn,
+  .stock-alerts__recoveryActions .ant-btn,
+  .stock-alerts__nextAction .ant-btn {
+    width: 100%;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .stock-alerts__signalGrid,
+  .stock-alerts__nextActionMeta,
+  .stock-alerts__recoveryActions {
+    width: calc(100% + 10px);
+    max-width: calc(100vw - 12px);
+    margin-right: -10px;
+    padding-right: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+
+  .stock-alerts__signalGrid::-webkit-scrollbar,
+  .stock-alerts__nextActionMeta::-webkit-scrollbar,
+  .stock-alerts__recoveryActions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stock-alerts__signal,
+  .stock-alerts__nextActionMeta .ant-tag,
+  .stock-alerts__recoveryActions .ant-btn {
+    flex: 0 0 auto;
+    max-width: min(78vw, 260px);
+    scroll-snap-align: start;
+  }
+
+  .stock-alerts__assistantCopy .ant-typography,
+  .stock-alerts__recovery .ant-typography,
+  .stock-alerts__nextAction .ant-typography,
+  .stock-alerts__signal span,
+  .stock-alerts__nextActionMeta .ant-tag,
+  .stock-alerts__item .ant-list-item-meta-title,
+  .stock-alerts__item .ant-list-item-meta-title a,
+  .stock-alerts__item .ant-list-item-meta-description .ant-typography,
+  .stock-alerts__price {
+    overflow-wrap: anywhere;
+  }
+
+  .stock-alerts__item .ant-list-item-action .ant-btn {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .stock-alerts__item .ant-list-item-action .ant-btn:not(.ant-btn-primary) {
+    flex: 0 0 auto;
+  }
+
+  .stock-alerts__item .ant-list-item-action .ant-btn-primary > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 360px) {
+  .stock-alerts {
+    width: min(100% - 10px, 1200px);
+  }
+
+  .stock-alerts__assistant,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction,
+  .stock-alerts__item {
+    border-radius: 14px;
+  }
+
+  .stock-alerts__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+
+  .stock-alerts__item .ant-list-item-action .ant-btn:not(.ant-btn-primary) {
+    width: 36px;
+    min-width: 36px;
+    padding-inline: 0;
   }
 }

@@ -159,7 +159,7 @@ const UserManagement: React.FC = () => {
           <Select
             size="small"
             value={getEffectiveRole(record.role, roleCode)}
-            style={{ width: 160 }}
+            className="user-management-page__roleCodeSelect"
             onChange={(val) => handleRoleCodeChange(record.id, val)}
             options={roles.map((role) => ({ value: role.code, label: role.name || role.code }))}
           />
@@ -180,7 +180,7 @@ const UserManagement: React.FC = () => {
           <Select
             size="small"
             value={role}
-            style={{ width: 130 }}
+            className="user-management-page__roleSelect"
             onChange={(val) => handleRoleChange(record.id, val)}
             options={[
               { value: 'USER', label: 'USER' },
@@ -267,14 +267,14 @@ const UserManagement: React.FC = () => {
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('pages.adminUsers.searchPlaceholder')}
-            style={{ width: 240 }}
+            className="user-management-page__keywordInput"
           />
           <Select
             allowClear
             value={roleFilter}
             onChange={setRoleFilter}
             placeholder={t('pages.adminUsers.role')}
-            style={{ width: 180 }}
+            className="user-management-page__roleFilter"
             options={[
               { value: 'USER', label: 'USER' },
               ...roles.map((role) => ({ value: role.code, label: role.name || role.code })),
@@ -285,7 +285,7 @@ const UserManagement: React.FC = () => {
             value={statusFilter}
             onChange={setStatusFilter}
             placeholder={t('common.status')}
-            style={{ width: 140 }}
+            className="user-management-page__statusFilter"
             options={[
               { value: 'ACTIVE', label: t('status.ACTIVE') },
               { value: 'BANNED', label: t('status.BANNED') },

@@ -763,6 +763,10 @@ const Home: React.FC = () => {
     const savingsAmount = Math.max(0, Number(product.originalPrice || 0) - getPrice(product));
     const quickAddReady = !isSoldOut && !needsOptionSelection(product);
     const lowStockCount = product.stock !== undefined && product.stock > 0 && product.stock <= 5 ? product.stock : null;
+    const ratingValue = product.averageRating ?? product.rating;
+    const hasRatingSignal = typeof ratingValue === 'number' && ratingValue > 0;
+    const positiveRate = Math.round(product.positiveRate || 0);
+    const hasPositiveSignal = positiveRate > 0 && (product.reviewCount || 0) > 0;
     const stockBadgeText = product.stock !== undefined && product.stock > 0
       ? product.stock <= 5
         ? t('pages.cart.lowStockLeft', { count: product.stock })
@@ -844,6 +848,24 @@ const Home: React.FC = () => {
       </span>
       <span className="shopee-product__body">
         <span className="shopee-product__name">{product.name}</span>
+        {hasRatingSignal || hasPositiveSignal ? (
+          <span className="shopee-product__socialProof">
+            {hasRatingSignal ? (
+              <span className="shopee-product__rating">
+                <StarFilled /> {ratingValue.toFixed(1)}
+              </span>
+            ) : null}
+            {hasPositiveSignal ? (
+              <span className="shopee-product__reviewCount">
+                {t('pages.productList.positiveRate', { rate: positiveRate, count: product.reviewCount || 0 })}
+              </span>
+            ) : product.reviewCount ? (
+              <span className="shopee-product__reviewCount">
+                {product.reviewCount} {t('home.sold')}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
         <span className="shopee-product__meta">
           <span className="shopee-product__price">{formatPrice(getPrice(product))}</span>
           {!compact && !isSoldOut ? (
@@ -889,14 +911,14 @@ const Home: React.FC = () => {
             <HeroSkeleton />
             <div className="shopee-hero__aside">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="shimmer" style={{ height: 132, borderRadius: 8 }} />
+                <div key={i} className="shopee-hero__asideSkeleton shimmer" />
               ))}
             </div>
           </div>
         </section>
         <div className="shopee-container">
           <StatsStripSkeleton />
-          <div style={{ marginTop: 16 }}>
+          <div className="shopee-loading-products">
             <ProductCardSkeleton count={8} />
           </div>
         </div>
@@ -1201,7 +1223,7 @@ const Home: React.FC = () => {
                         decoding="async"
                         width={34}
                         height={34}
-                        style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 6 }}
+                        className="shopee-categories__image"
                         onError={usePetGalleryImageFallback}
                       />
                     ) : (

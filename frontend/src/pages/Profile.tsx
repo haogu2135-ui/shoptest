@@ -756,7 +756,7 @@ const Profile: React.FC = () => {
   };
 
   if (loading || !user) {
-    return <div style={{ textAlign: 'center', padding: 80 }}>{t('common.loading')}</div>;
+    return <div className="profile-loading">{t('common.loading')}</div>;
   }
 
   return (
@@ -887,7 +887,7 @@ const Profile: React.FC = () => {
                   <Descriptions.Item label={t('pages.profile.phone')}>{user.phone || t('common.unset')}</Descriptions.Item>
                   <Descriptions.Item label={t('pages.profile.defaultAddress')}>{addresses.find((item) => item.isDefault)?.address || t('common.unset')}</Descriptions.Item>
                 </Descriptions>
-                <Space style={{ marginTop: 16 }}>
+                <Space className="profile-info-actions">
                   <Button icon={<EditOutlined />} onClick={openEditModal}>{t('pages.profile.editProfile')}</Button>
                   <Button icon={<LockOutlined />} onClick={() => setPasswordModalVisible(true)}>{t('pages.profile.changePassword')}</Button>
                 </Space>
@@ -920,7 +920,7 @@ const Profile: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Button className="profile-block-button" type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openAddressModal()}>
+                <Button className="profile-block-button profile-section-action" type="dashed" icon={<PlusOutlined />} block onClick={() => openAddressModal()}>
                   {t('pages.profile.addAddress')}
                 </Button>
                 {addresses.length === 0 ? (
@@ -929,15 +929,15 @@ const Profile: React.FC = () => {
                   <List
                     dataSource={addresses}
                     renderItem={(address) => (
-                      <Card key={address.id} className="profile-section-card profile-address-card" style={{ marginBottom: 12 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                      <Card key={address.id} className="profile-section-card profile-address-card">
+                        <div className="profile-address-card__content">
                           <div>
                             <Space>
                               <Text strong>{address.recipientName}</Text>
                               <Text type="secondary">{address.phone}</Text>
                               {address.isDefault && <Tag color="orange">{t('pages.checkout.defaultAddress')}</Tag>}
                             </Space>
-                            <div style={{ marginTop: 4 }}><Text>{address.address}</Text></div>
+                            <div className="profile-address-card__address"><Text>{address.address}</Text></div>
                           </div>
                           <Space wrap>
                             {!address.isDefault ? (
@@ -1008,11 +1008,11 @@ const Profile: React.FC = () => {
                 </div>
                 <div className="profile-orders__toolbar">
                   <Input.Search
+                    className="profile-orders__searchInput"
                     allowClear
                     value={orderSearchText}
                     onChange={(event) => setOrderSearchText(event.target.value)}
                     placeholder={t('pages.profile.orderSearchPlaceholder')}
-                    style={{ maxWidth: 420 }}
                   />
                   <Button onClick={() => fetchOrders()}>{t('common.refresh')}</Button>
                 </div>
@@ -1200,7 +1200,7 @@ const Profile: React.FC = () => {
                     </Button>
                   </Space>
                 </div>
-                <Button className="profile-block-button" type="dashed" icon={<PlusOutlined />} block style={{ marginBottom: 16 }} onClick={() => openPetModal()}>
+                <Button className="profile-block-button profile-section-action" type="dashed" icon={<PlusOutlined />} block onClick={() => openPetModal()}>
                   {t('pages.profile.addPet')}
                 </Button>
                 {petProfiles.length === 0 ? (
@@ -1329,10 +1329,10 @@ const Profile: React.FC = () => {
             <Input placeholder="Golden Retriever" />
           </Form.Item>
           <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker className="profile-pet-modal__field" />
           </Form.Item>
           <Form.Item name="weight" label={t('pages.profile.petWeightKg')}>
-            <InputNumber min={0} precision={2} style={{ width: '100%' }} />
+            <InputNumber min={0} precision={2} className="profile-pet-modal__field" />
           </Form.Item>
           <Form.Item name="size" label={t('pages.profile.petSize')}>
             <Select
@@ -1350,9 +1350,9 @@ const Profile: React.FC = () => {
       <Modal title={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })} open={orderDetailVisible} onCancel={() => setOrderDetailVisible(false)} footer={null} width={640}>
         {selectedOrder && (
           <div>
-            <Descriptions column={1} bordered size="small" style={{ marginBottom: 16 }}>
+            <Descriptions column={1} bordered size="small" className="profile-order-detail__descriptions">
               <Descriptions.Item label={t('common.status')}><Tag color={statusColors[selectedOrder.status]}>{t(`status.${selectedOrder.status}`)}</Tag></Descriptions.Item>
-              <Descriptions.Item label={t('common.amount')}><Text strong style={{ color: '#ee4d2d' }}>{formatMoney(selectedOrder.totalAmount)}</Text></Descriptions.Item>
+              <Descriptions.Item label={t('common.amount')}><Text strong className="profile-price-text">{formatMoney(selectedOrder.totalAmount)}</Text></Descriptions.Item>
               {selectedOrder.originalAmount ? <Descriptions.Item label={t('common.subtotal')}>{formatMoney(selectedOrder.originalAmount)}</Descriptions.Item> : null}
               {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 ? (
                 <Descriptions.Item label={t('pages.checkout.coupon')}>{selectedOrder.couponName || '-'} / -{formatMoney(selectedOrder.discountAmount)}</Descriptions.Item>
@@ -1395,8 +1395,8 @@ const Profile: React.FC = () => {
               <Descriptions.Item label={t('pages.profile.completedAt')}>{selectedOrder.completedAt ? new Date(selectedOrder.completedAt).toLocaleString(dateLocale) : '-'}</Descriptions.Item>
               <Descriptions.Item label={t('pages.adminOrders.createdAt')}>{selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString(dateLocale) : '-'}</Descriptions.Item>
             </Descriptions>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 8 }}>
-              <Title level={5} style={{ margin: 0 }}>{t('pages.profile.orderItems')}</Title>
+            <div className="profile-order-detail__itemsHeader">
+              <Title level={5} className="profile-order-detail__itemsTitle">{t('pages.profile.orderItems')}</Title>
               <Button icon={<ShoppingCartOutlined />} loading={reordering} disabled={orderItems.length === 0} onClick={handleReorder}>
                 {t('pages.profile.reorder')}
               </Button>
@@ -1411,7 +1411,7 @@ const Profile: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => openProductDetail(item.productId)}
-                          style={{ border: 0, background: 'transparent', padding: 0, cursor: 'pointer' }}
+                          className="profile-order-detail__imageButton"
                         >
                           <img
                             src={resolveOrderImage(item.imageUrl)}
@@ -1427,7 +1427,7 @@ const Profile: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => openProductDetail(item.productId)}
-                          style={{ border: 0, background: 'transparent', padding: 0, color: '#1677ff', cursor: 'pointer', textAlign: 'left' }}
+                          className="profile-order-detail__productButton"
                         >
                           {item.productName || t('pages.profile.productFallback', { id: item.productId })}
                         </button>
@@ -1439,7 +1439,7 @@ const Profile: React.FC = () => {
                         </Space>
                       }
                     />
-                    <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(item.price * item.quantity)}</Text>
+                    <Text strong className="profile-price-text">{formatMoney(item.price * item.quantity)}</Text>
                   </List.Item>
                 )}
               />
@@ -1474,7 +1474,7 @@ const Profile: React.FC = () => {
         onOk={handleReturnOrder}
         onCancel={() => { setReturnRequestOrder(null); setReturnReason(''); }}
       >
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction="vertical" className="profile-return-modal__content">
           <Text type="secondary">{t('pages.profile.returnReviewHint')}</Text>
           {returnRequestOrder?.returnDeadline ? (
             <Text type="secondary">
@@ -1506,6 +1506,7 @@ const Profile: React.FC = () => {
         title={t('pages.profile.continuePay')}
         open={paymentModalVisible}
         onCancel={() => setPaymentModalVisible(false)}
+        className="profile-payment-modal"
         footer={[
           selectedPayment?.status === 'PENDING' && selectedPayment.paymentUrl && (
             <Button
@@ -1529,7 +1530,7 @@ const Profile: React.FC = () => {
         ].filter(Boolean)}
       >
         {selectedOrder && selectedPayment && (
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Space direction="vertical" className="profile-payment-modal__content" size="middle">
             <div className="profile-payment-recovery">
               <div>
                 <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
@@ -1565,13 +1566,13 @@ const Profile: React.FC = () => {
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label={t('pages.profile.orderNo')}>{selectedOrder.orderNo || selectedOrder.id}</Descriptions.Item>
               <Descriptions.Item label={t('common.amount')}>
-                <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(selectedOrder.totalAmount)}</Text>
+                <Text strong className="profile-price-text">{formatMoney(selectedOrder.totalAmount)}</Text>
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
                 <Select
+                  className="profile-payment-modal__methodSelect"
                   value={selectedPaymentMethod}
                   options={paymentOptions}
-                  style={{ minWidth: 220 }}
                   onChange={setSelectedPaymentMethod}
                   disabled={selectedPayment.status === 'PAID'}
                 />
@@ -1619,7 +1620,7 @@ const Profile: React.FC = () => {
                 locale={{ emptyText: t('pages.profile.noPaymentHistory') }}
                 renderItem={(payment) => (
                   <List.Item>
-                    <Space direction="vertical" size={0} style={{ width: '100%' }}>
+                    <Space direction="vertical" size={0} className="profile-payment-history__item">
                       <Space wrap>
                         <Tag color={statusColors[payment.status] || 'default'}>
                           {t(`status.${payment.status}`)}
@@ -1627,7 +1628,7 @@ const Profile: React.FC = () => {
                         <Text>{paymentMethodLabel(payment.channel, t)}</Text>
                         {payment.amount ? <Text type="secondary">{formatMoney(payment.amount)}</Text> : null}
                       </Space>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
+                      <Text type="secondary" className="profile-payment-history__time">
                         {payment.createdAt ? new Date(payment.createdAt).toLocaleString(dateLocale) : ''}
                       </Text>
                     </Space>

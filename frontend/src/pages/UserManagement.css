@@ -134,3 +134,324 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Mobile user management refinement */
+@media (max-width: 430px) {
+  .user-management-page > .ant-typography {
+    margin-bottom: 8px;
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .user-management-page .ant-divider {
+    margin: 10px 0 12px;
+  }
+
+  .user-management-page__toolbar {
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+
+  .user-management-page__toolbar .ant-card-body {
+    padding: 10px;
+  }
+
+  .user-management-page__filters {
+    gap: 8px !important;
+  }
+
+  .user-management-page__filters .ant-input-affix-wrapper,
+  .user-management-page__filters .ant-select-selector,
+  .user-management-page__filters .ant-btn {
+    min-height: 38px;
+  }
+
+  .user-management-page__health {
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .user-management-page__healthCopy {
+    gap: 3px;
+  }
+
+  .user-management-page__healthCopy h5.ant-typography {
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  .user-management-page__healthCopy .ant-typography-secondary {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .user-management-page__score {
+    align-items: flex-start;
+  }
+
+  .user-management-page__score .ant-progress-circle {
+    width: 74px !important;
+    height: 74px !important;
+  }
+
+  .user-management-page__healthGrid {
+    display: flex;
+    gap: 8px;
+    margin-inline: -12px;
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .user-management-page__healthItem {
+    min-width: 132px;
+    min-height: 82px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .user-management-page__healthItem strong {
+    font-size: 21px;
+  }
+
+  .user-management-page__healthItem span {
+    font-size: 11px;
+  }
+
+  .user-management-page .ant-table-wrapper {
+    margin-inline: -6px;
+  }
+
+  .user-management-page .ant-table-cell .ant-space {
+    gap: 6px !important;
+  }
+
+  .user-management-page .ant-table-cell .ant-btn {
+    min-height: 30px;
+    padding-inline: 8px;
+  }
+}
+
+/* Final mobile user management edge-fit pass */
+.user-management-page,
+.user-management-page *,
+.user-management-page *::before,
+.user-management-page *::after {
+  box-sizing: border-box;
+}
+
+.user-management-page,
+.user-management-page__toolbar,
+.user-management-page__filters,
+.user-management-page__health,
+.user-management-page__healthCopy,
+.user-management-page__score,
+.user-management-page__healthGrid,
+.user-management-page__healthItem,
+.user-management-page .ant-card,
+.user-management-page .ant-card-body,
+.user-management-page .ant-table-wrapper {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.user-management-page {
+  overflow-x: clip;
+}
+
+.user-management-page__health,
+.user-management-page__healthCopy,
+.user-management-page__healthItem,
+.user-management-page__toolbar,
+.user-management-page .ant-btn,
+.user-management-page .ant-tag,
+.user-management-page .ant-typography,
+.user-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+.user-management-page .ant-table-wrapper {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.user-management-page .ant-table {
+  min-width: max-content;
+}
+
+.user-management-page__filters .ant-space,
+.user-management-page__filters .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.user-management-page__roleCodeSelect {
+  width: 160px;
+}
+
+.user-management-page__roleSelect {
+  width: 130px;
+}
+
+.user-management-page__keywordInput {
+  width: 240px;
+}
+
+.user-management-page__roleFilter {
+  width: 180px;
+}
+
+.user-management-page__statusFilter {
+  width: 140px;
+}
+
+@media (max-width: 720px) {
+  .user-management-page__toolbar {
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .user-management-page__toolbar .ant-card-body {
+    padding: 12px;
+  }
+
+  .user-management-page__filters {
+    gap: 8px !important;
+  }
+
+  .user-management-page__filters .ant-space-item,
+  .user-management-page__keywordInput,
+  .user-management-page__roleFilter,
+  .user-management-page__statusFilter,
+  .user-management-page__filters .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .user-management-page__filters .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .user-management-page__health {
+    gap: 12px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .user-management-page__score {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .user-management-page > .ant-typography {
+    font-size: 19px;
+    line-height: 1.25;
+  }
+
+  .user-management-page__healthCopy h5.ant-typography {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .user-management-page__score .ant-progress-circle {
+    width: 76px !important;
+    height: 76px !important;
+  }
+
+  .user-management-page__healthGrid {
+    display: flex;
+    gap: 8px;
+    margin-inline: -14px;
+    padding: 0 14px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .user-management-page__healthItem {
+    flex: 0 0 138px;
+    min-height: 82px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .user-management-page__healthItem strong {
+    font-size: 21px;
+  }
+
+  .user-management-page .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  .user-management-page__health {
+    padding: 12px;
+  }
+
+  .user-management-page__healthGrid {
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+
+  .user-management-page__healthItem {
+    flex-basis: 132px;
+  }
+
+  .user-management-page .ant-table-cell .ant-space-item,
+  .user-management-page .ant-table-cell .ant-btn {
+    max-width: 100%;
+  }
+}
+
+/* Final mobile user admin action stability pass */
+@media (max-width: 720px) {
+  .user-management-page__healthGrid {
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .user-management-page__healthGrid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .user-management-page .ant-btn,
+  .user-management-page__healthItem {
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .user-management-page .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .user-management-page__healthItem span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .user-management-page .ant-table-wrapper {
+    max-width: calc(100vw - 12px);
+  }
+
+  .user-management-page__roleCodeSelect,
+  .user-management-page__roleSelect {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .user-management-page__healthItem {
+    flex-basis: 122px;
+  }
+}

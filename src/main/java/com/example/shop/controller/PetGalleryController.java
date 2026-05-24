@@ -13,7 +13,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/pet-gallery")
@@ -64,11 +63,6 @@ public class PetGalleryController {
         UserDetailsImpl userDetails = requireUser(authentication);
         petGalleryService.deleteOwnUpload(id, userDetails.getId());
         return ResponseEntity.noContent().build();
-    }
-
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException e) {
-        return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getReason()));
     }
 
     private UserDetailsImpl requireUser(Authentication authentication) {

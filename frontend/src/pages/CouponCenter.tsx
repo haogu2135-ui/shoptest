@@ -924,7 +924,7 @@ const CouponCenter: React.FC = () => {
                     )}
                   >
                     <span className="coupon-center-page__couponRibbon">{couponStateLabel}</span>
-                    <Space direction="vertical" className="coupon-center-page__couponBody" style={{ width: '100%' }}>
+                    <Space direction="vertical" className="coupon-center-page__couponBody">
                       <div className="coupon-center-page__couponValueRow">
                         <Text strong className="coupon-center-page__couponValue">{describeCoupon(coupon)}</Text>
                       {estimatedValue > 0 ? <span className="coupon-center-page__couponEstimate">{formatMoney(estimatedValue)}</span> : null}

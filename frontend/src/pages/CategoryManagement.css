@@ -181,3 +181,244 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Final mobile category admin edge-fit pass */
+.category-management-page,
+.category-management-page *,
+.category-management-page *::before,
+.category-management-page *::after {
+  box-sizing: border-box;
+}
+
+.category-management-page,
+.category-management-page__toolbar,
+.category-management-page__health,
+.category-management-page__healthCopy,
+.category-management-page__score,
+.category-management-page__healthGrid,
+.category-management-page__healthItem,
+.category-management-page .ant-card,
+.category-management-page .ant-card-body,
+.category-management-page .ant-table-wrapper,
+.category-management-page .ant-space,
+.category-management-page .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.category-management-page {
+  overflow-x: clip;
+}
+
+.category-management-page__title {
+  margin-bottom: 0 !important;
+}
+
+.category-management-page__imagePlaceholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  background: #f2f3f5;
+}
+
+.category-management-page__preview {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.category-management-page .ant-table-wrapper {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-management-page .ant-table {
+  min-width: max-content;
+}
+
+.category-management-page__health,
+.category-management-page__healthCopy,
+.category-management-page__healthItem,
+.category-management-page .ant-btn,
+.category-management-page .ant-tag,
+.category-management-page .ant-typography,
+.category-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .category-management-page {
+    padding-inline: 0;
+  }
+
+  .category-management-page__toolbar {
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .category-management-page__toolbar .ant-card-body {
+    padding: 12px;
+  }
+
+  .category-management-page__toolbar .ant-space {
+    gap: 8px !important;
+  }
+
+  .category-management-page__toolbar .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .category-management-page__health {
+    gap: 12px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .category-management-page__score {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .category-management-page h3.ant-typography {
+    font-size: 19px;
+    line-height: 1.25;
+  }
+
+  .category-management-page__healthCopy h5.ant-typography {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .category-management-page__score .ant-progress-circle {
+    width: 76px !important;
+    height: 76px !important;
+  }
+
+  .category-management-page__healthGrid {
+    display: flex;
+    gap: 8px;
+    margin-inline: -14px;
+    padding: 0 14px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-management-page__healthItem,
+  .category-management-page--es .category-management-page__healthItem {
+    flex: 0 0 138px;
+    min-height: 82px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .category-management-page__healthItem strong {
+    font-size: 21px;
+  }
+
+  .category-management-page .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  .category-management-page__health {
+    padding: 12px;
+  }
+
+  .category-management-page__healthGrid {
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+
+  .category-management-page__healthItem,
+  .category-management-page--es .category-management-page__healthItem {
+    flex-basis: 132px;
+  }
+
+  .category-management-page .ant-table-cell .ant-space {
+    gap: 6px !important;
+  }
+
+  .category-management-page .ant-table-cell .ant-btn {
+    min-height: 30px;
+    padding-inline: 8px;
+  }
+}
+
+/* Final mobile category editor modal pass */
+@media (max-width: 560px) {
+  .category-management-page__editorModal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+    top: max(8px, env(safe-area-inset-top));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .category-management-page__editorModal,
+  .category-management-page__editorModal * {
+    box-sizing: border-box;
+  }
+
+  .category-management-page__editorModal .ant-modal-content {
+    max-height: calc(100dvh - 18px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .category-management-page__editorModal .ant-modal-header,
+  .category-management-page__editorModal .ant-modal-body,
+  .category-management-page__editorModal .ant-modal-footer {
+    padding-inline: 12px;
+  }
+
+  .category-management-page__editorModal .ant-modal-body {
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-management-page__editorModal .ant-tabs-nav {
+    margin-bottom: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-management-page__editorModal .ant-tabs-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-management-page__editorModal .ant-form-item,
+  .category-management-page__editorModal .ant-form-item-control,
+  .category-management-page__editorModal .ant-input,
+  .category-management-page__editorModal .ant-select,
+  .category-management-page__editorModal .ant-tree-select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .category-management-page__editorModal .ant-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .category-management-page__editorModal .ant-modal-footer .ant-btn {
+    flex: 1 1 128px;
+    min-height: 38px;
+    margin-inline-start: 0;
+    white-space: normal;
+  }
+}

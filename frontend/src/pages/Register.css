@@ -28,6 +28,7 @@
 
 .register-page__copy {
   max-width: 560px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -50,7 +51,7 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -257,4 +258,632 @@
 .register-page__card .ant-input-affix-wrapper:hover,
 .register-page__card .ant-select-selector:hover {
   border-color: #124734 !important;
+}
+
+/* Registration conversion polish */
+.register-page {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(238, 77, 45, 0.1), transparent 26rem),
+    radial-gradient(circle at 92% 10%, rgba(18, 71, 52, 0.1), transparent 24rem),
+    linear-gradient(180deg, #fffaf6 0%, #f8fcf9 48%, #f1f6f3 100%);
+}
+
+.register-page__panel,
+.register-page__card {
+  position: relative;
+  z-index: 1;
+  border-radius: 28px;
+}
+
+.register-page__panel {
+  isolation: isolate;
+  box-shadow: 0 28px 64px rgba(18, 71, 52, 0.2);
+}
+
+.register-page__panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 88% 0, rgba(255, 122, 82, 0.22), transparent 20rem),
+    linear-gradient(90deg, rgba(15, 53, 39, 0.28), transparent 62%);
+}
+
+.register-page__featureCard {
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.register-page__featureCard:hover,
+.register-page__featureCard:focus-within {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.12);
+}
+
+.register-page__actions .ant-btn,
+.register-page__card .ant-btn,
+.register-page__footer a {
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.register-page__actions .ant-btn-primary,
+.register-page__card .ant-btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, #ff7048, #ee4d2d);
+  box-shadow: 0 14px 28px rgba(238, 77, 45, 0.22);
+}
+
+.register-page__card {
+  overflow: hidden;
+  border-color: rgba(18, 71, 52, 0.08);
+  box-shadow: 0 24px 56px rgba(18, 71, 52, 0.14);
+}
+
+.register-page__card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #124734, #ee4d2d, #f5b35f);
+}
+
+.register-page__brand {
+  letter-spacing: 0;
+}
+
+.register-page__cardHint,
+.register-page__footer,
+.register-page__featureCard strong,
+.register-page__featureCard span,
+.register-page__trustGrid .ant-tag {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.register-page__card .ant-form-item {
+  margin-bottom: 14px;
+}
+
+.register-page__card .ant-input,
+.register-page__card .ant-input-affix-wrapper,
+.register-page__card .ant-select-selector {
+  border-color: #dce9df;
+  border-radius: 16px !important;
+  background: #fbfefb;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.register-page__card .ant-input:focus,
+.register-page__card .ant-input-affix-wrapper-focused,
+.register-page__card .ant-input-affix-wrapper:hover,
+.register-page__card .ant-input:hover,
+.register-page__card .ant-select-selector:hover {
+  border-color: rgba(238, 77, 45, 0.42) !important;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.1);
+}
+
+.register-page__trustGrid .ant-tag {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+@media (max-width: 860px) {
+  .register-page__panel,
+  .register-page__card {
+    border-radius: 24px;
+  }
+
+  .register-page__trustGrid {
+    align-items: stretch;
+  }
+
+  .register-page__trustGrid .ant-tag {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-page {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .register-page__panel,
+  .register-page__card {
+    border-radius: 22px;
+  }
+
+  .register-page__panel {
+    min-height: 286px;
+    padding: 20px 16px;
+    background-position: 50% center;
+  }
+
+  .register-page__copy {
+    width: 100%;
+    max-width: 100%;
+    gap: 9px;
+  }
+
+  .register-page__card .ant-card-body {
+    padding: 24px 16px 18px;
+  }
+
+  .register-page__copy h1.ant-typography {
+    font-size: 26px;
+  }
+
+  .register-page__footer {
+    gap: 8px;
+  }
+
+  .register-page__trustGrid {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .register-page__trustGrid .ant-tag {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .register-page__featureCards {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .register-page__featureCard {
+    flex: 0 0 224px;
+    min-height: 104px;
+    padding: 12px;
+    scroll-snap-align: start;
+  }
+
+  .register-page__brand {
+    font-size: 24px;
+  }
+
+  .register-page__cardHint {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+}
+
+/* Final mobile registration density pass */
+@media (max-width: 430px) {
+  .register-page {
+    align-content: start;
+    padding: 8px;
+    gap: 10px;
+  }
+
+  .register-page__panel {
+    min-height: 224px;
+    padding: 16px 14px;
+  }
+
+  .register-page__copy {
+    gap: 7px;
+  }
+
+  .register-page__copy h1.ant-typography {
+    font-size: 22px;
+    line-height: 1.12;
+  }
+
+  .register-page__eyebrow,
+  .register-page__copy > .ant-typography:not(h1) {
+    font-size: 12px;
+  }
+
+  .register-page__copy > .ant-typography:not(h1) {
+    display: -webkit-box;
+    overflow: hidden;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .register-page__trustGrid {
+    gap: 6px;
+  }
+
+  .register-page__trustGrid .ant-tag {
+    min-height: 28px;
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+
+  .register-page__featureCards {
+    gap: 7px;
+  }
+
+  .register-page__featureCard {
+    flex-basis: 184px;
+    min-height: 78px;
+    padding: 10px;
+  }
+
+  .register-page__featureCard strong {
+    font-size: 13px;
+  }
+
+  .register-page__featureCard span {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .register-page__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .register-page__actions .ant-space-item,
+  .register-page__actions .ant-btn {
+    width: 100%;
+  }
+
+  .register-page__actions .ant-btn {
+    min-height: 38px;
+    padding-inline: 10px;
+    white-space: normal;
+  }
+
+  .register-page__card .ant-card-body {
+    padding: 18px 12px 14px;
+  }
+
+  .register-page__cardHeader {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .register-page__brand {
+    font-size: 25px;
+  }
+
+  .register-page__cardHint {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .register-page__title {
+    margin-bottom: 14px !important;
+    font-size: 22px !important;
+    line-height: 1.15 !important;
+  }
+
+  .register-page__card .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  .register-page__card .ant-input,
+  .register-page__card .ant-input-affix-wrapper,
+  .register-page__card .ant-select-selector {
+    min-height: 42px;
+  }
+
+  .register-page__card .ant-form-item-explain {
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .register-page__footer {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 360px) {
+  .register-page__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .register-page__panel {
+    min-height: 208px;
+  }
+
+  .register-page__featureCard {
+    flex-basis: 168px;
+  }
+}
+
+/* Mobile registration tactile refinement */
+@media (hover: none) {
+  .register-page__featureCard:hover,
+  .register-page__featureCard:focus-within,
+  .register-page__card .ant-btn-primary:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-page__trustGrid,
+  .register-page__featureCards {
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
+  }
+
+  .register-page__trustGrid::-webkit-scrollbar,
+  .register-page__featureCards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .register-page__featureCard,
+  .register-page__trustGrid .ant-tag,
+  .register-page__actions .ant-btn,
+  .register-page__card .ant-btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .register-page__featureCard:active,
+  .register-page__actions .ant-btn:active,
+  .register-page__card .ant-btn:active {
+    transform: scale(0.98);
+  }
+}
+
+@media (max-width: 430px) {
+  .register-page__footer a {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+  }
+}
+
+/* Final mobile registration edge-fit pass */
+@media (max-width: 430px) {
+  .register-page__panel,
+  .register-page__card,
+  .register-page__card .ant-form,
+  .register-page__card .ant-form-item-control-input,
+  .register-page__card .ant-input,
+  .register-page__card .ant-input-affix-wrapper,
+  .register-page__card .ant-select,
+  .register-page__card .ant-select-selector {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .register-page__trustGrid,
+  .register-page__featureCards {
+    margin-inline: -8px;
+    padding-inline: 8px;
+    scroll-padding-inline: 8px 24px;
+  }
+
+  .register-page__trustGrid .ant-tag {
+    max-width: 74vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .register-page__featureCard {
+    min-width: 0;
+    max-width: 74vw;
+  }
+
+  .register-page__card .ant-form-item-label > label {
+    min-height: 20px;
+    line-height: 1.25;
+  }
+
+  .register-page__card .ant-form-item-explain,
+  .register-page__footer {
+    overflow-wrap: anywhere;
+  }
+
+  .register-page__card .ant-btn-primary {
+    min-height: 42px;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 360px) {
+  .register-page__trustGrid .ant-tag,
+  .register-page__featureCard {
+    max-width: 82vw;
+  }
+
+  .register-page__card .ant-card-body {
+    padding-inline: 10px;
+  }
+}
+
+/* Final mobile registration rail target pass */
+@media (max-width: 430px) {
+  .register-page__trustGrid,
+  .register-page__featureCards {
+    gap: 6px;
+    margin-inline: -6px;
+    padding-inline: 6px;
+    scroll-padding-inline: 6px 18px;
+  }
+
+  .register-page__trustGrid .ant-tag {
+    max-width: min(128px, 40vw);
+    min-height: 34px;
+    padding-inline: 8px;
+  }
+
+  .register-page__trustGrid .ant-tag .anticon {
+    flex: 0 0 auto;
+  }
+
+  .register-page__featureCard {
+    flex-basis: min(158px, 44vw);
+    max-width: min(158px, 44vw);
+    min-height: 82px;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .register-page__featureCard .anticon {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 360px) {
+  .register-page__trustGrid .ant-tag {
+    max-width: 43vw;
+  }
+
+  .register-page__featureCard {
+    flex-basis: min(150px, 45vw);
+    max-width: min(150px, 45vw);
+  }
+}
+
+/* Final mobile registration link target pass */
+@media (max-width: 430px) {
+  .register-page__footer a {
+    min-height: 36px;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 6px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    touch-action: manipulation;
+  }
+}
+
+/* Mobile registration focused-entry pass */
+@media (max-width: 640px) {
+  .register-page {
+    min-height: 100dvh;
+    align-content: start;
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    overflow-x: clip;
+    background: linear-gradient(180deg, #fffaf6 0%, #f8fcf9 56%, #eef5f0 100%);
+  }
+
+  .register-page__panel {
+    display: none;
+  }
+
+  .register-page__card {
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 430px) {
+  .register-page {
+    padding-inline: 8px;
+  }
+
+  .register-page__card {
+    border-radius: 16px;
+    box-shadow: 0 14px 32px rgba(18, 71, 52, 0.12);
+  }
+
+  .register-page__card::before {
+    height: 4px;
+  }
+
+  .register-page__card .ant-card-body {
+    padding: 16px 12px 14px;
+  }
+
+  .register-page__cardHeader {
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .register-page__brand {
+    font-size: 25px;
+  }
+
+  .register-page__cardHint {
+    font-size: 12px;
+    line-height: 1.4;
+    -webkit-line-clamp: 1;
+  }
+
+  .register-page__title {
+    margin-bottom: 12px !important;
+    font-size: 21px !important;
+  }
+
+  .register-page__card .ant-form-item {
+    margin-bottom: 10px;
+  }
+
+  .register-page__card .ant-input,
+  .register-page__card .ant-input-affix-wrapper,
+  .register-page__card .ant-select-selector,
+  .register-page__card .ant-btn-primary {
+    min-height: 42px;
+  }
+
+  .register-page__card .ant-input,
+  .register-page__card .ant-input-affix-wrapper,
+  .register-page__card .ant-select,
+  .register-page__card .ant-select-selector,
+  .register-page__card .ant-input-group-wrapper,
+  .register-page__card .ant-input-group,
+  .register-page__card .ant-input-group-addon,
+  .register-page__card .ant-btn {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .register-page__card .ant-input-group-addon .ant-btn {
+    min-height: 42px;
+    padding-inline: 10px;
+    white-space: normal;
+  }
+
+  .register-page__footer {
+    gap: 4px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .register-page {
+    padding-inline: 6px;
+  }
+
+  .register-page__card .ant-card-body {
+    padding-inline: 10px;
+  }
 }

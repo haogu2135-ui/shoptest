@@ -593,22 +593,22 @@ const Cart: React.FC = () => {
       <div className={`cart-page cart-page--${language}`}>
         <section className="cart-page__hero">
           <div className="cart-page__heroContent">
-            <div className="shimmer" style={{ width: 100, height: 18, borderRadius: 999 }} />
-            <div className="shimmer" style={{ width: 220, height: 40, borderRadius: 10 }} />
-            <div className="shimmer" style={{ width: '70%', height: 16, borderRadius: 6 }} />
+            <div className="cart-page__loadingEyebrow shimmer" />
+            <div className="cart-page__loadingTitle shimmer" />
+            <div className="cart-page__loadingText shimmer" />
             <div className="cart-page__heroActions">
-              <div className="shimmer" style={{ width: 140, height: 40, borderRadius: 10 }} />
-              <div className="shimmer" style={{ width: 100, height: 40, borderRadius: 10 }} />
+              <div className="cart-page__loadingAction shimmer" />
+              <div className="cart-page__loadingAction cart-page__loadingAction--secondary shimmer" />
             </div>
           </div>
           <div className="cart-page__heroStats">
-            {[1, 2, 3].map(i => <div key={i} className="shimmer" style={{ height: 80, borderRadius: 16 }} />)}
+            {[1, 2, 3].map(i => <div key={i} className="cart-page__loadingStat shimmer" />)}
           </div>
         </section>
         <section className="cart-page__summaryStrip">
           <StatsStripSkeleton cols={3} />
         </section>
-        <div style={{ marginTop: 16 }}>
+        <div className="cart-page__loadingProducts">
           <ProductCardSkeleton count={6} />
         </div>
       </div>
@@ -618,9 +618,46 @@ const Cart: React.FC = () => {
   if (!loading && cartItems.length === 0 && savedItems.length === 0 && recentProducts.length === 0) {
     return (
       <div className={`cart-page cart-page--empty cart-page--${language}`}>
-        <Empty image={<ShoppingOutlined style={{ fontSize: 64, color: '#ccc' }} />} description={t('pages.cart.empty')}>
-          <Button type="primary" onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
-        </Empty>
+        <section className="cart-page__emptyHero" aria-label={t('pages.cart.empty')}>
+          <span className="cart-page__emptyIcon">
+            <ShoppingCartOutlined />
+          </span>
+          <div className="cart-page__emptyCopy">
+            <span className="cart-page__emptyEyebrow">{t('pages.cart.yourCart')}</span>
+            <Title level={2}>{t('pages.cart.empty')}</Title>
+            <Text>{t('pages.cart.recentRecoverySubtitle')}</Text>
+          </div>
+          <div className="cart-page__emptyActions">
+            <Button type="primary" icon={<ShoppingOutlined />} onClick={() => navigate('/products')}>
+              {t('pages.cart.browse')}
+            </Button>
+            <Button icon={<ShoppingOutlined />} onClick={() => navigate('/coupons')}>
+              {t('nav.coupons')}
+            </Button>
+            <Button icon={<ShoppingOutlined />} onClick={() => navigate('/pet-finder')}>
+              {t('nav.petFinder')}
+            </Button>
+            <Button icon={<ClockCircleOutlined />} onClick={() => navigate('/history')}>
+              {t('nav.history')}
+            </Button>
+          </div>
+          <div className="cart-page__emptySignals">
+            <span>
+              <CheckCircleOutlined />
+              {freeShippingThreshold > 0
+                ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingThreshold) })
+                : t('pages.cart.freeShippingUnlocked')}
+            </span>
+            <span>
+              <ClockCircleOutlined />
+              {t('pages.cart.saveForLaterTitle')}
+            </span>
+            <span>
+              <ShoppingOutlined />
+              {t('pages.cart.recentRecoveryTitle')}
+            </span>
+          </div>
+        </section>
       </div>
     );
   }
@@ -794,6 +831,7 @@ const Cart: React.FC = () => {
                 onChange={(e) => toggleOne(item.id, e.target.checked)}
               />
               <img
+                className="cart-page__mobileItemImage"
                 src={resolveCartImage(item.imageUrl)}
                 alt={item.productName}
                 loading="lazy"
@@ -804,9 +842,9 @@ const Cart: React.FC = () => {
                   }
                 }}
               />
-              <div>
-                <Link to={`/products/${item.productId}`}><Text strong>{item.productName}</Text></Link>
-                {item.selectedSpecs ? <div><Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text></div> : null}
+              <div className="cart-page__mobileItemInfo">
+                <Link className="cart-page__mobileItemTitle" to={`/products/${item.productId}`}><Text strong>{item.productName}</Text></Link>
+                {item.selectedSpecs ? <div className="cart-page__mobileItemMeta"><Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text></div> : null}
                 {!canCheckout(item) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
                 {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
                   <div>
@@ -815,7 +853,7 @@ const Cart: React.FC = () => {
                     </Text>
                   </div>
                 ) : null}
-                <Text type="secondary">{formatMoney(item.price)}</Text>
+                <Text type="secondary" className="cart-page__mobileItemUnitPrice">{formatMoney(item.price)}</Text>
               </div>
             </div>
             <div className="cart-page__mobileItemBottom">
@@ -880,6 +918,7 @@ const Cart: React.FC = () => {
         </Card>
       )}
       <Card
+        className="cart-page__savedCard"
         title={`${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`}
         extra={savedItems.length > 0 ? (
           <Button
@@ -891,7 +930,6 @@ const Cart: React.FC = () => {
             {t('pages.cart.moveAllToCart')}
           </Button>
         ) : null}
-        style={{ marginTop: 16 }}
       >
         {savedItems.length > 0 ? (
           <div className="cart-page__savedValue">

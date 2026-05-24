@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Typography, Slider, Checkbox, Modal, Space, Drawer } from 'antd';
-import { BarChartOutlined, BellOutlined, CheckCircleOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { BarChartOutlined, BellOutlined, CheckCircleOutlined, CloseOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi } from '../api';
 import type { Product, Category } from '../types';
@@ -135,6 +135,7 @@ const ProductList: React.FC = () => {
   const [discount, setDiscount] = useState(searchParams.get('discount') === 'true');
   const [sortBy, setSortBy] = useState<string>(normalizeSortValue(searchParams.get('sort')));
   const [priceRange, setPriceRange] = useState<[number, number]>(DEFAULT_PRICE_RANGE);
+  const [priceFilterTouched, setPriceFilterTouched] = useState(false);
   const [petSizes, setPetSizes] = useState<string[]>(
     normalizePetSizeValues(searchParams.getAll('petSize').length ? searchParams.getAll('petSize') : [searchParams.get('petSize')]),
   );
@@ -284,7 +285,7 @@ const ProductList: React.FC = () => {
     return [min, max];
   }, [maxCatalogPrice, priceRange]);
 
-  const priceFilterActive = displayedPriceRange[0] > 0 || displayedPriceRange[1] < maxCatalogPrice;
+  const priceFilterActive = priceFilterTouched && (displayedPriceRange[0] > 0 || displayedPriceRange[1] < maxCatalogPrice);
   const activeFilterCount = [
     priceFilterActive,
     petSizes.length > 0,
@@ -319,6 +320,12 @@ const ProductList: React.FC = () => {
 
   useEffect(() => {
     setPriceRange((currentRange) => {
+      if (!priceFilterTouched) {
+        const normalizedRange: [number, number] = [0, maxCatalogPrice];
+        return normalizedRange[0] === currentRange[0] && normalizedRange[1] === currentRange[1]
+          ? currentRange
+          : normalizedRange;
+      }
       const previousMax = priceRangeMaxRef.current;
       const followsCatalogMax = currentRange[1] === previousMax || currentRange[1] >= previousMax;
       const nextMin = Math.min(currentRange[0], maxCatalogPrice);
@@ -329,7 +336,7 @@ const ProductList: React.FC = () => {
         : normalizedRange;
     });
     priceRangeMaxRef.current = maxCatalogPrice;
-  }, [maxCatalogPrice]);
+  }, [maxCatalogPrice, priceFilterTouched]);
 
   const visibleCategories = useMemo(() => {
     const hasActiveCatalogNarrowing = Boolean(collection || keyword.trim() || categoryId);
@@ -392,6 +399,7 @@ const ProductList: React.FC = () => {
         label: `${t('pages.productList.price')}: ${formatMoney(displayedPriceRange[0])} - ${formatMoney(displayedPriceRange[1])}`,
         onClose: () => {
           setPriceRange([0, maxCatalogPrice]);
+          setPriceFilterTouched(false);
           setCurrentPage(1);
         },
       });
@@ -584,6 +592,7 @@ const ProductList: React.FC = () => {
 
   const resetFilters = () => {
     setPriceRange([0, maxCatalogPrice]);
+    setPriceFilterTouched(false);
     setPetSizes([]);
     setMaterials([]);
     setColors([]);
@@ -621,13 +630,13 @@ const ProductList: React.FC = () => {
           options={group.values.map((value) => ({
             value,
             label: getLocalizedOptionLabel(value, language),
-            disabled: !optionValueIsCompatible(quickAddVariants, quickAddOptions, group.name, value),
-          }))}
-          style={{ width: '100%' }}
+        disabled: !optionValueIsCompatible(quickAddVariants, quickAddOptions, group.name, value),
+      }))}
+          className="product-list__quickAddSelect"
         />
       ))}
       {Object.keys(quickAddOptions).length > 0 && (
-        <Button type="link" onClick={() => setQuickAddOptions({})} style={{ padding: 0, alignSelf: 'flex-start' }}>
+        <Button type="link" onClick={() => setQuickAddOptions({})} className="product-list__quickAddReset">
           {t('common.reset')}
         </Button>
       )}
@@ -872,6 +881,210 @@ const ProductList: React.FC = () => {
     { value: 'positive-rate-desc', label: t('pages.productList.positiveRateDesc') },
     { value: 'name', label: t('pages.productList.byName') },
   ];
+  const mobileDiscoveryActions = [
+    {
+      key: 'all',
+      icon: <SearchOutlined />,
+      label: t('pages.productList.allCategories'),
+      active: !collection && !keyword.trim() && !discount && sortBy === 'default' && activeRefinementCount === 0,
+      onClick: () => {
+        setKeyword('');
+        setCategoryId(undefined);
+        setDiscount(false);
+        setSortBy('default');
+        setPetSizes([]);
+        setMaterials([]);
+        setColors([]);
+        setPriceRange([0, maxCatalogPrice]);
+        setPriceFilterTouched(false);
+        setCurrentPage(1);
+        navigate('/products');
+      },
+    },
+    {
+      key: 'deals',
+      icon: <FireOutlined />,
+      label: t('pages.productList.shopBestDeals'),
+      active: discount || sortBy === 'discount-desc',
+      onClick: () => {
+        setDiscount(true);
+        setSortBy('discount-desc');
+        setCurrentPage(1);
+        navigate(buildProductsUrl({ discount: true, sortBy: 'discount-desc' }));
+      },
+    },
+    {
+      key: 'smart',
+      icon: <GiftOutlined />,
+      label: t('nav.petNav.smartDevices'),
+      active: collection === 'smart-devices',
+      onClick: () => {
+        setCurrentPage(1);
+        navigate(buildProductsUrl({ collection: 'smart-devices' }));
+      },
+    },
+    {
+      key: 'rated',
+      icon: <BarChartOutlined />,
+      label: t('pages.productList.shopTopRated'),
+      active: sortBy === 'positive-rate-desc',
+      onClick: () => applySort('positive-rate-desc'),
+    },
+    {
+      key: 'quick',
+      icon: <ShoppingCartOutlined />,
+      label: t('pages.productList.shopQuickAdd'),
+      active: sortBy === 'quick-add-desc',
+      onClick: () => applySort('quick-add-desc'),
+    },
+    {
+      key: 'support',
+      icon: <CustomerServiceOutlined />,
+      label: t('footer.helpCenter'),
+      active: false,
+      onClick: () => dispatchDomEvent('shop:open-support'),
+    },
+  ];
+  const resetCatalogView = () => {
+    setKeyword('');
+    setCategoryId(undefined);
+    setDiscount(false);
+    setSortBy('default');
+    setPetSizes([]);
+    setMaterials([]);
+    setColors([]);
+    setPriceRange([0, maxCatalogPrice]);
+    setPriceFilterTouched(false);
+    setCurrentPage(1);
+    navigate('/products');
+  };
+  const resetMobileRefinements = () => {
+    resetFilters();
+    setCategoryId(undefined);
+    navigate(buildProductsUrl({ categoryId: undefined, petSizes: [] }));
+  };
+  const hasActiveCatalogContext = Boolean(keyword.trim() || categoryId || collection || discount || activeRefinementCount > 0);
+  const mobileNextStepText = filteredProducts.length === 0
+    ? hasActiveCatalogContext
+      ? t('pages.productList.loadRecoveryTipFilters')
+      : t('pages.productList.guideStart')
+    : productListGuideText;
+  const mobileNextStepTitle = filteredProducts.length === 0 && activeRefinementCount > 0
+    ? t('pages.productList.activeFilters', { count: activeRefinementCount })
+    : t('pages.productList.count', { count: filteredProducts.length });
+  const mobileNextStepActions = filteredProducts.length === 0
+    ? [
+      {
+        key: 'recover',
+        icon: activeRefinementCount > 0 ? <ReloadOutlined /> : <FilterOutlined />,
+        label: activeRefinementCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.filters'),
+        primary: activeRefinementCount > 0,
+        onClick: activeRefinementCount > 0 ? resetMobileRefinements : () => setFilterDrawerOpen(true),
+      },
+      {
+        key: 'catalog',
+        icon: <SearchOutlined />,
+        label: t('pages.productList.allCategories'),
+        primary: activeRefinementCount === 0 && hasActiveCatalogContext,
+        onClick: resetCatalogView,
+      },
+      {
+        key: 'coupons',
+        icon: <GiftOutlined />,
+        label: t('pages.productList.loadRecoveryCoupons'),
+        primary: !hasActiveCatalogContext,
+        onClick: () => navigate('/coupons'),
+      },
+    ]
+    : [
+      {
+        key: 'filter',
+        icon: <FilterOutlined />,
+        label: t('pages.productList.filters'),
+        primary: activeRefinementCount > 0,
+        onClick: () => setFilterDrawerOpen(true),
+      },
+      {
+        key: 'deals',
+        icon: <FireOutlined />,
+        label: t('pages.productList.shopBestDeals'),
+        primary: productListInsights.bestValueCount > 0,
+        onClick: () => applySort('discount-desc'),
+      },
+      {
+        key: 'quick',
+        icon: <ShoppingCartOutlined />,
+        label: t('pages.productList.shopQuickAdd'),
+        primary: productListInsights.quickAddReadyCount > 0,
+        onClick: () => applySort('quick-add-desc'),
+      },
+    ];
+  const currentSortLabel = sortOptions.find((option) => option.value === sortBy)?.label || t('pages.productList.defaultSort');
+  const mobileContextActions = [
+    keyword.trim()
+      ? {
+        key: 'keyword',
+        icon: <SearchOutlined />,
+        label: keyword.trim(),
+        onClear: () => {
+          setKeyword('');
+          setCurrentPage(1);
+          navigate(buildProductsUrl({ keyword: '' }));
+        },
+      }
+      : null,
+    collection
+      ? {
+        key: 'collection',
+        icon: <GiftOutlined />,
+        label: collection.replace(/-/g, ' '),
+        onClear: () => {
+          setCurrentPage(1);
+          navigate(buildProductsUrl({ collection: '' }));
+        },
+      }
+      : null,
+    discount
+      ? {
+        key: 'discount',
+        icon: <FireOutlined />,
+        label: t('pages.productList.shopBestDeals'),
+        onClear: () => {
+          setDiscount(false);
+          setCurrentPage(1);
+          navigate(buildProductsUrl({ discount: false }));
+        },
+      }
+      : null,
+    selectedCategory
+      ? {
+        key: 'category',
+        icon: <FilterOutlined />,
+        label: getLocalizedCategoryValue(selectedCategory, language, 'name'),
+        onClear: () => {
+          setCategoryId(undefined);
+          setCurrentPage(1);
+          navigate(buildProductsUrl({ categoryId: undefined }));
+        },
+      }
+      : null,
+    activeFilterCount > 0
+      ? {
+        key: 'filters',
+        icon: <FilterOutlined />,
+        label: t('pages.productList.activeFilters', { count: activeFilterCount }),
+        onClear: resetFilters,
+      }
+      : null,
+    sortBy !== 'default'
+      ? {
+        key: 'sort',
+        icon: <BarChartOutlined />,
+        label: currentSortLabel,
+        onClear: () => applySort('default'),
+      }
+      : null,
+  ].filter(Boolean) as Array<{ key: string; icon: React.ReactNode; label: string; onClear: () => void }>;
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
     if (currentPage > totalPages) {
@@ -983,6 +1196,7 @@ const ProductList: React.FC = () => {
           step={priceStep}
           value={displayedPriceRange}
           onChange={(value) => {
+            setPriceFilterTouched(true);
             setPriceRange(value as [number, number]);
             setCurrentPage(1);
           }}
@@ -1025,12 +1239,12 @@ const ProductList: React.FC = () => {
     {
       key: 'catalog',
       icon: <FilterOutlined />,
-      title: activeFilterCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.allCategories'),
+      title: activeRefinementCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.allCategories'),
       text: t('pages.productList.loadRecoveryTipFilters'),
       primary: true,
       onClick: () => {
-        if (activeFilterCount > 0) {
-          resetFilters();
+        if (activeRefinementCount > 0) {
+          resetMobileRefinements();
           return;
         }
         navigate('/products');
@@ -1078,7 +1292,7 @@ const ProductList: React.FC = () => {
   );
 
   return (
-    <div className={`product-list product-list--${language}`}>
+    <div className={`product-list product-list--${language}${!loading && !loadFailed && filteredProducts.length === 0 ? ' product-list--empty' : ''}`}>
       <Row gutter={24}>
         <Col xs={0} sm={0} md={5} lg={4} className="product-list__sidebar">
           <Card title={t('pages.productList.sidebarTitle')} size="small" className="product-list__sidebarCard">
@@ -1200,41 +1414,126 @@ const ProductList: React.FC = () => {
               </Space>
             )}
           </Card>
+          {mobileContextActions.length > 0 ? (
+            <section className="product-list__mobileContextBar" aria-label={t('pages.productList.resultContextLabel')}>
+              {mobileContextActions.map((action) => (
+                <button
+                  key={action.key}
+                  type="button"
+                  className="product-list__mobileContextChip"
+                  onClick={action.onClear}
+                  title={action.label}
+                >
+                  <span className="product-list__mobileContextIcon">{action.icon}</span>
+                  <span>{action.label}</span>
+                  <CloseOutlined className="product-list__mobileContextClose" aria-hidden />
+                </button>
+              ))}
+              <button
+                type="button"
+                className="product-list__mobileContextChip product-list__mobileContextChip--clear"
+                onClick={resetCatalogView}
+              >
+                <ReloadOutlined />
+                <span>{t('pages.productList.resetFilters')}</span>
+              </button>
+            </section>
+          ) : null}
+          <section className="product-list__mobileDiscovery" aria-label={t('home.categories')}>
+            {mobileDiscoveryActions.map((action) => (
+              <button
+                key={action.key}
+                type="button"
+                className={action.active ? 'product-list__mobileDiscoveryButton product-list__mobileDiscoveryButton--active' : 'product-list__mobileDiscoveryButton'}
+                aria-pressed={action.active}
+                onClick={action.onClick}
+              >
+                <span className="product-list__mobileDiscoveryIcon">{action.icon}</span>
+                <span>{action.label}</span>
+              </button>
+            ))}
+          </section>
           {!loading && !loadFailed ? (
-            <section className="product-list__mobileConversionBar" aria-label={t('pages.productList.insightTitle')}>
+            <section
+              className={`product-list__mobileNextStep${filteredProducts.length === 0 ? ' product-list__mobileNextStep--empty' : ''}`}
+              aria-label={t('pages.productList.guideTitle')}
+            >
+              <div className="product-list__mobileNextStepCopy">
+                <span>{t('pages.productList.guideTitle')}</span>
+                <strong>{mobileNextStepTitle}</strong>
+                <Text>{mobileNextStepText}</Text>
+              </div>
+              <div className="product-list__mobileNextStepActions">
+                {mobileNextStepActions.map((action) => (
+                  <Button
+                    key={action.key}
+                    size="small"
+                    type={action.primary ? 'primary' : 'default'}
+                    icon={action.icon}
+                    onClick={action.onClick}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {!loading && !loadFailed ? (
+            <section
+              className={`product-list__mobileConversionBar${filteredProducts.length === 0 ? ' product-list__mobileConversionBar--empty' : ''}`}
+              aria-label={t('pages.productList.insightTitle')}
+            >
               <div className="product-list__mobileConversionStats">
                 <span className="product-list__mobileConversionEyebrow">{t('pages.productList.viewPick')}</span>
                 <strong>{heroProduct?.name || t('pages.productList.count', { count: filteredProducts.length })}</strong>
-                <span>{mobileHeroSignal}</span>
+                <span>
+                  {activeRefinementCount > 0
+                    ? t('pages.productList.activeFilters', { count: activeRefinementCount })
+                    : mobileHeroSignal || t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}
+                </span>
               </div>
               <div className="product-list__mobileConversionActions">
                 <Button icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
                   {t('pages.productList.filters')}
                 </Button>
-                <Button onClick={() => applySort('discount-desc')}>
-                  {t('pages.productList.shopBestDeals')}
+                <Button onClick={filteredProducts.length > 0 ? () => applySort('discount-desc') : activeRefinementCount > 0 ? resetMobileRefinements : () => navigate('/products')}>
+                  {filteredProducts.length > 0
+                    ? t('pages.productList.shopBestDeals')
+                    : activeRefinementCount > 0
+                      ? t('pages.productList.resetFilters')
+                      : t('pages.productList.allCategories')}
                 </Button>
                 <Button
                   type="primary"
-                  icon={<ShoppingCartOutlined />}
-                  disabled={!heroProduct}
+                  icon={heroProduct || filteredProducts.length > 0 ? <ShoppingCartOutlined /> : <GiftOutlined />}
                   onClick={(event) => {
-                    if (!heroProduct) return;
-                    if (isQuickAddReady(heroProduct)) {
-                      openQuickAdd(event, heroProduct);
+                    if (heroProduct) {
+                      if (isQuickAddReady(heroProduct)) {
+                        openQuickAdd(event, heroProduct);
+                        return;
+                      }
+                      openProductDetail(heroProduct.id);
                       return;
                     }
-                    openProductDetail(heroProduct.id);
+                    if (filteredProducts.length > 0) {
+                      applySort('quick-add-desc');
+                      return;
+                    }
+                    navigate('/coupons');
                   }}
                 >
-                  {heroProduct && !isQuickAddReady(heroProduct)
+                  {heroProduct
+                    ? !isQuickAddReady(heroProduct)
                     ? t('pages.productList.chooseOptionsAction')
-                    : t('pages.productList.addToCart')}
+                      : t('pages.productList.addToCart')
+                    : filteredProducts.length > 0
+                      ? t('pages.productList.shopQuickAdd')
+                      : t('pages.productList.loadRecoveryCoupons')}
                 </Button>
               </div>
             </section>
           ) : null}
-          {!loading && !loadFailed ? (
+          {!loading && !loadFailed && filteredProducts.length > 0 ? (
             <>
               {usingCatalogSnapshot ? (
                 <section className="product-list__snapshotNotice" role="status" aria-live="polite">
@@ -1407,7 +1706,7 @@ const ProductList: React.FC = () => {
             </Empty>
           ) : (
             <>
-              <Row gutter={[16, 16]}>
+              <Row gutter={[16, 16]} className="product-list__grid">
                 {paginatedProducts.map((product, index) => {
                   const imageUrl = resolveProductListImage(product.imageUrl);
                   const priorityImage = currentPage === 1 && index < 4;
@@ -1551,7 +1850,7 @@ const ProductList: React.FC = () => {
           <Space>
             <FilterOutlined />
             <span>{t('pages.productList.filters')}</span>
-            {activeFilterCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeFilterCount })}</Tag> : null}
+            {activeRefinementCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeRefinementCount })}</Tag> : null}
           </Space>
         }
         open={filterDrawerOpen}
@@ -1560,21 +1859,36 @@ const ProductList: React.FC = () => {
         height="82vh"
         className="product-list__mobileDrawer"
         extra={
-          <Button type="link" disabled={activeFilterCount === 0} onClick={resetFilters}>
+          <Button type="link" disabled={activeRefinementCount === 0} onClick={resetMobileRefinements}>
             {t('pages.productList.resetFilters')}
           </Button>
         }
       >
         <div className="product-list__drawerContent">
-          <Card title={t('pages.productList.drawerCategoryTitle')} size="small">
-            {renderCategoryPanel()}
-          </Card>
-          <Card title={t('pages.productList.drawerFilterTitle')} size="small">
-            {renderFilterPanel()}
-          </Card>
-          <Button type="primary" block size="large" onClick={() => setFilterDrawerOpen(false)}>
-            {t('pages.productList.applyFilters')}
-          </Button>
+          <section className="product-list__drawerSummary" aria-live="polite">
+            <span>{t('pages.productList.count', { count: filteredProducts.length })}</span>
+            <strong>
+              {activeRefinementCount > 0
+                ? t('pages.productList.activeFilters', { count: activeRefinementCount })
+                : t('pages.productList.allCategories')}
+            </strong>
+          </section>
+          <div className="product-list__drawerPanels">
+            <Card title={t('pages.productList.drawerCategoryTitle')} size="small">
+              {renderCategoryPanel()}
+            </Card>
+            <Card title={t('pages.productList.drawerFilterTitle')} size="small">
+              {renderFilterPanel()}
+            </Card>
+          </div>
+          <div className="product-list__drawerFooter">
+            <Button size="large" disabled={activeRefinementCount === 0} onClick={resetMobileRefinements}>
+              {t('pages.productList.resetFilters')}
+            </Button>
+            <Button type="primary" size="large" onClick={() => setFilterDrawerOpen(false)}>
+              {t('pages.productList.applyFilters')}
+            </Button>
+          </div>
         </div>
       </Drawer>
       <Modal
@@ -1591,7 +1905,7 @@ const ProductList: React.FC = () => {
         cancelButtonProps={{ disabled: quickAddSubmitting }}
         className="product-list__quickAddModal"
       >
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction="vertical" className="product-list__quickAddContent">
           {quickAddBundleInfo ? (
             <>
               {quickAddOptionGroups.length > 0 ? renderQuickAddOptions() : null}

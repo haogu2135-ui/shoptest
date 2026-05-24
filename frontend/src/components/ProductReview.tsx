@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n';
 import type { Order } from '../types';
 import { formatSafeDate, formatSafeDateTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import './ProductReview.css';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -79,24 +80,25 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     };
 
     return (
-        <div style={{ marginTop: 24 }}>
-            <h3>{t('pages.review.title')}</h3>
+        <div className="product-review">
+            <h3 className="product-review__title">{t('pages.review.title')}</h3>
             {isLoggedIn && (
-                <div style={{ marginBottom: 24 }}>
+                <div className="product-review__composer">
                     {reviewableOrders.length > 0 ? (
-                        <Space direction="vertical" style={{ width: '100%' }}>
+                        <Space direction="vertical" className="product-review__form">
                             <Select
                                 value={orderId}
                                 onChange={setOrderId}
                                 placeholder={t('pages.review.selectOrder')}
-                                style={{ width: '100%', maxWidth: 360 }}
+                                className="product-review__orderSelect"
                                 options={reviewableOrders.map((order) => ({
                                     value: order.id,
                                     label: `${order.orderNo || `#${order.id}`}${formatSafeDate(order.createdAt, dateLocale, '') ? ` - ${formatSafeDate(order.createdAt, dateLocale)}` : ''}`,
                                 }))}
                             />
-                            <Rate value={rating} onChange={setRating} />
+                            <Rate className="product-review__rate" value={rating} onChange={setRating} />
                             <TextArea
+                                className="product-review__textarea"
                                 rows={4}
                                 value={comment}
                                 onChange={(e) => setComment(e.target.value)}
@@ -104,6 +106,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                             />
                             <Button
                                 type="primary"
+                                className="product-review__submit"
                                 onClick={handleSubmit}
                                 loading={submitting}
                             >
@@ -116,14 +119,15 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                 </div>
             )}
             <List
+                className="product-review__list"
                 itemLayout="horizontal"
                 dataSource={reviews}
                 renderItem={(review) => (
-                    <List.Item>
+                    <List.Item className="product-review__item">
                         <List.Item.Meta
                             avatar={<Avatar icon={<UserOutlined />} />}
                             title={
-                                <Space>
+                                <Space className="product-review__meta" wrap>
                                     <span>{review.username}</span>
                                     <Rate disabled value={review.rating} />
                                 </Space>
@@ -132,7 +136,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 <>
                                     <p>{review.comment}</p>
                                     {review.adminReply && (
-                                        <div style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 6, padding: 12, marginBottom: 8 }}>
+                                        <div className="product-review__adminReply">
                                             <Text strong>{t('pages.adminReviews.reply')}: </Text>
                                             <Text>{review.adminReply}</Text>
                                         </div>

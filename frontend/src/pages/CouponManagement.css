@@ -8,6 +8,10 @@
   box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
 }
 
+.coupon-management-page__rangePicker {
+  width: 100%;
+}
+
 .coupon-management-page__header {
   display: flex;
   align-items: center;
@@ -182,5 +186,277 @@
   .coupon-management-birthday .ant-card-extra .ant-space,
   .coupon-management-birthday .ant-card-extra .ant-btn {
     width: 100%;
+  }
+}
+
+/* Final mobile coupon admin edge-fit pass */
+.coupon-management-page,
+.coupon-management-page *,
+.coupon-management-page *::before,
+.coupon-management-page *::after {
+  box-sizing: border-box;
+}
+
+.coupon-management-page,
+.coupon-management-page__header,
+.coupon-management-page__actions,
+.coupon-management-insights,
+.coupon-management-insights__copy,
+.coupon-management-insights__cards,
+.coupon-management-birthday,
+.coupon-management-birthday__form,
+.coupon-management-page__formRow,
+.coupon-management-page .ant-card,
+.coupon-management-page .ant-card-body,
+.coupon-management-page .ant-table-wrapper,
+.coupon-management-page .ant-space,
+.coupon-management-page .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.coupon-management-page {
+  overflow-x: clip;
+}
+
+.coupon-management-page .ant-table-wrapper {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.coupon-management-page .ant-table {
+  min-width: max-content;
+}
+
+.coupon-management-page__header,
+.coupon-management-insights,
+.coupon-management-insights__copy,
+.coupon-management-insights__cards div,
+.coupon-management-birthday,
+.coupon-management-page .ant-btn,
+.coupon-management-page .ant-tag,
+.coupon-management-page .ant-typography,
+.coupon-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .coupon-management-page {
+    padding-inline: 0;
+  }
+
+  .coupon-management-page__header {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .coupon-management-page__actions {
+    gap: 8px !important;
+  }
+
+  .coupon-management-page__actions .ant-space-item,
+  .coupon-management-page__actions .ant-btn {
+    width: 100%;
+  }
+
+  .coupon-management-page__actions .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .coupon-management-insights,
+  .coupon-management-birthday {
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .coupon-management-birthday .ant-card-body {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .coupon-management-page__header h3.ant-typography,
+  .coupon-management-insights__copy h2 {
+    font-size: 19px;
+    line-height: 1.25;
+  }
+
+  .coupon-management-insights {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .coupon-management-insights__cards {
+    display: flex;
+    gap: 8px;
+    margin-inline: -12px;
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .coupon-management-insights__cards div {
+    flex: 0 0 138px;
+    min-height: 82px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .coupon-management-insights__cards strong {
+    font-size: 21px;
+  }
+
+  .coupon-management-page .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+
+  .coupon-management-page__formRow .ant-form-item {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .coupon-management-insights__cards div {
+    flex-basis: 132px;
+  }
+
+  .coupon-management-page .ant-table-cell .ant-space {
+    gap: 6px !important;
+  }
+
+  .coupon-management-page .ant-table-cell .ant-btn {
+    min-height: 30px;
+    padding-inline: 8px;
+    white-space: normal;
+  }
+}
+
+/* Final mobile coupon admin action stability pass */
+@media (max-width: 720px) {
+  .coupon-management-insights__cards {
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .coupon-management-insights__cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .coupon-management-page .ant-btn,
+  .coupon-management-insights__cards div {
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .coupon-management-page .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .coupon-management-insights__cards span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .coupon-management-page .ant-table-wrapper {
+    max-width: calc(100vw - 12px);
+  }
+
+  .coupon-management-birthday .ant-card-head-title,
+  .coupon-management-birthday .ant-card-extra {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .coupon-management-insights__cards div {
+    flex-basis: 122px;
+  }
+}
+
+/* Final mobile coupon modal pass */
+@media (max-width: 560px) {
+  .coupon-management-page__editorModal,
+  .coupon-management-page__grantModal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+    top: max(8px, env(safe-area-inset-top));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .coupon-management-page__editorModal,
+  .coupon-management-page__editorModal *,
+  .coupon-management-page__grantModal,
+  .coupon-management-page__grantModal * {
+    box-sizing: border-box;
+  }
+
+  .coupon-management-page__editorModal .ant-modal-content,
+  .coupon-management-page__grantModal .ant-modal-content {
+    max-height: calc(100dvh - 18px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .coupon-management-page__editorModal .ant-modal-header,
+  .coupon-management-page__editorModal .ant-modal-body,
+  .coupon-management-page__editorModal .ant-modal-footer,
+  .coupon-management-page__grantModal .ant-modal-header,
+  .coupon-management-page__grantModal .ant-modal-body,
+  .coupon-management-page__grantModal .ant-modal-footer {
+    padding-inline: 12px;
+  }
+
+  .coupon-management-page__editorModal .ant-modal-body,
+  .coupon-management-page__grantModal .ant-modal-body {
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .coupon-management-page__editorModal .coupon-management-page__formRow {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .coupon-management-page__editorModal .ant-form-item,
+  .coupon-management-page__editorModal .ant-form-item-control,
+  .coupon-management-page__editorModal .ant-input,
+  .coupon-management-page__editorModal .ant-input-number,
+  .coupon-management-page__editorModal .ant-picker,
+  .coupon-management-page__editorModal .ant-select,
+  .coupon-management-page__grantModal .ant-form-item,
+  .coupon-management-page__grantModal .ant-form-item-control,
+  .coupon-management-page__grantModal .ant-select {
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .coupon-management-page__editorModal .ant-modal-footer,
+  .coupon-management-page__grantModal .ant-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .coupon-management-page__editorModal .ant-modal-footer .ant-btn,
+  .coupon-management-page__grantModal .ant-modal-footer .ant-btn {
+    flex: 1 1 128px;
+    min-height: 38px;
+    margin-inline-start: 0;
+    white-space: normal;
   }
 }

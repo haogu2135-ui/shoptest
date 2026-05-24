@@ -158,7 +158,7 @@
 
 .admin-layout__sider.ant-layout-sider-collapsed .admin-layout__brand h4.ant-typography {
   font-size: 13px;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .admin-layout__menu.ant-menu-dark .ant-menu-item .anticon {
@@ -227,5 +227,349 @@
   .admin-layout__storeLink span,
   .admin-layout__header .ant-btn span:not(.anticon) {
     white-space: normal;
+  }
+}
+
+/* Admin workspace polish */
+.admin-layout {
+  background:
+    radial-gradient(circle at 12% 0, rgba(238, 77, 45, 0.07), transparent 24rem),
+    radial-gradient(circle at 92% 8%, rgba(18, 71, 52, 0.08), transparent 22rem),
+    #f4f7f5;
+}
+
+.admin-layout__brand {
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 18% 0, rgba(255, 255, 255, 0.2), transparent 32%),
+    rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 22px rgba(0, 0, 0, 0.1);
+}
+
+.admin-layout__menu.ant-menu-dark .ant-menu-item {
+  border-radius: 14px;
+  transition: background 0.18s ease, transform 0.18s ease, color 0.18s ease;
+}
+
+.admin-layout__menu.ant-menu-dark .ant-menu-item:not(.ant-menu-item-selected):hover {
+  transform: translateX(2px);
+}
+
+.admin-layout__menu.ant-menu-dark .ant-menu-item-selected {
+  background: linear-gradient(135deg, #ff7048, #ee4d2d);
+  box-shadow: 0 12px 24px rgba(238, 77, 45, 0.2);
+}
+
+.admin-layout__header.ant-layout-header {
+  border-bottom-color: rgba(18, 71, 52, 0.08);
+}
+
+.admin-layout__storeLink,
+.admin-layout__header .ant-btn {
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.admin-layout__content.ant-layout-content {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(18, 71, 52, 0.08);
+  box-shadow: 0 18px 42px rgba(18, 71, 52, 0.08);
+}
+
+.admin-layout__content .ant-card,
+.admin-layout__content .ant-table-wrapper,
+.admin-layout__content .ant-modal-content {
+  border-radius: 18px;
+}
+
+.admin-layout__content .ant-table-container {
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.admin-layout__content .ant-table-thead > tr > th {
+  background: #f7fbf8;
+  color: #244b37;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-layout__content .ant-table-tbody > tr:hover > td {
+  background: #fffaf6;
+}
+
+.admin-layout__content .ant-input,
+.admin-layout__content .ant-input-affix-wrapper,
+.admin-layout__content .ant-select-selector,
+.admin-layout__content .ant-input-number,
+.admin-layout__content .ant-picker {
+  border-radius: 12px !important;
+}
+
+.admin-layout__content .ant-btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, #ff7048, #ee4d2d);
+  box-shadow: 0 10px 22px rgba(238, 77, 45, 0.18);
+}
+
+@media (max-width: 560px) {
+  .admin-layout__brand {
+    border-radius: 14px;
+  }
+
+  .admin-layout__content .ant-table-wrapper {
+    margin-inline: -4px;
+  }
+}
+
+/* Mobile admin overflow guard */
+.admin-layout,
+.admin-layout .ant-layout {
+  min-width: 0;
+}
+
+.admin-layout__sider.ant-layout-sider-collapsed .admin-layout__brand h4.ant-typography {
+  letter-spacing: 0;
+}
+
+.admin-layout__content .ant-table {
+  min-width: max-content;
+}
+
+@media (max-width: 560px) {
+  .admin-layout__content .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-layout__content .ant-table-wrapper::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .admin-layout__content .ant-table-wrapper::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(18, 71, 52, 0.18);
+  }
+
+  .admin-layout__content .ant-table-container {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-layout__sider.ant-layout-sider {
+    box-shadow: 4px 0 16px rgba(18, 71, 52, 0.12);
+  }
+
+  .admin-layout__brand {
+    height: 44px;
+    margin: 8px;
+  }
+
+  .admin-layout__brand h4.ant-typography {
+    font-size: 14px;
+  }
+
+  .admin-layout__menu.ant-menu-dark {
+    max-height: calc(100vh - 88px);
+    padding-inline: 4px;
+  }
+
+  .admin-layout__menu.ant-menu-dark .ant-menu-item {
+    min-height: 38px;
+    margin-block: 2px;
+    border-radius: 10px;
+  }
+
+  .admin-layout__header.ant-layout-header {
+    gap: 8px;
+    min-height: 52px;
+    padding: 10px;
+  }
+
+  .admin-layout__storeLink,
+  .admin-layout__header .ant-btn {
+    min-height: 40px;
+  }
+
+  .admin-layout__content.ant-layout-content {
+    margin: 6px;
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .admin-layout__content .ant-card,
+  .admin-layout__content .ant-table-wrapper,
+  .admin-layout__content .ant-modal-content {
+    border-radius: 14px;
+  }
+
+  .admin-layout__content .ant-table-thead > tr > th,
+  .admin-layout__content .ant-table-tbody > tr > td {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .admin-layout__content .ant-card-body {
+    padding: 12px;
+  }
+}
+
+/* Final mobile admin shell edge-fit pass */
+.admin-layout,
+.admin-layout *,
+.admin-layout *::before,
+.admin-layout *::after {
+  box-sizing: border-box;
+}
+
+.admin-layout,
+.admin-layout .ant-layout,
+.admin-layout__header,
+.admin-layout__content,
+.admin-layout__content .ant-card,
+.admin-layout__content .ant-card-body,
+.admin-layout__content .ant-table-wrapper,
+.admin-layout__content .ant-space,
+.admin-layout__content .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-layout__content.ant-layout-content {
+  overflow-x: clip;
+}
+
+.admin-layout__storeLink,
+.admin-layout__header .ant-btn,
+.admin-layout__content .ant-btn,
+.admin-layout__content .ant-tag,
+.admin-layout__content .ant-typography,
+.admin-layout__content .ant-table-cell {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-layout__content .ant-table-wrapper {
+  overscroll-behavior-x: contain;
+}
+
+.admin-layout__content .ant-table-cell .ant-space {
+  flex-wrap: wrap;
+}
+
+.admin-layout__content .ant-modal,
+.admin-layout__content .ant-modal-content,
+.admin-layout__content .ant-drawer-content {
+  max-width: 100%;
+}
+
+@media (max-width: 720px) {
+  .admin-layout__content .ant-modal {
+    width: calc(100vw - 16px) !important;
+    margin: 8px auto;
+    top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .admin-layout__content .ant-modal-body {
+    max-height: calc(100dvh - 168px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-layout__content .ant-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .admin-layout__content .ant-modal-footer .ant-btn {
+    flex: 1 1 128px;
+    min-height: 38px;
+    margin-inline-start: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-layout__content.ant-layout-content {
+    max-width: calc(100vw - 12px);
+  }
+
+  .admin-layout__header .ant-btn,
+  .admin-layout__storeLink {
+    min-height: 38px;
+    padding-inline: 10px;
+  }
+
+  .admin-layout__content .ant-card-head,
+  .admin-layout__content .ant-card-body {
+    min-width: 0;
+  }
+
+  .admin-layout__content .ant-card-head-title {
+    min-width: 0;
+    white-space: normal;
+  }
+}
+
+/* Final mobile admin shell action stability pass */
+@media (max-width: 720px) {
+  .admin-layout__content .ant-btn {
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+    white-space: normal;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .admin-layout__content .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-layout__content .ant-form,
+  .admin-layout__content .ant-form-item,
+  .admin-layout__content .ant-form-item-control,
+  .admin-layout__content .ant-form-item-control-input,
+  .admin-layout__content .ant-form-item-control-input-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-layout__content .ant-form-item-label > label {
+    height: auto;
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .admin-layout__content .ant-picker,
+  .admin-layout__content .ant-input-affix-wrapper,
+  .admin-layout__content .ant-input-number,
+  .admin-layout__content .ant-select,
+  .admin-layout__content .ant-upload-wrapper {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .admin-layout__content.ant-layout-content {
+    margin: 5px;
+    padding: 7px;
+    max-width: calc(100vw - 10px);
+  }
+
+  .admin-layout__content .ant-modal-footer .ant-btn {
+    flex-basis: 100%;
   }
 }

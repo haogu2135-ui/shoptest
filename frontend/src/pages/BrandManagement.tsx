@@ -150,7 +150,7 @@ const BrandManagement: React.FC = () => {
         url ? (
           <Image src={resolveBrandImage(url)} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
         ) : (
-          <div style={{ width: 56, height: 56, borderRadius: 6, background: '#f2f3f5' }} />
+          <div className="brand-management-page__imagePlaceholder" />
         ),
     },
     {
@@ -218,7 +218,7 @@ const BrandManagement: React.FC = () => {
 
   return (
     <div className={`brand-management-page brand-management-page--${language}`}>
-      <Title level={3} style={{ marginBottom: 0 }}>{t('pages.brandAdmin.title')}</Title>
+      <Title level={3} className="brand-management-page__title">{t('pages.brandAdmin.title')}</Title>
       <Divider />
 
       <Card className="brand-management-page__toolbar">
@@ -273,6 +273,7 @@ const BrandManagement: React.FC = () => {
       <Table columns={columns} dataSource={brands} rowKey="id" loading={loading} bordered size="middle" scroll={{ x: 860 }} />
 
       <Modal
+        className="brand-management-page__editorModal"
         title={editingBrand ? t('pages.brandAdmin.editTitle') : t('pages.brandAdmin.addTitle')}
         open={modalVisible}
         onOk={handleSubmit}
@@ -289,7 +290,7 @@ const BrandManagement: React.FC = () => {
           </Form.Item>
 
           {logoPreviewUrl ? (
-            <div style={{ marginBottom: 16, textAlign: 'center' }}>
+            <div className="brand-management-page__preview">
               <Image src={resolveBrandImage(logoPreviewUrl)} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
             </div>
           ) : null}
@@ -302,8 +303,8 @@ const BrandManagement: React.FC = () => {
             <TextArea rows={3} placeholder={t('pages.brandAdmin.descriptionPlaceholder')} />
           </Form.Item>
 
-          <Space style={{ width: '100%' }} align="start">
-            <Form.Item name="status" label={t('common.status')} style={{ minWidth: 180 }}>
+          <Space className="brand-management-page__formRow" align="start">
+            <Form.Item name="status" label={t('common.status')} className="brand-management-page__statusField">
               <Select
                 options={[
                   { value: 'ACTIVE', label: t('status.ACTIVE') },

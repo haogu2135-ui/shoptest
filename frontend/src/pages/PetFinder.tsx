@@ -180,7 +180,7 @@ const PetFinder: React.FC = () => {
                   <Select
                     value={petType}
                     onChange={setPetType}
-                    style={{ width: '100%', marginTop: 6 }}
+                    className="pet-finder-page__fieldControl"
                     options={(['all', 'dog', 'cat', 'small'] as PetType[]).map((value) => ({ value, label: t(`pages.petFinder.petTypes.${value}`) }))}
                   />
                 </Col>
@@ -189,7 +189,7 @@ const PetFinder: React.FC = () => {
                   <Select
                     value={need}
                     onChange={setNeed}
-                    style={{ width: '100%', marginTop: 6 }}
+                    className="pet-finder-page__fieldControl"
                     options={(['all', 'play', 'walk', 'sleep', 'smart', 'groom', 'food'] as NeedType[]).map((value) => ({ value, label: t(`pages.petFinder.needs.${value}`) }))}
                   />
                 </Col>
@@ -210,7 +210,7 @@ const PetFinder: React.FC = () => {
                   <Select
                     value={priority}
                     onChange={setPriority}
-                    style={{ width: '100%', marginTop: 6 }}
+                    className="pet-finder-page__fieldControl"
                     options={(['best', 'rating', 'deal', 'budget'] as Priority[]).map((value) => ({ value, label: t(`pages.petFinder.priorities.${value}`) }))}
                   />
                 </Col>
@@ -285,22 +285,23 @@ const PetFinder: React.FC = () => {
             </section>
           ) : null}
           {loading ? (
-            <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
+            <div className="pet-finder-page__loading"><Spin size="large" /></div>
           ) : matches.length === 0 ? (
             <Empty description={t('pages.petFinder.empty')} />
           ) : (
             <Row gutter={[16, 16]}>
               {matches.map(({ product, score }) => (
-                <Col key={product.id} xs={24} sm={12} md={8} lg={6}>
+                <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
                   <Card
                     hoverable
+                    className="pet-finder-page__productCard"
                     cover={
                       <Image
+                        className="pet-finder-page__productImage"
                         src={product.imageUrl}
                         alt={product.name}
                         preview={false}
                         height={180}
-                        style={{ objectFit: 'cover' }}
                         onClick={() => navigate(`/products/${product.id}`)}
                       />
                     }
@@ -310,7 +311,7 @@ const PetFinder: React.FC = () => {
                       </Button>,
                     ]}
                   >
-                    <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                    <Space direction="vertical" size={6} className="pet-finder-page__productBody">
                       <Text strong ellipsis={{ tooltip: product.name }}>{product.name}</Text>
                       <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(productPrice(product))}</Text>
                       <Space wrap size={[4, 4]}>

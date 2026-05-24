@@ -56,12 +56,12 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
 export const HeroSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
   <div className={`hero-skeleton ${className}`}>
     <div className="hero-skeleton__left">
-      <div className="skeleton__line shimmer" style={{ width: '40%', height: 18, borderRadius: 999 }} />
-      <div className="skeleton__line shimmer" style={{ width: '70%', height: 40, borderRadius: 10 }} />
-      <div className="skeleton__line shimmer" style={{ width: '85%', height: 16, borderRadius: 6 }} />
+      <div className="skeleton__line hero-skeleton__eyebrow shimmer" />
+      <div className="skeleton__line hero-skeleton__title shimmer" />
+      <div className="skeleton__line hero-skeleton__text shimmer" />
       <div className="hero-skeleton__actions">
-        <div className="shimmer" style={{ width: 140, height: 40, borderRadius: 10 }} />
-        <div className="shimmer" style={{ width: 120, height: 40, borderRadius: 10 }} />
+        <div className="hero-skeleton__action shimmer" />
+        <div className="hero-skeleton__action hero-skeleton__action--secondary shimmer" />
       </div>
     </div>
     <div className="hero-skeleton__right">
@@ -77,9 +77,9 @@ export const ProductCardSkeleton: React.FC<{ count?: number }> = ({ count = 8 })
       <div key={i} className="product-skeleton__card">
         <div className="shimmer product-skeleton__image" />
         <div className="product-skeleton__body">
-          <div className="shimmer" style={{ width: '90%', height: 14, borderRadius: 4 }} />
-          <div className="shimmer" style={{ width: '60%', height: 14, borderRadius: 4 }} />
-          <div className="shimmer" style={{ width: '40%', height: 18, borderRadius: 4, marginTop: 8 }} />
+          <div className="product-skeleton__line product-skeleton__line--title shimmer" />
+          <div className="product-skeleton__line product-skeleton__line--meta shimmer" />
+          <div className="product-skeleton__line product-skeleton__line--price shimmer" />
         </div>
       </div>
     ))}

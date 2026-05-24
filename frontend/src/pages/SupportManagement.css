@@ -854,7 +854,7 @@
   color: #124734;
   font-size: 16px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .support-management__ticketMessageGrid {
@@ -1265,4 +1265,306 @@
 .support-management--es .support-management__insightActions .ant-btn {
   min-height: 40px;
   white-space: normal;
+}
+
+/* Final mobile support admin edge-fit pass */
+.support-management,
+.support-management *,
+.support-management *::before,
+.support-management *::after {
+  box-sizing: border-box;
+}
+
+.support-management,
+.support-management__header,
+.support-management__insightBar,
+.support-management__insightIntro,
+.support-management__insightStats,
+.support-management__insightActions,
+.support-management__layout,
+.support-management__queuePane,
+.support-management__conversationPane,
+.support-management__queueSections,
+.support-management__queueSection,
+.support-management__queueItem,
+.support-management__conversationHeader,
+.support-management__conversationIdentity,
+.support-management__progressRail,
+.support-management__summaryBar,
+.support-management__workflowBar,
+.support-management__focusCard,
+.support-management__loopBoard,
+.support-management__ticketCard,
+.support-management__orderWorkflow,
+.support-management__messagesPane,
+.support-management__messageRow,
+.support-management__messageWrap,
+.support-management__bubble,
+.support-management__orderCard,
+.support-management__contextCard,
+.support-management__ticketMessageCard,
+.support-management__composer,
+.support-management__replyReadiness,
+.support-management__replyReadinessChips,
+.support-management__quickReplyList,
+.support-management__composerActions {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.support-management {
+  overflow-x: clip;
+}
+
+.support-management__header,
+.support-management__insightBar,
+.support-management__queueSectionHeader,
+.support-management__conversationHeader,
+.support-management__conversationIdentity,
+.support-management__progressRail,
+.support-management__summaryCard,
+.support-management__workflowIntro,
+.support-management__focusCardIntro,
+.support-management__focusCardValue,
+.support-management__loopCard,
+.support-management__actionTrace,
+.support-management__ticketCard,
+.support-management__ticketGrid > div,
+.support-management__orderWorkflowHeader,
+.support-management__orderWorkflowCard,
+.support-management__messageMeta,
+.support-management__bubble,
+.support-management__orderCard,
+.support-management__contextCard,
+.support-management__ticketMessageCard,
+.support-management__replyReadiness,
+.support-management__replyReadinessChip,
+.support-management__quickReplyChip,
+.support-management__sendReadiness,
+.support-management .ant-btn,
+.support-management .ant-tag,
+.support-management .ant-typography {
+  overflow-wrap: anywhere;
+}
+
+.support-management__messagesPane {
+  overscroll-behavior: contain;
+}
+
+.support-management__queuePane .ant-list,
+.support-management__queuePane .ant-list-items,
+.support-management__conversationPane .ant-list,
+.support-management__conversationPane .ant-list-items {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .support-management__layout {
+    min-height: auto;
+  }
+
+  .support-management__queuePane,
+  .support-management__conversationPane {
+    border-radius: 14px;
+  }
+
+  .support-management__queuePane {
+    max-height: 420px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .support-management__messagesPane {
+    max-height: min(58dvh, 520px);
+    overflow-y: auto;
+  }
+
+  .support-management__insightStats,
+  .support-management__insightActions,
+  .support-management__workflowActions,
+  .support-management__ticketActions,
+  .support-management__orderWorkflowJump,
+  .support-management__orderWorkflowActions,
+  .support-management__composerActions {
+    align-items: stretch;
+  }
+
+  .support-management__insightActions .ant-space,
+  .support-management__insightActions .ant-space-item,
+  .support-management__workflowActions .ant-space,
+  .support-management__workflowActions .ant-space-item,
+  .support-management__ticketActions .ant-space,
+  .support-management__ticketActions .ant-space-item,
+  .support-management__orderWorkflowJump .ant-space,
+  .support-management__orderWorkflowJump .ant-space-item,
+  .support-management__composerActions .ant-space,
+  .support-management__composerActions .ant-space-item {
+    width: 100%;
+  }
+
+  .support-management__insightActions .ant-btn,
+  .support-management__workflowActions .ant-btn,
+  .support-management__ticketActions .ant-btn,
+  .support-management__orderWorkflowJump .ant-btn,
+  .support-management__composerActions .ant-btn {
+    width: 100%;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 560px) {
+  .support-management__header {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .support-management__header h4.ant-typography {
+    font-size: 19px;
+    line-height: 1.25;
+  }
+
+  .support-management__insightBar {
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .support-management__insightIntro {
+    align-items: flex-start;
+  }
+
+  .support-management__insightStats {
+    flex-wrap: nowrap;
+    margin-inline: -12px;
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .support-management__insightStats .ant-tag {
+    flex: 0 0 auto;
+    max-width: 220px;
+    white-space: normal;
+  }
+
+  .support-management__queueSections {
+    padding: 8px;
+  }
+
+  .support-management__queueSectionHeader,
+  .support-management__queueItem.ant-list-item,
+  .support-management__conversationHeader,
+  .support-management__progressRail,
+  .support-management__workflowBar,
+  .support-management__focusCard,
+  .support-management__ticketCard,
+  .support-management__orderWorkflow,
+  .support-management__replyReadiness,
+  .support-management__composer {
+    padding: 10px;
+  }
+
+  .support-management__summaryBar,
+  .support-management__loopBoard,
+  .support-management__ticketGrid,
+  .support-management__ticketMessageGrid,
+  .support-management__orderWorkflowActions {
+    gap: 8px;
+  }
+
+  .support-management__summaryBar {
+    display: flex;
+    margin-inline: -10px;
+    padding: 0 10px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .support-management__summaryCard {
+    flex: 0 0 132px;
+    scroll-snap-align: start;
+  }
+
+  .support-management__messageRow.ant-list-item {
+    gap: 6px;
+    padding: 8px 6px;
+  }
+
+  .support-management__messageAvatar {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+    font-size: 13px;
+  }
+
+  .support-management__messageWrap,
+  .support-management__messageRow.is-mine .support-management__messageWrap {
+    max-width: calc(100% - 36px);
+  }
+
+  .support-management__bubble,
+  .support-management__contextCard.ant-card,
+  .support-management__orderCard.ant-card,
+  .support-management__ticketMessageCard.ant-card {
+    border-radius: 14px;
+  }
+
+  .support-management__quickReplyList,
+  .support-management__replyReadinessChips {
+    flex-wrap: nowrap;
+    margin-inline: -10px;
+    padding: 0 10px 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .support-management__quickReplyChip,
+  .support-management__replyReadinessChip {
+    flex: 0 0 auto;
+    max-width: 240px;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 430px) {
+  .support-management__layout {
+    gap: 10px;
+  }
+
+  .support-management__queuePane {
+    max-height: 360px;
+  }
+
+  .support-management__messagesPane {
+    max-height: 54dvh;
+    padding: 6px;
+  }
+
+  .support-management__progressTrack,
+  .support-management__queueProgress > div {
+    min-width: 0;
+  }
+
+  .support-management__orderTags {
+    align-items: flex-start;
+  }
+
+  .support-management__orderLink.ant-btn {
+    height: auto;
+    padding: 0;
+    white-space: normal;
+  }
+
+  .support-management__textarea.ant-input-textarea textarea {
+    min-height: 92px;
+  }
+
+  .support-management__sendReadiness {
+    justify-content: center;
+    width: 100%;
+    white-space: normal;
+  }
 }

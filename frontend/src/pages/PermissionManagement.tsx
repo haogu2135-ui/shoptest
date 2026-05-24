@@ -7,6 +7,7 @@ import { useLanguage } from '../i18n';
 import type { AdminRole } from '../types';
 import { ADMIN_PAGE_PERMISSIONS, isSuperAdminRole } from '../utils/roles';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import './PermissionManagement.css';
 
 const { Title, Text } = Typography;
 
@@ -89,19 +90,19 @@ const PermissionManagement: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="permission-management-page">
       <Title level={4}>{t('pages.permissions.title')}</Title>
       <Text type="secondary">{t('pages.permissions.subtitle')}</Text>
 
-      <Card style={{ margin: '20px 0 16px' }}>
-        <Space wrap>
+      <Card className="permission-management-page__toolbar" style={{ margin: '20px 0 16px' }}>
+        <Space wrap className="permission-management-page__actions">
           <Input
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('pages.permissions.searchPlaceholder')}
-            style={{ width: 260 }}
+            className="permission-management-page__searchInput"
           />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openRoleModal()}>
             {t('pages.permissions.newRole')}
@@ -113,6 +114,7 @@ const PermissionManagement: React.FC = () => {
       </Card>
 
       <Alert
+        className="permission-management-page__guard"
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
@@ -121,6 +123,7 @@ const PermissionManagement: React.FC = () => {
       />
 
       <Table
+        className="permission-management-page__table"
         rowKey="code"
         loading={loading}
         dataSource={filteredRoles}
@@ -158,6 +161,7 @@ const PermissionManagement: React.FC = () => {
         onOk={saveRole}
         onCancel={() => setModalOpen(false)}
         width={720}
+        className="permission-management-page__modal"
       >
         <Form form={form} layout="vertical">
           <Form.Item name="code" label={t('pages.permissions.roleCode')} rules={[{ required: true }]}>
@@ -170,8 +174,8 @@ const PermissionManagement: React.FC = () => {
             <Input />
           </Form.Item>
           <Form.Item name="permissions" label={t('pages.permissions.permissionPages')} rules={[{ required: true }]}>
-            <Checkbox.Group style={{ width: '100%' }}>
-              <Space wrap>
+            <Checkbox.Group className="permission-management-page__checkboxGroup">
+              <Space wrap className="permission-management-page__permissionGrid">
                 {ADMIN_PAGE_PERMISSIONS.map((permission) => (
                   <Checkbox key={permission} value={permission}>
                     {t(`adminLayout.${permission.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`)}

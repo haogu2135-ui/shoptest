@@ -55,7 +55,7 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_CREATE", "FAILURE", authentication, "ORDER", request.getOrderId(), httpRequest,
                     e.getMessage(), "channel=" + request.getChannel());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_CREATE", "FAILURE", authentication, "ORDER", request.getOrderId(), httpRequest,
                     reasonOf(e), "channel=" + request.getChannel());
@@ -77,7 +77,7 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SIMULATE_PAID", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SIMULATE_PAID", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
@@ -99,7 +99,7 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
@@ -121,7 +121,7 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
@@ -140,7 +140,7 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_CALLBACK", "FAILURE", null, null, null, "ORDER", request.getOrderNo(), httpRequest,
                     e.getMessage(), "channel=" + request.getChannel());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -157,10 +157,10 @@ public class PaymentController {
             return ResponseEntity.ok(Map.of("received", true));
         } catch (IllegalArgumentException e) {
             auditLogService.record("STRIPE_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         } catch (IllegalStateException e) {
             auditLogService.record("STRIPE_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment provider is temporarily unavailable", e);
         }
     }
 
@@ -179,11 +179,6 @@ public class PaymentController {
         assertCanSeeOrder(orderId, authentication, guestEmail);
         Payment payment = paymentService.findLatestByOrderId(orderId);
         return payment != null ? ResponseEntity.ok(payment) : ResponseEntity.notFound().build();
-    }
-
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException e) {
-        return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getReason()));
     }
 
     private void assertCanSeeOrder(Long orderId, Authentication authentication) {

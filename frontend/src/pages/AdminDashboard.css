@@ -568,6 +568,61 @@
   text-align: center;
 }
 
+.admin-dashboard__chartEmpty {
+  padding: 48px;
+  color: #999999;
+  text-align: center;
+}
+
+.admin-dashboard__chartEmpty--compact {
+  padding: 32px;
+}
+
+.admin-dashboard__trendChartScroll {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-dashboard__trendChart {
+  width: 100%;
+  min-width: 560px;
+}
+
+.admin-dashboard__chartLegend {
+  margin-top: 8px;
+}
+
+.admin-dashboard__legendSwatch {
+  display: inline-block;
+  border-radius: 3px;
+}
+
+.admin-dashboard__legendSwatch--orders {
+  width: 20px;
+  height: 10px;
+  background: #91caff;
+}
+
+.admin-dashboard__legendSwatch--revenue {
+  width: 20px;
+  height: 3px;
+  background: #ee4d2d;
+}
+
+.admin-dashboard__donutChart {
+  width: 100%;
+  justify-content: space-around;
+}
+
+.admin-dashboard__donutSwatch {
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  border-radius: 10px;
+}
+
 .admin-dashboard__statusRow .ant-tag {
   margin-inline-end: 0;
   border-radius: 999px;
@@ -661,4 +716,348 @@
 .admin-dashboard--es .admin-dashboard__slaCard span,
 .admin-dashboard--es .admin-dashboard__metricList span {
   white-space: normal;
+}
+
+/* Dashboard operations polish */
+.admin-dashboard__hero,
+.admin-dashboard__actionBar,
+.admin-dashboard__paymentOps,
+.admin-dashboard__sla,
+.admin-dashboard__statCard.ant-card,
+.admin-dashboard__panel.ant-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-dashboard__hero::after,
+.admin-dashboard__actionBar::after,
+.admin-dashboard__paymentOps::after,
+.admin-dashboard__sla::after {
+  content: '';
+  position: absolute;
+  right: -40px;
+  bottom: -40px;
+  width: 124px;
+  height: 124px;
+  border-radius: 999px;
+  background: rgba(238, 77, 45, 0.08);
+  pointer-events: none;
+}
+
+.admin-dashboard__hero > *,
+.admin-dashboard__actionBar > *,
+.admin-dashboard__paymentOps > *,
+.admin-dashboard__sla > * {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-dashboard__actionCard,
+.admin-dashboard__paymentOpsCard,
+.admin-dashboard__slaCard,
+.admin-dashboard__statCard.ant-card,
+.admin-dashboard__panel.ant-card {
+  border-radius: 20px;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-dashboard__actionCard:hover,
+.admin-dashboard__actionCard:focus-visible,
+.admin-dashboard__paymentOpsCard:hover,
+.admin-dashboard__paymentOpsCard:focus-visible,
+.admin-dashboard__slaCard:hover,
+.admin-dashboard__slaCard:focus-visible,
+.admin-dashboard__statCard.ant-card:hover,
+.admin-dashboard__panel.ant-card:hover {
+  border-color: rgba(238, 77, 45, 0.24) !important;
+  box-shadow: 0 18px 36px rgba(18, 71, 52, 0.12);
+  transform: translateY(-3px);
+}
+
+.admin-dashboard__actionCard,
+.admin-dashboard__paymentOpsCard,
+.admin-dashboard__slaCard,
+.admin-dashboard__metricList > .ant-space-item > div,
+.admin-dashboard__paymentMethod > div,
+.admin-dashboard__statusRow {
+  min-width: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.admin-dashboard .ant-btn,
+.admin-dashboard__statusRow .ant-tag,
+.admin-dashboard__slaIntro .ant-tag {
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.admin-dashboard .ant-btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, #ff7048, #ee4d2d);
+  box-shadow: 0 12px 24px rgba(238, 77, 45, 0.18);
+}
+
+.admin-dashboard__panel .ant-list-item-meta-title,
+.admin-dashboard__panel .ant-list-item-meta-description,
+.admin-dashboard__metricList span,
+.admin-dashboard__paymentMethod span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .admin-dashboard__hero::after,
+  .admin-dashboard__actionBar::after,
+  .admin-dashboard__paymentOps::after,
+  .admin-dashboard__sla::after {
+    width: 92px;
+    height: 92px;
+  }
+}
+
+/* Final mobile admin dashboard edge-fit pass */
+.admin-dashboard,
+.admin-dashboard *,
+.admin-dashboard *::before,
+.admin-dashboard *::after {
+  box-sizing: border-box;
+}
+
+.admin-dashboard,
+.admin-dashboard__hero,
+.admin-dashboard__actionBar,
+.admin-dashboard__paymentOps,
+.admin-dashboard__sla,
+.admin-dashboard__actionIntro,
+.admin-dashboard__paymentOpsIntro,
+.admin-dashboard__slaIntro,
+.admin-dashboard__actionGrid,
+.admin-dashboard__paymentOpsGrid,
+.admin-dashboard__slaGrid,
+.admin-dashboard__statRow,
+.admin-dashboard__contentRow,
+.admin-dashboard__panel,
+.admin-dashboard__metricList,
+.admin-dashboard__paymentMethods,
+.admin-dashboard__statusRow {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-dashboard {
+  overflow-x: clip;
+}
+
+.admin-dashboard__actionCard,
+.admin-dashboard__paymentOpsCard,
+.admin-dashboard__slaCard,
+.admin-dashboard__statCard,
+.admin-dashboard__panel,
+.admin-dashboard__heroMeta span,
+.admin-dashboard__metricList > .ant-space-item > div,
+.admin-dashboard__paymentMethod > div,
+.admin-dashboard__statusRow {
+  overflow-wrap: anywhere;
+}
+
+.admin-dashboard__statRow.ant-row,
+.admin-dashboard__contentRow.ant-row {
+  max-width: 100%;
+}
+
+.admin-dashboard__panel .ant-list-item,
+.admin-dashboard__panel .ant-list-item-meta,
+.admin-dashboard__panel .ant-list-item-meta-content,
+.admin-dashboard__panel .ant-statistic,
+.admin-dashboard__panel .ant-statistic-content {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .admin-dashboard__statRow.ant-row,
+  .admin-dashboard__contentRow.ant-row {
+    margin-inline: 0 !important;
+  }
+
+  .admin-dashboard__statRow > .ant-col,
+  .admin-dashboard__contentRow > .ant-col {
+    padding-inline: 0 !important;
+  }
+
+  .admin-dashboard__hero h3.ant-typography {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .admin-dashboard__actionIntro,
+  .admin-dashboard__paymentOpsIntro,
+  .admin-dashboard__slaIntro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-dashboard__paymentOpsActions,
+  .admin-dashboard__paymentOpsActions .ant-space,
+  .admin-dashboard__paymentOpsActions .ant-space-item,
+  .admin-dashboard__paymentOpsActions .ant-btn {
+    width: 100%;
+  }
+
+  .admin-dashboard__metricList > .ant-space-item > div,
+  .admin-dashboard__paymentMethod > div,
+  .admin-dashboard__statusRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .admin-dashboard__trendChartScroll {
+    margin-inline: -12px;
+    padding-inline: 12px;
+    scrollbar-width: none;
+  }
+
+  .admin-dashboard__trendChartScroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-dashboard__chartLegend {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  .admin-dashboard__donutChart {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-dashboard__metricList strong,
+  .admin-dashboard__paymentMethod strong,
+  .admin-dashboard__statusRow span {
+    max-width: 100%;
+    text-align: left;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-dashboard {
+    gap: 10px;
+  }
+
+  .admin-dashboard__hero,
+  .admin-dashboard__actionBar,
+  .admin-dashboard__paymentOps,
+  .admin-dashboard__sla {
+    gap: 10px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .admin-dashboard__heroMeta {
+    display: flex;
+    gap: 8px;
+    margin-inline: -10px;
+    padding: 0 10px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-dashboard__heroMeta span {
+    min-width: 128px;
+    scroll-snap-align: start;
+  }
+
+  .admin-dashboard__actionCard,
+  .admin-dashboard__paymentOpsCard,
+  .admin-dashboard__slaCard {
+    min-height: 74px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .admin-dashboard__panel.ant-card,
+  .admin-dashboard__statCard.ant-card {
+    border-radius: 14px;
+  }
+
+  .admin-dashboard__panel .ant-card-head {
+    min-height: 42px;
+    padding-inline: 12px;
+  }
+
+  .admin-dashboard__panel .ant-card-body {
+    padding: 12px;
+  }
+
+  .admin-dashboard__statusRow .ant-tag,
+  .admin-dashboard__slaIntro .ant-tag {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+/* Final mobile admin dashboard action stability pass */
+@media (max-width: 640px) {
+  .admin-dashboard__heroMeta,
+  .admin-dashboard__actionGrid,
+  .admin-dashboard__paymentOpsGrid,
+  .admin-dashboard__slaGrid {
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-dashboard__heroMeta::-webkit-scrollbar,
+  .admin-dashboard__actionGrid::-webkit-scrollbar,
+  .admin-dashboard__paymentOpsGrid::-webkit-scrollbar,
+  .admin-dashboard__slaGrid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-dashboard .ant-btn {
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  .admin-dashboard .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-dashboard__actionCard,
+  .admin-dashboard__paymentOpsCard,
+  .admin-dashboard__slaCard {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-dashboard__actionGrid,
+  .admin-dashboard__paymentOpsGrid,
+  .admin-dashboard__slaGrid {
+    display: flex;
+    gap: 8px;
+    margin-inline: -10px;
+    padding: 0 10px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .admin-dashboard__actionCard,
+  .admin-dashboard__paymentOpsCard,
+  .admin-dashboard__slaCard,
+  .admin-dashboard--es .admin-dashboard__actionCard,
+  .admin-dashboard--es .admin-dashboard__paymentOpsCard,
+  .admin-dashboard--es .admin-dashboard__slaCard {
+    flex: 0 0 136px;
+    min-height: 82px;
+    scroll-snap-align: start;
+  }
 }

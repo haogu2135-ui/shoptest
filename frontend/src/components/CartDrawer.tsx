@@ -1,6 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Drawer, Empty, InputNumber, List, message, Progress, Space, Tag, Typography } from 'antd';
-import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, GoogleOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
+import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, DeleteOutlined, GoogleOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
 import type { CartItem, Product } from '../types';
@@ -587,8 +587,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             <List.Item
               className="cart-drawer__item"
               actions={[
-                <Button key="later" type="link" icon={<ClockCircleOutlined />} onClick={() => saveForLater(item)}>{t('pages.cart.saveForLaterShort')}</Button>,
-                <Button key="delete" type="link" danger onClick={() => removeItem(item)}>{t('common.delete')}</Button>,
+                <Button key="later" type="link" className="cart-drawer__itemAction cart-drawer__itemAction--save" icon={<ClockCircleOutlined />} onClick={() => saveForLater(item)}>
+                  {t('pages.cart.saveForLaterShort')}
+                </Button>,
+                <Button key="delete" type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')} onClick={() => removeItem(item)}>
+                  {t('common.delete')}
+                </Button>,
               ]}
             >
               <List.Item.Meta
@@ -656,7 +660,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       ) : null}
 
       <div className="cart-drawer__footer">
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction="vertical" className="cart-drawer__footerStack">
           <div className="cart-drawer__subtotal">
             <Text>{t('common.subtotal')}</Text>
             <Text strong>{formatMoney(subtotal)}</Text>

@@ -931,14 +931,14 @@ const ProductManagement: React.FC = () => {
             prefix={<SearchOutlined />}
             value={searchKeyword}
             onChange={e => setSearchKeyword(e.target.value)}
-            style={{ width: 220 }}
+            className="product-management-page__filterSearch"
             allowClear
           />
           <TreeSelect
             placeholder={t('pages.productAdmin.filterCategory')}
             allowClear
             treeDefaultExpandAll
-            style={{ width: 220 }}
+            className="product-management-page__filterCategory"
             value={filterCategory}
             onChange={v => setFilterCategory(v)}
             treeData={categoryOptions}
@@ -946,7 +946,7 @@ const ProductManagement: React.FC = () => {
           <Select
             placeholder={t('pages.productAdmin.reviewStatus')}
             allowClear
-            style={{ width: 160 }}
+            className="product-management-page__filterStatus"
             value={filterStatus}
             onChange={setFilterStatus}
             options={[
@@ -1465,7 +1465,7 @@ const ProductManagement: React.FC = () => {
                   <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder={t('pages.productAdmin.limitedTimePricePlaceholder')} />
                 </Form.Item>
                 <Form.Item name="limitedTimeRange" label={t('pages.productAdmin.limitedTimeRange')}>
-                  <DatePicker.RangePicker showTime style={{ width: '100%' }} />
+                  <DatePicker.RangePicker showTime className="shopify-range-picker" />
                 </Form.Item>
               </section>
             </aside>

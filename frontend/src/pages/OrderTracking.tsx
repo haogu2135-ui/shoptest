@@ -207,25 +207,42 @@ const OrderTracking: React.FC = () => {
 
   return (
     <div className={`order-tracking-page order-tracking-page--${language}`}>
-      <Title level={2}>{t('pages.orderTracking.title')}</Title>
-      <Card style={{ marginBottom: 16 }}>
-        <Form layout="vertical" onFinish={onFinish}>
+      <Title level={2} className="order-tracking-page__title">{t('pages.orderTracking.title')}</Title>
+      <Card className="order-tracking-page__lookupCard">
+        <div className="order-tracking-page__lookupHeader">
+          <span className="order-tracking-page__lookupIcon"><SearchOutlined /></span>
+          <span>
+            <Text strong>{t('pages.orderTracking.title')}</Text>
+            <Text type="secondary">{t('pages.orderTracking.empty')}</Text>
+          </span>
+        </div>
+        <Form className="order-tracking-page__lookupForm" layout="vertical" onFinish={onFinish}>
           <Form.Item name="orderNo" label={t('pages.orderTracking.orderNo')} rules={[{ required: true, message: t('pages.orderTracking.orderNoRequired') }]}>
             <Input placeholder="SO202605..." autoComplete="off" />
           </Form.Item>
           <Form.Item name="email" label={t('pages.orderTracking.email')} rules={[{ required: true, message: t('pages.orderTracking.emailRequired') }, { type: 'email', message: t('pages.auth.emailInvalid') }]}>
             <Input placeholder="you@example.com" autoComplete="email" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading} icon={<SearchOutlined />}>
+          <Button className="order-tracking-page__lookupButton" type="primary" htmlType="submit" loading={loading} icon={<SearchOutlined />} block>
             {t('pages.orderTracking.search')}
           </Button>
         </Form>
       </Card>
 
       {!order ? (
-        <Empty description={t('pages.orderTracking.empty')} />
+        <section className="order-tracking-page__emptyState">
+          <Empty description={t('pages.orderTracking.empty')} />
+          <div className="order-tracking-page__emptyActions">
+            <Button icon={<CustomerServiceOutlined />} onClick={supportOpen}>
+              {t('pages.profile.contactSupport')}
+            </Button>
+            <Button type="primary" onClick={() => navigate('/products')}>
+              {t('pages.orderTracking.shopAgain')}
+            </Button>
+          </div>
+        </section>
       ) : (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space direction="vertical" size="middle" className="order-tracking-page__resultStack">
           <section className="order-tracking-page__journey" aria-label={t('pages.orderTracking.journeyTitle')}>
             <div className="order-tracking-page__journeyCopy">
               <Text className="order-tracking-page__eyebrow">{t('pages.orderTracking.journeyEyebrow')}</Text>

@@ -41,7 +41,7 @@ const TrendChart: React.FC<{
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (!data.length) {
-    return <div style={{ color: '#999', textAlign: 'center', padding: 48 }}>{labels.noTrendData}</div>;
+    return <div className="admin-dashboard__chartEmpty">{labels.noTrendData}</div>;
   }
 
   const width = 720;
@@ -62,12 +62,12 @@ const TrendChart: React.FC<{
   const hoveredPoint = hoveredIndex === null ? null : revenuePoints[hoveredIndex];
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto' }}>
+    <div className="admin-dashboard__trendChartScroll">
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={labels.salesTrendChart}
-        style={{ width: '100%', minWidth: 560 }}
+        className="admin-dashboard__trendChart"
         onMouseLeave={() => setHoveredIndex(null)}
       >
         <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + chartHeight} stroke="#e8e8e8" />
@@ -168,9 +168,9 @@ const TrendChart: React.FC<{
           />
         ))}
       </svg>
-      <Space size="large" style={{ marginTop: 8 }}>
-        <Space><span style={{ width: 20, height: 10, display: 'inline-block', background: '#91caff', borderRadius: 3 }} />{labels.orders}</Space>
-        <Space><span style={{ width: 20, height: 3, display: 'inline-block', background: '#ee4d2d', borderRadius: 3 }} />{labels.revenue}</Space>
+      <Space size="large" className="admin-dashboard__chartLegend">
+        <Space><span className="admin-dashboard__legendSwatch admin-dashboard__legendSwatch--orders" />{labels.orders}</Space>
+        <Space><span className="admin-dashboard__legendSwatch admin-dashboard__legendSwatch--revenue" />{labels.revenue}</Space>
       </Space>
     </div>
   );
@@ -186,14 +186,14 @@ const DonutChart: React.FC<{
 }> = ({ data, labels }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   if (!total) {
-    return <div style={{ color: '#999', textAlign: 'center', padding: 32 }}>{labels.noOrderData}</div>;
+    return <div className="admin-dashboard__chartEmpty admin-dashboard__chartEmpty--compact">{labels.noOrderData}</div>;
   }
   const radius = 44;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
-    <Space align="center" style={{ width: '100%', justifyContent: 'space-around' }}>
+    <Space align="center" className="admin-dashboard__donutChart">
       <svg width="128" height="128" viewBox="0 0 128 128" role="img" aria-label={labels.orderStatusChart}>
         <circle cx="64" cy="64" r={radius} fill="none" stroke="#f0f0f0" strokeWidth="18" />
         {data.filter((item) => item.value > 0).map((item) => {
@@ -222,7 +222,7 @@ const DonutChart: React.FC<{
       <Space direction="vertical" size={6}>
         {data.map((item) => (
           <Space key={item.label}>
-            <span style={{ width: 10, height: 10, borderRadius: 10, display: 'inline-block', background: item.color }} />
+            <span className="admin-dashboard__donutSwatch" style={{ background: item.color }} />
             <span>{item.label}</span>
             <strong>{item.value}</strong>
           </Space>

@@ -8,7 +8,8 @@ spring:
     nacos:
       discovery:
         enabled: ${NACOS_DISCOVERY_ENABLED:true}
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        register-enabled: ${NACOS_REGISTER_ENABLED:${NACOS_DISCOVERY_ENABLED:true}}
+        server-addr: ${NACOS_SERVER_ADDR:158.101.11.223:8848}
         namespace: ${NACOS_NAMESPACE:}
         group: ${NACOS_GROUP:DEFAULT_GROUP}
     gateway:
@@ -29,7 +30,11 @@ spring:
               - OPTIONS
             allowedHeaders:
               - '*'
+            exposedHeaders:
+              - X-Request-Id
             allowCredentials: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials X-Request-Id, RETAIN_FIRST
       routes:
         - id: shop-app
           uri: lb://shop-backend
@@ -117,5 +122,11 @@ management:
         enabled: true
 
 logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
   level:
     org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+
+shop:
+  gateway:
+    backend-service-id: ${GATEWAY_BACKEND_SERVICE_ID:shop-backend}

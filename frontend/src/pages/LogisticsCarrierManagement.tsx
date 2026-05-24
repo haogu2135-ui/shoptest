@@ -213,6 +213,7 @@ const LogisticsCarrierManagement: React.FC = () => {
       />
 
       <Modal
+        className="logistics-carrier-page__editorModal"
         title={editingCarrier ? t('pages.logisticsCarriers.editTitle') : t('pages.logisticsCarriers.addTitle')}
         open={modalOpen}
         onOk={handleSave}
@@ -239,7 +240,7 @@ const LogisticsCarrierManagement: React.FC = () => {
             />
           </Form.Item>
           <Form.Item name="sortOrder" label={t('pages.logisticsCarriers.sortOrder')}>
-            <InputNumber min={0} precision={0} style={{ width: '100%' }} />
+            <InputNumber min={0} precision={0} className="logistics-carrier-page__sortInput" />
           </Form.Item>
         </Form>
       </Modal>

@@ -27,10 +27,10 @@ public class ProductQuestionController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         try {
-            UserDetailsImpl userDetails = requireUser(authentication);
+            UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
             return ResponseEntity.ok(questionService.ask(productId, userDetails.getId(), body.get("question")));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
     }
 
@@ -44,14 +44,7 @@ public class ProductQuestionController {
             SecurityUtils.assertAdmin(authentication);
             return ResponseEntity.ok(questionService.answer(questionId, userDetails.getId(), body.get("answer")));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw e;
         }
-    }
-
-    private UserDetailsImpl requireUser(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
-            throw new IllegalStateException("Unauthorized");
-        }
-        return (UserDetailsImpl) authentication.getPrincipal();
     }
 }

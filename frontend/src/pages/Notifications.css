@@ -267,3 +267,594 @@
     margin-left: 0;
   }
 }
+
+/* Notifications action-center polish */
+.notifications-page__assistant,
+.notifications-page__actionPlan,
+.notifications-page__item {
+  position: relative;
+  overflow: hidden;
+}
+
+.notifications-page__assistant::after,
+.notifications-page__actionPlan::after {
+  content: '';
+  position: absolute;
+  right: -36px;
+  bottom: -36px;
+  width: 112px;
+  height: 112px;
+  border-radius: 999px;
+  background: rgba(238, 77, 45, 0.08);
+  pointer-events: none;
+}
+
+.notifications-page__assistant > *,
+.notifications-page__actionPlan > * {
+  position: relative;
+  z-index: 1;
+}
+
+.notifications-page__header .ant-btn,
+.notifications-page__actionPlan > .ant-btn,
+.notifications-page__item .ant-btn,
+.notifications-page__signal {
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.notifications-page__header .ant-btn-primary,
+.notifications-page__actionPlan > .ant-btn-primary,
+.notifications-page__item .ant-btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, #ff7048, #ee4d2d);
+  box-shadow: 0 14px 28px rgba(238, 77, 45, 0.2);
+}
+
+.notifications-page__signal,
+.notifications-page__actionSignals span,
+.notifications-page__item {
+  min-width: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72), 0 8px 20px rgba(18, 71, 52, 0.05);
+}
+
+.notifications-page__signal:hover,
+.notifications-page__signal:focus-visible,
+.notifications-page__item:hover,
+.notifications-page__item:focus-within {
+  border-color: rgba(238, 77, 45, 0.26);
+  box-shadow: 0 18px 34px rgba(18, 71, 52, 0.12);
+  transform: translateY(-3px);
+}
+
+.notifications-page__signal.is-active {
+  border-color: rgba(238, 77, 45, 0.34);
+  background: #fff7f0;
+  color: #c73719;
+}
+
+.notifications-page__item {
+  border-radius: 20px;
+}
+
+.notifications-page__item--unread {
+  box-shadow: inset 5px 0 0 #ee4d2d, 0 10px 24px rgba(238, 77, 45, 0.08);
+}
+
+.notifications-page__plainText,
+.notifications-page__item .ant-list-item-meta-title,
+.notifications-page__item .ant-list-item-meta-description,
+.notifications-page__actionSignals span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .notifications-page__assistant::after,
+  .notifications-page__actionPlan::after {
+    width: 92px;
+    height: 92px;
+  }
+
+  .notifications-page__signal {
+    border-radius: 18px;
+  }
+}
+
+/* Mobile notification refinements */
+@media (max-width: 640px) {
+  .notifications-page {
+    width: calc(100% - 16px);
+    padding: 10px 0 24px;
+  }
+
+  .notifications-page__header {
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid #e4ebe4;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
+  }
+
+  .notifications-page__title {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .notifications-page__title .anticon {
+    margin-top: 2px;
+    font-size: 22px;
+  }
+
+  .notifications-page__title h3.ant-typography {
+    font-size: 21px;
+    line-height: 1.18;
+  }
+
+  .notifications-page__header .ant-btn {
+    min-height: 44px;
+  }
+
+  .notifications-page__assistant,
+  .notifications-page__actionPlan {
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .notifications-page__assistantCopy h4.ant-typography,
+  .notifications-page__actionPlan h4.ant-typography {
+    font-size: 17px;
+  }
+
+  .notifications-page__assistantCopy .ant-typography,
+  .notifications-page__actionPlan .ant-typography {
+    line-height: 1.4;
+  }
+
+  .notifications-page__signalGrid {
+    display: flex;
+    gap: 8px;
+    margin-right: -12px;
+    padding-right: 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent 100%);
+  }
+
+  .notifications-page__signalGrid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .notifications-page__signal {
+    flex: 0 0 126px;
+    min-height: 78px;
+    padding: 10px;
+  }
+
+  .notifications-page__signal strong {
+    font-size: 21px;
+  }
+
+  .notifications-page__signal span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .notifications-page__assistant > .ant-btn {
+    width: 100%;
+    min-height: 40px;
+    border-radius: 999px;
+  }
+
+  .notifications-page__actionSignals {
+    display: flex;
+    gap: 8px;
+    margin-right: -12px;
+    padding-right: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
+  }
+
+  .notifications-page__actionSignals::-webkit-scrollbar {
+    display: none;
+  }
+
+  .notifications-page__actionSignals span {
+    flex: 0 0 auto;
+    max-width: 82vw;
+    min-height: 36px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .notifications-page__actionPlan > .ant-btn {
+    min-height: 44px;
+  }
+
+  .notifications-page__item {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .notifications-page__item .ant-list-item-meta {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title {
+    margin-bottom: 6px;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title .ant-space {
+    width: 100%;
+    align-items: flex-start;
+    row-gap: 6px;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title .ant-tag {
+    flex: 0 0 auto;
+    margin-inline-end: 0;
+    border-radius: 999px;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title .ant-typography {
+    flex: 1 1 180px;
+    min-width: 0;
+    line-height: 1.35;
+  }
+
+  .notifications-page__plainText,
+  .notification-rich-content {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .notifications-page__item .ant-list-item-action {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .notifications-page__item .ant-list-item-action > li {
+    width: 100%;
+    padding: 0;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn {
+    min-height: 38px;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-link {
+    width: 100%;
+    border: 1px solid #e4ebe4;
+    background: #ffffff;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
+    width: 42px;
+    padding-inline: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .notifications-page__item .ant-list-item-action {
+    grid-template-columns: 1fr;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
+    width: 100%;
+  }
+}
+
+/* Final mobile notifications density pass */
+@media (max-width: 640px) {
+  .notifications-page {
+    width: min(100% - 14px, 1200px);
+    padding: 8px 0 20px;
+  }
+
+  .notifications-page__header,
+  .notifications-page__assistant,
+  .notifications-page__actionPlan {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .notifications-page__title h3.ant-typography {
+    font-size: 19px;
+    line-height: 1.15;
+  }
+
+  .notifications-page__title .anticon {
+    font-size: 20px;
+  }
+
+  .notifications-page__header .ant-btn,
+  .notifications-page__assistant > .ant-btn,
+  .notifications-page__actionPlan > .ant-btn {
+    min-height: 38px;
+  }
+
+  .notifications-page__assistant,
+  .notifications-page__actionPlan {
+    gap: 9px;
+  }
+
+  .notifications-page__assistantCopy h4.ant-typography,
+  .notifications-page__actionPlan h4.ant-typography {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .notifications-page__assistantCopy .ant-typography,
+  .notifications-page__actionPlan .ant-typography {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .notifications-page__signalGrid,
+  .notifications-page__actionSignals {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    scroll-padding-inline: 10px;
+  }
+
+  .notifications-page__signal {
+    flex-basis: 112px;
+    min-height: 68px;
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .notifications-page__signal strong {
+    font-size: 18px;
+  }
+
+  .notifications-page__signal span {
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .notifications-page__actionSignals span {
+    min-height: 30px;
+    padding: 6px 9px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .notifications-page__item {
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title {
+    margin-bottom: 4px;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title .ant-typography {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title .ant-tag {
+    font-size: 10.5px;
+  }
+
+  .notifications-page__plainText,
+  .notification-rich-content {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .notifications-page__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 6px;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn {
+    min-height: 36px;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
+    width: 40px;
+    padding-inline: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .notifications-page__signal {
+    flex-basis: 104px;
+  }
+
+  .notifications-page__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
+    width: 40px;
+  }
+}
+
+/* Mobile notifications tactile refinement */
+@media (max-width: 640px) {
+  .notifications-page__signalGrid,
+  .notifications-page__actionSignals {
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .notifications-page__signal,
+  .notifications-page__actionSignals span,
+  .notifications-page__item,
+  .notifications-page__item .ant-btn,
+  .notifications-page__actionPlan > .ant-btn {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .notifications-page__signal:active,
+  .notifications-page__actionSignals span:active,
+  .notifications-page__item:active,
+  .notifications-page__item .ant-btn:active,
+  .notifications-page__actionPlan > .ant-btn:active {
+    transform: scale(0.985);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .notifications-page__signal:hover,
+  .notifications-page__signal:focus-visible,
+  .notifications-page__item:hover,
+  .notifications-page__item:focus-within {
+    transform: none;
+    box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+  }
+}
+
+/* Final mobile notifications edge-fit pass */
+@media (max-width: 640px) {
+  .notifications-page,
+  .notifications-page * {
+    box-sizing: border-box;
+  }
+
+  .notifications-page {
+    width: min(100% - 12px, 800px);
+    overflow-x: clip;
+  }
+
+  .notifications-page__header,
+  .notifications-page__title,
+  .notifications-page__assistant,
+  .notifications-page__assistantCopy,
+  .notifications-page__actionPlan,
+  .notifications-page__item,
+  .notifications-page__item .ant-list-item-meta,
+  .notifications-page__item .ant-list-item-meta-content,
+  .notifications-page__item .ant-list-item-meta-description,
+  .notifications-page__item .ant-list-item-action {
+    min-width: 0;
+  }
+
+  .notifications-page__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notifications-page__header .ant-btn,
+  .notifications-page__assistant > .ant-btn,
+  .notifications-page__actionPlan > .ant-btn {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .notifications-page__signalGrid,
+  .notifications-page__actionSignals {
+    width: calc(100% + 10px);
+    max-width: calc(100vw - 12px);
+    margin-right: -10px;
+    padding-right: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+
+  .notifications-page__signalGrid::-webkit-scrollbar,
+  .notifications-page__actionSignals::-webkit-scrollbar {
+    display: none;
+  }
+
+  .notifications-page__signal,
+  .notifications-page__actionSignals span {
+    flex: 0 0 auto;
+    max-width: min(76vw, 240px);
+    scroll-snap-align: start;
+  }
+
+  .notifications-page__title h3.ant-typography,
+  .notifications-page__assistantCopy .ant-typography,
+  .notifications-page__actionPlan .ant-typography,
+  .notifications-page__plainText,
+  .notification-rich-content,
+  .notifications-page__item .ant-list-item-meta-title .ant-typography,
+  .notifications-page__item .ant-list-item-meta-description .ant-typography {
+    overflow-wrap: anywhere;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title .ant-space {
+    max-width: 100%;
+  }
+
+  .notifications-page__item .ant-list-item-meta-title .ant-tag {
+    max-width: min(46vw, 132px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-link:not(.ant-btn-dangerous) {
+    overflow: hidden;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-link:not(.ant-btn-dangerous) > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 360px) {
+  .notifications-page {
+    width: min(100% - 10px, 800px);
+  }
+
+  .notifications-page__header,
+  .notifications-page__assistant,
+  .notifications-page__actionPlan,
+  .notifications-page__item {
+    border-radius: 14px;
+  }
+
+  .notifications-page__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
+    width: 36px;
+    min-width: 36px;
+    padding-inline: 0;
+  }
+}

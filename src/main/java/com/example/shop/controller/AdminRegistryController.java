@@ -4,13 +4,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 import java.util.stream.Collectors;
 
 @RestController
@@ -60,10 +65,26 @@ public class AdminRegistryController {
 
     @GetMapping
     public Map<String, Object> getRegistryStatus() {
+        return buildRegistryStatus();
+    }
+
+    @GetMapping("/readiness")
+    public ResponseEntity<Map<String, Object>> getRegistryReadiness() {
+        Map<String, Object> response = buildRegistryStatus();
+        boolean ready = Boolean.TRUE.equals(response.get("healthy"));
+        return ResponseEntity
+                .status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
+                .body(response);
+    }
+
+    private Map<String, Object> buildRegistryStatus() {
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("applicationName", applicationName);
         response.put("discoveryEnabled", discoveryEnabled);
         response.put("registerEnabled", registerEnabled);
+        response.put("registrationExpected", discoveryEnabled && registerEnabled);
         response.put("nacosServerAddr", nacosServerAddr);
         response.put("namespace", namespace);
         response.put("group", group);
@@ -72,24 +93,79 @@ public class AdminRegistryController {
         response.put("configuredPort", configuredPort);
         response.put("ephemeral", ephemeral);
         response.put("weight", weight);
-        response.put("discoveryClientDescription", discoveryClient.description());
+        response.put("discoveryClientDescription", safeDescription(errors));
         response.put("profiles", List.of(environment.getActiveProfiles()));
-        List<String> knownServices = discoveryClient.getServices();
-        List<ServiceInstance> currentInstances = discoveryClient.getInstances(applicationName);
+        List<String> knownServices = discoveryEnabled ? safeServices(errors) : Collections.emptyList();
+        List<ServiceInstance> currentInstances = discoveryEnabled ? safeInstances(applicationName, errors) : Collections.emptyList();
+        boolean currentServiceRegistered = !currentInstances.isEmpty();
+        if (!discoveryEnabled) {
+            warnings.add("Service discovery is disabled");
+        } else if (!registerEnabled) {
+            warnings.add("Service registration is disabled");
+        } else if (!currentServiceRegistered) {
+            warnings.add("Current service is not visible in discovery results");
+        }
+        String status = resolveStatus(errors, currentServiceRegistered);
         response.put("knownServices", knownServices);
         response.put("serviceSummaries", knownServices.stream()
-                .map(this::toServiceSummary)
+                .map((serviceId) -> toServiceSummary(serviceId, errors))
                 .collect(Collectors.toList()));
         response.put("instances", currentInstances.stream()
                 .map(this::toInstancePayload)
                 .collect(Collectors.toList()));
         response.put("instanceCount", currentInstances.size());
-        response.put("healthy", discoveryEnabled && registerEnabled && !currentInstances.isEmpty());
+        response.put("currentServiceRegistered", currentServiceRegistered);
+        response.put("status", status);
+        response.put("healthy", "UP".equals(status));
+        response.put("warnings", warnings);
+        response.put("errors", errors);
+        response.put("readiness", readinessPayload(status));
+        response.put("diagnostics", diagnosticsPayload());
         return response;
     }
 
-    private Map<String, Object> toServiceSummary(String serviceId) {
-        List<ServiceInstance> instances = discoveryClient.getInstances(serviceId);
+    private String resolveStatus(List<String> errors, boolean currentServiceRegistered) {
+        if (!discoveryEnabled) {
+            return "DISABLED";
+        }
+        if (!errors.isEmpty()) {
+            return "DEGRADED";
+        }
+        if (!registerEnabled) {
+            return "DISCOVERY_ONLY";
+        }
+        return currentServiceRegistered ? "UP" : "UNREGISTERED";
+    }
+
+    private String safeDescription(List<String> errors) {
+        try {
+            return discoveryClient.description();
+        } catch (RuntimeException e) {
+            errors.add("Failed to read discovery client description: " + sanitizeError(e));
+            return "unavailable";
+        }
+    }
+
+    private List<String> safeServices(List<String> errors) {
+        try {
+            return discoveryClient.getServices();
+        } catch (RuntimeException e) {
+            errors.add("Failed to read discovered services: " + sanitizeError(e));
+            return Collections.emptyList();
+        }
+    }
+
+    private List<ServiceInstance> safeInstances(String serviceId, List<String> errors) {
+        try {
+            return discoveryClient.getInstances(serviceId);
+        } catch (RuntimeException e) {
+            errors.add("Failed to read instances for " + serviceId + ": " + sanitizeError(e));
+            return Collections.emptyList();
+        }
+    }
+
+    private Map<String, Object> toServiceSummary(String serviceId, List<String> errors) {
+        List<ServiceInstance> instances = safeInstances(serviceId, errors);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("serviceId", serviceId);
         payload.put("instanceCount", instances.size());
@@ -106,5 +182,38 @@ public class AdminRegistryController {
         payload.put("uri", instance.getUri().toString());
         payload.put("metadata", instance.getMetadata());
         return payload;
+    }
+
+    private Map<String, Object> diagnosticsPayload() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("healthEndpoint", "/actuator/health");
+        payload.put("registryReadinessEndpoint", "/admin/registry/readiness");
+        payload.put("infoEndpoint", "/actuator/info");
+        payload.put("gatewayAdminPath", "/gateway/admin/admin/registry");
+        payload.put("gatewayReadinessPath", "/gateway/admin/admin/registry/readiness");
+        payload.put("expectedServiceName", applicationName);
+        payload.put("expectedNacosGroup", group);
+        payload.put("expectedNacosNamespace", namespace);
+        return payload;
+    }
+
+    private Map<String, Object> readinessPayload(String status) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("ready", "UP".equals(status));
+        payload.put("status", status);
+        payload.put("httpStatus", "UP".equals(status) ? HttpStatus.OK.value() : HttpStatus.SERVICE_UNAVAILABLE.value());
+        payload.put("checkedAt", Instant.now().toString());
+        payload.put("requiresDiscovery", true);
+        payload.put("requiresRegistration", true);
+        return payload;
+    }
+
+    private String sanitizeError(RuntimeException e) {
+        String message = e.getMessage() == null ? "" : e.getMessage();
+        String normalized = message.replaceAll("[\\r\\n\\t]+", " ").trim();
+        if (normalized.length() > 240) {
+            normalized = normalized.substring(0, 240);
+        }
+        return e.getClass().getSimpleName() + (normalized.isBlank() ? "" : ": " + normalized);
     }
 }

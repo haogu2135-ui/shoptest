@@ -663,7 +663,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             <div className="customer-support-widget__sessionPicker">
               <Select
                 size="small"
-                style={{ width: '100%' }}
+                className="customer-support-widget__sessionSelect"
                 value={session?.id}
                 onChange={(value) => switchSession(Number(value))}
                 options={sessionOptions}
@@ -893,9 +893,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         footer={null}
       >
         {detailLoading ? (
-          <div style={{ padding: 32, textAlign: 'center' }}><Spin /></div>
+          <div className="customer-support-widget__orderLoading"><Spin /></div>
         ) : detailOrder ? (
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Space direction="vertical" className="customer-support-widget__orderDetail" size="middle">
             <Space wrap>
               <Tag color="blue">{detailOrder.status}</Tag>
               {detailOrder.paymentMethod ? <Tag>{detailOrder.paymentMethod}</Tag> : null}
@@ -912,7 +912,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                       <img
                         src={resolveSupportOrderImage(item.imageUrl)}
                         alt={item.productName}
-                        style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }}
+                        className="customer-support-widget__orderItemImage"
                         onError={(event) => {
                           if (event.currentTarget.src !== supportOrderImageFallback) {
                             event.currentTarget.src = supportOrderImageFallback;

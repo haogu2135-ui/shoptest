@@ -592,12 +592,14 @@
 
   .product-management-page__toolbar,
   .product-management-page__toolbar > .ant-space,
+  .product-management-page__toolbar .ant-space-item,
   .product-management-page__filters,
   .product-management-page__filters .ant-input-affix-wrapper,
   .product-management-page__filters .ant-select,
+  .product-management-page__filters .ant-tree-select,
   .product-management-page__toolbar .ant-upload-wrapper,
   .product-management-page__toolbar .ant-btn {
-    width: 100%;
+    width: 100% !important;
   }
 
   .product-listing-quality {
@@ -634,5 +636,480 @@
   .shopify-option-row,
   .shopify-variant-row {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Product ops workspace polish */
+.product-management-page__toolbar,
+.product-listing-quality,
+.shopify-card,
+.shopify-inventory-box,
+.shopify-rich-preview,
+.product-live-preview__card {
+  position: relative;
+  overflow: hidden;
+}
+
+.product-listing-quality::after,
+.shopify-card--split::after,
+.product-live-preview__card::after {
+  content: '';
+  position: absolute;
+  right: -34px;
+  bottom: -34px;
+  width: 108px;
+  height: 108px;
+  border-radius: 999px;
+  background: rgba(238, 77, 45, 0.07);
+  pointer-events: none;
+}
+
+.product-listing-quality > *,
+.shopify-card--split > *,
+.product-live-preview__card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.product-management-page .ant-card,
+.shopify-card,
+.product-live-preview__card,
+.shopify-rich-preview,
+.shopify-inventory-box {
+  border-radius: 20px;
+  border-color: rgba(18, 71, 52, 0.08);
+  box-shadow: 0 14px 30px rgba(18, 71, 52, 0.07);
+}
+
+.product-management-page .ant-btn,
+.product-feature-button.ant-btn,
+.shopify-link-button,
+.shopify-media-add {
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.product-management-page .ant-btn-primary,
+.product-feature-button--active.ant-btn {
+  border: 0;
+  background: linear-gradient(135deg, #ff7048, #ee4d2d);
+  box-shadow: 0 12px 24px rgba(238, 77, 45, 0.18);
+}
+
+.product-management-page .ant-input,
+.product-management-page .ant-input-affix-wrapper,
+.product-management-page .ant-select-selector,
+.product-management-page .ant-input-number,
+.product-management-page .ant-picker {
+  border-radius: 12px !important;
+}
+
+.shopify-variant-summary span,
+.shopify-chip,
+.shopify-channel-list span,
+.shopify-pill-row > span {
+  min-width: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.product-live-preview__image {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(238, 77, 45, 0.08), transparent 8rem),
+    #ffffff;
+}
+
+.product-live-preview__image img {
+  object-fit: contain;
+  padding: 10px;
+}
+
+.product-live-preview__badge,
+.product-live-preview__meta .ant-tag {
+  border-radius: 999px;
+}
+
+.product-live-preview__price span:first-child {
+  font-weight: 900;
+}
+
+.shopify-variant-row,
+.shopify-option-row,
+.shopify-metafield-row,
+.product-live-preview__title,
+.product-live-preview__description,
+.shopify-seo-preview h4,
+.shopify-seo-preview p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shopify-product-modal .ant-modal-content {
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .product-listing-quality::after,
+  .shopify-card--split::after,
+  .product-live-preview__card::after {
+    width: 92px;
+    height: 92px;
+  }
+}
+
+/* Final mobile product admin edge-fit pass */
+.product-management-page,
+.product-management-page *,
+.product-management-page *::before,
+.product-management-page *::after,
+.shopify-product-modal,
+.shopify-product-modal *,
+.shopify-product-modal *::before,
+.shopify-product-modal *::after {
+  box-sizing: border-box;
+}
+
+.product-management-page,
+.product-management-page__toolbar,
+.product-management-page__filters,
+.product-management-page__filterSearch,
+.product-management-page__filterCategory,
+.product-management-page__filterStatus,
+.product-listing-quality,
+.product-listing-quality__summary,
+.product-listing-quality__metrics,
+.shopify-product-modal,
+.shopify-product-modal .ant-modal-content,
+.shopify-product-modal .ant-modal-body,
+.shopify-product-editor,
+.shopify-product-editor__main,
+.shopify-product-editor__side,
+.shopify-card,
+.shopify-card__header,
+.shopify-media-grid,
+.shopify-media-tile,
+.shopify-media-input,
+.shopify-two-col,
+.shopify-inventory-box,
+.shopify-option-row,
+.shopify-variant-row,
+.shopify-metafield-row,
+.shopify-variant-summary,
+.product-live-preview,
+.product-live-preview__card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.product-management-page {
+  overflow-x: clip;
+}
+
+.product-management-page__filterSearch,
+.product-management-page__filterCategory {
+  width: 220px;
+}
+
+.product-management-page__filterStatus {
+  width: 160px;
+}
+
+.shopify-range-picker {
+  width: 100%;
+}
+
+.product-management-page .ant-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.product-management-page .ant-table {
+  min-width: max-content;
+}
+
+.product-management-page .ant-btn,
+.product-management-page .ant-tag,
+.product-management-page .ant-typography,
+.product-management-page .ant-table-cell,
+.product-listing-quality__summary,
+.product-listing-quality__footer,
+.shopify-card,
+.shopify-card__header,
+.shopify-section-title,
+.shopify-pill-row,
+.shopify-pill-row > span,
+.shopify-chip,
+.shopify-channel-list span,
+.shopify-media-input,
+.shopify-option-row,
+.shopify-variant-row,
+.shopify-metafield-row,
+.shopify-seo-preview,
+.shopify-rich-preview,
+.product-live-preview__body {
+  overflow-wrap: anywhere;
+}
+
+.shopify-product-modal .ant-form-item,
+.shopify-product-modal .ant-form-item-control,
+.shopify-product-modal .ant-form-item-control-input,
+.shopify-product-modal .ant-form-item-control-input-content,
+.shopify-product-modal .ant-input,
+.shopify-product-modal .ant-input-number,
+.shopify-product-modal .ant-select,
+.shopify-product-modal .ant-select-selector,
+.shopify-range-picker,
+.shopify-product-modal .ant-upload-wrapper,
+.shopify-product-modal .ant-space,
+.shopify-product-modal .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 720px) {
+  .product-management-page__filters,
+  .product-management-page__filters .ant-space-item,
+  .product-management-page__filterSearch,
+  .product-management-page__filterCategory,
+  .product-management-page__filterStatus {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .shopify-product-modal {
+    width: calc(100vw - 16px) !important;
+    margin: 8px auto;
+    top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .shopify-product-modal .ant-modal-body {
+    max-height: calc(100dvh - 158px);
+    overflow-y: auto;
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shopify-product-modal .ant-modal-title {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .shopify-product-modal .ant-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .shopify-product-modal .ant-modal-footer .ant-btn {
+    flex: 1 1 128px;
+    margin-inline-start: 0;
+    white-space: normal;
+  }
+
+  .shopify-card__header,
+  .shopify-variant-actions,
+  .product-listing-quality__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .shopify-card__header .ant-btn,
+  .shopify-variant-actions .ant-btn,
+  .product-listing-quality__footer .ant-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .product-management-page {
+    padding: 10px 0;
+  }
+
+  .product-management-page h3.ant-typography {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .product-management-page__toolbar {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .product-management-page__filters {
+    gap: 8px !important;
+  }
+
+  .product-management-page__filters .ant-input-affix-wrapper,
+  .product-management-page__filters .ant-select,
+  .product-management-page__filters .ant-select-selector,
+  .product-management-page__filters .ant-tree-select,
+  .product-management-page__filters .ant-tree-select-selector {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .product-listing-quality {
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .product-listing-quality__summary h3 {
+    font-size: 18px;
+  }
+
+  .product-listing-quality__score {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .product-listing-quality__metrics {
+    display: flex;
+    gap: 8px;
+    margin-inline: -12px;
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .product-listing-quality__metrics button {
+    flex: 0 0 142px;
+    min-height: 74px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .shopify-card,
+  .shopify-inventory-box,
+  .shopify-rich-preview,
+  .product-live-preview__card {
+    border-radius: 14px;
+  }
+
+  .shopify-card {
+    padding: 12px;
+  }
+
+  .shopify-pill-row,
+  .shopify-channel-list {
+    align-items: flex-start;
+  }
+
+  .shopify-pill-row > span,
+  .shopify-chip,
+  .shopify-channel-list span {
+    white-space: normal;
+  }
+
+  .shopify-media-tile,
+  .shopify-media-add {
+    min-height: 128px;
+  }
+
+  .product-live-preview__image {
+    min-height: 150px;
+    max-height: 210px;
+  }
+}
+
+@media (max-width: 430px) {
+  .product-management-page .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+
+  .shopify-option-row,
+  .shopify-variant-row,
+  .shopify-metafield-row {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .shopify-input,
+  .shopify-money-input,
+  .shopify-rich-text {
+    width: 100%;
+  }
+
+  .product-live-preview__price span:first-child {
+    font-size: 20px;
+  }
+}
+
+/* Final mobile product admin action stability pass */
+@media (max-width: 720px) {
+  .product-listing-quality__metrics,
+  .shopify-pill-row,
+  .shopify-channel-list,
+  .shopify-variant-summary {
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .product-listing-quality__metrics::-webkit-scrollbar,
+  .shopify-pill-row::-webkit-scrollbar,
+  .shopify-channel-list::-webkit-scrollbar,
+  .shopify-variant-summary::-webkit-scrollbar {
+    display: none;
+  }
+
+  .product-management-page .ant-btn,
+  .shopify-product-modal .ant-btn,
+  .product-listing-quality__metrics button {
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+    white-space: normal;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .product-management-page .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopify-product-modal .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .product-listing-quality__metrics button span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .shopify-pill-row,
+  .shopify-channel-list,
+  .shopify-variant-summary {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-inline: -12px;
+    padding-inline: 12px;
+    overflow-x: auto;
+  }
+
+  .shopify-pill-row > span,
+  .shopify-chip,
+  .shopify-channel-list span,
+  .shopify-variant-summary span {
+    flex: 0 0 auto;
+    max-width: min(220px, 76vw);
+    scroll-snap-align: start;
+  }
+
+  .shopify-product-modal .ant-modal-footer .ant-btn {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-listing-quality__metrics button {
+    flex-basis: 128px;
+  }
+
+  .shopify-product-modal .ant-modal-footer .ant-btn {
+    flex-basis: 100%;
   }
 }

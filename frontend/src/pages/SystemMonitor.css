@@ -27,7 +27,7 @@
   color: #ee4d2d;
   font-size: 12px;
   font-weight: 950;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -64,6 +64,10 @@
   background: #f2f8f4;
   color: #1f8a4c;
   font-size: 24px;
+}
+
+.system-monitor__databaseInfo {
+  width: 100%;
 }
 
 @media (max-width: 980px) {
@@ -103,5 +107,161 @@
   .system-monitor__hero .ant-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* Final mobile system monitor edge-fit pass */
+.system-monitor,
+.system-monitor *,
+.system-monitor *::before,
+.system-monitor *::after {
+  box-sizing: border-box;
+}
+
+.system-monitor,
+.system-monitor__hero,
+.system-monitor__stats,
+.system-monitor__resourceGrid,
+.system-monitor__card,
+.system-monitor__alert,
+.system-monitor .ant-card,
+.system-monitor .ant-card-body,
+.system-monitor .ant-descriptions,
+.system-monitor .ant-space,
+.system-monitor .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.system-monitor {
+  overflow-x: clip;
+}
+
+.system-monitor__hero,
+.system-monitor__card,
+.system-monitor__alert,
+.system-monitor .ant-btn,
+.system-monitor .ant-tag,
+.system-monitor .ant-typography,
+.system-monitor .ant-descriptions-item-content,
+.system-monitor .ant-statistic {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .system-monitor {
+    gap: 12px;
+  }
+
+  .system-monitor__hero {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .system-monitor__hero h2 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .system-monitor__hero .ant-btn {
+    width: 100%;
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .system-monitor__stats {
+    display: flex;
+    gap: 8px;
+    margin-inline: -8px;
+    padding: 0 8px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .system-monitor__stats .ant-card {
+    flex: 0 0 142px;
+    scroll-snap-align: start;
+  }
+
+  .system-monitor__resourceGrid {
+    gap: 10px;
+  }
+
+  .system-monitor__stats .ant-card,
+  .system-monitor__card,
+  .system-monitor__alert {
+    border-radius: 14px;
+  }
+
+  .system-monitor__stats .ant-card-body,
+  .system-monitor__card .ant-card-body {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 430px) {
+  .system-monitor__hero {
+    padding: 12px;
+  }
+
+  .system-monitor__stats {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+
+  .system-monitor__stats .ant-card {
+    flex-basis: 132px;
+  }
+
+  .system-monitor__largeIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 20px;
+  }
+}
+
+/* Final mobile system monitor action stability pass */
+@media (max-width: 720px) {
+  .system-monitor__stats {
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .system-monitor__stats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .system-monitor .ant-btn,
+  .system-monitor__stats .ant-card {
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .system-monitor .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .system-monitor__stats .ant-statistic-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .system-monitor .ant-descriptions-view {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 360px) {
+  .system-monitor__stats .ant-card {
+    flex-basis: 122px;
   }
 }

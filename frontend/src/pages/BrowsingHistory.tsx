@@ -221,6 +221,34 @@ const BrowsingHistory: React.FC = () => {
     };
   })();
 
+  const emptyQuickActions = [
+    {
+      key: 'browse',
+      icon: <ShoppingOutlined />,
+      label: t('pages.browsingHistory.browse'),
+      action: () => navigate('/products'),
+      type: 'primary' as const,
+    },
+    {
+      key: 'personalized',
+      icon: <ThunderboltOutlined />,
+      label: t('pages.browsingHistory.browsePersonalized'),
+      action: () => navigate('/products?sort=personalized-desc'),
+    },
+    {
+      key: 'coupons',
+      icon: <FireOutlined />,
+      label: t('nav.coupons'),
+      action: () => navigate('/coupons'),
+    },
+    {
+      key: 'petFinder',
+      icon: <SearchOutlined />,
+      label: t('nav.petFinder'),
+      action: () => navigate('/pet-finder'),
+    },
+  ];
+
   if (loading) {
     return (
       <main className={`browsing-history browsing-history--${language} browsing-history--loading`}>
@@ -230,7 +258,7 @@ const BrowsingHistory: React.FC = () => {
   }
 
   return (
-    <main className={`browsing-history browsing-history--${language}`}>
+    <main className={`browsing-history browsing-history--${language}${!hasHistory ? ' browsing-history--empty' : ''}`}>
       <section className="browsing-history__hero">
         <div>
           <span className="browsing-history__eyebrow">
@@ -254,7 +282,7 @@ const BrowsingHistory: React.FC = () => {
             onConfirm={clearHistory}
             disabled={!hasHistory}
           >
-            <Button danger icon={<DeleteOutlined />} disabled={!hasHistory}>
+            <Button danger icon={<DeleteOutlined />} disabled={!hasHistory} aria-label={t('pages.browsingHistory.clear')}>
               {t('pages.browsingHistory.clear')}
             </Button>
           </Popconfirm>
@@ -320,25 +348,27 @@ const BrowsingHistory: React.FC = () => {
         </section>
       ) : null}
 
-      <section className={`browsing-history__nextAction browsing-history__nextAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>
-        <div>
-          <span>{t('pages.browsingHistory.nextActionEyebrow')}</span>
-          <h2>{historyNextAction.title}</h2>
-          <p>{historyNextAction.text}</p>
-        </div>
-        <div className="browsing-history__nextActionStats">
-          <Tag color="green">{t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}</Tag>
-          <Tag color={historyInsights.deals > 0 ? 'volcano' : 'default'}>{t('pages.browsingHistory.dealWatchCount', { count: historyInsights.deals })}</Tag>
-          <Tag color={historyInsights.lowStock > 0 ? 'orange' : 'default'}>{t('pages.browsingHistory.lowStockWatchCount', { count: historyInsights.lowStock })}</Tag>
-        </div>
-        <Button
-          type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
-          icon={historyNextAction.tone === 'ready' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}
-          onClick={historyNextAction.action}
-        >
-          {historyNextAction.label}
-        </Button>
-      </section>
+      {hasHistory ? (
+        <section className={`browsing-history__nextAction browsing-history__nextAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>
+          <div>
+            <span>{t('pages.browsingHistory.nextActionEyebrow')}</span>
+            <h2>{historyNextAction.title}</h2>
+            <p>{historyNextAction.text}</p>
+          </div>
+          <div className="browsing-history__nextActionStats">
+            <Tag color="green">{t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}</Tag>
+            <Tag color={historyInsights.deals > 0 ? 'volcano' : 'default'}>{t('pages.browsingHistory.dealWatchCount', { count: historyInsights.deals })}</Tag>
+            <Tag color={historyInsights.lowStock > 0 ? 'orange' : 'default'}>{t('pages.browsingHistory.lowStockWatchCount', { count: historyInsights.lowStock })}</Tag>
+          </div>
+          <Button
+            type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
+            icon={historyNextAction.tone === 'ready' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}
+            onClick={historyNextAction.action}
+          >
+            {historyNextAction.label}
+          </Button>
+        </section>
+      ) : null}
 
       {filteredProducts.length ? (
         <section className="browsing-history__grid">
@@ -393,7 +423,7 @@ const BrowsingHistory: React.FC = () => {
                       <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShoppingOutlined />} onClick={() => navigate(`/products/${product.id}`)}>
                         {productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}
                       </Button>
-                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeItem(product.id)} />
+                      <Button type="text" danger icon={<DeleteOutlined />} aria-label={t('common.delete')} onClick={() => removeItem(product.id)} />
                     </div>
                   </div>
                 </div>
@@ -404,9 +434,32 @@ const BrowsingHistory: React.FC = () => {
       ) : (
         <section className="browsing-history__empty">
           <Empty description={historyProducts.length ? t('pages.browsingHistory.noSearchResults') : t('pages.browsingHistory.empty')}>
-            <Button type="primary" onClick={() => navigate('/products')}>
-              {t('pages.browsingHistory.browse')}
-            </Button>
+            {historyProducts.length ? (
+              <div className="browsing-history__emptyActions">
+                <Button type="primary" icon={<ShoppingOutlined />} onClick={() => navigate('/products')}>
+                  {t('pages.browsingHistory.browse')}
+                </Button>
+                <Button onClick={() => {
+                  setKeyword('');
+                  setQuickFilter('all');
+                }}>
+                  {t('pages.productList.resetFilters')}
+                </Button>
+              </div>
+            ) : (
+              <div className="browsing-history__emptyActions browsing-history__emptyActions--guide">
+                {emptyQuickActions.map((action) => (
+                  <Button
+                    key={action.key}
+                    type={action.type}
+                    icon={action.icon}
+                    onClick={action.action}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            )}
           </Empty>
         </section>
       )}

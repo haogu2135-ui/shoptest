@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Cascader, Divider, Empty, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, RollbackOutlined, SafetyCertificateOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, HistoryOutlined, RollbackOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, ShoppingOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { addressApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
 import type { CartItem, CouponQuote, Order, Payment, PaymentChannel, Product, UserAddress, UserCoupon } from '../types';
@@ -951,8 +951,46 @@ const Checkout: React.FC = () => {
   if (cartItems.length === 0) {
     return (
       <div className={`checkout-page checkout-page--empty checkout-page--${language}`}>
-        <Empty description={t('pages.checkout.emptySelected')} />
-        <Button type="primary" style={{ marginTop: 16 }} onClick={() => navigate('/cart')}>{t('pages.checkout.backCart')}</Button>
+        <section className="checkout-page__emptyHero" aria-label={t('pages.checkout.emptySelected')}>
+          <span className="checkout-page__emptyIcon">
+            <ShoppingCartOutlined />
+          </span>
+          <div className="checkout-page__emptyCopy">
+            <span className="checkout-page__emptyEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
+            <Title level={2}>{t('pages.checkout.emptySelected')}</Title>
+            <Text>{t('pages.checkout.savingsCoachSubtitle')}</Text>
+          </div>
+          <div className="checkout-page__emptyActions">
+            <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => navigate('/cart')}>
+              {t('pages.checkout.backCart')}
+            </Button>
+            <Button icon={<ShoppingOutlined />} onClick={() => navigate('/products')}>
+              {t('pages.cart.browse')}
+            </Button>
+            <Button icon={<GiftOutlined />} onClick={() => navigate('/coupons')}>
+              {t('nav.coupons')}
+            </Button>
+            <Button icon={<HistoryOutlined />} onClick={() => navigate('/history')}>
+              {t('nav.history')}
+            </Button>
+          </div>
+          <div className="checkout-page__emptySignals">
+            <span>
+              <SafetyCertificateOutlined />
+              {t('pages.checkout.trustSecureTitle')}
+            </span>
+            <span>
+              <TruckOutlined />
+              {market.freeShippingThreshold > 0
+                ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(market.freeShippingThreshold) })
+                : t('pages.cart.freeShippingUnlocked')}
+            </span>
+            <span>
+              <CustomerServiceOutlined />
+              {t('pages.checkout.trustSupportTitle')}
+            </span>
+          </div>
+        </section>
       </div>
     );
   }
@@ -1051,13 +1089,13 @@ const Checkout: React.FC = () => {
               onClick={() => form.setFieldsValue({ paymentMethod: method.value })}
             >
               <span className="checkout-page__paymentMethodTop">
-                <strong>{method.title}</strong>
+                <strong className="checkout-page__paymentMethodTitle">{method.title}</strong>
                 <span className="checkout-page__paymentBadges">
                   {recommendedPaymentMethod === method.value ? <Tag color="gold">{t('pages.checkout.recommendedPayment')}</Tag> : null}
                   <Tag color={method.market === 'CN' ? 'red' : method.value === 'OXXO' ? 'orange' : method.value === 'SPEI' ? 'blue' : 'green'}>{t(method.badgeKey)}</Tag>
                 </span>
               </span>
-              <span>{t(method.descriptionKey)}</span>
+              <span className="checkout-page__paymentMethodDescription">{t(method.descriptionKey)}</span>
             </button>
           ))}
         </div>
@@ -1339,7 +1377,7 @@ const Checkout: React.FC = () => {
         {!isGuestCheckout ? <Card id="checkout-coupon-card" title={t('pages.checkout.coupon')} className="checkout-page__sectionCard">
           <Select
             allowClear
-            style={{ width: '100%' }}
+            className="checkout-page__couponSelect"
             placeholder={t('pages.checkout.selectCoupon')}
             value={selectedUserCouponId ?? undefined}
             onChange={(value) => {
@@ -1393,16 +1431,6 @@ const Checkout: React.FC = () => {
         )}
 
         <Card id="checkout-payment-card" title={t('pages.payment.title')}>
-          <div className="checkout-page__submitReview">
-            <div>
-              <Text type="secondary">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</Text>
-              <Text strong>{formatMoney(payableAmount)}</Text>
-            </div>
-            <div>
-              <Text type="secondary">{t('pages.checkout.paymentMethod')}</Text>
-              <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
-            </div>
-          </div>
           <div className="checkout-page__paymentConfidence">
             <SafetyCertificateOutlined />
             <span>
@@ -1417,11 +1445,21 @@ const Checkout: React.FC = () => {
           <Form.Item name="paymentMethod" rules={[{ required: true, message: t('pages.checkout.paymentRequired') }]} hidden>
             <Input />
           </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large">
-              {t('pages.checkout.submitWithAmount', { amount: formatMoney(payableAmount) })}
-            </Button>
-          </Form.Item>
+          <div className="checkout-page__submitReview">
+            <div className="checkout-page__submitMetric">
+              <Text type="secondary">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</Text>
+              <Text strong>{formatMoney(payableAmount)}</Text>
+            </div>
+            <div className="checkout-page__submitMetric checkout-page__submitMetric--method">
+              <Text type="secondary">{t('pages.checkout.paymentMethod')}</Text>
+              <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
+            </div>
+            <Form.Item className="checkout-page__submitAction">
+              <Button className="checkout-page__submitButton" type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large">
+                {t('pages.checkout.submitWithAmount', { amount: formatMoney(payableAmount) })}
+              </Button>
+            </Form.Item>
+          </div>
           <div className="checkout-page__mobilePayBar" aria-label={t('pages.checkout.paymentConfidenceTitle')}>
             <span>
               <Text type="secondary">{t('pages.checkout.payable')}</Text>

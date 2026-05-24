@@ -1084,7 +1084,7 @@ const ProductDetail: React.FC = () => {
           {/* Product purchase summary */}
           <Col span={12}>
             <Card className="product-summary-card">
-              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+              <Space direction="vertical" size="large" className="product-summary-space">
                 <div className="product-title-block">
                   <Title level={2}>{product.name}</Title>
                   {product.brand && (
@@ -1511,6 +1511,7 @@ const ProductDetail: React.FC = () => {
         <div ref={detailContentRef} className="product-detail-content-anchor" />
         <Card className="product-tabs-card" id="product-service-tabs">
           <Tabs
+            className="product-detail-tabs"
             defaultActiveKey="1"
             items={[
               {
@@ -1601,7 +1602,7 @@ const ProductDetail: React.FC = () => {
                       <Text>{q.answer}</Text>
                     </div>
                   ) : (
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space direction="vertical" className="product-question-answer-form">
                       <Input.TextArea
                         rows={2}
                         value={answerDrafts[q.id] || ''}

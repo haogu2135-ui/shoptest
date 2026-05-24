@@ -135,3 +135,251 @@
     align-items: stretch;
   }
 }
+
+/* Mobile review operations refinement */
+.review-management-page {
+  min-width: 0;
+}
+
+@media (max-width: 430px) {
+  .review-management-page {
+    padding: 10px 6px;
+  }
+
+  .review-management-page > .ant-typography {
+    margin-bottom: 8px;
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .review-management-page .ant-divider {
+    margin: 10px 0 12px;
+  }
+
+  .review-ops-panel {
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .review-ops-panel__copy {
+    gap: 4px;
+  }
+
+  .review-ops-panel__copy h2 {
+    font-size: 17px;
+  }
+
+  .review-ops-panel__copy p {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .review-ops-panel__metrics {
+    display: flex;
+    gap: 8px;
+    margin-inline: -12px;
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .review-ops-panel__metrics div,
+  .review-management-page--es .review-ops-panel__metrics div {
+    min-width: 132px;
+    min-height: 82px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .review-ops-panel__metrics strong {
+    font-size: 21px;
+  }
+
+  .review-ops-panel__metrics span {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .review-management-page__toolbar,
+  .review-management-page__toolbar .ant-space-item,
+  .review-management-page__toolbar .ant-select {
+    width: 100% !important;
+  }
+
+  .review-management-page .ant-table-wrapper {
+    margin-inline: -6px;
+  }
+
+  .review-management-page .ant-rate {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .review-management-page .ant-table-cell .ant-space {
+    gap: 6px !important;
+  }
+
+  .review-management-page .ant-table-cell .ant-btn {
+    min-height: 30px;
+    padding-inline: 8px;
+  }
+}
+
+/* Final mobile review admin edge-fit pass */
+.review-management-page,
+.review-management-page *,
+.review-management-page *::before,
+.review-management-page *::after {
+  box-sizing: border-box;
+}
+
+.review-management-page,
+.review-management-page__toolbar,
+.review-ops-panel,
+.review-ops-panel__copy,
+.review-ops-panel__metrics,
+.review-management-page .ant-table-wrapper,
+.review-management-page .ant-space,
+.review-management-page .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.review-management-page {
+  overflow-x: clip;
+}
+
+.review-management-page .ant-table-wrapper {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.review-management-page .ant-table {
+  min-width: max-content;
+}
+
+.review-ops-panel,
+.review-ops-panel__copy,
+.review-ops-panel__metrics div,
+.review-management-page .ant-btn,
+.review-management-page .ant-tag,
+.review-management-page .ant-typography,
+.review-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+.review-management-page__statusFilter {
+  width: 180px;
+}
+
+@media (max-width: 760px) {
+  .review-management-page {
+    padding-inline: 0;
+  }
+
+  .review-management-page__toolbar {
+    gap: 8px !important;
+    margin-bottom: 12px;
+  }
+
+  .review-management-page__toolbar .ant-space-item,
+  .review-management-page__toolbar .ant-select,
+  .review-management-page__toolbar .ant-input-affix-wrapper,
+  .review-management-page__toolbar .ant-btn {
+    width: 100% !important;
+  }
+
+  .review-management-page__toolbar .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .review-ops-panel {
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  .review-management-page > .ant-typography,
+  .review-ops-panel__copy h2 {
+    font-size: 19px;
+    line-height: 1.25;
+  }
+
+  .review-ops-panel__metrics {
+    display: flex;
+    gap: 8px;
+    margin-inline: -12px;
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .review-ops-panel__metrics div,
+  .review-management-page--es .review-ops-panel__metrics div {
+    flex: 0 0 138px;
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+
+  .review-management-page .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  .review-ops-panel__metrics div,
+  .review-management-page--es .review-ops-panel__metrics div {
+    flex-basis: 132px;
+  }
+
+  .review-management-page .ant-table-cell .ant-space {
+    gap: 6px !important;
+  }
+
+  .review-management-page .ant-table-cell .ant-btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 560px) {
+  .review-management-page__replyModal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+  }
+
+  .review-management-page__replyModal .ant-modal-content {
+    border-radius: 14px;
+  }
+
+  .review-management-page__replyModal .ant-modal-header,
+  .review-management-page__replyModal .ant-modal-body,
+  .review-management-page__replyModal .ant-modal-footer {
+    padding-inline: 12px;
+  }
+
+  .review-management-page__replyModal .ant-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .review-management-page__replyModal .ant-modal-footer .ant-btn {
+    flex: 1 1 128px;
+    margin-inline-start: 0;
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .review-management-page__replyModal textarea.ant-input {
+    min-height: 132px;
+  }
+}

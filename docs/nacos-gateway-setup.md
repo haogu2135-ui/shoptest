@@ -124,7 +124,7 @@ SPRING_APPLICATION_NAME=shop-backend
 SERVER_PORT=8081
 NACOS_DISCOVERY_ENABLED=true
 NACOS_REGISTER_ENABLED=true
-NACOS_SERVER_ADDR=127.0.0.1:8848
+NACOS_SERVER_ADDR=158.101.11.223:8848
 NACOS_NAMESPACE=
 NACOS_GROUP=DEFAULT_GROUP
 NACOS_DISCOVERY_IP=
@@ -149,9 +149,11 @@ Gateway:
 SPRING_APPLICATION_NAME=shop-gateway
 GATEWAY_PORT=8080
 NACOS_DISCOVERY_ENABLED=true
-NACOS_SERVER_ADDR=127.0.0.1:8848
+NACOS_REGISTER_ENABLED=true
+NACOS_SERVER_ADDR=158.101.11.223:8848
 NACOS_NAMESPACE=
 NACOS_GROUP=DEFAULT_GROUP
+GATEWAY_BACKEND_SERVICE_ID=shop-backend
 GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:*,http://127.0.0.1:*
 ```
 
@@ -161,6 +163,84 @@ Frontend:
 REACT_APP_API_BASE_URL=http://localhost:8080
 REACT_APP_API_GATEWAY_ENABLED=true
 REACT_APP_API_GATEWAY_PREFIX=/gateway
+```
+
+To point the local frontend at the remote Nacos/Gateway environment:
+
+```text
+REACT_APP_API_BASE_URL=http://158.101.11.223:8080
+REACT_APP_API_GATEWAY_ENABLED=true
+REACT_APP_API_GATEWAY_PREFIX=/gateway
+```
+
+The remote Nacos server is available at:
+
+```text
+Nacos:   http://158.101.11.223:8848/nacos
+Gateway: http://158.101.11.223:8080
+```
+
+Useful remote checks:
+
+```powershell
+Invoke-RestMethod 'http://158.101.11.223:8848/nacos/v1/ns/service/list?pageNo=1&pageSize=100'
+Invoke-RestMethod 'http://158.101.11.223:8848/nacos/v1/ns/instance/list?serviceName=shop-gateway&groupName=DEFAULT_GROUP'
+Invoke-RestMethod 'http://158.101.11.223:8848/nacos/v1/ns/instance/list?serviceName=shop-backend&groupName=DEFAULT_GROUP'
+Invoke-RestMethod 'http://158.101.11.223:8080/actuator/health'
+Invoke-WebRequest 'http://158.101.11.223:8080/gateway/status/readiness'
+Invoke-RestMethod 'http://158.101.11.223:8080/gateway/catalog/products?discount=true'
+```
+
+To run a local Gateway against the remote Nacos registry, keep the frontend on
+local Gateway:
+
+```text
+REACT_APP_API_BASE_URL=http://127.0.0.1:8080
+REACT_APP_API_GATEWAY_ENABLED=true
+REACT_APP_API_GATEWAY_PREFIX=/gateway
+```
+
+Start Gateway with remote discovery and without registering the local Gateway
+instance back into the shared Nacos registry:
+
+```powershell
+cd shop-gateway
+$env:NACOS_SERVER_ADDR="158.101.11.223:8848"
+$env:NACOS_REGISTER_ENABLED="false"
+..\mvnw.cmd spring-boot:run
+```
+
+If the frontend shows a catalog load failure while command-line requests work,
+check the browser CORS response headers. Gateway is configured with
+`DedupeResponseHeader` so that `Access-Control-Allow-Origin` and
+`Access-Control-Allow-Credentials` remain single-valued when both Gateway and
+the backend add CORS headers. Gateway and backend also expose `X-Request-Id` so
+the browser can show the same request id that appears in Gateway/backend logs.
+After redeploying Gateway, verify the GET response does not contain comma-joined
+duplicate CORS values.
+
+For request tracing, send an optional `X-Request-Id` header from a client or let
+Gateway generate one. Gateway forwards the same safe id to the backend and both
+services include it in the response header and log pattern:
+
+```powershell
+$response = Invoke-WebRequest 'http://localhost:8080/gateway/catalog/products' -Headers @{ 'X-Request-Id' = 'debug-001' }
+$response.Headers['X-Request-Id']
+```
+
+Backend API errors use a consistent JSON shape. The legacy-compatible `error`
+field is still present, and the same `requestId` is included for log lookup:
+
+```json
+{
+  "error": "Order not found",
+  "message": "Order not found",
+  "status": 404,
+  "statusText": "Not Found",
+  "path": "/payments/order/9",
+  "requestId": "debug-001",
+  "timestamp": "2026-05-23T19:50:00Z"
+}
 ```
 
 To temporarily bypass Gateway and call the backend directly:
@@ -184,17 +264,76 @@ GET http://localhost:8081/actuator/info
 After logging in as an admin, the management console also has:
 
 ```text
+GET /admin/system/status
+GET /admin/system/readiness
 GET /admin/registry
+GET /admin/registry/readiness
 ```
 
-This returns the configured Nacos server address, discovery/register flags,
-known services, and the current `shop-backend` instances discovered through
-Spring Cloud `DiscoveryClient`.
+`/admin/system/status` returns runtime, memory, disk, masked datasource, Nacos
+configuration, and live database/Redis checks. `/admin/system/readiness` returns
+the same payload but uses HTTP status for automation: `200` when required
+dependencies are ready, `503` when the database check fails or Redis is required
+but unavailable.
+
+`/admin/registry` returns the configured Nacos server address,
+discovery/register flags, known services, and the current `shop-backend`
+instances discovered through Spring Cloud `DiscoveryClient`.
+
+`/admin/registry/readiness` returns the same diagnostic payload but uses HTTP
+status for automation: `200` when the backend is registered and visible through
+discovery, `503` when Nacos discovery is disabled, registration is disabled, the
+current backend instance is not visible, or discovery checks fail.
 
 The Admin UI page `管理后台 -> 服务注册` also checks whether the frontend is
 configured to call Gateway (`REACT_APP_API_BASE_URL=http://localhost:8080` and
 `REACT_APP_API_GATEWAY_ENABLED=true`). If this check is orange, the frontend may
 still be calling the backend directly and bypassing Nacos/Gateway.
+
+## Verify Gateway Dispatch
+
+Gateway exposes a lightweight diagnostics endpoint:
+
+```text
+GET http://localhost:8080/gateway/status
+```
+
+Use it to confirm:
+
+```text
+status
+nacos.discoveryEnabled
+routeCount
+missingRequiredRouteIds
+routes
+backendService.serviceId
+backendService.visible
+backendService.instanceCount
+diagnostics.backendRegistryViaGateway
+```
+
+When Nacos discovery is disabled locally, `status` is `DEGRADED` on purpose
+because `lb://` routes cannot resolve registered services. After Nacos is
+running and `NACOS_DISCOVERY_ENABLED=true`, the status should become `UP` as
+long as all required routes are loaded.
+
+Useful end-to-end checks:
+
+```text
+GET http://localhost:8080/gateway/status
+GET http://localhost:8080/gateway/status/readiness
+GET http://localhost:8080/actuator/health
+GET http://localhost:8080/actuator/gateway/routes
+GET http://localhost:8080/gateway/admin/admin/system/status
+GET http://localhost:8080/gateway/admin/admin/system/readiness
+GET http://localhost:8080/gateway/admin/admin/registry
+GET http://localhost:8080/gateway/admin/admin/registry/readiness
+```
+
+`/gateway/status/readiness` is intended for deployment checks. It returns `200`
+only when Gateway routes are loaded, Nacos discovery is enabled, and the
+configured backend service is visible in Nacos. Otherwise it returns `503` with
+the same JSON diagnostics as `/gateway/status`.
 
 ## Production Nginx
 

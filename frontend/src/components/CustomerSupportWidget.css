@@ -81,6 +81,23 @@
   background: #ffffff;
 }
 
+.customer-support-widget__sessionSelect,
+.customer-support-widget__orderDetail {
+  width: 100%;
+}
+
+.customer-support-widget__orderLoading {
+  padding: 32px;
+  text-align: center;
+}
+
+.customer-support-widget__orderItemImage {
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
 .customer-support-widget__mobileStatus {
   display: none;
 }
@@ -1494,5 +1511,578 @@
 
   .customer-support-widget__panel--es .customer-support-widget__actions {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Final mobile support density pass */
+@media (max-width: 430px) {
+  .customer-support-widget__button {
+    right: calc(10px + env(safe-area-inset-right)) !important;
+    bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+    width: 46px !important;
+    height: 46px !important;
+    font-size: 20px !important;
+  }
+
+  .customer-support-widget__panel {
+    height: calc(100vh - 6px - env(safe-area-inset-top));
+    max-height: calc(100vh - 6px - env(safe-area-inset-top));
+    border-radius: 16px 16px 0 0;
+  }
+
+  @supports (height: 100dvh) {
+    .customer-support-widget__panel {
+      height: calc(100dvh - 6px - env(safe-area-inset-top));
+      max-height: calc(100dvh - 6px - env(safe-area-inset-top));
+    }
+  }
+
+  .customer-support-widget__panel::before {
+    top: 6px;
+    width: 38px;
+  }
+
+  .customer-support-widget__header {
+    min-height: 52px;
+    padding: max(15px, calc(9px + env(safe-area-inset-top))) 10px 9px;
+    gap: 8px;
+  }
+
+  .customer-support-widget__headerIcon {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .customer-support-widget__headerTitle {
+    max-width: 60vw;
+    font-size: 15px;
+  }
+
+  .customer-support-widget__headerClose.ant-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .customer-support-widget__mobileStatus {
+    padding: 7px 9px;
+  }
+
+  .customer-support-widget__mobileStatus span {
+    max-width: min(52vw, 168px);
+    min-height: 24px;
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+
+  .customer-support-widget__sessionPicker {
+    padding: 7px 9px;
+  }
+
+  .customer-support-widget__sessionPicker .ant-select-selector {
+    min-height: 34px;
+  }
+
+  .customer-support-widget__messages {
+    padding: 10px 8px 14px;
+  }
+
+  .customer-support-widget__messages::before {
+    margin: -10px -8px 0;
+  }
+
+  .customer-support-widget__messages::after {
+    margin: 0 -8px -14px;
+  }
+
+  .customer-support-widget__emptyState {
+    padding: 12px 8px;
+  }
+
+  .customer-support-widget__welcomeCard {
+    width: min(100%, 260px);
+    gap: 9px;
+    padding: 16px 12px;
+    border-radius: 16px;
+  }
+
+  .customer-support-widget__welcomeIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    font-size: 20px;
+  }
+
+  .customer-support-widget__welcomeQuickReplies {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .customer-support-widget__welcomeQuickReplies button {
+    flex: 0 0 auto;
+    max-width: 190px;
+    font-size: 11px;
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .customer-support-widget__messageShell {
+    gap: 6px;
+  }
+
+  .customer-support-widget__avatar {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    font-size: 12px !important;
+  }
+
+  .customer-support-widget__message {
+    max-width: 92%;
+  }
+
+  .customer-support-widget__messageMeta {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .customer-support-widget__bubble {
+    padding: 8px 10px;
+    border-radius: 13px 13px 13px 4px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .customer-support-widget__bubble--mine {
+    border-radius: 13px 13px 4px 13px;
+  }
+
+  .customer-support-widget__orderCard {
+    width: min(100%, 246px);
+  }
+
+  .customer-support-widget__orderCard .ant-card-body {
+    padding: 8px 9px;
+  }
+
+  .customer-support-widget__orderIcon {
+    font-size: 14px;
+  }
+
+  .customer-support-widget__orderTitle,
+  .customer-support-widget__orderAmount {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .customer-support-widget__orderTags .ant-tag {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .customer-support-widget__linkButton.ant-btn {
+    height: 26px;
+    padding: 0 8px !important;
+    font-size: 11px;
+  }
+
+  .customer-support-widget__composer {
+    max-height: min(34vh, 254px);
+    padding: 8px 8px calc(9px + env(safe-area-inset-bottom));
+  }
+
+  .customer-support-widget__triage {
+    gap: 6px;
+    margin-bottom: 7px;
+    padding: 8px;
+  }
+
+  .customer-support-widget__triageHeader {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .customer-support-widget__triageTitle {
+    font-size: 12px;
+  }
+
+  .customer-support-widget__triageHelper,
+  .customer-support-widget__messageQuality,
+  .customer-support-widget__workflowLabel,
+  .customer-support-widget__orderPickerHeader .ant-typography {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .customer-support-widget__triageMeta {
+    gap: 5px;
+  }
+
+  .customer-support-widget__triageMeta .ant-tag,
+  .customer-support-widget__triageHeader .ant-tag {
+    max-width: 128px;
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+  }
+
+  .customer-support-widget__shareLatest.ant-btn {
+    min-height: 32px;
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+
+  .customer-support-widget__workflowActions {
+    gap: 5px;
+    margin-bottom: 7px;
+  }
+
+  .customer-support-widget__workflowList,
+  .customer-support-widget__quickReplies {
+    gap: 6px;
+  }
+
+  .customer-support-widget__workflowChip {
+    flex-basis: 138px;
+    min-height: 58px;
+    padding: 7px 8px;
+  }
+
+  .customer-support-widget__workflowChip strong {
+    font-size: 11px;
+  }
+
+  .customer-support-widget__workflowChip span {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  .customer-support-widget__quickReplies {
+    margin-bottom: 7px;
+  }
+
+  .customer-support-widget__quickReplies .ant-btn {
+    min-height: 32px;
+    max-width: 190px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .customer-support-widget__orderPicker {
+    margin-bottom: 7px;
+    padding: 7px;
+  }
+
+  .customer-support-widget__orderSelect .ant-select-selector {
+    min-height: 34px;
+    border-radius: 10px !important;
+  }
+
+  .customer-support-widget__messageInput .ant-input {
+    min-height: 52px !important;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .customer-support-widget__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+    gap: 7px;
+    margin-top: 7px;
+  }
+
+  .customer-support-widget__actions .ant-btn {
+    min-height: 36px;
+    padding-inline: 8px;
+    font-size: 12px;
+    white-space: normal;
+  }
+
+  .customer-support-widget__orderModal .ant-modal-content {
+    border-radius: 16px;
+  }
+
+  .support-order-select-popup {
+    max-width: calc(100vw - 16px);
+  }
+}
+
+@media (max-width: 360px) {
+  .customer-support-widget__composer {
+    max-height: min(38vh, 276px);
+  }
+
+  .customer-support-widget__triageHelper,
+  .customer-support-widget__workflowLabel,
+  .customer-support-widget__orderPickerHeader {
+    display: none;
+  }
+
+  .customer-support-widget__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-support-widget__workflowChip {
+    flex-basis: 128px;
+  }
+}
+
+/* Mobile support tactile refinement */
+@media (max-width: 720px) {
+  .customer-support-widget__button,
+  .customer-support-widget__headerClose.ant-btn,
+  .customer-support-widget__mobileStatus,
+  .customer-support-widget__welcomeQuickReplies,
+  .customer-support-widget__workflowList,
+  .customer-support-widget__quickReplies {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .customer-support-widget__mobileStatus,
+  .customer-support-widget__welcomeQuickReplies,
+  .customer-support-widget__workflowList,
+  .customer-support-widget__quickReplies {
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x;
+    scrollbar-width: none;
+    scroll-padding-inline: 8px 26px;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, transparent 0, #000 8px, #000 calc(100% - 28px), transparent);
+  }
+
+  .customer-support-widget__welcomeQuickReplies::-webkit-scrollbar,
+  .customer-support-widget__workflowList::-webkit-scrollbar,
+  .customer-support-widget__quickReplies::-webkit-scrollbar,
+  .customer-support-widget__mobileStatus::-webkit-scrollbar {
+    display: none;
+  }
+
+  .customer-support-widget__button {
+    touch-action: manipulation;
+  }
+
+  .customer-support-widget__button:active,
+  .customer-support-widget__welcomeQuickReplies button:active,
+  .customer-support-widget__workflowChip:active:not(:disabled),
+  .customer-support-widget__quickReplies .ant-btn:active:not(:disabled),
+  .customer-support-widget__shareLatest.ant-btn:active,
+  .customer-support-widget__actions .ant-btn:active {
+    transform: scale(0.985);
+  }
+
+  .customer-support-widget__panel {
+    overscroll-behavior: contain;
+  }
+
+  .customer-support-widget__messages {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .customer-support-widget__button:hover,
+  .customer-support-widget__quickReplies .ant-btn:hover,
+  .customer-support-widget__welcomeQuickReplies button:hover {
+    transform: none;
+  }
+}
+
+/* Final mobile support widget edge-fit pass */
+@media (max-width: 720px) {
+  .customer-support-widget__panel,
+  .customer-support-widget__panel * {
+    box-sizing: border-box;
+  }
+
+  .customer-support-widget__button {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    touch-action: manipulation;
+  }
+
+  .customer-support-widget__panel {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+
+  .customer-support-widget__header,
+  .customer-support-widget__headerCopy,
+  .customer-support-widget__sessionPicker,
+  .customer-support-widget__brief,
+  .customer-support-widget__messages,
+  .customer-support-widget__emptyState,
+  .customer-support-widget__welcomeCard,
+  .customer-support-widget__messageShell,
+  .customer-support-widget__message,
+  .customer-support-widget__bubble,
+  .customer-support-widget__composer,
+  .customer-support-widget__triage,
+  .customer-support-widget__triageHeader,
+  .customer-support-widget__workflowActions,
+  .customer-support-widget__orderPicker,
+  .customer-support-widget__messageInput,
+  .customer-support-widget__actions,
+  .customer-support-widget__orderCard,
+  .customer-support-widget__orderCard .ant-card-body,
+  .customer-support-widget__orderModal .ant-modal-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .customer-support-widget__headerCopy,
+  .customer-support-widget__brief > div,
+  .customer-support-widget__triageHeader > div,
+  .customer-support-widget__orderCard .ant-space,
+  .customer-support-widget__orderCard .ant-space-item {
+    min-width: 0;
+  }
+
+  .customer-support-widget__headerTitle,
+  .customer-support-widget__headerSubtitle,
+  .customer-support-widget__presenceText,
+  .customer-support-widget__briefTitle,
+  .customer-support-widget__briefMeta,
+  .customer-support-widget__triageTitle,
+  .customer-support-widget__triageHelper,
+  .customer-support-widget__messageQuality,
+  .customer-support-widget__workflowLabel,
+  .customer-support-widget__workflowChip,
+  .customer-support-widget__workflowChip strong,
+  .customer-support-widget__workflowChip span,
+  .customer-support-widget__quickReplies .ant-btn,
+  .customer-support-widget__welcomeQuickReplies button,
+  .customer-support-widget__orderTitle,
+  .customer-support-widget__orderAmount,
+  .customer-support-widget__bubble,
+  .customer-support-widget__closedNotice .ant-typography {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .customer-support-widget__mobileStatus,
+  .customer-support-widget__welcomeQuickReplies,
+  .customer-support-widget__workflowList,
+  .customer-support-widget__quickReplies,
+  .customer-support-widget__triageMeta,
+  .customer-support-widget__orderTags {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .customer-support-widget__triageMeta,
+  .customer-support-widget__orderTags {
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .customer-support-widget__triageMeta::-webkit-scrollbar,
+  .customer-support-widget__orderTags::-webkit-scrollbar {
+    display: none;
+  }
+
+  .customer-support-widget__triageMeta .ant-tag,
+  .customer-support-widget__orderTags .ant-tag {
+    flex: 0 0 auto;
+    max-width: min(168px, 58vw);
+  }
+
+  .customer-support-widget__orderSelect,
+  .customer-support-widget__sessionSelect,
+  .customer-support-widget__orderSelect .ant-select-selector,
+  .customer-support-widget__sessionSelect .ant-select-selector,
+  .customer-support-widget__orderDetail,
+  .customer-support-widget__orderDetail .ant-space-item,
+  .customer-support-widget__messageInput,
+  .customer-support-widget__messageInput .ant-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .customer-support-widget__actions .ant-btn {
+    width: 100%;
+  }
+
+  .customer-support-widget__orderModal {
+    max-width: calc(100vw - 12px);
+  }
+
+  .customer-support-widget__orderModal .ant-modal-body {
+    max-height: calc(100dvh - 142px);
+    overflow: auto;
+  }
+
+  .customer-support-widget__orderModal .ant-tag,
+  .customer-support-widget__orderModal .ant-list-item-meta-title,
+  .customer-support-widget__orderModal .ant-list-item-meta-description,
+  .customer-support-widget__orderModal .ant-list-item > .ant-typography {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 360px) {
+  .customer-support-widget__headerTitle {
+    max-width: 54vw;
+  }
+
+  .customer-support-widget__message {
+    max-width: 94%;
+  }
+}
+
+/* Final mobile support composer stability pass */
+@media (max-width: 720px) {
+  .customer-support-widget__composer,
+  .customer-support-widget__composer * {
+    min-width: 0;
+  }
+
+  .customer-support-widget__quickReplies .ant-btn,
+  .customer-support-widget__welcomeQuickReplies button,
+  .customer-support-widget__shareLatest.ant-btn,
+  .customer-support-widget__actions .ant-btn,
+  .customer-support-widget__linkButton.ant-btn {
+    overflow: hidden;
+    line-height: 1.15;
+  }
+
+  .customer-support-widget__quickReplies .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .customer-support-widget__shareLatest.ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .customer-support-widget__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .customer-support-widget__linkButton.ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .customer-support-widget__messageInput .ant-input {
+    resize: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .customer-support-widget__quickReplies .ant-btn {
+    max-width: 78vw;
+  }
+
+  .customer-support-widget__mobileStatus span,
+  .customer-support-widget__triageMeta .ant-tag,
+  .customer-support-widget__orderTags .ant-tag {
+    max-width: 72vw;
   }
 }

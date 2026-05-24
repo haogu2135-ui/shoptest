@@ -119,6 +119,34 @@
   margin-top: 8px;
 }
 
+.hero-skeleton__eyebrow {
+  width: 40%;
+  height: 18px;
+  border-radius: 999px;
+}
+
+.hero-skeleton__title {
+  width: 70%;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.hero-skeleton__text {
+  width: 85%;
+  height: 16px;
+  border-radius: 6px;
+}
+
+.hero-skeleton__action {
+  width: 140px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.hero-skeleton__action--secondary {
+  width: 120px;
+}
+
 /* 鈹€鈹€ Product card skeleton 鈹€鈹€ */
 .product-skeleton {
   display: grid;
@@ -143,6 +171,25 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px;
+}
+
+.product-skeleton__line {
+  height: 14px;
+  border-radius: 4px;
+}
+
+.product-skeleton__line--title {
+  width: 90%;
+}
+
+.product-skeleton__line--meta {
+  width: 60%;
+}
+
+.product-skeleton__line--price {
+  width: 40%;
+  height: 18px;
+  margin-top: 8px;
 }
 
 /* 鈹€鈹€ Stats strip skeleton 鈹€鈹€ */
@@ -224,6 +271,84 @@
   }
 }
 
+@media (max-width: 600px) {
+  .hero-skeleton {
+    gap: 12px;
+    min-height: 240px;
+    padding: 18px;
+  }
+
+  .hero-skeleton__left {
+    gap: 12px;
+  }
+
+  .hero-skeleton__actions {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .product-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .product-skeleton__body {
+    gap: 7px;
+    padding: 9px;
+  }
+
+  .stats-strip-skeleton {
+    display: flex;
+    gap: 10px;
+    margin-inline: -12px;
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .stats-strip-skeleton > * {
+    min-width: 148px;
+    scroll-snap-align: start;
+  }
+
+  .skeleton--detail {
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .skeleton--detail .skeleton__gallery {
+    gap: 10px;
+  }
+
+  .skeleton--detail .skeleton__thumbs {
+    gap: 7px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .skeleton--detail .skeleton__thumb {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 auto;
+  }
+
+  .skeleton--detail .skeleton__info {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-skeleton {
+    gap: 8px;
+  }
+
+  .product-skeleton__body {
+    padding: 8px;
+  }
+}
+
 /* 鈹€鈹€ Reduced motion 鈹€鈹€ */
 @media (prefers-reduced-motion: reduce) {
   .shimmer {
@@ -235,5 +360,101 @@
   .skeleton--card > *,
   .skeleton--list > * {
     animation: none;
+  }
+}
+
+/* Final mobile skeleton edge-fit pass */
+@media (max-width: 600px) {
+  .skeleton,
+  .hero-skeleton,
+  .product-skeleton,
+  .stats-strip-skeleton,
+  .skeleton--detail,
+  .skeleton * ,
+  .hero-skeleton * ,
+  .product-skeleton * ,
+  .stats-strip-skeleton * ,
+  .skeleton--detail * {
+    box-sizing: border-box;
+  }
+
+  .skeleton,
+  .hero-skeleton,
+  .product-skeleton,
+  .stats-strip-skeleton,
+  .skeleton--detail {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .skeleton__row,
+  .skeleton__lines,
+  .hero-skeleton__left,
+  .hero-skeleton__actions,
+  .product-skeleton__card,
+  .product-skeleton__body,
+  .skeleton--detail .skeleton__gallery,
+  .skeleton--detail .skeleton__info,
+  .skeleton--detail .skeleton__thumbs {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .hero-skeleton__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-skeleton__actions > * {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  .hero-skeleton__eyebrow {
+    width: min(42%, 132px);
+  }
+
+  .hero-skeleton__title {
+    width: min(78%, 280px);
+  }
+
+  .hero-skeleton__text {
+    width: min(92%, 340px);
+  }
+
+  .product-skeleton__line--title {
+    width: 86%;
+  }
+
+  .product-skeleton__line--meta {
+    width: 64%;
+  }
+
+  .product-skeleton__line--price {
+    width: 48%;
+  }
+
+  .stats-strip-skeleton,
+  .skeleton--detail .skeleton__thumbs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .stats-strip-skeleton::-webkit-scrollbar,
+  .skeleton--detail .skeleton__thumbs::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .hero-skeleton__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-skeleton__title,
+  .hero-skeleton__text {
+    width: 100%;
   }
 }

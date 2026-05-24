@@ -184,3 +184,242 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Final mobile brand admin edge-fit pass */
+.brand-management-page,
+.brand-management-page *,
+.brand-management-page *::before,
+.brand-management-page *::after {
+  box-sizing: border-box;
+}
+
+.brand-management-page,
+.brand-management-page__toolbar,
+.brand-management-page__health,
+.brand-management-page__healthCopy,
+.brand-management-page__score,
+.brand-management-page__healthGrid,
+.brand-management-page__healthItem,
+.brand-management-page .ant-card,
+.brand-management-page .ant-card-body,
+.brand-management-page .ant-table-wrapper,
+.brand-management-page .ant-space,
+.brand-management-page .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.brand-management-page {
+  overflow-x: clip;
+}
+
+.brand-management-page__title {
+  margin-bottom: 0 !important;
+}
+
+.brand-management-page__imagePlaceholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  background: #f2f3f5;
+}
+
+.brand-management-page__preview {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.brand-management-page__formRow {
+  width: 100%;
+}
+
+.brand-management-page__statusField {
+  min-width: 180px;
+}
+
+.brand-management-page .ant-table-wrapper {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.brand-management-page .ant-table {
+  min-width: max-content;
+}
+
+.brand-management-page__health,
+.brand-management-page__healthCopy,
+.brand-management-page__healthItem,
+.brand-management-page .ant-btn,
+.brand-management-page .ant-tag,
+.brand-management-page .ant-typography,
+.brand-management-page .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .brand-management-page {
+    padding-inline: 0;
+  }
+
+  .brand-management-page__toolbar {
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .brand-management-page__toolbar .ant-card-body {
+    padding: 12px;
+  }
+
+  .brand-management-page__toolbar .ant-space {
+    gap: 8px !important;
+  }
+
+  .brand-management-page__toolbar .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .brand-management-page__health {
+    gap: 12px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .brand-management-page__score {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .brand-management-page h3.ant-typography {
+    font-size: 19px;
+    line-height: 1.25;
+  }
+
+  .brand-management-page__healthCopy h5.ant-typography {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .brand-management-page__score .ant-progress-circle {
+    width: 76px !important;
+    height: 76px !important;
+  }
+
+  .brand-management-page__healthGrid {
+    display: flex;
+    gap: 8px;
+    margin-inline: -14px;
+    padding: 0 14px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .brand-management-page__healthItem,
+  .brand-management-page--es .brand-management-page__healthItem {
+    flex: 0 0 138px;
+    min-height: 82px;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .brand-management-page__healthItem strong {
+    font-size: 21px;
+  }
+
+  .brand-management-page .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  .brand-management-page__health {
+    padding: 12px;
+  }
+
+  .brand-management-page__healthGrid {
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+
+  .brand-management-page__healthItem,
+  .brand-management-page--es .brand-management-page__healthItem {
+    flex-basis: 132px;
+  }
+
+  .brand-management-page .ant-table-cell .ant-space {
+    gap: 6px !important;
+  }
+
+  .brand-management-page .ant-table-cell .ant-btn {
+    min-height: 30px;
+    padding-inline: 8px;
+  }
+}
+
+/* Final mobile brand editor modal pass */
+@media (max-width: 560px) {
+  .brand-management-page__editorModal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+    top: max(8px, env(safe-area-inset-top));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .brand-management-page__editorModal,
+  .brand-management-page__editorModal * {
+    box-sizing: border-box;
+  }
+
+  .brand-management-page__editorModal .ant-modal-content {
+    max-height: calc(100dvh - 18px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .brand-management-page__editorModal .ant-modal-header,
+  .brand-management-page__editorModal .ant-modal-body,
+  .brand-management-page__editorModal .ant-modal-footer {
+    padding-inline: 12px;
+  }
+
+  .brand-management-page__editorModal .ant-modal-body {
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .brand-management-page__editorModal .ant-space,
+  .brand-management-page__editorModal .ant-space-item,
+  .brand-management-page__editorModal .ant-form-item,
+  .brand-management-page__editorModal .ant-form-item-control,
+  .brand-management-page__editorModal .ant-input,
+  .brand-management-page__editorModal .ant-input-number,
+  .brand-management-page__editorModal .ant-select {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  .brand-management-page__editorModal .ant-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .brand-management-page__editorModal .ant-modal-footer .ant-btn {
+    flex: 1 1 128px;
+    min-height: 38px;
+    margin-inline-start: 0;
+    white-space: normal;
+  }
+}

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Input, Space, Typography, message } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useLanguage } from '../i18n';
+import './SeventeenTrackWidget.css';
 
 declare global {
   interface Window {
@@ -90,8 +91,8 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
   };
 
   return (
-    <Space className="seventeen-track-widget" direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Space.Compact className="seventeen-track-widget__search" style={{ width: '100%' }}>
+    <Space className="seventeen-track-widget" direction="vertical" size="middle">
+      <Space.Compact className="seventeen-track-widget__search">
         <Input
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -106,15 +107,8 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
       <div
         id={containerId}
         className="seventeen-track-widget__results"
-        style={{
-          minHeight: 280,
-          width: '100%',
-          overflow: 'hidden',
-          border: '1px solid #f0f0f0',
-          borderRadius: 8,
-        }}
       >
-        <Typography.Text type="secondary" style={{ display: 'block', padding: 24, textAlign: 'center' }}>
+        <Typography.Text type="secondary" className="seventeen-track-widget__empty">
           {t('pages.orderTracking.noTrackingData')}
         </Typography.Text>
       </div>
