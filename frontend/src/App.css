@@ -1602,3 +1602,56 @@
     border-radius: 14px;
   }
 }
+
+/* Final mobile shared control pass */
+@media (max-width: 720px) {
+  .shop-app-shell .ant-layout-content {
+    overflow-x: clip;
+  }
+
+  .ant-card,
+  .ant-alert,
+  .ant-modal-content,
+  .ant-drawer-content {
+    max-width: 100%;
+  }
+
+  .ant-card-head {
+    min-width: 0;
+  }
+
+  .ant-card-head-wrapper,
+  .ant-card-extra,
+  .ant-card-head-title {
+    min-width: 0;
+  }
+
+  .ant-card-head-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ant-space.ant-space-horizontal {
+    max-width: 100%;
+  }
+
+  .ant-input-search,
+  .ant-input-group,
+  .ant-input-wrapper,
+  .ant-input-affix-wrapper {
+    max-width: 100%;
+  }
+
+  .ant-btn-icon-only {
+    flex: 0 0 auto;
+  }
+
+  .ant-drawer-header {
+    padding-inline: 14px;
+  }
+
+  .ant-drawer-title,
+  .ant-drawer-extra {
+    min-width: 0;
+  }
+}

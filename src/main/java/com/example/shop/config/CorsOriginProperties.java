@@ -1,6 +1,6 @@
 package com.example.shop.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.example.shop.service.RuntimeConfigService;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -13,14 +13,14 @@ public class CorsOriginProperties {
             "http://localhost:*,http://127.0.0.1:*,"
                     + "http://10.*:*,http://172.*:*,http://192.168.*:*";
 
-    @Value("${app.cors.allowed-origin-patterns:" + LOCAL_DEVELOPMENT_ORIGINS + "}")
-    private String corsAllowedOriginPatterns;
+    private final RuntimeConfigService runtimeConfig;
 
-    @Value("${app.websocket.allowed-origin-patterns:}")
-    private String webSocketAllowedOriginPatterns;
+    public CorsOriginProperties(RuntimeConfigService runtimeConfig) {
+        this.runtimeConfig = runtimeConfig;
+    }
 
     public List<String> getCorsAllowedOriginPatterns() {
-        return parseOriginPatterns(corsAllowedOriginPatterns, LOCAL_DEVELOPMENT_ORIGINS);
+        return parseOriginPatterns(runtimeConfig.getString("app.cors.allowed-origin-patterns", LOCAL_DEVELOPMENT_ORIGINS), LOCAL_DEVELOPMENT_ORIGINS);
     }
 
     public String[] getCorsAllowedOriginPatternArray() {
@@ -29,7 +29,7 @@ public class CorsOriginProperties {
 
     public String[] getWebSocketAllowedOriginPatternArray() {
         String fallback = String.join(",", getCorsAllowedOriginPatterns());
-        return parseOriginPatterns(webSocketAllowedOriginPatterns, fallback).toArray(new String[0]);
+        return parseOriginPatterns(runtimeConfig.getString("app.websocket.allowed-origin-patterns", ""), fallback).toArray(new String[0]);
     }
 
     private List<String> parseOriginPatterns(String rawPatterns, String fallbackPatterns) {

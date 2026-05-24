@@ -13,18 +13,22 @@ const { Content, Footer } = Layout;
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
+const AlertManagement = lazy(() => import('./pages/AlertManagement'));
 const AnnouncementManagement = lazy(() => import('./pages/AnnouncementManagement'));
 const BrandManagement = lazy(() => import('./pages/BrandManagement'));
 const BrowsingHistory = lazy(() => import('./pages/BrowsingHistory'));
 const Cart = lazy(() => import('./pages/Cart'));
 const CategoryManagement = lazy(() => import('./pages/CategoryManagement'));
 const Checkout = lazy(() => import('./pages/Checkout'));
+const ConfigCenter = lazy(() => import('./pages/ConfigCenter'));
 const CouponCenter = lazy(() => import('./pages/CouponCenter'));
 const CouponManagement = lazy(() => import('./pages/CouponManagement'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
+const IpBlacklistManagement = lazy(() => import('./pages/IpBlacklistManagement'));
 const LogisticsCarrierManagement = lazy(() => import('./pages/LogisticsCarrierManagement'));
+const LogManagement = lazy(() => import('./pages/LogManagement'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const NotificationManagement = lazy(() => import('./pages/NotificationManagement'));
 const OrderManagement = lazy(() => import('./pages/OrderManagement'));
@@ -44,6 +48,7 @@ const SecurityAuditLogManagement = lazy(() => import('./pages/SecurityAuditLogMa
 const StockAlerts = lazy(() => import('./pages/StockAlerts'));
 const SupportManagement = lazy(() => import('./pages/SupportManagement'));
 const SystemMonitor = lazy(() => import('./pages/SystemMonitor'));
+const TrafficControl = lazy(() => import('./pages/TrafficControl'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
 const loadCartDrawer = () => import('./components/CartDrawer');
@@ -334,7 +339,12 @@ const App: React.FC = () => {
             <Route path="announcements" element={<AnnouncementManagement />} />
             <Route path="support" element={<SupportManagement />} />
             <Route path="audit-logs" element={<SecurityAuditLogManagement />} />
+            <Route path="alerts" element={<AlertManagement />} />
+            <Route path="ip-blacklist" element={<IpBlacklistManagement />} />
+            <Route path="logs" element={<LogManagement />} />
             <Route path="registry" element={<RegistryManagement />} />
+            <Route path="config-center" element={<ConfigCenter />} />
+            <Route path="traffic-control" element={<TrafficControl />} />
             <Route path="system" element={<SystemMonitor />} />
           </Route>
 

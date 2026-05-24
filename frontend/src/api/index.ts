@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
-import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminRegistryStatus, AdminSystemStatus, SiteAnnouncement } from '../types';
+import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertSummary, IpBlacklistEntry, IpBlacklistStatus, SiteAnnouncement } from '../types';
 import { buildLoginUrl, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -934,6 +934,39 @@ export const adminApi = {
     },
     getRegistryStatus: () => api.get<AdminRegistryStatus>('/admin/registry'),
     getSystemStatus: () => api.get<AdminSystemStatus>('/admin/system/status'),
+    getConfigCenter: (params?: { dataId?: string; group?: string; namespace?: string }) =>
+        api.get<AdminConfigCenterSnapshot>('/admin/config-center', { params }),
+    publishConfigCenter: (payload: AdminConfigCenterPublishRequest) =>
+        api.post<AdminConfigCenterSnapshot>('/admin/config-center/publish', payload),
+    applyConfigCenter: (payload: AdminConfigCenterPublishRequest) =>
+        api.post<AdminConfigCenterSnapshot>('/admin/config-center/apply', payload),
+    getLogManagementStatus: (params?: { loggerName?: string }) =>
+        api.get<AdminLogManagementStatus>('/admin/logs', { params }),
+    setDebugLogging: (payload: AdminLogDebugRequest) =>
+        api.put<AdminLogManagementStatus>('/admin/logs/debug', payload),
+    downloadLogs: (params: { start: string; end: string; keyword?: string; level?: string }) => api.get('/admin/logs/download', {
+        params,
+        responseType: 'blob',
+    }),
+    getTrafficControlStatus: () => api.get<AdminTrafficControlStatus>('/admin/traffic-control'),
+    clearRateLimitCounters: () => api.post<AdminTrafficControlStatus>('/admin/traffic-control/rate-limit/clear'),
+    resetCircuitBreaker: (name?: string) => api.post<AdminTrafficControlStatus>('/admin/traffic-control/circuit-breakers/reset', { name }),
+    getAlerts: (params?: { status?: string; severity?: string; category?: string; limit?: number }) =>
+        api.get<SystemAlert[]>('/admin/alerts', { params }),
+    getAlertSummary: () => api.get<SystemAlertSummary>('/admin/alerts/summary'),
+    runAlertSelfCheck: () => api.post<void>('/admin/alerts/self-check'),
+    acknowledgeAlert: (id: number, note?: string) => api.post<SystemAlert>(`/admin/alerts/${toPathId(id)}/acknowledge`, { note: normalizeTextParam(note, 200) }),
+    resolveAlert: (id: number, note?: string) => api.post<SystemAlert>(`/admin/alerts/${toPathId(id)}/resolve`, { note: normalizeTextParam(note, 200) }),
+    getIpBlacklist: (params?: { status?: string; source?: string; ipAddress?: string; limit?: number }) =>
+        api.get<IpBlacklistEntry[]>('/admin/ip-blacklist', { params }),
+    getIpBlacklistStatus: () => api.get<IpBlacklistStatus>('/admin/ip-blacklist/status'),
+    blockIpAddress: (payload: { ipAddress: string; reason?: string; blockMinutes?: number }) =>
+        api.post<IpBlacklistEntry>('/admin/ip-blacklist', {
+            ipAddress: normalizeTextParam(payload.ipAddress, 45),
+            reason: normalizeTextParam(payload.reason, 500),
+            blockMinutes: payload.blockMinutes,
+        }),
+    releaseIpBlacklistEntry: (id: number) => api.post<IpBlacklistEntry>(`/admin/ip-blacklist/${toPathId(id)}/release`),
     getUsers: (params?: { keyword?: string; role?: string; status?: string }) => {
         const normalizedParams = {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,

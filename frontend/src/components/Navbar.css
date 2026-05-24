@@ -2162,3 +2162,65 @@
     z-index: 900;
   }
 }
+
+/* Mobile nav comfort pass */
+@media (max-width: 780px) {
+  .shop-nav__main {
+    contain: paint;
+  }
+
+  .shop-nav__inner--main {
+    align-items: center;
+  }
+
+  .shop-nav__search {
+    min-width: 0;
+  }
+
+  .shop-nav__searchBar,
+  .shop-nav__search .ant-input-group,
+  .shop-nav__search .ant-input-wrapper {
+    max-width: 100%;
+  }
+
+  .shop-nav__search .ant-input {
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  .shop-nav__mega {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shop-nav__mega::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shop-nav__bottomBar {
+    max-width: calc(100vw - 16px);
+    transform: translateZ(0);
+  }
+
+  .shop-nav__bottomItem {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 430px) {
+  .shop-nav__brandCopy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .shop-nav__bottomBar {
+    min-height: 56px;
+  }
+
+  .shop-nav__bottomItem {
+    min-height: 44px;
+  }
+}

@@ -1,5 +1,6 @@
 package com.example.shop.config;
 
+import com.example.shop.service.SystemAlertService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,9 +27,11 @@ public class GlobalApiExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalApiExceptionHandler.class);
 
     private final ApiErrorResponseFactory errorResponses;
+    private final SystemAlertService systemAlertService;
 
-    public GlobalApiExceptionHandler(ApiErrorResponseFactory errorResponses) {
+    public GlobalApiExceptionHandler(ApiErrorResponseFactory errorResponses, SystemAlertService systemAlertService) {
         this.errorResponses = errorResponses;
+        this.systemAlertService = systemAlertService;
     }
 
     @ExceptionHandler(ResponseStatusException.class)
@@ -42,6 +45,7 @@ public class GlobalApiExceptionHandler {
             log.error("API request failed with response status: status={} path={} requestId={}",
                     status.value(), resolvePath(request), resolveRequestId(request), exception);
         }
+        systemAlertService.recordException(exception, status, request);
         return buildResponse(status, message, request);
     }
 
@@ -55,6 +59,7 @@ public class GlobalApiExceptionHandler {
             MethodArgumentNotValidException.class
     })
     public ResponseEntity<Map<String, Object>> handleBadRequest(Exception exception, HttpServletRequest request) {
+        systemAlertService.recordException(exception, HttpStatus.BAD_REQUEST, request);
         return buildResponse(HttpStatus.BAD_REQUEST, resolveBadRequestMessage(exception), request);
     }
 
@@ -87,6 +92,7 @@ public class GlobalApiExceptionHandler {
             MaxUploadSizeExceededException exception,
             HttpServletRequest request
     ) {
+        systemAlertService.recordException(exception, HttpStatus.PAYLOAD_TOO_LARGE, request);
         return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, "Uploaded file is too large", request);
     }
 
@@ -94,6 +100,7 @@ public class GlobalApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("Unexpected API request failure: path={} requestId={}",
                 resolvePath(request), resolveRequestId(request), exception);
+        systemAlertService.recordException(exception, HttpStatus.INTERNAL_SERVER_ERROR, request);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", request);
     }
 

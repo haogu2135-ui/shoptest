@@ -506,3 +506,57 @@
     padding: 9px 8px;
   }
 }
+
+/* Mobile user role control stability pass */
+@media (max-width: 720px) {
+  .user-management-page,
+  .user-management-page * {
+    box-sizing: border-box;
+  }
+
+  .user-management-page {
+    overflow-x: clip;
+  }
+
+  .user-management-page__toolbar,
+  .user-management-page__filters,
+  .user-management-page__filters .ant-space,
+  .user-management-page__filters .ant-space-item,
+  .user-management-page .ant-table-wrapper,
+  .user-management-page .ant-table-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .user-management-page__filters {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .user-management-page .ant-table-cell .ant-space {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px !important;
+  }
+
+  .user-management-page .ant-table-cell .ant-select,
+  .user-management-page .ant-table-cell .ant-btn {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .user-management-page .ant-table-content {
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 360px) {
+  .user-management-page__toolbar .ant-card-body {
+    padding: 10px;
+  }
+
+  .user-management-page__filters .ant-btn {
+    font-size: 12px;
+  }
+}

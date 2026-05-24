@@ -2608,3 +2608,107 @@
     margin-inline: -5px;
   }
 }
+
+/* Mobile profile flow stability pass */
+@media (max-width: 640px) {
+  .profile-page,
+  .profile-page *,
+  .profile-payment-modal,
+  .profile-payment-modal * {
+    box-sizing: border-box;
+  }
+
+  .profile-page {
+    overflow-x: clip;
+  }
+
+  .profile-tabs > .ant-tabs-nav {
+    overflow: hidden;
+  }
+
+  .profile-tabs .ant-tabs-nav-wrap {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .profile-tabs .ant-tabs-nav-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  .profile-tabs .ant-tabs-nav-list {
+    min-width: max-content;
+  }
+
+  .profile-tabs .ant-tabs-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .profile-order-card__head,
+  .profile-order-card__meta,
+  .profile-order-item,
+  .profile-order-card__next,
+  .profile-order-card__actions {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .profile-order-card__actions {
+    gap: 7px;
+  }
+
+  .profile-order-card__actions .ant-btn {
+    width: 100%;
+    white-space: normal;
+    line-height: 1.18;
+  }
+
+  .profile-payment-modal .ant-modal-content {
+    max-height: calc(100svh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  .profile-payment-modal .ant-modal-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .profile-payment-modal .ant-modal-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .profile-payment-modal .ant-modal-footer .ant-btn {
+    width: 100%;
+    min-height: 42px;
+    margin-inline-start: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .profile-order-item {
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .profile-order-item__imageButton,
+  .profile-order-item__imageButton img {
+    width: 50px;
+    height: 50px;
+  }
+
+  .profile-order-card__actions .ant-btn {
+    min-height: 40px;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+}

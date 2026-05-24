@@ -5,7 +5,6 @@ import com.example.shop.entity.SupportSession;
 import com.example.shop.repository.SupportMessageMapper;
 import com.example.shop.repository.SupportSessionMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +16,7 @@ import java.util.List;
 public class SupportService {
     private final SupportSessionMapper supportSessionMapper;
     private final SupportMessageMapper supportMessageMapper;
-
-    @Value("${support.message.max-chars:${support.websocket.max-message-chars:1000}}")
-    private int maxMessageChars;
+    private final RuntimeConfigService runtimeConfig;
 
     @Transactional
     public SupportSession getOrCreateOpenSession(Long userId) {
@@ -126,7 +123,9 @@ public class SupportService {
                 .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
                 .trim()
                 .replaceAll("\\s+", " ");
-        int maxChars = maxMessageChars > 0 ? maxMessageChars : 1000;
+        int maxChars = runtimeConfig.getInt("support.message.max-chars",
+                runtimeConfig.getInt("support.websocket.max-message-chars", 1000));
+        maxChars = maxChars > 0 ? maxChars : 1000;
         if (normalized.length() > maxChars) {
             throw new IllegalArgumentException("Message is too long");
         }

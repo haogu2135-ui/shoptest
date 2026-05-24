@@ -5,7 +5,7 @@ import {
   ShoppingOutlined, TeamOutlined, StarOutlined,
   ArrowLeftOutlined, LogoutOutlined, CustomerServiceOutlined, GiftOutlined,
   NotificationOutlined, TagsOutlined, TruckOutlined, SoundOutlined,
-  SafetyCertificateOutlined, ApiOutlined, SettingOutlined,
+  SafetyCertificateOutlined, ApiOutlined, SettingOutlined, CloudSyncOutlined, FileTextOutlined, ThunderboltOutlined, AlertOutlined, StopOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { adminApi, adminSupportApi, userApi } from '../api';
@@ -49,7 +49,12 @@ const AdminLayout: React.FC = () => {
     canSee('notifications') ? { key: '/admin/notifications', icon: <NotificationOutlined />, label: t('adminLayout.notifications') } : null,
     canSee('announcements') ? { key: '/admin/announcements', icon: <SoundOutlined />, label: t('adminLayout.announcements') } : null,
     canSee('audit-logs') ? { key: '/admin/audit-logs', icon: <SafetyCertificateOutlined />, label: t('adminLayout.auditLogs') } : null,
+    canSee('alerts') ? { key: '/admin/alerts', icon: <AlertOutlined />, label: '告警中心' } : null,
+    canSee('ip-blacklist') ? { key: '/admin/ip-blacklist', icon: <StopOutlined />, label: 'IP黑名单' } : null,
+    canSee('logs') ? { key: '/admin/logs', icon: <FileTextOutlined />, label: '日志管理' } : null,
     canSee('registry') ? { key: '/admin/registry', icon: <ApiOutlined />, label: t('adminLayout.registry') } : null,
+    canSee('config-center') ? { key: '/admin/config-center', icon: <CloudSyncOutlined />, label: '配置中心' } : null,
+    canSee('traffic-control') ? { key: '/admin/traffic-control', icon: <ThunderboltOutlined />, label: '流量控制' } : null,
     canSee('system') ? { key: '/admin/system', icon: <SettingOutlined />, label: t('adminLayout.system') } : null,
     canSee('support') ? {
       key: '/admin/support',

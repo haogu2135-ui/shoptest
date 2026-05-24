@@ -32,6 +32,7 @@ public class PaymentChannelRecommendationService {
     );
 
     private final PaymentChannelConfig paymentChannelConfig;
+    private final CircuitBreakerService circuitBreakerService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<PaymentChannelResponse> buildChannelResponses(List<PaymentChannelConfig.Channel> channels, HttpServletRequest request) {
@@ -132,7 +133,7 @@ public class PaymentChannelRecommendationService {
         requestFactory.setReadTimeout(Math.max(200, geoConfig.getLookupTimeoutMs()));
         RestTemplate restTemplate = new RestTemplate(requestFactory);
         try {
-            String responseBody = restTemplate.getForObject(resolvedUrl, String.class);
+            String responseBody = circuitBreakerService.execute("payment-geo-lookup", () -> restTemplate.getForObject(resolvedUrl, String.class));
             return parseCountryCode(responseBody);
         } catch (RestClientException e) {
             log.debug("Payment geo lookup failed for ip {} via {}", clientIp, resolvedUrl, e);

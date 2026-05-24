@@ -1,0 +1,245 @@
+.log-management,
+.log-management *,
+.log-management *::before,
+.log-management *::after {
+  box-sizing: border-box;
+}
+
+.log-management {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.log-management__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid rgba(44, 77, 92, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f8fbff 0%, #f7fff9 100%);
+  box-shadow: 0 16px 36px rgba(38, 67, 85, 0.08);
+}
+
+.log-management__hero h2 {
+  margin: 4px 0 6px;
+  color: #173b46;
+  font-weight: 900;
+}
+
+.log-management__eyebrow {
+  color: #d94b2b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.log-management__actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.log-management__stats {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 0.8fr;
+  gap: 12px;
+}
+
+.log-management__stats .ant-card,
+.log-management__card,
+.log-management__alert {
+  min-width: 0;
+  max-width: 100%;
+  border-color: rgba(44, 77, 92, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(38, 67, 85, 0.06);
+}
+
+.log-management__grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.3fr);
+  gap: 14px;
+}
+
+.log-management__control,
+.log-management__download {
+  display: grid;
+  gap: 14px;
+}
+
+.log-management__control label {
+  display: grid;
+  gap: 6px;
+  color: #44515a;
+  font-weight: 700;
+}
+
+.log-management__switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(44, 77, 92, 0.12);
+  border-radius: 12px;
+  background: #fbfdfc;
+}
+
+.log-management__switchRow > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.log-management__download .ant-picker {
+  width: 100%;
+}
+
+.log-management__meta {
+  margin-top: 14px;
+}
+
+.log-management .ant-typography,
+.log-management .ant-descriptions-item-content,
+.log-management .ant-tag,
+.log-management .ant-statistic-content {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .log-management__hero,
+  .log-management__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .log-management__hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .log-management__actions {
+    width: 100%;
+  }
+
+  .log-management__actions .ant-btn {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 720px) {
+  .log-management {
+    gap: 12px;
+  }
+
+  .log-management__hero {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .log-management__hero h2 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .log-management__stats {
+    display: flex;
+    gap: 8px;
+    margin-inline: -8px;
+    padding: 0 8px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .log-management__stats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .log-management__stats .ant-card {
+    flex: 0 0 150px;
+    scroll-snap-align: start;
+  }
+
+  .log-management__card .ant-card-body,
+  .log-management__stats .ant-card-body {
+    padding: 12px;
+  }
+
+  .log-management__switchRow,
+  .log-management__download {
+    align-items: stretch;
+  }
+
+  .log-management__switchRow {
+    flex-direction: column;
+  }
+
+  .log-management__switchRow .ant-switch {
+    align-self: flex-start;
+  }
+
+  .log-management .ant-picker-panels {
+    flex-direction: column;
+  }
+
+  .log-management .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+}
+
+/* Mobile log tools operation polish */
+@media (max-width: 720px) {
+  .log-management__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .log-management__actions .ant-space-item,
+  .log-management__actions .ant-btn {
+    width: 100%;
+  }
+
+  .log-management__stats {
+    scroll-padding-inline: 8px 20px;
+    overscroll-behavior-x: contain;
+  }
+
+  .log-management__stats .ant-card {
+    flex-basis: 142px;
+  }
+
+  .log-management__download .ant-space-compact {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .log-management__download .ant-space-compact .ant-select,
+  .log-management__download .ant-space-compact .ant-input {
+    width: 100% !important;
+  }
+
+  .log-management__meta .ant-descriptions-view {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .log-management__actions,
+  .log-management__download .ant-space-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .log-management__stats .ant-card {
+    flex-basis: 134px;
+  }
+}

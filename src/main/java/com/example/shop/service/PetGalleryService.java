@@ -6,7 +6,6 @@ import com.example.shop.entity.PetGalleryPhotoLike;
 import com.example.shop.repository.PetGalleryPhotoLikeRepository;
 import com.example.shop.repository.PetGalleryPhotoRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,21 +51,7 @@ public class PetGalleryService {
 
     private final PetGalleryPhotoRepository photoRepository;
     private final PetGalleryPhotoLikeRepository likeRepository;
-
-    @Value("${pet-gallery.upload-dir:uploads/pet-gallery}")
-    private String uploadDir;
-
-    @Value("${pet-gallery.public-path:/uploads/pet-gallery}")
-    private String publicPath;
-
-    @Value("${pet-gallery.max-file-size-bytes:5242880}")
-    private long maxFileSizeBytes;
-
-    @Value("${pet-gallery.max-photos-per-user:3}")
-    private int maxPhotosPerUser;
-
-    @Value("${pet-gallery.max-photos-per-ip:3}")
-    private int maxPhotosPerIp;
+    private final RuntimeConfigService runtimeConfig;
 
     public List<PetGalleryPhoto> findPublicPhotos(Long viewerId, String ipAddress) {
         return photoRepository.findTop24ByStatusOrderByLikeCountDescCreatedAtDescIdDesc(ACTIVE_STATUS).stream()
@@ -77,6 +62,8 @@ public class PetGalleryService {
     public PetGalleryQuota getQuota(Long userId, String ipAddress) {
         long userUploads = photoRepository.countUploadsByUserIdAndStatus(userId, ACTIVE_STATUS, USER_UPLOAD_SOURCE);
         long ipUploads = photoRepository.countUploadsByIpAddressAndStatus(ipAddress, ACTIVE_STATUS, USER_UPLOAD_SOURCE);
+        int maxPhotosPerUser = maxPhotosPerUser();
+        int maxPhotosPerIp = maxPhotosPerIp();
         long userRemaining = Math.max(0, maxPhotosPerUser - userUploads);
         long ipRemaining = Math.max(0, maxPhotosPerIp - ipUploads);
         long remaining = Math.min(userRemaining, ipRemaining);
@@ -90,7 +77,7 @@ public class PetGalleryService {
 
         String contentType = normalizeContentType(file.getContentType());
         String filename = UUID.randomUUID() + EXTENSIONS_BY_CONTENT_TYPE.get(contentType);
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path uploadPath = Paths.get(uploadDir()).toAbsolutePath().normalize();
         Path target = uploadPath.resolve(filename).normalize();
         if (!target.startsWith(uploadPath)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid upload path");
@@ -106,7 +93,7 @@ public class PetGalleryService {
         PetGalleryPhoto photo = new PetGalleryPhoto();
         photo.setUserId(userId);
         photo.setUsername(StringUtils.hasText(username) ? username.trim() : "pet_parent");
-        photo.setImageUrl(publicPath.replaceAll("/$", "") + "/" + filename);
+        photo.setImageUrl(publicPath().replaceAll("/$", "") + "/" + filename);
         photo.setOriginalFilename(cleanFilename(file.getOriginalFilename()));
         photo.setContentType(contentType);
         photo.setFileSize(file.getSize());
@@ -192,10 +179,10 @@ public class PetGalleryService {
     }
 
     private void validateQuota(Long userId, String ipAddress) {
-        if (photoRepository.countUploadsByUserIdAndStatus(userId, ACTIVE_STATUS, USER_UPLOAD_SOURCE) >= maxPhotosPerUser) {
+        if (photoRepository.countUploadsByUserIdAndStatus(userId, ACTIVE_STATUS, USER_UPLOAD_SOURCE) >= maxPhotosPerUser()) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "This account has reached the 3 photo upload limit");
         }
-        if (photoRepository.countUploadsByIpAddressAndStatus(ipAddress, ACTIVE_STATUS, USER_UPLOAD_SOURCE) >= maxPhotosPerIp) {
+        if (photoRepository.countUploadsByIpAddressAndStatus(ipAddress, ACTIVE_STATUS, USER_UPLOAD_SOURCE) >= maxPhotosPerIp()) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "This IP address has reached the 3 photo upload limit");
         }
     }
@@ -213,14 +200,30 @@ public class PetGalleryService {
         return !StringUtils.hasText(photo.getSource()) || USER_UPLOAD_SOURCE.equals(photo.getSource());
     }
 
+    private String uploadDir() {
+        return runtimeConfig.getString("pet-gallery.upload-dir", "uploads/pet-gallery");
+    }
+
+    private String publicPath() {
+        return runtimeConfig.getString("pet-gallery.public-path", "/uploads/pet-gallery");
+    }
+
+    private int maxPhotosPerUser() {
+        return Math.max(1, runtimeConfig.getInt("pet-gallery.max-photos-per-user", 3));
+    }
+
+    private int maxPhotosPerIp() {
+        return Math.max(1, runtimeConfig.getInt("pet-gallery.max-photos-per-ip", 3));
+    }
+
     private void deleteUploadedFileIfLocal(PetGalleryPhoto photo) {
         String imageUrl = photo.getImageUrl();
-        String normalizedPublicPath = publicPath.replaceAll("/$", "");
+        String normalizedPublicPath = publicPath().replaceAll("/$", "");
         if (imageUrl == null || !imageUrl.startsWith(normalizedPublicPath + "/")) {
             return;
         }
         String filename = imageUrl.substring((normalizedPublicPath + "/").length());
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path uploadPath = Paths.get(uploadDir()).toAbsolutePath().normalize();
         Path target = uploadPath.resolve(filename).normalize();
         if (!target.startsWith(uploadPath)) {
             return;
@@ -235,7 +238,7 @@ public class PetGalleryService {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a photo to upload");
         }
-        if (file.getSize() > maxFileSizeBytes) {
+        if (file.getSize() > runtimeConfig.getLong("pet-gallery.max-file-size-bytes", 5242880)) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Photo must be 5 MB or smaller");
         }
         String contentType = normalizeContentType(file.getContentType());

@@ -4,6 +4,7 @@ import com.example.shop.entity.SecurityAuditLog;
 import com.example.shop.repository.SecurityAuditLogMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,7 +16,7 @@ class SecurityAuditLogServiceTest {
     @Test
     void normalizesControlCharactersBeforeWritingAuditLog() {
         SecurityAuditLogMapper mapper = mock(SecurityAuditLogMapper.class);
-        SecurityAuditLogService service = new SecurityAuditLogService(mapper);
+        SecurityAuditLogService service = new SecurityAuditLogService(mapper, mock(JdbcTemplate.class));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("User-Agent", "Mozilla\nInjected");
         request.addHeader("X-Forwarded-For", " 1.2.3.4\r\nX: bad, 5.6.7.8");

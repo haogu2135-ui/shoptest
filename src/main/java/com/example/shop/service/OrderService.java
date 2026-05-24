@@ -20,7 +20,6 @@ import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,45 +66,11 @@ public class OrderService {
     private LogisticsCarrierService logisticsCarrierService;
     @Autowired
     private RefundService refundService;
+    @Autowired
+    private RuntimeConfigService runtimeConfig;
     @Lazy
     @Autowired
     private OrderService self;
-
-    @Value("${order.unpaid-timeout-minutes:30}")
-    private long unpaidTimeoutMinutes;
-
-    @Value("${order.default-shipping-fee:30.00}")
-    private BigDecimal defaultShippingFee;
-
-    @Value("${order.free-shipping-threshold:899.00}")
-    private BigDecimal freeShippingThreshold;
-
-    @Value("${order.return-window-days:7}")
-    private long returnWindowDays;
-
-    @Value("${order.max-checkout-lines:80}")
-    private int maxCheckoutLines;
-
-    @Value("${order.max-quantity-per-line:99}")
-    private int maxQuantityPerLine;
-
-    @Value("${order.shipping-address-max-chars:500}")
-    private int shippingAddressMaxChars;
-
-    @Value("${order.payment-method-max-chars:40}")
-    private int paymentMethodMaxChars;
-
-    @Value("${order.guest-name-max-chars:80}")
-    private int guestNameMaxChars;
-
-    @Value("${order.guest-phone-max-chars:40}")
-    private int guestPhoneMaxChars;
-
-    @Value("${order.return-reason-max-chars:500}")
-    private int returnReasonMaxChars;
-
-    @Value("${order.tracking-number-max-chars:120}")
-    private int trackingNumberMaxChars;
 
     /**
      * 创建新订单
@@ -362,9 +327,10 @@ public class OrderService {
         BigDecimal subtotal = items.stream()
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (freeShippingThreshold != null
-                && freeShippingThreshold.compareTo(BigDecimal.ZERO) > 0
-                && subtotal.compareTo(freeShippingThreshold) >= 0) {
+        BigDecimal threshold = runtimeConfig.getBigDecimal("order.free-shipping-threshold", new BigDecimal("899.00"));
+        if (threshold != null
+                && threshold.compareTo(BigDecimal.ZERO) > 0
+                && subtotal.compareTo(threshold) >= 0) {
             return BigDecimal.ZERO;
         }
         boolean allItemsFreeShipping = true;
@@ -383,7 +349,7 @@ public class OrderService {
                 break;
             }
         }
-        return allItemsFreeShipping ? BigDecimal.ZERO : defaultShippingFee;
+        return allItemsFreeShipping ? BigDecimal.ZERO : runtimeConfig.getBigDecimal("order.default-shipping-fee", new BigDecimal("30.00"));
     }
 
     private Map<Long, Product> loadProductsForCartItems(List<CartItem> items) {
@@ -408,16 +374,16 @@ public class OrderService {
 
     private void normalizeCheckoutRequest(CheckoutRequest request) {
         request.setCartItemIds(normalizeCheckoutItemIds(request.getCartItemIds()));
-        request.setShippingAddress(normalizeRequiredText(request.getShippingAddress(), "Shipping address", shippingAddressMaxChars));
-        request.setPaymentMethod(normalizeRequiredText(request.getPaymentMethod(), "Payment method", paymentMethodMaxChars));
+        request.setShippingAddress(normalizeRequiredText(request.getShippingAddress(), "Shipping address", runtimeConfig.getInt("order.shipping-address-max-chars", 500)));
+        request.setPaymentMethod(normalizeRequiredText(request.getPaymentMethod(), "Payment method", runtimeConfig.getInt("order.payment-method-max-chars", 40)));
     }
 
     private void normalizeGuestCheckoutRequest(GuestCheckoutRequest request) {
         request.setGuestEmail(normalizeRequiredText(request.getGuestEmail(), "Guest email", 120).toLowerCase());
-        request.setGuestName(normalizeRequiredText(request.getGuestName(), "Guest name", guestNameMaxChars));
-        request.setGuestPhone(normalizeRequiredText(request.getGuestPhone(), "Guest phone", guestPhoneMaxChars));
-        request.setShippingAddress(normalizeRequiredText(request.getShippingAddress(), "Shipping address", shippingAddressMaxChars));
-        request.setPaymentMethod(normalizeRequiredText(request.getPaymentMethod(), "Payment method", paymentMethodMaxChars));
+        request.setGuestName(normalizeRequiredText(request.getGuestName(), "Guest name", runtimeConfig.getInt("order.guest-name-max-chars", 80)));
+        request.setGuestPhone(normalizeRequiredText(request.getGuestPhone(), "Guest phone", runtimeConfig.getInt("order.guest-phone-max-chars", 40)));
+        request.setShippingAddress(normalizeRequiredText(request.getShippingAddress(), "Shipping address", runtimeConfig.getInt("order.shipping-address-max-chars", 500)));
+        request.setPaymentMethod(normalizeRequiredText(request.getPaymentMethod(), "Payment method", runtimeConfig.getInt("order.payment-method-max-chars", 40)));
         request.setItems(normalizeGuestItems(request.getItems()));
     }
 
@@ -431,12 +397,13 @@ public class OrderService {
         if (positiveIds.size() != cartItemIds.size()) {
             throw new IllegalArgumentException("Invalid checkout items selected");
         }
-        if (positiveIds.size() > Math.max(1, maxCheckoutLines)
+        int checkoutLineLimit = Math.max(1, runtimeConfig.getInt("order.max-checkout-lines", 80));
+        if (positiveIds.size() > checkoutLineLimit
                 || new HashSet<>(positiveIds).size() != positiveIds.size()) {
             throw new IllegalArgumentException("Too many checkout items selected");
         }
         List<Long> normalized = positiveIds.stream()
-                .limit(Math.max(1, maxCheckoutLines))
+                .limit(checkoutLineLimit)
                 .collect(Collectors.toList());
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("No checkout items selected");
@@ -448,7 +415,7 @@ public class OrderService {
         if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("No checkout items selected");
         }
-        if (items.size() > Math.max(1, maxCheckoutLines)) {
+        if (items.size() > Math.max(1, runtimeConfig.getInt("order.max-checkout-lines", 80))) {
             throw new IllegalArgumentException("Too many checkout items selected");
         }
         List<GuestCheckoutItemRequest> normalized = new ArrayList<>();
@@ -465,7 +432,7 @@ public class OrderService {
 
     private int normalizeQuantity(Integer quantity) {
         int normalized = quantity == null ? 0 : quantity;
-        if (normalized <= 0 || normalized > Math.max(1, maxQuantityPerLine)) {
+        if (normalized <= 0 || normalized > Math.max(1, runtimeConfig.getInt("order.max-quantity-per-line", 99))) {
             throw new IllegalArgumentException("Invalid quantity");
         }
         return normalized;
@@ -670,7 +637,7 @@ public class OrderService {
 
     @Scheduled(fixedDelayString = "${order.expiry-scan-ms:60000}")
     public void cancelExpiredUnpaidOrders() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(unpaidTimeoutMinutes);
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(runtimeConfig.getLong("order.unpaid-timeout-minutes", 30));
         for (Order order : orderRepository.findPendingPaymentBefore(cutoff)) {
             try {
                 self.cancelSingleExpiredOrder(order.getId());
@@ -686,7 +653,7 @@ public class OrderService {
         if (order == null || !"PENDING_PAYMENT".equals(order.getStatus())) {
             return;
         }
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(unpaidTimeoutMinutes);
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(runtimeConfig.getLong("order.unpaid-timeout-minutes", 30));
         if (order.getCreatedAt() == null || !order.getCreatedAt().isBefore(cutoff)) {
             return;
         }
@@ -715,7 +682,7 @@ public class OrderService {
         if (deadline == null || LocalDateTime.now().isAfter(deadline)) {
             throw new IllegalStateException("Return window has expired");
         }
-        String cleanedReason = normalizeOptionalText(reason, "Return reason", returnReasonMaxChars);
+        String cleanedReason = normalizeOptionalText(reason, "Return reason", runtimeConfig.getInt("order.return-reason-max-chars", 500));
         return orderRepository.requestReturnIfCurrent(id, "COMPLETED", cleanedReason) > 0;
     }
 
@@ -755,7 +722,7 @@ public class OrderService {
         if (!"RETURN_APPROVED".equals(order.getStatus())) {
             throw new IllegalStateException("Only approved return orders can submit return shipment");
         }
-        String cleanedTrackingNumber = normalizeRequiredText(returnTrackingNumber, "Return tracking number", trackingNumberMaxChars);
+        String cleanedTrackingNumber = normalizeRequiredText(returnTrackingNumber, "Return tracking number", runtimeConfig.getInt("order.tracking-number-max-chars", 120));
         return orderRepository.updateReturnTracking(id, "RETURN_SHIPPED", cleanedTrackingNumber) > 0;
     }
 
@@ -821,7 +788,7 @@ public class OrderService {
         if (!refundableStatuses.contains(order.getStatus())) {
             throw new IllegalStateException("Order is not refundable in current status: " + order.getStatus());
         }
-        String cleanedReason = normalizeOptionalText(reason, "Refund reason", returnReasonMaxChars);
+        String cleanedReason = normalizeOptionalText(reason, "Refund reason", runtimeConfig.getInt("order.return-reason-max-chars", 500));
 
         Payment refundedPayment = refundService.refundPaidPayment(order, cleanedReason, manualRefundReference);
         int updated = orderRepository.markRefunded(order.getId(), order.getStatus(), cleanedReason);
@@ -867,7 +834,7 @@ public class OrderService {
         if (order == null) {
             return false;
         }
-        String cleanedTrackingNumber = normalizeRequiredText(trackingNumber, "Tracking number", trackingNumberMaxChars);
+        String cleanedTrackingNumber = normalizeRequiredText(trackingNumber, "Tracking number", runtimeConfig.getInt("order.tracking-number-max-chars", 120));
         String carrierCode = trackingCarrierCode == null ? null : trackingCarrierCode.trim();
         String carrierName = null;
         if (carrierCode != null && !carrierCode.isEmpty()) {
@@ -970,11 +937,12 @@ public class OrderService {
     }
 
     private LocalDateTime calculateReturnDeadline(Order order) {
-        if (order == null || returnWindowDays <= 0) {
+        long windowDays = runtimeConfig.getLong("order.return-window-days", 7);
+        if (order == null || windowDays <= 0) {
             return null;
         }
         LocalDateTime completedAt = resolveCompletedAt(order);
-        return completedAt == null ? null : completedAt.plusDays(returnWindowDays);
+        return completedAt == null ? null : completedAt.plusDays(windowDays);
     }
 
     private LocalDateTime resolveCompletedAt(Order order) {

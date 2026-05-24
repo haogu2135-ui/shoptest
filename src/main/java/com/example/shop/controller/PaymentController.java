@@ -9,6 +9,7 @@ import com.example.shop.entity.Payment;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.OrderService;
+import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.PaymentChannelRecommendationService;
 import com.example.shop.service.PaymentService;
 import com.example.shop.service.SecurityAuditLogService;
@@ -34,6 +35,7 @@ public class PaymentController {
     private final SecurityAuditLogService auditLogService;
     private final PaymentChannelConfig paymentChannelConfig;
     private final PaymentChannelRecommendationService paymentChannelRecommendationService;
+    private final IpBlacklistService ipBlacklistService;
 
     @GetMapping("/channels")
     public List<PaymentChannelResponse> channels(HttpServletRequest request) {
@@ -55,10 +57,12 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_CREATE", "FAILURE", authentication, "ORDER", request.getOrderId(), httpRequest,
                     e.getMessage(), "channel=" + request.getChannel());
+            ipBlacklistService.recordPaymentFailure(httpRequest, e.getMessage());
             throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_CREATE", "FAILURE", authentication, "ORDER", request.getOrderId(), httpRequest,
                     reasonOf(e), "channel=" + request.getChannel());
+            ipBlacklistService.recordPaymentFailure(httpRequest, reasonOf(e));
             throw e;
         }
     }
@@ -77,10 +81,12 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SIMULATE_PAID", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
+            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
             throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SIMULATE_PAID", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
+            ipBlacklistService.recordPaymentFailure(request, reasonOf(e));
             throw e;
         }
     }
@@ -99,10 +105,12 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
+            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
             throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
+            ipBlacklistService.recordPaymentFailure(request, reasonOf(e));
             throw e;
         }
     }
@@ -121,10 +129,12 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
+            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
             throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
+            ipBlacklistService.recordPaymentFailure(request, reasonOf(e));
             throw e;
         }
     }
@@ -140,6 +150,7 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_CALLBACK", "FAILURE", null, null, null, "ORDER", request.getOrderNo(), httpRequest,
                     e.getMessage(), "channel=" + request.getChannel());
+            ipBlacklistService.recordPaymentFailure(httpRequest, e.getMessage());
             throw e;
         }
     }
@@ -157,9 +168,11 @@ public class PaymentController {
             return ResponseEntity.ok(Map.of("received", true));
         } catch (IllegalArgumentException e) {
             auditLogService.record("STRIPE_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
+            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
             throw e;
         } catch (IllegalStateException e) {
             auditLogService.record("STRIPE_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
+            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment provider is temporarily unavailable", e);
         }
     }

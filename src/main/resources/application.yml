@@ -49,5 +49,7 @@ mybatis:
     map-underscore-to-camel-case: true
 
 logging:
+  file:
+    name: ${LOG_FILE_NAME:logs/shop-backend.log}
   level:
     com.example.shop: ${APP_LOG_LEVEL:INFO}

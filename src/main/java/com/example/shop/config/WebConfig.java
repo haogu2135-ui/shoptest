@@ -1,6 +1,6 @@
 package com.example.shop.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.example.shop.service.RuntimeConfigService;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -13,12 +13,11 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
     private final CorsOriginProperties corsOriginProperties;
+    private final RuntimeConfigService runtimeConfig;
 
-    @Value("${pet-gallery.upload-dir:uploads/pet-gallery}")
-    private String petGalleryUploadDir;
-
-    public WebConfig(CorsOriginProperties corsOriginProperties) {
+    public WebConfig(CorsOriginProperties corsOriginProperties, RuntimeConfigService runtimeConfig) {
         this.corsOriginProperties = corsOriginProperties;
+        this.runtimeConfig = runtimeConfig;
     }
 
     // Spring Boot 会自动配置 Thymeleaf，无需手动配置视图解析器
@@ -36,7 +35,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String petGalleryLocation = Paths.get(petGalleryUploadDir).toAbsolutePath().normalize().toUri().toString();
+        String petGalleryLocation = Paths.get(runtimeConfig.getString("pet-gallery.upload-dir", "uploads/pet-gallery")).toAbsolutePath().normalize().toUri().toString();
         if (!petGalleryLocation.endsWith("/")) {
             petGalleryLocation = petGalleryLocation + "/";
         }

@@ -1,0 +1,234 @@
+.traffic-control,
+.traffic-control *,
+.traffic-control *::before,
+.traffic-control *::after {
+  box-sizing: border-box;
+}
+
+.traffic-control {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.traffic-control__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid rgba(35, 80, 92, 0.14);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f9fcff 0%, #f4fff7 100%);
+  box-shadow: 0 16px 34px rgba(38, 67, 85, 0.08);
+}
+
+.traffic-control__hero h2 {
+  margin: 4px 0 6px;
+  color: #173b46;
+  font-weight: 900;
+}
+
+.traffic-control__eyebrow {
+  color: #d94b2b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.traffic-control__actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.traffic-control__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.traffic-control__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.traffic-control__stats .ant-card,
+.traffic-control__card,
+.traffic-control__alert {
+  min-width: 0;
+  max-width: 100%;
+  border-color: rgba(35, 80, 92, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(38, 67, 85, 0.06);
+}
+
+.traffic-control__configList {
+  display: grid;
+  gap: 10px;
+}
+
+.traffic-control__configList span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(35, 80, 92, 0.1);
+  border-radius: 10px;
+  background: #fbfdfc;
+  color: #44515a;
+}
+
+.traffic-control__configList strong {
+  color: #173b46;
+}
+
+.traffic-control__alert {
+  margin-bottom: 14px;
+}
+
+.traffic-control .ant-typography,
+.traffic-control .ant-statistic-content,
+.traffic-control .ant-table-cell,
+.traffic-control .ant-tag {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .traffic-control__hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .traffic-control__actions {
+    width: 100%;
+  }
+
+  .traffic-control__actions .ant-btn {
+    flex: 1 1 150px;
+  }
+
+  .traffic-control__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .traffic-control {
+    gap: 12px;
+  }
+
+  .traffic-control__hero {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .traffic-control__hero h2 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .traffic-control__stats {
+    display: flex;
+    gap: 8px;
+    margin-inline: -8px;
+    padding: 0 8px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .traffic-control__stats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .traffic-control__stats .ant-card {
+    flex: 0 0 150px;
+    scroll-snap-align: start;
+  }
+
+  .traffic-control__card .ant-card-body,
+  .traffic-control__stats .ant-card-body {
+    padding: 12px;
+  }
+
+  .traffic-control__configList span {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .traffic-control .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+}
+
+/* Mobile operations polish */
+@media (max-width: 720px) {
+  .traffic-control__hero > div:first-child,
+  .traffic-control__actions,
+  .traffic-control__card,
+  .traffic-control .ant-table-wrapper {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .traffic-control__hero {
+    box-shadow: 0 10px 24px rgba(38, 67, 85, 0.07);
+  }
+
+  .traffic-control__hero .ant-typography {
+    line-height: 1.4;
+  }
+
+  .traffic-control__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .traffic-control__actions .ant-space-item,
+  .traffic-control__actions .ant-btn {
+    width: 100%;
+  }
+
+  .traffic-control__stats {
+    scroll-padding-inline: 8px 20px;
+    overscroll-behavior-x: contain;
+  }
+
+  .traffic-control__stats .ant-card {
+    flex-basis: 142px;
+  }
+
+  .traffic-control__configList span {
+    min-height: 58px;
+  }
+
+  .traffic-control__card .ant-table-wrapper {
+    margin-inline: -8px;
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 430px) {
+  .traffic-control__actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .traffic-control__stats .ant-card {
+    flex-basis: 134px;
+  }
+}

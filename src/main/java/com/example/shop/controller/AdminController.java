@@ -4,6 +4,8 @@ import com.example.shop.dto.CouponGrantRequest;
 import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
 import com.example.shop.dto.ProductImportResult;
+import com.example.shop.dto.SecurityAuditPurgeResponse;
+import com.example.shop.dto.SecurityAuditSummaryResponse;
 import com.example.shop.entity.Coupon;
 import com.example.shop.entity.AdminRole;
 import com.example.shop.entity.Order;
@@ -24,6 +26,7 @@ import com.example.shop.service.NotificationService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.ReviewService;
+import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.UserService;
 import com.example.shop.service.LogisticsCarrierService;
@@ -31,7 +34,6 @@ import com.example.shop.repository.PaymentRepository;
 import com.example.shop.util.CsvUtils;
 import com.example.shop.util.ProductStatusUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -80,15 +82,7 @@ public class AdminController {
     private final SecurityAuditLogService auditLogService;
     private final AdminRoleService adminRoleService;
     private final PaymentRepository paymentRepository;
-
-    @Value("${admin.orders.page-max-size:100}")
-    private int adminOrdersPageMaxSize;
-
-    @Value("${admin.orders.export-max-rows:5000}")
-    private int adminOrdersExportMaxRows;
-
-    @Value("${admin.orders.batch-ship-max-size:100}")
-    private int adminOrdersBatchShipMaxSize;
+    private final RuntimeConfigService runtimeConfig;
 
     @GetMapping("/products")
     public ResponseEntity<List<Product>> getProducts() {
@@ -491,7 +485,7 @@ public class AdminController {
                                                              @RequestParam(required = false) String quick,
                                                              @RequestParam(required = false, defaultValue = "1") int page,
                                                              @RequestParam(required = false, defaultValue = "20") int size) {
-        int safeSize = Math.max(1, Math.min(size <= 0 ? 20 : size, Math.max(1, adminOrdersPageMaxSize)));
+        int safeSize = Math.max(1, Math.min(size <= 0 ? 20 : size, Math.max(1, runtimeConfig.getInt("admin.orders.page-max-size", 100))));
         int safePage = Math.max(1, page);
         String safeStatus = normalizeAdminFilter(status, 40);
         String safeSearch = normalizeAdminFilter(search, 120);
@@ -618,7 +612,7 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("error", "orderIds is required"));
         }
         List<?> rawIds = (List<?>) idsValue;
-        int maxBatchSize = Math.max(1, Math.min(adminOrdersBatchShipMaxSize, 500));
+        int maxBatchSize = Math.max(1, Math.min(runtimeConfig.getInt("admin.orders.batch-ship-max-size", 100), 500));
         if (rawIds.size() > maxBatchSize) {
             auditLogService.record("ORDER_BATCH_SHIP", "FAILURE", authentication, "ORDER", null, request,
                     "too many orderIds", "requested=" + rawIds.size() + ",max=" + maxBatchSize);
@@ -759,7 +753,7 @@ public class AdminController {
         String safeStatus = normalizeAdminFilter(status, 40);
         String safeSearch = normalizeAdminFilter(search, 120);
         String safeQuick = normalizeAdminFilter(quick, 40);
-        int exportLimit = Math.max(1, Math.min(adminOrdersExportMaxRows, 50000));
+        int exportLimit = Math.max(1, Math.min(runtimeConfig.getInt("admin.orders.export-max-rows", 5000), 50000));
         int total = orderService.countAdminOrders(safeStatus, safeSearch, safeQuick);
         List<Order> orders = orderService.searchAdminOrders(safeStatus, safeSearch, safeQuick, 1, exportLimit);
         Map<Long, List<OrderItem>> itemsByOrderId = orderItemService.getOrderItemsByOrderIds(orders.stream()
@@ -827,6 +821,26 @@ public class AdminController {
                 parseDateTime(startAt),
                 parseDateTime(endAt),
                 limit));
+    }
+
+    @GetMapping("/audit-logs/summary")
+    public ResponseEntity<SecurityAuditSummaryResponse> getAuditLogSummary(@RequestParam(required = false) String startAt,
+                                                                           @RequestParam(required = false) String endAt,
+                                                                           @RequestParam(required = false, defaultValue = "10") int topLimit) {
+        return ResponseEntity.ok(auditLogService.summary(parseDateTime(startAt), parseDateTime(endAt), topLimit));
+    }
+
+    @PostMapping("/audit-logs/purge")
+    public ResponseEntity<SecurityAuditPurgeResponse> purgeAuditLogs(@RequestParam(required = false, defaultValue = "180") int retentionDays,
+                                                                     Authentication authentication,
+                                                                     HttpServletRequest request) {
+        SecurityAuditPurgeResponse response = auditLogService.purge(retentionDays);
+        auditLogService.record("AUDIT_LOG_PURGE", "SUCCESS", authentication, "SECURITY_AUDIT_LOG", null, request,
+                "Security audit logs purged",
+                "retentionDays=" + response.getRetentionDays()
+                        + ",deletedCount=" + response.getDeletedCount()
+                        + ",purgedBefore=" + response.getPurgedBefore());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/audit-logs/export")

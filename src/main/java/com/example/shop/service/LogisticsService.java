@@ -6,7 +6,6 @@ import com.example.shop.repository.OrderRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -39,44 +38,18 @@ public class LogisticsService {
 
     @Autowired
     private OrderRepository orderRepository;
-
-    @Value("${logistics.api-url:}")
-    private String logisticsApiUrl;
-
-    @Value("${logistics.api-key:}")
-    private String logisticsApiKey;
-
-    @Value("${kuaidi100.enabled:true}")
-    private boolean kuaidi100Enabled;
-
-    @Value("${kuaidi100.customer:}")
-    private String kuaidi100Customer;
-
-    @Value("${kuaidi100.key:}")
-    private String kuaidi100Key;
-
-    @Value("${kuaidi100.query-url:https://poll.kuaidi100.com/poll/query.do}")
-    private String kuaidi100QueryUrl;
-
-    @Value("${kuaidi100.default-com:auto}")
-    private String kuaidi100DefaultCom;
-
-    @Value("${kuaidi100.lang:zh_CN}")
-    private String kuaidi100Lang;
-
-    @Value("${logistics.tracking-number-max-chars:120}")
-    private int trackingNumberMaxChars;
-
-    @Value("${logistics.carrier-max-chars:40}")
-    private int carrierMaxChars;
+    @Autowired
+    private RuntimeConfigService runtimeConfig;
+    @Autowired
+    private CircuitBreakerService circuitBreakerService;
 
     public LogisticsTrackResponse track(String trackingNumber, String carrier) {
         return track(trackingNumber, carrier, null);
     }
 
     public LogisticsTrackResponse track(String trackingNumber, String carrier, Long orderId) {
-        String normalizedTrackingNumber = normalizeRequiredText(trackingNumber, "Tracking number", trackingNumberMaxChars);
-        String normalizedCarrier = normalizeOptionalText(carrier, carrierMaxChars);
+        String normalizedTrackingNumber = normalizeRequiredText(trackingNumber, "Tracking number", runtimeConfig.getInt("logistics.tracking-number-max-chars", 120));
+        String normalizedCarrier = normalizeOptionalText(carrier, runtimeConfig.getInt("logistics.carrier-max-chars", 40));
         if (normalizedCarrier == null) {
             normalizedCarrier = "STANDARD";
         }
@@ -86,14 +59,14 @@ public class LogisticsService {
             return trackWithKuaidi100(normalizedTrackingNumber, normalizedCarrier, order);
         }
 
-        if (logisticsApiUrl != null && !logisticsApiUrl.trim().isEmpty()) {
+        if (!isBlank(runtimeConfig.getString("logistics.api-url", ""))) {
             return trackWithProvider(normalizedTrackingNumber, normalizedCarrier);
         }
         return mockTrack(normalizedTrackingNumber, normalizedCarrier);
     }
 
     private boolean shouldUseKuaidi100(Order order) {
-        return kuaidi100Enabled && order != null && isChinaAddress(order.getShippingAddress());
+        return runtimeConfig.getBoolean("kuaidi100.enabled", true) && order != null && isChinaAddress(order.getShippingAddress());
     }
 
     private boolean isChinaAddress(String address) {
@@ -105,12 +78,14 @@ public class LogisticsService {
     }
 
     private LogisticsTrackResponse trackWithKuaidi100(String trackingNumber, String carrier, Order order) {
-        if (isBlank(kuaidi100Customer) || isBlank(kuaidi100Key)) {
+        String customer = runtimeConfig.getString("kuaidi100.customer", "");
+        String key = runtimeConfig.getString("kuaidi100.key", "");
+        if (isBlank(customer) || isBlank(key)) {
             throw new IllegalStateException("Kuaidi100 Global customer/key is not configured");
         }
         String companyCode = resolveKuaidi100CompanyCode(carrier);
         if (isBlank(companyCode) || "STANDARD".equalsIgnoreCase(companyCode) || "AUTO".equalsIgnoreCase(companyCode)) {
-            companyCode = kuaidi100DefaultCom;
+            companyCode = runtimeConfig.getString("kuaidi100.default-com", "auto");
         }
         if (isBlank(companyCode) || "AUTO".equalsIgnoreCase(companyCode)) {
             throw new IllegalArgumentException("Kuaidi100 carrier company code is required for China-address shipments");
@@ -122,8 +97,9 @@ public class LogisticsService {
         param.put("resultv2", "4");
         param.put("show", "0");
         param.put("order", "desc");
-        if (!isBlank(kuaidi100Lang)) {
-            param.put("lang", kuaidi100Lang);
+        String lang = runtimeConfig.getString("kuaidi100.lang", "zh_CN");
+        if (!isBlank(lang)) {
+            param.put("lang", lang);
         }
         String phone = extractPhone(order.getShippingAddress());
         if (!isBlank(phone)) {
@@ -137,19 +113,19 @@ public class LogisticsService {
         try {
             String paramJson = objectMapper.writeValueAsString(param);
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("customer", kuaidi100Customer);
-            body.add("sign", md5Upper(paramJson + kuaidi100Key + kuaidi100Customer));
+            body.add("customer", customer);
+            body.add("sign", md5Upper(paramJson + key + customer));
             body.add("param", paramJson);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    kuaidi100QueryUrl,
+            ResponseEntity<Map<String, Object>> response = circuitBreakerService.execute("logistics-kuaidi100", () -> restTemplate.exchange(
+                    runtimeConfig.getString("kuaidi100.query-url", "https://poll.kuaidi100.com/poll/query.do"),
                     HttpMethod.POST,
                     new HttpEntity<>(body, headers),
                     new ParameterizedTypeReference<Map<String, Object>>() {
                     }
-            );
+            ));
             return parseKuaidi100Response(trackingNumber, companyCode, response.getBody());
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to build Kuaidi100 query payload");
@@ -276,7 +252,8 @@ public class LogisticsService {
     }
 
     private LogisticsTrackResponse trackWithProvider(String trackingNumber, String carrier) {
-        String url = logisticsApiUrl
+        String logisticsApiKey = runtimeConfig.getString("logistics.api-key", "");
+        String url = runtimeConfig.getString("logistics.api-url", "")
                 .replace("{trackingNumber}", trackingNumber)
                 .replace("{carrier}", carrier)
                 .replace("{apiKey}", logisticsApiKey == null ? "" : logisticsApiKey);
@@ -294,13 +271,13 @@ public class LogisticsService {
         }
 
         try {
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+            ResponseEntity<Map<String, Object>> response = circuitBreakerService.execute("logistics-provider", () -> restTemplate.exchange(
                     builder.toUriString(),
                     HttpMethod.GET,
                     null,
                     new ParameterizedTypeReference<Map<String, Object>>() {
                     }
-            );
+            ));
             LogisticsTrackResponse result = baseResponse(trackingNumber, carrier);
             result.setStatus("EXTERNAL");
             result.setSummary("Provider response received");

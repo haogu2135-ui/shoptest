@@ -996,3 +996,59 @@
     border-radius: 13px;
   }
 }
+
+/* Mobile stock-alert action stability pass */
+@media (max-width: 640px) {
+  .stock-alerts__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .stock-alerts__header .ant-space,
+  .stock-alerts__header .ant-space-item {
+    width: 100%;
+  }
+
+  .stock-alerts__item {
+    align-items: stretch;
+    padding: 10px !important;
+  }
+
+  .stock-alerts__item .ant-list-item-meta {
+    align-items: flex-start;
+  }
+
+  .stock-alerts__item .ant-list-item-action {
+    margin-inline-start: 0;
+    padding-top: 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 7px;
+  }
+
+  .stock-alerts__item .ant-list-item-action > li {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .stock-alerts__item .ant-list-item-action .ant-btn-primary {
+    width: 100%;
+  }
+
+  .stock-alerts__recoveryActions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .stock-alerts__item {
+    padding-inline: 8px !important;
+  }
+
+  .stock-alerts__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) 36px;
+    gap: 6px;
+  }
+}

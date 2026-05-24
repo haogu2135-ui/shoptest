@@ -9,10 +9,10 @@ import com.example.shop.repository.PetProfileMapper;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.ReviewRepository;
 import com.example.shop.service.ProductService;
+import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.util.CsvUtils;
 import com.example.shop.util.ProductStatusUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,27 +56,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private PetProfileMapper petProfileMapper;
-
-    @Value("${product.search-cache-ttl-ms:30000}")
-    private long searchCacheTtlMs;
-
-    @Value("${product.search-cache-max-entries:80}")
-    private int searchCacheMaxEntries;
-
-    @Value("${product.add-on-price-floor-ratio:0.45}")
-    private BigDecimal addOnPriceFloorRatio;
-
-    @Value("${product.add-on-price-ceiling-ratio:1.35}")
-    private BigDecimal addOnPriceCeilingRatio;
-
-    @Value("${product.add-on-price-ceiling:260}")
-    private BigDecimal addOnPriceCeiling;
-
-    @Value("${product.import.max-file-size-bytes:1048576}")
-    private long importMaxFileSizeBytes;
-
-    @Value("${product.import.max-rows:1000}")
-    private int importMaxRows;
+    @Autowired
+    private RuntimeConfigService runtimeConfig;
 
     private final ConcurrentMap<String, ProductSearchCacheEntry> productSearchCache = new ConcurrentHashMap<>();
 
@@ -217,10 +198,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<Product> findAddOnCandidatesUncached(BigDecimal normalizedTarget, Set<Long> excludedIds, int normalizedLimit) {
-        BigDecimal floor = normalizedTarget.multiply(safePositiveRatio(addOnPriceFloorRatio, BigDecimal.valueOf(0.45)));
+        BigDecimal floor = normalizedTarget.multiply(safePositiveRatio(
+                runtimeConfig.getBigDecimal("product.add-on-price-floor-ratio", BigDecimal.valueOf(0.45)),
+                BigDecimal.valueOf(0.45)));
         BigDecimal ceiling = normalizedTarget
-                .multiply(safePositiveRatio(addOnPriceCeilingRatio, BigDecimal.valueOf(1.35)))
-                .max(safePositiveAmount(addOnPriceCeiling, BigDecimal.valueOf(260)));
+                .multiply(safePositiveRatio(
+                        runtimeConfig.getBigDecimal("product.add-on-price-ceiling-ratio", BigDecimal.valueOf(1.35)),
+                        BigDecimal.valueOf(1.35)))
+                .max(safePositiveAmount(
+                        runtimeConfig.getBigDecimal("product.add-on-price-ceiling", BigDecimal.valueOf(260)),
+                        BigDecimal.valueOf(260)));
 
         return enrichReviewStats(productRepository.findAll().stream()
                 .filter(product -> !excludedIds.contains(product.getId()))
@@ -374,7 +361,7 @@ public class ProductServiceImpl implements ProductService {
             result.addError(0, "CSV file is required");
             return false;
         }
-        long maxBytes = Math.max(1024L, importMaxFileSizeBytes);
+        long maxBytes = Math.max(1024L, runtimeConfig.getLong("product.import.max-file-size-bytes", 1048576));
         if (file.getSize() > maxBytes) {
             result.addError(0, "CSV file is too large. Maximum size: " + maxBytes + " bytes");
             return false;
@@ -388,7 +375,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private int normalizedImportMaxRows() {
-        return Math.max(1, importMaxRows);
+        return Math.max(1, runtimeConfig.getInt("product.import.max-rows", 1000));
     }
 
     private Product toProduct(List<String> values) {
@@ -805,12 +792,13 @@ public class ProductServiceImpl implements ProductService {
     private List<Product> getCachedProducts(String cacheKey, ProductSearchLoader loader) {
         long now = System.currentTimeMillis();
         ProductSearchCacheEntry cached = productSearchCache.get(cacheKey);
+        long searchCacheTtlMs = runtimeConfig.getLong("product.search-cache-ttl-ms", 30000);
         if (cached != null && now - cached.createdAt <= Math.max(0, searchCacheTtlMs)) {
             return new ArrayList<>(cached.products);
         }
         List<Product> products = loader.load();
         if (searchCacheTtlMs > 0) {
-            if (productSearchCache.size() >= Math.max(1, searchCacheMaxEntries)) {
+            if (productSearchCache.size() >= Math.max(1, runtimeConfig.getInt("product.search-cache-max-entries", 80))) {
                 productSearchCache.clear();
             }
             productSearchCache.put(cacheKey, new ProductSearchCacheEntry(now, new ArrayList<>(products)));

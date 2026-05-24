@@ -9,7 +9,6 @@ import com.example.shop.repository.UserRepository;
 import com.example.shop.service.impl.ProductQuestionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -29,9 +28,10 @@ class ProductQuestionServiceTest {
         questionRepository = mock(ProductQuestionRepository.class);
         ProductRepository productRepository = mock(ProductRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
-        service = new ProductQuestionServiceImpl(questionRepository, productRepository, userRepository);
-        ReflectionTestUtils.setField(service, "maxQuestionChars", 80);
-        ReflectionTestUtils.setField(service, "maxAnswerChars", 120);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getInt("product-question.max-question-chars", 500)).thenReturn(80);
+        when(runtimeConfig.getInt("product-question.max-answer-chars", 1000)).thenReturn(120);
+        service = new ProductQuestionServiceImpl(questionRepository, productRepository, userRepository, runtimeConfig);
 
         Product product = new Product();
         product.setId(7L);

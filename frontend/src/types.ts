@@ -142,6 +142,130 @@ export interface AdminSystemStatus {
     };
 }
 
+export interface AdminConfigCenterSnapshot {
+    dataId: string;
+    group: string;
+    namespace?: string;
+    nacosServerAddr: string;
+    content: string;
+    properties: Record<string, string>;
+    effectiveProperties: Record<string, string>;
+    appliedKeys: string[];
+    sensitiveKeys: string[];
+    warnings: string[];
+    errors: string[];
+    runtimeApplied: boolean;
+    nacosPublished: boolean;
+    propertyCount: number;
+    lastSyncedAt: string;
+}
+
+export interface AdminConfigCenterPublishRequest {
+    dataId: string;
+    group: string;
+    namespace?: string;
+    content: string;
+    applyRuntime: boolean;
+}
+
+export interface AdminLogManagementStatus {
+    loggerName: string;
+    configuredLevel: string;
+    effectiveLevel: string;
+    debugEnabled: boolean;
+    logDirectory: string;
+    logFileName: string;
+    availableFiles: string[];
+    totalLogBytes: number;
+}
+
+export interface AdminLogDebugRequest {
+    loggerName?: string;
+    enabled: boolean;
+}
+
+export interface AdminTrafficControlStatus {
+    rateLimit: {
+        enabled: boolean;
+        publicPerMinute: number;
+        authenticatedPerMinute: number;
+        adminPerMinute: number;
+        windowSeconds: number;
+        activeBuckets: number;
+        acceptedRequests: number;
+        rejectedRequests: number;
+    };
+    circuitBreakerConfig: {
+        enabled: boolean;
+        failureThreshold: number;
+        openSeconds: number;
+        halfOpenSuccessThreshold: number;
+    };
+    circuits: Array<{
+        name: string;
+        state: string;
+        failureCount: number;
+        halfOpenSuccessCount: number;
+        openedUntil?: string;
+        lastFailureMessage?: string;
+    }>;
+}
+
+export interface SystemAlert {
+    id: number;
+    severity: 'CRITICAL' | 'ERROR' | 'WARNING' | 'INFO' | string;
+    status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | string;
+    source: string;
+    category: string;
+    title: string;
+    message?: string;
+    fingerprint: string;
+    metadata?: string;
+    occurrenceCount: number;
+    firstSeenAt?: string;
+    lastSeenAt?: string;
+    acknowledgedAt?: string;
+    acknowledgedBy?: string;
+    resolvedAt?: string;
+    resolvedBy?: string;
+}
+
+export interface SystemAlertSummary {
+    openCount: number;
+    acknowledgedCount: number;
+    resolvedCount: number;
+    openBySeverity: Record<string, number>;
+    checkedAt: string;
+}
+
+export interface IpBlacklistEntry {
+    id: number;
+    ipAddress: string;
+    status: 'MONITORING' | 'BLOCKED' | 'RELEASED' | string;
+    source: 'LOGIN' | 'PAYMENT' | 'MANUAL' | string;
+    reason?: string;
+    failureCount: number;
+    firstSeenAt?: string;
+    lastSeenAt?: string;
+    blockedAt?: string;
+    blockedUntil?: string;
+    releasedAt?: string;
+    releasedBy?: string;
+    createdBy?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface IpBlacklistStatus {
+    enabled: boolean;
+    loginFailureThreshold: number;
+    paymentFailureThreshold: number;
+    windowMinutes: number;
+    blockMinutes: number;
+    blockedCount: number;
+    monitoringCount: number;
+}
+
 export interface SiteAnnouncement {
     id?: number;
     title: string;

@@ -7,7 +7,7 @@ import com.example.shop.repository.ProductQuestionRepository;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.UserRepository;
 import com.example.shop.service.ProductQuestionService;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.shop.service.RuntimeConfigService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,20 +19,17 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     private final ProductQuestionRepository questionRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
-
-    @Value("${product-question.max-question-chars:500}")
-    private int maxQuestionChars;
-
-    @Value("${product-question.max-answer-chars:1000}")
-    private int maxAnswerChars;
+    private final RuntimeConfigService runtimeConfig;
 
     public ProductQuestionServiceImpl(
             ProductQuestionRepository questionRepository,
             ProductRepository productRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            RuntimeConfigService runtimeConfig) {
         this.questionRepository = questionRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.runtimeConfig = runtimeConfig;
     }
 
     @Override
@@ -95,10 +92,10 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     private int normalizedMaxQuestionChars() {
-        return Math.max(20, maxQuestionChars);
+        return Math.max(20, runtimeConfig.getInt("product-question.max-question-chars", 500));
     }
 
     private int normalizedMaxAnswerChars() {
-        return Math.max(20, maxAnswerChars);
+        return Math.max(20, runtimeConfig.getInt("product-question.max-answer-chars", 1000));
     }
 }

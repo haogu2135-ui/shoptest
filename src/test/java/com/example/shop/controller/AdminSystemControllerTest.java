@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.service.ConfigCenterService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
@@ -8,7 +9,6 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -37,6 +37,9 @@ class AdminSystemControllerTest {
         assertEquals(true, ((Map<?, ?>) status.get("database")).get("ready"));
         assertEquals(true, ((Map<?, ?>) status.get("redis")).get("ready"));
         assertEquals("PONG", ((Map<?, ?>) status.get("redis")).get("ping"));
+        assertTrue(((Number) ((Map<?, ?>) status.get("database")).get("latencyMs")).longValue() >= 0);
+        assertTrue(((Number) ((Map<?, ?>) status.get("redis")).get("latencyMs")).longValue() >= 0);
+        assertEquals(0L, ((Number) ((Map<?, ?>) status.get("nacos")).get("latencyMs")).longValue());
         assertEquals("jdbc:mysql://localhost:3306/shop?password=******&useSSL=false",
                 ((Map<?, ?>) status.get("database")).get("url"));
     }
@@ -52,6 +55,7 @@ class AdminSystemControllerTest {
         assertEquals("UP", response.getBody().get("status"));
         assertEquals("DISABLED", ((Map<?, ?>) response.getBody().get("redis")).get("status"));
         assertEquals(true, ((Map<?, ?>) response.getBody().get("redis")).get("ready"));
+        assertEquals(0L, ((Number) ((Map<?, ?>) response.getBody().get("redis")).get("latencyMs")).longValue());
     }
 
     @Test
@@ -88,7 +92,19 @@ class AdminSystemControllerTest {
     private Environment environment() {
         Environment environment = mock(Environment.class);
         when(environment.getActiveProfiles()).thenReturn(new String[]{"test"});
+        when(environment.getProperty("spring.application.name", "shop-backend")).thenReturn("shop-backend");
+        when(environment.getProperty("app.runtime-mode", "production")).thenReturn("test");
+        when(environment.getProperty("server.port", "8081")).thenReturn("8081");
+        when(environment.getProperty("spring.datasource.url", "")).thenReturn("jdbc:mysql://localhost:3306/shop?password=secret&useSSL=false");
         when(environment.getProperty("spring.datasource.driver-class-name", "")).thenReturn("com.mysql.cj.jdbc.Driver");
+        when(environment.getProperty("app.mail.redis-enabled", Boolean.class, true)).thenReturn(true);
+        when(environment.getProperty("spring.redis.host", "")).thenReturn("127.0.0.1");
+        when(environment.getProperty("spring.redis.port", "6379")).thenReturn("6379");
+        when(environment.getProperty("spring.redis.database", "0")).thenReturn("0");
+        when(environment.getProperty("spring.cloud.nacos.discovery.server-addr", "")).thenReturn("127.0.0.1:8848");
+        when(environment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, false)).thenReturn(false);
+        when(environment.getProperty("spring.cloud.nacos.config.enabled", Boolean.class, false)).thenReturn(false);
+        when(environment.getProperty("spring.cloud.nacos.discovery.register-enabled", Boolean.class, false)).thenReturn(false);
         when(environment.getProperty("spring.cloud.nacos.discovery.namespace", "")).thenReturn("");
         when(environment.getProperty("spring.cloud.nacos.discovery.group", "DEFAULT_GROUP")).thenReturn("DEFAULT_GROUP");
         return environment;
@@ -121,21 +137,12 @@ class AdminSystemControllerTest {
     ) {
         ObjectProvider<DataSource> dataSources = mock(ObjectProvider.class);
         ObjectProvider<StringRedisTemplate> redisTemplates = mock(ObjectProvider.class);
+        ObjectProvider<ConfigCenterService> configCenterServices = mock(ObjectProvider.class);
         when(dataSources.getIfAvailable()).thenReturn(dataSource);
         when(redisTemplates.getIfAvailable()).thenReturn(redisTemplate);
+        when(configCenterServices.getIfAvailable()).thenReturn(null);
+        when(environment.getProperty("app.mail.redis-enabled", Boolean.class, true)).thenReturn(mailRedisEnabled);
 
-        AdminSystemController controller = new AdminSystemController(environment, dataSources, redisTemplates);
-        ReflectionTestUtils.setField(controller, "applicationName", "shop-backend");
-        ReflectionTestUtils.setField(controller, "serverPort", "8081");
-        ReflectionTestUtils.setField(controller, "runtimeMode", "test");
-        ReflectionTestUtils.setField(controller, "datasourceUrl", "jdbc:mysql://localhost:3306/shop?password=secret&useSSL=false");
-        ReflectionTestUtils.setField(controller, "nacosServerAddr", "127.0.0.1:8848");
-        ReflectionTestUtils.setField(controller, "nacosDiscoveryEnabled", true);
-        ReflectionTestUtils.setField(controller, "nacosRegisterEnabled", true);
-        ReflectionTestUtils.setField(controller, "mailRedisEnabled", mailRedisEnabled);
-        ReflectionTestUtils.setField(controller, "redisHost", "127.0.0.1");
-        ReflectionTestUtils.setField(controller, "redisPort", "6379");
-        ReflectionTestUtils.setField(controller, "redisDatabase", "0");
-        return controller;
+        return new AdminSystemController(environment, dataSources, redisTemplates, configCenterServices);
     }
 }

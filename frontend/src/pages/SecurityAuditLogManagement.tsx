@@ -22,6 +22,9 @@ const actionColors: Record<string, string> = {
   RETURN_REQUEST: 'gold',
   RETURN_SHIPMENT_SUBMIT: 'gold',
   REFUND_COMPLETE: 'purple',
+  CONFIG_PUBLISH: 'cyan',
+  LOG_DEBUG_TOGGLE: 'orange',
+  LOG_DOWNLOAD: 'volcano',
   AUDIT_LOG_EXPORT: 'volcano',
 };
 
@@ -41,12 +44,18 @@ export const auditActionOptions = [
   'ORDER_STATUS_UPDATE',
   'ORDER_BATCH_SHIP',
   'ORDER_EXPORT',
+  'CONFIG_PUBLISH',
+  'LOG_DEBUG_TOGGLE',
+  'LOG_DOWNLOAD',
   'AUDIT_LOG_EXPORT',
 ];
 
 const highRiskActions = new Set([
   'AUDIT_LOG_EXPORT',
   'ORDER_EXPORT',
+  'CONFIG_PUBLISH',
+  'LOG_DEBUG_TOGGLE',
+  'LOG_DOWNLOAD',
   'ORDER_BATCH_SHIP',
   'REFUND_COMPLETE',
   'STRIPE_WEBHOOK',
@@ -78,6 +87,9 @@ export const auditActionLabels: Record<string, Record<string, string>> = {
     ORDER_STATUS_UPDATE: 'Order status update',
     ORDER_BATCH_SHIP: 'Batch shipment',
     ORDER_EXPORT: 'Order export',
+    CONFIG_PUBLISH: 'Publish config',
+    LOG_DEBUG_TOGGLE: 'Toggle debug logs',
+    LOG_DOWNLOAD: 'Download runtime logs',
     AUDIT_LOG_EXPORT: 'Audit log export',
   },
   es: {

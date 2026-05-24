@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -34,6 +35,12 @@ public class SecurityConfig {
 
     @Autowired
     private SecurityApiErrorHandler securityApiErrorHandler;
+
+    @Autowired
+    private RateLimitFilter rateLimitFilter;
+
+    @Autowired
+    private IpBlacklistFilter ipBlacklistFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -87,7 +94,9 @@ public class SecurityConfig {
             .antMatchers("/admin/**").hasRole("ADMIN")
             .anyRequest().authenticated()
             .and()
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(ipBlacklistFilter, RateLimitFilter.class)
+            .addFilterAfter(rateLimitFilter, BasicAuthenticationFilter.class);
 
         return http.build();
     }
@@ -108,7 +117,12 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(corsOriginProperties.getCorsAllowedOriginPatterns());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setExposedHeaders(Arrays.asList(RequestCorrelationFilter.REQUEST_ID_HEADER));
+        configuration.setExposedHeaders(Arrays.asList(
+                RequestCorrelationFilter.REQUEST_ID_HEADER,
+                RateLimitFilter.LIMIT_HEADER,
+                RateLimitFilter.REMAINING_HEADER,
+                RateLimitFilter.RESET_HEADER,
+                "Retry-After"));
         configuration.setAllowCredentials(true);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

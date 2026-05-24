@@ -36,7 +36,12 @@ export const ADMIN_PAGE_PERMISSIONS = [
   'notifications',
   'announcements',
   'audit-logs',
+  'alerts',
+  'ip-blacklist',
+  'logs',
   'support',
   'registry',
+  'config-center',
+  'traffic-control',
   'system',
 ];

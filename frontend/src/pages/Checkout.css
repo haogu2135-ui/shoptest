@@ -2795,3 +2795,96 @@
     padding-inline: 10px !important;
   }
 }
+
+/* Mobile checkout control stability pass */
+@media (max-width: 640px) {
+  .checkout-page,
+  .checkout-page *,
+  .checkout-page__submitReview,
+  .checkout-page__submitReview * {
+    box-sizing: border-box;
+  }
+
+  .checkout-page {
+    padding-bottom: calc(134px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+
+  .checkout-page .ant-form,
+  .checkout-page .ant-form-item,
+  .checkout-page .ant-form-item-control,
+  .checkout-page .ant-form-item-control-input,
+  .checkout-page .ant-form-item-control-input-content,
+  .checkout-page .ant-select,
+  .checkout-page .ant-select-selector,
+  .checkout-page .ant-input,
+  .checkout-page .ant-input-affix-wrapper,
+  .checkout-page .ant-input-number,
+  .checkout-page .ant-btn {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .checkout-page .ant-radio-wrapper,
+  .checkout-page .ant-checkbox-wrapper,
+  .checkout-page .ant-typography,
+  .checkout-page__itemTitle,
+  .checkout-page__addressChoice,
+  .checkout-page__paymentMethod,
+  .checkout-page__coupon,
+  .checkout-page__summaryCard {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .checkout-page__paymentMethods,
+  .checkout-page__paymentGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .checkout-page__paymentMethod,
+  .checkout-page__addressChoice {
+    min-height: 52px;
+    padding: 10px;
+  }
+
+  .checkout-page__coupon,
+  .checkout-page__couponRow,
+  .checkout-page__summaryAction {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .checkout-page__coupon .ant-btn,
+  .checkout-page__summaryAction .ant-btn {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .checkout-page__submitReview {
+    width: auto;
+    max-width: none;
+  }
+
+  .checkout-page__submitMetric strong.ant-typography {
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 380px) {
+  .checkout-page {
+    padding-bottom: calc(128px + env(safe-area-inset-bottom));
+  }
+
+  .checkout-page__submitReview {
+    gap: 7px;
+  }
+
+  .checkout-page__submitMetric {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+}

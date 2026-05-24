@@ -1,0 +1,245 @@
+.config-center,
+.config-center *,
+.config-center *::before,
+.config-center *::after {
+  box-sizing: border-box;
+}
+
+.config-center {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.config-center__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid rgba(28, 85, 91, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f7fbff 0%, #f8fff6 100%);
+  box-shadow: 0 16px 36px rgba(28, 72, 91, 0.08);
+}
+
+.config-center__hero h2 {
+  margin: 4px 0 6px;
+  color: #153c46;
+  font-weight: 900;
+}
+
+.config-center__eyebrow {
+  color: #d94b2b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.config-center__actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.config-center__stats {
+  display: grid;
+  grid-template-columns: 1.2fr 0.7fr 0.8fr;
+  gap: 12px;
+}
+
+.config-center__stats .ant-card,
+.config-center__card,
+.config-center__alert {
+  min-width: 0;
+  max-width: 100%;
+  border-color: rgba(28, 85, 91, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(28, 72, 91, 0.06);
+}
+
+.config-center__grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.5fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.config-center__form {
+  display: grid;
+  gap: 2px;
+}
+
+.config-center__meta {
+  margin-top: 10px;
+}
+
+.config-center__contentItem {
+  margin-bottom: 0;
+}
+
+.config-center__editor {
+  min-height: 360px !important;
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.config-center .ant-typography,
+.config-center .ant-descriptions-item-content,
+.config-center .ant-tag,
+.config-center .ant-card-head-title,
+.config-center .ant-statistic-content,
+.config-center .ant-table-cell {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.config-center .ant-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.config-center .ant-table {
+  min-width: max-content;
+}
+
+@media (max-width: 980px) {
+  .config-center__hero,
+  .config-center__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .config-center__hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .config-center__actions {
+    width: 100%;
+  }
+
+  .config-center__actions .ant-btn {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 720px) {
+  .config-center {
+    gap: 12px;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .config-center__hero {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .config-center__hero h2 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .config-center__stats {
+    display: flex;
+    gap: 8px;
+    margin-inline: -8px;
+    padding: 0 8px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .config-center__stats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .config-center__stats .ant-card {
+    flex: 0 0 150px;
+    scroll-snap-align: start;
+  }
+
+  .config-center__card .ant-card-body,
+  .config-center__stats .ant-card-body {
+    padding: 12px;
+  }
+
+  .config-center__editor {
+    min-height: 300px !important;
+    font-size: 12px;
+  }
+
+  .config-center .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  .config-center .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 430px) {
+  .config-center__hero {
+    padding: 12px;
+  }
+
+  .config-center__stats {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+
+  .config-center__stats .ant-card {
+    flex-basis: 138px;
+  }
+
+  .config-center .ant-table-wrapper {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
+/* Mobile config editor operation polish */
+@media (max-width: 720px) {
+  .config-center__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .config-center__actions .ant-space-item,
+  .config-center__actions .ant-btn {
+    width: 100%;
+  }
+
+  .config-center__stats {
+    scroll-padding-inline: 8px 20px;
+    overscroll-behavior-x: contain;
+  }
+
+  .config-center__editor {
+    max-width: 100%;
+    overflow: auto;
+    border-radius: 10px;
+  }
+
+  .config-center__contentItem .ant-form-item-control-input-content {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .config-center__actions {
+    grid-template-columns: 1fr;
+  }
+}

@@ -301,3 +301,65 @@
     padding-inline: 12px;
   }
 }
+
+/* Mobile system monitor diagnostic density pass */
+@media (max-width: 720px) {
+  .system-monitor__resourceGrid .ant-card-head,
+  .system-monitor__card .ant-card-head {
+    min-height: 44px;
+  }
+
+  .system-monitor .ant-card-head-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .system-monitor .ant-descriptions {
+    display: block;
+  }
+
+  .system-monitor .ant-descriptions-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .system-monitor .ant-descriptions-item {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr);
+    padding-bottom: 0;
+  }
+
+  .system-monitor .ant-descriptions-item-label,
+  .system-monitor .ant-descriptions-item-content {
+    min-width: 0;
+    display: block;
+  }
+
+  .system-monitor__databaseInfo,
+  .system-monitor__databaseInfo .ant-space,
+  .system-monitor__databaseInfo .ant-space-item {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .system-monitor__largeIcon {
+    flex: 0 0 auto;
+  }
+
+  .system-monitor__alert {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .system-monitor .ant-descriptions-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .system-monitor .ant-descriptions-item-label {
+    border-bottom: 0;
+    color: #6f7f74;
+  }
+}

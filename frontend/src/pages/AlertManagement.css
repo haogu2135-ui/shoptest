@@ -1,0 +1,302 @@
+.alert-management,
+.alert-management *,
+.alert-management *::before,
+.alert-management *::after {
+  box-sizing: border-box;
+}
+
+.alert-management {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.alert-management__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid rgba(35, 80, 92, 0.14);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff9f8 0%, #f7fffb 100%);
+  box-shadow: 0 16px 34px rgba(38, 67, 85, 0.08);
+}
+
+.alert-management__hero h2 {
+  margin: 4px 0 6px;
+  color: #173b46;
+  font-weight: 900;
+}
+
+.alert-management__eyebrow {
+  color: #d94b2b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.alert-management__actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.alert-management__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.alert-management__stats .ant-card,
+.alert-management__card,
+.alert-management__alert {
+  min-width: 0;
+  max-width: 100%;
+  border-color: rgba(35, 80, 92, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(38, 67, 85, 0.06);
+}
+
+.alert-management__alert {
+  margin-bottom: 14px;
+}
+
+.alert-management__filters {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.alert-management__filters .ant-select {
+  min-width: 150px;
+}
+
+.alert-management__filters .ant-input-affix-wrapper {
+  width: 220px;
+}
+
+.alert-management__titleCell,
+.alert-management__expanded {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.alert-management__expanded {
+  color: #44515a;
+}
+
+.alert-management .ant-typography,
+.alert-management .ant-statistic-content,
+.alert-management .ant-table-cell,
+.alert-management .ant-tag {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .alert-management__hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .alert-management__actions {
+    width: 100%;
+  }
+
+  .alert-management__actions .ant-btn {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 720px) {
+  .alert-management {
+    gap: 12px;
+  }
+
+  .alert-management__hero {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .alert-management__hero h2 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .alert-management__stats {
+    display: flex;
+    gap: 8px;
+    margin-inline: -8px;
+    padding: 0 8px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .alert-management__stats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .alert-management__stats .ant-card {
+    flex: 0 0 150px;
+    scroll-snap-align: start;
+  }
+
+  .alert-management__card .ant-card-body,
+  .alert-management__stats .ant-card-body {
+    padding: 12px;
+  }
+
+  .alert-management__filters {
+    display: grid;
+    gap: 8px;
+  }
+
+  .alert-management__filters .ant-select,
+  .alert-management__filters .ant-input-affix-wrapper,
+  .alert-management__filters .ant-btn {
+    width: 100%;
+  }
+
+  .alert-management .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+}
+
+/* Mobile operations polish */
+@media (max-width: 720px) {
+  .alert-management__hero > div:first-child,
+  .alert-management__actions,
+  .alert-management__card,
+  .alert-management__filters,
+  .alert-management .ant-table-wrapper {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .alert-management__hero {
+    box-shadow: 0 10px 24px rgba(38, 67, 85, 0.07);
+  }
+
+  .alert-management__hero .ant-typography {
+    line-height: 1.4;
+  }
+
+  .alert-management__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .alert-management__actions .ant-space-item,
+  .alert-management__actions .ant-btn {
+    width: 100%;
+  }
+
+  .alert-management__stats {
+    scroll-padding-inline: 8px 20px;
+    overscroll-behavior-x: contain;
+  }
+
+  .alert-management__stats .ant-card {
+    flex-basis: 142px;
+  }
+
+  .alert-management__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .alert-management__card .ant-table-wrapper {
+    margin-inline: -8px;
+    padding-inline: 8px;
+  }
+
+  .alert-management__expanded {
+    padding: 2px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 380px) {
+  .alert-management__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .alert-management__stats .ant-card {
+    flex-basis: 134px;
+  }
+}
+
+/* Mobile alert console stability pass */
+@media (max-width: 720px) {
+  .alert-management,
+  .alert-management * {
+    box-sizing: border-box;
+  }
+
+  .alert-management {
+    overflow-x: clip;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .alert-management__hero {
+    position: sticky;
+    top: 64px;
+    z-index: 8;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(14px);
+  }
+
+  .alert-management__stats {
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+  }
+
+  .alert-management__filters,
+  .alert-management__filters .ant-select,
+  .alert-management__filters .ant-input-affix-wrapper,
+  .alert-management__filters .ant-btn,
+  .alert-management .ant-table-wrapper,
+  .alert-management .ant-table-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .alert-management__filters .ant-select-selector,
+  .alert-management__filters .ant-input-affix-wrapper,
+  .alert-management__filters .ant-btn {
+    min-height: 42px;
+    border-radius: 13px;
+  }
+
+  .alert-management .ant-table-content {
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .alert-management .ant-pagination {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .alert-management .ant-pagination-options {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .alert-management__hero {
+    top: 58px;
+  }
+
+  .alert-management .ant-table-cell {
+    padding: 9px 8px;
+  }
+}

@@ -926,3 +926,94 @@
     touch-action: manipulation;
   }
 }
+
+/* Mobile registration viewport stability pass */
+@media (max-width: 640px) {
+  .register-page {
+    min-height: 100svh;
+  }
+
+  .register-page__card {
+    max-height: calc(100svh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .register-page__card .ant-form,
+  .register-page__card .ant-form-item,
+  .register-page__card .ant-form-item-control,
+  .register-page__card .ant-form-item-control-input,
+  .register-page__card .ant-form-item-control-input-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .register-page__card .ant-input-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(78px, 96px);
+    gap: 6px;
+  }
+
+  .register-page__card .ant-input-group-addon {
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .register-page__card .ant-input-group-addon .ant-btn {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .register-page__footer {
+    min-width: 0;
+    padding-bottom: 2px;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 430px) {
+  .register-page__card {
+    max-height: calc(100svh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  .register-page__card .ant-input-group {
+    grid-template-columns: minmax(0, 1fr) minmax(70px, 82px);
+  }
+
+  .register-page__card .ant-input-group-addon .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .register-page__trustGrid,
+  .register-page__featureCards {
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent);
+  }
+}
+
+@media (max-width: 360px) {
+  .register-page__brand {
+    font-size: 22px;
+  }
+
+  .register-page__title {
+    font-size: 19px !important;
+  }
+
+  .register-page__card .ant-form-item {
+    margin-bottom: 9px;
+  }
+
+  .register-page__card .ant-input-group {
+    grid-template-columns: minmax(0, 1fr) 68px;
+  }
+}

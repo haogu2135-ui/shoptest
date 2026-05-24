@@ -17,7 +17,6 @@ import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -62,48 +61,10 @@ public class PaymentService {
     private OrderService orderService;
     @Autowired
     private PaymentChannelConfig paymentChannelConfig;
-
-    @Value("${payment.timeout-minutes:30}")
-    private long timeoutMinutes;
-
-    @Value("${payment.callback-secret:dev-payment-secret}")
-    private String callbackSecret;
-
-    @Value("${payment.callback-max-skew-seconds:300}")
-    private long callbackMaxSkewSeconds;
-
-    @Value("${payment.success-url:${STRIPE_SUCCESS_URL:http://localhost:3000/profile?payment=success}}")
-    private String paymentSuccessUrl;
-
-    @Value("${payment.cancel-url:${STRIPE_CANCEL_URL:http://localhost:3000/cart?payment=cancelled}}")
-    private String paymentCancelUrl;
-
-    @Value("${app.runtime-mode:production}")
-    private String runtimeMode;
-
-    @Value("${payment.simulation-enabled:}")
-    private String paymentSimulationEnabled;
-
-    @Value("${payment.simulation-allow-production:false}")
-    private boolean paymentSimulationAllowProduction;
-
-    @Value("${payment.gateway-allow-local:false}")
-    private boolean paymentGatewayAllowLocal;
-
-    @Value("${stripe.secret-key:}")
-    private String stripeSecretKey;
-
-    @Value("${stripe.webhook-secret:}")
-    private String stripeWebhookSecret;
-
-    @Value("${stripe.checkout-success-url:http://localhost:3000/profile?payment=success}")
-    private String stripeSuccessUrl;
-
-    @Value("${stripe.checkout-cancel-url:http://localhost:3000/cart?payment=cancelled}")
-    private String stripeCancelUrl;
-
-    @Value("${stripe.checkout-expire-minutes:1440}")
-    private long stripeCheckoutExpireMinutes;
+    @Autowired
+    private RuntimeConfigService runtimeConfig;
+    @Autowired
+    private CircuitBreakerService circuitBreakerService;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -251,12 +212,13 @@ public class PaymentService {
 
     @Transactional
     public Payment handleStripeWebhook(String payload, String signatureHeader) {
-        if (isBlank(stripeWebhookSecret)) {
+        String webhookSecret = stripeWebhookSecret();
+        if (isBlank(webhookSecret)) {
             throw new IllegalStateException("Stripe webhook secret is not configured");
         }
         Event event;
         try {
-            event = Webhook.constructEvent(payload, signatureHeader, stripeWebhookSecret);
+            event = Webhook.constructEvent(payload, signatureHeader, webhookSecret);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid Stripe webhook signature");
         }
@@ -363,7 +325,7 @@ public class PaymentService {
             return true;
         }
         if (channelConfig.isStripeProvider()) {
-            return !isBlank(stripeSecretKey);
+            return !isBlank(stripeSecretKey());
         }
         if (channelConfig.isGenericApiProvider()) {
             return !isBlank(channelConfig.getCreateUrl());
@@ -397,7 +359,7 @@ public class PaymentService {
         String payload = request.getOrderNo() + "|" + normalizeConfiguredChannel(request.getChannel()) + "|"
                 + request.getTransactionId() + "|" + request.getStatus().toUpperCase(Locale.ROOT) + "|"
                 + request.getAmount().stripTrailingZeros().toPlainString() + "|"
-                + requiredCallbackTimestamp(request.getCallbackTimestamp()) + "|" + callbackSecret;
+                + requiredCallbackTimestamp(request.getCallbackTimestamp()) + "|" + callbackSecret();
         return sha256(payload);
     }
 
@@ -452,11 +414,12 @@ public class PaymentService {
     }
 
     private Payment createStripePayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
-        if (isBlank(stripeSecretKey)) {
+        String secretKey = stripeSecretKey();
+        if (isBlank(secretKey)) {
             throw new IllegalStateException("Stripe secret key is not configured");
         }
         try {
-            Stripe.apiKey = stripeSecretKey;
+            Stripe.apiKey = secretKey;
             Session session = Session.create(
                     buildStripeCheckoutSession(order, channelConfig),
                     RequestOptions.builder()
@@ -470,7 +433,7 @@ public class PaymentService {
             payment.setStatus(PENDING);
             payment.setTransactionId(session.getId());
             payment.setProviderReference(session.getId());
-            payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig, stripeCheckoutExpireMinutes)));
+            payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig, stripeCheckoutExpireMinutes())));
             payment.setPaymentUrl(session.getUrl());
             payment.setCreatedAt(now);
             payment.setUpdatedAt(now);
@@ -482,11 +445,12 @@ public class PaymentService {
     }
 
     private Payment refreshStripePayment(Payment payment, Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
-        if (isBlank(stripeSecretKey)) {
+        String secretKey = stripeSecretKey();
+        if (isBlank(secretKey)) {
             throw new IllegalStateException("Stripe secret key is not configured");
         }
         try {
-            Stripe.apiKey = stripeSecretKey;
+            Stripe.apiKey = secretKey;
             Session session = Session.create(
                     buildStripeCheckoutSession(order, channelConfig),
                     RequestOptions.builder()
@@ -498,7 +462,7 @@ public class PaymentService {
             payment.setTransactionId(session.getId());
             payment.setProviderReference(session.getId());
             payment.setRefundReference(null);
-            payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig, stripeCheckoutExpireMinutes)));
+            payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig, stripeCheckoutExpireMinutes())));
             payment.setPaymentUrl(session.getUrl());
             payment.setPaidAt(null);
             payment.setRefundedAt(null);
@@ -516,7 +480,7 @@ public class PaymentService {
         if (createUrl == null) {
             throw new IllegalStateException("Create payment URL is not configured for channel " + channelConfig.getCode());
         }
-        createUrl = GatewayUrlValidator.requireOutboundHttpUrl(createUrl, paymentGatewayAllowLocal, "Create payment URL");
+        createUrl = GatewayUrlValidator.requireOutboundHttpUrl(createUrl, paymentGatewayAllowLocal(), "Create payment URL");
         ResponseEntity<String> response = requestGenericApiPayment(order, channelConfig, createUrl);
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new IllegalStateException("Gateway create payment failed with status " + response.getStatusCodeValue());
@@ -543,7 +507,7 @@ public class PaymentService {
         if (createUrl == null) {
             throw new IllegalStateException("Create payment URL is not configured for channel " + channelConfig.getCode());
         }
-        createUrl = GatewayUrlValidator.requireOutboundHttpUrl(createUrl, paymentGatewayAllowLocal, "Create payment URL");
+        createUrl = GatewayUrlValidator.requireOutboundHttpUrl(createUrl, paymentGatewayAllowLocal(), "Create payment URL");
         ResponseEntity<String> response = requestGenericApiPayment(order, channelConfig, createUrl);
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new IllegalStateException("Gateway create payment failed with status " + response.getStatusCodeValue());
@@ -574,14 +538,14 @@ public class PaymentService {
         payload.put("currency", resolveCurrency(channelConfig));
         payload.put("expiresMinutes", resolveTimeoutMinutes(channelConfig));
         payload.put("merchantId", trimToNull(channelConfig.getMerchantId()));
-        payload.put("returnUrl", paymentSuccessUrl);
-        payload.put("cancelUrl", paymentCancelUrl);
+        payload.put("returnUrl", paymentSuccessUrl());
+        payload.put("cancelUrl", paymentCancelUrl());
         try {
-            return restTemplate.exchange(
+            return circuitBreakerService.execute("payment-create-" + channelConfig.getCode(), () -> restTemplate.exchange(
                     createUrl,
                     HttpMethod.POST,
                     new HttpEntity<>(payload, buildGatewayHeaders(channelConfig)),
-                    String.class);
+                    String.class));
         } catch (RestClientException e) {
             throw new IllegalStateException("Gateway create payment request failed: " + e.getMessage());
         }
@@ -645,8 +609,8 @@ public class PaymentService {
         metadata.put("orderNo", order.getOrderNo());
         return SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(stripeSuccessUrl + (stripeSuccessUrl.contains("?") ? "&" : "?") + "orderNo=" + order.getOrderNo())
-                .setCancelUrl(stripeCancelUrl + (stripeCancelUrl.contains("?") ? "&" : "?") + "orderNo=" + order.getOrderNo())
+                .setSuccessUrl(stripeSuccessUrl() + (stripeSuccessUrl().contains("?") ? "&" : "?") + "orderNo=" + order.getOrderNo())
+                .setCancelUrl(stripeCancelUrl() + (stripeCancelUrl().contains("?") ? "&" : "?") + "orderNo=" + order.getOrderNo())
                 .setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
                         .putAllMetadata(metadata)
                         .build())
@@ -666,7 +630,8 @@ public class PaymentService {
     }
 
     private Payment syncProviderPaymentState(Payment payment) {
-        if (payment == null || !PENDING.equals(payment.getStatus()) || isBlank(stripeSecretKey)) {
+        String secretKey = stripeSecretKey();
+        if (payment == null || !PENDING.equals(payment.getStatus()) || isBlank(secretKey)) {
             return null;
         }
         PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
@@ -678,7 +643,7 @@ public class PaymentService {
             return null;
         }
         try {
-            Stripe.apiKey = stripeSecretKey;
+            Stripe.apiKey = secretKey;
             Session session = Session.retrieve(sessionId);
             String sessionStatus = session.getStatus() == null ? "" : session.getStatus().toLowerCase(Locale.ROOT);
             String paymentStatus = session.getPaymentStatus() == null ? "" : session.getPaymentStatus().toLowerCase(Locale.ROOT);
@@ -763,6 +728,7 @@ public class PaymentService {
     }
 
     private void validateCallbackFreshness(LocalDateTime callbackAt) {
+        long callbackMaxSkewSeconds = runtimeConfig.getLong("payment.callback-max-skew-seconds", 300);
         long skew = callbackMaxSkewSeconds > 0 ? callbackMaxSkewSeconds : DEFAULT_CALLBACK_MAX_SKEW_SECONDS;
         long deltaSeconds = Math.abs(Duration.between(callbackAt, LocalDateTime.now(ZoneOffset.UTC)).getSeconds());
         if (deltaSeconds > skew) {
@@ -789,7 +755,7 @@ public class PaymentService {
     }
 
     private long resolveTimeoutMinutes(PaymentChannelConfig.Channel channel) {
-        return resolveTimeoutMinutes(channel, timeoutMinutes);
+        return resolveTimeoutMinutes(channel, runtimeConfig.getLong("payment.timeout-minutes", 30));
     }
 
     private long resolveTimeoutMinutes(PaymentChannelConfig.Channel channel, long defaultValue) {
@@ -826,18 +792,19 @@ public class PaymentService {
         if (!isProductionMode()) {
             return;
         }
-        String secret = trimToNull(callbackSecret);
+        String secret = trimToNull(callbackSecret());
         if (secret == null || "dev-payment-secret".equals(secret) || secret.length() < 32) {
             throw new IllegalStateException("Payment callback secret is not configured for production");
         }
     }
 
     public boolean isPaymentSimulationEnabled() {
-        String mode = runtimeMode == null ? "production" : runtimeMode.trim().toLowerCase(Locale.ROOT);
+        String mode = runtimeMode();
         boolean productionMode = "production".equals(mode) || "prod".equals(mode);
-        if (productionMode && !paymentSimulationAllowProduction) {
+        if (productionMode && !runtimeConfig.getBoolean("payment.simulation-allow-production", false)) {
             return false;
         }
+        String paymentSimulationEnabled = runtimeConfig.getString("payment.simulation-enabled", "");
         if (!isBlank(paymentSimulationEnabled)) {
             return Boolean.parseBoolean(paymentSimulationEnabled.trim());
         }
@@ -901,8 +868,48 @@ public class PaymentService {
     }
 
     private boolean isProductionMode() {
-        String mode = runtimeMode == null ? "production" : runtimeMode.trim().toLowerCase(Locale.ROOT);
+        String mode = runtimeMode();
         return "production".equals(mode) || "prod".equals(mode);
+    }
+
+    private String callbackSecret() {
+        return runtimeConfig.getString("payment.callback-secret", "dev-payment-secret");
+    }
+
+    private boolean paymentGatewayAllowLocal() {
+        return runtimeConfig.getBoolean("payment.gateway-allow-local", false);
+    }
+
+    private String stripeSecretKey() {
+        return runtimeConfig.getString("stripe.secret-key", "");
+    }
+
+    private String stripeWebhookSecret() {
+        return runtimeConfig.getString("stripe.webhook-secret", "");
+    }
+
+    private String stripeSuccessUrl() {
+        return runtimeConfig.getString("stripe.checkout-success-url", "http://localhost:3000/profile?payment=success");
+    }
+
+    private String stripeCancelUrl() {
+        return runtimeConfig.getString("stripe.checkout-cancel-url", "http://localhost:3000/cart?payment=cancelled");
+    }
+
+    private String paymentSuccessUrl() {
+        return runtimeConfig.getString("payment.success-url", "http://localhost:3000/profile?payment=success");
+    }
+
+    private String paymentCancelUrl() {
+        return runtimeConfig.getString("payment.cancel-url", "http://localhost:3000/cart?payment=cancelled");
+    }
+
+    private long stripeCheckoutExpireMinutes() {
+        return runtimeConfig.getLong("stripe.checkout-expire-minutes", 1440);
+    }
+
+    private String runtimeMode() {
+        return runtimeConfig.getString("app.runtime-mode", "production").trim().toLowerCase(Locale.ROOT);
     }
 
     private static final class GenericApiPaymentResponse {

@@ -329,3 +329,60 @@
     padding: 9px 8px;
   }
 }
+
+/* Mobile registry diagnostic stability pass */
+@media (max-width: 720px) {
+  .registry-management__stats {
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+  }
+
+  .registry-management .ant-descriptions {
+    display: block;
+  }
+
+  .registry-management .ant-descriptions-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .registry-management .ant-descriptions-item {
+    display: grid;
+    grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+    padding-bottom: 0;
+  }
+
+  .registry-management .ant-descriptions-item-label,
+  .registry-management .ant-descriptions-item-content {
+    min-width: 0;
+    display: block;
+  }
+
+  .registry-management__gateway .ant-card-head {
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+
+  .registry-management__gateway .ant-card-head-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .registry-management .ant-table-content {
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 360px) {
+  .registry-management .ant-descriptions-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .registry-management .ant-descriptions-item-label {
+    border-bottom: 0;
+    color: #6f7f74;
+  }
+}

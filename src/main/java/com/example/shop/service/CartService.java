@@ -6,7 +6,6 @@ import com.example.shop.repository.CartItemMapper;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,12 +25,7 @@ public class CartService {
     private final CartItemMapper cartItemMapper;
     private final ProductRepository productRepository;
     private final ProductVariantService productVariantService;
-
-    @Value("${cart.max-quantity-per-line:99}")
-    private int maxQuantityPerLine;
-
-    @Value("${cart.selected-specs-max-chars:2000}")
-    private int selectedSpecsMaxChars;
+    private final RuntimeConfigService runtimeConfig;
 
     public List<CartItem> getCartItems(Long userId) {
         List<CartItem> items = cartItemMapper.findByUserId(userId);
@@ -190,14 +184,14 @@ public class CartService {
 
     private int normalizeQuantity(Integer quantity) {
         int normalized = quantity == null ? 0 : quantity;
-        if (normalized <= 0 || normalized > Math.max(1, maxQuantityPerLine)) {
+        if (normalized <= 0 || normalized > Math.max(1, runtimeConfig.getInt("cart.max-quantity-per-line", 99))) {
             throw new IllegalArgumentException("Invalid quantity");
         }
         return normalized;
     }
 
     private String normalizeSelectedSpecs(String selectedSpecs) {
-        if (selectedSpecs != null && selectedSpecs.length() > Math.max(100, selectedSpecsMaxChars)) {
+        if (selectedSpecs != null && selectedSpecs.length() > Math.max(100, runtimeConfig.getInt("cart.selected-specs-max-chars", 2000))) {
             throw new IllegalArgumentException("Selected options are too large");
         }
         return productVariantService.normalizeSpecs(selectedSpecs);

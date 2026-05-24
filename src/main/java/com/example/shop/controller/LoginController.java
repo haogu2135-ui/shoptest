@@ -5,6 +5,7 @@ import com.example.shop.dto.EmailLoginRequest;
 import com.example.shop.entity.User;
 import com.example.shop.service.EmailLoginService;
 import com.example.shop.service.EmailLoginService.EmailLoginException;
+import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.UserService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.security.JwtService;
@@ -32,6 +33,7 @@ public class LoginController {
     private final JwtService jwtService;
     private final SecurityAuditLogService auditLogService;
     private final EmailLoginService emailLoginService;
+    private final IpBlacklistService ipBlacklistService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User loginRequest, HttpServletRequest request) {
@@ -69,6 +71,7 @@ public class LoginController {
                     request,
                     "User login failed",
                     null);
+            ipBlacklistService.recordLoginFailure(request, "Invalid username or password");
             return ResponseEntity.badRequest().body("Invalid username or password");
         }
     }
@@ -114,6 +117,7 @@ public class LoginController {
                     request,
                     "User email login failed",
                     null);
+            ipBlacklistService.recordLoginFailure(request, e instanceof EmailLoginException ? ((EmailLoginException) e).getCode() : "Invalid email login code");
             if (e instanceof EmailLoginException) {
                 EmailLoginException loginException = (EmailLoginException) e;
                 HttpStatus status = "TOO_MANY_ATTEMPTS".equals(loginException.getCode())

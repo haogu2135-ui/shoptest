@@ -1385,3 +1385,74 @@
     width: min(100% - 10px, 1200px);
   }
 }
+
+/* Mobile gallery modal/upload stability pass */
+@media (max-width: 620px) {
+  .pet-gallery-page,
+  .pet-gallery-page * {
+    box-sizing: border-box;
+  }
+
+  .pet-gallery-toolbar,
+  .pet-gallery-toolbar .ant-space,
+  .pet-gallery-toolbar .ant-space-item,
+  .pet-gallery-toolbar .ant-input-affix-wrapper,
+  .pet-gallery-toolbar .ant-btn {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .pet-gallery-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .pet-gallery-toolbar .ant-space {
+    width: 100%;
+  }
+
+  .pet-gallery-toolbar .ant-btn {
+    width: 100%;
+    min-height: 40px;
+    white-space: normal;
+  }
+
+  .pet-gallery-action-card {
+    padding: 10px;
+  }
+
+  .pet-gallery-action-card .ant-upload,
+  .pet-gallery-action-card .ant-upload-wrapper,
+  .pet-gallery-action-card .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pet-gallery-preview .ant-modal-content {
+    max-height: calc(100svh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  .pet-gallery-preview .ant-modal-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pet-gallery-card__imageButton {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .pet-gallery-action-card,
+  .pet-gallery-toolbar {
+    padding-inline: 8px;
+  }
+}

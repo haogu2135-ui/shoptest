@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.example.shop.dto.ConfigCenterHealthResponse;
+import com.example.shop.service.ConfigCenterService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -29,48 +30,18 @@ public class AdminSystemController {
     private final Environment environment;
     private final ObjectProvider<DataSource> dataSources;
     private final ObjectProvider<StringRedisTemplate> redisTemplates;
-
-    @Value("${spring.application.name:shop-backend}")
-    private String applicationName;
-
-    @Value("${server.port:8081}")
-    private String serverPort;
-
-    @Value("${app.runtime-mode:production}")
-    private String runtimeMode;
-
-    @Value("${spring.datasource.url:}")
-    private String datasourceUrl;
-
-    @Value("${spring.cloud.nacos.discovery.server-addr:}")
-    private String nacosServerAddr;
-
-    @Value("${spring.cloud.nacos.discovery.enabled:false}")
-    private boolean nacosDiscoveryEnabled;
-
-    @Value("${spring.cloud.nacos.discovery.register-enabled:false}")
-    private boolean nacosRegisterEnabled;
-
-    @Value("${app.mail.redis-enabled:true}")
-    private boolean mailRedisEnabled;
-
-    @Value("${spring.redis.host:}")
-    private String redisHost;
-
-    @Value("${spring.redis.port:6379}")
-    private String redisPort;
-
-    @Value("${spring.redis.database:0}")
-    private String redisDatabase;
+    private final ObjectProvider<ConfigCenterService> configCenterServices;
 
     public AdminSystemController(
             Environment environment,
             ObjectProvider<DataSource> dataSources,
-            ObjectProvider<StringRedisTemplate> redisTemplates
+            ObjectProvider<StringRedisTemplate> redisTemplates,
+            ObjectProvider<ConfigCenterService> configCenterServices
     ) {
         this.environment = environment;
         this.dataSources = dataSources;
         this.redisTemplates = redisTemplates;
+        this.configCenterServices = configCenterServices;
     }
 
     @GetMapping("/status")
@@ -81,7 +52,7 @@ public class AdminSystemController {
     @GetMapping("/readiness")
     public ResponseEntity<Map<String, Object>> getReadiness() {
         Map<String, Object> payload = buildStatus();
-        boolean ready = Boolean.TRUE.equals(payload.get("healthy"));
+        boolean ready = Boolean.TRUE.equals(payload.get("ready"));
         return ResponseEntity
                 .status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
                 .body(payload);
@@ -93,11 +64,15 @@ public class AdminSystemController {
         File root = new File(".").getAbsoluteFile();
         Map<String, Object> database = databasePayload();
         Map<String, Object> redis = redisPayload();
-        boolean healthy = Boolean.TRUE.equals(database.get("ready")) && Boolean.TRUE.equals(redis.get("ready"));
+        Map<String, Object> nacos = nacosPayload();
+        boolean ready = Boolean.TRUE.equals(database.get("ready")) && Boolean.TRUE.equals(redis.get("ready"));
+        boolean optionalHealthy = Boolean.TRUE.equals(nacos.get("ready"));
+        boolean healthy = ready && optionalHealthy;
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("status", healthy ? "UP" : "DEGRADED");
         payload.put("healthy", healthy);
+        payload.put("ready", ready);
         payload.put("checkedAt", Instant.now().toString());
         payload.put("application", applicationPayload());
         payload.put("runtime", runtimePayload(runtime, runtimeBean));
@@ -105,15 +80,15 @@ public class AdminSystemController {
         payload.put("disk", diskPayload(root));
         payload.put("database", database);
         payload.put("redis", redis);
-        payload.put("nacos", nacosPayload());
+        payload.put("nacos", nacos);
         return payload;
     }
 
     private Map<String, Object> applicationPayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("name", applicationName);
-        payload.put("runtimeMode", runtimeMode);
-        payload.put("serverPort", serverPort);
+        payload.put("name", property("spring.application.name", "shop-backend"));
+        payload.put("runtimeMode", property("app.runtime-mode", "production"));
+        payload.put("serverPort", property("server.port", "8081"));
         payload.put("profiles", Arrays.asList(environment.getActiveProfiles()));
         payload.put("time", Instant.now().toString());
         return payload;
@@ -160,7 +135,8 @@ public class AdminSystemController {
 
     private Map<String, Object> databasePayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("url", maskDatasourceUrl(datasourceUrl));
+        long startedAt = System.nanoTime();
+        payload.put("url", maskDatasourceUrl(property("spring.datasource.url", "")));
         payload.put("driver", environment.getProperty("spring.datasource.driver-class-name", ""));
         payload.put("required", true);
         payload.put("checkedAt", Instant.now().toString());
@@ -187,15 +163,19 @@ public class AdminSystemController {
             payload.put("healthy", false);
             payload.put("ready", false);
             payload.put("error", sanitizeError(e));
+        } finally {
+            payload.put("latencyMs", elapsedMillis(startedAt));
         }
         return payload;
     }
 
     private Map<String, Object> redisPayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("host", redisHost);
-        payload.put("port", redisPort);
-        payload.put("database", redisDatabase);
+        long startedAt = System.nanoTime();
+        boolean mailRedisEnabled = environment.getProperty("app.mail.redis-enabled", Boolean.class, true);
+        payload.put("host", property("spring.redis.host", ""));
+        payload.put("port", property("spring.redis.port", "6379"));
+        payload.put("database", property("spring.redis.database", "0"));
         payload.put("required", mailRedisEnabled);
         payload.put("checkedAt", Instant.now().toString());
 
@@ -203,6 +183,7 @@ public class AdminSystemController {
             payload.put("status", "DISABLED");
             payload.put("healthy", false);
             payload.put("ready", true);
+            payload.put("latencyMs", 0L);
             return payload;
         }
 
@@ -212,6 +193,7 @@ public class AdminSystemController {
             payload.put("healthy", false);
             payload.put("ready", false);
             payload.put("error", "StringRedisTemplate bean is unavailable");
+            payload.put("latencyMs", elapsedMillis(startedAt));
             return payload;
         }
 
@@ -221,6 +203,7 @@ public class AdminSystemController {
             payload.put("healthy", false);
             payload.put("ready", false);
             payload.put("error", "RedisConnectionFactory is unavailable");
+            payload.put("latencyMs", elapsedMillis(startedAt));
             return payload;
         }
 
@@ -245,18 +228,65 @@ public class AdminSystemController {
             if (connection != null) {
                 connection.close();
             }
+            payload.put("latencyMs", elapsedMillis(startedAt));
         }
         return payload;
     }
 
     private Map<String, Object> nacosPayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("serverAddr", nacosServerAddr);
-        payload.put("discoveryEnabled", nacosDiscoveryEnabled);
-        payload.put("registerEnabled", nacosRegisterEnabled);
+        long startedAt = System.nanoTime();
+        boolean discoveryEnabled = environment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, false);
+        boolean configEnabled = environment.getProperty("spring.cloud.nacos.config.enabled", Boolean.class, discoveryEnabled);
+        payload.put("serverAddr", property("spring.cloud.nacos.discovery.server-addr", ""));
+        payload.put("configEnabled", configEnabled);
+        payload.put("discoveryEnabled", discoveryEnabled);
+        payload.put("registerEnabled", environment.getProperty("spring.cloud.nacos.discovery.register-enabled", Boolean.class, false));
         payload.put("namespace", environment.getProperty("spring.cloud.nacos.discovery.namespace", ""));
         payload.put("group", environment.getProperty("spring.cloud.nacos.discovery.group", "DEFAULT_GROUP"));
+        payload.put("checkedAt", Instant.now().toString());
+        if (!discoveryEnabled && !configEnabled) {
+            payload.put("status", "DISABLED");
+            payload.put("healthy", false);
+            payload.put("ready", true);
+            payload.put("latencyMs", 0L);
+            return payload;
+        }
+        ConfigCenterService configCenterService = configCenterServices.getIfAvailable();
+        if (configCenterService == null) {
+            payload.put("status", "UNAVAILABLE");
+            payload.put("healthy", false);
+            payload.put("ready", false);
+            payload.put("error", "ConfigCenterService bean is unavailable");
+            payload.put("latencyMs", elapsedMillis(startedAt));
+            return payload;
+        }
+        try {
+            ConfigCenterHealthResponse health = configCenterService.health(null, null, null);
+            payload.put("status", health.isAvailable() ? "UP" : "DOWN");
+            payload.put("healthy", health.isAvailable());
+            payload.put("ready", health.isAvailable());
+            payload.put("serverStatus", health.getServerStatus());
+            payload.put("dataId", health.getDataId());
+            payload.put("warnings", health.getWarnings());
+            payload.put("errors", health.getErrors());
+        } catch (Exception e) {
+            payload.put("status", "DOWN");
+            payload.put("healthy", false);
+            payload.put("ready", false);
+            payload.put("error", sanitizeError(e));
+        } finally {
+            payload.put("latencyMs", elapsedMillis(startedAt));
+        }
         return payload;
+    }
+
+    private long elapsedMillis(long startedAtNanos) {
+        return Math.max(0L, (System.nanoTime() - startedAtNanos) / 1_000_000L);
+    }
+
+    private String property(String key, String fallback) {
+        return environment.getProperty(key, fallback);
     }
 
     private String maskDatasourceUrl(String value) {

@@ -3,10 +3,13 @@ package com.example.shop.security;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.test.util.ReflectionTestUtils;
+
+import com.example.shop.service.RuntimeConfigService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class JwtServiceTest {
     private final UserDetails userDetails = User.withUsername("buyer@example.com")
@@ -47,10 +50,10 @@ class JwtServiceTest {
     }
 
     private JwtService jwtService(String runtimeMode, String secret) {
-        JwtService service = new JwtService();
-        ReflectionTestUtils.setField(service, "runtimeMode", runtimeMode);
-        ReflectionTestUtils.setField(service, "jwtSecret", secret);
-        ReflectionTestUtils.setField(service, "jwtExpirationInMs", 86400000);
-        return service;
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn(runtimeMode);
+        when(runtimeConfig.getString("app.jwtSecret", "")).thenReturn(secret);
+        when(runtimeConfig.getInt("app.jwtExpirationInMs", 86400000)).thenReturn(86400000);
+        return new JwtService(runtimeConfig);
     }
 }

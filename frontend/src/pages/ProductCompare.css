@@ -1230,3 +1230,68 @@
     margin-inline: -4px;
   }
 }
+
+/* Mobile compare table comfort pass */
+@media (max-width: 600px) {
+  .product-compare-page {
+    overflow-x: clip;
+  }
+
+  .product-compare__toolbar,
+  .product-compare__toolbar .ant-space,
+  .product-compare__toolbar .ant-space-item,
+  .product-compare__toolbar .ant-input-affix-wrapper,
+  .product-compare__toolbar .ant-btn {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .product-compare__toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .product-compare__toolbar .ant-space {
+    width: 100%;
+  }
+
+  .product-compare__toolbar .ant-btn {
+    width: 100%;
+    white-space: normal;
+  }
+
+  .product-compare-page .ant-table-content {
+    scroll-padding-inline: 0 18px;
+  }
+
+  .product-compare-page .ant-table-cell {
+    min-width: 112px;
+    padding: 8px !important;
+    line-height: 1.25;
+  }
+
+  .product-compare-page .ant-table-cell:first-child {
+    min-width: 96px;
+  }
+
+  .product-compare__recommendationMain,
+  .product-compare__checkoutPath {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .product-compare__recommendationMain .ant-btn,
+  .product-compare__checkoutPath .ant-btn {
+    width: 100%;
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-compare-page .ant-table-cell {
+    min-width: 104px;
+    padding: 7px !important;
+  }
+}

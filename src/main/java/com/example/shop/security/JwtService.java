@@ -1,9 +1,9 @@
 package com.example.shop.security;
 
+import com.example.shop.service.RuntimeConfigService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -15,15 +15,11 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
+    private final RuntimeConfigService runtimeConfig;
 
-    @Value("${app.jwtSecret}")
-    private String jwtSecret;
-
-    @Value("${app.jwtExpirationInMs}")
-    private int jwtExpirationInMs;
-
-    @Value("${app.runtime-mode:production}")
-    private String runtimeMode;
+    public JwtService(RuntimeConfigService runtimeConfig) {
+        this.runtimeConfig = runtimeConfig;
+    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -44,8 +40,8 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationInMs))
-                .signWith(SignatureAlgorithm.HS256, jwtSecret)
+                .setExpiration(new Date(System.currentTimeMillis() + runtimeConfig.getInt("app.jwtExpirationInMs", 86400000)))
+                .signWith(SignatureAlgorithm.HS256, jwtSecret())
                 .compact();
     }
 
@@ -65,7 +61,7 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         ensureJwtSecretConfigured();
         return Jwts.parser()
-                .setSigningKey(jwtSecret)
+                .setSigningKey(jwtSecret())
                 .parseClaimsJws(token)
                 .getBody();
     }
@@ -74,7 +70,7 @@ public class JwtService {
         if (!isProductionMode()) {
             return;
         }
-        String secret = jwtSecret == null ? "" : jwtSecret.trim();
+        String secret = jwtSecret().trim();
         if (secret.isEmpty()
                 || "your-secret-key".equals(secret)
                 || "your-secret-key-here".equals(secret)
@@ -84,7 +80,11 @@ public class JwtService {
     }
 
     private boolean isProductionMode() {
-        String mode = runtimeMode == null ? "production" : runtimeMode.trim().toLowerCase(Locale.ROOT);
+        String mode = runtimeConfig.getString("app.runtime-mode", "production").trim().toLowerCase(Locale.ROOT);
         return "production".equals(mode) || "prod".equals(mode);
+    }
+
+    private String jwtSecret() {
+        return runtimeConfig.getString("app.jwtSecret", "");
     }
 }

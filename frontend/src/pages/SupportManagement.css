@@ -1639,3 +1639,80 @@
     backdrop-filter: blur(12px);
   }
 }
+
+/* Mobile support conversation stability pass */
+@media (max-width: 560px) {
+  .support-management,
+  .support-management * {
+    box-sizing: border-box;
+  }
+
+  .support-management {
+    overflow-x: clip;
+  }
+
+  .support-management__queuePane,
+  .support-management__conversationPane,
+  .support-management__messagesPane,
+  .support-management__composer,
+  .support-management__textarea,
+  .support-management__composerActions,
+  .support-management__composerActions .ant-space,
+  .support-management__composerActions .ant-space-item {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .support-management__conversationHeader {
+    position: sticky;
+    top: 0;
+    z-index: 7;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+    backdrop-filter: blur(12px);
+  }
+
+  .support-management__messagesPane {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .support-management__bubble {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .support-management__textarea.ant-input-textarea textarea {
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .support-management__composerActions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .support-management__composerActions .ant-btn {
+    min-height: 42px;
+    line-height: 1.15;
+  }
+
+  .support-management__queueItem.ant-list-item {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 360px) {
+  .support-management__queuePane {
+    max-height: 320px;
+  }
+
+  .support-management__messagesPane {
+    max-height: 50svh;
+  }
+
+  .support-management__composer {
+    padding: 9px;
+  }
+}

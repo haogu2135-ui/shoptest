@@ -7,11 +7,11 @@ import com.example.shop.repository.UserMapper;
 import com.example.shop.security.JwtService;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
+import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SupportService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -33,12 +33,10 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
     private final AdminRoleService adminRoleService;
     private final SupportService supportService;
     private final ObjectMapper objectMapper;
+    private final RuntimeConfigService runtimeConfig;
 
     private final Map<Long, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
     private final Set<WebSocketSession> adminSessions = ConcurrentHashMap.newKeySet();
-
-    @Value("${support.websocket.max-message-chars:1000}")
-    private int maxMessageChars;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -195,7 +193,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("Message content is required");
         }
-        if (normalized.length() > maxMessageChars) {
+        if (normalized.length() > runtimeConfig.getInt("support.websocket.max-message-chars", 1000)) {
             throw new IllegalArgumentException("Message is too long");
         }
         return normalized;

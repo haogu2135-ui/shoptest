@@ -14,7 +14,6 @@ import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.RefundCreateParams;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -39,12 +38,10 @@ public class RefundService {
     private PaymentRepository paymentRepository;
     @Autowired
     private PaymentChannelConfig paymentChannelConfig;
-
-    @Value("${stripe.secret-key:}")
-    private String stripeSecretKey;
-
-    @Value("${payment.gateway-allow-local:false}")
-    private boolean paymentGatewayAllowLocal;
+    @Autowired
+    private RuntimeConfigService runtimeConfig;
+    @Autowired
+    private CircuitBreakerService circuitBreakerService;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -118,7 +115,8 @@ public class RefundService {
     }
 
     private String refundStripePayment(Order order, Payment payment) {
-        if (isBlank(stripeSecretKey)) {
+        String secretKey = stripeSecretKey();
+        if (isBlank(secretKey)) {
             throw new IllegalStateException("Stripe secret key is not configured");
         }
         String paymentIntent = resolveStripePaymentIntent(payment);
@@ -126,7 +124,7 @@ public class RefundService {
             throw new IllegalStateException("Stripe payment intent is missing");
         }
         try {
-            Stripe.apiKey = stripeSecretKey;
+            Stripe.apiKey = secretKey;
             Refund refund = Refund.create(RefundCreateParams.builder()
                     .setPaymentIntent(paymentIntent)
                     .build(),
@@ -152,7 +150,7 @@ public class RefundService {
             return null;
         }
         try {
-            Stripe.apiKey = stripeSecretKey;
+            Stripe.apiKey = stripeSecretKey();
             Session session = Session.retrieve(sessionId);
             return trimToNull(session.getPaymentIntent());
         } catch (StripeException e) {
@@ -165,7 +163,7 @@ public class RefundService {
         if (refundUrl == null) {
             throw new IllegalStateException("Refund URL is not configured for channel " + channel.getCode());
         }
-        refundUrl = GatewayUrlValidator.requireOutboundHttpUrl(refundUrl, paymentGatewayAllowLocal, "Refund URL");
+        String safeRefundUrl = GatewayUrlValidator.requireOutboundHttpUrl(refundUrl, runtimeConfig.getBoolean("payment.gateway-allow-local", false), "Refund URL");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("orderId", order.getId());
         payload.put("orderNo", order.getOrderNo());
@@ -181,11 +179,11 @@ public class RefundService {
         payload.put("idempotencyKey", idempotencyKey);
         ResponseEntity<String> response;
         try {
-            response = restTemplate.exchange(
-                    refundUrl,
+            response = circuitBreakerService.execute("payment-refund-" + channel.getCode(), () -> restTemplate.exchange(
+                    safeRefundUrl,
                     HttpMethod.POST,
                     new HttpEntity<>(payload, buildHeaders(channel, idempotencyKey)),
-                    String.class);
+                    String.class));
         } catch (RestClientException e) {
             throw new IllegalStateException("Gateway refund request failed: " + e.getMessage());
         }
@@ -305,5 +303,9 @@ public class RefundService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String stripeSecretKey() {
+        return runtimeConfig.getString("stripe.secret-key", "");
     }
 }

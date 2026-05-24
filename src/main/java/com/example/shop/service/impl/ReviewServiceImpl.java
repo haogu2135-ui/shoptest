@@ -11,8 +11,8 @@ import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.ReviewRepository;
 import com.example.shop.repository.UserRepository;
 import com.example.shop.service.ReviewService;
+import com.example.shop.service.RuntimeConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,12 +38,8 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Autowired
     private OrderItemRepository orderItemRepository;
-
-    @Value("${review.max-comment-chars:1000}")
-    private int maxCommentChars;
-
-    @Value("${review.max-reply-chars:1000}")
-    private int maxReplyChars;
+    @Autowired
+    private RuntimeConfigService runtimeConfig;
 
     @Override
     public List<Review> getReviewsByProductId(Long productId, Long currentUserId) {
@@ -189,10 +185,10 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private int normalizedMaxCommentChars() {
-        return Math.max(20, maxCommentChars);
+        return Math.max(20, runtimeConfig.getInt("review.max-comment-chars", 1000));
     }
 
     private int normalizedMaxReplyChars() {
-        return Math.max(20, maxReplyChars);
+        return Math.max(20, runtimeConfig.getInt("review.max-reply-chars", 1000));
     }
 } 

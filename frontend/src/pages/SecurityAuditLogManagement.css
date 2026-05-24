@@ -523,3 +523,67 @@
     padding: 9px 8px;
   }
 }
+
+/* Mobile audit log filter stability pass */
+@media (max-width: 720px) {
+  .audit-log-page,
+  .audit-log-page * {
+    box-sizing: border-box;
+  }
+
+  .audit-log-page {
+    overflow-x: clip;
+  }
+
+  .audit-log-page__toolbar,
+  .audit-log-page__toolbar .ant-space,
+  .audit-log-page__toolbar .ant-space-item,
+  .audit-log-page .ant-picker,
+  .audit-log-page .ant-picker-input,
+  .audit-log-page .ant-table-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .audit-log-page__toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .audit-log-page__toolbar .ant-space,
+  .audit-log-page__toolbar .ant-btn,
+  .audit-log-page__toolbar .ant-picker {
+    width: 100%;
+  }
+
+  .audit-log-page__signalGrid,
+  .audit-log-page__opsMetrics {
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+  }
+
+  .audit-log-page .ant-table-content {
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .audit-log-page__opsActions .ant-space,
+  .audit-log-page__opsActions .ant-space-item,
+  .audit-log-page__opsActions .ant-btn {
+    width: 100%;
+  }
+
+  .audit-log-page .ant-picker-panels {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 360px) {
+  .audit-log-page__toolbar .ant-card-body {
+    padding: 10px;
+  }
+
+  .audit-log-page .ant-picker-input > input {
+    font-size: 12px;
+  }
+}

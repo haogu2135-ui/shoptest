@@ -6,7 +6,6 @@ import com.example.shop.repository.SupportMessageMapper;
 import com.example.shop.repository.SupportSessionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
@@ -25,8 +24,10 @@ class SupportServiceTest {
     void setUp() {
         SupportSessionMapper supportSessionMapper = mock(SupportSessionMapper.class);
         supportMessageMapper = mock(SupportMessageMapper.class);
-        service = new SupportService(supportSessionMapper, supportMessageMapper);
-        ReflectionTestUtils.setField(service, "maxMessageChars", 80);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getInt("support.websocket.max-message-chars", 1000)).thenReturn(1000);
+        when(runtimeConfig.getInt("support.message.max-chars", 1000)).thenReturn(80);
+        service = new SupportService(supportSessionMapper, supportMessageMapper, runtimeConfig);
 
         SupportSession session = new SupportSession();
         session.setId(12L);

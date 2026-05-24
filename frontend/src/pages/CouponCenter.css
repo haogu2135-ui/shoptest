@@ -4703,3 +4703,129 @@
     padding-inline: 5px;
   }
 }
+
+/* Mobile coupon sticky stack stability pass */
+@media (max-width: 560px) {
+  .coupon-center-page,
+  .coupon-center-page * {
+    box-sizing: border-box;
+  }
+
+  .coupon-center-page {
+    overflow-x: clip;
+    padding-top: 8px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .coupon-center-page__quickNav,
+  .coupon-center-page__mobileActionBar,
+  .coupon-claim-section__controls,
+  .coupon-center-page__couponCard,
+  .coupon-center-page__couponAction {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .coupon-center-page__quickNav {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .coupon-center-page__quickNav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .coupon-center-page__quickNav button {
+    flex: 0 0 auto;
+    white-space: normal;
+  }
+
+  .coupon-center-page__mobileActionBar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .coupon-center-page__couponAction .ant-btn,
+  .coupon-center-page__couponCard .ant-btn {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .coupon-center-page__couponTitle,
+  .coupon-center-page__couponDescription,
+  .coupon-center-page__couponBody .ant-typography {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 360px) {
+  .coupon-center-page__mobileActionBar {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .coupon-center-page__quickNav button {
+    min-width: 86px;
+    padding-inline: 8px;
+  }
+}
+
+/* Mobile coupon loading and safe sticky pass */
+@media (max-width: 560px) {
+  .coupon-center-page--loading {
+    width: min(100% - 12px, 1120px);
+    margin-inline: auto;
+    padding-top: 8px;
+  }
+
+  .coupon-center-page__loadingHero {
+    padding: 14px 12px;
+    border-radius: 16px;
+  }
+
+  .coupon-center-page__loadingGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .coupon-center-page__loadingGrid > div {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .coupon-center-page__hero,
+  .coupon-center-page__heroCopy,
+  .coupon-center-page__heroStats,
+  .coupon-center-page__statGrid,
+  .coupon-center-page__quickNav,
+  .coupon-center-page__mobileActionBar {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .coupon-center-page__hero {
+    overflow: hidden;
+  }
+
+  .coupon-center-page__heroCopy .ant-typography,
+  .coupon-center-page__heroStats span,
+  .coupon-center-page__statGrid span {
+    overflow-wrap: anywhere;
+  }
+
+  .coupon-claim-section__controls {
+    top: 92px;
+    max-width: calc(100vw - 12px);
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 380px) {
+  .coupon-claim-section__controls {
+    top: 86px;
+    max-width: calc(100vw - 10px);
+  }
+}

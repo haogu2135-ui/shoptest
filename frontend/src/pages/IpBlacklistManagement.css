@@ -1,0 +1,217 @@
+.ip-blacklist,
+.ip-blacklist *,
+.ip-blacklist *::before,
+.ip-blacklist *::after {
+  box-sizing: border-box;
+}
+
+.ip-blacklist {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.ip-blacklist__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid rgba(35, 80, 92, 0.14);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff9f8 0%, #f8fcff 100%);
+  box-shadow: 0 16px 34px rgba(38, 67, 85, 0.08);
+}
+
+.ip-blacklist__hero h2 {
+  margin: 4px 0 6px;
+  color: #173b46;
+  font-weight: 900;
+}
+
+.ip-blacklist__eyebrow {
+  color: #d94b2b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ip-blacklist__actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.ip-blacklist__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ip-blacklist__stats .ant-card,
+.ip-blacklist__card {
+  min-width: 0;
+  max-width: 100%;
+  border-color: rgba(35, 80, 92, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(38, 67, 85, 0.06);
+}
+
+.ip-blacklist__filters {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.ip-blacklist__filters .ant-select {
+  min-width: 150px;
+}
+
+.ip-blacklist__filters .ant-input {
+  width: 220px;
+}
+
+.ip-blacklist .ant-typography,
+.ip-blacklist .ant-statistic-content,
+.ip-blacklist .ant-table-cell,
+.ip-blacklist .ant-tag {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .ip-blacklist__hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ip-blacklist__actions {
+    width: 100%;
+  }
+
+  .ip-blacklist__actions .ant-btn {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 720px) {
+  .ip-blacklist {
+    gap: 12px;
+  }
+
+  .ip-blacklist__hero {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .ip-blacklist__hero h2 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .ip-blacklist__stats {
+    display: flex;
+    gap: 8px;
+    margin-inline: -8px;
+    padding: 0 8px 2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ip-blacklist__stats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ip-blacklist__stats .ant-card {
+    flex: 0 0 150px;
+    scroll-snap-align: start;
+  }
+
+  .ip-blacklist__card .ant-card-body,
+  .ip-blacklist__stats .ant-card-body {
+    padding: 12px;
+  }
+
+  .ip-blacklist__filters {
+    display: grid;
+    gap: 8px;
+  }
+
+  .ip-blacklist__filters .ant-select,
+  .ip-blacklist__filters .ant-input,
+  .ip-blacklist__filters .ant-btn {
+    width: 100%;
+  }
+
+  .ip-blacklist .ant-btn {
+    min-height: 38px;
+    white-space: normal;
+  }
+}
+
+/* Mobile operations polish */
+@media (max-width: 720px) {
+  .ip-blacklist__hero > div:first-child,
+  .ip-blacklist__actions,
+  .ip-blacklist__card,
+  .ip-blacklist__filters,
+  .ip-blacklist .ant-table-wrapper {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ip-blacklist__hero {
+    box-shadow: 0 10px 24px rgba(38, 67, 85, 0.07);
+  }
+
+  .ip-blacklist__hero .ant-typography {
+    line-height: 1.4;
+  }
+
+  .ip-blacklist__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .ip-blacklist__actions .ant-space-item,
+  .ip-blacklist__actions .ant-btn {
+    width: 100%;
+  }
+
+  .ip-blacklist__stats {
+    scroll-padding-inline: 8px 20px;
+    overscroll-behavior-x: contain;
+  }
+
+  .ip-blacklist__stats .ant-card {
+    flex-basis: 142px;
+  }
+
+  .ip-blacklist__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .ip-blacklist__card .ant-table-wrapper {
+    margin-inline: -8px;
+    padding-inline: 8px;
+  }
+
+  .ip-blacklist .ant-modal-body {
+    padding-bottom: 6px;
+  }
+}
+
+@media (max-width: 380px) {
+  .ip-blacklist__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .ip-blacklist__stats .ant-card {
+    flex-basis: 134px;
+  }
+}

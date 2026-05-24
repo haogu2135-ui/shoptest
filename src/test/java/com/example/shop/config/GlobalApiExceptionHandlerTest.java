@@ -1,5 +1,6 @@
 package com.example.shop.config;
 
+import com.example.shop.service.SystemAlertService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,10 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
 
 class GlobalApiExceptionHandlerTest {
 
-    private final GlobalApiExceptionHandler handler = new GlobalApiExceptionHandler(new ApiErrorResponseFactory());
+    private final GlobalApiExceptionHandler handler = new GlobalApiExceptionHandler(
+            new ApiErrorResponseFactory(),
+            mock(SystemAlertService.class));
 
     @Test
     void responseStatusExceptionUsesUniformPayloadWithRequestId() {

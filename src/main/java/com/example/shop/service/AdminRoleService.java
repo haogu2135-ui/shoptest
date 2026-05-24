@@ -28,7 +28,7 @@ public class AdminRoleService {
 
     public static final List<String> ADMIN_PAGES = List.of(
             "dashboard", "products", "brands", "categories", "orders", "logistics-carriers",
-            "users", "permissions", "reviews", "coupons", "notifications", "announcements", "audit-logs", "support", "registry", "system");
+            "users", "permissions", "reviews", "coupons", "notifications", "announcements", "audit-logs", "alerts", "ip-blacklist", "logs", "support", "registry", "config-center", "traffic-control", "system");
 
     private static final Map<String, String> PATH_PERMISSIONS = Map.ofEntries(
             Map.entry("/dashboard", "dashboard"),
@@ -44,8 +44,13 @@ public class AdminRoleService {
             Map.entry("/notifications", "notifications"),
             Map.entry("/announcements", "announcements"),
             Map.entry("/audit-logs", "audit-logs"),
+            Map.entry("/alerts", "alerts"),
+            Map.entry("/ip-blacklist", "ip-blacklist"),
+            Map.entry("/logs", "logs"),
             Map.entry("/support", "support"),
             Map.entry("/registry", "registry"),
+            Map.entry("/config-center", "config-center"),
+            Map.entry("/traffic-control", "traffic-control"),
             Map.entry("/system", "system"),
             Map.entry("/pet-birthday-coupons", "coupons")
     );

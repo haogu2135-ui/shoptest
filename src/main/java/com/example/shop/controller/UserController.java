@@ -2,10 +2,10 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.UpdatePasswordRequest;
 import com.example.shop.entity.User;
+import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.UserService;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -23,9 +23,7 @@ import java.security.MessageDigest;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-
-    @Value("${admin.bootstrap-token:}")
-    private String adminBootstrapToken;
+    private final RuntimeConfigService runtimeConfig;
     
     @PostMapping("/register")
     public void register(@Valid @RequestBody User user) {
@@ -68,6 +66,7 @@ public class UserController {
     }
 
     private void assertAdminBootstrapToken(String bootstrapToken) {
+        String adminBootstrapToken = runtimeConfig.getString("admin.bootstrap-token", "");
         if (isBlank(adminBootstrapToken)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin bootstrap is not configured");
         }
