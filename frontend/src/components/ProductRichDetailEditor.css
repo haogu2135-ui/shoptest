@@ -163,3 +163,45 @@
     gap: 6px !important;
   }
 }
+
+/* Mobile rich-detail editor polish */
+@media (max-width: 640px) {
+  .product-rich-detail-editor {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+
+  .product-rich-detail-editor__toolbar {
+    position: sticky;
+    top: 58px;
+    z-index: 5;
+    padding: 8px;
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 10px 22px rgba(18, 71, 52, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .product-rich-detail-editor__block.ant-card {
+    border-radius: 14px;
+  }
+
+  .product-rich-detail-editor__block .ant-card-body {
+    padding: 12px;
+  }
+
+  .product-rich-detail-editor__toolbar .ant-btn,
+  .product-rich-detail-editor__blockActions .ant-btn,
+  .product-rich-detail-editor__typeSelect .ant-select-selector {
+    min-height: 40px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-rich-detail-editor__blockActions {
+    grid-template-columns: 1fr;
+  }
+}

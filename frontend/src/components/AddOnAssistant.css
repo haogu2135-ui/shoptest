@@ -425,3 +425,30 @@
     max-width: 118px;
   }
 }
+
+/* Final mobile add-on safe-area polish */
+@media (max-width: 520px) {
+  .add-on-assistant {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .add-on-assistant__list {
+    margin-inline: -2px;
+    padding-inline: 2px;
+  }
+
+  .add-on-assistant__item .ant-btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (max-width: 340px) {
+  .add-on-assistant__item {
+    grid-template-columns: 40px minmax(0, 1fr) 30px;
+  }
+
+  .add-on-assistant__item img {
+    width: 40px;
+    height: 40px;
+  }
+}

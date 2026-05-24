@@ -320,3 +320,42 @@
     text-overflow: ellipsis;
   }
 }
+
+/* Final mobile payment safe-area polish */
+@media (max-width: 560px) {
+  .payment-modal .ant-modal-header {
+    flex: 0 0 auto;
+    padding-block: 14px 10px;
+  }
+
+  .payment-modal .ant-modal-close {
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+  }
+
+  .payment-modal .ant-modal-body {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .payment-modal__methodList {
+    gap: 8px !important;
+  }
+
+  .payment-modal__confirm {
+    min-height: 44px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 360px) {
+  .payment-modal .ant-modal-body {
+    padding-inline: 12px;
+  }
+
+  .payment-modal__summary h3.ant-typography {
+    font-size: 18px;
+  }
+}

@@ -89,3 +89,33 @@
     min-height: 190px !important;
   }
 }
+
+/* Final mobile tracking widget polish */
+@media (max-width: 520px) {
+  .seventeen-track-widget {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+
+  .seventeen-track-widget__search .ant-input-affix-wrapper {
+    min-height: 42px;
+    border-radius: 999px !important;
+  }
+
+  .seventeen-track-widget__results {
+    max-width: calc(100vw - 20px);
+    margin-inline: auto;
+    box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.04);
+  }
+
+  .seventeen-track-widget__empty {
+    padding: 20px 12px;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 360px) {
+  .seventeen-track-widget__results {
+    max-width: calc(100vw - 16px);
+  }
+}

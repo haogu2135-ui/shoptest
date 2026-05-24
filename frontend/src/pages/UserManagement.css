@@ -455,3 +455,54 @@
     flex-basis: 122px;
   }
 }
+
+/* Mobile admin shell spacing pass */
+@media (max-width: 720px) {
+  .user-management-page {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .user-management-page__toolbar {
+    position: sticky;
+    top: 64px;
+    z-index: 8;
+    border-color: rgba(18, 71, 52, 0.08);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 12px 26px rgba(18, 71, 52, 0.1);
+    backdrop-filter: blur(14px);
+  }
+
+  .user-management-page__filters .ant-input-affix-wrapper,
+  .user-management-page__filters .ant-select-selector,
+  .user-management-page__filters .ant-btn {
+    min-height: 42px;
+  }
+
+  .user-management-page__health {
+    box-shadow: 0 12px 26px rgba(18, 71, 52, 0.08);
+  }
+
+  .user-management-page .ant-table-wrapper {
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .user-management-page .ant-pagination {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .user-management-page .ant-pagination-options {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .user-management-page__toolbar {
+    top: 58px;
+  }
+
+  .user-management-page .ant-table-cell {
+    padding: 9px 8px;
+  }
+}

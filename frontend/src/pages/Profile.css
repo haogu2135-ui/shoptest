@@ -2509,3 +2509,102 @@
     max-width: calc(100vw - 8px);
   }
 }
+
+/* Mobile account hub polish */
+@media (max-width: 640px) {
+  .profile-page {
+    width: min(100% - 12px, 1080px);
+    padding-top: 10px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .profile-overview,
+  .profile-action-center,
+  .profile-address-readiness,
+  .profile-after-sale-panel,
+  .profile-pet-next-step,
+  .profile-pet-shop-path,
+  .profile-order-card {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .profile-overview {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .profile-overview__copy h2.ant-typography {
+    font-size: 22px;
+    line-height: 1.12;
+  }
+
+  .profile-mobile-entry {
+    margin-inline: -6px;
+    padding-inline: 6px;
+    scroll-padding-inline: 6px 18px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent);
+  }
+
+  .profile-mobile-entry__item,
+  .profile-action-center__card,
+  .profile-orders__tab {
+    border-radius: 14px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .profile-mobile-entry__item:active,
+  .profile-action-center__card:active,
+  .profile-orders__tab:active,
+  .profile-order-card__actions .ant-btn:active {
+    transform: scale(0.98);
+  }
+
+  .profile-tabs > .ant-tabs-nav {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    margin-inline: -6px;
+    padding: 6px;
+    border-radius: 0 0 16px 16px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+  }
+
+  .profile-tabs .ant-tabs-tab {
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+
+  .profile-order-card {
+    padding: 10px;
+  }
+
+  .profile-order-item__imageButton,
+  .profile-order-item__imageButton img {
+    border-radius: 12px;
+  }
+
+  .profile-order-card__actions .ant-btn {
+    min-height: 38px;
+    border-radius: 12px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 380px) {
+  .profile-page {
+    width: min(100% - 10px, 1080px);
+  }
+
+  .profile-overview__copy h2.ant-typography {
+    font-size: 20px;
+  }
+
+  .profile-tabs > .ant-tabs-nav {
+    margin-inline: -5px;
+  }
+}

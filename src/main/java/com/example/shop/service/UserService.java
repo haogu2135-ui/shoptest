@@ -38,17 +38,31 @@ public class UserService {
     
     @Transactional
     public void register(User user) {
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("Password is required");
+        }
         if (user.getPhone() == null || user.getPhone().trim().isEmpty()) {
             throw new IllegalArgumentException("Phone number is required");
         }
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        user.setPhone(normalizeText(user.getPhone(), 40));
         if (userMapper.findByPhone(user.getPhone()) != null) {
             throw new IllegalArgumentException("Phone number already registered");
         }
         if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
             user.setUsername(user.getPhone());
+        } else {
+            user.setUsername(normalizeText(user.getUsername(), 50));
         }
-        if (user.getEmail() != null && user.getEmail().trim().isEmpty()) {
-            user.setEmail(null);
+        if (userMapper.findByUsername(user.getUsername()) != null) {
+            throw new IllegalArgumentException("Username already registered");
+        }
+        user.setEmail(normalizeText(user.getEmail(), 100).toLowerCase());
+        User existingEmail = userMapper.findByUsernameOrPhoneOrEmail(user.getEmail());
+        if (existingEmail != null) {
+            throw new IllegalArgumentException("Email already registered");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRole("USER");

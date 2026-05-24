@@ -458,3 +458,39 @@
     width: 100%;
   }
 }
+
+/* Final mobile skeleton polish */
+@media (max-width: 600px) {
+  .hero-skeleton,
+  .product-skeleton__card,
+  .skeleton--detail .skeleton__main-image,
+  .skeleton--detail .skeleton__thumb {
+    border-radius: 14px;
+  }
+
+  .hero-skeleton {
+    min-height: clamp(220px, 64vw, 280px);
+  }
+
+  .product-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .product-skeleton__image {
+    min-height: 0;
+  }
+
+  .stats-strip-skeleton {
+    padding-bottom: calc(2px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 340px) {
+  .product-skeleton {
+    grid-template-columns: 1fr;
+  }
+
+  .product-skeleton__image {
+    aspect-ratio: 4 / 3;
+  }
+}

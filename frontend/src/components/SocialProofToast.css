@@ -147,3 +147,24 @@
     -webkit-line-clamp: 1;
   }
 }
+
+/* Final mobile social-proof safe-area polish */
+@media (max-width: 640px) {
+  .social-proof-toast {
+    bottom: calc(128px + env(safe-area-inset-bottom));
+    border-color: rgba(18, 71, 52, 0.08);
+    backdrop-filter: blur(14px);
+  }
+
+  .shop-app-shell--checkout-flow .social-proof-toast,
+  .shop-app-shell--product-detail .social-proof-toast,
+  .shop-app-shell--auth-flow .social-proof-toast {
+    bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 380px) {
+  .social-proof-toast {
+    right: max(6px, env(safe-area-inset-right));
+  }
+}

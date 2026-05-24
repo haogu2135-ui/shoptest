@@ -887,3 +887,42 @@
     padding-inline: 10px;
   }
 }
+
+/* Mobile registration comfort pass */
+@media (max-width: 640px) {
+  .register-page__card {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+  }
+
+  .register-page__card .ant-input-affix-wrapper,
+  .register-page__card .ant-input,
+  .register-page__card .ant-btn {
+    border-radius: 13px;
+  }
+
+  .register-page__card .ant-input-prefix {
+    min-width: 28px;
+    justify-content: center;
+  }
+
+  .register-page__card .ant-form-item-explain-error {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .register-page__cardHeader {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: -16px -12px 10px;
+    padding: 12px 12px 8px;
+    border-radius: 16px 16px 0 0;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(12px);
+  }
+
+  .register-page__card .ant-btn {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}

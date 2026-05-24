@@ -24,11 +24,14 @@ const Register: React.FC = () => {
 
   const onFinish = async (values: RegisterForm) => {
     try {
+      const username = values.username.trim();
+      const email = values.email.trim().toLowerCase();
+      const phone = values.phone.trim();
       await userApi.register({
-        username: values.username,
+        username,
         password: values.password,
-        email: values.email,
-        phone: values.phone,
+        email,
+        phone,
         role: 'USER'
       });
       message.success(t('pages.auth.registerSuccess'));

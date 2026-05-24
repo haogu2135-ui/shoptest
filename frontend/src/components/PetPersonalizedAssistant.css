@@ -609,3 +609,29 @@
     max-width: min(218px, 86vw);
   }
 }
+
+/* Final mobile personalized assistant safe-area polish */
+@media (max-width: 640px) {
+  .pet-personalized-assistant {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .pet-personalized-assistant__list {
+    margin-inline: -4px;
+    padding-inline: 4px;
+  }
+
+  .pet-personalized-assistant__foot .ant-btn {
+    min-height: 40px;
+  }
+
+  .pet-personalized-assistant__media img {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .pet-personalized-assistant {
+    margin-inline: -2px;
+  }
+}

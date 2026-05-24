@@ -944,3 +944,55 @@
     padding-inline: 0;
   }
 }
+
+/* Mobile stock alert conversion polish */
+@media (max-width: 640px) {
+  .stock-alerts {
+    padding-top: 10px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .stock-alerts__header,
+  .stock-alerts__assistant,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction,
+  .stock-alerts__item {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .stock-alerts__header {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+  }
+
+  .stock-alerts__signal {
+    border-radius: 15px;
+    background: #ffffff;
+  }
+
+  .stock-alerts__item {
+    background: #ffffff;
+  }
+
+  .stock-alerts__item .ant-list-item-meta-avatar {
+    margin-inline-end: 8px;
+  }
+
+  .stock-alerts__item .ant-image,
+  .stock-alerts__item .ant-image-img {
+    border-radius: 12px;
+    background: linear-gradient(180deg, #fbfdfb, #f1f7f3);
+  }
+
+  .stock-alerts__header .ant-btn,
+  .stock-alerts__recoveryActions .ant-btn,
+  .stock-alerts__nextAction .ant-btn,
+  .stock-alerts__item .ant-btn {
+    min-height: 40px;
+    border-radius: 13px;
+  }
+}

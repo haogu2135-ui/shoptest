@@ -2086,3 +2086,64 @@
     max-width: 72vw;
   }
 }
+
+/* Mobile support widget comfort pass */
+@media (max-width: 720px) {
+  .customer-support-widget__panel {
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -18px 44px rgba(18, 71, 52, 0.22);
+  }
+
+  .customer-support-widget__header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(12px);
+  }
+
+  .customer-support-widget__messages {
+    background: linear-gradient(180deg, #f8fcf9 0%, #fffdf8 100%);
+  }
+
+  .customer-support-widget__welcomeCard,
+  .customer-support-widget__brief,
+  .customer-support-widget__triage,
+  .customer-support-widget__orderCard {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .customer-support-widget__composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    border-top: 1px solid rgba(18, 71, 52, 0.08);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 -8px 22px rgba(18, 71, 52, 0.1);
+    backdrop-filter: blur(12px);
+  }
+
+  .customer-support-widget__quickReplies,
+  .customer-support-widget__welcomeQuickReplies,
+  .customer-support-widget__workflowList {
+    scrollbar-width: none;
+    scroll-padding-inline: 10px 22px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+  }
+
+  .customer-support-widget__quickReplies::-webkit-scrollbar,
+  .customer-support-widget__welcomeQuickReplies::-webkit-scrollbar,
+  .customer-support-widget__workflowList::-webkit-scrollbar {
+    display: none;
+  }
+
+  .customer-support-widget__messageInput .ant-input,
+  .customer-support-widget__actions .ant-btn,
+  .customer-support-widget__quickReplies .ant-btn,
+  .customer-support-widget__welcomeQuickReplies button {
+    border-radius: 13px;
+  }
+}

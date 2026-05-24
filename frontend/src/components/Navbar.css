@@ -2142,3 +2142,23 @@
     line-height: 34px;
   }
 }
+
+/* Mobile overlap fix: keep search above the bottom nav */
+@media (max-width: 780px) {
+  .shop-nav {
+    z-index: 1300;
+  }
+
+  .shop-nav__main,
+  .shop-nav__inner--main,
+  .shop-nav__search,
+  .shop-nav__searchShell,
+  .shop-nav__searchBar {
+    position: relative;
+    z-index: 2;
+  }
+
+  .shop-nav__bottomBar {
+    z-index: 900;
+  }
+}

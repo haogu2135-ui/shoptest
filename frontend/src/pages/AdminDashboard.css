@@ -1061,3 +1061,54 @@
     scroll-snap-align: start;
   }
 }
+
+/* Mobile admin shell spacing pass */
+@media (max-width: 720px) {
+  .admin-dashboard {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .admin-dashboard__hero {
+    position: sticky;
+    top: 64px;
+    z-index: 8;
+    background:
+      linear-gradient(90deg, rgba(238, 77, 45, 0.12) 0 5px, transparent 5px),
+      rgba(255, 255, 255, 0.96);
+    box-shadow: 0 12px 26px rgba(18, 71, 52, 0.1);
+    backdrop-filter: blur(14px);
+  }
+
+  .admin-dashboard__actionCard,
+  .admin-dashboard__paymentOpsCard,
+  .admin-dashboard__slaCard {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .admin-dashboard__statCard .ant-card-body,
+  .admin-dashboard__panel .ant-card-body {
+    min-width: 0;
+  }
+
+  .admin-dashboard__lowStockList .ant-list-item {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-dashboard__hero {
+    top: 58px;
+  }
+
+  .admin-dashboard__heroMeta span,
+  .admin-dashboard__actionCard,
+  .admin-dashboard__paymentOpsCard,
+  .admin-dashboard__slaCard {
+    flex-basis: 128px;
+  }
+
+  .admin-dashboard__chartEmpty {
+    padding: 28px 12px;
+  }
+}

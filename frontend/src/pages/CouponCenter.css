@@ -4624,3 +4624,82 @@
     touch-action: manipulation;
   }
 }
+
+/* Mobile coupon wallet polish */
+@media (max-width: 560px) {
+  .coupon-center-page {
+    width: min(100% - 12px, 1120px);
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .coupon-center-page__hero,
+  .coupon-priority-card,
+  .coupon-claim-section,
+  .coupon-center-page__couponCard {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .coupon-center-page__quickNav {
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .coupon-center-page__mobileActionBar {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .coupon-priority-grid {
+    margin-inline: -6px;
+    padding-inline: 6px;
+    scroll-padding-inline: 6px 20px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent);
+  }
+
+  .coupon-priority-card {
+    border-radius: 16px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .coupon-priority-card:active,
+  .coupon-center-page__quickNav button:active,
+  .coupon-center-page__mobileActionBar .ant-btn:active {
+    transform: scale(0.98);
+  }
+
+  .coupon-claim-section__controls {
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .coupon-center-page__couponCard {
+    border-radius: 16px;
+  }
+
+  .coupon-center-page__couponAction .ant-btn,
+  .coupon-center-page__couponCard .ant-btn {
+    min-height: 40px;
+    border-radius: 13px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 380px) {
+  .coupon-center-page {
+    width: min(100% - 10px, 1120px);
+  }
+
+  .coupon-priority-grid {
+    margin-inline: -5px;
+    padding-inline: 5px;
+  }
+}

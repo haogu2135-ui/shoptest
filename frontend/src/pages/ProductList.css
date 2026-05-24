@@ -5431,3 +5431,109 @@
     bottom: calc(76px + env(safe-area-inset-bottom));
   }
 }
+
+/* Mobile catalog refinement pass */
+@media (max-width: 720px) {
+  .product-list {
+    width: min(100% - 12px, 1200px);
+    padding-top: 10px;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .product-list__heroBand {
+    margin-bottom: 9px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .product-list__heroContent h1 {
+    font-size: 23px;
+    line-height: 1.12;
+  }
+
+  .product-list__heroStats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .product-list__heroStats span {
+    min-width: 0;
+    justify-content: center;
+    padding-inline: 8px;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .product-list__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    margin-inline: -6px;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 10px 24px rgba(18, 71, 52, 0.08);
+  }
+
+  .product-list__filterButton.ant-btn {
+    min-height: 40px;
+    border-radius: 14px !important;
+  }
+
+  .product-list__mobileNextStep {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    background: linear-gradient(135deg, #ffffff, #f7fbf8);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .product-list__card {
+    border-radius: 15px;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .product-list__imageWrap {
+    background: linear-gradient(180deg, #fbfdfb, #f1f7f3);
+  }
+
+  .product-list__priceLine,
+  .product-list__valueLine,
+  .product-list__metaRow {
+    min-width: 0;
+  }
+
+  .product-list__mobileConversionBar {
+    box-shadow: 0 -10px 30px rgba(18, 71, 52, 0.16);
+  }
+
+  .product-list__mobileConversionActions .ant-btn {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .product-list__mobileDrawer .ant-drawer-header {
+    padding: 12px 14px;
+  }
+
+  .product-list__mobileDrawer .ant-drawer-body {
+    padding: 10px 12px calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .product-list__filterStack .ant-checkbox-wrapper {
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .product-list {
+    width: min(100% - 10px, 1200px);
+  }
+
+  .product-list__heroContent h1 {
+    font-size: 21px;
+  }
+
+  .product-list__toolbar {
+    margin-inline: -5px;
+  }
+}

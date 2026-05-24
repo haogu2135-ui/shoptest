@@ -416,3 +416,63 @@ button:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* Final global mobile fit pass */
+@media (max-width: 720px) {
+  html {
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  .ant-btn,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-radio-button-wrapper {
+    min-height: 40px;
+  }
+
+  .ant-table-wrapper,
+  .ant-descriptions-view {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-table {
+    min-width: max-content;
+  }
+
+  .ant-list-item,
+  .ant-list-item-meta,
+  .ant-list-item-meta-content,
+  .ant-card-head-title,
+  .ant-card-extra {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ant-tooltip,
+  .ant-message,
+  .ant-notification {
+    max-width: 100vw;
+  }
+}
+
+@media (max-width: 380px) {
+  .ant-card-body {
+    padding: 12px;
+  }
+
+  .ant-tag {
+    max-width: 100%;
+    white-space: normal;
+  }
+}

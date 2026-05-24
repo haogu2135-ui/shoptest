@@ -320,3 +320,35 @@
     font-size: 15px;
   }
 }
+
+/* Final mobile product review safe-area polish */
+@media (max-width: 520px) {
+  .product-review {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .product-review__composer {
+    position: sticky;
+    top: 58px;
+    z-index: 4;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+  }
+
+  .product-review__orderSelect .ant-select-selector,
+  .product-review__textarea,
+  .product-review__submit {
+    min-height: 42px;
+  }
+
+  .product-review__list .ant-list-items {
+    display: grid;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-review__composer {
+    top: 54px;
+  }
+}

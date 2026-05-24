@@ -1047,3 +1047,86 @@
     min-height: 0;
   }
 }
+
+/* Mobile tracking status polish */
+@media (max-width: 640px) {
+  .order-tracking-page {
+    width: min(100% - 12px, 1040px);
+    padding-top: 10px;
+    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+  }
+
+  .order-tracking-page__lookupCard,
+  .order-tracking-page__emptyState,
+  .order-tracking-page__confidenceCard,
+  .order-tracking-page__assuranceCard,
+  .order-tracking-page__timelineCard {
+    border-radius: 16px;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .order-tracking-page__lookupForm .ant-input-affix-wrapper,
+  .order-tracking-page__lookupButton {
+    border-radius: 13px;
+  }
+
+  .order-tracking-page__nextActionButtons,
+  .order-tracking-page__assuranceActions,
+  .order-tracking-page__assuranceSignals {
+    margin-inline: -4px;
+    padding-inline: 4px;
+    scroll-padding-inline: 4px 18px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+  }
+
+  .order-tracking-page__nextActionButtons::-webkit-scrollbar,
+  .order-tracking-page__assuranceActions::-webkit-scrollbar,
+  .order-tracking-page__assuranceSignals::-webkit-scrollbar {
+    display: none;
+  }
+
+  .order-tracking-page__nextActionButtons .ant-btn,
+  .order-tracking-page__assuranceActions .ant-btn,
+  .order-tracking-page__emptyActions .ant-btn {
+    min-height: 40px;
+    border-radius: 13px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .order-tracking-page__nextActionButtons .ant-btn:active,
+  .order-tracking-page__assuranceActions .ant-btn:active,
+  .order-tracking-page__emptyActions .ant-btn:active,
+  .order-tracking-page__lookupButton:active {
+    transform: scale(0.98);
+  }
+
+  .order-tracking-page__item {
+    gap: 8px;
+    padding-block: 10px !important;
+  }
+
+  .order-tracking-page__item .ant-list-item-meta-avatar {
+    margin-inline-end: 8px;
+  }
+
+  .order-tracking-page__itemTotal {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #fff7f0;
+    color: #c73719;
+  }
+}
+
+@media (max-width: 380px) {
+  .order-tracking-page {
+    width: min(100% - 10px, 1040px);
+  }
+
+  .order-tracking-page__lookupCard .ant-card-body {
+    padding-inline: 9px !important;
+  }
+}

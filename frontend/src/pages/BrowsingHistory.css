@@ -1455,3 +1455,67 @@
     font-size: 11px;
   }
 }
+
+/* Mobile browsing history repeat-shop polish */
+@media (max-width: 640px) {
+  .browsing-history {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .browsing-history__hero,
+  .browsing-history__assistant,
+  .browsing-history__recovery,
+  .browsing-history__nextAction,
+  .browsing-history__item,
+  .browsing-history__empty {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .browsing-history__tools {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    margin-inline: -6px;
+    padding: 6px;
+    border-radius: 0 0 16px 16px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .browsing-history__tools .ant-input-affix-wrapper,
+  .browsing-history__tools .ant-btn,
+  .browsing-history__footer .ant-btn,
+  .browsing-history__emptyActions .ant-btn {
+    border-radius: 13px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .browsing-history__tools .ant-btn:active,
+  .browsing-history__footer .ant-btn:active,
+  .browsing-history__emptyActions .ant-btn:active,
+  .browsing-history__item:active {
+    transform: scale(0.98);
+  }
+
+  .browsing-history__item {
+    background: #ffffff;
+  }
+
+  .browsing-history__imageButton,
+  .browsing-history__imageButton img {
+    border-radius: 13px;
+  }
+
+  .browsing-history__footer {
+    margin-top: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .browsing-history__tools {
+    margin-inline: -5px;
+  }
+}

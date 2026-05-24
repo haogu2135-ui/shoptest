@@ -858,3 +858,65 @@
     padding-inline: 0;
   }
 }
+
+/* Mobile notification inbox polish */
+@media (max-width: 640px) {
+  .notifications-page {
+    padding-top: 10px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .notifications-page__header,
+  .notifications-page__assistant,
+  .notifications-page__actionPlan,
+  .notifications-page__item {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .notifications-page__header {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+  }
+
+  .notifications-page__signalGrid,
+  .notifications-page__actionSignals {
+    scroll-padding-inline: 0 18px;
+  }
+
+  .notifications-page__signal {
+    border-radius: 15px;
+    background: #ffffff;
+  }
+
+  .notifications-page__item {
+    background: #ffffff;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn,
+  .notifications-page__header .ant-btn,
+  .notifications-page__assistant > .ant-btn,
+  .notifications-page__actionPlan > .ant-btn {
+    min-height: 40px;
+    border-radius: 13px;
+  }
+
+  .notifications-page__item .ant-list-item-meta-avatar {
+    margin-inline-end: 8px;
+  }
+
+  .notifications-page__plainText,
+  .notification-rich-content {
+    -webkit-line-clamp: 2;
+  }
+}
+
+@media (max-width: 380px) {
+  .notifications-page__header .ant-btn,
+  .notifications-page__item .ant-list-item-action .ant-btn {
+    min-height: 38px;
+  }
+}

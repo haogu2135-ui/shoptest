@@ -1735,3 +1735,89 @@
     grid-template-columns: minmax(0, 1fr) 66px;
   }
 }
+
+/* Mobile auth polish */
+@media (max-width: 640px) {
+  .shopee-login-root {
+    min-height: 100dvh;
+    align-items: start;
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+
+  .shopee-login-shell {
+    width: min(100%, 430px);
+  }
+
+  .shopee-login-shell .shopee-login-card {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 14px 32px rgba(18, 71, 52, 0.12);
+  }
+
+  .shopee-login-card__header,
+  .shopee-login-form,
+  .shopee-login-tabs,
+  .shopee-login-card .ant-form,
+  .shopee-login-card .ant-form-item,
+  .shopee-login-card .ant-form-item-control,
+  .shopee-login-card .ant-form-item-control-input,
+  .shopee-login-card .ant-form-item-control-input-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .shopee-login-card .ant-input-affix-wrapper,
+  .shopee-login-card .ant-input,
+  .shopee-login-card .ant-btn,
+  .shopee-login-codeButton {
+    border-radius: 13px;
+  }
+
+  .shopee-login-card .ant-btn,
+  .shopee-login-quickLinks a,
+  .shopee-login-quickLinks button,
+  .shopee-login-links a,
+  .shopee-login-links button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .shopee-login-card .ant-btn:active,
+  .shopee-login-quickLinks a:active,
+  .shopee-login-quickLinks button:active,
+  .shopee-login-links a:active,
+  .shopee-login-links button:active {
+    transform: scale(0.98);
+  }
+
+  .shopee-login-tabs .ant-tabs-nav-list {
+    width: 100%;
+  }
+
+  .shopee-login-tabs .ant-tabs-tab {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .shopee-login-form__field--code .ant-input-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(74px, 92px);
+    gap: 6px;
+  }
+
+  .shopee-login-form__field--code .ant-input-group-addon {
+    width: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .shopee-login-shell .shopee-login-card {
+    border-radius: 16px;
+  }
+
+  .shopee-login-form__field--code .ant-input-group {
+    grid-template-columns: minmax(0, 1fr) 72px;
+  }
+}

@@ -1171,3 +1171,62 @@
     min-height: 38px;
   }
 }
+
+/* Mobile compare decision polish */
+@media (max-width: 600px) {
+  .product-compare-page {
+    padding-bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+
+  .product-compare-page > .ant-card,
+  .product-compare__diff-summary,
+  .product-compare__decision,
+  .product-compare__recommendation,
+  .product-compare__checkoutPath {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .product-compare__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    margin-inline: -6px;
+    padding: 6px;
+    border-radius: 0 0 16px 16px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .product-compare__diff-tags,
+  .product-compare__decisionGrid,
+  .product-compare__riskGrid,
+  .product-compare__checkoutSteps {
+    scroll-padding-inline: 8px 22px;
+  }
+
+  .product-compare__decisionItem,
+  .product-compare__checkoutSteps span {
+    border-radius: 13px;
+  }
+
+  .product-compare-page .ant-btn {
+    min-height: 38px;
+    border-radius: 13px;
+    touch-action: manipulation;
+  }
+
+  .product-compare-page .ant-table-wrapper {
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.08);
+  }
+}
+
+@media (max-width: 380px) {
+  .product-compare__toolbar {
+    margin-inline: -4px;
+  }
+}

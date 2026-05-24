@@ -422,3 +422,43 @@
     white-space: normal;
   }
 }
+
+/* Mobile admin shell polish */
+@media (max-width: 720px) {
+  .category-management-page {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .category-management-page__toolbar {
+    position: sticky;
+    top: 64px;
+    z-index: 8;
+    border-color: rgba(18, 71, 52, 0.08);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 12px 26px rgba(18, 71, 52, 0.1);
+    backdrop-filter: blur(14px);
+  }
+
+  .category-management-page__toolbar .ant-btn {
+    min-height: 42px;
+  }
+
+  .category-management-page .ant-pagination {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .category-management-page .ant-pagination-options {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .category-management-page__toolbar {
+    top: 58px;
+  }
+
+  .category-management-page .ant-table-cell {
+    padding: 9px 8px;
+  }
+}

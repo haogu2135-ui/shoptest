@@ -196,3 +196,43 @@
     flex-basis: 100%;
   }
 }
+
+/* Mobile admin shell polish */
+@media (max-width: 720px) {
+  .permission-management-page {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .permission-management-page__toolbar.ant-card {
+    position: sticky;
+    top: 64px;
+    z-index: 8;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 12px 26px rgba(18, 71, 52, 0.1);
+    backdrop-filter: blur(14px);
+  }
+
+  .permission-management-page__actions .ant-input-affix-wrapper,
+  .permission-management-page__actions .ant-btn {
+    min-height: 42px;
+  }
+
+  .permission-management-page .ant-pagination {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .permission-management-page .ant-pagination-options {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .permission-management-page__toolbar.ant-card {
+    top: 58px;
+  }
+
+  .permission-management-page__table .ant-table-cell {
+    padding: 9px 8px;
+  }
+}

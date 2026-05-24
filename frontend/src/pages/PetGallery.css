@@ -1327,3 +1327,61 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Mobile gallery browse/upload polish */
+@media (max-width: 620px) {
+  .pet-gallery-page {
+    width: min(100% - 12px, 1200px);
+    padding-top: 10px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .pet-gallery-hero,
+  .pet-gallery-toolbar,
+  .pet-gallery-insights,
+  .pet-gallery-action-card,
+  .pet-gallery-conversion,
+  .pet-gallery-card {
+    border: 1px solid rgba(18, 71, 52, 0.08);
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .pet-gallery-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+  }
+
+  .pet-gallery-card {
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .pet-gallery-card__imageButton {
+    background: linear-gradient(180deg, #fbfdfb, #f1f7f3);
+  }
+
+  .pet-gallery-hero .ant-btn,
+  .pet-gallery-toolbar .ant-btn,
+  .pet-gallery-action-card .ant-btn,
+  .pet-gallery-conversion__actions .ant-btn,
+  .pet-gallery-card__like,
+  .pet-gallery-card__delete,
+  .pet-gallery-card__camera {
+    border-radius: 13px;
+    touch-action: manipulation;
+  }
+
+  .pet-gallery-insights__grid,
+  .pet-gallery-conversion__signals {
+    scroll-padding-inline: 10px 22px;
+  }
+}
+
+@media (max-width: 380px) {
+  .pet-gallery-page {
+    width: min(100% - 10px, 1200px);
+  }
+}

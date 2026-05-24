@@ -225,3 +225,31 @@
     font-size: 11px;
   }
 }
+
+/* Final mobile rich-detail reading polish */
+@media (max-width: 640px) {
+  .product-rich-detail {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .product-rich-detail__figure {
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.04);
+  }
+
+  .product-rich-detail__video-link {
+    min-height: 44px;
+    border-radius: 0 0 8px 8px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .product-rich-detail__video-link:active {
+    transform: scale(0.99);
+  }
+}
+
+@media (max-width: 430px) {
+  .product-rich-detail__figure {
+    margin-inline: 0;
+  }
+}

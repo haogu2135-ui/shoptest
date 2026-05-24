@@ -2145,3 +2145,65 @@
     flex-basis: 100%;
   }
 }
+
+/* Mobile cart checkout readiness pass */
+@media (max-width: 640px) {
+  .cart-page {
+    width: min(100% - 12px, 1160px);
+    padding-top: 10px;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .cart-page__mobileItem {
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  .cart-page__mobileItemTop {
+    gap: 9px;
+  }
+
+  .cart-page__mobileItemImage {
+    background: linear-gradient(180deg, #fbfdfb, #f1f7f3);
+  }
+
+  .cart-page__mobileItemMeta,
+  .cart-page__mobileItemUnitPrice,
+  .cart-page__urgency {
+    max-width: 100%;
+  }
+
+  .cart-page__summary {
+    position: sticky;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    z-index: 20;
+    margin-inline: -2px;
+    border-radius: 18px;
+    box-shadow: 0 -10px 30px rgba(18, 71, 52, 0.16);
+  }
+
+  .cart-page__summaryFooter {
+    align-items: center;
+  }
+
+  .cart-page__summary .ant-btn {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .cart-page__summary .ant-btn:active,
+  .cart-page__mobileItemBottom .ant-btn:active {
+    transform: scale(0.98);
+  }
+}
+
+@media (max-width: 380px) {
+  .cart-page {
+    width: min(100% - 10px, 1160px);
+  }
+
+  .cart-page__summary {
+    margin-inline: -1px;
+  }
+}
