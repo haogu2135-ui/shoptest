@@ -5,6 +5,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -24,6 +25,7 @@ public class RateLimitService {
     private final ConcurrentMap<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final AtomicLong acceptedRequests = new AtomicLong();
     private final AtomicLong rejectedRequests = new AtomicLong();
+    private Clock clock = Clock.systemUTC();
 
     public RateLimitService(RuntimeConfigService runtimeConfig, ClientIpResolver clientIpResolver) {
         this.runtimeConfig = runtimeConfig;
@@ -34,17 +36,17 @@ public class RateLimitService {
         Config config = config();
         if (!config.enabled || shouldSkip(request, config)) {
             acceptedRequests.incrementAndGet();
-            return Decision.allowed(config.limitFor(resolveScope(request, authentication)), config.windowSeconds);
+            return Decision.allowed(config.limitFor(resolveScope(request, authentication)), config.windowSeconds, nowEpochSecond());
         }
 
         Scope scope = resolveScope(request, authentication);
         int limit = config.limitFor(scope);
         if (limit <= 0) {
             acceptedRequests.incrementAndGet();
-            return Decision.allowed(limit, config.windowSeconds);
+            return Decision.allowed(limit, config.windowSeconds, nowEpochSecond());
         }
 
-        long now = Instant.now().getEpochSecond();
+        long now = nowEpochSecond();
         long windowStart = now - Math.floorMod(now, config.windowSeconds);
         String client = clientKey(request, authentication);
         String method = request.getMethod() == null ? "" : request.getMethod().toUpperCase(Locale.ROOT);
@@ -206,7 +208,7 @@ public class RateLimitService {
     }
 
     private List<TrafficControlStatusResponse.RateLimitBucketStatus> hotBuckets(Config config) {
-        long now = Instant.now().getEpochSecond();
+        long now = nowEpochSecond();
         long oldest = now - (long) config.windowSeconds * 2;
         return buckets.values().stream()
                 .filter(bucket -> bucket.windowStart >= oldest)
@@ -317,8 +319,7 @@ public class RateLimitService {
             this.resetAtEpochSeconds = resetAtEpochSeconds;
         }
 
-        private static Decision allowed(int limit, int windowSeconds) {
-            long now = Instant.now().getEpochSecond();
+        private static Decision allowed(int limit, int windowSeconds, long now) {
             return new Decision(true, limit, Math.max(0, limit), windowSeconds, now + windowSeconds);
         }
 
@@ -349,5 +350,9 @@ public class RateLimitService {
         public long getResetAtEpochSeconds() {
             return resetAtEpochSeconds;
         }
+    }
+
+    private long nowEpochSecond() {
+        return Instant.now(clock).getEpochSecond();
     }
 }

@@ -241,9 +241,11 @@ public class ProductServiceImpl implements ProductService {
                     .filter(ProductStatusUtils::isPublicProduct)
                     .collect(Collectors.toList()));
         }
+        Map<Long, Category> categoryLookup = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getId, category -> category, (left, right) -> left));
         return enrichReviewStats(candidates.stream()
                 .filter(ProductStatusUtils::isPublicProduct)
-                .filter(product -> matchesNormalizedKeyword(product, normalizedKeyword))
+                .filter(product -> matchesNormalizedKeyword(product, normalizedKeyword, categoryLookup))
                 .collect(Collectors.toList()));
     }
 
@@ -704,11 +706,11 @@ public class ProductServiceImpl implements ProductService {
         categoryRepository.findByParentId(id).forEach(child -> collectCategoryIds(child.getId(), ids));
     }
 
-    private boolean matchesNormalizedKeyword(Product product, String normalizedKeyword) {
+    private boolean matchesNormalizedKeyword(Product product, String normalizedKeyword, Map<Long, Category> categoryLookup) {
         if (normalizedKeyword.isEmpty()) {
             return true;
         }
-        String searchable = productSearchText(product);
+        String searchable = productSearchText(product, categoryLookup);
         if (searchable.contains(normalizedKeyword)) {
             return true;
         }
@@ -740,13 +742,13 @@ public class ProductServiceImpl implements ProductService {
                 || "small".equals(token);
     }
 
-    private String productSearchText(Product product) {
+    private String productSearchText(Product product, Map<Long, Category> categoryLookup) {
         StringBuilder builder = new StringBuilder();
         appendSearchText(builder, product.getName());
         appendSearchText(builder, product.getDescription());
         appendSearchText(builder, product.getBrand());
         appendSearchText(builder, product.getTag());
-        appendCategorySearchText(builder, product.getCategoryId());
+        appendCategorySearchText(builder, product.getCategoryId(), categoryLookup);
         Map<String, String> specifications = product.getSpecificationsMap();
         if (specifications != null) {
             specifications.forEach((key, value) -> {
@@ -763,15 +765,17 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private void appendCategorySearchText(StringBuilder builder, Long categoryId) {
+    private void appendCategorySearchText(StringBuilder builder, Long categoryId, Map<Long, Category> categoryLookup) {
+        if (categoryLookup == null || categoryLookup.isEmpty()) {
+            return;
+        }
         Set<Long> visitedIds = new HashSet<>();
         Long currentId = categoryId;
         while (currentId != null && visitedIds.add(currentId)) {
-            Optional<Category> categoryOptional = categoryRepository.findById(currentId);
-            if (categoryOptional.isEmpty()) {
+            Category category = categoryLookup.get(currentId);
+            if (category == null) {
                 return;
             }
-            Category category = categoryOptional.get();
             appendSearchText(builder, category.getName());
             appendSearchText(builder, category.getDescription());
             Map<String, Map<String, String>> localizedContent = category.getLocalizedContentMap();

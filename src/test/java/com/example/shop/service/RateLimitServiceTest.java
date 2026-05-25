@@ -4,7 +4,11 @@ import com.example.shop.dto.TrafficControlStatusResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,6 +28,7 @@ class RateLimitServiceTest {
         runtimeConfig = mock(RuntimeConfigService.class);
         clientIpResolver = mock(ClientIpResolver.class);
         service = new RateLimitService(runtimeConfig, clientIpResolver);
+        ReflectionTestUtils.setField(service, "clock", Clock.fixed(Instant.parse("2026-05-24T12:00:05Z"), ZoneOffset.UTC));
         when(runtimeConfig.getBoolean("traffic.rate-limit.enabled", true)).thenReturn(true);
         when(runtimeConfig.getInt("traffic.rate-limit.public-per-minute", 120)).thenReturn(2);
         when(runtimeConfig.getInt("traffic.rate-limit.authenticated-per-minute", 300)).thenReturn(300);
