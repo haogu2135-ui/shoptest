@@ -818,7 +818,10 @@ const Checkout: React.FC = () => {
     if (!createdOrderId || paymentStatus !== 'PENDING') return undefined;
     const shouldRefreshOrder = Boolean(getLocalStorageItem('token'));
     let disposed = false;
+    let polling = false;
     const timer = window.setInterval(async () => {
+      if (polling) return;
+      polling = true;
       try {
         const paymentRes = await paymentApi.getLatestByOrder(createdOrderId, shouldRefreshOrder ? undefined : guestPaymentEmail);
         if (disposed) return;
@@ -830,10 +833,13 @@ const Checkout: React.FC = () => {
         }
       } catch {
         // Keep the submitted-order screen stable while the gateway is still redirecting or polling.
+      } finally {
+        polling = false;
       }
     }, 5000);
     return () => {
       disposed = true;
+      polling = false;
       window.clearInterval(timer);
     };
   }, [createdOrderId, guestPaymentEmail, paymentStatus]);
