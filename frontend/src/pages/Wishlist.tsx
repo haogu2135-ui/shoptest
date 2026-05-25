@@ -10,6 +10,7 @@ import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { hasStoredValue } from '../utils/safeStorage';
+import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import './Wishlist.css';
 
 const { Text, Title } = Typography;
@@ -127,8 +128,9 @@ const Wishlist: React.FC = () => {
       message.info(t('pages.wishlist.noDirectAdd'));
       return;
     }
-    const results = await Promise.allSettled(
-      directAddItems.map((item) => cartApi.addItem(0, item.productId, 1)),
+    const results = await allSettledWithConcurrency(
+      directAddItems,
+      (item) => cartApi.addItem(0, item.productId, 1),
     );
     const added = results.filter((result) => result.status === 'fulfilled').length;
     if (added > 0) {
@@ -142,8 +144,9 @@ const Wishlist: React.FC = () => {
 
   const clearUnavailableItems = async () => {
     if (wishlistGroups.unavailableItems.length === 0) return;
-    const results = await Promise.allSettled(
-      wishlistGroups.unavailableItems.map((item) => wishlistApi.remove(0, item.productId)),
+    const results = await allSettledWithConcurrency(
+      wishlistGroups.unavailableItems,
+      (item) => wishlistApi.remove(0, item.productId),
     );
     const removedProductIds = new Set(
       wishlistGroups.unavailableItems
