@@ -224,7 +224,12 @@ const SupportManagement: React.FC = () => {
   }, [t]);
 
   useEffect(() => {
-    const timer = window.setInterval(async () => {
+    let polling = false;
+
+    const timer = window.setInterval(async () => {
+
+      if (polling) return;
+      polling = true;
       await loadSessions();
       const activeSession = selectedSessionRef.current;
       if (activeSession) {
@@ -235,8 +240,12 @@ const SupportManagement: React.FC = () => {
           // Polling is a backup path for missed socket events.
         }
       }
-    }, 10000);
-    return () => window.clearInterval(timer);
+      polling = false;
+    }, 10000);
+    return () => {
+      polling = false;
+      window.clearInterval(timer);
+    };
   }, [loadSessions]);
 
   useEffect(() => {
