@@ -826,8 +826,8 @@
   }
 
   .pet-gallery-hero {
-    gap: 10px;
-    padding: 16px 14px;
+    gap: 8px;
+    padding: 12px;
     border-radius: 18px;
   }
 
@@ -871,13 +871,13 @@
   }
 
   .pet-gallery-hero__stats {
-    gap: 6px;
-    padding: 8px;
+    gap: 5px;
+    padding: 6px;
     border-radius: 16px;
   }
 
   .pet-gallery-hero__stats .ant-statistic-title {
-    min-height: 28px;
+    min-height: 24px;
     font-size: 10px;
   }
 
@@ -886,8 +886,8 @@
   }
 
   .pet-gallery-toolbar {
-    gap: 8px;
-    margin: 12px 0;
+    gap: 6px;
+    margin: 8px 0 12px;
   }
 
   .pet-gallery-toolbar .ant-space {

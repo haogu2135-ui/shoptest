@@ -419,7 +419,8 @@ const Navbar: React.FC = () => {
     : announcements;
 
   return (
-    <header className={`shop-nav shop-nav--${language}`}>
+    <>
+      <header className={`shop-nav shop-nav--${language}`}>
       <div className="shop-nav__announcement">
         <div className="shop-nav__ticker">
           {tickerAnnouncements.length > 0 ? tickerAnnouncements.map((announcement, index) => (
@@ -714,7 +715,8 @@ const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
-      <nav className="shop-nav__bottomBar" aria-label={t('home.categories')}>
+      </header>
+      <nav className={`shop-nav__bottomBar shop-nav__bottomBar--${language}`} aria-label={t('home.categories')}>
         <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}>
           <HomeOutlined />
           <span>{t('nav.ariaHome')}</span>
@@ -741,7 +743,7 @@ const Navbar: React.FC = () => {
           <span>{t('nav.account')}</span>
         </Link>
       </nav>
-    </header>
+    </>
   );
 };
 

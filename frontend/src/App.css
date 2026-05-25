@@ -1655,3 +1655,123 @@
     min-width: 0;
   }
 }
+
+/* Storefront mobile resilience pass */
+@media (max-width: 720px) {
+  :where(
+    .shopee-home,
+    .product-list,
+    .product-detail-page,
+    .cart-page,
+    .checkout-page,
+    .shop-nav
+  ) {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  :where(
+    .shopee-home,
+    .product-list,
+    .product-detail-page,
+    .cart-page,
+    .checkout-page,
+    .shop-nav
+  ) * {
+    min-width: 0;
+  }
+
+  .ant-space,
+  .ant-space-item,
+  .ant-row,
+  .ant-col,
+  .ant-form-item,
+  .ant-form-item-control,
+  .ant-form-item-control-input,
+  .ant-form-item-control-input-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ant-input,
+  .ant-input-affix-wrapper input,
+  .ant-input-number-input,
+  .ant-select-selection-search-input,
+  .ant-picker-input > input {
+    font-size: 16px;
+  }
+
+  .ant-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    max-width: 100%;
+  }
+
+  .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ant-segmented,
+  .ant-radio-group,
+  .ant-checkbox-group,
+  .ant-rate,
+  .ant-steps {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-segmented::-webkit-scrollbar,
+  .ant-radio-group::-webkit-scrollbar,
+  .ant-checkbox-group::-webkit-scrollbar,
+  .ant-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ant-drawer-content-wrapper {
+    max-width: 100vw !important;
+  }
+
+  .ant-drawer-body {
+    padding: 14px;
+  }
+
+  .ant-modal {
+    max-width: calc(100vw - 16px);
+  }
+
+  .ant-slider {
+    margin-inline: 10px;
+  }
+
+  .ant-slider .ant-slider-handle {
+    width: 32px;
+    height: 32px;
+    margin-top: -14px;
+  }
+
+  .ant-slider .ant-slider-handle::before,
+  .ant-slider .ant-slider-handle::after {
+    width: 32px;
+    height: 32px;
+    inset-inline-start: 0;
+    inset-block-start: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .ant-drawer-body,
+  .ant-modal-body {
+    padding: 12px;
+  }
+
+  .ant-btn {
+    gap: 4px;
+  }
+}

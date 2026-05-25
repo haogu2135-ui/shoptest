@@ -4518,7 +4518,8 @@
 
   .coupon-center-page__mobileActionBar {
     position: sticky;
-    top: 42px;
+    top: auto;
+    bottom: calc(70px + env(safe-area-inset-bottom));
     z-index: 8;
     gap: 6px;
     margin-bottom: 8px;
@@ -4559,7 +4560,7 @@
   }
 
   .coupon-center-page__mobileActionBar {
-    top: 39px;
+    bottom: calc(68px + env(safe-area-inset-bottom));
   }
 }
 
@@ -4827,5 +4828,18 @@
   .coupon-claim-section__controls {
     top: 86px;
     max-width: calc(100vw - 10px);
+  }
+}
+
+/* Mobile coupon long-copy readability pass */
+@media (max-width: 560px) {
+  .coupon-center-page__heroPlan > span:not(.ant-typography),
+  .coupon-center-page__heroText,
+  .coupon-wallet__guide small {
+    display: block;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-line-clamp: unset;
   }
 }

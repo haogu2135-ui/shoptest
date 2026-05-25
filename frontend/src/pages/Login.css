@@ -1799,6 +1799,16 @@
   .shopee-login-tabs .ant-tabs-tab {
     flex: 1 1 0;
     justify-content: center;
+    min-height: 36px;
+  }
+
+  .shopee-login-tabs .ant-tabs-tab-btn {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+    white-space: normal;
   }
 
   .shopee-login-form__field--code .ant-input-group {

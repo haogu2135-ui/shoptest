@@ -2224,3 +2224,14 @@
     min-height: 44px;
   }
 }
+
+/* Mobile bottom nav viewport anchoring pass */
+@media (max-width: 780px) {
+  .shop-nav__main {
+    contain: none;
+  }
+
+  .shop-nav__bottomBar {
+    z-index: 1250;
+  }
+}
