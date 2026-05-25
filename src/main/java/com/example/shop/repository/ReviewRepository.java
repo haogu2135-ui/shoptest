@@ -16,6 +16,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT r FROM Review r WHERE r.product.id = :productId AND (r.status = 'APPROVED' OR (r.status = 'PENDING' AND r.user.id = :userId)) ORDER BY r.createdAt DESC")
     List<Review> findByProductIdIncludingUserPending(@Param("productId") Long productId, @Param("userId") Long userId);
     boolean existsByProduct_IdAndUser_IdAndOrderId(Long productId, Long userId, Long orderId);
+    List<Review> findByProduct_IdAndUser_IdAndOrderIdIn(Long productId, Long userId, List<Long> orderIds);
     
     @Query("SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.product.id = :productId AND r.status = 'APPROVED'")
     double findAverageRatingByProductId(@Param("productId") Long productId);

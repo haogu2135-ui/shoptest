@@ -17,8 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -79,11 +81,38 @@ public class ReviewServiceImpl implements ReviewService {
             return List.of();
         }
         LocalDateTime deadline = LocalDateTime.now().minusDays(30);
-        return orderRepository.findByUserId(userId).stream()
+        List<Order> recentCompletedOrders = orderRepository.findByUserId(userId).stream()
                 .filter(order -> "COMPLETED".equals(order.getStatus()))
                 .filter(order -> order.getCreatedAt() != null && !order.getCreatedAt().isBefore(deadline))
-                .filter(order -> orderItemRepository.findByOrderIdAndProductId(order.getId(), productId) != null)
-                .filter(order -> !reviewRepository.existsByProduct_IdAndUser_IdAndOrderId(productId, userId, order.getId()))
+                .collect(Collectors.toList());
+        if (recentCompletedOrders.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> orderIds = recentCompletedOrders.stream()
+                .map(Order::getId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        if (orderIds.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> ordersWithProduct = orderItemRepository.findByOrderIds(orderIds).stream()
+                .filter(item -> productId.equals(item.getProductId()))
+                .map(OrderItem::getOrderId)
+                .collect(Collectors.toSet());
+        if (ordersWithProduct.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> reviewedOrderIds = reviewRepository.findByProduct_IdAndUser_IdAndOrderIdIn(productId, userId, orderIds).stream()
+                .map(Review::getOrderId)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        return recentCompletedOrders.stream()
+                .filter(order -> ordersWithProduct.contains(order.getId()))
+                .filter(order -> !reviewedOrderIds.contains(order.getId()))
                 .collect(Collectors.toList());
     }
 

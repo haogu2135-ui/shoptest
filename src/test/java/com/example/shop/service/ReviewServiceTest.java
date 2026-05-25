@@ -16,27 +16,32 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ReviewServiceTest {
     private ReviewRepository reviewRepository;
+    private ProductRepository productRepository;
+    private OrderRepository orderRepository;
+    private OrderItemRepository orderItemRepository;
     private ReviewServiceImpl service;
     private RuntimeConfigService runtimeConfig;
 
     @BeforeEach
     void setUp() {
         reviewRepository = mock(ReviewRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
+        productRepository = mock(ProductRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
-        OrderRepository orderRepository = mock(OrderRepository.class);
-        OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        orderRepository = mock(OrderRepository.class);
+        orderItemRepository = mock(OrderItemRepository.class);
         runtimeConfig = mock(RuntimeConfigService.class);
         service = new ReviewServiceImpl();
         ReflectionTestUtils.setField(service, "reviewRepository", reviewRepository);
@@ -97,5 +102,48 @@ class ReviewServiceTest {
         when(reviewRepository.findById(21L)).thenReturn(Optional.of(review));
 
         assertThrows(IllegalArgumentException.class, () -> service.replyReview(21L, "x".repeat(81)));
+    }
+
+    @Test
+    void batchesReviewableOrderEligibilityChecks() {
+        Order eligibleOrder = completedOrder(101L);
+        Order reviewedOrder = completedOrder(102L);
+        Order wrongProductOrder = completedOrder(103L);
+        Order oldOrder = completedOrder(104L);
+        oldOrder.setCreatedAt(LocalDateTime.now().minusDays(31));
+
+        OrderItem eligibleItem = orderItem(101L, 7L);
+        OrderItem reviewedItem = orderItem(102L, 7L);
+        OrderItem wrongProductItem = orderItem(103L, 9L);
+        Review existingReview = new Review();
+        existingReview.setOrderId(102L);
+
+        when(orderRepository.findByUserId(3L)).thenReturn(List.of(eligibleOrder, reviewedOrder, wrongProductOrder, oldOrder));
+        when(orderItemRepository.findByOrderIds(List.of(101L, 102L, 103L))).thenReturn(List.of(eligibleItem, reviewedItem, wrongProductItem));
+        when(reviewRepository.findByProduct_IdAndUser_IdAndOrderIdIn(7L, 3L, List.of(101L, 102L, 103L))).thenReturn(List.of(existingReview));
+
+        List<Order> result = service.getReviewableOrders(7L, 3L);
+
+        assertEquals(List.of(eligibleOrder), result);
+        verify(orderItemRepository).findByOrderIds(List.of(101L, 102L, 103L));
+        verify(reviewRepository).findByProduct_IdAndUser_IdAndOrderIdIn(7L, 3L, List.of(101L, 102L, 103L));
+        verify(orderItemRepository, never()).findByOrderIdAndProductId(any(), any());
+        verify(reviewRepository, never()).existsByProduct_IdAndUser_IdAndOrderId(any(), any(), any());
+    }
+
+    private Order completedOrder(Long id) {
+        Order order = new Order();
+        order.setId(id);
+        order.setUserId(3L);
+        order.setStatus("COMPLETED");
+        order.setCreatedAt(LocalDateTime.now());
+        return order;
+    }
+
+    private OrderItem orderItem(Long orderId, Long productId) {
+        OrderItem item = new OrderItem();
+        item.setOrderId(orderId);
+        item.setProductId(productId);
+        return item;
     }
 }
