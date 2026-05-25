@@ -456,6 +456,7 @@ const Navbar: React.FC = () => {
               value={language}
               onChange={(value) => setLanguage(value as Language)}
               classNames={{ popup: { root: 'shop-nav__select-popup' } }}
+              getPopupContainer={() => document.body}
               options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
             <Select
@@ -468,6 +469,7 @@ const Navbar: React.FC = () => {
                 setCurrency(nextCurrency);
               }}
               classNames={{ popup: { root: 'shop-nav__select-popup' } }}
+              getPopupContainer={() => document.body}
               options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
             {token ? (
@@ -532,6 +534,7 @@ const Navbar: React.FC = () => {
                 value={language}
                 onChange={(value) => setLanguage(value as Language)}
                 classNames={{ popup: { root: 'shop-nav__select-popup' } }}
+                getPopupContainer={() => document.body}
                 options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
               <Select
@@ -541,6 +544,7 @@ const Navbar: React.FC = () => {
                 value={currency}
                 onChange={(value) => setCurrency(value as CurrencyCode)}
                 classNames={{ popup: { root: 'shop-nav__select-popup' } }}
+                getPopupContainer={() => document.body}
                 options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
               {token ? (
@@ -612,6 +616,7 @@ const Navbar: React.FC = () => {
             ) : null}
             <Dropdown
               className="shop-nav__mobile-locale"
+              overlayClassName="shop-nav__dropdown-popup"
               trigger={['click']}
               menu={{
                 items: [
@@ -652,6 +657,7 @@ const Navbar: React.FC = () => {
                   </Badge>
                 </button>
                 <Dropdown
+                  overlayClassName="shop-nav__dropdown-popup"
                   trigger={['click']}
                   menu={{
                     items: [
@@ -687,6 +693,7 @@ const Navbar: React.FC = () => {
                 <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary"><UserAddOutlined /><span className="shop-nav__mobile-authText">{t('nav.register')}</span></Link>
                 <Link to="/login" className="shop-nav__mobile-auth"><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.login')}</span></Link>
                 <Dropdown
+                  overlayClassName="shop-nav__dropdown-popup"
                   trigger={['click']}
                   menu={{
                     items: [

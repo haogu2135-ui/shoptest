@@ -586,6 +586,16 @@
   font-weight: 700;
 }
 
+.shop-nav__select-popup,
+.shop-nav__dropdown-popup {
+  z-index: 2400 !important;
+}
+
+.shop-nav__dropdown-popup .ant-dropdown-menu {
+  position: relative;
+  z-index: 1;
+}
+
 .shop-nav__menu-action {
   width: 100%;
   min-height: 34px;
