@@ -44,7 +44,7 @@ sudo nano /etc/shoptest/backend.env
 sudo chmod 0640 /etc/shoptest/backend.env
 ```
 
-The first successful deploy uploads `/opt/shoptest/shop.jar`, writes `/etc/systemd/system/shoptest-backend.service`, enables `shoptest-backend`, restarts it, and runs the optional health check. If the health check fails and a previous jar exists, the remote activation script rolls back to `/opt/shoptest/shop.jar.previous` and restarts the service again.
+The first successful deploy uploads `/opt/shoptest/shop.jar`, writes `/etc/systemd/system/shoptest-backend.service`, enables `shoptest-backend`, restarts it, and runs the optional health check. If the new jar health check fails and a previous jar exists, the remote activation script rolls back to `/opt/shoptest/shop.jar.previous`, restarts the service, verifies the rollback with the same health check, and still exits with a failed deploy status so CI reports that the new release was not applied.
 
 If the deploy user is not `root`, configure passwordless sudo for `mkdir`, `mv`, `cp`, `chmod`, `chown`, `install`, `tee`, `systemctl`, `useradd`, and `groupadd`, or use `root` as `BACKEND_DEPLOY_USER`.
 
@@ -133,6 +133,7 @@ All deploy entry points upload `scripts/backend-remote-activate.sh` to the backe
 - moves the uploaded jar into `/opt/shoptest/shop.jar`
 - enables and restarts the `shoptest-backend` service
 - runs the configured health check and rolls back to the previous jar on failure
+- verifies rollback health before leaving the previous jar in service
 
 Useful server-side checks:
 

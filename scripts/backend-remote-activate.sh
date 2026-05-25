@@ -65,6 +65,15 @@ require_safe_path_name() {
   fi
 }
 
+require_integer_at_least() {
+  local label="$1"
+  local value="$2"
+  local minimum="$3"
+  if [[ ! "$value" =~ ^[0-9]+$ || "$value" -lt "$minimum" ]]; then
+    fail "$label must be an integer >= $minimum: $value"
+  fi
+}
+
 is_enabled() {
   [[ "${1,,}" == "true" || "${1,,}" == "1" || "${1,,}" == "yes" ]]
 }
@@ -255,6 +264,40 @@ UNIT
   rm -f "$temp_unit"
 }
 
+run_healthcheck() {
+  local success_message="$1"
+  local attempt
+  for ((attempt = 1; attempt <= HEALTHCHECK_RETRIES; attempt++)); do
+    if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then
+      echo "$success_message"
+      return 0
+    fi
+    if (( attempt < HEALTHCHECK_RETRIES )); then
+      sleep "$HEALTHCHECK_INTERVAL_SECONDS"
+    fi
+  done
+  return 1
+}
+
+rollback_to_previous_jar() {
+  local backup_path="$1"
+  local jar_target="$2"
+
+  echo "Rolling back to previous backend jar." >&2
+  "${SUDO[@]}" mv "$backup_path" "$jar_target"
+  "${SUDO[@]}" chmod 0644 "$jar_target"
+  "${SUDO[@]}" chown "$SERVICE_USER:$SERVICE_GROUP" "$jar_target"
+  "${SUDO[@]}" systemctl restart "$SERVICE_NAME"
+  "${SUDO[@]}" systemctl is-active --quiet "$SERVICE_NAME"
+
+  if run_healthcheck "Rollback backend health check passed."; then
+    return
+  fi
+
+  echo "Rollback health check failed: $HEALTHCHECK_URL" >&2
+  exit 1
+}
+
 activate_service() {
   local jar_next="$TEMP_DIR/$JAR_NAME.next"
   local jar_target="$TARGET_DIR/$JAR_NAME"
@@ -268,6 +311,8 @@ activate_service() {
   require_absolute_path "RUNTIME_ENV_FILE" "$RUNTIME_ENV_FILE"
   require_absolute_path "JAVA_BIN" "$JAVA_BIN"
   require_no_newline "JAVA_OPTS" "$JAVA_OPTS"
+  require_integer_at_least "HEALTHCHECK_RETRIES" "$HEALTHCHECK_RETRIES" 1
+  require_integer_at_least "HEALTHCHECK_INTERVAL_SECONDS" "$HEALTHCHECK_INTERVAL_SECONDS" 0
 
   if [[ -n "$OWNER" ]]; then
     require_no_newline "OWNER" "$OWNER"
@@ -313,20 +358,13 @@ activate_service() {
       return
     fi
 
-    local attempt
-    for ((attempt = 1; attempt <= HEALTHCHECK_RETRIES; attempt++)); do
-      if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then
-        echo "Backend health check passed."
-        return
-      fi
-      sleep "$HEALTHCHECK_INTERVAL_SECONDS"
-    done
+    if run_healthcheck "Backend health check passed."; then
+      return
+    fi
 
     echo "Backend health check failed: $HEALTHCHECK_URL" >&2
     if [[ -n "$backup_path" && -f "$backup_path" ]]; then
-      echo "Rolling back to previous backend jar." >&2
-      "${SUDO[@]}" mv "$backup_path" "$jar_target"
-      "${SUDO[@]}" systemctl restart "$SERVICE_NAME"
+      rollback_to_previous_jar "$backup_path" "$jar_target"
     fi
     exit 1
   fi
