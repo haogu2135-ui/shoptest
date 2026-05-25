@@ -21,6 +21,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
+import { getLimitedTimeEndMs, getLimitedTimeRemainingMs, shouldRunLimitedTimeTicker } from '../utils/limitedTimeCountdown';
 import './ProductDetail.css';
 
 const { Title, Text } = Typography;
@@ -197,10 +198,14 @@ const ProductDetail: React.FC = () => {
     };
   }, [heroImage, heroImageSrcSet, shouldPreloadHeroImage]);
 
+  const limitedTimeEnd = useMemo(() => getLimitedTimeEndMs(product?.limitedTimeEndAt), [product?.limitedTimeEndAt]);
+  const limitedTimeTickerActive = shouldRunLimitedTimeTicker(product, now);
+
   useEffect(() => {
+    if (!limitedTimeTickerActive) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [limitedTimeTickerActive, limitedTimeEnd]);
 
   const clearImageResumeTimer = useCallback(() => {
     if (imageResumeTimerRef.current !== null) {
@@ -625,8 +630,7 @@ const ProductDetail: React.FC = () => {
       ? t('bundle.bundleDeal')
       : t('pages.productDetail.oneTimePurchase');
   const discountPercent = product.effectiveDiscountPercent || product.discount || 0;
-  const limitedTimeEnd = product.limitedTimeEndAt ? new Date(product.limitedTimeEndAt).getTime() : 0;
-  const limitedTimeRemaining = product.activeLimitedTimeDiscount && limitedTimeEnd > now ? limitedTimeEnd - now : 0;
+  const limitedTimeRemaining = getLimitedTimeRemainingMs(product, now);
   const hasCompleteOptions = optionGroups.every((group) => selectedOptions[group.name]);
   const hasUnavailableSelectedVariant = variants.length > 0 && hasCompleteOptions && !selectedVariant;
   const optionsMissing = optionGroups.length > 0 && !hasCompleteOptions;
