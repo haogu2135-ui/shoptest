@@ -16,6 +16,7 @@ import { navigateToSafeUrl } from '../utils/safeUrl';
 import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 
@@ -130,16 +131,20 @@ const Profile: React.FC = () => {
       const response = await orderApi.getMine();
       const sortedOrders = sortOrdersNewestFirst(response.data || []);
       setOrders(sortedOrders);
-      const itemEntries = await Promise.all(
-        sortedOrders.slice(0, 30).map(async (order) => {
+      const itemResults = await allSettledWithConcurrency(
+        sortedOrders.slice(0, 30),
+        async (order) => {
           try {
             const res = await orderApi.getItems(order.id);
             return [order.id, res.data || []] as const;
           } catch {
             return [order.id, []] as const;
           }
-        })
+        },
       );
+      const itemEntries = itemResults
+        .filter((result): result is PromiseFulfilledResult<readonly [number, OrderItem[]]> => result.status === 'fulfilled')
+        .map((result) => result.value);
       setOrderItemsByOrderId(Object.fromEntries(itemEntries));
     } catch {
       message.error(t('pages.profile.fetchOrdersFailed'));
