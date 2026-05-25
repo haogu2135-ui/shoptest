@@ -1822,6 +1822,15 @@
   }
 }
 
+@media (max-width: 780px) {
+  .shopee-login-links a,
+  .shopee-login-links button {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 @media (max-width: 380px) {
   .shopee-login-shell .shopee-login-card {
     border-radius: 16px;

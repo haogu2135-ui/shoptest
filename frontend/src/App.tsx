@@ -214,6 +214,7 @@ const StorefrontLayout: React.FC = () => {
     location.pathname.startsWith('/products/') ? 'shop-app-shell--product-detail' : '',
     location.pathname === '/cart' ? 'shop-app-shell--cart' : '',
     location.pathname === '/checkout' ? 'shop-app-shell--checkout' : '',
+    location.pathname === '/history' ? 'shop-app-shell--history' : '',
     location.pathname === '/cart' || location.pathname === '/checkout' ? 'shop-app-shell--checkout-flow' : '',
     ['/login', '/register', '/forgot-password'].includes(location.pathname) ? 'shop-app-shell--auth-flow' : '',
   ].filter(Boolean).join(' ');

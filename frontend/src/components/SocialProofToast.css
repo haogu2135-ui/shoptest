@@ -152,6 +152,8 @@
 @media (max-width: 640px) {
   .social-proof-toast {
     bottom: calc(128px + env(safe-area-inset-bottom));
+    right: auto;
+    left: max(8px, env(safe-area-inset-left));
     border-color: rgba(18, 71, 52, 0.08);
     backdrop-filter: blur(14px);
   }
@@ -165,6 +167,12 @@
 
 @media (max-width: 380px) {
   .social-proof-toast {
-    right: max(6px, env(safe-area-inset-right));
+    left: max(6px, env(safe-area-inset-left));
+  }
+}
+
+@media (min-width: 641px) and (max-width: 780px) {
+  .social-proof-toast {
+    bottom: calc(96px + env(safe-area-inset-bottom));
   }
 }

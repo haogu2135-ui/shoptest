@@ -369,7 +369,7 @@
   cursor: progress;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 780px) {
   .shop-app-shell .ant-layout-content {
     padding-bottom: calc(76px + env(safe-area-inset-bottom));
   }
@@ -1454,7 +1454,7 @@
 }
 
 /* Final mobile footer text-link target pass */
-@media (max-width: 720px) {
+@media (max-width: 780px) {
   .shop-footer__ctaStrip {
     grid-auto-flow: row;
     grid-auto-columns: unset;
@@ -1486,7 +1486,7 @@
 }
 
 /* Mobile product-list floating action avoidance */
-@media (max-width: 720px) {
+@media (max-width: 780px) {
   .shop-app-shell--product-list .app-support-launcher,
   .shop-app-shell--product-list .customer-support-widget__button,
   .shop-app-shell--product-detail .app-support-launcher,
@@ -1494,7 +1494,9 @@
   .shop-app-shell--checkout-flow .app-support-launcher,
   .shop-app-shell--checkout-flow .customer-support-widget__button,
   .shop-app-shell--auth-flow .app-support-launcher,
-  .shop-app-shell--auth-flow .customer-support-widget__button {
+  .shop-app-shell--auth-flow .customer-support-widget__button,
+  .shop-app-shell--history .app-support-launcher,
+  .shop-app-shell--history .customer-support-widget__button {
     display: none !important;
   }
 }
@@ -1656,8 +1658,8 @@
   }
 }
 
-/* Storefront mobile resilience pass */
-@media (max-width: 720px) {
+/* Storefront mobile and tablet resilience pass */
+@media (max-width: 780px) {
   :where(
     .shopee-home,
     .product-list,
