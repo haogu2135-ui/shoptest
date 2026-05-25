@@ -39,6 +39,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
+import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import SocialProofToast from '../components/SocialProofToast';
 import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
@@ -650,13 +651,23 @@ const Home: React.FC = () => {
     }
     try {
       if (isAuthenticated) {
-        await Promise.all(personalizedReadyProducts.map((product) => cartApi.addItem(0, product.id, 1)));
+        const results = await allSettledWithConcurrency(
+          personalizedReadyProducts,
+          (product) => cartApi.addItem(0, product.id, 1),
+        );
+        const added = results.filter((result) => result.status === 'fulfilled').length;
+        if (added === 0) {
+          message.error(t('messages.addFailed'));
+          return;
+        }
         dispatchDomEvent('shop:cart-updated');
+        await openCartWithSnapshot();
+        message.success(t('pages.wishlist.addedAllToCart', { count: added }));
       } else {
         personalizedReadyProducts.forEach((product) => addGuestCartItem(product, 1));
+        await openCartWithSnapshot();
+        message.success(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }));
       }
-      await openCartWithSnapshot();
-      message.success(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }));
     } catch (error) {
       message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
     }
