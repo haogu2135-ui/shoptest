@@ -365,7 +365,10 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   useEffect(() => {
     if (!open || !activeSessionId) return;
     let disposed = false;
+    let polling = false;
     const timer = window.setInterval(async () => {
+      if (polling) return;
+      polling = true;
       try {
         const [messagesRes, sessionsRes] = await Promise.all([
           supportApi.getMessages(activeSessionId),
@@ -383,6 +386,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setUnread(0);
       } catch {
         // The socket path handles transient failures; polling is best-effort.
+      } finally {
+        polling = false;
       }
     }, 10000);
     return () => {
