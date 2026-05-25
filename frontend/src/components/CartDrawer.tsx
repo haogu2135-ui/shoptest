@@ -499,186 +499,188 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       styles={{ body: { padding: 16 } }}
       extra={<Text strong>{formatMoney(subtotal)}</Text>}
     >
-      <section className="cart-drawer__hero">
-        {drawerHighlights.map((item) => (
-          <article key={item.key} className="cart-drawer__heroStat">
-            <strong>{item.title}</strong>
-            <span>{item.text}</span>
-          </article>
-        ))}
-      </section>
+      <div className="cart-drawer__content">
+        <section className="cart-drawer__hero">
+          {drawerHighlights.map((item) => (
+            <article key={item.key} className="cart-drawer__heroStat">
+              <strong>{item.title}</strong>
+              <span>{item.text}</span>
+            </article>
+          ))}
+        </section>
 
-      <div className={`cart-drawer__shipping${drawerReady ? ' cart-drawer__shipping--ready' : ''}`} role="status" aria-live="polite">
-        <div className="cart-drawer__shippingHeader">
-          <CheckCircleOutlined className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
-          <div className="cart-drawer__shippingText">
-            <Text strong>{remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}</Text>
-            <Text type="secondary" className="cart-drawer__shippingStatus">
-              {shippingStatusText}
-            </Text>
+        <div className={`cart-drawer__shipping${drawerReady ? ' cart-drawer__shipping--ready' : ''}`} role="status" aria-live="polite">
+          <div className="cart-drawer__shippingHeader">
+            <CheckCircleOutlined className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
+            <div className="cart-drawer__shippingText">
+              <Text strong>{remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}</Text>
+              <Text type="secondary" className="cart-drawer__shippingStatus">
+                {shippingStatusText}
+              </Text>
+            </div>
           </div>
+          <Progress
+            percent={progress}
+            showInfo={false}
+            strokeColor="#124734"
+            size="small"
+            aria-label={remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}
+          />
+          {giftUnlocked ? (
+            <Text type="secondary" className="cart-drawer__shippingGift">{t('pages.cart.drawerGiftUnlocked')}</Text>
+          ) : null}
         </div>
-        <Progress
-          percent={progress}
-          showInfo={false}
-          strokeColor="#124734"
-          size="small"
-          aria-label={remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}
-        />
-        {giftUnlocked ? (
-          <Text type="secondary" className="cart-drawer__shippingGift">{t('pages.cart.drawerGiftUnlocked')}</Text>
+
+        {drawerNextAction ? (
+          <section className={`cart-drawer__nextAction cart-drawer__nextAction--${drawerNextAction.tone}`} aria-label={t('pages.cart.nextActionEyebrow')}>
+            <span className="cart-drawer__nextActionIcon">{drawerNextAction.icon}</span>
+            <span className="cart-drawer__nextActionCopy">
+              <Text strong>{drawerNextAction.title}</Text>
+              <Text type="secondary">{drawerNextAction.text}</Text>
+            </span>
+            <Button
+              size="small"
+              type={drawerNextAction.tone === 'ready' ? 'primary' : 'default'}
+              onClick={drawerNextAction.onClick}
+              disabled={checkoutSubmitting}
+            >
+              {drawerNextAction.label}
+            </Button>
+          </section>
+        ) : null}
+
+        {blockedCount > 0 ? (
+          <div className="cart-drawer__unavailable">
+            <Text type="secondary">{t('pages.cart.unavailableSummary', { count: blockedCount })}</Text>
+            <Button size="small" onClick={clearBlockedItems}>{t('pages.cart.drawerClearBlocked')}</Button>
+          </div>
+        ) : null}
+
+        {checkoutItems.length > 0 && benefitTarget ? (
+          <Suspense fallback={null}>
+            <AddOnAssistant
+              cartProductIds={checkoutItems.map((item) => item.productId)}
+              remainingAmount={benefitTarget.remainingAmount}
+              reason={benefitTarget.reason}
+              onAdd={addSuggestedProduct}
+            />
+          </Suspense>
+        ) : null}
+
+        {items.length > 0 ? (
+          <details className="cart-drawer__boostPanel">
+            <summary>
+              <span>
+                <Text strong>{t('pages.checkout.expressCheckout')}</Text>
+                <Text type="secondary">{expressHint}</Text>
+              </span>
+              {benefitTarget ? <Tag color="orange">{t('pages.cart.nextActionFindAddOn')}</Tag> : null}
+            </summary>
+            <div className="cart-drawer__expressWrap">
+              <Space.Compact block className="cart-drawer__express">
+                {expressPaymentCodes.map((code) => (
+                  <Button
+                    key={code}
+                    disabled={!drawerReady || checkoutSubmitting}
+                    loading={checkoutPaymentSubmitting === code}
+                    icon={expressPaymentIcon(code)}
+                    onClick={() => goCheckout(code)}
+                  >
+                    {paymentMethodLabel(code, t)}
+                  </Button>
+                ))}
+              </Space.Compact>
+            </div>
+          </details>
+        ) : null}
+
+        {items.length === 0 ? (
+          <Empty image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />} description={t('pages.cart.empty')}>
+            <Button type="primary" onClick={() => { setOpen(false); navigate('/products'); }}>
+              {t('pages.cart.browse')}
+            </Button>
+          </Empty>
+        ) : (
+          <List
+            loading={loading}
+            dataSource={items}
+            className="cart-drawer__list"
+            renderItem={(item) => (
+              <List.Item
+                className="cart-drawer__item"
+                actions={[
+                  <Button key="later" type="link" className="cart-drawer__itemAction cart-drawer__itemAction--save" icon={<ClockCircleOutlined />} onClick={() => saveForLater(item)}>
+                    {t('pages.cart.saveForLaterShort')}
+                  </Button>,
+                  <Button key="delete" type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')} onClick={() => removeItem(item)}>
+                    {t('common.delete')}
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  avatar={
+                    <img
+                      src={getOptimizedImageUrl(resolveCartImage(item.imageUrl), 144)}
+                      srcSet={buildResponsiveImageSrcSet(resolveCartImage(item.imageUrl), [96, 144, 192, 288])}
+                      sizes="72px"
+                      alt={item.productName}
+                      className="cart-drawer__image"
+                      width={72}
+                      height={72}
+                      loading="lazy"
+                      decoding="async"
+                      onError={applyCartImageFallback}
+                    />
+                  }
+                  title={<button type="button" className="cart-drawer__productLink" onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{item.productName}</button>}
+                  description={
+                    <Space direction="vertical" size={4}>
+                      {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
+                      {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
+                      {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
+                        <Tag color="orange" className="cart-drawer__urgency">
+                          {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
+                        </Tag>
+                      ) : null}
+                      <div className="cart-drawer__itemCommerce">
+                        <span className="cart-drawer__itemPrice">
+                          <Text>{formatMoney(item.price)}</Text>
+                          <Text type="secondary">x {item.quantity}</Text>
+                        </span>
+                        <InputNumber
+                          min={1}
+                          max={item.stock ?? undefined}
+                          size="small"
+                          value={item.quantity}
+                          disabled={!isAvailable(item)}
+                          status={updatingQuantityIds[item.id] ? 'warning' : undefined}
+                          onChange={(value) => updateQuantity(item, value || 1)}
+                        />
+                        <Text strong className="cart-drawer__lineTotal">{formatMoney(item.price * item.quantity)}</Text>
+                      </div>
+                      {updatingQuantityIds[item.id] ? (
+                        <Text type="secondary" className="cart-drawer__syncText">
+                          {t('pages.cart.drawerSyncingQuantity', { count: 1 })}
+                        </Text>
+                      ) : null}
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
+
+        {open && items.length > 0 ? (
+          <Suspense fallback={null}>
+            <PetPersonalizedAssistant
+              variant="compact"
+              excludedProductIds={items.map((item) => item.productId)}
+              onAdd={addSuggestedProduct}
+            />
+          </Suspense>
         ) : null}
       </div>
-
-      {drawerNextAction ? (
-        <section className={`cart-drawer__nextAction cart-drawer__nextAction--${drawerNextAction.tone}`} aria-label={t('pages.cart.nextActionEyebrow')}>
-          <span className="cart-drawer__nextActionIcon">{drawerNextAction.icon}</span>
-          <span className="cart-drawer__nextActionCopy">
-            <Text strong>{drawerNextAction.title}</Text>
-            <Text type="secondary">{drawerNextAction.text}</Text>
-          </span>
-          <Button
-            size="small"
-            type={drawerNextAction.tone === 'ready' ? 'primary' : 'default'}
-            onClick={drawerNextAction.onClick}
-            disabled={checkoutSubmitting}
-          >
-            {drawerNextAction.label}
-          </Button>
-        </section>
-      ) : null}
-
-      {blockedCount > 0 ? (
-        <div className="cart-drawer__unavailable">
-          <Text type="secondary">{t('pages.cart.unavailableSummary', { count: blockedCount })}</Text>
-          <Button size="small" onClick={clearBlockedItems}>{t('pages.cart.drawerClearBlocked')}</Button>
-        </div>
-      ) : null}
-
-      {checkoutItems.length > 0 && benefitTarget ? (
-        <Suspense fallback={null}>
-          <AddOnAssistant
-            cartProductIds={checkoutItems.map((item) => item.productId)}
-            remainingAmount={benefitTarget.remainingAmount}
-            reason={benefitTarget.reason}
-            onAdd={addSuggestedProduct}
-          />
-        </Suspense>
-      ) : null}
-
-      {items.length > 0 ? (
-        <details className="cart-drawer__boostPanel">
-          <summary>
-            <span>
-              <Text strong>{t('pages.checkout.expressCheckout')}</Text>
-              <Text type="secondary">{expressHint}</Text>
-            </span>
-            {benefitTarget ? <Tag color="orange">{t('pages.cart.nextActionFindAddOn')}</Tag> : null}
-          </summary>
-          <div className="cart-drawer__expressWrap">
-            <Space.Compact block className="cart-drawer__express">
-              {expressPaymentCodes.map((code) => (
-                <Button
-                  key={code}
-                  disabled={!drawerReady || checkoutSubmitting}
-                  loading={checkoutPaymentSubmitting === code}
-                  icon={expressPaymentIcon(code)}
-                  onClick={() => goCheckout(code)}
-                >
-                  {paymentMethodLabel(code, t)}
-                </Button>
-              ))}
-            </Space.Compact>
-          </div>
-        </details>
-      ) : null}
-
-      {items.length === 0 ? (
-        <Empty image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />} description={t('pages.cart.empty')}>
-          <Button type="primary" onClick={() => { setOpen(false); navigate('/products'); }}>
-            {t('pages.cart.browse')}
-          </Button>
-        </Empty>
-      ) : (
-        <List
-          loading={loading}
-          dataSource={items}
-          className="cart-drawer__list"
-          renderItem={(item) => (
-            <List.Item
-              className="cart-drawer__item"
-              actions={[
-                <Button key="later" type="link" className="cart-drawer__itemAction cart-drawer__itemAction--save" icon={<ClockCircleOutlined />} onClick={() => saveForLater(item)}>
-                  {t('pages.cart.saveForLaterShort')}
-                </Button>,
-                <Button key="delete" type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')} onClick={() => removeItem(item)}>
-                  {t('common.delete')}
-                </Button>,
-              ]}
-            >
-              <List.Item.Meta
-                avatar={
-                  <img
-                    src={getOptimizedImageUrl(resolveCartImage(item.imageUrl), 144)}
-                    srcSet={buildResponsiveImageSrcSet(resolveCartImage(item.imageUrl), [96, 144, 192, 288])}
-                    sizes="72px"
-                    alt={item.productName}
-                    className="cart-drawer__image"
-                    width={72}
-                    height={72}
-                    loading="lazy"
-                    decoding="async"
-                    onError={applyCartImageFallback}
-                  />
-                }
-                title={<button type="button" className="cart-drawer__productLink" onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{item.productName}</button>}
-                description={
-                  <Space direction="vertical" size={4}>
-                    {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
-                    {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
-                    {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
-                      <Tag color="orange" className="cart-drawer__urgency">
-                        {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
-                      </Tag>
-                    ) : null}
-                    <div className="cart-drawer__itemCommerce">
-                      <span className="cart-drawer__itemPrice">
-                        <Text>{formatMoney(item.price)}</Text>
-                        <Text type="secondary">x {item.quantity}</Text>
-                      </span>
-                      <InputNumber
-                        min={1}
-                        max={item.stock ?? undefined}
-                        size="small"
-                        value={item.quantity}
-                        disabled={!isAvailable(item)}
-                        status={updatingQuantityIds[item.id] ? 'warning' : undefined}
-                        onChange={(value) => updateQuantity(item, value || 1)}
-                      />
-                      <Text strong className="cart-drawer__lineTotal">{formatMoney(item.price * item.quantity)}</Text>
-                    </div>
-                    {updatingQuantityIds[item.id] ? (
-                      <Text type="secondary" className="cart-drawer__syncText">
-                        {t('pages.cart.drawerSyncingQuantity', { count: 1 })}
-                      </Text>
-                    ) : null}
-                  </Space>
-                }
-              />
-            </List.Item>
-          )}
-        />
-      )}
-
-      {open && items.length > 0 ? (
-        <Suspense fallback={null}>
-          <PetPersonalizedAssistant
-            variant="compact"
-            excludedProductIds={items.map((item) => item.productId)}
-            onAdd={addSuggestedProduct}
-          />
-        </Suspense>
-      ) : null}
 
       <div className="cart-drawer__footer">
         <Space direction="vertical" className="cart-drawer__footerStack">

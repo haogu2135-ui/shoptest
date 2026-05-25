@@ -12,7 +12,7 @@ let cachedUntil = 0;
 let cachedError = false;
 let pendingConfig: Promise<AppConfig> | null = null;
 const listeners = new Set<() => void>();
-const APP_CONFIG_REFRESH_MS = 60_000;
+const APP_CONFIG_REFRESH_MS = 5_000;
 
 const notify = () => listeners.forEach((listener) => listener());
 

@@ -2,6 +2,8 @@ package com.example.shop.service;
 
 import com.example.shop.dto.LogManagementStatusResponse;
 import com.example.shop.dto.LogPreviewResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.logging.LogLevel;
 import org.springframework.boot.logging.LoggerConfiguration;
 import org.springframework.boot.logging.LoggingSystem;
@@ -34,7 +36,10 @@ import java.util.stream.Stream;
 
 @Service
 public class LogManagementService {
+    private static final Logger log = LoggerFactory.getLogger(LogManagementService.class);
     private static final String DEFAULT_LOGGER = "com.example.shop";
+    private static final String DEFAULT_ALLOWED_LOGGERS = "com.example.shop,org.mybatis,org.springframework.web,org.springframework.security";
+    private static final String DEFAULT_ADDITIONAL_DEBUG_LOGGERS = "org.mybatis,org.springframework.web,org.springframework.security";
     private static final String DEFAULT_LOG_FILE = "logs/shop-backend.log";
     private static final int DEFAULT_MAX_RANGE_HOURS = 24;
     private static final int DEFAULT_PREVIEW_MAX_LINES = 1000;
@@ -71,7 +76,11 @@ public class LogManagementService {
 
     public LogManagementStatusResponse setDebug(boolean enabled, String loggerName) {
         String resolvedLogger = resolveLoggerName(loggerName);
-        loggingSystem.setLogLevel(resolvedLogger, enabled ? LogLevel.DEBUG : LogLevel.INFO);
+        LogLevel level = enabled ? LogLevel.DEBUG : LogLevel.INFO;
+        loggingSystem.setLogLevel(resolvedLogger, level);
+        additionalDebugLoggers().forEach(name -> loggingSystem.setLogLevel(name, level));
+        log.debug("Runtime debug logging probe: enabled={}, primaryLogger={}, additionalLoggers={}",
+                enabled, resolvedLogger, additionalDebugLoggers());
         return status(resolvedLogger);
     }
 
@@ -304,7 +313,7 @@ public class LogManagementService {
     }
 
     private Set<String> allowedLoggerPrefixes() {
-        String configured = stringProperty("admin.logs.allowed-logger-prefixes", DEFAULT_LOGGER);
+        String configured = stringProperty("admin.logs.allowed-logger-prefixes", DEFAULT_ALLOWED_LOGGERS);
         Set<String> prefixes = Arrays.stream(configured.split(","))
                 .map(String::trim)
                 .filter(item -> !item.isEmpty())
@@ -312,6 +321,18 @@ public class LogManagementService {
                 .filter(item -> item.matches("[A-Za-z0-9_.\\-$]+"))
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
         return prefixes.isEmpty() ? Set.of(DEFAULT_LOGGER) : prefixes;
+    }
+
+    private Set<String> additionalDebugLoggers() {
+        String configured = stringProperty("admin.logs.additional-debug-loggers", DEFAULT_ADDITIONAL_DEBUG_LOGGERS);
+        return Arrays.stream(configured.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isEmpty())
+                .map(item -> "root".equalsIgnoreCase(item) ? LoggingSystem.ROOT_LOGGER_NAME : item)
+                .filter(item -> item.matches("[A-Za-z0-9_.\\-$]+"))
+                .filter(this::isAllowedLogger)
+                .filter(item -> !DEFAULT_LOGGER.equals(item))
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
     }
 
     private int maxRangeHours() {

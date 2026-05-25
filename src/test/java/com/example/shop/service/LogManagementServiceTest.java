@@ -35,7 +35,8 @@ class LogManagementServiceTest {
         environment = new MockEnvironment();
         Path logFile = tempDir.resolve("shop-backend.log");
         environment.setProperty("logging.file.name", logFile.toString());
-        environment.setProperty("admin.logs.allowed-logger-prefixes", "com.example.shop");
+        environment.setProperty("admin.logs.allowed-logger-prefixes", "com.example.shop,org.mybatis,org.springframework.web,org.springframework.security");
+        environment.setProperty("admin.logs.additional-debug-loggers", "org.mybatis,org.springframework.web,org.springframework.security");
         environment.setProperty("admin.logs.max-range-hours", "2");
         environment.setProperty("admin.logs.preview-max-lines", "2");
         environment.setProperty("admin.logs.max-download-bytes", "1024");
@@ -54,6 +55,9 @@ class LogManagementServiceTest {
         service.setDebug(true, "com.example.shop.service.PaymentService");
 
         verify(loggingSystem).setLogLevel("com.example.shop.service.PaymentService", LogLevel.DEBUG);
+        verify(loggingSystem).setLogLevel("org.mybatis", LogLevel.DEBUG);
+        verify(loggingSystem).setLogLevel("org.springframework.web", LogLevel.DEBUG);
+        verify(loggingSystem).setLogLevel("org.springframework.security", LogLevel.DEBUG);
         assertThrows(ResponseStatusException.class, () -> service.setDebug(true, "org.hibernate.SQL"));
         assertThrows(ResponseStatusException.class, () -> service.setDebug(true, "com.example.shop\nBad"));
     }

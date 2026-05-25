@@ -9,6 +9,8 @@ import com.example.shop.dto.ConfigCenterPublishRequest;
 import com.example.shop.dto.ConfigCenterSnapshotResponse;
 import com.example.shop.util.SensitiveDataMasker;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.cloud.context.properties.ConfigurationPropertiesRebinder;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
@@ -59,7 +61,8 @@ public class ConfigCenterService {
             "traffic.",
             "app.mail.",
             "app.cors.",
-            "app.websocket.");
+            "app.websocket.",
+            "logging.level.");
     private static final Pattern SENSITIVE_KEY_PATTERN = Pattern.compile(
             ".*(password|passwd|pwd|secret|token|credential|private[-.]?key|access[-.]?key|auth[-.]?header).*",
             Pattern.CASE_INSENSITIVE);
@@ -72,6 +75,7 @@ public class ConfigCenterService {
             "order.default-shipping-fee=30.00",
             "order.free-shipping-threshold=899.00",
             "payment.simulation-enabled=false",
+            "payment.simulation-allow-production=false",
             "support.message.max-chars=1000",
             "product.search-cache-ttl-ms=30000",
             "");
@@ -148,6 +152,29 @@ public class ConfigCenterService {
 
     public ConfigCenterSnapshotResponse apply(ConfigCenterPublishRequest request) {
         return publishInternal(request, false);
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void applyDefaultNacosConfigOnStartup() {
+        if (!environment.getProperty("admin.config-center.apply-nacos-on-startup", Boolean.class, true)) {
+            return;
+        }
+        String dataId = resolveDataId(null);
+        String group = resolveGroup(null);
+        String namespace = resolveNamespace(null);
+        try {
+            String content = configService(namespace).getConfig(dataId, group, 3000);
+            if (content == null || content.trim().isEmpty()) {
+                return;
+            }
+            List<String> errors = new ArrayList<>();
+            Map<String, String> parsed = parseProperties(content, errors);
+            if (errors.isEmpty() && !parsed.isEmpty()) {
+                applyRuntime(runtimeApplicableProperties(parsed));
+            }
+        } catch (NacosException | RuntimeException ignored) {
+            // Startup should not fail when Nacos config is unavailable; local properties remain in effect.
+        }
     }
 
     private ConfigCenterSnapshotResponse publishInternal(ConfigCenterPublishRequest request, boolean publishToNacos) {

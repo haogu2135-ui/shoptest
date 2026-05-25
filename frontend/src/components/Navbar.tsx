@@ -39,6 +39,7 @@ import './Navbar.css';
 const { Search } = Input;
 const NAV_SEARCH_MAX_LENGTH = 80;
 const NAV_BADGE_REFRESH_DEBOUNCE_MS = 350;
+const NAV_POPUP_Z_INDEX = 2400;
 
 const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);
 const normalizeBadgeCount = (value: unknown) => {
@@ -456,6 +457,8 @@ const Navbar: React.FC = () => {
               value={language}
               onChange={(value) => setLanguage(value as Language)}
               classNames={{ popup: { root: 'shop-nav__select-popup' } }}
+              popupClassName="shop-nav__select-popup"
+              styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
               getPopupContainer={() => document.body}
               options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
@@ -469,6 +472,8 @@ const Navbar: React.FC = () => {
                 setCurrency(nextCurrency);
               }}
               classNames={{ popup: { root: 'shop-nav__select-popup' } }}
+              popupClassName="shop-nav__select-popup"
+              styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
               getPopupContainer={() => document.body}
               options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
@@ -534,6 +539,8 @@ const Navbar: React.FC = () => {
                 value={language}
                 onChange={(value) => setLanguage(value as Language)}
                 classNames={{ popup: { root: 'shop-nav__select-popup' } }}
+                popupClassName="shop-nav__select-popup"
+                styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
                 getPopupContainer={() => document.body}
                 options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
@@ -544,6 +551,8 @@ const Navbar: React.FC = () => {
                 value={currency}
                 onChange={(value) => setCurrency(value as CurrencyCode)}
                 classNames={{ popup: { root: 'shop-nav__select-popup' } }}
+                popupClassName="shop-nav__select-popup"
+                styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
                 getPopupContainer={() => document.body}
                 options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
@@ -560,6 +569,9 @@ const Navbar: React.FC = () => {
               'children' in item && item.children ? (
                 <Dropdown
                   key={item.key}
+                  getPopupContainer={() => document.body}
+                  overlayClassName="shop-nav__dropdown-popup"
+                  overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
                   menu={{
                     items: item.children.map((child) => ({
                       key: child.key,
@@ -616,7 +628,9 @@ const Navbar: React.FC = () => {
             ) : null}
             <Dropdown
               className="shop-nav__mobile-locale"
+              getPopupContainer={() => document.body}
               overlayClassName="shop-nav__dropdown-popup"
+              overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
               trigger={['click']}
               menu={{
                 items: [
@@ -657,7 +671,9 @@ const Navbar: React.FC = () => {
                   </Badge>
                 </button>
                 <Dropdown
+                  getPopupContainer={() => document.body}
                   overlayClassName="shop-nav__dropdown-popup"
+                  overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
                   trigger={['click']}
                   menu={{
                     items: [
@@ -693,7 +709,9 @@ const Navbar: React.FC = () => {
                 <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary"><UserAddOutlined /><span className="shop-nav__mobile-authText">{t('nav.register')}</span></Link>
                 <Link to="/login" className="shop-nav__mobile-auth"><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.login')}</span></Link>
                 <Dropdown
+                  getPopupContainer={() => document.body}
                   overlayClassName="shop-nav__dropdown-popup"
+                  overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
                   trigger={['click']}
                   menu={{
                     items: [
