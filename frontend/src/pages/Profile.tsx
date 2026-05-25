@@ -333,16 +333,24 @@ const Profile: React.FC = () => {
   useEffect(() => {
     const orderId = selectedOrder?.id;
     if (!paymentModalVisible || !orderId) return undefined;
+    let polling = false;
     const syncPaymentState = async () => {
+      if (polling) return;
+      polling = true;
       try {
         await refreshPaymentState(orderId);
       } catch {
         // keep the current modal content if one polling request fails
+      } finally {
+        polling = false;
       }
     };
     syncPaymentState();
     const timer = window.setInterval(syncPaymentState, 5000);
-    return () => window.clearInterval(timer);
+    return () => {
+      polling = false;
+      window.clearInterval(timer);
+    };
   }, [paymentModalVisible, selectedOrder?.id]);
 
   const handleConfirmReceipt = async (orderId: number) => {
