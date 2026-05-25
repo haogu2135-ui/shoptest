@@ -24,6 +24,7 @@ import { hasAuthenticatedCartSession, syncCheckoutCartItemIds } from '../utils/c
 import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
+import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Cart.css';
@@ -238,7 +239,10 @@ const Cart: React.FC = () => {
       const authenticated = hasAuthenticatedCartSession();
       let restoredItems = targetItems;
       if (authenticated) {
-        const results = await Promise.allSettled(targetItems.map((item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs)));
+        const results = await allSettledWithConcurrency(
+          targetItems,
+          (item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs),
+        );
         restoredItems = targetItems.filter((_, index) => results[index].status === 'fulfilled');
         if (restoredItems.length === 0) {
           message.error(t('messages.operationFailed'));
