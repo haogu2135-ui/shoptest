@@ -18,6 +18,7 @@ import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/payment
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { getApiErrorMessage } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -760,9 +761,14 @@ const Checkout: React.FC = () => {
   const restoreSubmittedCartItems = async () => {
     const token = getLocalStorageItem('token');
     if (token) {
-      await Promise.all(cartItems.map((item) =>
-        cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs),
-      ));
+      const results = await allSettledWithConcurrency(
+        cartItems,
+        (item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs),
+      );
+      const failed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
+      if (failed) {
+        throw failed.reason;
+      }
       dispatchDomEvent('shop:cart-updated');
       return;
     }
