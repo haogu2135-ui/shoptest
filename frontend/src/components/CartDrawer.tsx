@@ -15,6 +15,7 @@ import { hasAuthenticatedCartSession, syncCheckoutCartItemIds } from '../utils/c
 import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowStockCount, isCartItemAvailable as isAvailable, resolveCartImage } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
+import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
 import './CartDrawer.css';
 
@@ -309,7 +310,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       delete quantityRequestPromisesRef.current[item.id];
     });
     try {
-      await Promise.all(itemsToSync.map((item) => cartApi.updateQuantity(item.id, normalizeCartQuantity(item, item.quantity))));
+      const results = await allSettledWithConcurrency(
+        itemsToSync,
+        (item) => cartApi.updateQuantity(item.id, normalizeCartQuantity(item, item.quantity)),
+      );
+      const failed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
+      if (failed) {
+        throw failed.reason;
+      }
       dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
       message.error(err?.response?.data?.error || t('pages.cart.quantityFailed'));
@@ -397,13 +405,26 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     try {
       const authenticated = hasAuthenticatedCartSession();
       if (authenticated) {
-        await Promise.all(blockedItems.map((item) => cartApi.removeItem(item.id)));
-        setItems((current) => current.filter(canCheckout));
+        const results = await allSettledWithConcurrency(
+          blockedItems,
+          (item) => cartApi.removeItem(item.id),
+        );
+        const removedIds = new Set(
+          blockedItems
+            .filter((_, index) => results[index]?.status === 'fulfilled')
+            .map((item) => item.id),
+        );
+        if (removedIds.size === 0) {
+          message.error(t('messages.operationFailed'));
+          return;
+        }
+        setItems((current) => current.filter((item) => !removedIds.has(item.id)));
         dispatchDomEvent('shop:cart-updated');
+        message.success(t('pages.cart.drawerClearedBlocked', { count: removedIds.size }));
       } else {
         setItems(removeGuestCartItems(blockedItems.map((item) => item.id)));
+        message.success(t('pages.cart.drawerClearedBlocked', { count: blockedItems.length }));
       }
-      message.success(t('pages.cart.drawerClearedBlocked', { count: blockedItems.length }));
     } catch {
       message.error(t('messages.operationFailed'));
     }
