@@ -13,6 +13,7 @@ import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import './ProductCompare.css';
 
 const { Title, Text } = Typography;
@@ -200,14 +201,23 @@ const ProductCompare: React.FC = () => {
     const token = getLocalStorageItem('token');
     try {
       if (token) {
-        await Promise.all(directReadyProducts.map((product) => cartApi.addItem(0, product.id, 1)));
+        const results = await allSettledWithConcurrency(
+          directReadyProducts,
+          (product) => cartApi.addItem(0, product.id, 1),
+        );
+        const added = results.filter((result) => result.status === 'fulfilled').length;
+        if (added === 0) {
+          message.error(t('messages.addFailed'));
+          return;
+        }
         dispatchDomEvent('shop:cart-updated');
+        message.success(t('pages.wishlist.addedAllToCart', { count: added }));
       } else {
         directReadyProducts.forEach((product) => {
           addGuestCartItem({ ...product, imageUrl: resolveCompareImage(product.imageUrl) }, 1, undefined, getPrice(product));
         });
+        message.success(t('pages.wishlist.addedAllToCart', { count: directReadyProducts.length }));
       }
-      message.success(t('pages.wishlist.addedAllToCart', { count: directReadyProducts.length }));
       dispatchDomEvent('shop:open-cart');
     } catch {
       message.error(t('messages.addFailed'));

@@ -13,6 +13,7 @@ import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import './StockAlerts.css';
 
 const { Title, Text } = Typography;
@@ -127,8 +128,11 @@ const StockAlerts: React.FC = () => {
       message.info(t('pages.stockAlerts.noReadyToCart'));
       return;
     }
-    const results = await Promise.all(readyProducts.map((product) => addToCart(product, true)));
-    const added = results.filter(Boolean).length;
+    const results = await allSettledWithConcurrency(
+      readyProducts,
+      (product) => addToCart(product, true),
+    );
+    const added = results.filter((result) => result.status === 'fulfilled' && result.value).length;
     if (added > 0) {
       message.success(t('pages.stockAlerts.addedReadyCount', { count: added }));
       dispatchDomEvent('shop:open-cart');
