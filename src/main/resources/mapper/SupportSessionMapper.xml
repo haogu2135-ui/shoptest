@@ -90,6 +90,23 @@
         ORDER BY ss.updated_at DESC
     </select>
 
+    <select id="adminSummary" resultType="map">
+        SELECT
+            COUNT(*) AS totalSessions,
+            COALESCE(SUM(CASE WHEN ss.status = 'OPEN' THEN 1 ELSE 0 END), 0) AS openSessions,
+            COALESCE(SUM(CASE WHEN ss.status = 'CLOSED' THEN 1 ELSE 0 END), 0) AS closedSessions,
+            COALESCE(SUM(CASE WHEN ss.status = 'OPEN' AND COALESCE(unread.unread_by_admin, 0) > 0 THEN 1 ELSE 0 END), 0) AS unreadSessions,
+            COALESCE(SUM(COALESCE(unread.unread_by_admin, 0)), 0) AS unreadMessages,
+            COALESCE(SUM(CASE WHEN ss.status = 'OPEN' AND ss.assigned_admin_id IS NULL THEN 1 ELSE 0 END), 0) AS unassignedOpenSessions,
+            COALESCE(SUM(CASE WHEN ss.status = 'OPEN' AND ss.assigned_admin_id = #{adminId} THEN 1 ELSE 0 END), 0) AS myOpenSessions,
+            COALESCE(SUM(CASE WHEN ss.status = 'OPEN'
+                AND COALESCE(unread.unread_by_admin, 0) > 0
+                AND ss.updated_at &lt; #{staleBefore}
+                THEN 1 ELSE 0 END), 0) AS staleOpenSessions
+        FROM support_sessions ss
+        <include refid="supportUnreadJoin"/>
+    </select>
+
     <insert id="insert" parameterType="com.example.shop.entity.SupportSession" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO support_sessions (user_id, assigned_admin_id, status, last_message, last_message_at, created_at, updated_at)
         VALUES (#{userId}, #{assignedAdminId}, #{status}, #{lastMessage}, #{lastMessageAt}, #{createdAt}, #{updatedAt})

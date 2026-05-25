@@ -40,6 +40,7 @@ const ProductCompare = lazy(() => import('./pages/ProductCompare'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const ProductList = lazy(() => import('./pages/ProductList'));
 const ProductManagement = lazy(() => import('./pages/ProductManagement'));
+const ProductQuestionManagement = lazy(() => import('./pages/ProductQuestionManagement'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Register = lazy(() => import('./pages/Register'));
 const RegistryManagement = lazy(() => import('./pages/RegistryManagement'));
@@ -335,6 +336,7 @@ const App: React.FC = () => {
             <Route path="users" element={<UserManagement />} />
             <Route path="permissions" element={<PermissionManagement />} />
             <Route path="reviews" element={<ReviewManagement />} />
+            <Route path="questions" element={<ProductQuestionManagement />} />
             <Route path="notifications" element={<NotificationManagement />} />
             <Route path="announcements" element={<AnnouncementManagement />} />
             <Route path="support" element={<SupportManagement />} />

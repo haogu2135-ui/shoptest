@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Input, Progress, Select, Space, Table, Tag, Typography, message } from 'antd';
-import { AlertOutlined, DownloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
+import { Button, Card, DatePicker, Input, InputNumber, Popconfirm, Progress, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { AlertOutlined, DeleteOutlined, DownloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api';
-import type { SecurityAuditLog } from '../types';
+import type { SecurityAuditLog, SecurityAuditSummary } from '../types';
 import { useLanguage } from '../i18n';
 import './SecurityAuditLogManagement.css';
 
@@ -242,6 +242,76 @@ export const auditOpsCopy: Record<string, {
   },
 };
 
+export const auditAdminCopy: Record<string, {
+  summaryTitle: string;
+  total: string;
+  success: string;
+  failure: string;
+  range: string;
+  topActions: string;
+  topActors: string;
+  topIps: string;
+  retentionTitle: string;
+  retentionHint: string;
+  days: string;
+  purge: string;
+  purgeConfirm: string;
+  purgeSuccess: string;
+  purgeFailed: string;
+}> = {
+  en: {
+    summaryTitle: 'Server audit summary',
+    total: 'Total events',
+    success: 'Success',
+    failure: 'Failures',
+    range: 'Range',
+    topActions: 'Top actions',
+    topActors: 'Top actors',
+    topIps: 'Top IPs',
+    retentionTitle: 'Audit retention',
+    retentionHint: 'Remove audit rows older than the selected retention window.',
+    days: 'days',
+    purge: 'Purge old logs',
+    purgeConfirm: 'Purge audit logs outside the retention window?',
+    purgeSuccess: 'Purged {count} audit logs',
+    purgeFailed: 'Failed to purge audit logs',
+  },
+  es: {
+    summaryTitle: 'Resumen de auditoria',
+    total: 'Eventos',
+    success: 'Exitos',
+    failure: 'Fallos',
+    range: 'Rango',
+    topActions: 'Acciones',
+    topActors: 'Operadores',
+    topIps: 'IPs',
+    retentionTitle: 'Retencion',
+    retentionHint: 'Elimina registros fuera de la ventana seleccionada.',
+    days: 'dias',
+    purge: 'Limpiar logs',
+    purgeConfirm: 'Eliminar logs fuera de la ventana de retencion?',
+    purgeSuccess: 'Eliminados {count} logs',
+    purgeFailed: 'No se pudieron limpiar los logs',
+  },
+  zh: {
+    summaryTitle: '服务端审计概览',
+    total: '事件总数',
+    success: '成功',
+    failure: '失败',
+    range: '时间窗',
+    topActions: '高频动作',
+    topActors: '高频操作者',
+    topIps: '高频 IP',
+    retentionTitle: '审计保留',
+    retentionHint: '清理超过保留窗口的旧审计记录。',
+    days: '天',
+    purge: '清理旧日志',
+    purgeConfirm: '确认清理保留窗口之外的审计日志？',
+    purgeSuccess: '已清理 {count} 条审计日志',
+    purgeFailed: '清理审计日志失败',
+  },
+};
+
 export const localizedMapValue = (map: Record<string, Record<string, string>>, language: string, value?: string) => {
   if (!value) return '-';
   return map[language]?.[value] || map.en[value] || value;
@@ -251,15 +321,19 @@ const SecurityAuditLogManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [logs, setLogs] = useState<SecurityAuditLog[]>([]);
+  const [summary, setSummary] = useState<SecurityAuditSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [purging, setPurging] = useState(false);
   const [action, setAction] = useState<string | undefined>(searchParams.get('action') || undefined);
   const [result, setResult] = useState<string | undefined>(searchParams.get('result') || undefined);
   const [resourceType, setResourceType] = useState<string | undefined>(searchParams.get('resourceType') || undefined);
   const [actorUsername, setActorUsername] = useState('');
   const [range, setRange] = useState<any>(null);
+  const [retentionDays, setRetentionDays] = useState(180);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
 
   const localizedOpsCopy = auditOpsCopy[language] || auditOpsCopy.en;
+  const localizedAdminCopy = auditAdminCopy[language] || auditAdminCopy.en;
   const actionLabel = useCallback((value?: string) => localizedMapValue(auditActionLabels, language, value), [language]);
   const resourceLabel = useCallback((value?: string) => localizedMapValue(resourceTypeLabels, language, value), [language]);
   const messageLabel = useCallback((value?: string) => localizedMapValue(auditMessageLabels, language, value), [language]);
@@ -312,6 +386,11 @@ const SecurityAuditLogManagement: React.FC = () => {
       healthScore,
     };
   }, [logs]);
+  const summaryTotal = summary?.totalCount ?? auditInsights.total;
+  const summarySuccess = summary?.successCount ?? Math.max(0, auditInsights.total - auditInsights.failures);
+  const summaryFailures = summary?.failureCount ?? auditInsights.failures;
+  const summaryFailureRate = summaryTotal ? Math.round((summaryFailures / summaryTotal) * 100) : auditInsights.failureRate;
+  const summaryRangeHours = summary ? Math.max(1, Math.round((new Date(summary.endAt).getTime() - new Date(summary.startAt).getTime()) / 3600000)) : 0;
 
   useEffect(() => {
     const view = searchParams.get('view');
@@ -381,8 +460,12 @@ const SecurityAuditLogManagement: React.FC = () => {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminApi.getAuditLogs(queryParams);
-      setLogs(res.data || []);
+      const [logResponse, summaryResponse] = await Promise.all([
+        adminApi.getAuditLogs(queryParams),
+        adminApi.getAuditLogSummary({ ...queryParams, topLimit: 6 }),
+      ]);
+      setLogs(logResponse.data || []);
+      setSummary(summaryResponse.data || null);
     } catch {
       message.error(t('pages.auditLogs.loadFailed'));
     } finally {
@@ -412,6 +495,19 @@ const SecurityAuditLogManagement: React.FC = () => {
     }
   };
 
+  const purgeOldLogs = async () => {
+    setPurging(true);
+    try {
+      const response = await adminApi.purgeAuditLogs(retentionDays);
+      message.success(localizedAdminCopy.purgeSuccess.replace('{count}', String(response.data.deletedCount || 0)));
+      await fetchLogs();
+    } catch {
+      message.error(localizedAdminCopy.purgeFailed);
+    } finally {
+      setPurging(false);
+    }
+  };
+
   return (
     <div className="audit-log-page">
       <Title level={4}>{t('pages.auditLogs.title')}</Title>
@@ -421,7 +517,7 @@ const SecurityAuditLogManagement: React.FC = () => {
           <Title level={5}>{t('pages.auditLogs.insightTitle')}</Title>
           <Text type="secondary">{t('pages.auditLogs.insightSubtitle')}</Text>
           <Text type="secondary" className="audit-log-page__insightMeta">
-            {t('pages.auditLogs.insightMeta', { total: auditInsights.total, sensitive: auditInsights.sensitiveActions })}
+            {t('pages.auditLogs.insightMeta', { total: summaryTotal, sensitive: auditInsights.sensitiveActions })}
           </Text>
         </div>
         <div className="audit-log-page__score">
@@ -435,9 +531,9 @@ const SecurityAuditLogManagement: React.FC = () => {
           <Text type="secondary">{t('pages.auditLogs.securityScore')}</Text>
         </div>
         <div className="audit-log-page__signalGrid">
-          <div className={`audit-log-page__signal ${auditInsights.failureRate > 12 ? 'is-risk' : 'is-ok'}`}>
+          <div className={`audit-log-page__signal ${summaryFailureRate > 12 ? 'is-risk' : 'is-ok'}`}>
             <AlertOutlined />
-            <strong>{auditInsights.failureRate}%</strong>
+            <strong>{summaryFailureRate}%</strong>
             <span>{t('pages.auditLogs.failureRate')}</span>
           </div>
           <div className={`audit-log-page__signal ${auditInsights.repeatedFailures > 0 ? 'is-risk' : 'is-ok'}`}>
@@ -455,6 +551,67 @@ const SecurityAuditLogManagement: React.FC = () => {
             <strong>{auditInsights.exports}</strong>
             <span>{t('pages.auditLogs.exportEvents')}</span>
           </div>
+        </div>
+      </section>
+      <section className="audit-log-page__summaryPanel" aria-label={localizedAdminCopy.summaryTitle}>
+        <div className="audit-log-page__summaryCards">
+          <div>
+            <span>{localizedAdminCopy.total}</span>
+            <strong>{summaryTotal}</strong>
+          </div>
+          <div>
+            <span>{localizedAdminCopy.success}</span>
+            <strong>{summarySuccess}</strong>
+          </div>
+          <div className={summaryFailures > 0 ? 'is-risk' : ''}>
+            <span>{localizedAdminCopy.failure}</span>
+            <strong>{summaryFailures}</strong>
+          </div>
+          <div>
+            <span>{localizedAdminCopy.range}</span>
+            <strong>{summaryRangeHours ? `${summaryRangeHours}h` : '-'}</strong>
+          </div>
+        </div>
+        <div className="audit-log-page__topGroups">
+          {[
+            { title: localizedAdminCopy.topActions, rows: summary?.topActions || [], formatter: actionLabel },
+            { title: localizedAdminCopy.topActors, rows: summary?.topActors || [] },
+            { title: localizedAdminCopy.topIps, rows: summary?.topIpAddresses || [] },
+          ].map((group) => (
+            <div key={group.title} className="audit-log-page__topGroup">
+              <Text strong>{group.title}</Text>
+              {(group.rows.length ? group.rows : [{ name: '-', count: 0 }]).slice(0, 4).map((row) => (
+                <span key={`${group.title}-${row.name}`}>
+                  <em>{group.formatter ? group.formatter(row.name) : row.name}</em>
+                  <strong>{row.count}</strong>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="audit-log-page__retention">
+          <div>
+            <Text strong>{localizedAdminCopy.retentionTitle}</Text>
+            <Text type="secondary">{localizedAdminCopy.retentionHint}</Text>
+          </div>
+          <Space wrap>
+            <InputNumber
+              min={7}
+              max={3650}
+              precision={0}
+              value={retentionDays}
+              onChange={(value) => setRetentionDays(Number(value || 180))}
+              addonAfter={localizedAdminCopy.days}
+            />
+            <Popconfirm
+              title={localizedAdminCopy.purgeConfirm}
+              onConfirm={purgeOldLogs}
+            >
+              <Button danger icon={<DeleteOutlined />} loading={purging}>
+                {localizedAdminCopy.purge}
+              </Button>
+            </Popconfirm>
+          </Space>
         </div>
       </section>
       <section className="audit-log-page__opsPanel" aria-label={localizedOpsCopy.title}>

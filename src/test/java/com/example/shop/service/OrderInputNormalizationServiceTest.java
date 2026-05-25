@@ -18,17 +18,20 @@ import static org.mockito.Mockito.when;
 class OrderInputNormalizationServiceTest {
     private OrderRepository orderRepository;
     private OrderService service;
+    private RuntimeConfigService runtimeConfig;
 
     @BeforeEach
     void setUp() {
         orderRepository = mock(OrderRepository.class);
+        runtimeConfig = mock(RuntimeConfigService.class);
         service = new OrderService();
         ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
         ReflectionTestUtils.setField(service, "orderItemRepository", mock(OrderItemRepository.class));
         ReflectionTestUtils.setField(service, "paymentRepository", mock(PaymentRepository.class));
-        ReflectionTestUtils.setField(service, "returnWindowDays", 7L);
-        ReflectionTestUtils.setField(service, "returnReasonMaxChars", 80);
-        ReflectionTestUtils.setField(service, "trackingNumberMaxChars", 32);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        when(runtimeConfig.getLong("order.return-window-days", 7)).thenReturn(7L);
+        when(runtimeConfig.getInt("order.return-reason-max-chars", 500)).thenReturn(80);
+        when(runtimeConfig.getInt("order.tracking-number-max-chars", 120)).thenReturn(32);
     }
 
     @Test

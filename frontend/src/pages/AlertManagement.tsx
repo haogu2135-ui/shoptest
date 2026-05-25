@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Input, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Input, InputNumber, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { AlertOutlined, CheckCircleOutlined, ReloadOutlined, SearchOutlined, ToolOutlined } from '@ant-design/icons';
+import { AlertOutlined, CheckCircleOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, ToolOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { SystemAlert, SystemAlertSummary } from '../types';
 import './AlertManagement.css';
@@ -29,6 +29,8 @@ const AlertManagement: React.FC = () => {
   const [status, setStatus] = useState('OPEN');
   const [severity, setSeverity] = useState('ALL');
   const [category, setCategory] = useState('');
+  const [selectedAlertIds, setSelectedAlertIds] = useState<number[]>([]);
+  const [retentionDays, setRetentionDays] = useState(30);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
 
@@ -46,6 +48,7 @@ const AlertManagement: React.FC = () => {
       ]);
       setAlerts(alertResponse.data);
       setSummary(summaryResponse.data);
+      setSelectedAlertIds((ids) => ids.filter((id) => alertResponse.data.some((alert) => alert.id === id)));
     } catch {
       message.error('告警数据加载失败');
     } finally {
@@ -97,6 +100,68 @@ const AlertManagement: React.FC = () => {
       setActing(null);
     }
   }, [loadData]);
+
+  const selectedAlerts = useMemo(
+    () => alerts.filter((alert) => selectedAlertIds.includes(alert.id)),
+    [alerts, selectedAlertIds]
+  );
+  const selectedOpenIds = useMemo(
+    () => selectedAlerts.filter((alert) => alert.status === 'OPEN').map((alert) => alert.id),
+    [selectedAlerts]
+  );
+  const selectedUnresolvedIds = useMemo(
+    () => selectedAlerts.filter((alert) => alert.status !== 'RESOLVED').map((alert) => alert.id),
+    [selectedAlerts]
+  );
+
+  const batchAcknowledge = async () => {
+    if (!selectedOpenIds.length) {
+      message.warning('请选择未处理告警');
+      return;
+    }
+    setActing('batch-ack');
+    try {
+      const response = await adminApi.acknowledgeAlerts(selectedOpenIds, 'Batch acknowledged from alert center');
+      message.success(`已确认 ${response.data.updatedCount} 条告警`);
+      setSelectedAlertIds([]);
+      await loadData();
+    } catch {
+      message.error('批量确认失败');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const batchResolve = async () => {
+    if (!selectedUnresolvedIds.length) {
+      message.warning('请选择未解决告警');
+      return;
+    }
+    setActing('batch-resolve');
+    try {
+      const response = await adminApi.resolveAlerts(selectedUnresolvedIds, 'Batch resolved from alert center');
+      message.success(`已解决 ${response.data.updatedCount} 条告警`);
+      setSelectedAlertIds([]);
+      await loadData();
+    } catch {
+      message.error('批量解决失败');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const purgeResolved = async () => {
+    setActing('purge-resolved');
+    try {
+      const response = await adminApi.purgeResolvedAlerts(retentionDays);
+      message.success(`已清理 ${response.data.deletedCount} 条已解决告警`);
+      await loadData();
+    } catch {
+      message.error('清理已解决告警失败');
+    } finally {
+      setActing(null);
+    }
+  };
 
   const columns: ColumnsType<SystemAlert> = useMemo(() => [
     {
@@ -229,11 +294,59 @@ const AlertManagement: React.FC = () => {
             <Button onClick={loadData}>筛选</Button>
           </Space>
 
+          <div className="alert-management__bulkBar">
+            <Space wrap>
+              <Text type="secondary">
+                已选 {selectedAlertIds.length} 条，未处理 {selectedOpenIds.length} 条，未解决 {selectedUnresolvedIds.length} 条
+              </Text>
+              <Button
+                disabled={!selectedOpenIds.length}
+                loading={acting === 'batch-ack'}
+                onClick={batchAcknowledge}
+              >
+                批量确认
+              </Button>
+              <Button
+                type="primary"
+                disabled={!selectedUnresolvedIds.length}
+                loading={acting === 'batch-resolve'}
+                onClick={batchResolve}
+              >
+                批量解决
+              </Button>
+            </Space>
+            <Space wrap className="alert-management__purge">
+              <Text type="secondary">清理已解决保留</Text>
+              <InputNumber
+                min={1}
+                max={3650}
+                precision={0}
+                value={retentionDays}
+                onChange={(value) => setRetentionDays(Number(value || 30))}
+                addonAfter="天"
+              />
+              <Popconfirm
+                title="清理过期已解决告警？"
+                description={`将删除 ${retentionDays} 天前已解决的告警。`}
+                onConfirm={purgeResolved}
+              >
+                <Button icon={<DeleteOutlined />} loading={acting === 'purge-resolved'}>
+                  清理
+                </Button>
+              </Popconfirm>
+            </Space>
+          </div>
+
           {alerts.length ? (
             <Table<SystemAlert>
               rowKey="id"
               columns={columns}
               dataSource={alerts}
+              rowSelection={{
+                selectedRowKeys: selectedAlertIds,
+                onChange: (keys) => setSelectedAlertIds(keys.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)),
+                getCheckboxProps: (record) => ({ disabled: record.status === 'RESOLVED' }),
+              }}
               pagination={{ pageSize: 10 }}
               scroll={{ x: 980 }}
               expandable={{

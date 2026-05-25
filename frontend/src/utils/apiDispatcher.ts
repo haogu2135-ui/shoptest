@@ -1,4 +1,4 @@
-const DEFAULT_GATEWAY_PREFIX = '/gateway';
+import { resolveApiGatewayEnabled, resolveApiGatewayPrefix } from './runtimeConfig';
 
 const routeServices = [
   { service: 'admin', prefixes: ['/admin'] },
@@ -14,14 +14,8 @@ const routeServices = [
   { service: 'app', prefixes: ['/app'] },
 ];
 
-const normalizeGatewayPrefix = (value: string | undefined) => {
-  const prefix = (value || DEFAULT_GATEWAY_PREFIX).trim() || DEFAULT_GATEWAY_PREFIX;
-  const withSlash = prefix.startsWith('/') ? prefix : `/${prefix}`;
-  return withSlash.endsWith('/') && withSlash.length > 1 ? withSlash.slice(0, -1) : withSlash;
-};
-
-export const apiGatewayPrefix = normalizeGatewayPrefix(process.env.REACT_APP_API_GATEWAY_PREFIX);
-export const apiGatewayEnabled = process.env.REACT_APP_API_GATEWAY_ENABLED !== 'false';
+export const apiGatewayPrefix = resolveApiGatewayPrefix();
+export const apiGatewayEnabled = resolveApiGatewayEnabled();
 
 export const resolveApiServiceId = (path: string) => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;

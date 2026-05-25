@@ -177,6 +177,49 @@
       padding-top: 14px;
     }
 
+    .summaryWrap {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+
+    .summaryTitle {
+      margin-bottom: 12px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .summaryGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .summaryItem {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 1px solid #e6edf5;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 14px;
+    }
+
+    .summaryKey {
+      color: var(--muted);
+    }
+
+    .summaryValue {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
     .notes {
       border-top: 1px solid var(--line);
       padding: 20px 32px 28px;
@@ -208,6 +251,7 @@
       }
 
       .grid { grid-template-columns: 1fr; }
+      .summaryGrid { grid-template-columns: 1fr; }
       h1 { font-size: 23px; }
 
       button,
@@ -254,6 +298,10 @@
       <div class="progressBar">
         <div id="progressFill" class="progressFill"></div>
       </div>
+      <div id="summaryWrap" class="summaryWrap" aria-live="polite">
+        <div class="summaryTitle">统计汇总</div>
+        <div id="summaryGrid" class="summaryGrid"></div>
+      </div>
       <div id="downloadRow" class="downloadRow">
         <a id="downloadLink" class="download" href="#">下载结果 zip</a>
       </div>
@@ -279,6 +327,8 @@
   const progressFill = document.getElementById('progressFill');
   const downloadRow = document.getElementById('downloadRow');
   const downloadLink = document.getElementById('downloadLink');
+  const summaryWrap = document.getElementById('summaryWrap');
+  const summaryGrid = document.getElementById('summaryGrid');
   let pollTimer = null;
 
   dateInput.value = new Date().toISOString().slice(0, 10);
@@ -288,6 +338,7 @@
     clearInterval(pollTimer);
     statusEl.className = 'status';
     downloadRow.style.display = 'none';
+    hideSummary();
 
     if (!fileInput.files.length) {
       showError('请选择 txt 文件');
@@ -348,6 +399,7 @@
       } else if (job.state === 'FAILED') {
         clearInterval(pollTimer);
         button.disabled = false;
+        hideSummary();
         showError(job.error || '任务执行失败');
       } else {
         statusEl.textContent = '正在执行，请保持页面打开...';
@@ -366,6 +418,42 @@
     progressText.textContent = total ? `${job.state}：${completed}/${total}` : `${job.state}：等待统计`;
     progressPercent.textContent = `${percent}%`;
     progressFill.style.width = `${percent}%`;
+
+    if (job.state === 'DONE' && job.summaryText) {
+      renderSummary(job.summaryText);
+    }
+  }
+
+  function renderSummary(summaryText) {
+    const lines = String(summaryText || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) {
+      hideSummary();
+      return;
+    }
+
+    summaryGrid.replaceChildren(...lines.map((line) => {
+      const separator = line.indexOf('=');
+      const key = separator >= 0 ? line.slice(0, separator) : line;
+      const value = separator >= 0 ? line.slice(separator + 1) : '';
+      const item = document.createElement('div');
+      const keyEl = document.createElement('span');
+      const valueEl = document.createElement('span');
+
+      item.className = 'summaryItem';
+      keyEl.className = 'summaryKey';
+      valueEl.className = 'summaryValue';
+      keyEl.textContent = key;
+      valueEl.textContent = value;
+
+      item.append(keyEl, valueEl);
+      return item;
+    }));
+    summaryWrap.style.display = 'block';
+  }
+
+  function hideSummary() {
+    summaryGrid.replaceChildren();
+    summaryWrap.style.display = 'none';
   }
 
   function showError(message) {

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge, Layout, Menu, Spin, Button, Typography, message } from 'antd';
 import {
   DashboardOutlined, ShopOutlined, AppstoreOutlined,
-  ShoppingOutlined, TeamOutlined, StarOutlined,
+  ShoppingOutlined, TeamOutlined, StarOutlined, QuestionCircleOutlined,
   ArrowLeftOutlined, LogoutOutlined, CustomerServiceOutlined, GiftOutlined,
   NotificationOutlined, TagsOutlined, TruckOutlined, SoundOutlined,
   SafetyCertificateOutlined, ApiOutlined, SettingOutlined, CloudSyncOutlined, FileTextOutlined, ThunderboltOutlined, AlertOutlined, StopOutlined,
@@ -45,16 +45,17 @@ const AdminLayout: React.FC = () => {
       ? [{ key: '/admin/permissions', icon: <SafetyCertificateOutlined />, label: t('adminLayout.permissions') }]
       : []),
     canSee('reviews') ? { key: '/admin/reviews', icon: <StarOutlined />, label: t('adminLayout.reviews') } : null,
+    canSee('questions') ? { key: '/admin/questions', icon: <QuestionCircleOutlined />, label: t('adminLayout.questions') } : null,
     canSee('coupons') ? { key: '/admin/coupons', icon: <GiftOutlined />, label: t('adminLayout.coupons') } : null,
     canSee('notifications') ? { key: '/admin/notifications', icon: <NotificationOutlined />, label: t('adminLayout.notifications') } : null,
     canSee('announcements') ? { key: '/admin/announcements', icon: <SoundOutlined />, label: t('adminLayout.announcements') } : null,
     canSee('audit-logs') ? { key: '/admin/audit-logs', icon: <SafetyCertificateOutlined />, label: t('adminLayout.auditLogs') } : null,
-    canSee('alerts') ? { key: '/admin/alerts', icon: <AlertOutlined />, label: '告警中心' } : null,
-    canSee('ip-blacklist') ? { key: '/admin/ip-blacklist', icon: <StopOutlined />, label: 'IP黑名单' } : null,
-    canSee('logs') ? { key: '/admin/logs', icon: <FileTextOutlined />, label: '日志管理' } : null,
+    canSee('alerts') ? { key: '/admin/alerts', icon: <AlertOutlined />, label: t('adminLayout.alerts') } : null,
+    canSee('ip-blacklist') ? { key: '/admin/ip-blacklist', icon: <StopOutlined />, label: t('adminLayout.ipBlacklist') } : null,
+    canSee('logs') ? { key: '/admin/logs', icon: <FileTextOutlined />, label: t('adminLayout.logs') } : null,
     canSee('registry') ? { key: '/admin/registry', icon: <ApiOutlined />, label: t('adminLayout.registry') } : null,
-    canSee('config-center') ? { key: '/admin/config-center', icon: <CloudSyncOutlined />, label: '配置中心' } : null,
-    canSee('traffic-control') ? { key: '/admin/traffic-control', icon: <ThunderboltOutlined />, label: '流量控制' } : null,
+    canSee('config-center') ? { key: '/admin/config-center', icon: <CloudSyncOutlined />, label: t('adminLayout.configCenter') } : null,
+    canSee('traffic-control') ? { key: '/admin/traffic-control', icon: <ThunderboltOutlined />, label: t('adminLayout.trafficControl') } : null,
     canSee('system') ? { key: '/admin/system', icon: <SettingOutlined />, label: t('adminLayout.system') } : null,
     canSee('support') ? {
       key: '/admin/support',

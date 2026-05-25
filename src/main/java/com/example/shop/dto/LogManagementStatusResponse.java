@@ -11,6 +11,10 @@ public class LogManagementStatusResponse {
     private String logFileName;
     private List<String> availableFiles;
     private long totalLogBytes;
+    private List<String> allowedLoggerPrefixes;
+    private int maxRangeHours;
+    private int maxPreviewLines;
+    private int maxDownloadBytes;
 
     public String getLoggerName() {
         return loggerName;
@@ -74,5 +78,37 @@ public class LogManagementStatusResponse {
 
     public void setTotalLogBytes(long totalLogBytes) {
         this.totalLogBytes = totalLogBytes;
+    }
+
+    public List<String> getAllowedLoggerPrefixes() {
+        return allowedLoggerPrefixes;
+    }
+
+    public void setAllowedLoggerPrefixes(List<String> allowedLoggerPrefixes) {
+        this.allowedLoggerPrefixes = allowedLoggerPrefixes;
+    }
+
+    public int getMaxRangeHours() {
+        return maxRangeHours;
+    }
+
+    public void setMaxRangeHours(int maxRangeHours) {
+        this.maxRangeHours = maxRangeHours;
+    }
+
+    public int getMaxPreviewLines() {
+        return maxPreviewLines;
+    }
+
+    public void setMaxPreviewLines(int maxPreviewLines) {
+        this.maxPreviewLines = maxPreviewLines;
+    }
+
+    public int getMaxDownloadBytes() {
+        return maxDownloadBytes;
+    }
+
+    public void setMaxDownloadBytes(int maxDownloadBytes) {
+        this.maxDownloadBytes = maxDownloadBytes;
     }
 }

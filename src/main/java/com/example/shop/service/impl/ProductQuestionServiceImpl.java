@@ -1,5 +1,6 @@
 package com.example.shop.service.impl;
 
+import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
 import com.example.shop.entity.Product;
 import com.example.shop.entity.ProductQuestion;
 import com.example.shop.entity.User;
@@ -8,11 +9,14 @@ import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.UserRepository;
 import com.example.shop.service.ProductQuestionService;
 import com.example.shop.service.RuntimeConfigService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class ProductQuestionServiceImpl implements ProductQuestionService {
@@ -40,6 +44,29 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
             return List.of();
         }
         return questionRepository.findByProduct_IdOrderByCreatedAtDesc(productId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductQuestion> getAdminQueue(String status, int limit) {
+        return questionRepository.findAdminQueue(normalizedAnsweredFilter(status), PageRequest.of(0, normalizedAdminLimit(limit)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductQuestionAdminSummaryResponse adminSummary() {
+        int staleHours = normalizedStaleHours();
+        int maxAdminRows = normalizedMaxAdminRows();
+        ProductQuestionAdminSummaryResponse response = new ProductQuestionAdminSummaryResponse();
+        response.setTotalQuestions(questionRepository.countAllQuestions());
+        response.setUnansweredQuestions(questionRepository.countUnansweredQuestions());
+        response.setAnsweredQuestions(questionRepository.countAnsweredQuestions());
+        response.setStaleUnansweredQuestions(questionRepository.countStaleUnansweredQuestions(LocalDateTime.now().minusHours(staleHours)));
+        response.setStaleHours(staleHours);
+        response.setMaxAdminRows(maxAdminRows);
+        response.setResponseScore(calculateResponseScore(response));
+        response.setCheckedAt(Instant.now().toString());
+        return response;
     }
 
     @Override
@@ -97,5 +124,37 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
 
     private int normalizedMaxAnswerChars() {
         return Math.max(20, runtimeConfig.getInt("product-question.max-answer-chars", 1000));
+    }
+
+    private Boolean normalizedAnsweredFilter(String status) {
+        String normalized = String.valueOf(status == null ? "" : status).trim().toUpperCase(Locale.ROOT);
+        if ("ANSWERED".equals(normalized)) {
+            return true;
+        }
+        if ("UNANSWERED".equals(normalized)) {
+            return false;
+        }
+        return null;
+    }
+
+    private int normalizedAdminLimit(int limit) {
+        int configuredMax = normalizedMaxAdminRows();
+        int requested = limit > 0 ? limit : configuredMax;
+        return Math.max(1, Math.min(requested, configuredMax));
+    }
+
+    private int normalizedMaxAdminRows() {
+        return Math.max(20, Math.min(runtimeConfig.getInt("product-question.admin.max-rows", 200), 1000));
+    }
+
+    private int normalizedStaleHours() {
+        return Math.max(1, Math.min(runtimeConfig.getInt("product-question.admin.stale-hours", 24), 24 * 30));
+    }
+
+    private int calculateResponseScore(ProductQuestionAdminSummaryResponse summary) {
+        long rawScore = 100
+                - summary.getUnansweredQuestions() * 8
+                - summary.getStaleUnansweredQuestions() * 18;
+        return (int) Math.max(0, Math.min(100, rawScore));
     }
 }

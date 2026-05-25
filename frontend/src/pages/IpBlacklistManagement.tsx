@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, ReloadOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
@@ -28,8 +28,10 @@ const IpBlacklistManagement: React.FC = () => {
   const [status, setStatus] = useState('BLOCKED');
   const [source, setSource] = useState('ALL');
   const [ipAddress, setIpAddress] = useState('');
+  const [selectedEntryIds, setSelectedEntryIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState<number | null>(null);
+  const [batchActing, setBatchActing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
 
@@ -47,6 +49,7 @@ const IpBlacklistManagement: React.FC = () => {
       ]);
       setEntries(listResponse.data);
       setStatusInfo(statusResponse.data);
+      setSelectedEntryIds((ids) => ids.filter((id) => listResponse.data.some((entry) => entry.id === id)));
     } catch {
       message.error('IP黑名单加载失败');
     } finally {
@@ -83,6 +86,34 @@ const IpBlacklistManagement: React.FC = () => {
       setActing(null);
     }
   }, [loadData]);
+
+  const selectedEntries = useMemo(
+    () => entries.filter((entry) => selectedEntryIds.includes(entry.id)),
+    [entries, selectedEntryIds]
+  );
+
+  const selectedReleasableIds = useMemo(
+    () => selectedEntries.filter((entry) => entry.status !== 'RELEASED').map((entry) => entry.id),
+    [selectedEntries]
+  );
+
+  const releaseSelectedEntries = async () => {
+    if (!selectedReleasableIds.length) {
+      message.warning('请选择可解除的黑名单记录');
+      return;
+    }
+    setBatchActing(true);
+    try {
+      const response = await adminApi.releaseIpBlacklistEntries(selectedReleasableIds, 'Batch released from IP blacklist center');
+      message.success(`已解除 ${response.data.releasedCount} 条黑名单记录`);
+      setSelectedEntryIds([]);
+      await loadData();
+    } catch {
+      message.error('批量解除失败');
+    } finally {
+      setBatchActing(false);
+    }
+  };
 
   const columns: ColumnsType<IpBlacklistEntry> = useMemo(() => [
     {
@@ -199,10 +230,35 @@ const IpBlacklistManagement: React.FC = () => {
             <Button onClick={loadData}>筛选</Button>
           </Space>
 
+          <div className="ip-blacklist__bulkBar">
+            <Text type="secondary">
+              已选 {selectedEntryIds.length} 条，可解除 {selectedReleasableIds.length} 条
+            </Text>
+            <Popconfirm
+              title="批量解除黑名单记录？"
+              description={`将解除 ${selectedReleasableIds.length} 条未释放记录。`}
+              disabled={!selectedReleasableIds.length}
+              onConfirm={releaseSelectedEntries}
+            >
+              <Button
+                icon={<UnlockOutlined />}
+                loading={batchActing}
+                disabled={!selectedReleasableIds.length}
+              >
+                批量解除
+              </Button>
+            </Popconfirm>
+          </div>
+
           <Table<IpBlacklistEntry>
             rowKey="id"
             columns={columns}
             dataSource={entries}
+            rowSelection={{
+              selectedRowKeys: selectedEntryIds,
+              onChange: (keys) => setSelectedEntryIds(keys.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)),
+              getCheckboxProps: (record) => ({ disabled: record.status === 'RELEASED' }),
+            }}
             pagination={{ pageSize: 10 }}
             scroll={{ x: 1100 }}
           />

@@ -31,6 +31,46 @@
   text-transform: uppercase;
 }
 
+.announcement-management__limitHint {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.45;
+}
+
+.announcement-management__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.announcement-management__stats div {
+  display: grid;
+  gap: 6px;
+  min-height: 96px;
+  padding: 14px;
+  border: 1px solid rgba(30, 85, 61, 0.12);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.05);
+}
+
+.announcement-management__stats .anticon {
+  color: #ee4d2d;
+  font-size: 18px;
+}
+
+.announcement-management__stats strong {
+  color: #123f2c;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.announcement-management__stats span {
+  color: #5f6f65;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .announcement-management__card {
   border-radius: 18px;
   border-color: rgba(30, 85, 61, 0.12);
@@ -75,6 +115,7 @@
 .announcement-management,
 .announcement-management__hero,
 .announcement-management__card,
+.announcement-management__stats,
 .announcement-management .ant-card,
 .announcement-management .ant-card-body,
 .announcement-management .ant-table-wrapper,
@@ -101,6 +142,7 @@
 }
 
 .announcement-management__hero,
+.announcement-management__stats div,
 .announcement-management__card,
 .announcement-management .ant-btn,
 .announcement-management .ant-tag,
@@ -128,6 +170,16 @@
     gap: 12px;
     padding: 14px;
     border-radius: 14px;
+  }
+
+  .announcement-management__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .announcement-management__stats div {
+    min-height: 82px;
+    padding: 10px;
   }
 
   .announcement-management__hero h2 {
@@ -167,6 +219,10 @@
     min-height: 30px;
     padding-inline: 8px;
     white-space: normal;
+  }
+
+  .announcement-management__stats {
+    grid-template-columns: 1fr;
   }
 }
 

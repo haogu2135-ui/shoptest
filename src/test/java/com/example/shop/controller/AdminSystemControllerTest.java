@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.ConfigCenterHealthResponse;
 import com.example.shop.service.ConfigCenterService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,7 +42,7 @@ class AdminSystemControllerTest {
         assertTrue(((Number) ((Map<?, ?>) status.get("database")).get("latencyMs")).longValue() >= 0);
         assertTrue(((Number) ((Map<?, ?>) status.get("redis")).get("latencyMs")).longValue() >= 0);
         assertEquals(0L, ((Number) ((Map<?, ?>) status.get("nacos")).get("latencyMs")).longValue());
-        assertEquals("jdbc:mysql://localhost:3306/shop?password=******&useSSL=false",
+        assertEquals("jdbc:mysql://******:******@localhost:3306/shop?password=******&token=******&useSSL=false",
                 ((Map<?, ?>) status.get("database")).get("url"));
     }
 
@@ -62,7 +64,7 @@ class AdminSystemControllerTest {
     void readinessReturnsServiceUnavailableWhenDatabaseFails() throws Exception {
         Environment environment = environment();
         DataSource dataSource = mock(DataSource.class);
-        when(dataSource.getConnection()).thenThrow(new SQLException("db\nunreachable"));
+        when(dataSource.getConnection()).thenThrow(new SQLException("db\nunreachable password=raw-secret token=raw-token"));
         AdminSystemController controller = controller(environment, dataSource, redisTemplate("PONG"), true);
 
         ResponseEntity<Map<String, Object>> response = controller.getReadiness();
@@ -72,6 +74,10 @@ class AdminSystemControllerTest {
         Map<?, ?> database = (Map<?, ?>) response.getBody().get("database");
         assertEquals(false, database.get("ready"));
         assertTrue(String.valueOf(database.get("error")).contains("SQLException"));
+        assertTrue(String.valueOf(database.get("error")).contains("password=******"));
+        assertTrue(String.valueOf(database.get("error")).contains("token=******"));
+        assertFalse(String.valueOf(database.get("error")).contains("raw-secret"));
+        assertFalse(String.valueOf(database.get("error")).contains("raw-token"));
         assertFalse(String.valueOf(database.get("error")).contains("\n"));
     }
 
@@ -89,13 +95,40 @@ class AdminSystemControllerTest {
         assertEquals(false, redis.get("ready"));
     }
 
+    @Test
+    void masksNacosHealthWarningsAndErrorsBeforeReturningSystemStatus() throws Exception {
+        Environment environment = environment();
+        when(environment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, false)).thenReturn(true);
+        when(environment.getProperty("spring.cloud.nacos.config.enabled", Boolean.class, true)).thenReturn(true);
+        when(environment.getProperty("spring.cloud.nacos.discovery.server-addr", ""))
+                .thenReturn("127.0.0.1:8848?token=raw-nacos-token");
+        ConfigCenterHealthResponse health = new ConfigCenterHealthResponse();
+        health.setAvailable(false);
+        health.setServerStatus("DOWN");
+        health.setDataId("shop.properties");
+        health.setWarnings(List.of("using token=raw-warning-token"));
+        health.setErrors(List.of("password=raw-password; Authorization: Bearer abcdefghijklmnop"));
+        ConfigCenterService configCenterService = mock(ConfigCenterService.class);
+        when(configCenterService.health(null, null, null)).thenReturn(health);
+        AdminSystemController controller = controller(environment, dataSource(true), redisTemplate("PONG"), true, configCenterService);
+
+        Map<String, Object> status = controller.getStatus();
+
+        Map<?, ?> nacos = (Map<?, ?>) status.get("nacos");
+        assertEquals("DOWN", nacos.get("status"));
+        assertEquals("127.0.0.1:8848?token=******", nacos.get("serverAddr"));
+        assertEquals(List.of("using token=******"), nacos.get("warnings"));
+        assertEquals(List.of("password=******; Authorization: Bearer ******"), nacos.get("errors"));
+    }
+
     private Environment environment() {
         Environment environment = mock(Environment.class);
         when(environment.getActiveProfiles()).thenReturn(new String[]{"test"});
         when(environment.getProperty("spring.application.name", "shop-backend")).thenReturn("shop-backend");
         when(environment.getProperty("app.runtime-mode", "production")).thenReturn("test");
         when(environment.getProperty("server.port", "8081")).thenReturn("8081");
-        when(environment.getProperty("spring.datasource.url", "")).thenReturn("jdbc:mysql://localhost:3306/shop?password=secret&useSSL=false");
+        when(environment.getProperty("spring.datasource.url", ""))
+                .thenReturn("jdbc:mysql://dbuser:dbpass@localhost:3306/shop?password=secret&token=raw-token&useSSL=false");
         when(environment.getProperty("spring.datasource.driver-class-name", "")).thenReturn("com.mysql.cj.jdbc.Driver");
         when(environment.getProperty("app.mail.redis-enabled", Boolean.class, true)).thenReturn(true);
         when(environment.getProperty("spring.redis.host", "")).thenReturn("127.0.0.1");
@@ -141,6 +174,25 @@ class AdminSystemControllerTest {
         when(dataSources.getIfAvailable()).thenReturn(dataSource);
         when(redisTemplates.getIfAvailable()).thenReturn(redisTemplate);
         when(configCenterServices.getIfAvailable()).thenReturn(null);
+        when(environment.getProperty("app.mail.redis-enabled", Boolean.class, true)).thenReturn(mailRedisEnabled);
+
+        return new AdminSystemController(environment, dataSources, redisTemplates, configCenterServices);
+    }
+
+    @SuppressWarnings("unchecked")
+    private AdminSystemController controller(
+            Environment environment,
+            DataSource dataSource,
+            StringRedisTemplate redisTemplate,
+            boolean mailRedisEnabled,
+            ConfigCenterService configCenterService
+    ) {
+        ObjectProvider<DataSource> dataSources = mock(ObjectProvider.class);
+        ObjectProvider<StringRedisTemplate> redisTemplates = mock(ObjectProvider.class);
+        ObjectProvider<ConfigCenterService> configCenterServices = mock(ObjectProvider.class);
+        when(dataSources.getIfAvailable()).thenReturn(dataSource);
+        when(redisTemplates.getIfAvailable()).thenReturn(redisTemplate);
+        when(configCenterServices.getIfAvailable()).thenReturn(configCenterService);
         when(environment.getProperty("app.mail.redis-enabled", Boolean.class, true)).thenReturn(mailRedisEnabled);
 
         return new AdminSystemController(environment, dataSources, redisTemplates, configCenterServices);

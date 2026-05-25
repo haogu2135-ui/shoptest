@@ -1,24 +1,11 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
-import { User, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, SupportSession, SupportMessage, Coupon, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertSummary, IpBlacklistEntry, IpBlacklistStatus, SiteAnnouncement } from '../types';
+import { User, UserAdminSummary, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, ProductQuestionAdminSummary, SupportSession, SupportAdminSummary, SupportMessage, Coupon, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementAdminSummary } from '../types';
 import { buildLoginUrl, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { resolveApiBaseUrl, resolveSupportWebSocketUrl } from '../utils/runtimeConfig';
 import { getLocalStorageItem, removeLocalStorageItem } from '../utils/safeStorage';
-
-const resolveApiBaseUrl = () => {
-    const configured = process.env.REACT_APP_API_BASE_URL;
-    if (configured) {
-        return configured.replace(/\/$/, '');
-    }
-
-    if (process.env.NODE_ENV === 'production') {
-        return '/api';
-    }
-
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:8080`;
-};
 
 const api = axios.create({
     baseURL: resolveApiBaseUrl()
@@ -54,6 +41,17 @@ const stripControlChars = (value: string) =>
 
 const normalizeTextParam = (value: unknown, maxLength = 120) =>
     stripControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
+
+const normalizeAuditLogParams = (params?: Record<string, unknown>, options?: { includeLimit?: boolean; includeTopLimit?: boolean }) => ({
+    action: normalizeTextParam(params?.action, 50) || undefined,
+    result: normalizeTextParam(params?.result, 20) || undefined,
+    actorUsername: normalizeTextParam(params?.actorUsername, 100) || undefined,
+    resourceType: normalizeTextParam(params?.resourceType, 50) || undefined,
+    startAt: normalizeTextParam(params?.startAt, 32) || undefined,
+    endAt: normalizeTextParam(params?.endAt, 32) || undefined,
+    ...(options?.includeLimit ? { limit: normalizeBoundedPositiveInt(params?.limit, 200, 1000) } : {}),
+    ...(options?.includeTopLimit ? { topLimit: normalizeBoundedPositiveInt(params?.topLimit, 10, 50) } : {}),
+});
 
 const normalizeEmailParam = (value: unknown) => {
     const email = normalizeTextParam(value, 180).toLowerCase();
@@ -94,10 +92,9 @@ export const supportWebSocketUrl = (token: string) => {
     if (!normalizedToken) {
         throw new Error('Support websocket token is required');
     }
-    const base = new URL(apiBaseUrl, window.location.origin);
-    base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
-    const basePath = base.pathname.replace(/\/$/, '');
-    base.pathname = `${basePath}/ws/support`.replace(/\/{2,}/g, '/');
+    const base = new URL(resolveSupportWebSocketUrl(), window.location.origin);
+    if (base.protocol === 'https:') base.protocol = 'wss:';
+    if (base.protocol === 'http:') base.protocol = 'ws:';
     base.searchParams.set('token', normalizedToken);
     return base.toString();
 };
@@ -174,6 +171,8 @@ const adminOrderCache = new Map<string, { expiresAt: number; response: AxiosResp
 const adminOrderRequests = new Map<string, Promise<AxiosResponse<Order[]> | AxiosResponse<AdminOrderPage>>>();
 const adminReviewCache = new Map<string, { expiresAt: number; response: AxiosResponse<Review[]> }>();
 const adminReviewRequests = new Map<string, Promise<AxiosResponse<Review[]>>>();
+const adminQuestionCache = new Map<string, { expiresAt: number; response: AxiosResponse<ProductQuestion[]> }>();
+const adminQuestionRequests = new Map<string, Promise<AxiosResponse<ProductQuestion[]>>>();
 let paymentChannelCache: { expiresAt: number; response: AxiosResponse<PaymentChannel[]> } | null = null;
 let paymentChannelRequest: Promise<AxiosResponse<PaymentChannel[]>> | null = null;
 let appConfigCache: { expiresAt: number; response: AxiosResponse<AppConfig> } | null = null;
@@ -393,6 +392,12 @@ const clearAdminOrderCache = () => {
 const clearAdminReviewCache = () => {
     adminReviewCache.clear();
     adminReviewRequests.clear();
+    clearAdminDashboardCache();
+};
+
+const clearAdminQuestionCache = () => {
+    adminQuestionCache.clear();
+    adminQuestionRequests.clear();
     clearAdminDashboardCache();
 };
 
@@ -862,7 +867,10 @@ export const questionApi = {
             .finally(() => clearQuestionCache(toPathId(productId))),
     answer: (questionId: number, answer: string) =>
         api.post<ProductQuestion>(`/product-questions/${toPathId(questionId)}/answer`, { answer: normalizeTextParam(answer, 2000) })
-            .finally(() => clearQuestionCache()),
+            .finally(() => {
+                clearQuestionCache();
+                clearAdminQuestionCache();
+            }),
 };
 
 export const categoryApi = {
@@ -957,8 +965,29 @@ export const adminApi = {
     runAlertSelfCheck: () => api.post<void>('/admin/alerts/self-check'),
     acknowledgeAlert: (id: number, note?: string) => api.post<SystemAlert>(`/admin/alerts/${toPathId(id)}/acknowledge`, { note: normalizeTextParam(note, 200) }),
     resolveAlert: (id: number, note?: string) => api.post<SystemAlert>(`/admin/alerts/${toPathId(id)}/resolve`, { note: normalizeTextParam(note, 200) }),
+    acknowledgeAlerts: (ids: number[], note?: string, maxIds = 200) =>
+        api.post<SystemAlertBatchActionResponse>('/admin/alerts/batch/acknowledge', {
+            ids: normalizePositiveIntList(ids, maxIds),
+            note: normalizeTextParam(note, 200),
+        }),
+    resolveAlerts: (ids: number[], note?: string, maxIds = 200) =>
+        api.post<SystemAlertBatchActionResponse>('/admin/alerts/batch/resolve', {
+            ids: normalizePositiveIntList(ids, maxIds),
+            note: normalizeTextParam(note, 200),
+        }),
+    purgeResolvedAlerts: (retentionDays = 30) =>
+        api.post<SystemAlertPurgeResponse>('/admin/alerts/purge-resolved', null, {
+            params: { retentionDays: normalizeBoundedPositiveInt(retentionDays, 30, 3650) },
+        }),
     getIpBlacklist: (params?: { status?: string; source?: string; ipAddress?: string; limit?: number }) =>
-        api.get<IpBlacklistEntry[]>('/admin/ip-blacklist', { params }),
+        api.get<IpBlacklistEntry[]>('/admin/ip-blacklist', {
+            params: {
+                status: normalizeTextParam(params?.status, 40) || undefined,
+                source: normalizeTextParam(params?.source, 40) || undefined,
+                ipAddress: normalizeTextParam(params?.ipAddress, 45) || undefined,
+                limit: normalizeBoundedPositiveInt(params?.limit, 200, 1000),
+            },
+        }),
     getIpBlacklistStatus: () => api.get<IpBlacklistStatus>('/admin/ip-blacklist/status'),
     blockIpAddress: (payload: { ipAddress: string; reason?: string; blockMinutes?: number }) =>
         api.post<IpBlacklistEntry>('/admin/ip-blacklist', {
@@ -967,6 +996,11 @@ export const adminApi = {
             blockMinutes: payload.blockMinutes,
         }),
     releaseIpBlacklistEntry: (id: number) => api.post<IpBlacklistEntry>(`/admin/ip-blacklist/${toPathId(id)}/release`),
+    releaseIpBlacklistEntries: (ids: number[], note?: string, maxIds = 100) =>
+        api.post<IpBlacklistBatchReleaseResponse>('/admin/ip-blacklist/batch/release', {
+            ids: normalizePositiveIntList(ids, maxIds),
+            note: normalizeTextParam(note, 200),
+        }),
     getUsers: (params?: { keyword?: string; role?: string; status?: string }) => {
         const normalizedParams = {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
@@ -976,6 +1010,13 @@ export const adminApi = {
         const cacheKey = `${normalizedParams.keyword || ''}:${normalizedParams.role || ''}:${normalizedParams.status || ''}`;
         return cachedGet(adminUserCache, adminUserRequests, cacheKey, ADMIN_USER_CACHE_MS, () => api.get<User[]>('/admin/users', { params: normalizedParams }));
     },
+    getUserSummary: (params?: { keyword?: string; role?: string; status?: string }) => api.get<UserAdminSummary>('/admin/users/summary', {
+        params: {
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+            role: normalizeTextParam(params?.role, 40) || undefined,
+            status: normalizeTextParam(params?.status, 40) || undefined,
+        },
+    }),
     exportUsers: (params?: { keyword?: string; role?: string; status?: string }) => api.get('/admin/users/export', {
         params: {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
@@ -1062,9 +1103,17 @@ export const adminApi = {
         },
         responseType: 'blob',
     }),
-    getAuditLogs: (params?: Record<string, unknown>) => api.get<SecurityAuditLog[]>('/admin/audit-logs', { params }),
+    getAuditLogs: (params?: Record<string, unknown>) => api.get<SecurityAuditLog[]>('/admin/audit-logs', {
+        params: normalizeAuditLogParams(params, { includeLimit: true }),
+    }),
+    getAuditLogSummary: (params?: Record<string, unknown>) => api.get<SecurityAuditSummary>('/admin/audit-logs/summary', {
+        params: normalizeAuditLogParams(params, { includeTopLimit: true }),
+    }),
+    purgeAuditLogs: (retentionDays = 180) => api.post<SecurityAuditPurgeResponse>('/admin/audit-logs/purge', null, {
+        params: { retentionDays: normalizeBoundedPositiveInt(retentionDays, 180, 3650) },
+    }),
     exportAuditLogs: (params?: Record<string, unknown>) => api.get('/admin/audit-logs/export', {
-        params,
+        params: normalizeAuditLogParams(params),
         responseType: 'blob',
     }),
     updateOrderStatus: (id: number, status: string, trackingNumber?: string, trackingCarrierCode?: string) =>
@@ -1110,17 +1159,35 @@ export const adminApi = {
         clearReviewCache();
         clearAdminReviewCache();
     }),
+    getQuestionSummary: () => api.get<ProductQuestionAdminSummary>('/admin/questions/summary'),
+    getQuestions: (params?: { status?: string; limit?: number }) => {
+        const normalizedParams = {
+            status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
+            limit: normalizeBoundedPositiveInt(params?.limit, 200, 1000),
+        };
+        const cacheKey = `${normalizedParams.status || ''}:${normalizedParams.limit}`;
+        return cachedGet(adminQuestionCache, adminQuestionRequests, cacheKey, ADMIN_REVIEW_CACHE_MS, () =>
+            api.get<ProductQuestion[]>('/admin/questions', { params: normalizedParams }).then(withArrayData));
+    },
+    answerQuestion: (id: number, answer: string) =>
+        api.put<ProductQuestion>(`/admin/questions/${toPathId(id)}/answer`, { answer: normalizeTextParam(answer, 2000) })
+            .finally(() => {
+                clearQuestionCache();
+                clearAdminQuestionCache();
+            }),
+    getCouponSummary: () => api.get<CouponAdminSummary>('/admin/coupons/summary'),
     getCoupons: () => api.get<Coupon[]>('/admin/coupons'),
     createCoupon: (coupon: Partial<Coupon>) => api.post<Coupon>('/admin/coupons', coupon).finally(clearCouponCache),
     updateCoupon: (id: number, coupon: Partial<Coupon>) => api.put<Coupon>(`/admin/coupons/${toPathId(id)}`, coupon).finally(clearCouponCache),
     deleteCoupon: (id: number) => api.delete(`/admin/coupons/${toPathId(id)}`).finally(clearCouponCache),
-    grantCoupon: (id: number, userIds: number[]) => api.post<{ granted: number }>(`/admin/coupons/${toPathId(id)}/grant`, { userIds: normalizePositiveIntList(userIds, 100) }).finally(clearCouponCache),
+    grantCoupon: (id: number, userIds: number[], maxUsers = 100) => api.post<{ granted: number }>(`/admin/coupons/${toPathId(id)}/grant`, { userIds: normalizePositiveIntList(userIds, maxUsers) }).finally(clearCouponCache),
     runPetBirthdayCoupons: () => api.post<{ granted: number }>('/admin/pet-birthday-coupons/run').finally(clearCouponCache),
     getPetBirthdayCouponConfig: () => api.get<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config'),
     updatePetBirthdayCouponConfig: (config: Partial<PetBirthdayCouponConfig>) =>
         api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config),
     broadcastNotification: (payload: { type: string; title: string; message: string; contentFormat: 'TEXT' | 'HTML' }) =>
         api.post<{ sent: number }>('/admin/notifications/broadcast', payload),
+    getAnnouncementSummary: () => api.get<SiteAnnouncementAdminSummary>('/admin/announcements/summary'),
     getAnnouncements: () => api.get<SiteAnnouncement[]>('/admin/announcements'),
     createAnnouncement: (announcement: Partial<SiteAnnouncement>) => api.post<SiteAnnouncement>('/admin/announcements', announcement),
     updateAnnouncement: (id: number, announcement: Partial<SiteAnnouncement>) => api.put<SiteAnnouncement>(`/admin/announcements/${toPathId(id)}`, announcement),
@@ -1335,6 +1402,7 @@ export const supportApi = {
 };
 
 export const adminSupportApi = {
+    getSummary: () => api.get<SupportAdminSummary>('/admin/support/summary'),
     getSessions: (status?: string) => api.get<SupportSession[]>('/admin/support/sessions', { params: status ? { status } : undefined }),
     getMessages: (sessionId: number) => api.get<SupportMessage[]>(`/admin/support/sessions/${toPathId(sessionId)}/messages`),
     sendMessage: (sessionId: number, content: string) =>

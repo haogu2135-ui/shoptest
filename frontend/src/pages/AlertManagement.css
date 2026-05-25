@@ -78,6 +78,27 @@
   width: 220px;
 }
 
+.alert-management__bulkBar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid rgba(35, 80, 92, 0.1);
+  border-radius: 12px;
+  background: #fbfefd;
+}
+
+.alert-management__purge {
+  justify-content: flex-end;
+}
+
+.alert-management__purge .ant-input-number-group-wrapper {
+  width: 150px;
+}
+
 .alert-management__titleCell,
 .alert-management__expanded {
   display: grid;
@@ -163,6 +184,21 @@
     width: 100%;
   }
 
+  .alert-management__bulkBar {
+    display: grid;
+    gap: 10px;
+  }
+
+  .alert-management__bulkBar .ant-space,
+  .alert-management__purge {
+    width: 100%;
+  }
+
+  .alert-management__bulkBar .ant-btn,
+  .alert-management__purge .ant-input-number-group-wrapper {
+    width: 100%;
+  }
+
   .alert-management .ant-btn {
     min-height: 38px;
     white-space: normal;
@@ -175,6 +211,8 @@
   .alert-management__actions,
   .alert-management__card,
   .alert-management__filters,
+  .alert-management__bulkBar,
+  .alert-management__purge,
   .alert-management .ant-table-wrapper {
     min-width: 0;
     max-width: 100%;
@@ -260,9 +298,13 @@
   }
 
   .alert-management__filters,
+  .alert-management__bulkBar,
+  .alert-management__purge,
   .alert-management__filters .ant-select,
   .alert-management__filters .ant-input-affix-wrapper,
   .alert-management__filters .ant-btn,
+  .alert-management__bulkBar .ant-btn,
+  .alert-management__purge .ant-input-number-group-wrapper,
   .alert-management .ant-table-wrapper,
   .alert-management .ant-table-content {
     min-width: 0;

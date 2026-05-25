@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -19,12 +20,14 @@ import java.util.stream.Collectors;
 @Service
 public class RateLimitService {
     private final RuntimeConfigService runtimeConfig;
+    private final ClientIpResolver clientIpResolver;
     private final ConcurrentMap<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final AtomicLong acceptedRequests = new AtomicLong();
     private final AtomicLong rejectedRequests = new AtomicLong();
 
-    public RateLimitService(RuntimeConfigService runtimeConfig) {
+    public RateLimitService(RuntimeConfigService runtimeConfig, ClientIpResolver clientIpResolver) {
         this.runtimeConfig = runtimeConfig;
+        this.clientIpResolver = clientIpResolver;
     }
 
     public Decision check(HttpServletRequest request, Authentication authentication) {
@@ -54,7 +57,7 @@ public class RateLimitService {
             current.count++;
             return current;
         });
-        cleanup(windowStart, config.windowSeconds);
+        cleanup(windowStart, config);
 
         long remaining = Math.max(0, limit - bucket.count);
         long resetAt = windowStart + config.windowSeconds;
@@ -74,6 +77,7 @@ public class RateLimitService {
         status.setAuthenticatedPerMinute(config.authenticatedPerMinute);
         status.setAdminPerMinute(config.adminPerMinute);
         status.setWindowSeconds(config.windowSeconds);
+        status.setMaxBuckets(config.maxBuckets);
         status.setActiveBuckets(buckets.size());
         status.setAcceptedRequests(acceptedRequests.get());
         status.setRejectedRequests(rejectedRequests.get());
@@ -94,6 +98,7 @@ public class RateLimitService {
                 positiveInt("traffic.rate-limit.authenticated-per-minute", 300),
                 positiveInt("traffic.rate-limit.admin-per-minute", 600),
                 Math.max(5, Math.min(3600, runtimeConfig.getInt("traffic.rate-limit.window-seconds", 60))),
+                Math.max(100, Math.min(100000, runtimeConfig.getInt("traffic.rate-limit.max-buckets", 5000))),
                 parseCsv(runtimeConfig.getString("traffic.rate-limit.skip-path-prefixes", "/actuator/health,/actuator/info,/uploads/,/ws/"))
         );
     }
@@ -128,22 +133,8 @@ public class RateLimitService {
                 && authentication.getName() != null && !"anonymousUser".equals(authentication.getName())) {
             return "user:" + authentication.getName();
         }
-        return "ip:" + clientIp(request);
-    }
-
-    private String clientIp(HttpServletRequest request) {
-        if (request == null) {
-            return "unknown";
-        }
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
+        String clientIp = clientIpResolver.resolve(request);
+        return "ip:" + (clientIp.isBlank() ? "unknown" : clientIp);
     }
 
     private String normalizePath(HttpServletRequest request) {
@@ -151,7 +142,41 @@ public class RateLimitService {
         if (path == null || path.isBlank()) {
             return "/";
         }
-        return path.toLowerCase(Locale.ROOT);
+        String normalized = path.trim().toLowerCase(Locale.ROOT).replaceAll("/{2,}", "/");
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
+        if (normalized.length() > 1 && normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return Arrays.stream(normalized.split("/"))
+                .filter(segment -> !segment.isEmpty())
+                .map(this::normalizePathSegment)
+                .collect(Collectors.joining("/", "/", ""));
+    }
+
+    private String normalizePathSegment(String segment) {
+        String cleaned = segment;
+        int matrixParamStart = cleaned.indexOf(';');
+        if (matrixParamStart >= 0) {
+            cleaned = cleaned.substring(0, matrixParamStart);
+        }
+        if (cleaned.matches("\\d+")) {
+            return "{id}";
+        }
+        if (cleaned.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            return "{id}";
+        }
+        if (cleaned.matches("[0-9a-f]{16,}")) {
+            return "{id}";
+        }
+        if (cleaned.matches("so\\d{10,}[0-9a-z]*")) {
+            return "{orderNo}";
+        }
+        if (cleaned.length() > 64) {
+            return "{token}";
+        }
+        return cleaned;
     }
 
     private Set<String> parseCsv(String value) {
@@ -161,12 +186,23 @@ public class RateLimitService {
                 .collect(Collectors.toSet());
     }
 
-    private void cleanup(long currentWindowStart, int windowSeconds) {
-        if (buckets.size() < 5000) {
+    private void cleanup(long currentWindowStart, Config config) {
+        int size = buckets.size();
+        if (size <= config.maxBuckets) {
             return;
         }
-        long oldest = currentWindowStart - (long) windowSeconds * 2;
+        long oldest = currentWindowStart - (long) config.windowSeconds * 2;
         buckets.entrySet().removeIf(entry -> entry.getValue().windowStart < oldest);
+        int overflow = buckets.size() - config.maxBuckets;
+        if (overflow <= 0) {
+            return;
+        }
+        buckets.entrySet().stream()
+                .sorted(Comparator
+                        .comparingLong((Map.Entry<String, Bucket> entry) -> entry.getValue().windowStart)
+                        .thenComparingLong(entry -> entry.getValue().count))
+                .limit(overflow)
+                .forEach(entry -> buckets.remove(entry.getKey(), entry.getValue()));
     }
 
     private List<TrafficControlStatusResponse.RateLimitBucketStatus> hotBuckets(Config config) {
@@ -224,14 +260,16 @@ public class RateLimitService {
         private final int authenticatedPerMinute;
         private final int adminPerMinute;
         private final int windowSeconds;
+        private final int maxBuckets;
         private final Set<String> skipPrefixes;
 
-        private Config(boolean enabled, int publicPerMinute, int authenticatedPerMinute, int adminPerMinute, int windowSeconds, Set<String> skipPrefixes) {
+        private Config(boolean enabled, int publicPerMinute, int authenticatedPerMinute, int adminPerMinute, int windowSeconds, int maxBuckets, Set<String> skipPrefixes) {
             this.enabled = enabled;
             this.publicPerMinute = publicPerMinute;
             this.authenticatedPerMinute = authenticatedPerMinute;
             this.adminPerMinute = adminPerMinute;
             this.windowSeconds = windowSeconds;
+            this.maxBuckets = maxBuckets;
             this.skipPrefixes = skipPrefixes;
         }
 

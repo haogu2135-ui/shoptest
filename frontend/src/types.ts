@@ -11,6 +11,20 @@ export interface User {
     createdAt?: string;
 }
 
+export interface UserAdminSummary {
+    totalUsers: number;
+    activeUsers: number;
+    bannedUsers: number;
+    adminUsers: number;
+    customerUsers: number;
+    missingEmailUsers: number;
+    missingPhoneUsers: number;
+    readyUsers: number;
+    adminRatioPercent: number;
+    healthScore: number;
+    checkedAt?: string;
+}
+
 export interface AdminRole {
     id?: number;
     code: string;
@@ -99,6 +113,10 @@ export interface AdminRegistryStatus {
 }
 
 export interface AdminSystemStatus {
+    status?: string;
+    healthy?: boolean;
+    ready?: boolean;
+    checkedAt?: string;
     application: {
         name: string;
         runtimeMode: string;
@@ -132,13 +150,44 @@ export interface AdminSystemStatus {
     database: {
         url: string;
         driver: string;
+        status?: string;
+        healthy?: boolean;
+        ready?: boolean;
+        required?: boolean;
+        checkedAt?: string;
+        latencyMs?: number;
+        error?: string;
+    };
+    redis?: {
+        host: string;
+        port: string;
+        database: string;
+        status?: string;
+        healthy?: boolean;
+        ready?: boolean;
+        required?: boolean;
+        checkedAt?: string;
+        latencyMs?: number;
+        ping?: string;
+        error?: string;
     };
     nacos: {
         serverAddr: string;
+        status?: string;
+        healthy?: boolean;
+        ready?: boolean;
+        configEnabled?: boolean;
         discoveryEnabled: boolean;
         registerEnabled: boolean;
         namespace?: string;
         group?: string;
+        checkedAt?: string;
+        latencyMs?: number;
+        serverStatus?: string;
+        dataId?: string;
+        warnings?: string[];
+        errors?: string[];
+        error?: string;
     };
 }
 
@@ -238,6 +287,21 @@ export interface SystemAlertSummary {
     checkedAt: string;
 }
 
+export interface SystemAlertBatchActionResponse {
+    action: string;
+    requestedCount: number;
+    updatedCount: number;
+    ignoredCount: number;
+    maxBatchSize: number;
+    ids: number[];
+}
+
+export interface SystemAlertPurgeResponse {
+    retentionDays: number;
+    deletedCount: number;
+    purgedBefore: string;
+}
+
 export interface IpBlacklistEntry {
     id: number;
     ipAddress: string;
@@ -254,6 +318,14 @@ export interface IpBlacklistEntry {
     createdBy?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface IpBlacklistBatchReleaseResponse {
+    requestedCount: number;
+    releasedCount: number;
+    ignoredCount: number;
+    maxBatchSize: number;
+    ids: number[];
 }
 
 export interface IpBlacklistStatus {
@@ -277,6 +349,20 @@ export interface SiteAnnouncement {
     endsAt?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface SiteAnnouncementAdminSummary {
+    totalAnnouncements: number;
+    activeAnnouncements: number;
+    scheduledAnnouncements: number;
+    expiredAnnouncements: number;
+    inactiveAnnouncements: number;
+    linkedAnnouncements: number;
+    maxActiveRows: number;
+    titleMaxChars: number;
+    contentMaxChars: number;
+    linkUrlMaxChars: number;
+    checkedAt?: string;
 }
 
 export interface Product {
@@ -466,6 +552,26 @@ export interface Coupon {
     description?: string;
 }
 
+export interface CouponAdminSummary {
+    totalCoupons: number;
+    activeCoupons: number;
+    inactiveCoupons: number;
+    publicActiveCoupons: number;
+    expiringSoonCoupons: number;
+    lowRemainingCoupons: number;
+    maxSearchRows: number;
+    maxGrantUsers: number;
+    maxPublicRows: number;
+    walletMaxRows: number;
+    availableMaxRows: number;
+    nameMaxChars: number;
+    descriptionMaxChars: number;
+    totalQuantityMax: number;
+    expiringSoonDays: number;
+    lowRemainingThreshold: number;
+    checkedAt?: string;
+}
+
 export interface PetBirthdayCouponConfig {
     id: number;
     enabled: boolean;
@@ -613,6 +719,7 @@ export interface Review {
 export interface ProductQuestion {
     id: number;
     productId: number;
+    productName?: string;
     userId: number;
     username: string;
     question: string;
@@ -620,6 +727,18 @@ export interface ProductQuestion {
     answeredBy?: number;
     answeredAt?: string;
     createdAt: string;
+    product?: Product;
+}
+
+export interface ProductQuestionAdminSummary {
+    totalQuestions: number;
+    unansweredQuestions: number;
+    answeredQuestions: number;
+    staleUnansweredQuestions: number;
+    staleHours: number;
+    maxAdminRows: number;
+    responseScore: number;
+    checkedAt?: string;
 }
 
 export interface Payment {
@@ -679,6 +798,34 @@ export interface SecurityAuditLog {
     createdAt: string;
 }
 
+export interface SecurityAuditSummaryGroupCount {
+    name: string;
+    count: number;
+}
+
+export interface SecurityAuditSummary {
+    startAt: string;
+    endAt: string;
+    totalCount: number;
+    successCount: number;
+    failureCount: number;
+    defaultRangeHours: number;
+    maxRangeHours: number;
+    maxSearchRows: number;
+    maxExportRows: number;
+    byResult: SecurityAuditSummaryGroupCount[];
+    topActions: SecurityAuditSummaryGroupCount[];
+    topActors: SecurityAuditSummaryGroupCount[];
+    topIpAddresses: SecurityAuditSummaryGroupCount[];
+    checkedAt?: string;
+}
+
+export interface SecurityAuditPurgeResponse {
+    retentionDays: number;
+    deletedCount: number;
+    purgedBefore: string;
+}
+
 export interface SupportSession {
     id: number;
     userId: number;
@@ -692,6 +839,20 @@ export interface SupportSession {
     username?: string;
     unreadByUser?: number;
     unreadByAdmin?: number;
+}
+
+export interface SupportAdminSummary {
+    totalSessions: number;
+    openSessions: number;
+    closedSessions: number;
+    unreadSessions: number;
+    unreadMessages: number;
+    unassignedOpenSessions: number;
+    myOpenSessions: number;
+    staleOpenSessions: number;
+    staleMinutes: number;
+    responseScore: number;
+    checkedAt?: string;
 }
 
 export interface SupportMessage {

@@ -37,6 +37,7 @@ public class TrafficControlStatusResponse {
         private int authenticatedPerMinute;
         private int adminPerMinute;
         private int windowSeconds;
+        private int maxBuckets;
         private long activeBuckets;
         private long acceptedRequests;
         private long rejectedRequests;
@@ -80,6 +81,14 @@ public class TrafficControlStatusResponse {
 
         public void setWindowSeconds(int windowSeconds) {
             this.windowSeconds = windowSeconds;
+        }
+
+        public int getMaxBuckets() {
+            return maxBuckets;
+        }
+
+        public void setMaxBuckets(int maxBuckets) {
+            this.maxBuckets = maxBuckets;
         }
 
         public long getActiveBuckets() {
@@ -186,6 +195,7 @@ public class TrafficControlStatusResponse {
         private int failureThreshold;
         private int openSeconds;
         private int halfOpenSuccessThreshold;
+        private int maxCircuits;
 
         public boolean isEnabled() {
             return enabled;
@@ -217,6 +227,14 @@ public class TrafficControlStatusResponse {
 
         public void setHalfOpenSuccessThreshold(int halfOpenSuccessThreshold) {
             this.halfOpenSuccessThreshold = halfOpenSuccessThreshold;
+        }
+
+        public int getMaxCircuits() {
+            return maxCircuits;
+        }
+
+        public void setMaxCircuits(int maxCircuits) {
+            this.maxCircuits = maxCircuits;
         }
     }
 

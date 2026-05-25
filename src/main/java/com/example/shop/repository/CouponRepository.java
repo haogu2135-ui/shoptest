@@ -1,6 +1,7 @@
 package com.example.shop.repository;
 
 import com.example.shop.entity.Coupon;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +16,8 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     List<Coupon> findByStatusOrderByIdDesc(String status);
     List<Coupon> findByScopeAndStatusOrderByIdDesc(String scope, String status);
     Optional<Coupon> findFirstByNameOrderByIdDesc(String name);
+    long countByStatus(String status);
+    long countByScopeAndStatus(String scope, String status);
 
     @Query("select c from Coupon c " +
             "where c.scope = ?1 and c.status = ?2 " +
@@ -23,6 +26,28 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
             "and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity) " +
             "order by c.id desc")
     List<Coupon> findClaimableByScopeAndStatus(String scope, String status, LocalDateTime now);
+
+    @Query("select c from Coupon c " +
+            "where c.scope = ?1 and c.status = ?2 " +
+            "and (c.startAt is null or c.startAt <= ?3) " +
+            "and (c.endAt is null or c.endAt >= ?3) " +
+            "and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity) " +
+            "order by c.id desc")
+    List<Coupon> findClaimableByScopeAndStatus(String scope, String status, LocalDateTime now, Pageable pageable);
+
+    @Query("select count(c) from Coupon c " +
+            "where c.status = 'ACTIVE' " +
+            "and c.endAt is not null " +
+            "and c.endAt >= ?1 " +
+            "and c.endAt <= ?2")
+    long countActiveExpiringBetween(LocalDateTime startAt, LocalDateTime endAt);
+
+    @Query("select count(c) from Coupon c " +
+            "where c.status = 'ACTIVE' " +
+            "and c.totalQuantity is not null " +
+            "and c.totalQuantity > coalesce(c.claimedQuantity, 0) " +
+            "and c.totalQuantity <= coalesce(c.claimedQuantity, 0) + ?1")
+    long countActiveLowRemaining(int threshold);
 
     @Modifying
     @Query("update Coupon c set c.claimedQuantity = coalesce(c.claimedQuantity, 0) + 1, " +

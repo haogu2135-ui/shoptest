@@ -51,9 +51,10 @@ public class AdminTrafficControlController {
                                                      Authentication authentication,
                                                      HttpServletRequest request) {
         String name = body == null ? null : body.getName();
+        String auditName = name == null || name.isBlank() ? "all" : circuitBreakerService.normalizeName(name);
         circuitBreakerService.reset(name);
-        auditLogService.record("TRAFFIC_CIRCUIT_RESET", "SUCCESS", authentication, "TRAFFIC_CONTROL", name == null || name.isBlank() ? "all" : name, request,
-                "Circuit breaker reset", "name=" + (name == null ? "" : name));
+        auditLogService.record("TRAFFIC_CIRCUIT_RESET", "SUCCESS", authentication, "TRAFFIC_CONTROL", auditName, request,
+                "Circuit breaker reset", "name=" + auditName);
         return status();
     }
 }

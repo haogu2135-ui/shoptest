@@ -8,6 +8,7 @@ public class CdrJobStatus {
     private int percent;
     private String error;
     private boolean downloadable;
+    private String summaryText;
 
     public String getId() {
         return id;
@@ -63,5 +64,13 @@ public class CdrJobStatus {
 
     public void setDownloadable(boolean downloadable) {
         this.downloadable = downloadable;
+    }
+
+    public String getSummaryText() {
+        return summaryText;
+    }
+
+    public void setSummaryText(String summaryText) {
+        this.summaryText = summaryText;
     }
 }

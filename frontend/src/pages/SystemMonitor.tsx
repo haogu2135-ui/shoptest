@@ -25,7 +25,48 @@ const formatDuration = (ms?: number) => {
   return `${minutes}分钟`;
 };
 
-const statusColor = (value: boolean) => value ? 'green' : 'red';
+const formatLatency = (ms?: number) => {
+  if (ms === undefined || ms === null) return '-';
+  return `${Math.max(0, Math.round(Number(ms) || 0))} ms`;
+};
+
+const statusTag = (status?: string, ready?: boolean) => {
+  const value = (status || (ready ? 'UP' : 'UNKNOWN')).toUpperCase();
+  const colorMap: Record<string, string> = {
+    UP: 'green',
+    DOWN: 'red',
+    DEGRADED: 'orange',
+    UNAVAILABLE: 'red',
+    DISABLED: 'default',
+    UNKNOWN: 'default',
+  };
+  return <Tag color={colorMap[value] || 'default'}>{value}</Tag>;
+};
+
+const readyTag = (ready?: boolean) => (
+  <Tag color={ready ? 'green' : 'red'}>{ready ? 'READY' : 'BLOCKED'}</Tag>
+);
+
+const booleanTag = (enabled?: boolean) => (
+  <Tag color={enabled ? 'green' : 'default'}>{enabled ? 'ON' : 'OFF'}</Tag>
+);
+
+const renderMessages = (messages?: string[], tone: 'warning' | 'error' = 'warning') => {
+  const values = (messages || []).filter(Boolean);
+  if (!values.length) return '-';
+  return (
+    <div className="system-monitor__messages">
+      {values.map((item, index) => (
+        <Text
+          key={`${tone}-${index}-${item}`}
+          className={`system-monitor__message system-monitor__message--${tone}`}
+        >
+          {item}
+        </Text>
+      ))}
+    </div>
+  );
+};
 
 const SystemMonitor: React.FC = () => {
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
@@ -49,11 +90,22 @@ const SystemMonitor: React.FC = () => {
 
   const memoryRisk = Number(status?.memory.usedPercent || 0) >= 85;
   const diskRisk = Number(status?.disk.usedPercent || 0) >= 85;
+  const dependencyRisk = status?.ready === false;
+  const optionalHealthRisk = status?.healthy === false && !dependencyRisk;
+  const redisStatus = status?.redis || {
+    host: '',
+    port: '',
+    database: '0',
+    status: 'UNKNOWN',
+    ready: false,
+    required: false,
+  };
   const healthText = useMemo(() => {
     if (!status) return '未知';
-    if (memoryRisk || diskRisk) return '需要关注';
+    if (dependencyRisk) return '关键依赖异常';
+    if (optionalHealthRisk || memoryRisk || diskRisk) return '需要关注';
     return '运行正常';
-  }, [diskRisk, memoryRisk, status]);
+  }, [dependencyRisk, diskRisk, memoryRisk, optionalHealthRisk, status]);
 
   return (
     <div className="system-monitor">
@@ -73,7 +125,7 @@ const SystemMonitor: React.FC = () => {
           <>
             <div className="system-monitor__stats">
               <Card>
-                <Statistic title="整体状态" value={healthText} valueStyle={{ color: memoryRisk || diskRisk ? '#c46a14' : '#1f8a4c' }} prefix={<SettingOutlined />} />
+                <Statistic title="整体状态" value={healthText} valueStyle={{ color: dependencyRisk ? '#cf1322' : (memoryRisk || diskRisk || optionalHealthRisk ? '#c46a14' : '#1f8a4c') }} prefix={<SettingOutlined />} />
               </Card>
               <Card>
                 <Statistic title="应用名称" value={status.application.name} prefix={<CloudServerOutlined />} />
@@ -86,23 +138,17 @@ const SystemMonitor: React.FC = () => {
               </Card>
             </div>
 
-            {(memoryRisk || diskRisk) ? (
-              <Alert
-                className="system-monitor__alert"
-                type="warning"
-                showIcon
-                message="资源使用率偏高"
-                description="建议检查 JVM 内存、磁盘空间或日志/上传文件占用，避免影响订单和支付流程。"
-              />
-            ) : (
-              <Alert
-                className="system-monitor__alert"
-                type="success"
-                showIcon
-                message="后台服务运行正常"
-                description="当前内存和磁盘占用处于可接受范围。"
-              />
-            )}
+            <Alert
+              className="system-monitor__alert"
+              type={dependencyRisk ? 'error' : (memoryRisk || diskRisk || optionalHealthRisk ? 'warning' : 'success')}
+              showIcon
+              message={dependencyRisk ? '关键依赖不可用' : (memoryRisk || diskRisk || optionalHealthRisk ? '后台服务需要关注' : '后台服务运行正常')}
+              description={dependencyRisk
+                ? '数据库或 Redis 未就绪时，登录、验证码、下单和支付链路可能受影响，请优先处理。'
+                : (memoryRisk || diskRisk
+                  ? '建议检查 JVM 内存、磁盘空间或日志/上传文件占用，避免影响订单和支付流程。'
+                  : '当前关键依赖、内存和磁盘占用处于可接受范围。')}
+            />
 
             <div className="system-monitor__resourceGrid">
               <Card title="JVM 内存" className="system-monitor__card">
@@ -134,11 +180,14 @@ const SystemMonitor: React.FC = () => {
 
             <Card title="运行环境" className="system-monitor__card">
               <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} bordered size="small">
+                <Descriptions.Item label="后端状态">
+                  <Space size={6}>{statusTag(status.status, status.ready)}{readyTag(status.ready)}</Space>
+                </Descriptions.Item>
                 <Descriptions.Item label="API 地址">{apiBaseUrl}</Descriptions.Item>
                 <Descriptions.Item label="端口">{status.application.serverPort}</Descriptions.Item>
                 <Descriptions.Item label="模式">{status.application.runtimeMode}</Descriptions.Item>
                 <Descriptions.Item label="Profile">
-                  {status.application.profiles.length ? status.application.profiles.map((profile) => <Tag key={profile}>{profile}</Tag>) : <Tag>default</Tag>}
+                  {status.application.profiles?.length ? status.application.profiles.map((profile) => <Tag key={profile}>{profile}</Tag>) : <Tag>default</Tag>}
                 </Descriptions.Item>
                 <Descriptions.Item label="Java">{status.runtime.javaVersion}</Descriptions.Item>
                 <Descriptions.Item label="系统">{status.runtime.osName} {status.runtime.osVersion}</Descriptions.Item>
@@ -146,24 +195,63 @@ const SystemMonitor: React.FC = () => {
             </Card>
 
             <div className="system-monitor__resourceGrid">
-              <Card title="数据库" className="system-monitor__card">
+              <Card
+                title={<Space className="system-monitor__statusTitle">数据库 {statusTag(status.database.status, status.database.ready)}</Space>}
+                className="system-monitor__card"
+              >
                 <Space direction="vertical" className="system-monitor__databaseInfo">
                   <DatabaseOutlined className="system-monitor__largeIcon" />
-                  <Text copyable>{status.database.url || '-'}</Text>
-                  <Text type="secondary">{status.database.driver || '-'}</Text>
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="就绪">{readyTag(status.database.ready)}</Descriptions.Item>
+                    <Descriptions.Item label="延迟">{formatLatency(status.database.latencyMs)}</Descriptions.Item>
+                    <Descriptions.Item label="URL"><Text copyable>{status.database.url || '-'}</Text></Descriptions.Item>
+                    <Descriptions.Item label="驱动">{status.database.driver || '-'}</Descriptions.Item>
+                    {status.database.error ? (
+                      <Descriptions.Item label="错误">{status.database.error}</Descriptions.Item>
+                    ) : null}
+                  </Descriptions>
                 </Space>
               </Card>
 
-              <Card title="Nacos 注册发现" className="system-monitor__card">
+              <Card
+                title={<Space className="system-monitor__statusTitle">Redis {statusTag(redisStatus.status, redisStatus.ready)}</Space>}
+                className="system-monitor__card"
+              >
                 <Descriptions column={1} size="small">
+                  <Descriptions.Item label="就绪">{readyTag(redisStatus.ready)}</Descriptions.Item>
+                  <Descriptions.Item label="必需">{booleanTag(redisStatus.required)}</Descriptions.Item>
+                  <Descriptions.Item label="地址">{redisStatus.host || '-'}:{redisStatus.port || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="DB">{redisStatus.database || '0'}</Descriptions.Item>
+                  <Descriptions.Item label="延迟">{formatLatency(redisStatus.latencyMs)}</Descriptions.Item>
+                  <Descriptions.Item label="PING">{redisStatus.ping || '-'}</Descriptions.Item>
+                  {redisStatus.error ? (
+                    <Descriptions.Item label="错误">{redisStatus.error}</Descriptions.Item>
+                  ) : null}
+                </Descriptions>
+              </Card>
+
+              <Card
+                title={<Space className="system-monitor__statusTitle">Nacos 注册发现 {statusTag(status.nacos.status, status.nacos.ready)}</Space>}
+                className="system-monitor__card"
+              >
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="就绪">{readyTag(status.nacos.ready)}</Descriptions.Item>
                   <Descriptions.Item label="地址">{status.nacos.serverAddr || '-'}</Descriptions.Item>
                   <Descriptions.Item label="Namespace">{status.nacos.namespace || 'public'}</Descriptions.Item>
                   <Descriptions.Item label="Group">{status.nacos.group || 'DEFAULT_GROUP'}</Descriptions.Item>
+                  <Descriptions.Item label="Config">{booleanTag(status.nacos.configEnabled)}</Descriptions.Item>
                   <Descriptions.Item label="Discovery">
-                    <Tag color={statusColor(status.nacos.discoveryEnabled)}>{String(status.nacos.discoveryEnabled)}</Tag>
+                    {booleanTag(status.nacos.discoveryEnabled)}
                   </Descriptions.Item>
                   <Descriptions.Item label="Register">
-                    <Tag color={statusColor(status.nacos.registerEnabled)}>{String(status.nacos.registerEnabled)}</Tag>
+                    {booleanTag(status.nacos.registerEnabled)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="服务状态">{status.nacos.serverStatus || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="Data ID">{status.nacos.dataId || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="延迟">{formatLatency(status.nacos.latencyMs)}</Descriptions.Item>
+                  <Descriptions.Item label="警告">{renderMessages(status.nacos.warnings, 'warning')}</Descriptions.Item>
+                  <Descriptions.Item label="错误">
+                    {status.nacos.error || renderMessages(status.nacos.errors, 'error')}
                   </Descriptions.Item>
                 </Descriptions>
               </Card>

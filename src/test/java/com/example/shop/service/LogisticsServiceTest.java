@@ -9,18 +9,22 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class LogisticsServiceTest {
     private LogisticsService service;
+    private RuntimeConfigService runtimeConfig;
 
     @BeforeEach
     void setUp() {
         service = new LogisticsService();
+        runtimeConfig = mock(RuntimeConfigService.class);
         ReflectionTestUtils.setField(service, "orderRepository", mock(OrderRepository.class));
-        ReflectionTestUtils.setField(service, "logisticsApiUrl", "");
-        ReflectionTestUtils.setField(service, "kuaidi100Enabled", false);
-        ReflectionTestUtils.setField(service, "trackingNumberMaxChars", 16);
-        ReflectionTestUtils.setField(service, "carrierMaxChars", 8);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        when(runtimeConfig.getInt("logistics.tracking-number-max-chars", 120)).thenReturn(16);
+        when(runtimeConfig.getInt("logistics.carrier-max-chars", 40)).thenReturn(8);
+        when(runtimeConfig.getBoolean("kuaidi100.enabled", true)).thenReturn(false);
+        when(runtimeConfig.getString("logistics.api-url", "")).thenReturn("");
     }
 
     @Test

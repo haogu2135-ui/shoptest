@@ -45,6 +45,11 @@ public class ProductQuestion {
         return product != null ? product.getId() : null;
     }
 
+    @JsonProperty("productName")
+    public String getProductName() {
+        return product != null ? product.getName() : null;
+    }
+
     @JsonProperty("userId")
     public Long getUserId() {
         return user != null ? user.getId() : null;

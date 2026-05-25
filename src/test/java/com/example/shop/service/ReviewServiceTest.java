@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 class ReviewServiceTest {
     private ReviewRepository reviewRepository;
     private ReviewServiceImpl service;
+    private RuntimeConfigService runtimeConfig;
 
     @BeforeEach
     void setUp() {
@@ -36,14 +37,16 @@ class ReviewServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         OrderRepository orderRepository = mock(OrderRepository.class);
         OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        runtimeConfig = mock(RuntimeConfigService.class);
         service = new ReviewServiceImpl();
         ReflectionTestUtils.setField(service, "reviewRepository", reviewRepository);
         ReflectionTestUtils.setField(service, "productRepository", productRepository);
         ReflectionTestUtils.setField(service, "userRepository", userRepository);
         ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
         ReflectionTestUtils.setField(service, "orderItemRepository", orderItemRepository);
-        ReflectionTestUtils.setField(service, "maxCommentChars", 80);
-        ReflectionTestUtils.setField(service, "maxReplyChars", 80);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        when(runtimeConfig.getInt("review.max-comment-chars", 1000)).thenReturn(80);
+        when(runtimeConfig.getInt("review.max-reply-chars", 1000)).thenReturn(80);
 
         Product product = new Product();
         product.setId(7L);

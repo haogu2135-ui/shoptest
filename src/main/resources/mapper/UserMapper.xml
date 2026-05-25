@@ -71,6 +71,38 @@
         ORDER BY created_at DESC, id DESC
     </select>
 
+    <select id="adminSummary" resultType="map">
+        SELECT
+            COUNT(*) AS totalUsers,
+            COALESCE(SUM(CASE WHEN status IS NULL OR UPPER(status) = 'ACTIVE' THEN 1 ELSE 0 END), 0) AS activeUsers,
+            COALESCE(SUM(CASE WHEN UPPER(status) = 'BANNED' THEN 1 ELSE 0 END), 0) AS bannedUsers,
+            COALESCE(SUM(CASE WHEN UPPER(COALESCE(NULLIF(role_code, ''), role, '')) != 'USER'
+                AND COALESCE(NULLIF(role_code, ''), role, '') != '' THEN 1 ELSE 0 END), 0) AS adminUsers,
+            COALESCE(SUM(CASE WHEN UPPER(COALESCE(NULLIF(role_code, ''), role, 'USER')) = 'USER' THEN 1 ELSE 0 END), 0) AS customerUsers,
+            COALESCE(SUM(CASE WHEN email IS NULL OR TRIM(email) = '' THEN 1 ELSE 0 END), 0) AS missingEmailUsers,
+            COALESCE(SUM(CASE WHEN phone IS NULL OR TRIM(phone) = '' THEN 1 ELSE 0 END), 0) AS missingPhoneUsers,
+            COALESCE(SUM(CASE WHEN username IS NOT NULL AND TRIM(username) != ''
+                AND email IS NOT NULL AND TRIM(email) != ''
+                AND phone IS NOT NULL AND TRIM(phone) != ''
+                AND (status IS NULL OR UPPER(status) = 'ACTIVE') THEN 1 ELSE 0 END), 0) AS readyUsers
+        FROM users
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    LOWER(username) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    OR LOWER(email) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    OR LOWER(phone) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                )
+            </if>
+            <if test="role != null and role != ''">
+                AND (UPPER(role) = UPPER(#{role}) OR UPPER(role_code) = UPPER(#{role}))
+            </if>
+            <if test="status != null and status != ''">
+                AND UPPER(status) = UPPER(#{status})
+            </if>
+        </where>
+    </select>
+
     <insert id="insert" parameterType="com.example.shop.entity.User" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO users (username, password, email, phone, address, role, role_code, created_at, updated_at, status)
         VALUES (#{username}, #{password}, #{email}, #{phone}, #{address}, #{role}, #{roleCode}, #{createdAt}, #{updatedAt}, #{status})

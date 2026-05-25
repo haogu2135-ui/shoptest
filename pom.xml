@@ -123,6 +123,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.stripe</groupId>
             <artifactId>stripe-java</artifactId>
             <version>31.3.0</version>

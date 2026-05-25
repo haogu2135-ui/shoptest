@@ -7,7 +7,6 @@ import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -62,6 +61,44 @@ class AdminRegistryControllerTest {
         assertEquals("/admin/registry/readiness", ((Map<?, ?>) status.get("diagnostics")).get("registryReadinessEndpoint"));
         assertEquals("/gateway/admin/admin/registry", ((Map<?, ?>) status.get("diagnostics")).get("gatewayAdminPath"));
         assertEquals("/gateway/admin/admin/registry/readiness", ((Map<?, ?>) status.get("diagnostics")).get("gatewayReadinessPath"));
+    }
+
+    @Test
+    void masksSensitiveServiceMetadataInRegistryResponses() {
+        DiscoveryClient discoveryClient = mock(DiscoveryClient.class);
+        Environment environment = mock(Environment.class);
+        AdminRegistryController controller = controller(discoveryClient, environment, true, true);
+        ServiceInstance backendInstance = new DefaultServiceInstance(
+                "shop-backend-1",
+                "shop-backend",
+                "127.0.0.1",
+                8081,
+                false,
+                Map.of(
+                        "version", "  v1\nstable  ",
+                        "authToken", "raw-token-value",
+                        "notes", "password=secret; Authorization: Bearer abcdefghijklmnop"
+                )
+        );
+
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"test"});
+        when(discoveryClient.description()).thenReturn("mock-discovery");
+        when(discoveryClient.getServices()).thenReturn(List.of("shop-backend"));
+        when(discoveryClient.getInstances("shop-backend")).thenReturn(List.of(backendInstance));
+
+        Map<String, Object> status = controller.getRegistryStatus();
+
+        List<?> instances = (List<?>) status.get("instances");
+        Map<?, ?> instancePayload = (Map<?, ?>) instances.get(0);
+        Map<?, ?> metadata = (Map<?, ?>) instancePayload.get("metadata");
+        assertEquals("v1 stable", metadata.get("version"));
+        assertEquals("******", metadata.get("authToken"));
+        assertEquals("password=******; Authorization: Bearer ******", metadata.get("notes"));
+
+        List<?> serviceSummaries = (List<?>) status.get("serviceSummaries");
+        Map<?, ?> summary = (Map<?, ?>) serviceSummaries.get(0);
+        Map<?, ?> summaryInstance = (Map<?, ?>) ((List<?>) summary.get("instances")).get(0);
+        assertEquals(metadata, summaryInstance.get("metadata"));
     }
 
     @Test
@@ -165,18 +202,17 @@ class AdminRegistryControllerTest {
             boolean discoveryEnabled,
             boolean registerEnabled
     ) {
-        AdminRegistryController controller = new AdminRegistryController(discoveryClient, environment);
-        ReflectionTestUtils.setField(controller, "applicationName", "shop-backend");
-        ReflectionTestUtils.setField(controller, "discoveryEnabled", discoveryEnabled);
-        ReflectionTestUtils.setField(controller, "registerEnabled", registerEnabled);
-        ReflectionTestUtils.setField(controller, "nacosServerAddr", "127.0.0.1:8848");
-        ReflectionTestUtils.setField(controller, "namespace", "");
-        ReflectionTestUtils.setField(controller, "group", "DEFAULT_GROUP");
-        ReflectionTestUtils.setField(controller, "serverPort", "8081");
-        ReflectionTestUtils.setField(controller, "configuredIp", "");
-        ReflectionTestUtils.setField(controller, "configuredPort", "8081");
-        ReflectionTestUtils.setField(controller, "ephemeral", true);
-        ReflectionTestUtils.setField(controller, "weight", "1");
-        return controller;
+        when(environment.getProperty("spring.application.name", "shop-backend")).thenReturn("shop-backend");
+        when(environment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, false)).thenReturn(discoveryEnabled);
+        when(environment.getProperty("spring.cloud.nacos.discovery.register-enabled", Boolean.class, false)).thenReturn(registerEnabled);
+        when(environment.getProperty("spring.cloud.nacos.discovery.server-addr", "")).thenReturn("127.0.0.1:8848");
+        when(environment.getProperty("spring.cloud.nacos.discovery.namespace", "")).thenReturn("");
+        when(environment.getProperty("spring.cloud.nacos.discovery.group", "DEFAULT_GROUP")).thenReturn("DEFAULT_GROUP");
+        when(environment.getProperty("server.port", "8081")).thenReturn("8081");
+        when(environment.getProperty("spring.cloud.nacos.discovery.ip", "")).thenReturn("");
+        when(environment.getProperty("spring.cloud.nacos.discovery.port", "8081")).thenReturn("8081");
+        when(environment.getProperty("spring.cloud.nacos.discovery.ephemeral", Boolean.class, true)).thenReturn(true);
+        when(environment.getProperty("spring.cloud.nacos.discovery.weight", "1")).thenReturn("1");
+        return new AdminRegistryController(discoveryClient, environment);
     }
 }

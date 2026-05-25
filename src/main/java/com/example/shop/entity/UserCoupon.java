@@ -20,6 +20,7 @@ public class UserCoupon implements Serializable {
     private String couponName;
     private String couponType;
     private String couponScope;
+    private String couponStatus;
     private java.math.BigDecimal thresholdAmount;
     private java.math.BigDecimal reductionAmount;
     private Integer discountPercent;

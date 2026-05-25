@@ -73,6 +73,19 @@
   width: 220px;
 }
 
+.ip-blacklist__bulkBar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid rgba(35, 80, 92, 0.1);
+  border-radius: 12px;
+  background: #fbfefd;
+}
+
 .ip-blacklist .ant-typography,
 .ip-blacklist .ant-statistic-content,
 .ip-blacklist .ant-table-cell,
@@ -147,6 +160,15 @@
     width: 100%;
   }
 
+  .ip-blacklist__bulkBar {
+    display: grid;
+    gap: 10px;
+  }
+
+  .ip-blacklist__bulkBar .ant-btn {
+    width: 100%;
+  }
+
   .ip-blacklist .ant-btn {
     min-height: 38px;
     white-space: normal;
@@ -159,6 +181,7 @@
   .ip-blacklist__actions,
   .ip-blacklist__card,
   .ip-blacklist__filters,
+  .ip-blacklist__bulkBar,
   .ip-blacklist .ant-table-wrapper {
     min-width: 0;
     max-width: 100%;

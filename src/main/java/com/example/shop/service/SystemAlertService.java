@@ -5,6 +5,7 @@ import com.example.shop.dto.SystemAlertBatchActionResponse;
 import com.example.shop.dto.SystemAlertPurgeResponse;
 import com.example.shop.dto.TrafficControlStatusResponse;
 import com.example.shop.entity.SystemAlert;
+import com.example.shop.util.SensitiveDataMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -40,6 +41,9 @@ public class SystemAlertService {
     public static final String STATUS_OPEN = "OPEN";
     public static final String STATUS_ACKNOWLEDGED = "ACKNOWLEDGED";
     public static final String STATUS_RESOLVED = "RESOLVED";
+    private static final int DEFAULT_SEARCH_MAX_ROWS = 1000;
+    private static final int DEFAULT_BATCH_MAX_SIZE = 200;
+    private static final int DEFAULT_RETENTION_MAX_DAYS = 3650;
 
     private final JdbcTemplate jdbcTemplate;
     private final RuntimeConfigService runtimeConfig;
@@ -86,7 +90,7 @@ public class SystemAlertService {
     }
 
     public List<SystemAlert> search(String status, String severity, String category, int limit) {
-        int safeLimit = Math.max(1, Math.min(limit <= 0 ? 200 : limit, 1000));
+        int safeLimit = Math.max(1, Math.min(limit <= 0 ? 200 : limit, searchMaxRows()));
         return jdbcTemplate.query(
                 "SELECT * FROM system_alerts "
                         + "WHERE (? IS NULL OR status = ?) "
@@ -105,6 +109,9 @@ public class SystemAlertService {
         response.setOpenCount(countByStatus(STATUS_OPEN));
         response.setAcknowledgedCount(countByStatus(STATUS_ACKNOWLEDGED));
         response.setResolvedCount(countByStatus(STATUS_RESOLVED));
+        response.setMaxSearchRows(searchMaxRows());
+        response.setMaxBatchActionSize(batchActionMaxSize());
+        response.setMaxRetentionDays(retentionMaxDays());
         Map<String, Long> bySeverity = jdbcTemplate.queryForList(
                         "SELECT severity, COUNT(*) AS total FROM system_alerts WHERE status = ? GROUP BY severity",
                         STATUS_OPEN)
@@ -130,19 +137,21 @@ public class SystemAlertService {
     }
 
     public SystemAlertBatchActionResponse acknowledgeBatch(List<Long> ids, String actor) {
+        int requestedCount = ids == null ? 0 : ids.size();
         List<Long> safeIds = normalizeIds(ids);
         int updated = updateStatusBatch(safeIds, STATUS_ACKNOWLEDGED, actor);
-        return batchResponse("ACKNOWLEDGE", safeIds, updated);
+        return batchResponse("ACKNOWLEDGE", requestedCount, safeIds, updated);
     }
 
     public SystemAlertBatchActionResponse resolveBatch(List<Long> ids, String actor) {
+        int requestedCount = ids == null ? 0 : ids.size();
         List<Long> safeIds = normalizeIds(ids);
         int updated = updateStatusBatch(safeIds, STATUS_RESOLVED, actor);
-        return batchResponse("RESOLVE", safeIds, updated);
+        return batchResponse("RESOLVE", requestedCount, safeIds, updated);
     }
 
     public SystemAlertPurgeResponse purgeResolved(int retentionDays) {
-        int safeDays = Math.max(1, Math.min(retentionDays <= 0 ? 30 : retentionDays, 3650));
+        int safeDays = Math.max(1, Math.min(retentionDays <= 0 ? 30 : retentionDays, retentionMaxDays()));
         LocalDateTime purgedBefore = LocalDateTime.now().minusDays(safeDays);
         int deleted = jdbcTemplate.update(
                 "DELETE FROM system_alerts WHERE status = ? AND resolved_at IS NOT NULL AND resolved_at < ?",
@@ -156,25 +165,29 @@ public class SystemAlertService {
     }
 
     private void record(String severity, String source, String category, String title, String message, String fingerprint, String metadata) {
-        String normalizedFingerprint = limit(normalizeText(fingerprint), 180);
+        String normalizedFingerprint = normalizeFingerprint(fingerprint);
         if (normalizedFingerprint == null || normalizedFingerprint.isEmpty()) {
             return;
         }
+        String safeSource = sanitize(source, 50);
+        String safeTitle = sanitize(title, 200);
+        String safeMessage = sanitize(message, 1000);
+        String safeMetadata = sanitize(metadata, 2000);
         try {
             Integer updated = jdbcTemplate.update(
                     "UPDATE system_alerts SET severity = ?, source = ?, category = ?, title = ?, message = ?, metadata = ?, "
                             + "occurrence_count = occurrence_count + 1, last_seen_at = NOW() "
                             + "WHERE fingerprint = ? AND status IN (?, ?)",
-                    normalizeSeverity(severity), limit(normalizeText(source), 50), normalizeCategory(category), limit(normalizeText(title), 200),
-                    limit(normalizeText(message), 1000), limit(normalizeText(metadata), 2000), normalizedFingerprint, STATUS_OPEN, STATUS_ACKNOWLEDGED);
+                    normalizeSeverity(severity), safeSource, normalizeCategory(category), safeTitle,
+                    safeMessage, safeMetadata, normalizedFingerprint, STATUS_OPEN, STATUS_ACKNOWLEDGED);
             if (updated != null && updated > 0) {
                 return;
             }
             jdbcTemplate.update(
                     "INSERT INTO system_alerts (severity, status, source, category, title, message, fingerprint, metadata, occurrence_count, first_seen_at, last_seen_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())",
-                    normalizeSeverity(severity), STATUS_OPEN, limit(normalizeText(source), 50), normalizeCategory(category),
-                    limit(normalizeText(title), 200), limit(normalizeText(message), 1000), normalizedFingerprint, limit(normalizeText(metadata), 2000));
+                    normalizeSeverity(severity), STATUS_OPEN, safeSource, normalizeCategory(category),
+                    safeTitle, safeMessage, normalizedFingerprint, safeMetadata);
         } catch (RuntimeException e) {
             log.warn("System alert write failed. fingerprint={}", normalizedFingerprint, e);
         }
@@ -195,10 +208,11 @@ public class SystemAlertService {
         }
         String severity = serverError || "DATABASE".equals(category) || "REDIS".equals(category) ? "ERROR" : "WARNING";
         String title = uploadTooLarge ? "Upload size exceeded" : rootName + " detected";
-        String fingerprint = "exception:" + category + ":" + rootName + ":" + safePath(path);
+        String safePath = safePath(path);
+        String fingerprint = "exception:" + category + ":" + rootName + ":" + safePath;
         String metadata = "httpStatus=" + (status == null ? "" : status.value())
                 + ", method=" + method
-                + ", path=" + path;
+                + ", path=" + safePath;
         return new AlertDraft(severity, category, title, message, fingerprint, metadata);
     }
 
@@ -336,7 +350,7 @@ public class SystemAlertService {
         if (id == null) {
             return;
         }
-        String safeActor = limit(normalizeText(actor), 100);
+        String safeActor = sanitize(actor, 100);
         if (STATUS_ACKNOWLEDGED.equals(status)) {
             jdbcTemplate.update("UPDATE system_alerts SET status = ?, acknowledged_at = NOW(), acknowledged_by = ? WHERE id = ?",
                     status, safeActor, id);
@@ -353,7 +367,7 @@ public class SystemAlertService {
         String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
         List<Object> args = new ArrayList<>();
         args.add(status);
-        args.add(limit(normalizeText(actor), 100));
+        args.add(sanitize(actor, 100));
         args.addAll(ids);
         if (STATUS_ACKNOWLEDGED.equals(status)) {
             return jdbcTemplate.update(
@@ -383,15 +397,17 @@ public class SystemAlertService {
         return ids.stream()
                 .filter(id -> id != null && id > 0)
                 .distinct()
-                .limit(200)
+                .limit(batchActionMaxSize())
                 .collect(Collectors.toList());
     }
 
-    private SystemAlertBatchActionResponse batchResponse(String action, List<Long> ids, int updatedCount) {
+    private SystemAlertBatchActionResponse batchResponse(String action, int requestedCount, List<Long> ids, int updatedCount) {
         SystemAlertBatchActionResponse response = new SystemAlertBatchActionResponse();
         response.setAction(action);
-        response.setRequestedCount(ids.size());
+        response.setRequestedCount(requestedCount);
         response.setUpdatedCount(updatedCount);
+        response.setIgnoredCount(Math.max(0, requestedCount - ids.size()));
+        response.setMaxBatchSize(batchActionMaxSize());
         response.setIds(ids);
         return response;
     }
@@ -413,10 +429,10 @@ public class SystemAlertService {
         alert.setStatus(rs.getString("status"));
         alert.setSource(rs.getString("source"));
         alert.setCategory(rs.getString("category"));
-        alert.setTitle(rs.getString("title"));
-        alert.setMessage(rs.getString("message"));
-        alert.setFingerprint(rs.getString("fingerprint"));
-        alert.setMetadata(rs.getString("metadata"));
+        alert.setTitle(sanitize(rs.getString("title"), 200));
+        alert.setMessage(sanitize(rs.getString("message"), 1000));
+        alert.setFingerprint(sanitize(rs.getString("fingerprint"), 180));
+        alert.setMetadata(sanitize(rs.getString("metadata"), 2000));
         alert.setOccurrenceCount(rs.getInt("occurrence_count"));
         alert.setFirstSeenAt(toLocalDateTime(rs, "first_seen_at"));
         alert.setLastSeenAt(toLocalDateTime(rs, "last_seen_at"));
@@ -468,12 +484,39 @@ public class SystemAlertService {
         if (path == null || path.isBlank()) {
             return "/";
         }
-        return path.replaceAll("/\\d+", "/{id}");
+        String safe = path.replaceAll("/{2,}", "/");
+        safe = safe.replaceAll("/\\d+", "/{id}");
+        safe = safe.replaceAll("(?i)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "/{id}");
+        safe = safe.replaceAll("(?i)/[0-9a-f]{16,}", "/{id}");
+        safe = safe.replaceAll("(?i)/so\\d{10,}[0-9a-z]*", "/{orderNo}");
+        safe = safe.replaceAll("/[A-Za-z0-9._~+\\-=]{64,}", "/{token}");
+        return limit(safe, 240);
     }
 
     private String sanitize(String value) {
+        return sanitize(value, 240);
+    }
+
+    private String sanitize(String value, int maxLength) {
         String normalized = normalizeText(value);
-        return normalized == null || normalized.isEmpty() ? "" : limit(normalized, 240);
+        if (normalized == null || normalized.isEmpty()) {
+            return "";
+        }
+        return limit(SensitiveDataMasker.mask(normalized), maxLength);
+    }
+
+    private String normalizeFingerprint(String value) {
+        String normalized = sanitize(value, 180);
+        if (normalized == null || normalized.isBlank()) {
+            return null;
+        }
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        normalized = normalized.replaceAll("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "{id}");
+        normalized = normalized.replaceAll("\\b[0-9a-f]{16,}\\b", "{id}");
+        normalized = normalized.replaceAll("\\bso\\d{10,}[0-9a-z]*\\b", "{orderno}");
+        normalized = normalized.replaceAll("\\b\\d{6,}\\b", "{id}");
+        normalized = normalized.replaceAll("\\b[a-z0-9._~+\\-=]{64,}\\b", "{token}");
+        return limit(normalized, 180);
     }
 
     private String normalizeText(String value) {
@@ -489,6 +532,23 @@ public class SystemAlertService {
 
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    private int searchMaxRows() {
+        return boundedInt("alerts.admin.search-max-rows", DEFAULT_SEARCH_MAX_ROWS, 1, 5000);
+    }
+
+    private int batchActionMaxSize() {
+        return boundedInt("alerts.admin.batch-action-max-size", DEFAULT_BATCH_MAX_SIZE, 1, 1000);
+    }
+
+    private int retentionMaxDays() {
+        return boundedInt("alerts.admin.retention-max-days", DEFAULT_RETENTION_MAX_DAYS, 1, 3650);
+    }
+
+    private int boundedInt(String key, int defaultValue, int min, int max) {
+        int configured = runtimeConfig.getInt(key, defaultValue);
+        return Math.max(min, Math.min(configured, max));
     }
 
     private static class AlertDraft {

@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import com.example.shop.dto.CouponAdminSummaryResponse;
 import com.example.shop.dto.CouponQuoteResponse;
 import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.entity.CartItem;
@@ -9,6 +10,8 @@ import com.example.shop.repository.CouponRepository;
 import com.example.shop.repository.UserCouponMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,8 +19,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,47 +33,94 @@ public class CouponService {
     private static final String DISCOUNT = "DISCOUNT";
     private static final String PUBLIC = "PUBLIC";
     private static final String ASSIGNED = "ASSIGNED";
+    private static final Set<String> COUPON_STATUSES = Set.of("ACTIVE", "INACTIVE");
+    private static final int HARD_MAX_COUPON_ROWS = 5_000;
+    private static final int HARD_MAX_PUBLIC_COUPON_ROWS = 1_000;
+    private static final int HARD_MAX_GRANT_USERS = 1_000;
+    private static final int HARD_MAX_TEXT_LENGTH = 4_000;
+    private static final int HARD_MAX_TOTAL_QUANTITY = 1_000_000;
+    private static final int HARD_MAX_SUMMARY_DAYS = 90;
+    private static final int HARD_MAX_LOW_REMAINING = 1_000;
 
     private final CouponRepository couponRepository;
     private final UserCouponMapper userCouponMapper;
     private final PetBirthdayCouponService petBirthdayCouponService;
+    private final RuntimeConfigService runtimeConfig;
 
     public List<Coupon> findAll() {
-        return couponRepository.findAll().stream()
-                .sorted((left, right) -> Long.compare(right.getId() == null ? 0 : right.getId(), left.getId() == null ? 0 : left.getId()))
-                .collect(Collectors.toList());
+        int limit = resolveLimit("admin.coupons.search-max-rows", 500, HARD_MAX_COUPON_ROWS);
+        return couponRepository.findAll(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "id"))).getContent();
     }
 
     public List<Coupon> findPublicActive() {
-        return couponRepository.findClaimableByScopeAndStatus(PUBLIC, "ACTIVE", LocalDateTime.now());
+        int limit = resolveLimit("coupon.public-list-max-rows", 100, HARD_MAX_PUBLIC_COUPON_ROWS);
+        return couponRepository.findClaimableByScopeAndStatus(PUBLIC, "ACTIVE", LocalDateTime.now(), PageRequest.of(0, limit));
+    }
+
+    public CouponAdminSummaryResponse adminSummary() {
+        LocalDateTime now = LocalDateTime.now();
+        int expiringSoonDays = resolveLimit("admin.coupons.expiring-soon-days", 7, HARD_MAX_SUMMARY_DAYS);
+        int lowRemainingThreshold = resolveLimit("admin.coupons.low-remaining-threshold", 10, HARD_MAX_LOW_REMAINING);
+
+        CouponAdminSummaryResponse response = new CouponAdminSummaryResponse();
+        response.setTotalCoupons(couponRepository.count());
+        response.setActiveCoupons(couponRepository.countByStatus("ACTIVE"));
+        response.setInactiveCoupons(couponRepository.countByStatus("INACTIVE"));
+        response.setPublicActiveCoupons(couponRepository.countByScopeAndStatus(PUBLIC, "ACTIVE"));
+        response.setExpiringSoonCoupons(couponRepository.countActiveExpiringBetween(now, now.plusDays(expiringSoonDays)));
+        response.setLowRemainingCoupons(couponRepository.countActiveLowRemaining(lowRemainingThreshold));
+        response.setMaxSearchRows(resolveLimit("admin.coupons.search-max-rows", 500, HARD_MAX_COUPON_ROWS));
+        response.setMaxGrantUsers(resolveLimit("admin.coupons.grant-max-users", 200, HARD_MAX_GRANT_USERS));
+        response.setMaxPublicRows(resolveLimit("coupon.public-list-max-rows", 100, HARD_MAX_PUBLIC_COUPON_ROWS));
+        response.setWalletMaxRows(resolveLimit("coupon.wallet-max-rows", 300, HARD_MAX_COUPON_ROWS));
+        response.setAvailableMaxRows(resolveLimit("coupon.available-max-rows", 100, HARD_MAX_PUBLIC_COUPON_ROWS));
+        response.setNameMaxChars(resolveLimit("admin.coupons.name-max-chars", 120, HARD_MAX_TEXT_LENGTH));
+        response.setDescriptionMaxChars(resolveLimit("admin.coupons.description-max-chars", 1000, HARD_MAX_TEXT_LENGTH));
+        response.setTotalQuantityMax(resolveLimit("admin.coupons.total-quantity-max", 100_000, HARD_MAX_TOTAL_QUANTITY));
+        response.setExpiringSoonDays(expiringSoonDays);
+        response.setLowRemainingThreshold(lowRemainingThreshold);
+        response.setCheckedAt(now.toString());
+        return response;
     }
 
     public List<UserCoupon> findUserCoupons(Long userId) {
-        return userCouponMapper.findByUserId(userId);
+        requirePositiveId(userId, "User");
+        int limit = resolveLimit("coupon.wallet-max-rows", 300, HARD_MAX_COUPON_ROWS);
+        return userCouponMapper.findByUserIdLimited(userId, limit);
     }
 
     public List<UserCoupon> findAvailableUserCoupons(Long userId) {
-        return userCouponMapper.findUnusedByUserId(userId);
+        requirePositiveId(userId, "User");
+        int limit = resolveLimit("coupon.available-max-rows", 100, HARD_MAX_PUBLIC_COUPON_ROWS);
+        return userCouponMapper.findUnusedByUserIdLimited(userId, limit);
     }
 
     @Transactional
     public Coupon save(CouponUpsertRequest request, Long id) {
+        if (request == null) {
+            throw new IllegalArgumentException("Coupon payload is required");
+        }
         Coupon coupon = id == null ? new Coupon() : couponRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
-        coupon.setName(request.getName());
-        coupon.setCouponType(normalizeType(request.getCouponType()));
+        coupon.setName(normalizeText(request.getName(), "Coupon name", resolveLimit("admin.coupons.name-max-chars", 120, HARD_MAX_TEXT_LENGTH)));
+        String couponType = normalizeType(request.getCouponType());
+        coupon.setCouponType(couponType);
         coupon.setScope(normalizeScope(request.getScope()));
-        coupon.setStatus(request.getStatus() == null || request.getStatus().isBlank()
-                ? "ACTIVE"
-                : request.getStatus().trim().toUpperCase(Locale.ROOT));
-        coupon.setThresholdAmount(defaultMoney(request.getThresholdAmount()));
-        coupon.setReductionAmount(defaultMoney(request.getReductionAmount()));
-        coupon.setDiscountPercent(request.getDiscountPercent());
-        coupon.setMaxDiscountAmount(request.getMaxDiscountAmount());
-        coupon.setTotalQuantity(request.getTotalQuantity());
+        coupon.setStatus(normalizeStatus(request.getStatus()));
+        coupon.setThresholdAmount(nonNegativeMoney(request.getThresholdAmount(), "Threshold amount"));
+        if (FULL_REDUCTION.equals(couponType)) {
+            coupon.setReductionAmount(nonNegativeMoney(request.getReductionAmount(), "Reduction amount"));
+            coupon.setDiscountPercent(null);
+            coupon.setMaxDiscountAmount(null);
+        } else {
+            coupon.setReductionAmount(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+            coupon.setDiscountPercent(request.getDiscountPercent());
+            coupon.setMaxDiscountAmount(nonNegativeNullableMoney(request.getMaxDiscountAmount(), "Max discount amount"));
+        }
+        coupon.setTotalQuantity(normalizeTotalQuantity(request.getTotalQuantity()));
         coupon.setStartAt(request.getStartAt());
         coupon.setEndAt(request.getEndAt());
-        coupon.setDescription(request.getDescription());
+        coupon.setDescription(normalizeOptionalText(request.getDescription(), resolveLimit("admin.coupons.description-max-chars", 1000, HARD_MAX_TEXT_LENGTH)));
         validateCoupon(coupon);
         LocalDateTime now = LocalDateTime.now();
         if (coupon.getCreatedAt() == null) {
@@ -83,6 +135,7 @@ public class CouponService {
 
     @Transactional
     public void delete(Long id) {
+        requirePositiveId(id, "Coupon");
         if (!couponRepository.existsById(id)) {
             throw new IllegalArgumentException("Coupon not found");
         }
@@ -95,6 +148,8 @@ public class CouponService {
 
     @Transactional
     public UserCoupon claim(Long couponId, Long userId) {
+        requirePositiveId(couponId, "Coupon");
+        requirePositiveId(userId, "User");
         Coupon coupon = couponRepository.findById(couponId)
                 .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
         if (!PUBLIC.equals(coupon.getScope())) {
@@ -124,12 +179,14 @@ public class CouponService {
 
     @Transactional
     public int grant(Long couponId, List<Long> userIds) {
+        requirePositiveId(couponId, "Coupon");
+        List<Long> normalizedUserIds = normalizeGrantUserIds(userIds);
         Coupon coupon = couponRepository.findById(couponId)
                 .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
         ensureClaimable(coupon);
         int granted = 0;
-        for (Long userId : userIds) {
-            if (userId == null || userCouponMapper.findByCouponIdAndUserId(couponId, userId) != null) {
+        for (Long userId : normalizedUserIds) {
+            if (userCouponMapper.findByCouponIdAndUserId(couponId, userId) != null) {
                 continue;
             }
             if (couponRepository.incrementClaimedQuantity(couponId) == 0) {
@@ -151,8 +208,10 @@ public class CouponService {
     }
 
     public CouponQuoteResponse quote(Long userId, List<CartItem> cartItems, Long userCouponId) {
-        BigDecimal subtotal = cartItems.stream()
-                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+        requirePositiveId(userId, "User");
+        List<CartItem> safeItems = cartItems == null ? List.of() : cartItems;
+        BigDecimal subtotal = safeItems.stream()
+                .map(this::calculateLineAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
         List<UserCoupon> available = findAvailableUserCoupons(userId).stream()
@@ -211,6 +270,9 @@ public class CouponService {
         if (!UNUSED.equals(userCoupon.getStatus())) {
             throw new IllegalStateException("Coupon is not available");
         }
+        if (userCoupon.getCouponStatus() != null && !"ACTIVE".equals(userCoupon.getCouponStatus())) {
+            throw new IllegalStateException("Coupon is inactive");
+        }
         LocalDateTime now = LocalDateTime.now();
         if (userCoupon.getStartAt() != null && now.isBefore(userCoupon.getStartAt())) {
             throw new IllegalStateException("Coupon is not active yet");
@@ -264,12 +326,22 @@ public class CouponService {
     }
 
     private void validateCoupon(Coupon coupon) {
+        if (coupon.getName() == null || coupon.getName().isBlank()) {
+            throw new IllegalArgumentException("Coupon name is required");
+        }
+        if (!COUPON_STATUSES.contains(coupon.getStatus())) {
+            throw new IllegalArgumentException("Unsupported coupon status");
+        }
         if (FULL_REDUCTION.equals(coupon.getCouponType()) && defaultMoney(coupon.getReductionAmount()).compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Reduction amount is required");
         }
         if (DISCOUNT.equals(coupon.getCouponType())
                 && (coupon.getDiscountPercent() == null || coupon.getDiscountPercent() <= 0 || coupon.getDiscountPercent() >= 100)) {
             throw new IllegalArgumentException("Discount percent must be between 1 and 99");
+        }
+        if (coupon.getTotalQuantity() != null && coupon.getClaimedQuantity() != null
+                && coupon.getTotalQuantity() < coupon.getClaimedQuantity()) {
+            throw new IllegalArgumentException("Coupon quantity cannot be lower than claimed quantity");
         }
         if (coupon.getEndAt() != null && coupon.getStartAt() != null && coupon.getEndAt().isBefore(coupon.getStartAt())) {
             throw new IllegalArgumentException("End time must be after start time");
@@ -287,6 +359,102 @@ public class CouponService {
     private String normalizeScope(String value) {
         String normalized = value == null || value.isBlank() ? PUBLIC : value.trim().toUpperCase(Locale.ROOT);
         return ASSIGNED.equals(normalized) ? ASSIGNED : PUBLIC;
+    }
+
+    private String normalizeStatus(String value) {
+        String normalized = value == null || value.isBlank() ? "ACTIVE" : value.trim().toUpperCase(Locale.ROOT);
+        if (!COUPON_STATUSES.contains(normalized)) {
+            throw new IllegalArgumentException("Unsupported coupon status");
+        }
+        return normalized;
+    }
+
+    private String normalizeText(String value, String fieldName, int maxLength) {
+        String normalized = normalizeOptionalText(value, maxLength);
+        if (normalized == null) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return normalized;
+    }
+
+    private String normalizeOptionalText(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.replaceAll("\\p{Cntrl}", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
+    }
+
+    private Integer normalizeTotalQuantity(Integer value) {
+        if (value == null) {
+            return null;
+        }
+        int maxQuantity = resolveLimit("admin.coupons.total-quantity-max", 100_000, HARD_MAX_TOTAL_QUANTITY);
+        if (value < 1) {
+            throw new IllegalArgumentException("Coupon quantity must be positive");
+        }
+        if (value > maxQuantity) {
+            throw new IllegalArgumentException("Coupon quantity is too large");
+        }
+        return value;
+    }
+
+    private List<Long> normalizeGrantUserIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            throw new IllegalArgumentException("User ids are required");
+        }
+        int maxUsers = resolveLimit("admin.coupons.grant-max-users", 200, HARD_MAX_GRANT_USERS);
+        if (userIds.size() > maxUsers) {
+            throw new IllegalArgumentException("Too many coupon recipients");
+        }
+        LinkedHashSet<Long> uniqueIds = userIds.stream()
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (uniqueIds.isEmpty()) {
+            throw new IllegalArgumentException("User ids are required");
+        }
+        return List.copyOf(uniqueIds);
+    }
+
+    private void requirePositiveId(Long id, String name) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException(name + " is required");
+        }
+    }
+
+    private BigDecimal calculateLineAmount(CartItem item) {
+        if (item == null || item.getPrice() == null || item.getQuantity() == null || item.getQuantity() <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+    }
+
+    private BigDecimal nonNegativeMoney(BigDecimal value, String fieldName) {
+        BigDecimal money = defaultMoney(value);
+        if (money.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(fieldName + " cannot be negative");
+        }
+        return money;
+    }
+
+    private BigDecimal nonNegativeNullableMoney(BigDecimal value, String fieldName) {
+        if (value == null) {
+            return null;
+        }
+        BigDecimal money = defaultMoney(value);
+        if (money.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(fieldName + " cannot be negative");
+        }
+        return money;
+    }
+
+    private int resolveLimit(String key, int defaultValue, int hardMax) {
+        return Math.max(1, Math.min(runtimeConfig.getInt(key, defaultValue), hardMax));
     }
 
     private BigDecimal defaultMoney(BigDecimal value) {

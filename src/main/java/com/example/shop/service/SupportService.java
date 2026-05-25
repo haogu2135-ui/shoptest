@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import com.example.shop.dto.SupportAdminSummaryResponse;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
 import com.example.shop.repository.SupportMessageMapper;
@@ -8,8 +9,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +53,24 @@ public class SupportService {
 
     public List<SupportSession> getAllSessions(String status) {
         return supportSessionMapper.findAll(status);
+    }
+
+    public SupportAdminSummaryResponse adminSummary(Long adminId) {
+        int staleMinutes = Math.max(5, Math.min(runtimeConfig.getInt("support.admin.stale-minutes", 30), 24 * 60));
+        Map<String, Object> row = supportSessionMapper.adminSummary(adminId, LocalDateTime.now().minusMinutes(staleMinutes));
+        SupportAdminSummaryResponse response = new SupportAdminSummaryResponse();
+        response.setTotalSessions(numberValue(row, "totalSessions"));
+        response.setOpenSessions(numberValue(row, "openSessions"));
+        response.setClosedSessions(numberValue(row, "closedSessions"));
+        response.setUnreadSessions(numberValue(row, "unreadSessions"));
+        response.setUnreadMessages(numberValue(row, "unreadMessages"));
+        response.setUnassignedOpenSessions(numberValue(row, "unassignedOpenSessions"));
+        response.setMyOpenSessions(numberValue(row, "myOpenSessions"));
+        response.setStaleOpenSessions(numberValue(row, "staleOpenSessions"));
+        response.setStaleMinutes(staleMinutes);
+        response.setResponseScore(calculateResponseScore(response));
+        response.setCheckedAt(Instant.now().toString());
+        return response;
     }
 
     public List<SupportMessage> getMessages(Long sessionId) {
@@ -182,5 +203,38 @@ public class SupportService {
 
     public int countUnreadByUser(Long userId) {
         return supportMessageMapper.countUnreadByUser(userId);
+    }
+
+    private int calculateResponseScore(SupportAdminSummaryResponse summary) {
+        long rawScore = 100
+                - summary.getUnreadSessions() * 10
+                - summary.getUnassignedOpenSessions() * 8
+                - summary.getStaleOpenSessions() * 18;
+        return (int) Math.max(0, Math.min(100, rawScore));
+    }
+
+    private long numberValue(Map<String, Object> row, String key) {
+        if (row == null || row.isEmpty()) {
+            return 0;
+        }
+        Object value = row.get(key);
+        if (value == null) {
+            String snake = camelToSnake(key);
+            value = row.get(snake);
+            if (value == null) {
+                value = row.get(snake.toUpperCase());
+            }
+        }
+        if (value == null) {
+            value = row.get(key.toLowerCase());
+        }
+        if (value == null) {
+            value = row.get(key.toUpperCase());
+        }
+        return value instanceof Number ? ((Number) value).longValue() : 0;
+    }
+
+    private String camelToSnake(String value) {
+        return value.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 }

@@ -2,6 +2,7 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.ConfigCenterHealthResponse;
 import com.example.shop.service.ConfigCenterService;
+import com.example.shop.util.SensitiveDataMasker;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -20,8 +21,11 @@ import java.lang.management.RuntimeMXBean;
 import java.sql.Connection;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin/system")
@@ -238,7 +242,7 @@ public class AdminSystemController {
         long startedAt = System.nanoTime();
         boolean discoveryEnabled = environment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, false);
         boolean configEnabled = environment.getProperty("spring.cloud.nacos.config.enabled", Boolean.class, discoveryEnabled);
-        payload.put("serverAddr", property("spring.cloud.nacos.discovery.server-addr", ""));
+        payload.put("serverAddr", sanitizeText(property("spring.cloud.nacos.discovery.server-addr", ""), 240));
         payload.put("configEnabled", configEnabled);
         payload.put("discoveryEnabled", discoveryEnabled);
         payload.put("registerEnabled", environment.getProperty("spring.cloud.nacos.discovery.register-enabled", Boolean.class, false));
@@ -268,8 +272,8 @@ public class AdminSystemController {
             payload.put("ready", health.isAvailable());
             payload.put("serverStatus", health.getServerStatus());
             payload.put("dataId", health.getDataId());
-            payload.put("warnings", health.getWarnings());
-            payload.put("errors", health.getErrors());
+            payload.put("warnings", sanitizeMessages(health.getWarnings()));
+            payload.put("errors", sanitizeMessages(health.getErrors()));
         } catch (Exception e) {
             payload.put("status", "DOWN");
             payload.put("healthy", false);
@@ -293,15 +297,36 @@ public class AdminSystemController {
         if (value == null || value.isBlank()) {
             return "";
         }
-        return value.replaceAll("(?i)(password=)[^&;]+", "$1******");
+        String masked = SensitiveDataMasker.mask(value);
+        masked = masked.replaceAll("(?i)(jdbc:[^:]+://)([^/@\\s:;]+):([^/@\\s;]+)@", "$1******:******@");
+        return sanitizeText(masked, 500);
     }
 
     private String sanitizeError(Exception e) {
-        String message = e.getMessage() == null ? "" : e.getMessage();
-        String normalized = message.replaceAll("[\\r\\n\\t]+", " ").trim();
-        if (normalized.length() > 240) {
-            normalized = normalized.substring(0, 240);
+        String message = sanitizeText(e.getMessage(), 240);
+        return e.getClass().getSimpleName() + (message.isBlank() ? "" : ": " + message);
+    }
+
+    private List<String> sanitizeMessages(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return Collections.emptyList();
         }
-        return e.getClass().getSimpleName() + (normalized.isBlank() ? "" : ": " + normalized);
+        return values.stream()
+                .map((value) -> sanitizeText(value, 240))
+                .filter((value) -> !value.isBlank())
+                .collect(Collectors.toList());
+    }
+
+    private String sanitizeText(String value, int maxLength) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = SensitiveDataMasker.mask(value)
+                .replaceAll("[\\r\\n\\t]+", " ")
+                .trim();
+        if (normalized.length() > maxLength) {
+            return normalized.substring(0, maxLength);
+        }
+        return normalized;
     }
 }

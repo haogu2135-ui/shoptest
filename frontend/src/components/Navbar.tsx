@@ -33,6 +33,7 @@ import { getEffectiveRole, isAdminRole } from '../utils/roles';
 import { readStockAlerts } from '../utils/stockAlerts';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
+import { normalizeAnnouncementLink } from '../utils/announcementLinks';
 import './Navbar.css';
 
 const { Search } = Input;
@@ -396,18 +397,19 @@ const Navbar: React.FC = () => {
 
   const renderAnnouncement = (announcement: SiteAnnouncement) => {
     const text = announcement.content || announcement.title;
-    if (!announcement.linkUrl) {
+    const linkUrl = normalizeAnnouncementLink(announcement.linkUrl);
+    if (!linkUrl) {
       return <span key={announcement.id || text}>{text}</span>;
     }
-    if (/^https?:\/\//i.test(announcement.linkUrl)) {
+    if (/^https?:\/\//i.test(linkUrl)) {
       return (
-        <a key={announcement.id || text} href={announcement.linkUrl} target="_blank" rel="noreferrer">
+        <a key={announcement.id || text} href={linkUrl} target="_blank" rel="noreferrer">
           {text}
         </a>
       );
     }
     return (
-      <Link key={announcement.id || text} to={announcement.linkUrl}>
+      <Link key={announcement.id || text} to={linkUrl}>
         {text}
       </Link>
     );

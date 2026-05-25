@@ -13,11 +13,14 @@ public class ConfigCenterSnapshotResponse {
     private Map<String, String> effectiveProperties;
     private List<String> appliedKeys;
     private List<String> sensitiveKeys;
+    private List<String> allowedKeyPrefixes;
     private List<String> warnings;
     private List<String> errors;
     private boolean runtimeApplied;
     private boolean nacosPublished;
     private int propertyCount;
+    private int maxContentBytes;
+    private int maxProperties;
     private String lastSyncedAt;
 
     public String getDataId() {
@@ -92,6 +95,14 @@ public class ConfigCenterSnapshotResponse {
         this.sensitiveKeys = sensitiveKeys;
     }
 
+    public List<String> getAllowedKeyPrefixes() {
+        return allowedKeyPrefixes;
+    }
+
+    public void setAllowedKeyPrefixes(List<String> allowedKeyPrefixes) {
+        this.allowedKeyPrefixes = allowedKeyPrefixes;
+    }
+
     public List<String> getWarnings() {
         return warnings;
     }
@@ -130,6 +141,22 @@ public class ConfigCenterSnapshotResponse {
 
     public void setPropertyCount(int propertyCount) {
         this.propertyCount = propertyCount;
+    }
+
+    public int getMaxContentBytes() {
+        return maxContentBytes;
+    }
+
+    public void setMaxContentBytes(int maxContentBytes) {
+        this.maxContentBytes = maxContentBytes;
+    }
+
+    public int getMaxProperties() {
+        return maxProperties;
+    }
+
+    public void setMaxProperties(int maxProperties) {
+        this.maxProperties = maxProperties;
     }
 
     public String getLastSyncedAt() {

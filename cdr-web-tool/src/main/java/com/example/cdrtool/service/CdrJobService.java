@@ -45,6 +45,7 @@ public class CdrJobService {
                             record.total = total;
                         }
                     });
+                    record.summaryText = zipService.summaryText(result);
                     record.zipBytes = zipService.zip(result);
                     record.completed.set(record.total);
                     record.state = "DONE";
@@ -68,6 +69,7 @@ public class CdrJobService {
         status.setPercent(record.total <= 0 ? 0 : Math.min(100, (int) Math.round(record.completed.get() * 100.0 / record.total)));
         status.setError(record.error);
         status.setDownloadable(record.zipBytes != null);
+        status.setSummaryText(record.summaryText);
         return status;
     }
 
@@ -93,6 +95,7 @@ public class CdrJobService {
         private volatile int total;
         private final AtomicInteger completed = new AtomicInteger(0);
         private volatile String error;
+        private volatile String summaryText;
         private volatile byte[] zipBytes;
 
         private JobRecord(String id, int total) {

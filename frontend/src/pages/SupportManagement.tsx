@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
 import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { adminSupportApi, orderApi, supportWebSocketUrl, userApi } from '../api';
-import type { Order, OrderItem, SupportMessage, SupportSession } from '../types';
+import type { Order, OrderItem, SupportAdminSummary, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
@@ -23,7 +23,8 @@ const readAdminSupportToken = () => {
 };
 
 const SupportManagement: React.FC = () => {
-  const [sessions, setSessions] = useState<SupportSession[]>([]);
+  const [sessions, setSessions] = useState<SupportSession[]>([]);
+  const [summary, setSummary] = useState<SupportAdminSummary | null>(null);
   const [selectedSession, setSelectedSession] = useState<SupportSession | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [filter, setFilter] = useState<string | undefined>('OPEN');
@@ -133,11 +134,16 @@ const SupportManagement: React.FC = () => {
   const loadSessions = useCallback(async (status = filter) => {
     try {
       const apiStatus = status === 'NEEDS_REPLY' ? 'OPEN' : status;
-      const res = await adminSupportApi.getSessions(apiStatus);
-      setSessions(sortSupportSessions(res.data));
+      const [sessionsRes, summaryRes] = await Promise.all([
+        adminSupportApi.getSessions(apiStatus),
+        adminSupportApi.getSummary().catch(() => null),
+      ]);
+      setSessions(sortSupportSessions(sessionsRes.data));
+
+      setSummary(summaryRes?.data || null);
       const currentSession = selectedSessionRef.current;
       if (currentSession) {
-        const fresh = res.data.find((item) => item.id === currentSession.id);
+        const fresh = sessionsRes.data.find((item) => item.id === currentSession.id);
         if (fresh) setSelectedSession(fresh);
       }
     } catch {
@@ -310,11 +316,20 @@ const SupportManagement: React.FC = () => {
   };
 
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
-  const openSessionCount = sessions.filter((item) => item.status === 'OPEN').length;
-  const closedSessionCount = sessions.filter((item) => item.status === 'CLOSED').length;
-  const unreadSessionCount = sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0).length;
-  const unreadMessageCount = sessions.reduce((sum, item) => sum + Number(item.unreadByAdmin || 0), 0);
-  const mySessionCount = sessions.filter((item) => currentAdminId && Number(item.assignedAdminId) === currentAdminId && item.status === 'OPEN').length;
+  const localOpenSessionCount = sessions.filter((item) => item.status === 'OPEN').length;
+  const localClosedSessionCount = sessions.filter((item) => item.status === 'CLOSED').length;
+  const localUnreadSessionCount = sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0).length;
+  const localUnreadMessageCount = sessions.reduce((sum, item) => sum + Number(item.unreadByAdmin || 0), 0);
+  const localMySessionCount = sessions.filter((item) => currentAdminId && Number(item.assignedAdminId) === currentAdminId && item.status === 'OPEN').length;
+  const openSessionCount = summary?.openSessions ?? localOpenSessionCount;
+  const closedSessionCount = summary?.closedSessions ?? localClosedSessionCount;
+  const unreadSessionCount = summary?.unreadSessions ?? localUnreadSessionCount;
+  const unreadMessageCount = summary?.unreadMessages ?? localUnreadMessageCount;
+  const mySessionCount = summary?.myOpenSessions ?? localMySessionCount;
+  const unassignedOpenSessionCount = summary?.unassignedOpenSessions ?? sessions.filter((item) => item.status === 'OPEN' && !item.assignedAdminId).length;
+  const staleOpenSessionCount = summary?.staleOpenSessions ?? 0;
+  const staleMinutes = summary?.staleMinutes ?? 30;
+  const responseScore = summary?.responseScore ?? null;
   const filteredQueueSessions = filter === 'NEEDS_REPLY'
     ? sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0)
     : sessions;
@@ -390,6 +405,9 @@ const SupportManagement: React.FC = () => {
           <Tag color={unreadMessageCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.unreadMessages', { count: unreadMessageCount })}</Tag>
           <Tag color={openSessionCount > 0 ? 'green' : 'default'}>{t('pages.adminSupport.openSessions', { count: openSessionCount })}</Tag>
           <Tag color={mySessionCount > 0 ? 'blue' : 'default'}>{t('pages.adminSupport.mySessions', { count: mySessionCount })}</Tag>
+          <Tag color={unassignedOpenSessionCount > 0 ? 'orange' : 'default'}>{t('pages.adminSupport.unassignedSessions', { count: unassignedOpenSessionCount })}</Tag>
+          <Tag color={staleOpenSessionCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.staleSessions', { count: staleOpenSessionCount, minutes: staleMinutes })}</Tag>
+          {responseScore !== null ? <Tag color={responseScore < 70 ? 'volcano' : 'green'}>{t('pages.adminSupport.responseScore', { score: responseScore })}</Tag> : null}
           <Tag color="default">{t('pages.adminSupport.closedSessions', { count: closedSessionCount })}</Tag>
         </div>
         <div className="support-management__insightActions">

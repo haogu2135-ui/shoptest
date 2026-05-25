@@ -1,10 +1,13 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.IpBlacklistBatchReleaseRequest;
+import com.example.shop.dto.IpBlacklistBatchReleaseResponse;
 import com.example.shop.dto.IpBlacklistRequest;
 import com.example.shop.dto.IpBlacklistStatusResponse;
 import com.example.shop.entity.IpBlacklistEntry;
 import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.SecurityAuditLogService;
+import com.example.shop.util.SensitiveDataMasker;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -66,6 +69,19 @@ public class AdminIpBlacklistController {
         return entry;
     }
 
+    @PostMapping("/batch/release")
+    public IpBlacklistBatchReleaseResponse releaseBatch(@RequestBody(required = false) IpBlacklistBatchReleaseRequest body,
+                                                        Authentication authentication,
+                                                        HttpServletRequest request) {
+        IpBlacklistBatchReleaseResponse response = ipBlacklistService.releaseBatch(body == null ? null : body.getIds(), actor(authentication));
+        auditLogService.record("IP_BLACKLIST_BATCH_RELEASE", "SUCCESS", authentication, "IP_BLACKLIST", "batch", request,
+                "IP blacklist entries released in batch",
+                "requestedCount=" + response.getRequestedCount()
+                        + ", releasedCount=" + response.getReleasedCount()
+                        + ", note=" + safe(body == null ? null : body.getNote()));
+        return response;
+    }
+
     @PostMapping("/record-login-failure")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void recordLoginFailure(@RequestBody IpBlacklistRequest body) {
@@ -74,5 +90,16 @@ public class AdminIpBlacklistController {
 
     private String actor(Authentication authentication) {
         return authentication == null ? null : authentication.getName();
+    }
+
+    private String safe(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = SensitiveDataMasker.mask(value)
+                .replaceAll("[\\r\\n\\t]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return normalized.length() > 200 ? normalized.substring(0, 200) : normalized;
     }
 }

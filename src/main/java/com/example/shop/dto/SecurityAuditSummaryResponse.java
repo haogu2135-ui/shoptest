@@ -8,6 +8,10 @@ public class SecurityAuditSummaryResponse {
     private long totalCount;
     private long successCount;
     private long failureCount;
+    private int defaultRangeHours;
+    private int maxRangeHours;
+    private int maxSearchRows;
+    private int maxExportRows;
     private List<GroupCount> byResult;
     private List<GroupCount> topActions;
     private List<GroupCount> topActors;
@@ -52,6 +56,38 @@ public class SecurityAuditSummaryResponse {
 
     public void setFailureCount(long failureCount) {
         this.failureCount = failureCount;
+    }
+
+    public int getDefaultRangeHours() {
+        return defaultRangeHours;
+    }
+
+    public void setDefaultRangeHours(int defaultRangeHours) {
+        this.defaultRangeHours = defaultRangeHours;
+    }
+
+    public int getMaxRangeHours() {
+        return maxRangeHours;
+    }
+
+    public void setMaxRangeHours(int maxRangeHours) {
+        this.maxRangeHours = maxRangeHours;
+    }
+
+    public int getMaxSearchRows() {
+        return maxSearchRows;
+    }
+
+    public void setMaxSearchRows(int maxSearchRows) {
+        this.maxSearchRows = maxSearchRows;
+    }
+
+    public int getMaxExportRows() {
+        return maxExportRows;
+    }
+
+    public void setMaxExportRows(int maxExportRows) {
+        this.maxExportRows = maxExportRows;
     }
 
     public List<GroupCount> getByResult() {

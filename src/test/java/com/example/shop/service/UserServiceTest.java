@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import com.example.shop.dto.UserAdminSummaryResponse;
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -54,6 +56,34 @@ class UserServiceTest {
         service.search(" \u0000 ", " ", null);
 
         verify(userMapper).search(null, null, null);
+    }
+
+    @Test
+    void adminSummaryNormalizesFiltersAndCalculatesHealthScore() {
+        when(userMapper.adminSummary("Jane Doe", "ADMIN", "ACTIVE")).thenReturn(Map.of(
+                "total_users", 8L,
+                "active_users", 6L,
+                "banned_users", 1L,
+                "admin_users", 3L,
+                "customer_users", 5L,
+                "missing_email_users", 2L,
+                "missing_phone_users", 1L,
+                "ready_users", 4L
+        ));
+
+        UserAdminSummaryResponse summary = service.adminSummary("  Jane\u0000   Doe  ", " ADMIN ", " ACTIVE ");
+
+        assertEquals(8L, summary.getTotalUsers());
+        assertEquals(6L, summary.getActiveUsers());
+        assertEquals(1L, summary.getBannedUsers());
+        assertEquals(3L, summary.getAdminUsers());
+        assertEquals(5L, summary.getCustomerUsers());
+        assertEquals(2L, summary.getMissingEmailUsers());
+        assertEquals(1L, summary.getMissingPhoneUsers());
+        assertEquals(4L, summary.getReadyUsers());
+        assertEquals(38, summary.getAdminRatioPercent());
+        assertEquals(50, summary.getHealthScore());
+        verify(userMapper).adminSummary("Jane Doe", "ADMIN", "ACTIVE");
     }
 
     @Test

@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface UserMapper {
@@ -17,6 +18,7 @@ public interface UserMapper {
     long countAll();
     List<Long> findActiveCustomerIds();
     List<User> search(@Param("keyword") String keyword, @Param("role") String role, @Param("status") String status);
+    Map<String, Object> adminSummary(@Param("keyword") String keyword, @Param("role") String role, @Param("status") String status);
     int insert(User user);
     int update(User user);
     int updateRoleAccess(@Param("id") Long id, @Param("role") String role, @Param("roleCode") String roleCode, @Param("updatedAt") LocalDateTime updatedAt);

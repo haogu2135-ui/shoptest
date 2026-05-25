@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.util.SensitiveDataMasker;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.core.env.Environment;
@@ -16,10 +17,14 @@ import java.util.List;
 import java.util.Map;
 import java.time.Instant;
 import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/admin/registry")
 public class AdminRegistryController {
+    private static final Pattern SENSITIVE_METADATA_KEY = Pattern.compile(
+            "(?i).*(password|passwd|pwd|secret|token|credential|api[-_.]?key|access[-_.]?key|private[-_.]?key|authorization|signature).*");
+    private static final int METADATA_VALUE_MAX_LENGTH = 240;
 
     private final DiscoveryClient discoveryClient;
     private final Environment environment;
@@ -150,8 +155,42 @@ public class AdminRegistryController {
         payload.put("port", instance.getPort());
         payload.put("secure", instance.isSecure());
         payload.put("uri", instance.getUri().toString());
-        payload.put("metadata", instance.getMetadata());
+        payload.put("metadata", sanitizeMetadata(instance.getMetadata()));
         return payload;
+    }
+
+    private Map<String, String> sanitizeMetadata(Map<String, String> metadata) {
+        Map<String, String> safeMetadata = new LinkedHashMap<>();
+        if (metadata == null || metadata.isEmpty()) {
+            return safeMetadata;
+        }
+        metadata.forEach((key, value) -> {
+            String safeKey = sanitizeMetadataText(key, 80);
+            if (safeKey.isEmpty()) {
+                return;
+            }
+            if (SENSITIVE_METADATA_KEY.matcher(safeKey).matches()) {
+                safeMetadata.put(safeKey, maskSensitiveValue(value));
+                return;
+            }
+            safeMetadata.put(safeKey, sanitizeMetadataText(SensitiveDataMasker.mask(value), METADATA_VALUE_MAX_LENGTH));
+        });
+        return safeMetadata;
+    }
+
+    private String maskSensitiveValue(String value) {
+        return value == null || value.isBlank() ? "" : "******";
+    }
+
+    private String sanitizeMetadataText(String value, int maxLength) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.replaceAll("[\\r\\n\\t]+", " ").trim();
+        if (normalized.length() > maxLength) {
+            return normalized.substring(0, maxLength);
+        }
+        return normalized;
     }
 
     private Map<String, Object> diagnosticsPayload(String applicationName, String group) {

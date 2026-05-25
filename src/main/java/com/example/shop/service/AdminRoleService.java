@@ -28,7 +28,7 @@ public class AdminRoleService {
 
     public static final List<String> ADMIN_PAGES = List.of(
             "dashboard", "products", "brands", "categories", "orders", "logistics-carriers",
-            "users", "permissions", "reviews", "coupons", "notifications", "announcements", "audit-logs", "alerts", "ip-blacklist", "logs", "support", "registry", "config-center", "traffic-control", "system");
+            "users", "permissions", "reviews", "questions", "coupons", "notifications", "announcements", "audit-logs", "alerts", "ip-blacklist", "logs", "support", "registry", "config-center", "traffic-control", "system");
 
     private static final Map<String, String> PATH_PERMISSIONS = Map.ofEntries(
             Map.entry("/dashboard", "dashboard"),
@@ -40,6 +40,7 @@ public class AdminRoleService {
             Map.entry("/users", "users"),
             Map.entry("/permissions", "permissions"),
             Map.entry("/reviews", "reviews"),
+            Map.entry("/questions", "questions"),
             Map.entry("/coupons", "coupons"),
             Map.entry("/notifications", "notifications"),
             Map.entry("/announcements", "announcements"),
@@ -89,7 +90,7 @@ public class AdminRoleService {
                 .filter(page -> !"permissions".equals(page))
                 .collect(Collectors.toList()));
         seedRole(CUSTOMER_SERVICE, "Customer service", "Support and after-sales access",
-                List.of("dashboard", "orders", "support", "reviews"));
+                List.of("dashboard", "orders", "support", "reviews", "questions"));
         jdbcTemplate.update("UPDATE users SET role = ? WHERE role_code = ?",
                 SUPER_ADMIN,
                 SUPER_ADMIN);

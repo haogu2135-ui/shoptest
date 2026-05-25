@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.SupportAdminSummaryResponse;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
 import com.example.shop.security.UserDetailsImpl;
@@ -81,6 +82,11 @@ public class SupportController {
     @GetMapping("/admin/support/sessions")
     public List<SupportSession> getSupportSessions(@RequestParam(required = false) String status) {
         return supportService.getAllSessions(status);
+    }
+
+    @GetMapping("/admin/support/summary")
+    public SupportAdminSummaryResponse getSupportSummary() {
+        return supportService.adminSummary(currentUserId());
     }
 
     @GetMapping("/admin/support/sessions/{sessionId}/messages")

@@ -7,10 +7,8 @@ import ProductRichDetail, {
   toEmbeddableVideoUrl,
 } from './ProductRichDetail';
 
-const mockBuildResponsiveImageSrcSet = jest.fn((value: string) => `${value}?w=480 480w, ${value}?w=960 960w`);
-
 jest.mock('../utils/mediaAssets', () => ({
-  buildResponsiveImageSrcSet: (value: string) => mockBuildResponsiveImageSrcSet(value),
+  buildResponsiveImageSrcSet: (value: string) => `${value}?w=480 480w, ${value}?w=960 960w`,
   resolveApiAssetUrl: (value: string) => value,
 }));
 
@@ -50,22 +48,24 @@ describe('ProductRichDetail helpers', () => {
   });
 
   it('renders rich detail images with responsive loading attributes', () => {
+    const richImageUrl = 'https://images.unsplash.com/photo-pet-bed?fit=crop&w=1200';
+
     render(
       <ProductRichDetail
         detailContent={[
-          { type: 'image', url: 'https://images.example.com/pet-bed.jpg', caption: 'Pet bed detail' },
+          { type: 'image', url: richImageUrl, caption: 'Pet bed detail' },
         ]}
       />
     );
 
     const image = screen.getByRole('img', { name: 'Pet bed detail' });
-    expect(image).toHaveAttribute('src', 'https://images.example.com/pet-bed.jpg');
+    expect(image).toHaveAttribute('src', richImageUrl);
     expect(image).toHaveAttribute('srcset', expect.stringContaining('480w'));
+    expect(image).toHaveAttribute('srcset', expect.stringContaining('w=480'));
     expect(image).toHaveAttribute('sizes', 'min(860px, 100vw)');
     expect(image).toHaveAttribute('width', '1200');
     expect(image).toHaveAttribute('height', '900');
     expect(image).toHaveAttribute('loading', 'lazy');
     expect(image).toHaveAttribute('decoding', 'async');
-    expect(mockBuildResponsiveImageSrcSet).toHaveBeenCalledWith('https://images.example.com/pet-bed.jpg');
   });
 });

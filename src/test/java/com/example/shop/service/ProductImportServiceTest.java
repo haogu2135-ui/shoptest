@@ -18,18 +18,22 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ProductImportServiceTest {
     private ProductServiceImpl service;
     private ProductRepository productRepository;
+    private RuntimeConfigService runtimeConfig;
 
     @BeforeEach
     void setUp() {
         service = new ProductServiceImpl();
         productRepository = mock(ProductRepository.class);
+        runtimeConfig = mock(RuntimeConfigService.class);
         ReflectionTestUtils.setField(service, "productRepository", productRepository);
-        ReflectionTestUtils.setField(service, "importMaxFileSizeBytes", 64L);
-        ReflectionTestUtils.setField(service, "importMaxRows", 1);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        when(runtimeConfig.getLong("product.import.max-file-size-bytes", 1048576)).thenReturn(1024L);
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(1);
     }
 
     @Test
@@ -69,7 +73,6 @@ class ProductImportServiceTest {
 
     @Test
     void stopsWhenImportRowLimitIsExceeded() {
-        ReflectionTestUtils.setField(service, "importMaxFileSizeBytes", 1024L);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -87,8 +90,7 @@ class ProductImportServiceTest {
 
     @Test
     void normalizesImportedTextAndStatusBeforeSaving() {
-        ReflectionTestUtils.setField(service, "importMaxFileSizeBytes", 1024L);
-        ReflectionTestUtils.setField(service, "importMaxRows", 5);
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -110,8 +112,7 @@ class ProductImportServiceTest {
 
     @Test
     void rejectsInvalidImportedStatusBeforeSavingRow() {
-        ReflectionTestUtils.setField(service, "importMaxFileSizeBytes", 1024L);
-        ReflectionTestUtils.setField(service, "importMaxRows", 5);
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",

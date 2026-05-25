@@ -39,7 +39,7 @@
                 AND result = #{result}
             </if>
             <if test="actorUsername != null and actorUsername != ''">
-                AND actor_username LIKE CONCAT('%', #{actorUsername}, '%')
+                AND actor_username LIKE CONCAT('%', #{actorUsername}, '%') ESCAPE '!'
             </if>
             <if test="resourceType != null and resourceType != ''">
                 AND resource_type = #{resourceType}

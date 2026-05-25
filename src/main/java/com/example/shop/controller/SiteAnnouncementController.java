@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.SiteAnnouncementAdminSummaryResponse;
 import com.example.shop.entity.SiteAnnouncement;
 import com.example.shop.service.SiteAnnouncementService;
 import lombok.RequiredArgsConstructor;
@@ -34,11 +35,19 @@ public class SiteAnnouncementController {
         return announcementService.findAll();
     }
 
+    @GetMapping("/admin/announcements/summary")
+    @PreAuthorize("hasRole('ADMIN')")
+    public SiteAnnouncementAdminSummaryResponse getSummary() {
+        return announcementService.adminSummary();
+    }
+
     @PostMapping("/admin/announcements")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> create(@RequestBody SiteAnnouncement announcement) {
         try {
-            announcement.setId(null);
+            if (announcement != null) {
+                announcement.setId(null);
+            }
             return ResponseEntity.ok(announcementService.save(announcement));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));

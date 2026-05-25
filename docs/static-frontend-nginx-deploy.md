@@ -24,7 +24,20 @@ npm ci
 npm run build
 ```
 
-Production builds use `/api` by default, so the browser calls the same domain and Nginx forwards API traffic to Spring Boot.
+Production builds use `/api` by default, so the browser calls the same domain and Nginx forwards API traffic to Spring Boot. Support chat WebSocket traffic uses `/ws/support` by default, matching the Nginx `/ws/` proxy block.
+
+The build also includes `frontend/public/runtime-config.js` as `runtime-config.js`. Edit this file on the deployed server when the storefront needs to switch API routing without rebuilding:
+
+```js
+window.__SHOP_RUNTIME_CONFIG__ = {
+  apiBaseUrl: "/api",
+  supportWebSocketUrl: "/ws/support",
+  apiGatewayEnabled: true,
+  apiGatewayPrefix: "/gateway",
+};
+```
+
+Use `apiBaseUrl` for HTTP API calls and `supportWebSocketUrl` for customer-service chat. The Nginx templates intentionally serve `runtime-config.js` with `no-store` headers so backend address changes are picked up on the next page load.
 
 On Windows you can also build and prepare the static artifact:
 

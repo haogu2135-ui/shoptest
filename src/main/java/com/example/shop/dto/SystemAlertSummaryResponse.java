@@ -6,6 +6,9 @@ public class SystemAlertSummaryResponse {
     private long openCount;
     private long acknowledgedCount;
     private long resolvedCount;
+    private int maxSearchRows;
+    private int maxBatchActionSize;
+    private int maxRetentionDays;
     private Map<String, Long> openBySeverity;
     private String checkedAt;
 
@@ -31,6 +34,30 @@ public class SystemAlertSummaryResponse {
 
     public void setResolvedCount(long resolvedCount) {
         this.resolvedCount = resolvedCount;
+    }
+
+    public int getMaxSearchRows() {
+        return maxSearchRows;
+    }
+
+    public void setMaxSearchRows(int maxSearchRows) {
+        this.maxSearchRows = maxSearchRows;
+    }
+
+    public int getMaxBatchActionSize() {
+        return maxBatchActionSize;
+    }
+
+    public void setMaxBatchActionSize(int maxBatchActionSize) {
+        this.maxBatchActionSize = maxBatchActionSize;
+    }
+
+    public int getMaxRetentionDays() {
+        return maxRetentionDays;
+    }
+
+    public void setMaxRetentionDays(int maxRetentionDays) {
+        this.maxRetentionDays = maxRetentionDays;
     }
 
     public Map<String, Long> getOpenBySeverity() {

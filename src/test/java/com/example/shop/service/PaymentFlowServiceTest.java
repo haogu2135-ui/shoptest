@@ -65,12 +65,14 @@ class PaymentFlowServiceTest {
         cancelledOrder.setStatus("CANCELLED");
 
         PaymentService service = new PaymentService();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.callback-secret", "dev-payment-secret")).thenReturn("dev-payment-secret");
+        when(runtimeConfig.getLong("payment.callback-max-skew-seconds", 300)).thenReturn(300L);
         ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
         ReflectionTestUtils.setField(service, "orderService", orderService);
         ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
-        ReflectionTestUtils.setField(service, "runtimeMode", "dev");
-        ReflectionTestUtils.setField(service, "callbackSecret", "dev-payment-secret");
-        ReflectionTestUtils.setField(service, "callbackMaxSkewSeconds", 300L);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
 
         PaymentCallbackRequest request = new PaymentCallbackRequest();
         request.setOrderNo(payment.getOrderNo());

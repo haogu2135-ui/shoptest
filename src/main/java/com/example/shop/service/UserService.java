@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import com.example.shop.dto.UserAdminSummaryResponse;
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -7,8 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -141,6 +144,28 @@ public class UserService {
                 normalizeText(status, 40));
     }
 
+    public UserAdminSummaryResponse adminSummary(String keyword, String role, String status) {
+        Map<String, Object> row = userMapper.adminSummary(
+                normalizeText(keyword, 120),
+                normalizeText(role, 40),
+                normalizeText(status, 40));
+        UserAdminSummaryResponse response = new UserAdminSummaryResponse();
+        response.setTotalUsers(numberValue(row, "totalUsers"));
+        response.setActiveUsers(numberValue(row, "activeUsers"));
+        response.setBannedUsers(numberValue(row, "bannedUsers"));
+        response.setAdminUsers(numberValue(row, "adminUsers"));
+        response.setCustomerUsers(numberValue(row, "customerUsers"));
+        response.setMissingEmailUsers(numberValue(row, "missingEmailUsers"));
+        response.setMissingPhoneUsers(numberValue(row, "missingPhoneUsers"));
+        response.setReadyUsers(numberValue(row, "readyUsers"));
+        response.setAdminRatioPercent(response.getTotalUsers() == 0
+                ? 0
+                : (int) Math.round(response.getAdminUsers() * 100.0 / response.getTotalUsers()));
+        response.setHealthScore(calculateUserHealthScore(response));
+        response.setCheckedAt(Instant.now().toString());
+        return response;
+    }
+
     @Transactional
     public void deleteById(Long id) {
         userMapper.deleteById(id);
@@ -148,6 +173,44 @@ public class UserService {
 
     public long count() {
         return userMapper.countAll();
+    }
+
+    private int calculateUserHealthScore(UserAdminSummaryResponse summary) {
+        int adminRisk = summary.getAdminRatioPercent() > 25 && summary.getTotalUsers() >= 4 ? 18 : 0;
+        long rawScore = 100
+                - summary.getBannedUsers() * 8
+                - summary.getMissingEmailUsers() * 10
+                - summary.getMissingPhoneUsers() * 4
+                - adminRisk;
+        return (int) Math.max(0, Math.min(100, rawScore));
+    }
+
+    private long numberValue(Map<String, Object> row, String key) {
+        if (row == null || row.isEmpty()) {
+            return 0;
+        }
+        Object value = row.get(key);
+        if (value == null) {
+            value = row.get(camelToSnake(key));
+        }
+        if (value == null) {
+            value = row.get(key.toLowerCase());
+        }
+        if (value == null) {
+            value = row.get(key.toUpperCase());
+        }
+        if (value == null) {
+            String snake = camelToSnake(key);
+            value = row.get(snake.toLowerCase());
+            if (value == null) {
+                value = row.get(snake.toUpperCase());
+            }
+        }
+        return value instanceof Number ? ((Number) value).longValue() : 0;
+    }
+
+    private String camelToSnake(String value) {
+        return value.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
     private String normalizeText(String value, int maxLength) {

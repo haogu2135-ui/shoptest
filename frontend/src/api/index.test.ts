@@ -5,15 +5,18 @@ const mockDelete = jest.fn();
 
 export {};
 
+const originalApiBaseUrl = process.env.REACT_APP_API_BASE_URL;
+const originalSupportWebSocketUrl = process.env.REACT_APP_SUPPORT_WEBSOCKET_URL;
+
 jest.mock('axios', () => ({
   __esModule: true,
   default: {
-    create: jest.fn(() => ({
+    create: jest.fn((config?: { baseURL?: string }) => ({
       get: mockGet,
       post: mockPost,
       put: mockPut,
       delete: mockDelete,
-      defaults: { baseURL: 'https://api.example.com' },
+      defaults: { baseURL: config?.baseURL || 'https://api.example.com' },
       interceptors: {
         request: { use: jest.fn() },
         response: { use: jest.fn() },
@@ -23,12 +26,32 @@ jest.mock('axios', () => ({
 }));
 
 describe('api parameter normalization', () => {
+  beforeAll(() => {
+    process.env.REACT_APP_API_BASE_URL = 'https://api.example.com';
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.REACT_APP_API_BASE_URL = 'https://api.example.com';
+    delete process.env.REACT_APP_SUPPORT_WEBSOCKET_URL;
+    delete window.__SHOP_RUNTIME_CONFIG__;
     mockGet.mockResolvedValue({ data: [] });
     mockPost.mockResolvedValue({ data: {} });
     mockPut.mockResolvedValue({ data: {} });
     mockDelete.mockResolvedValue({ data: {} });
+  });
+
+  afterAll(() => {
+    if (originalApiBaseUrl === undefined) {
+      delete process.env.REACT_APP_API_BASE_URL;
+    } else {
+      process.env.REACT_APP_API_BASE_URL = originalApiBaseUrl;
+    }
+    if (originalSupportWebSocketUrl === undefined) {
+      delete process.env.REACT_APP_SUPPORT_WEBSOCKET_URL;
+    } else {
+      process.env.REACT_APP_SUPPORT_WEBSOCKET_URL = originalSupportWebSocketUrl;
+    }
   });
 
   it('trims websocket tokens and rejects empty tokens', () => {
@@ -36,6 +59,28 @@ describe('api parameter normalization', () => {
 
     expect(supportWebSocketUrl('  token  ')).toBe('wss://api.example.com/ws/support?token=token');
     expect(() => supportWebSocketUrl('   ')).toThrow('Support websocket token is required');
+  });
+
+  it('keeps support websocket on the same-origin ws proxy when API uses the /api proxy', () => {
+    jest.resetModules();
+    process.env.REACT_APP_API_BASE_URL = '/api';
+    delete window.__SHOP_RUNTIME_CONFIG__;
+
+    const { supportWebSocketUrl } = require('./index');
+
+    expect(supportWebSocketUrl('token')).toBe('ws://localhost/ws/support?token=token');
+  });
+
+  it('uses explicit runtime support websocket endpoint when provided', () => {
+    jest.resetModules();
+    process.env.REACT_APP_API_BASE_URL = '/api';
+    window.__SHOP_RUNTIME_CONFIG__ = {
+      supportWebSocketUrl: 'wss://support.example.com/ws/support/',
+    };
+
+    const { supportWebSocketUrl } = require('./index');
+
+    expect(supportWebSocketUrl(' token ')).toBe('wss://support.example.com/ws/support?token=token');
   });
 
   it('normalizes email login payloads before sending', async () => {
@@ -214,6 +259,14 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[0][1]).toEqual({ content: 'hello', sessionId: undefined });
     expect(mockPut.mock.calls[1][0]).toBe('/admin/support/sessions/0/reopen');
     expect(mockPost.mock.calls[1][0]).toBe('/admin/support/sessions/0/messages');
+  });
+
+  it('requests admin support summary for queue health panels', async () => {
+    const { adminSupportApi } = require('./index');
+
+    await adminSupportApi.getSummary();
+
+    expect(mockGet.mock.calls[0][0]).toBe('/admin/support/summary');
   });
 
   it('normalizes product path params and short-circuits invalid recommendation requests', async () => {
@@ -415,6 +468,8 @@ describe('api parameter normalization', () => {
     await adminApi.batchShipOrders([1, '2', 2, -4, 5.5] as unknown as number[], '  PKG   ', '  UPS  ');
     await adminApi.batchUpdateProductStatus([7, 7, Infinity, 8] as unknown as number[], ' INACTIVE ');
     await adminApi.grantCoupon(9.2, [10, 10, '11', -2] as unknown as number[]);
+    await adminApi.getCouponSummary();
+    await adminApi.grantCoupon(9, [1, 2, 3, 4], 2);
 
     expect(mockPut.mock.calls[0][0]).toBe('/admin/orders/0/status');
     expect(mockPut.mock.calls[0][1]).toEqual({ status: 'SHIPPED', trackingNumber: 'TN 1', trackingCarrierCode: 'DHL' });
@@ -422,10 +477,133 @@ describe('api parameter normalization', () => {
     expect(mockGet.mock.calls[0][1]).toEqual({ params: { status: 'PENDING_SHIPMENT', search: 'TN 1', quick: 'SLA_OVERDUE', page: 2, size: 100 } });
     expect(mockGet.mock.calls[1][0]).toBe('/admin/orders/export');
     expect(mockGet.mock.calls[1][1]).toEqual({ params: { status: 'REFUNDED', search: 'order 9', quick: 'REFUNDED' }, responseType: 'blob' });
+    expect(mockGet.mock.calls[2][0]).toBe('/admin/coupons/summary');
     expect(mockPost.mock.calls[0][1]).toEqual({ orderIds: [1, 2], trackingPrefix: 'PKG', trackingCarrierCode: 'UPS' });
     expect(mockPost.mock.calls[1][1]).toEqual({ productIds: [7, 8], status: 'INACTIVE' });
     expect(mockPost.mock.calls[2][0]).toBe('/admin/coupons/0/grant');
     expect(mockPost.mock.calls[2][1]).toEqual({ userIds: [10, 11] });
+    expect(mockPost.mock.calls[3][0]).toBe('/admin/coupons/9/grant');
+    expect(mockPost.mock.calls[3][1]).toEqual({ userIds: [1, 2] });
+  });
+
+  it('normalizes system alert batch action and purge payloads', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.acknowledgeAlerts([4, '5', 5, 0, -2, 7.7] as unknown as number[], '  ack\u0000   note  ', 3);
+    await adminApi.resolveAlerts([9, 9, Number.NaN, 10] as unknown as number[], '  resolve   note  ');
+    await adminApi.purgeResolvedAlerts(99999);
+
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/admin/alerts/batch/acknowledge',
+      { ids: [4, 5], note: 'ack note' },
+    ]);
+    expect(mockPost.mock.calls[1]).toEqual([
+      '/admin/alerts/batch/resolve',
+      { ids: [9, 10], note: 'resolve note' },
+    ]);
+    expect(mockPost.mock.calls[2]).toEqual([
+      '/admin/alerts/purge-resolved',
+      null,
+      { params: { retentionDays: 3650 } },
+    ]);
+  });
+
+  it('normalizes IP blacklist filters and batch release payloads', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getIpBlacklist({
+      status: ' BLOCKED ',
+      source: ' LOGIN ',
+      ipAddress: ' 203.0.113.10\u0000 ',
+      limit: 99999,
+    });
+    await adminApi.releaseIpBlacklistEntries([8, '9', 9, 0, -3, 10.5] as unknown as number[], '  release\u0000   note  ', 2);
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/ip-blacklist',
+      { params: { status: 'BLOCKED', source: 'LOGIN', ipAddress: '203.0.113.10', limit: 1000 } },
+    ]);
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/admin/ip-blacklist/batch/release',
+      { ids: [8, 9], note: 'release note' },
+    ]);
+  });
+
+  it('normalizes audit log filters, summary params, export params, and purge retention', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getAuditLogs({
+      action: ' ORDER_EXPORT\u0000 ',
+      result: ' SUCCESS ',
+      actorUsername: ' admin\u0000 user ',
+      resourceType: ' ORDER ',
+      startAt: ' 2026-05-24T10:00:00 ',
+      endAt: ' 2026-05-24T12:00:00 ',
+      limit: 99999,
+    });
+    await adminApi.getAuditLogSummary({ action: ' LOGIN ', topLimit: 999 });
+    await adminApi.exportAuditLogs({ result: ' FAILURE ', actorUsername: ' jane   doe ' });
+    await adminApi.purgeAuditLogs(99999);
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/audit-logs',
+      {
+        params: {
+          action: 'ORDER_EXPORT',
+          result: 'SUCCESS',
+          actorUsername: 'admin user',
+          resourceType: 'ORDER',
+          startAt: '2026-05-24T10:00:00',
+          endAt: '2026-05-24T12:00:00',
+          limit: 1000,
+        },
+      },
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/admin/audit-logs/summary',
+      {
+        params: {
+          action: 'LOGIN',
+          result: undefined,
+          actorUsername: undefined,
+          resourceType: undefined,
+          startAt: undefined,
+          endAt: undefined,
+          topLimit: 50,
+        },
+      },
+    ]);
+    expect(mockGet.mock.calls[2]).toEqual([
+      '/admin/audit-logs/export',
+      {
+        params: {
+          action: undefined,
+          result: 'FAILURE',
+          actorUsername: 'jane doe',
+          resourceType: undefined,
+          startAt: undefined,
+          endAt: undefined,
+        },
+        responseType: 'blob',
+      },
+    ]);
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/admin/audit-logs/purge',
+      null,
+      { params: { retentionDays: 3650 } },
+    ]);
+  });
+
+  it('requests admin announcement summary for CMS health panels', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getAnnouncementSummary();
+    await adminApi.getAnnouncements();
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/admin/announcements/summary',
+      '/admin/announcements',
+    ]);
   });
 
   it('caches admin dashboard and clears it after order mutations', async () => {
@@ -477,6 +655,37 @@ describe('api parameter normalization', () => {
     expect(mockPut.mock.calls[0][1]).toEqual({ reply: 'Thanks for sharing' });
   });
 
+  it('requests admin question summary and normalizes queue filters', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getQuestionSummary();
+    await adminApi.getQuestions({ status: ' unanswered ', limit: 99999 });
+
+    expect(mockGet.mock.calls[0][0]).toBe('/admin/questions/summary');
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/admin/questions',
+      { params: { status: 'UNANSWERED', limit: 1000 } },
+    ]);
+  });
+
+  it('caches admin question queues until an answer invalidates them', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getQuestions({ status: 'UNANSWERED', limit: 200 });
+    await adminApi.getQuestions({ status: ' unanswered ', limit: 200 });
+    await adminApi.answerQuestion(12.8, '  It   fits small dogs.  ');
+    await adminApi.getQuestions({ status: 'UNANSWERED', limit: 200 });
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/admin/questions',
+      '/admin/questions',
+    ]);
+    expect(mockPut.mock.calls[0]).toEqual([
+      '/admin/questions/0/answer',
+      { answer: 'It fits small dogs.' },
+    ]);
+  });
+
   it('caches admin users and roles while normalizing user filters', async () => {
     const { adminApi } = require('./index');
 
@@ -498,6 +707,17 @@ describe('api parameter normalization', () => {
     expect(mockGet.mock.calls[0][1]).toEqual({
       params: { keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' },
     });
+  });
+
+  it('normalizes admin user summary filters for account health panels', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getUserSummary({ keyword: '  jane\u0000   doe ', role: ' ADMIN ', status: ' ACTIVE ' });
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/users/summary',
+      { params: { keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' } },
+    ]);
   });
 
   it('normalizes notification, pet profile, pet gallery, and logistics params', async () => {

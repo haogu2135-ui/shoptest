@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input } from 'antd';
 import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminApi, userApi } from '../api';
-import type { AdminRole, User } from '../types';
+import type { AdminRole, User, UserAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { getEffectiveRole, isAdminRole, isSuperAdminRole, roleColor } from '../utils/roles';
 import { hasStoredValue } from '../utils/safeStorage';
@@ -12,6 +12,7 @@ const { Title, Text } = Typography;
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [summary, setSummary] = useState<UserAdminSummary | null>(null);
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
@@ -22,7 +23,7 @@ const UserManagement: React.FC = () => {
   const canManageRoles = isSuperAdminRole(currentRole);
   const { t, language } = useLanguage();
 
-  const userHealth = useMemo(() => {
+  const localUserHealth = useMemo(() => {
     const activeUsers = users.filter((user) => (user.status || 'ACTIVE') === 'ACTIVE').length;
     const admins = users.filter((user) => isAdminRole(getEffectiveRole(user.role, user.roleCode))).length;
     const bannedUsers = users.filter((user) => user.status === 'BANNED').length;
@@ -42,6 +43,16 @@ const UserManagement: React.FC = () => {
     };
   }, [users]);
 
+  const userHealth = {
+    activeUsers: summary?.activeUsers ?? localUserHealth.activeUsers,
+    admins: summary?.adminUsers ?? localUserHealth.admins,
+    bannedUsers: summary?.bannedUsers ?? localUserHealth.bannedUsers,
+    missingEmail: summary?.missingEmailUsers ?? localUserHealth.missingEmail,
+    missingPhone: summary?.missingPhoneUsers ?? localUserHealth.missingPhone,
+    score: summary?.healthScore ?? localUserHealth.score,
+    adminRatioPercent: summary?.adminRatioPercent ?? 0,
+  };
+
   const getUserReadiness = (user: User) => [
     user.username?.trim(),
     user.email?.trim(),
@@ -52,8 +63,13 @@ const UserManagement: React.FC = () => {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await adminApi.getUsers({ keyword: keyword.trim() || undefined, role: roleFilter, status: statusFilter });
-      setUsers(res.data);
+      const params = { keyword: keyword.trim() || undefined, role: roleFilter, status: statusFilter };
+      const [usersResponse, summaryResponse] = await Promise.all([
+        adminApi.getUsers(params),
+        adminApi.getUserSummary(params),
+      ]);
+      setUsers(usersResponse.data);
+      setSummary(summaryResponse.data || null);
     } catch {
       message.error(t('pages.adminUsers.fetchFailed'));
     } finally {

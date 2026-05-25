@@ -66,6 +66,12 @@
   color: #627064;
 }
 
+.coupon-management-insights__updated {
+  color: #6f7c71;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .coupon-management-insights__cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

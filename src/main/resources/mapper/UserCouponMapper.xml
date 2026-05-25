@@ -12,6 +12,7 @@
         <result property="couponName" column="coupon_name"/>
         <result property="couponType" column="coupon_type"/>
         <result property="couponScope" column="coupon_scope"/>
+        <result property="couponStatus" column="coupon_status"/>
         <result property="thresholdAmount" column="threshold_amount"/>
         <result property="reductionAmount" column="reduction_amount"/>
         <result property="discountPercent" column="discount_percent"/>
@@ -23,7 +24,7 @@
 
     <sql id="userCouponColumns">
         uc.id, uc.user_id, uc.coupon_id, uc.status, uc.order_id, uc.claimed_at, uc.used_at,
-        c.name AS coupon_name, c.coupon_type, c.scope AS coupon_scope, c.threshold_amount,
+        c.name AS coupon_name, c.coupon_type, c.scope AS coupon_scope, c.status AS coupon_status, c.threshold_amount,
         c.reduction_amount, c.discount_percent, c.max_discount_amount, c.start_at, c.end_at,
         c.description
     </sql>
@@ -58,6 +59,15 @@
         ORDER BY uc.status ASC, c.end_at ASC, uc.id DESC
     </select>
 
+    <select id="findByUserIdLimited" resultMap="userCouponMap">
+        SELECT <include refid="userCouponColumns"/>
+        FROM user_coupons uc
+        JOIN coupons c ON c.id = uc.coupon_id
+        WHERE uc.user_id = #{userId}
+        ORDER BY uc.status ASC, c.end_at ASC, uc.id DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="findUnusedByUserId" resultMap="userCouponMap">
         SELECT <include refid="userCouponColumns"/>
         FROM user_coupons uc
@@ -68,6 +78,19 @@
           AND (c.start_at IS NULL OR c.start_at &lt;= NOW())
           AND (c.end_at IS NULL OR c.end_at &gt;= NOW())
         ORDER BY c.end_at ASC, uc.id DESC
+    </select>
+
+    <select id="findUnusedByUserIdLimited" resultMap="userCouponMap">
+        SELECT <include refid="userCouponColumns"/>
+        FROM user_coupons uc
+        JOIN coupons c ON c.id = uc.coupon_id
+        WHERE uc.user_id = #{userId}
+          AND uc.status = 'UNUSED'
+          AND c.status = 'ACTIVE'
+          AND (c.start_at IS NULL OR c.start_at &lt;= NOW())
+          AND (c.end_at IS NULL OR c.end_at &gt;= NOW())
+        ORDER BY c.end_at ASC, uc.id DESC
+        LIMIT #{limit}
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.UserCoupon" useGeneratedKeys="true" keyProperty="id">

@@ -1,17 +1,21 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.CouponGrantRequest;
+import com.example.shop.dto.CouponAdminSummaryResponse;
 import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
+import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
 import com.example.shop.dto.ProductImportResult;
 import com.example.shop.dto.SecurityAuditPurgeResponse;
 import com.example.shop.dto.SecurityAuditSummaryResponse;
+import com.example.shop.dto.UserAdminSummaryResponse;
 import com.example.shop.entity.Coupon;
 import com.example.shop.entity.AdminRole;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.entity.Payment;
 import com.example.shop.entity.Product;
+import com.example.shop.entity.ProductQuestion;
 import com.example.shop.entity.PetBirthdayCouponConfig;
 import com.example.shop.entity.Review;
 import com.example.shop.entity.SecurityAuditLog;
@@ -25,6 +29,7 @@ import com.example.shop.service.CouponService;
 import com.example.shop.service.NotificationService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.ProductService;
+import com.example.shop.service.ProductQuestionService;
 import com.example.shop.service.ReviewService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
@@ -74,6 +79,7 @@ public class AdminController {
     private final OrderService orderService;
     private final OrderItemService orderItemService;
     private final ProductService productService;
+    private final ProductQuestionService productQuestionService;
     private final ReviewService reviewService;
     private final CouponService couponService;
     private final NotificationService notificationService;
@@ -257,42 +263,79 @@ public class AdminController {
         return ResponseEntity.ok(couponService.findAll());
     }
 
+    @GetMapping("/coupons/summary")
+    public ResponseEntity<CouponAdminSummaryResponse> getCouponSummary() {
+        return ResponseEntity.ok(couponService.adminSummary());
+    }
+
     @PostMapping("/coupons")
-    public ResponseEntity<?> createCoupon(@RequestBody CouponUpsertRequest request) {
+    public ResponseEntity<?> createCoupon(@RequestBody CouponUpsertRequest request,
+                                          Authentication authentication,
+                                          HttpServletRequest httpRequest) {
         try {
-            return ResponseEntity.ok(couponService.save(request, null));
+            Coupon coupon = couponService.save(request, null);
+            auditLogService.record("COUPON_CREATE", "SUCCESS", authentication, "COUPON", coupon.getId(), httpRequest,
+                    "Coupon created", couponMetadata(coupon));
+            return ResponseEntity.ok(coupon);
         } catch (IllegalArgumentException e) {
+            auditLogService.record("COUPON_CREATE", "FAILURE", authentication, "COUPON", null, httpRequest,
+                    e.getMessage(), couponRequestMetadata(request));
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @PutMapping("/coupons/{id}")
-    public ResponseEntity<?> updateCoupon(@PathVariable Long id, @RequestBody CouponUpsertRequest request) {
+    public ResponseEntity<?> updateCoupon(@PathVariable Long id,
+                                          @RequestBody CouponUpsertRequest request,
+                                          Authentication authentication,
+                                          HttpServletRequest httpRequest) {
         try {
-            return ResponseEntity.ok(couponService.save(request, id));
+            Coupon coupon = couponService.save(request, id);
+            auditLogService.record("COUPON_UPDATE", "SUCCESS", authentication, "COUPON", id, httpRequest,
+                    "Coupon updated", couponMetadata(coupon));
+            return ResponseEntity.ok(coupon);
         } catch (IllegalArgumentException e) {
+            auditLogService.record("COUPON_UPDATE", "FAILURE", authentication, "COUPON", id, httpRequest,
+                    e.getMessage(), couponRequestMetadata(request));
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @DeleteMapping("/coupons/{id}")
-    public ResponseEntity<?> deleteCoupon(@PathVariable Long id) {
+    public ResponseEntity<?> deleteCoupon(@PathVariable Long id,
+                                          Authentication authentication,
+                                          HttpServletRequest httpRequest) {
         try {
             couponService.delete(id);
+            auditLogService.record("COUPON_DELETE", "SUCCESS", authentication, "COUPON", id, httpRequest,
+                    "Coupon deleted", null);
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
+            auditLogService.record("COUPON_DELETE", "FAILURE", authentication, "COUPON", id, httpRequest,
+                    e.getMessage(), null);
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
+            auditLogService.record("COUPON_DELETE", "FAILURE", authentication, "COUPON", id, httpRequest,
+                    e.getMessage(), null);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @PostMapping("/coupons/{id}/grant")
-    public ResponseEntity<?> grantCoupon(@PathVariable Long id, @RequestBody CouponGrantRequest request) {
+    public ResponseEntity<?> grantCoupon(@PathVariable Long id,
+                                         @RequestBody CouponGrantRequest request,
+                                         Authentication authentication,
+                                         HttpServletRequest httpRequest) {
         try {
-            int granted = couponService.grant(id, request.getUserIds());
+            List<Long> userIds = request == null ? List.of() : request.getUserIds();
+            int granted = couponService.grant(id, userIds);
+            auditLogService.record("COUPON_GRANT", "SUCCESS", authentication, "COUPON", id, httpRequest,
+                    "Coupon granted", "requested=" + userIds.size() + ",granted=" + granted);
             return ResponseEntity.ok(Map.of("granted", granted));
         } catch (IllegalArgumentException | IllegalStateException e) {
+            int requested = request == null || request.getUserIds() == null ? 0 : request.getUserIds().size();
+            auditLogService.record("COUPON_GRANT", "FAILURE", authentication, "COUPON", id, httpRequest,
+                    e.getMessage(), "requested=" + requested);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -340,6 +383,13 @@ public class AdminController {
                                                   @RequestParam(required = false) String role,
                                                   @RequestParam(required = false) String status) {
         return ResponseEntity.ok(filterUsers(keyword, role, status));
+    }
+
+    @GetMapping("/users/summary")
+    public ResponseEntity<UserAdminSummaryResponse> getUserSummary(@RequestParam(required = false) String keyword,
+                                                                   @RequestParam(required = false) String role,
+                                                                   @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(userService.adminSummary(keyword, role, status));
     }
 
     @GetMapping("/users/export")
@@ -852,14 +902,13 @@ public class AdminController {
                                                   @RequestParam(required = false) String endAt,
                                                   Authentication authentication,
                                                   HttpServletRequest request) {
-        List<SecurityAuditLog> logs = auditLogService.search(
+        List<SecurityAuditLog> logs = auditLogService.export(
                 action,
                 result,
                 actorUsername,
                 resourceType,
                 parseDateTime(startAt),
-                parseDateTime(endAt),
-                5000);
+                parseDateTime(endAt));
 
         StringBuilder csv = new StringBuilder("\uFEFF");
         csv.append(CsvUtils.row(Arrays.asList(
@@ -922,6 +971,29 @@ public class AdminController {
         return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
     }
 
+    private String couponMetadata(Coupon coupon) {
+        if (coupon == null) {
+            return null;
+        }
+        return "name=" + normalizeAdminFilter(coupon.getName(), 80)
+                + ",type=" + coupon.getCouponType()
+                + ",scope=" + coupon.getScope()
+                + ",status=" + coupon.getStatus()
+                + ",totalQuantity=" + coupon.getTotalQuantity()
+                + ",claimedQuantity=" + coupon.getClaimedQuantity();
+    }
+
+    private String couponRequestMetadata(CouponUpsertRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return "name=" + normalizeAdminFilter(request.getName(), 80)
+                + ",type=" + normalizeAdminFilter(request.getCouponType(), 40)
+                + ",scope=" + normalizeAdminFilter(request.getScope(), 40)
+                + ",status=" + normalizeAdminFilter(request.getStatus(), 40)
+                + ",totalQuantity=" + request.getTotalQuantity();
+    }
+
     private Map<String, Long> buildAdminOrderSummary(String status, String search) {
         Map<String, Long> summary = new LinkedHashMap<>();
         for (String quick : List.of(
@@ -977,6 +1049,30 @@ public class AdminController {
     }
 
     // ==================== Review Management ====================
+
+    @GetMapping("/questions")
+    public ResponseEntity<List<ProductQuestion>> getAdminQuestions(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int limit) {
+        return ResponseEntity.ok(productQuestionService.getAdminQueue(status, limit));
+    }
+
+    @GetMapping("/questions/summary")
+    public ResponseEntity<ProductQuestionAdminSummaryResponse> getAdminQuestionSummary() {
+        return ResponseEntity.ok(productQuestionService.adminSummary());
+    }
+
+    @PutMapping("/questions/{id}/answer")
+    public ResponseEntity<?> answerAdminQuestion(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        try {
+            return ResponseEntity.ok(productQuestionService.answer(id, SecurityUtils.requireUser(authentication).getId(), body.get("answer")));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
     @GetMapping("/reviews")
     public ResponseEntity<List<Review>> getAllReviews() {

@@ -1,7 +1,9 @@
 package com.example.shop.service;
 
+import com.example.shop.dto.IpBlacklistBatchReleaseResponse;
 import com.example.shop.dto.IpBlacklistStatusResponse;
 import com.example.shop.entity.IpBlacklistEntry;
+import com.example.shop.util.SensitiveDataMasker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -10,7 +12,9 @@ import javax.servlet.http.HttpServletRequest;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -30,6 +34,7 @@ public class IpBlacklistService {
     private final JdbcTemplate jdbcTemplate;
     private final RuntimeConfigService runtimeConfig;
     private final SystemAlertService systemAlertService;
+    private final ClientIpResolver clientIpResolver;
 
     public void recordLoginFailure(HttpServletRequest request, String reason) {
         recordFailure(SOURCE_LOGIN, resolveClientIp(request), reason);
@@ -40,7 +45,8 @@ public class IpBlacklistService {
     }
 
     public void recordFailure(String source, String ipAddress, String reason) {
-        if (!enabled() || isBlank(ipAddress) || isTrusted(ipAddress)) {
+        String normalizedIp = clientIpResolver.normalizeIpAddress(ipAddress);
+        if (!enabled() || isBlank(normalizedIp) || isTrusted(normalizedIp)) {
             return;
         }
         String normalizedSource = normalizeSource(source);
@@ -48,14 +54,14 @@ public class IpBlacklistService {
         int windowMinutes = windowMinutes();
         int blockMinutes = blockMinutes();
         LocalDateTime now = LocalDateTime.now();
-        Optional<IpBlacklistEntry> existing = findActiveByIpAndSource(ipAddress, normalizedSource);
+        Optional<IpBlacklistEntry> existing = findActiveByIpAndSource(normalizedIp, normalizedSource);
         if (existing.isEmpty()) {
             jdbcTemplate.update(
                     "INSERT INTO ip_blacklist_entries (ip_address, status, source, reason, failure_count, first_seen_at, last_seen_at, created_at, updated_at) "
                             + "VALUES (?, ?, ?, ?, 1, NOW(), NOW(), NOW(), NOW())",
-                    ipAddress, threshold <= 1 ? STATUS_BLOCKED : STATUS_MONITORING, normalizedSource, sanitize(reason));
+                    normalizedIp, threshold <= 1 ? STATUS_BLOCKED : STATUS_MONITORING, normalizedSource, sanitize(reason));
             if (threshold <= 1) {
-                block(ipAddress, normalizedSource, blockMinutes, reason, null);
+                block(normalizedIp, normalizedSource, blockMinutes, reason, null);
             }
             return;
         }
@@ -79,12 +85,13 @@ public class IpBlacklistService {
                 blockMinutes,
                 entry.getId());
         if (shouldBlock && !STATUS_BLOCKED.equals(entry.getStatus())) {
-            recordBlockedAlert(ipAddress, normalizedSource, nextCount, blockMinutes, reason);
+            recordBlockedAlert(normalizedIp, normalizedSource, nextCount, blockMinutes, reason);
         }
     }
 
     public Optional<IpBlacklistEntry> findBlockingEntry(String ipAddress) {
-        if (!enabled() || isBlank(ipAddress) || isTrusted(ipAddress)) {
+        String normalizedIp = clientIpResolver.normalizeIpAddress(ipAddress);
+        if (!enabled() || isBlank(normalizedIp) || isTrusted(normalizedIp)) {
             return Optional.empty();
         }
         releaseExpired();
@@ -92,7 +99,7 @@ public class IpBlacklistService {
                 "SELECT * FROM ip_blacklist_entries WHERE ip_address = ? AND status = ? "
                         + "AND (blocked_until IS NULL OR blocked_until > NOW()) ORDER BY blocked_at DESC, id DESC LIMIT 1",
                 (rs, rowNum) -> mapEntry(rs),
-                ipAddress,
+                normalizedIp,
                 STATUS_BLOCKED);
         return rows.stream().findFirst();
     }
@@ -143,6 +150,9 @@ public class IpBlacklistService {
 
     public IpBlacklistEntry block(String ipAddress, String source, int minutes, String reason, String actor) {
         String normalizedIp = requireIp(ipAddress);
+        if (isTrusted(normalizedIp)) {
+            throw new IllegalArgumentException("Trusted IP address cannot be blocked");
+        }
         String normalizedSource = normalizeSource(source);
         int safeMinutes = minutes > 0 ? minutes : blockMinutes();
         Optional<IpBlacklistEntry> existing = findActiveByIpAndSource(normalizedIp, normalizedSource);
@@ -184,19 +194,48 @@ public class IpBlacklistService {
         return findById(id);
     }
 
+    public IpBlacklistBatchReleaseResponse releaseBatch(List<Long> ids, String actor) {
+        int requestedCount = ids == null ? 0 : ids.size();
+        List<Long> safeIds = normalizeIds(ids);
+        int released = updateReleaseBatch(safeIds, actor);
+        IpBlacklistBatchReleaseResponse response = new IpBlacklistBatchReleaseResponse();
+        response.setRequestedCount(requestedCount);
+        response.setReleasedCount(released);
+        response.setIgnoredCount(Math.max(0, requestedCount - safeIds.size()));
+        response.setMaxBatchSize(batchReleaseMaxSize());
+        response.setIds(safeIds);
+        return response;
+    }
+
     public String resolveClientIp(HttpServletRequest request) {
-        if (request == null) {
-            return "";
+        return clientIpResolver.resolve(request);
+    }
+
+    private int updateReleaseBatch(List<Long> ids, String actor) {
+        if (ids.isEmpty()) {
+            return 0;
         }
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (!isBlank(forwarded)) {
-            return forwarded.split(",")[0].trim();
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        List<Object> args = new ArrayList<>();
+        args.add(STATUS_RELEASED);
+        args.add(sanitize(actor));
+        args.addAll(ids);
+        args.add(STATUS_RELEASED);
+        return jdbcTemplate.update(
+                "UPDATE ip_blacklist_entries SET status = ?, released_at = NOW(), released_by = ?, updated_at = NOW() "
+                        + "WHERE id IN (" + placeholders + ") AND status <> ?",
+                args.toArray());
+    }
+
+    private List<Long> normalizeIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
         }
-        String realIp = request.getHeader("X-Real-IP");
-        if (!isBlank(realIp)) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr() == null ? "" : request.getRemoteAddr();
+        return ids.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .limit(batchReleaseMaxSize())
+                .collect(Collectors.toList());
     }
 
     private Optional<IpBlacklistEntry> findActiveByIpAndSource(String ipAddress, String source) {
@@ -276,6 +315,10 @@ public class IpBlacklistService {
         return Math.max(1, runtimeConfig.getInt("security.ip-blacklist.block-minutes", 60));
     }
 
+    private int batchReleaseMaxSize() {
+        return Math.max(1, Math.min(runtimeConfig.getInt("security.ip-blacklist.admin.batch-release-max-size", 100), 1000));
+    }
+
     private Set<String> pathPrefixes() {
         String configured = runtimeConfig.getString("security.ip-blacklist.path-prefixes",
                 "/auth/login,/auth/email-login,/auth/email-code,/payments,/orders/checkout/guest");
@@ -284,14 +327,15 @@ public class IpBlacklistService {
 
     private boolean isTrusted(String ipAddress) {
         String configured = runtimeConfig.getString("security.ip-blacklist.trusted-ips", "127.0.0.1,::1,0:0:0:0:0:0:0:1");
-        return Arrays.stream(configured.split(",")).map(String::trim).anyMatch(ipAddress::equals);
+        return clientIpResolver.matchesAny(ipAddress, configured);
     }
 
     private String requireIp(String ipAddress) {
-        if (isBlank(ipAddress) || ipAddress.length() > 45) {
+        String normalizedIp = clientIpResolver.normalizeIpAddress(ipAddress);
+        if (isBlank(normalizedIp)) {
             throw new IllegalArgumentException("Invalid IP address");
         }
-        return ipAddress.trim();
+        return normalizedIp;
     }
 
     private String normalizeSource(String source) {
@@ -318,7 +362,10 @@ public class IpBlacklistService {
         if (value == null) {
             return null;
         }
-        String normalized = value.replaceAll("[\\r\\n\\t]+", " ").replaceAll("\\s+", " ").trim();
+        String normalized = SensitiveDataMasker.mask(value)
+                .replaceAll("[\\r\\n\\t]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
         return normalized.length() > 500 ? normalized.substring(0, 500) : normalized;
     }
 

@@ -19,7 +19,7 @@ public class CdrResultZipService {
             for (Map.Entry<String, List<String>> entry : result.getFiles().entrySet()) {
                 addText(zip, entry.getKey() + ".txt", joinLines(entry.getValue()));
             }
-            addText(zip, "summary.txt", summary(result));
+            addText(zip, "summary.txt", summaryText(result));
         } finally {
             zip.close();
         }
@@ -43,12 +43,13 @@ public class CdrResultZipService {
         return builder.toString();
     }
 
-    private String summary(CdrRunResult result) {
+    public String summaryText(CdrRunResult result) {
         StringBuilder builder = new StringBuilder();
         builder.append("total=").append(result.getTotal()).append('\n');
         builder.append("failed=").append(result.getFailed()).append('\n');
         for (Map.Entry<String, List<String>> entry : result.getFiles().entrySet()) {
-            builder.append(entry.getKey()).append('=').append(entry.getValue().size()).append('\n');
+            List<String> lines = entry.getValue();
+            builder.append(entry.getKey()).append('=').append(lines == null ? 0 : lines.size()).append('\n');
         }
         return builder.toString();
     }

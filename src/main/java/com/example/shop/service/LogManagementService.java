@@ -17,15 +17,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -33,6 +36,9 @@ import java.util.stream.Stream;
 public class LogManagementService {
     private static final String DEFAULT_LOGGER = "com.example.shop";
     private static final String DEFAULT_LOG_FILE = "logs/shop-backend.log";
+    private static final int DEFAULT_MAX_RANGE_HOURS = 24;
+    private static final int DEFAULT_PREVIEW_MAX_LINES = 1000;
+    private static final int DEFAULT_MAX_DOWNLOAD_BYTES = 1024 * 1024;
     private static final DateTimeFormatter LOG_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
     private final LoggingSystem loggingSystem;
@@ -56,6 +62,10 @@ public class LogManagementService {
         response.setLogFileName(logFile.getFileName().toString());
         response.setAvailableFiles(listLogFiles(logFile.getParent()));
         response.setTotalLogBytes(listLogFilePaths(logFile.getParent()).stream().mapToLong(this::fileSize).sum());
+        response.setAllowedLoggerPrefixes(new ArrayList<>(allowedLoggerPrefixes()));
+        response.setMaxRangeHours(maxRangeHours());
+        response.setMaxPreviewLines(maxPreviewLines());
+        response.setMaxDownloadBytes(maxDownloadBytes());
         return response;
     }
 
@@ -70,22 +80,26 @@ public class LogManagementService {
     }
 
     public byte[] download(LocalDateTime start, LocalDateTime end, String keyword, String level) {
-        if (start == null || end == null || end.isBefore(start)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid log time range");
-        }
+        validateRange(start, end);
         List<Path> candidates = logCandidates();
         if (candidates.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No log files found");
         }
         try {
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            DownloadAccumulator output = new DownloadAccumulator(maxDownloadBytes());
             String normalizedKeyword = normalizeKeyword(keyword);
             String normalizedLevel = normalizeLogLevel(level);
             for (Path candidate : candidates) {
                 appendMatchingLines(candidate, start, end, normalizedKeyword, normalizedLevel, output);
+                if (output.isTruncated()) {
+                    break;
+                }
             }
             if (output.size() == 0) {
-                output.write(("# No logs found from " + start + " to " + end + System.lineSeparator()).getBytes(StandardCharsets.UTF_8));
+                output.addLine("# No logs found from " + start + " to " + end);
+            }
+            if (output.isTruncated()) {
+                output.addMarker("# Log download truncated at " + output.maxBytes() + " bytes");
             }
             return output.toByteArray();
         } catch (IOException e) {
@@ -94,10 +108,8 @@ public class LogManagementService {
     }
 
     public LogPreviewResponse preview(LocalDateTime start, LocalDateTime end, String keyword, String level, int limit) {
-        if (start == null || end == null || end.isBefore(start)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid log time range");
-        }
-        int safeLimit = Math.max(1, Math.min(limit <= 0 ? 200 : limit, 1000));
+        validateRange(start, end);
+        int safeLimit = Math.max(1, Math.min(limit <= 0 ? 200 : limit, maxPreviewLines()));
         List<Path> candidates = logCandidates();
         if (candidates.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No log files found");
@@ -119,7 +131,7 @@ public class LogManagementService {
         LogPreviewResponse response = new LogPreviewResponse();
         response.setStart(start.toString());
         response.setEnd(end.toString());
-        response.setKeyword(keyword == null ? "" : keyword.trim());
+        response.setKeyword(normalizedKeyword == null ? "" : normalizedKeyword);
         response.setLevel(normalizedLevel == null ? "ALL" : normalizedLevel);
         response.setLimit(safeLimit);
         response.setMatchedLines(accumulator.getMatchedLines());
@@ -140,7 +152,7 @@ public class LogManagementService {
         }
     }
 
-    private void appendMatchingLines(Path file, LocalDateTime start, LocalDateTime end, String keyword, String level, ByteArrayOutputStream output) throws IOException {
+    private void appendMatchingLines(Path file, LocalDateTime start, LocalDateTime end, String keyword, String level, DownloadAccumulator output) throws IOException {
         boolean includeContinuation = false;
         boolean includeCurrentEvent = false;
         try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
@@ -152,8 +164,10 @@ public class LogManagementService {
                     includeCurrentEvent = includeContinuation && matchesFilters(line, keyword, level);
                 }
                 if (includeContinuation && includeCurrentEvent) {
-                    output.write(line.getBytes(StandardCharsets.UTF_8));
-                    output.write(System.lineSeparator().getBytes(StandardCharsets.UTF_8));
+                    output.addLine(line);
+                    if (output.isTruncated()) {
+                        return;
+                    }
                 }
             }
         }
@@ -192,7 +206,11 @@ public class LogManagementService {
         if (keyword == null || keyword.trim().isEmpty()) {
             return null;
         }
-        return keyword.trim().toLowerCase(Locale.ROOT);
+        String normalized = keyword.replaceAll("[\\p{Cntrl}]+", " ").replaceAll("\\s+", " ").trim();
+        if (normalized.length() > 120) {
+            normalized = normalized.substring(0, 120);
+        }
+        return normalized.toLowerCase(Locale.ROOT);
     }
 
     private String normalizeLogLevel(String level) {
@@ -220,13 +238,19 @@ public class LogManagementService {
         }
         String normalized = loggerName.trim();
         if ("root".equalsIgnoreCase(normalized)) {
-            return LoggingSystem.ROOT_LOGGER_NAME;
+            normalized = LoggingSystem.ROOT_LOGGER_NAME;
+        }
+        if (!normalized.matches("[A-Za-z0-9_.\\-$]+")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid logger name");
+        }
+        if (!isAllowedLogger(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Logger is not allowed");
         }
         return normalized;
     }
 
     private Path resolveLogFile() {
-        String configuredName = environment.getProperty("logging.file.name", DEFAULT_LOG_FILE);
+        String configuredName = stringProperty("logging.file.name", DEFAULT_LOG_FILE);
         Path configuredPath = Paths.get(configuredName);
         if (!configuredPath.isAbsolute()) {
             configuredPath = Paths.get(System.getProperty("user.dir", ".")).resolve(configuredPath);
@@ -261,6 +285,62 @@ public class LogManagementService {
     private List<Path> logCandidates() {
         Path logFile = resolveLogFile();
         return listLogFilePaths(logFile.getParent());
+    }
+
+    private void validateRange(LocalDateTime start, LocalDateTime end) {
+        if (start == null || end == null || end.isBefore(start)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid log time range");
+        }
+        if (Duration.between(start, end).compareTo(Duration.ofHours(maxRangeHours())) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Log time range is too large");
+        }
+    }
+
+    private boolean isAllowedLogger(String loggerName) {
+        return allowedLoggerPrefixes().stream().anyMatch(prefix ->
+                LoggingSystem.ROOT_LOGGER_NAME.equals(prefix)
+                        ? LoggingSystem.ROOT_LOGGER_NAME.equals(loggerName)
+                        : loggerName.equals(prefix) || loggerName.startsWith(prefix + "."));
+    }
+
+    private Set<String> allowedLoggerPrefixes() {
+        String configured = stringProperty("admin.logs.allowed-logger-prefixes", DEFAULT_LOGGER);
+        Set<String> prefixes = Arrays.stream(configured.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isEmpty())
+                .map(item -> "root".equalsIgnoreCase(item) ? LoggingSystem.ROOT_LOGGER_NAME : item)
+                .filter(item -> item.matches("[A-Za-z0-9_.\\-$]+"))
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+        return prefixes.isEmpty() ? Set.of(DEFAULT_LOGGER) : prefixes;
+    }
+
+    private int maxRangeHours() {
+        return intProperty("admin.logs.max-range-hours", DEFAULT_MAX_RANGE_HOURS, 1, 168);
+    }
+
+    private int maxPreviewLines() {
+        return intProperty("admin.logs.preview-max-lines", DEFAULT_PREVIEW_MAX_LINES, 1, 5000);
+    }
+
+    private int maxDownloadBytes() {
+        return intProperty("admin.logs.max-download-bytes", DEFAULT_MAX_DOWNLOAD_BYTES, 1024, 20 * 1024 * 1024);
+    }
+
+    private String stringProperty(String key, String defaultValue) {
+        String value = environment.getProperty(key);
+        return value == null || value.trim().isEmpty() ? defaultValue : value.trim();
+    }
+
+    private int intProperty(String key, int defaultValue, int min, int max) {
+        String value = environment.getProperty(key);
+        if (value == null || value.trim().isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Math.max(min, Math.min(max, Integer.parseInt(value.trim())));
+        } catch (NumberFormatException ignored) {
+            return defaultValue;
+        }
     }
 
     private long lastModifiedTime(Path path) {
@@ -308,6 +388,49 @@ public class LogManagementService {
 
         private List<String> getLines() {
             return lines;
+        }
+    }
+
+    private static class DownloadAccumulator {
+        private final int maxBytes;
+        private final ByteArrayOutputStream output = new ByteArrayOutputStream();
+        private boolean truncated;
+
+        private DownloadAccumulator(int maxBytes) {
+            this.maxBytes = maxBytes;
+        }
+
+        private void addLine(String line) {
+            if (truncated) {
+                return;
+            }
+            byte[] bytes = (line + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
+            if (output.size() + bytes.length > maxBytes) {
+                truncated = true;
+                return;
+            }
+            output.write(bytes, 0, bytes.length);
+        }
+
+        private void addMarker(String line) {
+            byte[] bytes = (line + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
+            output.write(bytes, 0, bytes.length);
+        }
+
+        private int size() {
+            return output.size();
+        }
+
+        private int maxBytes() {
+            return maxBytes;
+        }
+
+        private boolean isTruncated() {
+            return truncated;
+        }
+
+        private byte[] toByteArray() {
+            return output.toByteArray();
         }
     }
 }

@@ -3,7 +3,7 @@ import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, message, Mod
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api';
-import type { Coupon, PetBirthdayCouponConfig, User } from '../types';
+import type { Coupon, CouponAdminSummary, PetBirthdayCouponConfig, User } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import './CouponManagement.css';
@@ -19,6 +19,7 @@ const CouponManagement: React.FC = () => {
   const [birthdayConfigLoading, setBirthdayConfigLoading] = useState(false);
   const [birthdayConfigSaving, setBirthdayConfigSaving] = useState(false);
   const [birthdayConfig, setBirthdayConfig] = useState<PetBirthdayCouponConfig | null>(null);
+  const [couponSummary, setCouponSummary] = useState<CouponAdminSummary | null>(null);
   const [couponSubmitting, setCouponSubmitting] = useState(false);
   const [grantSubmitting, setGrantSubmitting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -31,7 +32,7 @@ const CouponManagement: React.FC = () => {
   const couponType = Form.useWatch('couponType', form);
   const birthdayCouponType = Form.useWatch('couponType', birthdayConfigForm);
   const { formatMoney } = useMarket();
-  const couponOpsStats = useMemo(() => {
+  const localCouponOpsStats = useMemo(() => {
     const now = Date.now();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
     return coupons.reduce((stats, coupon) => {
@@ -51,6 +52,21 @@ const CouponManagement: React.FC = () => {
       return stats;
     }, { active: 0, publicActive: 0, expiringSoon: 0, lowRemaining: 0 });
   }, [coupons]);
+  const couponOpsStats = useMemo(() => couponSummary ? {
+    active: couponSummary.activeCoupons,
+    publicActive: couponSummary.publicActiveCoupons,
+    expiringSoon: couponSummary.expiringSoonCoupons,
+    lowRemaining: couponSummary.lowRemainingCoupons,
+  } : localCouponOpsStats, [couponSummary, localCouponOpsStats]);
+  const grantMaxUsers = Math.max(1, couponSummary?.maxGrantUsers || 100);
+  const couponNameMaxChars = Math.max(1, couponSummary?.nameMaxChars || 120);
+  const couponDescriptionMaxChars = Math.max(1, couponSummary?.descriptionMaxChars || 1000);
+  const totalQuantityMax = Math.max(1, couponSummary?.totalQuantityMax || 100000);
+  const summaryCheckedAt = useMemo(() => {
+    if (!couponSummary?.checkedAt) return null;
+    const checkedAt = dayjs(couponSummary.checkedAt);
+    return checkedAt.isValid() ? checkedAt.format('YYYY-MM-DD HH:mm') : couponSummary.checkedAt;
+  }, [couponSummary]);
 
   const loadCoupons = useCallback(async () => {
     setLoading(true);
@@ -63,6 +79,15 @@ const CouponManagement: React.FC = () => {
       setLoading(false);
     }
   }, [t]);
+
+  const loadCouponSummary = useCallback(async () => {
+    try {
+      const res = await adminApi.getCouponSummary();
+      setCouponSummary(res.data);
+    } catch {
+      setCouponSummary(null);
+    }
+  }, []);
 
   const loadUsers = async () => {
     try {
@@ -88,9 +113,10 @@ const CouponManagement: React.FC = () => {
 
   useEffect(() => {
     loadCoupons();
+    loadCouponSummary();
     loadUsers();
     loadBirthdayConfig();
-  }, [loadBirthdayConfig, loadCoupons]);
+  }, [loadBirthdayConfig, loadCouponSummary, loadCoupons]);
 
   const openCreate = () => {
     setEditingCoupon(null);
@@ -132,7 +158,7 @@ const CouponManagement: React.FC = () => {
         message.success(t('pages.adminCoupons.created'));
       }
       setModalVisible(false);
-      await loadCoupons();
+      await Promise.all([loadCoupons(), loadCouponSummary()]);
     } catch (error: any) {
       if (error?.errorFields) return;
       if (error?.response?.data?.error) {
@@ -149,7 +175,7 @@ const CouponManagement: React.FC = () => {
     try {
       await adminApi.deleteCoupon(id);
       message.success(t('pages.adminCoupons.deleted'));
-      await loadCoupons();
+      await Promise.all([loadCoupons(), loadCouponSummary()]);
     } catch (error: any) {
       message.error(error?.response?.data?.error || t('pages.adminCoupons.deleteFailed'));
     }
@@ -166,10 +192,10 @@ const CouponManagement: React.FC = () => {
     try {
       const values = await grantForm.validateFields();
       setGrantSubmitting(true);
-      const res = await adminApi.grantCoupon(grantCoupon.id, values.userIds);
+      const res = await adminApi.grantCoupon(grantCoupon.id, values.userIds, grantMaxUsers);
       message.success(t('pages.adminCoupons.granted', { count: res.data.granted }));
       setGrantVisible(false);
-      await loadCoupons();
+      await Promise.all([loadCoupons(), loadCouponSummary()]);
     } catch (error: any) {
       if (error?.errorFields) return;
       message.error(error?.response?.data?.error || t('pages.adminCoupons.grantFailed'));
@@ -183,7 +209,7 @@ const CouponManagement: React.FC = () => {
     try {
       const res = await adminApi.runPetBirthdayCoupons();
       message.success(t('pages.adminCoupons.petBirthdayGranted', { count: res.data.granted }));
-      await loadCoupons();
+      await Promise.all([loadCoupons(), loadCouponSummary()]);
     } catch (error: any) {
       message.error(error?.response?.data?.error || t('pages.adminCoupons.petBirthdayFailed'));
     } finally {
@@ -270,6 +296,11 @@ const CouponManagement: React.FC = () => {
           <span>{t('pages.adminCoupons.opsEyebrow')}</span>
           <h2>{t('pages.adminCoupons.opsTitle')}</h2>
           <p>{t('pages.adminCoupons.opsSubtitle')}</p>
+          {summaryCheckedAt ? (
+            <small className="coupon-management-insights__updated">
+              {t('pages.adminCoupons.opsCheckedAt', { time: summaryCheckedAt })}
+            </small>
+          ) : null}
         </div>
         <div className="coupon-management-insights__cards">
           <div>
@@ -370,8 +401,8 @@ const CouponManagement: React.FC = () => {
                 </Form.Item>
               </div>
               <div className="coupon-management-page__formRow">
-                <Form.Item name="totalQuantityPerCoupon" label={t('pages.adminCoupons.birthdayQuantityPerCoupon')}>
-                  <InputNumber min={1} />
+                <Form.Item name="totalQuantityPerCoupon" label={t('pages.adminCoupons.birthdayQuantityPerCoupon')} rules={[{ type: 'number', max: totalQuantityMax, message: t('pages.adminCoupons.issueQuantityMax', { count: totalQuantityMax }) }]}>
+                  <InputNumber min={1} max={totalQuantityMax} />
                 </Form.Item>
                 <div />
               </div>
@@ -390,14 +421,14 @@ const CouponManagement: React.FC = () => {
                 <Form.Item name="maxBenefitsPerUser" label={t('pages.adminCoupons.birthdayMaxPerUser')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayMaxPerUserRequired') }]}>
                   <InputNumber min={0} />
                 </Form.Item>
-                <Form.Item name="totalQuantityPerCoupon" label={t('pages.adminCoupons.birthdayQuantityPerCoupon')}>
-                  <InputNumber min={1} />
+                <Form.Item name="totalQuantityPerCoupon" label={t('pages.adminCoupons.birthdayQuantityPerCoupon')} rules={[{ type: 'number', max: totalQuantityMax, message: t('pages.adminCoupons.issueQuantityMax', { count: totalQuantityMax }) }]}>
+                  <InputNumber min={1} max={totalQuantityMax} />
                 </Form.Item>
               </div>
             </>
           )}
-          <Form.Item name="description" label={t('pages.adminCoupons.description')}>
-            <Input.TextArea rows={2} />
+          <Form.Item name="description" label={t('pages.adminCoupons.description')} rules={[{ max: couponDescriptionMaxChars, message: t('pages.adminCoupons.descriptionMaxLength', { count: couponDescriptionMaxChars }) }]}>
+            <Input.TextArea rows={2} maxLength={couponDescriptionMaxChars} showCount />
           </Form.Item>
           <Typography.Text type="secondary">
             {t('pages.adminCoupons.birthdayConfigHint')}
@@ -409,8 +440,8 @@ const CouponManagement: React.FC = () => {
 
       <Modal className="coupon-management-page__editorModal" title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')} open={modalVisible} onOk={submitCoupon} onCancel={() => setModalVisible(false)} confirmLoading={couponSubmitting} width={720}>
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label={t('pages.adminCoupons.name')} rules={[{ required: true, message: t('pages.adminCoupons.nameRequired') }]}>
-            <Input />
+          <Form.Item name="name" label={t('pages.adminCoupons.name')} rules={[{ required: true, message: t('pages.adminCoupons.nameRequired') }, { max: couponNameMaxChars, message: t('pages.adminCoupons.nameMaxLength', { count: couponNameMaxChars }) }]}>
+            <Input maxLength={couponNameMaxChars} showCount />
           </Form.Item>
           <Form.Item name="couponType" label={t('pages.adminCoupons.type')} rules={[{ required: true }]}>
             <Select
@@ -441,14 +472,14 @@ const CouponManagement: React.FC = () => {
                 <Form.Item name="maxDiscountAmount" label={t('pages.adminCoupons.maxDiscountLabel')}>
                   <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} />
                 </Form.Item>
-                <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')}>
-                  <InputNumber min={1} />
+                <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')} rules={[{ type: 'number', max: totalQuantityMax, message: t('pages.adminCoupons.issueQuantityMax', { count: totalQuantityMax }) }]}>
+                  <InputNumber min={1} max={totalQuantityMax} />
                 </Form.Item>
               </>
             ) : (
               <>
-                <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')}>
-                  <InputNumber min={1} />
+                <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')} rules={[{ type: 'number', max: totalQuantityMax, message: t('pages.adminCoupons.issueQuantityMax', { count: totalQuantityMax }) }]}>
+                  <InputNumber min={1} max={totalQuantityMax} />
                 </Form.Item>
                 <div />
               </>
@@ -463,8 +494,8 @@ const CouponManagement: React.FC = () => {
           <Form.Item name="validRange" label={t('pages.adminCoupons.validTime')}>
             <DatePicker.RangePicker showTime className="coupon-management-page__rangePicker" />
           </Form.Item>
-          <Form.Item name="description" label={t('pages.adminCoupons.description')}>
-            <Input.TextArea rows={3} />
+          <Form.Item name="description" label={t('pages.adminCoupons.description')} rules={[{ max: couponDescriptionMaxChars, message: t('pages.adminCoupons.descriptionMaxLength', { count: couponDescriptionMaxChars }) }]}>
+            <Input.TextArea rows={3} maxLength={couponDescriptionMaxChars} showCount />
           </Form.Item>
         </Form>
       </Modal>
@@ -476,11 +507,29 @@ const CouponManagement: React.FC = () => {
             showIcon
             style={{ marginBottom: 16 }}
             message={t('pages.adminCoupons.grantHelpTitle')}
-            description={t('pages.adminCoupons.grantHelpDescription')}
+            description={(
+              <Space direction="vertical" size={6}>
+                <span>{t('pages.adminCoupons.grantHelpDescription')}</span>
+                <Tag color="blue">{t('pages.adminCoupons.grantLimit', { count: grantMaxUsers })}</Tag>
+              </Space>
+            )}
           />
-          <Form.Item name="userIds" label={t('pages.adminCoupons.users')} rules={[{ required: true, message: t('pages.adminCoupons.selectUsers') }]}>
+          <Form.Item
+            name="userIds"
+            label={t('pages.adminCoupons.users')}
+            rules={[
+              { required: true, message: t('pages.adminCoupons.selectUsers') },
+              {
+                validator: (_, value: number[] = []) => {
+                  if (!value?.length || value.length <= grantMaxUsers) return Promise.resolve();
+                  return Promise.reject(new Error(t('pages.adminCoupons.grantLimitExceeded', { count: grantMaxUsers })));
+                },
+              },
+            ]}
+          >
             <Select
               mode="multiple"
+              maxTagCount="responsive"
               options={users.map((user) => ({ value: user.id, label: `${user.username} (#${user.id})` }))}
               placeholder={t('pages.adminCoupons.selectTargetUsers')}
             />
