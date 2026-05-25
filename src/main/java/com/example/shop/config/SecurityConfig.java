@@ -95,7 +95,7 @@ public class SecurityConfig {
             .anyRequest().authenticated()
             .and()
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(ipBlacklistFilter, RateLimitFilter.class)
+            .addFilterBefore(ipBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(rateLimitFilter, BasicAuthenticationFilter.class);
 
         return http.build();
