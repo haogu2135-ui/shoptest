@@ -809,6 +809,39 @@ const ProductManagement: React.FC = () => {
     message.success(t('pages.productAdmin.importTemplateDownloaded'));
   };
 
+  const downloadPriceStockUpdateTemplate = () => {
+    const selectedIdSet = new Set(
+      selectedProductIds
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id))
+    );
+    const sourceProducts = selectedIdSet.size > 0
+      ? products.filter((product) => selectedIdSet.has(Number(product.id)))
+      : filteredProducts;
+    if (sourceProducts.length === 0) {
+      message.warning(t('pages.productAdmin.exportEmpty'));
+      return;
+    }
+    const headers = ['id', 'price', 'stock'];
+    const rows = sourceProducts.map((product) => [
+      product.id,
+      product.price,
+      product.stock,
+    ]);
+    const csv = [
+      csvRow(headers),
+      ...rows.map(csvRow),
+    ].join('\r\n');
+    const blob = new Blob(['\uFEFF', `${csv}\r\n`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `product-price-stock-update-${dayjs().format('YYYYMMDD-HHmm')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    message.success(t('pages.productAdmin.importUpdateTemplateDownloaded', { count: sourceProducts.length }));
+  };
+
   const exportFilteredProducts = () => {
     if (filteredProducts.length === 0) {
       message.warning(t('pages.productAdmin.exportEmpty'));
@@ -1297,6 +1330,15 @@ const ProductManagement: React.FC = () => {
           <Button icon={<DownloadOutlined />} onClick={downloadImportTemplate}>
             {t('pages.productAdmin.downloadTemplate')}
           </Button>
+          <Tooltip title={t('pages.productAdmin.importUpdateTemplateHint')}>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={downloadPriceStockUpdateTemplate}
+              disabled={selectedProductIds.length === 0 && filteredProducts.length === 0}
+            >
+              {t('pages.productAdmin.downloadUpdateTemplate')}
+            </Button>
+          </Tooltip>
           <Button icon={<DownloadOutlined />} onClick={exportFilteredProducts} disabled={filteredProducts.length === 0}>
             {t('pages.productAdmin.exportProducts')}
           </Button>
