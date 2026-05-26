@@ -438,6 +438,7 @@ public class ProductServiceImpl implements ProductService {
         Set<String> importedTargetIdentities = new HashSet<>();
         Set<String> importedVariantSkus = new HashSet<>();
         ImportCategoryLookup categoryLookup = loadImportCategoryLookup();
+        Map<String, Set<Long>> existingVariantSkuOwners = loadExistingVariantSkuOwners();
         List<ProductImportRow> importRows = new ArrayList<>();
         try (BufferedReader reader = importCsvReader(file)) {
             List<CsvUtils.Record> records = CsvUtils.parseRecords(reader);
@@ -507,6 +508,7 @@ public class ProductServiceImpl implements ProductService {
                     validateImportedProduct(product, importedIds, categoryLookup, updateFields, existingProduct != null);
                     validateImportTargetIdentity(existingProduct, product, importedTargetIdentities, updateFields);
                     validateImportVariantSkusAcrossFile(product.getVariants(), importedVariantSkus);
+                    validateImportVariantSkusAgainstExisting(product.getVariants(), existingVariantSkuOwners, existingProduct == null ? null : existingProduct.getId());
                     validateMergedImportUpdate(existingProduct, product, updateFields);
                     validateImportProductNameDoesNotDuplicateExisting(existingProduct, product, updateFields);
                     if (existingProduct != null) {
@@ -1308,6 +1310,66 @@ public class ProductServiceImpl implements ProductService {
                 throw new IllegalArgumentException("variants sku appears more than once in this import file");
             }
         }
+    }
+
+    private void validateImportVariantSkusAgainstExisting(String value, Map<String, Set<Long>> existingVariantSkuOwners, Long currentProductId) {
+        JsonNode variants = validateImportJsonArray(value, "variants", 200);
+        if (variants == null || existingVariantSkuOwners == null || existingVariantSkuOwners.isEmpty()) {
+            return;
+        }
+        for (JsonNode variant : variants) {
+            if (variant == null || !variant.isObject()) {
+                continue;
+            }
+            String sku = jsonText(variant.get("sku"));
+            if (sku == null || sku.isBlank()) {
+                continue;
+            }
+            Set<Long> owners = existingVariantSkuOwners.get(normalizeImportSkuKey(sku));
+            if (owners == null || owners.isEmpty()) {
+                continue;
+            }
+            boolean usedByAnotherProduct = owners.stream()
+                    .anyMatch(ownerId -> currentProductId == null || !currentProductId.equals(ownerId));
+            if (usedByAnotherProduct) {
+                throw new IllegalArgumentException("variants sku already exists on another product: " + normalizeImportText(sku));
+            }
+        }
+    }
+
+    private Map<String, Set<Long>> loadExistingVariantSkuOwners() {
+        if (productRepository == null) {
+            return Map.of();
+        }
+        List<Product> products = productRepository.findAll();
+        if (products == null || products.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Set<Long>> owners = new LinkedHashMap<>();
+        for (Product product : products) {
+            if (product == null || product.getId() == null || product.getVariants() == null || product.getVariants().isBlank()) {
+                continue;
+            }
+            try {
+                JsonNode variants = OBJECT_MAPPER.readTree(product.getVariants());
+                if (variants == null || !variants.isArray()) {
+                    continue;
+                }
+                for (JsonNode variant : variants) {
+                    if (variant == null || !variant.isObject()) {
+                        continue;
+                    }
+                    String sku = jsonText(variant.get("sku"));
+                    if (sku == null || sku.isBlank()) {
+                        continue;
+                    }
+                    owners.computeIfAbsent(normalizeImportSkuKey(sku), ignored -> new LinkedHashSet<>()).add(product.getId());
+                }
+            } catch (Exception ignored) {
+                // Existing malformed variant data should not block unrelated imports.
+            }
+        }
+        return owners;
     }
 
     private String normalizeImportSkuKey(String sku) {

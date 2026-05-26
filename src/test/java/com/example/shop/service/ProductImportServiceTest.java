@@ -1345,6 +1345,64 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsImportedVariantSkuThatAlreadyExistsOnAnotherProduct() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product existing = new Product();
+        existing.setId(10L);
+        existing.setVariants("[{\"sku\":\"SKU-100\",\"options\":{\"Size\":\"S\"},\"price\":19.99,\"stock\":2}]");
+        when(productRepository.findAll()).thenReturn(List.of(existing));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryId,variants\n"
+                        + "Leash,Strong,9.99,5,1,\"[{\"\"sku\"\":\"\" sku-100 \"\",\"\"options\"\":{\"\"Size\"\":\"\"M\"\"},\"\"price\"\":9.99,\"\"stock\"\":3}]\"\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals("variants", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("sku already exists on another product"));
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertFalse(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void allowsExistingProductToKeepOwnVariantSkuDuringUpdate() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product existing = new Product();
+        existing.setId(10L);
+        existing.setName("Harness");
+        existing.setPrice(new BigDecimal("19.99"));
+        existing.setStock(8);
+        existing.setCategoryId(1L);
+        existing.setVariants("[{\"sku\":\"SKU-100\",\"options\":{\"Size\":\"S\"},\"price\":19.99,\"stock\":2}]");
+        when(productRepository.findAll()).thenReturn(List.of(existing));
+        when(productRepository.findById(10L)).thenReturn(java.util.Optional.of(existing));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,variants\n"
+                        + "10,\"[{\"\"sku\"\":\"\" sku-100 \"\",\"\"options\"\":{\"\"Size\"\":\"\"S\"\"},\"\"price\"\":18.99,\"\"stock\"\":4}]\"\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertTrue(result.isApplied());
+        assertEquals(1, result.getUpdated());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        assertTrue(captor.getValue().getVariants().contains("sku-100"));
+    }
+
+    @Test
     void rejectsImportedVariantPricesWithMoreThanTwoDecimalsBeforeSavingRow() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
