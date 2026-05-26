@@ -63,6 +63,19 @@ public class ProductServiceImpl implements ProductService {
             "limitedtimeendat", "tag", "images", "specifications", "detailcontent", "warranty",
             "shipping", "status", "freeshipping", "freeshippingthreshold", "variants"
     );
+    private static final Map<String, String> IMPORT_HEADER_DISPLAY_NAMES = Map.ofEntries(
+            Map.entry("categoryid", "categoryId"),
+            Map.entry("categoryname", "categoryName"),
+            Map.entry("imageurl", "imageUrl"),
+            Map.entry("isfeatured", "isFeatured"),
+            Map.entry("originalprice", "originalPrice"),
+            Map.entry("limitedtimeprice", "limitedTimePrice"),
+            Map.entry("limitedtimestartat", "limitedTimeStartAt"),
+            Map.entry("limitedtimeendat", "limitedTimeEndAt"),
+            Map.entry("detailcontent", "detailContent"),
+            Map.entry("freeshipping", "freeShipping"),
+            Map.entry("freeshippingthreshold", "freeShippingThreshold")
+    );
     private static final Map<String, String> IMPORT_HEADER_ALIASES = Map.ofEntries(
             Map.entry("title", "name"),
             Map.entry("productname", "name"),
@@ -397,6 +410,15 @@ public class ProductServiceImpl implements ProductService {
                 }
                 if (i == 0 && isProductImportHeader(values)) {
                     headerIndex = productImportHeaderIndex(values);
+                    List<String> duplicateHeaders = duplicateImportHeaders(values);
+                    if (!duplicateHeaders.isEmpty()) {
+                        result.addError(
+                                rowNumber,
+                                duplicateHeaders.size() == 1 ? duplicateHeaders.get(0) : null,
+                                "CSV header contains duplicate import columns: " + String.join(", ", duplicateHeaders)
+                        );
+                        break;
+                    }
                     List<String> missingHeaders = missingRequiredImportHeaders(headerIndex);
                     if (!missingHeaders.isEmpty()) {
                         result.addError(rowNumber, "CSV header missing required columns: " + String.join(", ", missingHeaders));
@@ -522,6 +544,21 @@ public class ProductServiceImpl implements ProductService {
         return index;
     }
 
+    private List<String> duplicateImportHeaders(List<String> values) {
+        Set<String> seen = new HashSet<>();
+        Set<String> duplicates = new LinkedHashSet<>();
+        for (String value : values) {
+            String header = normalizeImportHeader(value);
+            if (header.isEmpty() || !SUPPORTED_IMPORT_HEADERS.contains(header)) {
+                continue;
+            }
+            if (!seen.add(header)) {
+                duplicates.add(displayImportHeader(header));
+            }
+        }
+        return new ArrayList<>(duplicates);
+    }
+
     private String normalizeImportHeader(String header) {
         if (header == null) {
             return "";
@@ -547,10 +584,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private String displayImportHeader(String normalizedHeader) {
-        if ("categoryid".equals(normalizedHeader)) {
-            return "categoryId";
-        }
-        return normalizedHeader;
+        return IMPORT_HEADER_DISPLAY_NAMES.getOrDefault(normalizedHeader, normalizedHeader);
     }
 
     private void saveImportRow(ProductImportRow row) {

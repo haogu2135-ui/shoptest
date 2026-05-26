@@ -273,6 +273,29 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsDuplicateImportHeadersAfterAliasNormalization() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,price,sale price,stock,categoryId\n"
+                        + "Harness,19.99,29.99,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals(0, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertTrue(result.getErrors().get(0).contains("duplicate import columns: price"));
+        assertEquals("price", result.getRowErrors().get(0).getField());
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertFalse(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void normalizesImportedTextAndStatusBeforeSaving() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
