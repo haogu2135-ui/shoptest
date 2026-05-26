@@ -119,7 +119,7 @@ class ProductImportServiceTest {
                 "file",
                 "products.csv",
                 "text/csv",
-                "id,name,description,price,stock,categoryId\n1,Harness,Safe,19.99,8,1\n2,Leash,Strong,9.99,5,1\n"
+                "id,name,description,price,stock,categoryId\n,Harness,Safe,19.99,8,1\n,Leash,Strong,9.99,5,1\n"
                         .getBytes(StandardCharsets.UTF_8)
         );
 
@@ -868,7 +868,7 @@ class ProductImportServiceTest {
     }
 
     @Test
-    void rejectsLightweightUpdateRowsThatWouldCreateIncompleteProducts() {
+    void rejectsLightweightUpdateRowsWithUnknownProductIds() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         when(productRepository.findById(404L)).thenReturn(java.util.Optional.empty());
         MockMultipartFile file = new MockMultipartFile(
@@ -886,8 +886,33 @@ class ProductImportServiceTest {
         assertEquals(1, result.getFailed());
         assertEquals(0, result.getCreated());
         assertEquals(0, result.getUpdated());
-        assertEquals("name", result.getRowErrors().get(0).getField());
-        assertTrue(result.getErrors().get(0).contains("name is required"));
+        assertEquals("id", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("id does not exist: 404"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsFullCreateRowsWithUnknownProductIds() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        when(productRepository.findById(404L)).thenReturn(java.util.Optional.empty());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + "404,Harness,Safe,19.99,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals(0, result.getCreated());
+        assertEquals("id", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("Leave id blank to create a new product"));
         assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
         assertFalse(result.isApplied());
         verify(productRepository, never()).save(any());

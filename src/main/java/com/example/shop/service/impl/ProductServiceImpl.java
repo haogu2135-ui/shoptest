@@ -495,9 +495,12 @@ public class ProductServiceImpl implements ProductService {
                     populateImportUpdateFields(result, updateFields);
                     Product existingProduct = null;
                     if (product.getId() != null) {
+                        requirePositive(product.getId(), "id");
                         Optional<Product> existing = productRepository.findById(product.getId());
                         if (existing.isPresent()) {
                             existingProduct = existing.get();
+                        } else {
+                            throw new IllegalArgumentException("id does not exist: " + product.getId() + ". Leave id blank to create a new product.");
                         }
                     }
                     validateImportedProduct(product, importedIds, categoryLookup, updateFields, existingProduct != null);
