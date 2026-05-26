@@ -160,6 +160,36 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void importsCsvWithCommonSpreadsheetHeaderAliases() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("Title,Product Description,Sale Price,Inventory,Category ID,Image URL,Compare At Price,Featured\n"
+                        + "Harness,Safe fit,19.99,8,1,https://example.com/harness.jpg,29.99,true\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(0, result.getFailed());
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("Harness", saved.getName());
+        assertEquals("Safe fit", saved.getDescription());
+        assertEquals("19.99", saved.getPrice().toPlainString());
+        assertEquals(8, saved.getStock());
+        assertEquals(1L, saved.getCategoryId());
+        assertEquals("https://example.com/harness.jpg", saved.getImageUrl());
+        assertEquals("29.99", saved.getOriginalPrice().toPlainString());
+        assertTrue(saved.getIsFeatured());
+    }
+
+    @Test
     void rejectsNamedHeaderCsvWhenRequiredColumnsAreMissing() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(

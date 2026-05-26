@@ -62,6 +62,38 @@ public class ProductServiceImpl implements ProductService {
             "limitedtimeendat", "tag", "images", "specifications", "detailcontent", "warranty",
             "shipping", "status", "freeshipping", "freeshippingthreshold", "variants"
     );
+    private static final Map<String, String> IMPORT_HEADER_ALIASES = Map.ofEntries(
+            Map.entry("title", "name"),
+            Map.entry("productname", "name"),
+            Map.entry("producttitle", "name"),
+            Map.entry("body", "description"),
+            Map.entry("bodyhtml", "description"),
+            Map.entry("productdescription", "description"),
+            Map.entry("saleprice", "price"),
+            Map.entry("sellingprice", "price"),
+            Map.entry("inventory", "stock"),
+            Map.entry("inventoryquantity", "stock"),
+            Map.entry("quantity", "stock"),
+            Map.entry("qty", "stock"),
+            Map.entry("category", "categoryid"),
+            Map.entry("collectionid", "categoryid"),
+            Map.entry("mainimage", "imageurl"),
+            Map.entry("image", "imageurl"),
+            Map.entry("imageurl", "imageurl"),
+            Map.entry("featured", "isfeatured"),
+            Map.entry("compareatprice", "originalprice"),
+            Map.entry("compareprice", "originalprice"),
+            Map.entry("msrp", "originalprice"),
+            Map.entry("limitedprice", "limitedtimeprice"),
+            Map.entry("limitedstart", "limitedtimestartat"),
+            Map.entry("limitedend", "limitedtimeendat"),
+            Map.entry("detail", "detailcontent"),
+            Map.entry("details", "detailcontent"),
+            Map.entry("richdetail", "detailcontent"),
+            Map.entry("freeshippingmin", "freeshippingthreshold"),
+            Map.entry("shippingthreshold", "freeshippingthreshold"),
+            Map.entry("options", "variants")
+    );
     private static final Pattern IPV4_HOST_PATTERN = Pattern.compile("^\\d{1,3}(?:\\.\\d{1,3}){3}$");
     private static final Pattern IPV6_HOST_PATTERN = Pattern.compile("^[0-9a-fA-F:]+$");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -488,7 +520,15 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private String normalizeImportHeader(String header) {
-        return header == null ? "" : header.trim().replace("\uFEFF", "").toLowerCase(Locale.ROOT);
+        if (header == null) {
+            return "";
+        }
+        String normalized = header.trim().replace("\uFEFF", "").toLowerCase(Locale.ROOT);
+        String compact = normalized.replaceAll("[^a-z0-9]", "");
+        if (compact.isBlank()) {
+            return "";
+        }
+        return IMPORT_HEADER_ALIASES.getOrDefault(compact, compact);
     }
 
     private List<String> missingRequiredImportHeaders(Map<String, Integer> headerIndex) {
