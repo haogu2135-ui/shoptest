@@ -1680,7 +1680,7 @@
       "filterCategory": "筛选分类",
       "addProduct": "添加商品",
       "importProducts": "导入商品",
-      "importCsvHint": "CSV 导入支持逗号或分号分隔、带引号的分隔符和换行字段。分类可填 categoryId，也可填 categoryName/分类路径；预检整份文件后再确认写入。",
+      "importCsvHint": "CSV 导入支持逗号或分号分隔、小数点或小数逗号金额、带引号的分隔符和换行字段。分类可填 categoryId，也可填 categoryName/分类路径；预检整份文件后再确认写入。",
       "downloadTemplate": "CSV 模板",
       "importTemplateDownloaded": "商品导入模板已下载",
       "downloadUpdateTemplate": "价格/库存更新表",

@@ -1185,7 +1185,7 @@ public class ProductServiceImpl implements ProductService {
             return null;
         }
         try {
-            BigDecimal decimal = new BigDecimal(value);
+            BigDecimal decimal = new BigDecimal(normalizeImportDecimalText(value));
             validateImportMoneyAmount(decimal, field);
             return decimal;
         } catch (NumberFormatException ex) {
@@ -1428,12 +1428,20 @@ public class ProductServiceImpl implements ProductService {
             return null;
         }
         try {
-            BigDecimal decimal = new BigDecimal(value);
+            BigDecimal decimal = new BigDecimal(normalizeImportDecimalText(value));
             validateImportMoneyAmount(decimal, field);
             return decimal;
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException(field + " must be a decimal number");
         }
+    }
+
+    private String normalizeImportDecimalText(String value) {
+        String trimmed = value == null ? "" : value.trim();
+        if (!trimmed.contains(".") && trimmed.matches("[+-]?\\d+,\\d{1,2}")) {
+            return trimmed.replace(',', '.');
+        }
+        return trimmed;
     }
 
     private void validateImportMoneyAmount(BigDecimal value, String field) {

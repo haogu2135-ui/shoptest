@@ -1808,7 +1808,7 @@
       "filterCategory": "Filter category",
       "addProduct": "Add product",
       "importProducts": "Import products",
-      "importCsvHint": "CSV import supports comma or semicolon separators, quoted delimiters, and line breaks. Use either categoryId or categoryName/category path; preflight validates the whole file before confirmation.",
+      "importCsvHint": "CSV import supports comma or semicolon separators, decimal dot or decimal comma money, quoted delimiters, and line breaks. Use either categoryId or categoryName/category path; preflight validates the whole file before confirmation.",
       "downloadTemplate": "Download template",
       "importTemplateDownloaded": "Product import template downloaded",
       "downloadUpdateTemplate": "Price/stock update CSV",

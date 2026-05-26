@@ -191,6 +191,33 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void importsDecimalCommaMoneyFromSpreadsheetExport() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name;description;price;stock;categoryName;originalPrice;limitedTimePrice;freeShipping;freeShippingThreshold\n"
+                        + "Harness;Safe;19,99;8;Harnesses;29,90;17,50;true;49,99\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(0, result.getFailed());
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals(new BigDecimal("19.99"), saved.getPrice());
+        assertEquals(new BigDecimal("29.90"), saved.getOriginalPrice());
+        assertEquals(new BigDecimal("17.50"), saved.getLimitedTimePrice());
+        assertTrue(saved.getFreeShipping());
+        assertEquals(new BigDecimal("49.99"), saved.getFreeShippingThreshold());
+    }
+
+    @Test
     void importsCsvWithCommonSpreadsheetHeaderAliases() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
@@ -912,6 +939,28 @@ class ProductImportServiceTest {
         assertEquals(1, result.getFailed());
         assertEquals("price", result.getRowErrors().get(0).getField());
         assertTrue(result.getErrors().get(0).contains("price must be 99999999.99 or less"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsAmbiguousCommaThousandsMoneyBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id;name;description;price;stock;categoryId\n"
+                        + ";Harness;Safe;1,234;8;1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("price", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("price must be a decimal number"));
         assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
         assertFalse(result.isApplied());
         verify(productRepository, never()).save(any());
