@@ -810,7 +810,7 @@ public class AdminController {
     // ==================== Product Import ====================
 
     @PostMapping(value = "/products/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProductImportResult> previewImportProducts(@RequestParam("file") MultipartFile file,
+    public ResponseEntity<ProductImportResult> previewImportProducts(@RequestParam(value = "file", required = false) MultipartFile file,
                                                                      Authentication authentication,
                                                                      HttpServletRequest request) {
         if (file == null || file.isEmpty()) {
@@ -827,7 +827,7 @@ public class AdminController {
     }
 
     @PostMapping(value = "/products/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProductImportResult> importProducts(@RequestParam("file") MultipartFile file,
+    public ResponseEntity<ProductImportResult> importProducts(@RequestParam(value = "file", required = false) MultipartFile file,
                                                               Authentication authentication,
                                                               HttpServletRequest request) {
         if (file == null || file.isEmpty()) {

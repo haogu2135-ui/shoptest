@@ -108,6 +108,68 @@ class AdminControllerProductImportAuditTest {
     }
 
     @Test
+    void previewImportAuditsMissingFileAsPreviewBlocked() {
+        Authentication authentication = mock(Authentication.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+
+        ResponseEntity<ProductImportResult> response = controller.previewImportProducts(null, authentication, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ProductImportResult body = response.getBody();
+        assertTrue(body.isPreview());
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, body.getStatus());
+        assertEquals(1, body.getFailed());
+        assertEquals("CSV file is required", body.getRowErrors().get(0).getMessage());
+        verify(auditLogService).record(
+                eq("PRODUCT_IMPORT_PREVIEW"),
+                eq("FAILURE"),
+                same(authentication),
+                eq("PRODUCT_IMPORT"),
+                isNull(),
+                same(request),
+                eq("Product import preview found errors"),
+                metadata.capture()
+        );
+        assertTrue(metadata.getValue().contains("preview=true"));
+        assertTrue(metadata.getValue().contains("status=" + ProductImportResult.STATUS_PREVIEW_BLOCKED));
+        assertTrue(metadata.getValue().contains("filename="));
+        assertTrue(metadata.getValue().contains("sizeBytes=0"));
+        assertTrue(metadata.getValue().contains("failed=1"));
+    }
+
+    @Test
+    void applyImportAuditsMissingFileAsRejected() {
+        Authentication authentication = mock(Authentication.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+
+        ResponseEntity<ProductImportResult> response = controller.importProducts(null, authentication, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ProductImportResult body = response.getBody();
+        assertFalse(body.isPreview());
+        assertEquals(ProductImportResult.STATUS_REJECTED, body.getStatus());
+        assertEquals(1, body.getFailed());
+        assertEquals("CSV file is required", body.getRowErrors().get(0).getMessage());
+        verify(auditLogService).record(
+                eq("PRODUCT_IMPORT_APPLY"),
+                eq("FAILURE"),
+                same(authentication),
+                eq("PRODUCT_IMPORT"),
+                isNull(),
+                same(request),
+                eq("Product import rejected"),
+                metadata.capture()
+        );
+        assertTrue(metadata.getValue().contains("preview=false"));
+        assertTrue(metadata.getValue().contains("status=" + ProductImportResult.STATUS_REJECTED));
+        assertTrue(metadata.getValue().contains("filename="));
+        assertTrue(metadata.getValue().contains("sizeBytes=0"));
+        assertTrue(metadata.getValue().contains("failed=1"));
+    }
+
+    @Test
     void importAuditMetadataEscapesFilenamesForHistoryParsing() {
         MockMultipartFile file = csvFile("products + summer;v=2.csv");
         ProductImportResult result = new ProductImportResult();
