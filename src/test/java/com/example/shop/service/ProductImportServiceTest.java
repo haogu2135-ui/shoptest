@@ -803,6 +803,29 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsImportedCategoryIdWhenNoCategoriesExist() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        when(categoryRepository.findAll()).thenReturn(List.of());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,Safe,19.99,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("categoryId", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("categoryId does not exist: 1"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsNegativePriceBeforeSavingRow() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(

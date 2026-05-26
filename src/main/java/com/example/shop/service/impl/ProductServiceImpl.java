@@ -489,7 +489,7 @@ public class ProductServiceImpl implements ProductService {
                             existingProduct = existing.get();
                         }
                     }
-                    validateImportedProduct(product, importedIds, categoryLookup.ids, updateFields, existingProduct != null);
+                    validateImportedProduct(product, importedIds, categoryLookup, updateFields, existingProduct != null);
                     validateMergedImportUpdate(existingProduct, product, updateFields);
                     if (existingProduct != null) {
                         result.setUpdated(result.getUpdated() + 1);
@@ -797,7 +797,7 @@ public class ProductServiceImpl implements ProductService {
             registerImportCategoryName(names, ambiguousNames, namesById, category.getName(), category.getId());
             registerImportCategoryName(names, ambiguousNames, namesById, importCategoryPath(category, byId), category.getId());
         }
-        return new ImportCategoryLookup(ids, names, namesById, ambiguousNames);
+        return new ImportCategoryLookup(ids, names, namesById, ambiguousNames, true);
     }
 
     private void registerImportCategoryName(Map<String, Long> names, Set<String> ambiguousNames, Map<Long, Set<String>> namesById, String value, Long id) {
@@ -885,7 +885,7 @@ public class ProductServiceImpl implements ProductService {
                 .toLowerCase(Locale.ROOT);
     }
 
-    private void validateImportedProduct(Product product, Set<Long> importedIds, Set<Long> categoryIds, Set<String> updateFields, boolean existingProduct) {
+    private void validateImportedProduct(Product product, Set<Long> importedIds, ImportCategoryLookup categoryLookup, Set<String> updateFields, boolean existingProduct) {
         if (product.getId() != null) {
             requirePositive(product.getId(), "id");
             if (!importedIds.add(product.getId())) {
@@ -933,7 +933,10 @@ public class ProductServiceImpl implements ProductService {
         if (product.getCategoryId() != null && product.getCategoryId() <= 0) {
             throw new IllegalArgumentException("categoryId must be a positive category id");
         }
-        if (product.getCategoryId() != null && categoryIds != null && !categoryIds.isEmpty() && !categoryIds.contains(product.getCategoryId())) {
+        if (product.getCategoryId() != null
+                && categoryLookup != null
+                && categoryLookup.validateIds
+                && !categoryLookup.ids.contains(product.getCategoryId())) {
             throw new IllegalArgumentException("categoryId does not exist: " + product.getCategoryId());
         }
         validateImportImageUrl(product.getImageUrl(), "imageUrl");
@@ -1633,16 +1636,18 @@ public class ProductServiceImpl implements ProductService {
         private final Map<String, Long> names;
         private final Map<Long, Set<String>> namesById;
         private final Set<String> ambiguousNames;
+        private final boolean validateIds;
 
-        private ImportCategoryLookup(Set<Long> ids, Map<String, Long> names, Map<Long, Set<String>> namesById, Set<String> ambiguousNames) {
+        private ImportCategoryLookup(Set<Long> ids, Map<String, Long> names, Map<Long, Set<String>> namesById, Set<String> ambiguousNames, boolean validateIds) {
             this.ids = ids;
             this.names = names;
             this.namesById = namesById;
             this.ambiguousNames = ambiguousNames;
+            this.validateIds = validateIds;
         }
 
         private static ImportCategoryLookup empty() {
-            return new ImportCategoryLookup(Set.of(), Map.of(), Map.of(), Set.of());
+            return new ImportCategoryLookup(Set.of(), Map.of(), Map.of(), Set.of(), false);
         }
     }
 
