@@ -273,12 +273,12 @@ const getListingQualityIssues = (product: Product): ListingQualityIssue[] => {
   return issues;
 };
 
-const formatImportUpdateFields = (fields?: string[]) => {
+const formatImportUpdateFields = (fields?: string[], labels: Record<string, string> = {}) => {
   const normalized = Array.isArray(fields)
     ? fields.map((field) => String(field || '').trim()).filter(Boolean)
     : [];
   if (normalized.length === 0) return '';
-  const visibleFields = normalized.slice(0, 6).join(', ');
+  const visibleFields = normalized.slice(0, 6).map((field) => labels[field] || field).join(', ');
   return normalized.length > 6 ? `${visibleFields} +${normalized.length - 6}` : visibleFields;
 };
 
@@ -332,6 +332,31 @@ const ProductManagement: React.FC = () => {
     new: t('pages.productAdmin.new'),
     discount: t('pages.productAdmin.discount'),
   };
+  const importUpdateFieldLabels = useMemo(() => ({
+    name: t('pages.productAdmin.importUpdateField.name'),
+    description: t('pages.productAdmin.importUpdateField.description'),
+    price: t('pages.productAdmin.importUpdateField.price'),
+    stock: t('pages.productAdmin.importUpdateField.stock'),
+    categoryId: t('pages.productAdmin.importUpdateField.categoryId'),
+    imageUrl: t('pages.productAdmin.importUpdateField.imageUrl'),
+    isFeatured: t('pages.productAdmin.importUpdateField.isFeatured'),
+    brand: t('pages.productAdmin.importUpdateField.brand'),
+    originalPrice: t('pages.productAdmin.importUpdateField.originalPrice'),
+    discount: t('pages.productAdmin.importUpdateField.discount'),
+    limitedTimePrice: t('pages.productAdmin.importUpdateField.limitedTimePrice'),
+    limitedTimeStartAt: t('pages.productAdmin.importUpdateField.limitedTimeStartAt'),
+    limitedTimeEndAt: t('pages.productAdmin.importUpdateField.limitedTimeEndAt'),
+    tag: t('pages.productAdmin.importUpdateField.tag'),
+    status: t('pages.productAdmin.importUpdateField.status'),
+    images: t('pages.productAdmin.importUpdateField.images'),
+    specifications: t('pages.productAdmin.importUpdateField.specifications'),
+    detailContent: t('pages.productAdmin.importUpdateField.detailContent'),
+    variants: t('pages.productAdmin.importUpdateField.variants'),
+    warranty: t('pages.productAdmin.importUpdateField.warranty'),
+    shipping: t('pages.productAdmin.importUpdateField.shipping'),
+    freeShipping: t('pages.productAdmin.importUpdateField.freeShipping'),
+    freeShippingThreshold: t('pages.productAdmin.importUpdateField.freeShippingThreshold'),
+  }), [t]);
   const variantSummary = useMemo(() => {
     const rows = Array.isArray(previewVariants) ? previewVariants : [];
     const validRows = rows.filter((row: any) => String(row?.optionText || '').trim());
@@ -919,7 +944,7 @@ const ProductManagement: React.FC = () => {
     if (!result.importId && !result.fileSha256 && !result.status) {
       return null;
     }
-    const updateFields = formatImportUpdateFields(result.updateFields);
+    const updateFields = formatImportUpdateFields(result.updateFields, importUpdateFieldLabels);
     return (
       <Space wrap className="product-import-result__trace">
         {result.status ? (
@@ -1415,7 +1440,7 @@ const ProductManagement: React.FC = () => {
                         <span>{t('pages.productAdmin.importHistoryCreated', { count: historyLog.created || 0 })}</span>
                         <span>{t('pages.productAdmin.importHistoryUpdated', { count: historyLog.updated || 0 })}</span>
                         <span>{t('pages.productAdmin.importHistoryFailed', { count: historyLog.failed || 0 })}</span>
-                        {formatImportUpdateFields(historyLog.updateFields) ? <span>{t('pages.productAdmin.importUpdateFields', { fields: formatImportUpdateFields(historyLog.updateFields) })}</span> : null}
+                        {formatImportUpdateFields(historyLog.updateFields, importUpdateFieldLabels) ? <span>{t('pages.productAdmin.importUpdateFields', { fields: formatImportUpdateFields(historyLog.updateFields, importUpdateFieldLabels) })}</span> : null}
                         <span>{applied ? t('pages.productAdmin.importApplied') : t('pages.productAdmin.importNotApplied')}</span>
                       </>
                     )}
