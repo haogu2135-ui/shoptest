@@ -774,13 +774,17 @@ const ProductManagement: React.FC = () => {
   };
 
   const downloadImportTemplate = () => {
+    const sampleCategory = flatCategories[0];
+    const sampleCategoryName = sampleCategory
+      ? getCategoryPath(flatCategories, sampleCategory.id).replace(/\s*\/\s*/g, ' > ')
+      : 'Dog > Harnesses';
     const headers = [
-      'id', 'name', 'description', 'price', 'stock', 'categoryId', 'imageUrl', 'isFeatured',
+      'id', 'name', 'description', 'price', 'stock', 'categoryId', 'categoryName', 'imageUrl', 'isFeatured',
       'brand', 'originalPrice', 'discount', 'limitedTimePrice', 'limitedTimeStartAt',
       'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping', 'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
     const sample = [
-      '', 'Sample product', 'Product description', '99.90', '100', categories[0]?.id || 1,
+      '', 'Sample product', 'Product description', '99.90', '100', '', sampleCategoryName,
       'https://example.com/image.jpg', 'false', 'Brand', '129.90', '20', '', '', '',
       'new', '["https://example.com/extra.jpg"]', '{"material":"cotton"}',
       '[{"type":"text","content":"Detailed product story"},{"type":"image","url":"https://example.com/detail.jpg","caption":"Detail image"}]',
@@ -795,6 +799,7 @@ const ProductManagement: React.FC = () => {
     link.download = 'product-import-template.csv';
     link.click();
     URL.revokeObjectURL(url);
+    message.success(t('pages.productAdmin.importTemplateDownloaded'));
   };
 
   const exportFilteredProducts = () => {
