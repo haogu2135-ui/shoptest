@@ -205,6 +205,14 @@ type ProductImportFileMetadata = ProductImportResult & {
   sizeBytes?: number;
 };
 
+type ImportErrorTableRow = {
+  key: string;
+  rowLabel: string;
+  fieldKey: string;
+  fieldLabel: string;
+  message: string;
+};
+
 const productImportFilename = (result: ProductImportResult) =>
   String((result as ProductImportFileMetadata).filename || '').trim();
 
@@ -213,25 +221,82 @@ const productImportSizeBytes = (result: ProductImportResult) => {
   return Number.isFinite(value) && value > 0 ? value : 0;
 };
 
-const renderImportErrors = (
+const importErrorRows = (
   result: { rowErrors?: Array<{ rowNumber: number; field?: string; message: string }>; errors?: string[] },
   labels: Record<string, string> = {},
   copy: ImportErrorCopy = { file: 'File', row: (rowNumber) => `Row ${rowNumber}` },
 ) => {
   if (Array.isArray(result.rowErrors) && result.rowErrors.length > 0) {
-    return result.rowErrors.map((rowError) => {
+    return result.rowErrors.map((rowError, index) => {
       const fieldLabel = formatImportFieldLabel(rowError.field, labels);
-      const fieldTag = fieldLabel ? <Tag style={{ marginLeft: 8 }}>{fieldLabel}</Tag> : null;
-      return (
-        <li key={`${rowError.rowNumber}-${rowError.field || 'row'}-${rowError.message}`}>
-          <Text strong>{rowError.rowNumber > 0 ? copy.row(rowError.rowNumber) : copy.file}</Text>
-          {rowError.field && fieldLabel !== rowError.field ? <Tooltip title={rowError.field}>{fieldTag}</Tooltip> : fieldTag}
-          <span>{rowError.message}</span>
-        </li>
-      );
+      return {
+        key: `${rowError.rowNumber}-${rowError.field || 'row'}-${index}`,
+        rowLabel: rowError.rowNumber > 0 ? copy.row(rowError.rowNumber) : copy.file,
+        fieldKey: rowError.field || '',
+        fieldLabel,
+        message: rowError.message,
+      };
     });
   }
-  return (result.errors || []).map((errorText) => <li key={errorText}>{errorText}</li>);
+  return (result.errors || []).map((errorText, index) => ({
+    key: `file-${index}`,
+    rowLabel: copy.file,
+    fieldKey: '',
+    fieldLabel: '',
+    message: errorText,
+  }));
+};
+
+const renderImportErrorTable = (
+  result: { rowErrors?: Array<{ rowNumber: number; field?: string; message: string }>; errors?: string[] },
+  labels: Record<string, string> = {},
+  copy: ImportErrorCopy = { file: 'File', row: (rowNumber) => `Row ${rowNumber}` },
+  reportCopy: Pick<ImportErrorReportCopy, 'rowNumber' | 'fieldLabel' | 'message'> = {
+    rowNumber: 'Row',
+    fieldLabel: 'Field',
+    message: 'Message',
+  },
+) => {
+  const rows = importErrorRows(result, labels, copy);
+  if (rows.length === 0) {
+    return null;
+  }
+  return (
+    <Table<ImportErrorTableRow>
+      className="product-import-result__errorTable"
+      size="small"
+      rowKey="key"
+      dataSource={rows}
+      pagination={rows.length > 8 ? { pageSize: 8, size: 'small', showSizeChanger: false } : false}
+      scroll={{ y: 260 }}
+      columns={[
+        {
+          title: reportCopy.rowNumber,
+          dataIndex: 'rowLabel',
+          key: 'rowLabel',
+          width: 112,
+          render: (value: string) => <Text strong>{value}</Text>,
+        },
+        {
+          title: reportCopy.fieldLabel,
+          dataIndex: 'fieldLabel',
+          key: 'fieldLabel',
+          width: 160,
+          render: (_value: string, row: ImportErrorTableRow) => {
+            if (!row.fieldLabel) return <Text type="secondary">-</Text>;
+            const tag = <Tag>{row.fieldLabel}</Tag>;
+            return row.fieldKey && row.fieldLabel !== row.fieldKey ? <Tooltip title={row.fieldKey}>{tag}</Tooltip> : tag;
+          },
+        },
+        {
+          title: reportCopy.message,
+          dataIndex: 'message',
+          key: 'message',
+          render: (value: string) => <span className="product-import-result__errorMessage">{value}</span>,
+        },
+      ]}
+    />
+  );
 };
 
 const downloadImportErrorReport = (
@@ -1160,7 +1225,7 @@ const ProductManagement: React.FC = () => {
       )}
       {renderImportTrace(result)}
       {renderDuplicateImportWarning(duplicateImport)}
-      <ul>{renderImportErrors(result, importUpdateFieldLabels, importErrorCopy)}</ul>
+      {renderImportErrorTable(result, importUpdateFieldLabels, importErrorCopy, importErrorReportCopy)}
       {result.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
       {(result.errors?.length || result.rowErrors?.length) ? (
         <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(result, importUpdateFieldLabels, importErrorReportCopy)}>
