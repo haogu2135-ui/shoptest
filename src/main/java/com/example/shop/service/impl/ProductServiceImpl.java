@@ -435,6 +435,7 @@ public class ProductServiceImpl implements ProductService {
         }
         populateImportFileFingerprint(file, result);
         Set<Long> importedIds = new HashSet<>();
+        Set<String> importedCreateIdentities = new HashSet<>();
         ImportCategoryLookup categoryLookup = loadImportCategoryLookup();
         List<ProductImportRow> importRows = new ArrayList<>();
         try (BufferedReader reader = importCsvReader(file)) {
@@ -500,6 +501,7 @@ public class ProductServiceImpl implements ProductService {
                         }
                     }
                     validateImportedProduct(product, importedIds, categoryLookup, updateFields, existingProduct != null);
+                    validateImportCreateIdentity(product, importedCreateIdentities, existingProduct != null);
                     validateMergedImportUpdate(existingProduct, product, updateFields);
                     if (existingProduct != null) {
                         result.setUpdated(result.getUpdated() + 1);
@@ -1015,6 +1017,20 @@ public class ProductServiceImpl implements ProductService {
         validateImportSpecifications(product.getSpecifications());
         validateImportDetailContent(product.getDetailContent());
         validateImportVariants(product.getVariants());
+    }
+
+    private void validateImportCreateIdentity(Product product, Set<String> importedCreateIdentities, boolean existingProduct) {
+        if (existingProduct || product == null || product.getName() == null || product.getCategoryId() == null) {
+            return;
+        }
+        String identity = product.getCategoryId() + ":" + normalizeImportProductNameKey(product.getName());
+        if (!importedCreateIdentities.add(identity)) {
+            throw new IllegalArgumentException("name appears more than once for this category in this file");
+        }
+    }
+
+    private String normalizeImportProductNameKey(String value) {
+        return normalizeImportText(value).toLowerCase(Locale.ROOT);
     }
 
     private void validateMergedImportUpdate(Product existing, Product imported, Set<String> updateFields) {

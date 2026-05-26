@@ -488,6 +488,30 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsDuplicateNewProductNamesWithinSameCategory() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryId\n"
+                        + "Travel Harness,Safe,19.99,8,1\n"
+                        + " travel   harness ,Reflective,24.99,4,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(2, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals("name", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("more than once for this category"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsUnsupportedImportHeadersBeforeReadingRows() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
