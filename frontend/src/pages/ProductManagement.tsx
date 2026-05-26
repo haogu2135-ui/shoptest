@@ -169,31 +169,82 @@ const productImportStatusColor = (status?: string) => {
   }
 };
 
-const renderImportErrors = (result: { rowErrors?: Array<{ rowNumber: number; field?: string; message: string }>; errors?: string[] }) => {
+const formatImportFieldLabel = (field?: string, labels: Record<string, string> = {}) => {
+  const key = String(field || '').trim();
+  return key ? labels[key] || key : '';
+};
+
+type ImportErrorCopy = {
+  file: string;
+  row: (rowNumber: number) => string;
+};
+
+type ImportErrorReportCopy = {
+  importId: string;
+  fileSha256: string;
+  status: string;
+  applied: string;
+  rowNumber: string;
+  field: string;
+  fieldLabel: string;
+  message: string;
+  trueValue: string;
+  falseValue: string;
+};
+
+const renderImportErrors = (
+  result: { rowErrors?: Array<{ rowNumber: number; field?: string; message: string }>; errors?: string[] },
+  labels: Record<string, string> = {},
+  copy: ImportErrorCopy = { file: 'File', row: (rowNumber) => `Row ${rowNumber}` },
+) => {
   if (Array.isArray(result.rowErrors) && result.rowErrors.length > 0) {
-    return result.rowErrors.map((rowError) => (
-      <li key={`${rowError.rowNumber}-${rowError.field || 'row'}-${rowError.message}`}>
-        <Text strong>{rowError.rowNumber > 0 ? `Row ${rowError.rowNumber}` : 'File'}</Text>
-        {rowError.field ? <Tag style={{ marginLeft: 8 }}>{rowError.field}</Tag> : null}
-        <span>{rowError.message}</span>
-      </li>
-    ));
+    return result.rowErrors.map((rowError) => {
+      const fieldLabel = formatImportFieldLabel(rowError.field, labels);
+      const fieldTag = fieldLabel ? <Tag style={{ marginLeft: 8 }}>{fieldLabel}</Tag> : null;
+      return (
+        <li key={`${rowError.rowNumber}-${rowError.field || 'row'}-${rowError.message}`}>
+          <Text strong>{rowError.rowNumber > 0 ? copy.row(rowError.rowNumber) : copy.file}</Text>
+          {rowError.field && fieldLabel !== rowError.field ? <Tooltip title={rowError.field}>{fieldTag}</Tooltip> : fieldTag}
+          <span>{rowError.message}</span>
+        </li>
+      );
+    });
   }
   return (result.errors || []).map((errorText) => <li key={errorText}>{errorText}</li>);
 };
 
-const downloadImportErrorReport = (result: ProductImportResult) => {
+const downloadImportErrorReport = (
+  result: ProductImportResult,
+  labels: Record<string, string> = {},
+  copy: ImportErrorReportCopy = {
+    importId: 'importId',
+    fileSha256: 'fileSha256',
+    status: 'status',
+    applied: 'applied',
+    rowNumber: 'rowNumber',
+    field: 'field',
+    fieldLabel: 'fieldLabel',
+    message: 'message',
+    trueValue: 'true',
+    falseValue: 'false',
+  },
+) => {
   const rowErrors = Array.isArray(result.rowErrors) && result.rowErrors.length > 0
     ? result.rowErrors
     : (result.errors || []).map((errorText) => ({ rowNumber: 0, field: '', message: errorText }));
   const rows = [
-    ['importId', result.importId || ''],
-    ['fileSha256', result.fileSha256 || ''],
-    ['status', result.status || ''],
-    ['applied', result.applied ? 'true' : 'false'],
+    [copy.importId, result.importId || ''],
+    [copy.fileSha256, result.fileSha256 || ''],
+    [copy.status, result.status || ''],
+    [copy.applied, result.applied ? copy.trueValue : copy.falseValue],
     [],
-    ['rowNumber', 'field', 'message'],
-    ...rowErrors.map((rowError) => [rowError.rowNumber || '', rowError.field || '', rowError.message || '']),
+    [copy.rowNumber, copy.field, copy.fieldLabel, copy.message],
+    ...rowErrors.map((rowError) => [
+      rowError.rowNumber || '',
+      rowError.field || '',
+      formatImportFieldLabel(rowError.field, labels),
+      rowError.message || '',
+    ]),
   ];
   const csv = rows.map(csvRow).join('\r\n');
   const blob = new Blob(['\uFEFF', `${csv}\r\n`], { type: 'text/csv;charset=utf-8;' });
@@ -356,6 +407,22 @@ const ProductManagement: React.FC = () => {
     shipping: t('pages.productAdmin.importUpdateField.shipping'),
     freeShipping: t('pages.productAdmin.importUpdateField.freeShipping'),
     freeShippingThreshold: t('pages.productAdmin.importUpdateField.freeShippingThreshold'),
+  }), [t]);
+  const importErrorCopy = useMemo<ImportErrorCopy>(() => ({
+    file: t('pages.productAdmin.importErrorFile'),
+    row: (rowNumber) => t('pages.productAdmin.importErrorRow', { row: rowNumber }),
+  }), [t]);
+  const importErrorReportCopy = useMemo<ImportErrorReportCopy>(() => ({
+    importId: t('pages.productAdmin.importErrorReport.importId'),
+    fileSha256: t('pages.productAdmin.importErrorReport.fileSha256'),
+    status: t('pages.productAdmin.importErrorReport.status'),
+    applied: t('pages.productAdmin.importErrorReport.applied'),
+    rowNumber: t('pages.productAdmin.importErrorReport.rowNumber'),
+    field: t('pages.productAdmin.importErrorReport.field'),
+    fieldLabel: t('pages.productAdmin.importErrorReport.fieldLabel'),
+    message: t('pages.productAdmin.importErrorReport.message'),
+    trueValue: t('pages.productAdmin.importErrorReport.trueValue'),
+    falseValue: t('pages.productAdmin.importErrorReport.falseValue'),
   }), [t]);
   const variantSummary = useMemo(() => {
     const rows = Array.isArray(previewVariants) ? previewVariants : [];
@@ -1032,10 +1099,10 @@ const ProductManagement: React.FC = () => {
               )}
               {renderImportTrace(preview)}
               {renderDuplicateImportWarning(duplicateImport)}
-              <ul>{renderImportErrors(preview)}</ul>
+              <ul>{renderImportErrors(preview, importUpdateFieldLabels, importErrorCopy)}</ul>
               {preview.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
               {(preview.errors?.length || preview.rowErrors?.length) ? (
-                <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(preview)}>
+                <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(preview, importUpdateFieldLabels, importErrorReportCopy)}>
                   {t('pages.productAdmin.importDownloadErrors')}
                 </Button>
               ) : null}
@@ -1077,10 +1144,10 @@ const ProductManagement: React.FC = () => {
                     <Alert type="warning" showIcon message={t('pages.productAdmin.importRejectedNoWrite')} />
                     <p>{t('pages.productAdmin.importSummary', result as any)}</p>
                     {renderImportTrace(result)}
-                    <ul>{renderImportErrors(result)}</ul>
+                    <ul>{renderImportErrors(result, importUpdateFieldLabels, importErrorCopy)}</ul>
                     {result.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
                     {(result.errors?.length || result.rowErrors?.length) ? (
-                      <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(result)}>
+                      <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(result, importUpdateFieldLabels, importErrorReportCopy)}>
                         {t('pages.productAdmin.importDownloadErrors')}
                       </Button>
                     ) : null}
