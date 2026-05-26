@@ -438,7 +438,7 @@ public class ProductServiceImpl implements ProductService {
         Set<String> importedTargetIdentities = new HashSet<>();
         Set<String> importedVariantSkus = new HashSet<>();
         ImportCategoryLookup categoryLookup = loadImportCategoryLookup();
-        Map<String, Set<Long>> existingVariantSkuOwners = loadExistingVariantSkuOwners();
+        Map<String, Set<Long>> existingVariantSkuOwners = null;
         List<ProductImportRow> importRows = new ArrayList<>();
         try (BufferedReader reader = importCsvReader(file)) {
             List<CsvUtils.Record> records = CsvUtils.parseRecords(reader);
@@ -508,6 +508,9 @@ public class ProductServiceImpl implements ProductService {
                     validateImportedProduct(product, importedIds, categoryLookup, updateFields, existingProduct != null);
                     validateImportTargetIdentity(existingProduct, product, importedTargetIdentities, updateFields);
                     validateImportVariantSkusAcrossFile(product.getVariants(), importedVariantSkus);
+                    if (importHasVariantSku(product.getVariants()) && existingVariantSkuOwners == null) {
+                        existingVariantSkuOwners = loadExistingVariantSkuOwners();
+                    }
                     validateImportVariantSkusAgainstExisting(product.getVariants(), existingVariantSkuOwners, existingProduct == null ? null : existingProduct.getId());
                     validateMergedImportUpdate(existingProduct, product, updateFields);
                     validateImportProductNameDoesNotDuplicateExisting(existingProduct, product, updateFields);
@@ -1310,6 +1313,23 @@ public class ProductServiceImpl implements ProductService {
                 throw new IllegalArgumentException("variants sku appears more than once in this import file");
             }
         }
+    }
+
+    private boolean importHasVariantSku(String value) {
+        JsonNode variants = validateImportJsonArray(value, "variants", 200);
+        if (variants == null) {
+            return false;
+        }
+        for (JsonNode variant : variants) {
+            if (variant == null || !variant.isObject()) {
+                continue;
+            }
+            String sku = jsonText(variant.get("sku"));
+            if (sku != null && !sku.isBlank()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void validateImportVariantSkusAgainstExisting(String value, Map<String, Set<Long>> existingVariantSkuOwners, Long currentProductId) {

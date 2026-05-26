@@ -810,6 +810,7 @@ class ProductImportServiceTest {
         assertEquals(12, saved.getStock());
         assertEquals(1L, saved.getCategoryId());
         assertEquals("Existing Brand", saved.getBrand());
+        verify(productRepository, never()).findAll();
     }
 
     @Test
