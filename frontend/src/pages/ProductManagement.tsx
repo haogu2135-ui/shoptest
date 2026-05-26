@@ -256,6 +256,44 @@ const downloadImportErrorReport = (
   URL.revokeObjectURL(url);
 };
 
+const isProductImportResultPayload = (value: any) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  const status = typeof value.status === 'string' ? value.status : '';
+  return ['PREVIEW_READY', 'PREVIEW_BLOCKED', 'APPLIED', 'REJECTED'].includes(status)
+    || typeof value.readyToImport === 'boolean'
+    || typeof value.applied === 'boolean'
+    || Array.isArray(value.rowErrors);
+};
+
+const productImportResultFromError = (error: any): ProductImportResult | null => {
+  const data = error?.response?.data;
+  if (!isProductImportResultPayload(data)) {
+    return null;
+  }
+  return {
+    ...data,
+    totalRows: Number(data.totalRows || 0),
+    created: Number(data.created || 0),
+    updated: Number(data.updated || 0),
+    failed: Number(data.failed || 0),
+    errors: Array.isArray(data.errors) ? data.errors : [],
+    rowErrors: Array.isArray(data.rowErrors) ? data.rowErrors : [],
+  };
+};
+
+const importErrorMessageFromError = (error: any, fallback: string) => {
+  const data = error?.response?.data;
+  if (Array.isArray(data?.errors) && data.errors.length > 0) {
+    return data.errors.join('\n');
+  }
+  if (typeof data?.message === 'string' && data.message.trim()) {
+    return data.message;
+  }
+  return fallback;
+};
+
 const productCreateDefaults = () => ({
   images: [],
   specifications: [{}],
@@ -1069,6 +1107,45 @@ const ProductManagement: React.FC = () => {
     );
   };
 
+  const renderImportProblemContent = (
+    result: ProductImportResult,
+    notice: string,
+    duplicateImport?: ProductImportHistoryEntry,
+  ) => (
+    <div className="product-import-result">
+      <Alert type="warning" showIcon message={notice} />
+      <p>{t('pages.productAdmin.importSummary', result as any)}</p>
+      {(result.maxRows || result.maxFileSizeBytes) && (
+        <Space wrap className="product-import-result__limits">
+          {result.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: result.maxRows })}</Tag> : null}
+          {result.maxFileSizeBytes ? <Tag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(result.maxFileSizeBytes) })}</Tag> : null}
+        </Space>
+      )}
+      {renderImportTrace(result)}
+      {renderDuplicateImportWarning(duplicateImport)}
+      <ul>{renderImportErrors(result, importUpdateFieldLabels, importErrorCopy)}</ul>
+      {result.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
+      {(result.errors?.length || result.rowErrors?.length) ? (
+        <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(result, importUpdateFieldLabels, importErrorReportCopy)}>
+          {t('pages.productAdmin.importDownloadErrors')}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const showImportProblemModal = (
+    result: ProductImportResult,
+    title: string,
+    notice: string,
+    duplicateImport?: ProductImportHistoryEntry,
+  ) => {
+    Modal.warning({
+      title,
+      content: renderImportProblemContent(result, notice, duplicateImport),
+      width: 720,
+    });
+  };
+
   const handleImportProducts = async (file: File) => {
     if (importSubmitting) {
       return false;
@@ -1085,31 +1162,12 @@ const ProductManagement: React.FC = () => {
       const duplicateImport = findDuplicateSuccessfulImport(preview.fileSha256);
       setLoading(false);
       if (preview.failed > 0 || !preview.readyToImport) {
-        Modal.warning({
-          title: t('pages.productAdmin.importPreviewBlockedTitle'),
-          content: (
-            <div className="product-import-result">
-              <Alert type="warning" showIcon message={t('pages.productAdmin.importPreviewBlockedNotice')} />
-              <p>{t('pages.productAdmin.importSummary', preview as any)}</p>
-              {(preview.maxRows || preview.maxFileSizeBytes) && (
-                <Space wrap className="product-import-result__limits">
-                  {preview.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: preview.maxRows })}</Tag> : null}
-                  {preview.maxFileSizeBytes ? <Tag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(preview.maxFileSizeBytes) })}</Tag> : null}
-                </Space>
-              )}
-              {renderImportTrace(preview)}
-              {renderDuplicateImportWarning(duplicateImport)}
-              <ul>{renderImportErrors(preview, importUpdateFieldLabels, importErrorCopy)}</ul>
-              {preview.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
-              {(preview.errors?.length || preview.rowErrors?.length) ? (
-                <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(preview, importUpdateFieldLabels, importErrorReportCopy)}>
-                  {t('pages.productAdmin.importDownloadErrors')}
-                </Button>
-              ) : null}
-            </div>
-          ),
-          width: 720,
-        });
+        showImportProblemModal(
+          preview,
+          t('pages.productAdmin.importPreviewBlockedTitle'),
+          t('pages.productAdmin.importPreviewBlockedNotice'),
+          duplicateImport,
+        );
         fetchImportHistory();
         return false;
       }
@@ -1137,24 +1195,11 @@ const ProductManagement: React.FC = () => {
             const res = await adminApi.importProducts(file);
             const result = res.data;
             if (!result.applied) {
-              Modal.warning({
-                title: t('pages.productAdmin.importRejectedTitle'),
-                content: (
-                  <div className="product-import-result">
-                    <Alert type="warning" showIcon message={t('pages.productAdmin.importRejectedNoWrite')} />
-                    <p>{t('pages.productAdmin.importSummary', result as any)}</p>
-                    {renderImportTrace(result)}
-                    <ul>{renderImportErrors(result, importUpdateFieldLabels, importErrorCopy)}</ul>
-                    {result.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
-                    {(result.errors?.length || result.rowErrors?.length) ? (
-                      <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(result, importUpdateFieldLabels, importErrorReportCopy)}>
-                        {t('pages.productAdmin.importDownloadErrors')}
-                      </Button>
-                    ) : null}
-                  </div>
-                ),
-                width: 720,
-              });
+              showImportProblemModal(
+                result,
+                t('pages.productAdmin.importRejectedTitle'),
+                t('pages.productAdmin.importRejectedNoWrite'),
+              );
             } else {
               Modal.success({
                 title: t('pages.productAdmin.importSuccessTitle'),
@@ -1171,7 +1216,16 @@ const ProductManagement: React.FC = () => {
             }
             fetchProducts();
           } catch (error: any) {
-            message.error(error.response?.data?.errors?.join('\n') || t('pages.productAdmin.importFailed'));
+            const result = productImportResultFromError(error);
+            if (result) {
+              showImportProblemModal(
+                result,
+                t('pages.productAdmin.importRejectedTitle'),
+                t('pages.productAdmin.importRejectedNoWrite'),
+              );
+            } else {
+              message.error(importErrorMessageFromError(error, t('pages.productAdmin.importFailed')));
+            }
           } finally {
             setImportSubmitting(false);
             setLoading(false);
@@ -1180,7 +1234,18 @@ const ProductManagement: React.FC = () => {
         },
       });
     } catch (error: any) {
-      message.error(error.response?.data?.errors?.join('\n') || t('pages.productAdmin.importFailed'));
+      const result = productImportResultFromError(error);
+      if (result) {
+        showImportProblemModal(
+          result,
+          t('pages.productAdmin.importPreviewBlockedTitle'),
+          t('pages.productAdmin.importPreviewBlockedNotice'),
+          findDuplicateSuccessfulImport(result.fileSha256),
+        );
+        fetchImportHistory();
+      } else {
+        message.error(importErrorMessageFromError(error, t('pages.productAdmin.importFailed')));
+      }
     } finally {
       setImportSubmitting(false);
       setLoading(false);
