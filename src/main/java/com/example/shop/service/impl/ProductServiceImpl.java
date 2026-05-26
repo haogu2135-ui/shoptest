@@ -56,6 +56,8 @@ import java.util.stream.Collectors;
 @Service
 public class ProductServiceImpl implements ProductService {
     private static final int MAX_IMPORT_IMAGE_URL_LENGTH = 2048;
+    private static final int MAX_IMPORT_MONEY_SCALE = 2;
+    private static final BigDecimal MAX_IMPORT_MONEY_AMOUNT = new BigDecimal("99999999.99");
     private static final Set<String> REQUIRED_IMPORT_HEADERS = Set.of("name", "price", "stock", "categoryid");
     private static final Set<String> SUPPORTED_IMPORT_HEADERS = Set.of(
             "id", "name", "description", "price", "stock", "categoryid", "categoryname", "imageurl",
@@ -1183,7 +1185,9 @@ public class ProductServiceImpl implements ProductService {
             return null;
         }
         try {
-            return new BigDecimal(value);
+            BigDecimal decimal = new BigDecimal(value);
+            validateImportMoneyAmount(decimal, field);
+            return decimal;
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException(field + " must be a decimal number");
         }
@@ -1424,9 +1428,23 @@ public class ProductServiceImpl implements ProductService {
             return null;
         }
         try {
-            return new BigDecimal(value);
+            BigDecimal decimal = new BigDecimal(value);
+            validateImportMoneyAmount(decimal, field);
+            return decimal;
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException(field + " must be a decimal number");
+        }
+    }
+
+    private void validateImportMoneyAmount(BigDecimal value, String field) {
+        if (value == null) {
+            return;
+        }
+        if (value.stripTrailingZeros().scale() > MAX_IMPORT_MONEY_SCALE) {
+            throw new IllegalArgumentException(field + " must use at most " + MAX_IMPORT_MONEY_SCALE + " decimal places");
+        }
+        if (value.abs().compareTo(MAX_IMPORT_MONEY_AMOUNT) > 0) {
+            throw new IllegalArgumentException(field + " must be " + MAX_IMPORT_MONEY_AMOUNT.toPlainString() + " or less");
         }
     }
 

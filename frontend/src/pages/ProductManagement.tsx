@@ -155,6 +155,12 @@ const formatBytes = (bytes?: number) => {
   return `${bytes} B`;
 };
 
+const formatImportMoneyValue = (value: unknown) => {
+  if (value == null || value === '') return '';
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount.toFixed(2) : String(value);
+};
+
 const productImportStatusColor = (status?: string) => {
   switch (status) {
     case 'APPLIED':
@@ -964,7 +970,7 @@ const ProductManagement: React.FC = () => {
     const headers = ['id', 'price', 'stock'];
     const rows = sourceProducts.map((product) => [
       product.id,
-      product.price,
+      formatImportMoneyValue(product.price),
       product.stock,
     ]);
     const csv = [
@@ -997,16 +1003,16 @@ const ProductManagement: React.FC = () => {
         product.id,
         product.name,
         product.description,
-        product.price,
+        formatImportMoneyValue(product.price),
         product.stock,
         product.categoryId,
         product.categoryName,
         product.imageUrl,
         product.isFeatured ? 'true' : 'false',
         product.brand,
-        product.originalPrice,
+        formatImportMoneyValue(product.originalPrice),
         product.discount,
-        product.limitedTimePrice,
+        formatImportMoneyValue(product.limitedTimePrice),
         product.limitedTimeStartAt,
         product.limitedTimeEndAt,
         product.tag,
@@ -1017,7 +1023,7 @@ const ProductManagement: React.FC = () => {
         product.shipping,
         product.status || 'ACTIVE',
         product.freeShipping ? 'true' : 'false',
-        product.freeShippingThreshold,
+        formatImportMoneyValue(product.freeShippingThreshold),
         importJsonValue(product.variants),
       ];
     });

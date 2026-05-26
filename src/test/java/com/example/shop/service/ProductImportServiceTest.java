@@ -845,6 +845,50 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsMoneyValuesWithMoreThanTwoDecimalsBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,Safe,19.999,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("price", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("price must use at most 2 decimal places"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsMoneyValuesAboveDatabasePrecisionBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,Safe,100000000.00,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("price", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("price must be 99999999.99 or less"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsPrivateImportedImageUrlBeforeSavingRow() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
@@ -1003,6 +1047,26 @@ class ProductImportServiceTest {
         assertEquals(1, result.getFailed());
         assertEquals("variants", result.getRowErrors().get(0).getField());
         assertTrue(result.getErrors().get(0).contains("sku must be unique"));
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsImportedVariantPricesWithMoreThanTwoDecimalsBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images,specifications,detailContent,warranty,shipping,status,freeShipping,freeShippingThreshold,variants\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,false,,,,,,,,[],{},[],Warranty,Shipping,ACTIVE,false,,\"[{\"\"sku\"\":\"\"S\"\",\"\"options\"\":{\"\"Size\"\":\"\"S\"\"},\"\"price\"\":19.999,\"\"stock\"\":2}]\"\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("variants", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("variants price must use at most 2 decimal places"));
         verify(productRepository, never()).save(any());
     }
 
