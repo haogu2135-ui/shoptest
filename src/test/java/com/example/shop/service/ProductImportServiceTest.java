@@ -45,6 +45,7 @@ class ProductImportServiceTest {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(1);
         Category category = new Category();
         category.setId(1L);
+        category.setName("Harnesses");
         when(categoryRepository.findAll()).thenReturn(List.of(category));
     }
 
@@ -187,6 +188,66 @@ class ProductImportServiceTest {
         assertEquals("https://example.com/harness.jpg", saved.getImageUrl());
         assertEquals("29.99", saved.getOriginalPrice().toPlainString());
         assertTrue(saved.getIsFeatured());
+    }
+
+    @Test
+    void importsCsvWithCategoryNameWhenCategoryIdIsMissing() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Category root = new Category();
+        root.setId(10L);
+        root.setName("Dog");
+        Category child = new Category();
+        child.setId(11L);
+        child.setName("Harnesses");
+        child.setParentId(10L);
+        when(categoryRepository.findAll()).thenReturn(List.of(root, child));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryName\n"
+                        + "Harness,Safe fit,19.99,8,Dog > Harnesses\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(0, result.getFailed());
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        assertEquals(11L, captor.getValue().getCategoryId());
+    }
+
+    @Test
+    void rejectsAmbiguousCategoryNameImports() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Category dogHarnesses = new Category();
+        dogHarnesses.setId(10L);
+        dogHarnesses.setName("Harnesses");
+        Category catHarnesses = new Category();
+        catHarnesses.setId(20L);
+        catHarnesses.setName("Harnesses");
+        when(categoryRepository.findAll()).thenReturn(List.of(dogHarnesses, catHarnesses));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,category\n"
+                        + "Harness,Safe fit,19.99,8,Harnesses\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertTrue(result.getErrors().get(0).contains("categoryName matches multiple categories"));
+        assertEquals("categoryName", result.getRowErrors().get(0).getField());
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertFalse(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
     }
 
     @Test

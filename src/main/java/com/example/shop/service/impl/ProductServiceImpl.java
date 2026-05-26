@@ -41,6 +41,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -75,7 +76,9 @@ public class ProductServiceImpl implements ProductService {
             Map.entry("inventoryquantity", "stock"),
             Map.entry("quantity", "stock"),
             Map.entry("qty", "stock"),
-            Map.entry("category", "categoryid"),
+            Map.entry("category", "categoryname"),
+            Map.entry("categorypath", "categoryname"),
+            Map.entry("collection", "categoryname"),
             Map.entry("collectionid", "categoryid"),
             Map.entry("mainimage", "imageurl"),
             Map.entry("image", "imageurl"),
@@ -380,7 +383,7 @@ public class ProductServiceImpl implements ProductService {
         }
         populateImportFileFingerprint(file, result);
         Set<Long> importedIds = new HashSet<>();
-        Set<Long> categoryIds = loadImportCategoryIds();
+        ImportCategoryLookup categoryLookup = loadImportCategoryLookup();
         List<ProductImportRow> importRows = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             List<CsvUtils.Record> records = CsvUtils.parseRecords(reader);
@@ -411,8 +414,8 @@ public class ProductServiceImpl implements ProductService {
 
                 result.setTotalRows(result.getTotalRows() + 1);
                 try {
-                    Product product = toProduct(values, headerIndex);
-                    validateImportedProduct(product, importedIds, categoryIds);
+                    Product product = toProduct(values, headerIndex, categoryLookup);
+                    validateImportedProduct(product, importedIds, categoryLookup.ids);
                     Product existingProduct = null;
                     if (product.getId() != null) {
                         Optional<Product> existing = productRepository.findById(product.getId());
@@ -532,10 +535,15 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<String> missingRequiredImportHeaders(Map<String, Integer> headerIndex) {
-        return REQUIRED_IMPORT_HEADERS.stream()
+        List<String> missingHeaders = REQUIRED_IMPORT_HEADERS.stream()
+                .filter(header -> !"categoryid".equals(header))
                 .filter(header -> !headerIndex.containsKey(header))
                 .map(this::displayImportHeader)
-                .collect(Collectors.toList());
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (!headerIndex.containsKey("categoryid") && !headerIndex.containsKey("categoryname")) {
+            missingHeaders.add("categoryId or categoryName");
+        }
+        return missingHeaders;
     }
 
     private String displayImportHeader(String normalizedHeader) {
@@ -582,10 +590,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private Product toProduct(List<String> values) {
-        return toProduct(values, null);
+        return toProduct(values, null, ImportCategoryLookup.empty());
     }
 
-    private Product toProduct(List<String> values, Map<String, Integer> headerIndex) {
+    private Product toProduct(List<String> values, Map<String, Integer> headerIndex, ImportCategoryLookup categoryLookup) {
         if (headerIndex == null && values.size() < 6) {
             throw new IllegalArgumentException("Expected at least 6 columns: id,name,description,price,stock,categoryId");
         }
@@ -596,7 +604,10 @@ public class ProductServiceImpl implements ProductService {
         product.setDescription(importValue(values, headerIndex, "description", 2));
         product.setPrice(parseDecimal(importValue(values, headerIndex, "price", 3), true, "price"));
         product.setStock(parseInteger(importValue(values, headerIndex, "stock", 4), true, "stock"));
-        product.setCategoryId(parseLong(importValue(values, headerIndex, "categoryId", 5), true, "categoryId"));
+        product.setCategoryId(resolveImportCategoryId(
+                importValue(values, headerIndex, "categoryId", 5),
+                importValue(values, headerIndex, "categoryName", -1),
+                categoryLookup));
         product.setImageUrl(importValue(values, headerIndex, "imageUrl", 6));
         product.setIsFeatured(parseBoolean(importValue(values, headerIndex, "isFeatured", 7), "isFeatured"));
         product.setBrand(importValue(values, headerIndex, "brand", 8));
@@ -628,14 +639,89 @@ public class ProductServiceImpl implements ProductService {
         return value(values, fallbackIndex);
     }
 
-    private Set<Long> loadImportCategoryIds() {
+    private ImportCategoryLookup loadImportCategoryLookup() {
         if (categoryRepository == null) {
-            return Set.of();
+            return ImportCategoryLookup.empty();
         }
-        return categoryRepository.findAll().stream()
+        List<Category> categories = categoryRepository.findAll();
+        Set<Long> ids = categories.stream()
                 .map(Category::getId)
                 .filter(id -> id != null && id > 0)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, Category> byId = categories.stream()
+                .filter(category -> category.getId() != null)
+                .collect(Collectors.toMap(Category::getId, category -> category, (left, right) -> left));
+        Map<String, Long> names = new LinkedHashMap<>();
+        Set<String> ambiguousNames = new HashSet<>();
+        for (Category category : categories) {
+            if (category.getId() == null || category.getId() <= 0) {
+                continue;
+            }
+            registerImportCategoryName(names, ambiguousNames, category.getName(), category.getId());
+            registerImportCategoryName(names, ambiguousNames, importCategoryPath(category, byId), category.getId());
+        }
+        return new ImportCategoryLookup(ids, names, ambiguousNames);
+    }
+
+    private void registerImportCategoryName(Map<String, Long> names, Set<String> ambiguousNames, String value, Long id) {
+        String key = normalizeImportCategoryName(value);
+        if (key.isBlank()) {
+            return;
+        }
+        Long existing = names.get(key);
+        if (existing != null && !existing.equals(id)) {
+            ambiguousNames.add(key);
+            names.remove(key);
+            return;
+        }
+        if (!ambiguousNames.contains(key)) {
+            names.put(key, id);
+        }
+    }
+
+    private String importCategoryPath(Category category, Map<Long, Category> byId) {
+        LinkedList<String> parts = new LinkedList<>();
+        Set<Long> visited = new HashSet<>();
+        Category current = category;
+        while (current != null && current.getId() != null && visited.add(current.getId())) {
+            if (current.getName() != null && !current.getName().isBlank()) {
+                parts.addFirst(current.getName());
+            }
+            current = current.getParentId() == null ? null : byId.get(current.getParentId());
+        }
+        return String.join(" > ", parts);
+    }
+
+    private Long resolveImportCategoryId(String rawCategoryId, String rawCategoryName, ImportCategoryLookup categoryLookup) {
+        Long categoryId = parseLong(rawCategoryId, false, "categoryId");
+        if (categoryId != null) {
+            return categoryId;
+        }
+        String categoryName = normalizeImportText(rawCategoryName);
+        if (categoryName == null || categoryName.isBlank()) {
+            throw new IllegalArgumentException("categoryId or categoryName is required");
+        }
+        String key = normalizeImportCategoryName(categoryName);
+        if (categoryLookup.ambiguousNames.contains(key)) {
+            throw new IllegalArgumentException("categoryName matches multiple categories: " + categoryName);
+        }
+        Long resolvedId = categoryLookup.names.get(key);
+        if (resolvedId == null) {
+            throw new IllegalArgumentException("categoryName does not exist: " + categoryName);
+        }
+        return resolvedId;
+    }
+
+    private String normalizeImportCategoryName(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim()
+                .replace('\\', '>')
+                .replace('/', '>')
+                .replaceAll("\\s*>\\s*", ">")
+                .replaceAll("\\s+", " ")
+                .toLowerCase(Locale.ROOT);
     }
 
     private void validateImportedProduct(Product product, Set<Long> importedIds, Set<Long> categoryIds) {
@@ -959,7 +1045,7 @@ public class ProductServiceImpl implements ProductService {
             return null;
         }
         for (String field : List.of(
-                "id", "name", "description", "price", "stock", "categoryId", "imageUrl",
+                "id", "name", "description", "price", "stock", "categoryId", "categoryName", "imageUrl",
                 "originalPrice", "discount", "limitedTimePrice", "limitedTimeStartAt",
                 "limitedTimeEndAt", "status", "isFeatured", "freeShipping", "freeShippingThreshold", "images",
                 "specifications", "detailContent", "variants")) {
@@ -997,7 +1083,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private String value(List<String> values, int index) {
-        return index < values.size() ? normalizeImportText(values.get(index)) : null;
+        return index >= 0 && index < values.size() ? normalizeImportText(values.get(index)) : null;
     }
 
     private String normalizeImportText(String value) {
@@ -1265,6 +1351,22 @@ public class ProductServiceImpl implements ProductService {
         private ProductImportRow(Product importedProduct, Product existingProduct) {
             this.importedProduct = importedProduct;
             this.existingProduct = existingProduct;
+        }
+    }
+
+    private static class ImportCategoryLookup {
+        private final Set<Long> ids;
+        private final Map<String, Long> names;
+        private final Set<String> ambiguousNames;
+
+        private ImportCategoryLookup(Set<Long> ids, Map<String, Long> names, Set<String> ambiguousNames) {
+            this.ids = ids;
+            this.names = names;
+            this.ambiguousNames = ambiguousNames;
+        }
+
+        private static ImportCategoryLookup empty() {
+            return new ImportCategoryLookup(Set.of(), Map.of(), Set.of());
         }
     }
 
