@@ -274,6 +274,28 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsNamedHeaderImportWithOnlyIdColumn() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id\n"
+                        + "3\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals(0, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertTrue(result.getErrors().get(0).contains("at least one editable column besides id"));
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertFalse(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsDuplicateImportHeadersAfterAliasNormalization() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
@@ -448,6 +470,67 @@ class ProductImportServiceTest {
         assertEquals("Existing shipping", saved.getShipping());
         assertTrue(saved.getFreeShipping());
         assertEquals(0, saved.getFreeShippingThreshold().compareTo(new BigDecimal("49.00")));
+    }
+
+    @Test
+    void importsStockOnlyUpdateForExistingProductId() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product existing = new Product();
+        existing.setId(3L);
+        existing.setName("Existing Harness");
+        existing.setPrice(new BigDecimal("18.00"));
+        existing.setStock(4);
+        existing.setCategoryId(1L);
+        existing.setBrand("Existing Brand");
+        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,stock\n"
+                        + "3,12\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertEquals(1, result.getUpdated());
+        assertEquals(0, result.getCreated());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("Existing Harness", saved.getName());
+        assertEquals(0, saved.getPrice().compareTo(new BigDecimal("18.00")));
+        assertEquals(12, saved.getStock());
+        assertEquals(1L, saved.getCategoryId());
+        assertEquals("Existing Brand", saved.getBrand());
+    }
+
+    @Test
+    void rejectsLightweightUpdateRowsThatWouldCreateIncompleteProducts() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        when(productRepository.findById(404L)).thenReturn(java.util.Optional.empty());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,stock\n"
+                        + "404,12\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals(0, result.getCreated());
+        assertEquals(0, result.getUpdated());
+        assertEquals("name", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("name is required"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
     }
 
     @Test

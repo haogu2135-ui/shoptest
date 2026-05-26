@@ -469,20 +469,21 @@ public class ProductServiceImpl implements ProductService {
                 result.setTotalRows(result.getTotalRows() + 1);
                 try {
                     Product product = toProduct(values, headerIndex, categoryLookup);
-                    validateImportedProduct(product, importedIds, categoryLookup.ids);
+                    Set<String> updateFields = importUpdateFields(headerIndex);
                     Product existingProduct = null;
                     if (product.getId() != null) {
                         Optional<Product> existing = productRepository.findById(product.getId());
                         if (existing.isPresent()) {
                             existingProduct = existing.get();
-                            result.setUpdated(result.getUpdated() + 1);
-                        } else {
-                            result.setCreated(result.getCreated() + 1);
                         }
+                    }
+                    validateImportedProduct(product, importedIds, categoryLookup.ids, updateFields, existingProduct != null);
+                    if (existingProduct != null) {
+                        result.setUpdated(result.getUpdated() + 1);
                     } else {
                         result.setCreated(result.getCreated() + 1);
                     }
-                    importRows.add(new ProductImportRow(product, existingProduct, importUpdateFields(headerIndex)));
+                    importRows.add(new ProductImportRow(product, existingProduct, updateFields));
                 } catch (Exception ex) {
                     result.addError(rowNumber, importFieldFromException(ex), ex.getMessage());
                 }
@@ -552,6 +553,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private boolean isProductImportHeader(List<String> values) {
+        List<String> normalizedHeaders = values.stream()
+                .map(this::normalizeImportHeader)
+                .filter(header -> !header.isBlank())
+                .collect(Collectors.toList());
         Set<String> headers = values.stream()
                 .map(this::normalizeImportHeader)
                 .filter(header -> !header.isBlank())
@@ -562,7 +567,10 @@ public class ProductServiceImpl implements ProductService {
         long knownHeaders = headers.stream()
                 .filter(SUPPORTED_IMPORT_HEADERS::contains)
                 .count();
-        return headers.contains("name") && knownHeaders >= 3;
+        if (headers.contains("id") && (knownHeaders >= 2 || normalizedHeaders.get(0).equals("id"))) {
+            return true;
+        }
+        return knownHeaders >= 3;
     }
 
     private Map<String, Integer> productImportHeaderIndex(List<String> values) {
@@ -604,6 +612,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<String> missingRequiredImportHeaders(Map<String, Integer> headerIndex) {
+        if (headerIndex.containsKey("id")) {
+            if (importUpdateFields(headerIndex).isEmpty()) {
+                return List.of("at least one editable column besides id");
+            }
+            return List.of();
+        }
         List<String> missingHeaders = REQUIRED_IMPORT_HEADERS.stream()
                 .filter(header -> !"categoryid".equals(header))
                 .filter(header -> !headerIndex.containsKey(header))
@@ -676,14 +690,17 @@ public class ProductServiceImpl implements ProductService {
 
         Product product = new Product();
         product.setId(parseLong(importValue(values, headerIndex, "id", 0), false, "id"));
-        product.setName(required(importValue(values, headerIndex, "name", 1), "name"));
+        product.setName(headerRequired(headerIndex, "name")
+                ? required(importValue(values, headerIndex, "name", 1), "name")
+                : importValue(values, headerIndex, "name", 1));
         product.setDescription(importValue(values, headerIndex, "description", 2));
-        product.setPrice(parseDecimal(importValue(values, headerIndex, "price", 3), true, "price"));
-        product.setStock(parseInteger(importValue(values, headerIndex, "stock", 4), true, "stock"));
+        product.setPrice(parseDecimal(importValue(values, headerIndex, "price", 3), headerRequired(headerIndex, "price"), "price"));
+        product.setStock(parseInteger(importValue(values, headerIndex, "stock", 4), headerRequired(headerIndex, "stock"), "stock"));
         product.setCategoryId(resolveImportCategoryId(
                 importValue(values, headerIndex, "categoryId", 5),
                 importValue(values, headerIndex, "categoryName", -1),
-                categoryLookup));
+                categoryLookup,
+                categoryRequired(headerIndex)));
         product.setImageUrl(importValue(values, headerIndex, "imageUrl", 6));
         product.setIsFeatured(parseBoolean(importValue(values, headerIndex, "isFeatured", 7), "isFeatured"));
         product.setBrand(importValue(values, headerIndex, "brand", 8));
@@ -713,6 +730,14 @@ public class ProductServiceImpl implements ProductService {
             return index == null ? null : value(values, index);
         }
         return value(values, fallbackIndex);
+    }
+
+    private boolean headerRequired(Map<String, Integer> headerIndex, String field) {
+        return headerIndex == null || headerIndex.containsKey(field.toLowerCase(Locale.ROOT));
+    }
+
+    private boolean categoryRequired(Map<String, Integer> headerIndex) {
+        return headerIndex == null || headerIndex.containsKey("categoryid") || headerIndex.containsKey("categoryname");
     }
 
     private ImportCategoryLookup loadImportCategoryLookup() {
@@ -768,13 +793,16 @@ public class ProductServiceImpl implements ProductService {
         return String.join(" > ", parts);
     }
 
-    private Long resolveImportCategoryId(String rawCategoryId, String rawCategoryName, ImportCategoryLookup categoryLookup) {
+    private Long resolveImportCategoryId(String rawCategoryId, String rawCategoryName, ImportCategoryLookup categoryLookup, boolean required) {
         Long categoryId = parseLong(rawCategoryId, false, "categoryId");
         if (categoryId != null) {
             return categoryId;
         }
         String categoryName = normalizeImportText(rawCategoryName);
         if (categoryName == null || categoryName.isBlank()) {
+            if (!required) {
+                return null;
+            }
             throw new IllegalArgumentException("categoryId or categoryName is required");
         }
         String key = normalizeImportCategoryName(categoryName);
@@ -800,12 +828,25 @@ public class ProductServiceImpl implements ProductService {
                 .toLowerCase(Locale.ROOT);
     }
 
-    private void validateImportedProduct(Product product, Set<Long> importedIds, Set<Long> categoryIds) {
+    private void validateImportedProduct(Product product, Set<Long> importedIds, Set<Long> categoryIds, Set<String> updateFields, boolean existingProduct) {
         if (product.getId() != null) {
             requirePositive(product.getId(), "id");
             if (!importedIds.add(product.getId())) {
                 throw new IllegalArgumentException("id appears more than once in this file");
             }
+        }
+        boolean newProduct = !existingProduct;
+        if (newProduct || updateFields.contains("name")) {
+            required(product.getName(), "name");
+        }
+        if (newProduct || updateFields.contains("price")) {
+            requirePresent(product.getPrice(), "price");
+        }
+        if (newProduct || updateFields.contains("stock")) {
+            requirePresent(product.getStock(), "stock");
+        }
+        if (newProduct || updateFields.contains("categoryId")) {
+            requirePresent(product.getCategoryId(), "categoryId");
         }
         requireLength(product.getName(), 180, "name");
         requireLength(product.getDescription(), 2000, "description");
@@ -831,10 +872,10 @@ public class ProductServiceImpl implements ProductService {
                 && !product.getLimitedTimeEndAt().isAfter(product.getLimitedTimeStartAt())) {
             throw new IllegalArgumentException("limitedTimeEndAt must be after limitedTimeStartAt");
         }
-        if (product.getCategoryId() == null || product.getCategoryId() <= 0) {
+        if (product.getCategoryId() != null && product.getCategoryId() <= 0) {
             throw new IllegalArgumentException("categoryId must be a positive category id");
         }
-        if (categoryIds != null && !categoryIds.isEmpty() && !categoryIds.contains(product.getCategoryId())) {
+        if (product.getCategoryId() != null && categoryIds != null && !categoryIds.isEmpty() && !categoryIds.contains(product.getCategoryId())) {
             throw new IllegalArgumentException("categoryId does not exist: " + product.getCategoryId());
         }
         validateImportImageUrl(product.getImageUrl(), "imageUrl");
@@ -853,6 +894,12 @@ public class ProductServiceImpl implements ProductService {
     private void requireNonNegative(BigDecimal value, String field) {
         if (value != null && value.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException(field + " must be greater than or equal to 0");
+        }
+    }
+
+    private void requirePresent(Object value, String field) {
+        if (value == null) {
+            throw new IllegalArgumentException(field + " is required");
         }
     }
 
