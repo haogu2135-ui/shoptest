@@ -63,6 +63,8 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -910,10 +912,10 @@ public class AdminController {
         String status = result == null ? "" : productImportStatusForMetadata(preview, ready, applied);
         String importId = result == null || result.getImportId() == null ? "" : result.getImportId();
         String fileSha256 = result == null || result.getFileSha256() == null ? "" : result.getFileSha256();
-        return "importId=" + importId
-                + ";fileSha256=" + fileSha256
-                + ";status=" + status
-                + ";filename=" + filename
+        return "importId=" + encodeMetadataValue(importId)
+                + ";fileSha256=" + encodeMetadataValue(fileSha256)
+                + ";status=" + encodeMetadataValue(status)
+                + ";filename=" + encodeMetadataValue(filename)
                 + ";sizeBytes=" + size
                 + ";preview=" + preview
                 + ";readyToImport=" + ready
@@ -987,9 +989,24 @@ public class AdminController {
             if (index <= 0) {
                 continue;
             }
-            values.put(part.substring(0, index), part.substring(index + 1));
+            values.put(part.substring(0, index), decodeMetadataValue(part.substring(index + 1)));
         }
         return values;
+    }
+
+    private String encodeMetadataValue(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
+    }
+
+    private String decodeMetadataValue(String value) {
+        if (value == null || value.isBlank()) {
+            return value;
+        }
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ex) {
+            return value;
+        }
     }
 
     private int parseIntMetadata(String value) {

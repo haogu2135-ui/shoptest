@@ -105,6 +105,55 @@ class AdminControllerProductImportAuditTest {
     }
 
     @Test
+    void importAuditMetadataEscapesFilenamesForHistoryParsing() {
+        MockMultipartFile file = csvFile("products;v=2.csv");
+        ProductImportResult result = new ProductImportResult();
+        result.setPreview(true);
+        result.setImportId("import-456");
+        result.setFileSha256("def456");
+        result.setReadyToImport(true);
+        result.setTotalRows(1);
+        result.setCreated(1);
+        when(productService.previewImportCsv(file)).thenReturn(result);
+        Authentication authentication = mock(Authentication.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+
+        controller.previewImportProducts(file, authentication, request);
+
+        verify(auditLogService).record(
+                eq("PRODUCT_IMPORT_PREVIEW"),
+                eq("SUCCESS"),
+                same(authentication),
+                eq("PRODUCT_IMPORT"),
+                eq("products;v=2.csv"),
+                same(request),
+                eq("Product import preview passed"),
+                metadata.capture()
+        );
+        assertTrue(metadata.getValue().contains("filename=products%3Bv%3D2.csv"));
+
+        SecurityAuditLog log = new SecurityAuditLog();
+        log.setId(44L);
+        log.setAction("PRODUCT_IMPORT_PREVIEW");
+        log.setResult("SUCCESS");
+        log.setResourceType("PRODUCT_IMPORT");
+        log.setResourceId("products;v=2.csv");
+        log.setMessage("Product import preview passed");
+        log.setCreatedAt(LocalDateTime.of(2026, 5, 25, 11, 30));
+        log.setMetadata(metadata.getValue());
+        when(auditLogService.search(isNull(), isNull(), isNull(), eq("PRODUCT_IMPORT"), isNull(), isNull(), eq(3)))
+                .thenReturn(List.of(log));
+
+        ResponseEntity<List<ProductImportHistoryEntry>> history = controller.getProductImportHistory(1);
+
+        assertEquals(1, history.getBody().size());
+        assertEquals("products;v=2.csv", history.getBody().get(0).getFilename());
+        assertEquals("import-456", history.getBody().get(0).getImportId());
+        assertEquals("def456", history.getBody().get(0).getFileSha256());
+    }
+
+    @Test
     void applyImportWritesFailureAuditLogWhenRowsAreRejected() {
         MockMultipartFile file = csvFile("bad-products.csv");
         ProductImportResult result = new ProductImportResult();
