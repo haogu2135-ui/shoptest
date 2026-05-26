@@ -707,6 +707,33 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void reportsTextMerchandisingFieldWhenImportedTextExceedsLimit() {
+        String[][] cases = new String[][] {
+                {"brand", "x".repeat(121)},
+                {"tag", "x".repeat(81)},
+                {"warranty", "x".repeat(501)},
+                {"shipping", "x".repeat(501)}
+        };
+
+        for (String[] testCase : cases) {
+            MockMultipartFile file = new MockMultipartFile(
+                    "file",
+                    "products.csv",
+                    "text/csv",
+                    ("id,name,description,price,stock,categoryId," + testCase[0] + "\n"
+                            + ",Harness,Safe,19.99,8,1," + testCase[1] + "\n")
+                            .getBytes(StandardCharsets.UTF_8)
+            );
+
+            ProductImportResult result = service.importCsv(file);
+
+            assertEquals(1, result.getFailed());
+            assertEquals(testCase[0], result.getRowErrors().get(0).getField());
+        }
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsInvalidImportedImageJsonBeforeSavingRow() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(

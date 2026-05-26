@@ -1214,9 +1214,9 @@ public class ProductServiceImpl implements ProductService {
         }
         for (String field : List.of(
                 "id", "name", "description", "price", "stock", "categoryId", "categoryName", "imageUrl",
-                "originalPrice", "discount", "limitedTimePrice", "limitedTimeStartAt",
-                "limitedTimeEndAt", "status", "isFeatured", "freeShipping", "freeShippingThreshold", "images",
-                "specifications", "detailContent", "variants")) {
+                "brand", "originalPrice", "discount", "limitedTimePrice", "limitedTimeStartAt",
+                "limitedTimeEndAt", "tag", "status", "isFeatured", "freeShipping", "freeShippingThreshold", "images",
+                "specifications", "detailContent", "variants", "warranty", "shipping")) {
             if (message.startsWith(field + " ") || message.startsWith(field + ":") || message.contains("[" + field + "]")) {
                 return field;
             }
