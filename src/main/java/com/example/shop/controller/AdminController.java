@@ -849,7 +849,9 @@ public class AdminController {
         List<ProductImportHistoryEntry> entries = auditLogService.search(
                         null, null, null, "PRODUCT_IMPORT", null, null, safeLimit * 3)
                 .stream()
-                .filter(log -> "PRODUCT_IMPORT_PREVIEW".equals(log.getAction()) || "PRODUCT_IMPORT_APPLY".equals(log.getAction()))
+                .filter(log -> "PRODUCT_IMPORT_PREVIEW".equals(log.getAction())
+                        || "PRODUCT_IMPORT_APPLY".equals(log.getAction())
+                        || "PRODUCT_URL_IMPORT".equals(log.getAction()))
                 .limit(safeLimit)
                 .map(this::toProductImportHistoryEntry)
                 .collect(Collectors.toList());
@@ -868,7 +870,7 @@ public class AdminController {
             return ResponseEntity.ok(preview);
         } catch (RuntimeException ex) {
             auditLogService.record("PRODUCT_URL_IMPORT", "FAILURE", authentication, "PRODUCT_IMPORT", safeImportResourceId(url), httpRequest,
-                    "Product URL import failed", "urlHost=" + safeImportResourceId(url));
+                    "Product URL import failed", "urlHost=" + encodeMetadataValue(safeImportResourceId(url)));
             throw ex;
         }
     }
@@ -930,7 +932,7 @@ public class AdminController {
         if (preview == null) {
             return "";
         }
-        return "sourceHost=" + preview.getSourceHost()
+        return "sourceHost=" + encodeMetadataValue(preview.getSourceHost())
                 + ";confidenceScore=" + preview.getConfidenceScore()
                 + ";imageCount=" + (preview.getImages() == null ? 0 : preview.getImages().size())
                 + ";blockedImageCount=" + (preview.getBlockedImages() == null ? 0 : preview.getBlockedImages().size())
@@ -960,17 +962,28 @@ public class AdminController {
         entry.setCreated(parseIntMetadata(metadata.get("created")));
         entry.setUpdated(parseIntMetadata(metadata.get("updated")));
         entry.setFailed(parseIntMetadata(metadata.get("failed")));
-        entry.setPreview(Boolean.parseBoolean(metadata.getOrDefault("preview", "false")));
-        entry.setReadyToImport(Boolean.parseBoolean(metadata.getOrDefault("readyToImport", "false")));
+        boolean urlImport = "PRODUCT_URL_IMPORT".equals(log.getAction());
+        entry.setPreview(Boolean.parseBoolean(metadata.getOrDefault("preview", urlImport ? "true" : "false")));
+        entry.setReadyToImport(Boolean.parseBoolean(metadata.getOrDefault("readyToImport", urlImport && "SUCCESS".equals(log.getResult()) ? "true" : "false")));
         entry.setApplied(metadata.containsKey("applied")
                 ? Boolean.parseBoolean(metadata.get("applied"))
-                : ProductImportResult.STATUS_APPLIED.equals(status));
+                : !urlImport && ProductImportResult.STATUS_APPLIED.equals(status));
+        entry.setSourceHost(metadata.getOrDefault("sourceHost", metadata.getOrDefault("urlHost", "")));
+        entry.setConfidenceScore(parseOptionalIntMetadata(metadata.get("confidenceScore")));
+        entry.setImageCount(parseIntMetadata(metadata.get("imageCount")));
+        entry.setBlockedImageCount(parseIntMetadata(metadata.get("blockedImageCount")));
+        entry.setWarningCount(parseIntMetadata(metadata.get("warningCount")));
         entry.setMessage(log.getMessage());
         entry.setCreatedAt(log.getCreatedAt());
         return entry;
     }
 
     private String fallbackProductImportStatus(SecurityAuditLog log, Map<String, String> metadata) {
+        if ("PRODUCT_URL_IMPORT".equals(log.getAction())) {
+            return "SUCCESS".equals(log.getResult())
+                    ? ProductImportResult.STATUS_PREVIEW_READY
+                    : ProductImportResult.STATUS_PREVIEW_BLOCKED;
+        }
         boolean preview = Boolean.parseBoolean(metadata.getOrDefault("preview", "PRODUCT_IMPORT_PREVIEW".equals(log.getAction()) ? "true" : "false"));
         boolean ready = Boolean.parseBoolean(metadata.getOrDefault("readyToImport", "false"));
         if (preview) {
@@ -1017,6 +1030,14 @@ public class AdminController {
             return value == null || value.isBlank() ? 0 : Integer.parseInt(value);
         } catch (NumberFormatException ex) {
             return 0;
+        }
+    }
+
+    private Integer parseOptionalIntMetadata(String value) {
+        try {
+            return value == null || value.isBlank() ? null : Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            return null;
         }
     }
 

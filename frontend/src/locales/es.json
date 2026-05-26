@@ -1895,6 +1895,7 @@
       "importHistoryCreated": "{count} nuevos",
       "importHistoryUpdated": "{count} actualizados",
       "importHistoryFailed": "{count} fallidos",
+      "importHistoryWarnings": "{count} advertencias",
       "importStatus": {
         "PREVIEW_READY": "Prevalidación correcta",
         "PREVIEW_BLOCKED": "Prevalidación bloqueada",

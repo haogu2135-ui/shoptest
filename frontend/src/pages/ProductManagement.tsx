@@ -219,6 +219,13 @@ const productCreateDefaults = () => ({
 
 type ListingQualityIssue = 'image' | 'content' | 'stock' | 'localized' | 'commercialHook';
 type ListingQualityFilter = ListingQualityIssue | 'ready';
+type ProductImportHistoryDisplayEntry = ProductImportHistoryEntry & {
+  sourceHost?: string;
+  confidenceScore?: number;
+  imageCount?: number;
+  blockedImageCount?: number;
+  warningCount?: number;
+};
 
 const hasMeaningfulText = (value: unknown, minLength = 12) =>
   typeof value === 'string' && value.trim().length >= minLength;
@@ -1320,26 +1327,40 @@ const ProductManagement: React.FC = () => {
         {importHistory.length > 0 ? (
           <div className="product-import-history__list">
             {importHistory.map((log) => {
-              const importId = log.importId || '';
-              const fingerprint = log.fileSha256 || '';
-              const status = log.status || (log.result === 'SUCCESS' ? 'APPLIED' : 'REJECTED');
-              const applied = typeof log.applied === 'boolean' ? log.applied : status === 'APPLIED';
+              const historyLog = log as ProductImportHistoryDisplayEntry;
+              const importId = historyLog.importId || '';
+              const fingerprint = historyLog.fileSha256 || '';
+              const status = historyLog.status || (historyLog.result === 'SUCCESS' ? 'APPLIED' : 'REJECTED');
+              const applied = typeof historyLog.applied === 'boolean' ? historyLog.applied : status === 'APPLIED';
+              const urlImport = historyLog.action === 'PRODUCT_URL_IMPORT';
               return (
-                <div className="product-import-history__item" key={log.auditLogId}>
+                <div className="product-import-history__item" key={historyLog.auditLogId}>
                   <div className="product-import-history__main">
                     <Tag color={productImportStatusColor(status)}>
                       {t(`pages.productAdmin.importStatus.${status}`, { defaultValue: status })}
                     </Tag>
-                    <strong>{t(`pages.productAdmin.importHistoryAction.${log.action}`, { defaultValue: log.action })}</strong>
-                    <Text type="secondary">{dayjs(log.createdAt).format('YYYY-MM-DD HH:mm')}</Text>
-                    {log.filename ? <Text type="secondary">{log.filename}</Text> : null}
+                    <strong>{t(`pages.productAdmin.importHistoryAction.${historyLog.action}`, { defaultValue: historyLog.action })}</strong>
+                    <Text type="secondary">{dayjs(historyLog.createdAt).format('YYYY-MM-DD HH:mm')}</Text>
+                    {historyLog.filename ? <Text type="secondary">{historyLog.filename}</Text> : null}
                   </div>
                   <div className="product-import-history__meta">
-                    <span>{t('pages.productAdmin.importHistoryRows', { count: log.totalRows || 0 })}</span>
-                    <span>{t('pages.productAdmin.importHistoryCreated', { count: log.created || 0 })}</span>
-                    <span>{t('pages.productAdmin.importHistoryUpdated', { count: log.updated || 0 })}</span>
-                    <span>{t('pages.productAdmin.importHistoryFailed', { count: log.failed || 0 })}</span>
-                    <span>{applied ? t('pages.productAdmin.importApplied') : t('pages.productAdmin.importNotApplied')}</span>
+                    {urlImport ? (
+                      <>
+                        {historyLog.sourceHost ? <span>{historyLog.sourceHost}</span> : null}
+                        {typeof historyLog.confidenceScore === 'number' ? <span>{t('pages.productAdmin.urlImportConfidence', { score: historyLog.confidenceScore })}</span> : null}
+                        <span>{t('pages.productAdmin.urlImportImageCount', { count: historyLog.imageCount || 0 })}</span>
+                        {historyLog.blockedImageCount ? <span>{t('pages.productAdmin.urlImportBlockedImages', { count: historyLog.blockedImageCount })}</span> : null}
+                        {historyLog.warningCount ? <span>{t('pages.productAdmin.importHistoryWarnings', { count: historyLog.warningCount })}</span> : null}
+                      </>
+                    ) : (
+                      <>
+                        <span>{t('pages.productAdmin.importHistoryRows', { count: historyLog.totalRows || 0 })}</span>
+                        <span>{t('pages.productAdmin.importHistoryCreated', { count: historyLog.created || 0 })}</span>
+                        <span>{t('pages.productAdmin.importHistoryUpdated', { count: historyLog.updated || 0 })}</span>
+                        <span>{t('pages.productAdmin.importHistoryFailed', { count: historyLog.failed || 0 })}</span>
+                        <span>{applied ? t('pages.productAdmin.importApplied') : t('pages.productAdmin.importNotApplied')}</span>
+                      </>
+                    )}
                     {importId ? (
                       <button type="button" onClick={() => copyImportTraceValue(importId)}>
                         {t('pages.productAdmin.importId')}: {importId.slice(0, 8)}

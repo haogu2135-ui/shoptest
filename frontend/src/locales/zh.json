@@ -1724,6 +1724,7 @@
       "importHistoryCreated": "新增 {count}",
       "importHistoryUpdated": "更新 {count}",
       "importHistoryFailed": "失败 {count}",
+      "importHistoryWarnings": "{count} 个警告",
       "importStatus": {
         "PREVIEW_READY": "预检通过",
         "PREVIEW_BLOCKED": "预检拦截",

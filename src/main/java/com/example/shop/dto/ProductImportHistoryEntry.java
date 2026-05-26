@@ -21,6 +21,11 @@ public class ProductImportHistoryEntry {
     private boolean preview;
     private boolean readyToImport;
     private boolean applied;
+    private String sourceHost;
+    private Integer confidenceScore;
+    private int imageCount;
+    private int blockedImageCount;
+    private int warningCount;
     private String message;
     private LocalDateTime createdAt;
 }

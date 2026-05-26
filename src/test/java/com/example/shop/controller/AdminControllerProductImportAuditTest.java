@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -223,6 +224,10 @@ class AdminControllerProductImportAuditTest {
         urlLog.setAction("PRODUCT_URL_IMPORT");
         urlLog.setResult("SUCCESS");
         urlLog.setResourceType("PRODUCT_IMPORT");
+        urlLog.setResourceId("supplier.example.com");
+        urlLog.setMessage("Product URL import preview generated");
+        urlLog.setCreatedAt(LocalDateTime.of(2026, 5, 25, 10, 29));
+        urlLog.setMetadata("sourceHost=supplier.example.com;confidenceScore=82;imageCount=4;blockedImageCount=1;warningCount=2");
 
         when(auditLogService.search(isNull(), isNull(), isNull(), eq("PRODUCT_IMPORT"), isNull(), isNull(), eq(18)))
                 .thenReturn(List.of(applyLog, urlLog));
@@ -230,7 +235,7 @@ class AdminControllerProductImportAuditTest {
         ResponseEntity<List<ProductImportHistoryEntry>> response = controller.getProductImportHistory(6);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(1, response.getBody().size());
+        assertEquals(2, response.getBody().size());
         ProductImportHistoryEntry entry = response.getBody().get(0);
         assertEquals(42L, entry.getAuditLogId());
         assertEquals("PRODUCT_IMPORT_APPLY", entry.getAction());
@@ -246,6 +251,20 @@ class AdminControllerProductImportAuditTest {
         assertEquals(0, entry.getFailed());
         assertTrue(entry.isReadyToImport());
         assertTrue(entry.isApplied());
+
+        ProductImportHistoryEntry urlEntry = response.getBody().get(1);
+        assertEquals(43L, urlEntry.getAuditLogId());
+        assertEquals("PRODUCT_URL_IMPORT", urlEntry.getAction());
+        assertEquals("supplier.example.com", urlEntry.getFilename());
+        assertEquals(ProductImportResult.STATUS_PREVIEW_READY, urlEntry.getStatus());
+        assertTrue(urlEntry.isPreview());
+        assertTrue(urlEntry.isReadyToImport());
+        assertFalse(urlEntry.isApplied());
+        assertEquals("supplier.example.com", urlEntry.getSourceHost());
+        assertEquals(82, urlEntry.getConfidenceScore());
+        assertEquals(4, urlEntry.getImageCount());
+        assertEquals(1, urlEntry.getBlockedImageCount());
+        assertEquals(2, urlEntry.getWarningCount());
     }
 
     private MockMultipartFile csvFile(String filename) {

@@ -1852,6 +1852,7 @@
       "importHistoryCreated": "{count} created",
       "importHistoryUpdated": "{count} updated",
       "importHistoryFailed": "{count} failed",
+      "importHistoryWarnings": "{count} warnings",
       "importStatus": {
         "PREVIEW_READY": "Preflight passed",
         "PREVIEW_BLOCKED": "Preflight blocked",
