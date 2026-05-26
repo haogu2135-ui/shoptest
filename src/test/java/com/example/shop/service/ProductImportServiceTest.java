@@ -659,6 +659,59 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsLimitedTimePriceAbovePriceBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,limitedTimePrice\n"
+                        + ",Harness,Safe,19.99,8,1,29.99\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals("limitedTimePrice", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("limitedTimePrice must be less than or equal to price"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsLimitedTimePriceOnlyUpdateThatWouldExceedExistingPrice() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product existing = new Product();
+        existing.setId(3L);
+        existing.setName("Existing Harness");
+        existing.setPrice(new BigDecimal("20.00"));
+        existing.setStock(4);
+        existing.setCategoryId(1L);
+        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,limitedTimePrice\n"
+                        + "3,29.99\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals("limitedTimePrice", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("limitedTimePrice must be less than or equal to price"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsLightweightUpdateRowsThatWouldCreateIncompleteProducts() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         when(productRepository.findById(404L)).thenReturn(java.util.Optional.empty());

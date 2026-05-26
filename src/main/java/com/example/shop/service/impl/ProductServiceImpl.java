@@ -919,6 +919,7 @@ public class ProductServiceImpl implements ProductService {
                 && product.getOriginalPrice().compareTo(product.getPrice()) < 0) {
             throw new IllegalArgumentException("originalPrice must be greater than or equal to price");
         }
+        validateLimitedTimePrice(product.getPrice(), product.getLimitedTimePrice());
         if (product.getStock() != null && product.getStock() < 0) {
             throw new IllegalArgumentException("stock must be greater than or equal to 0");
         }
@@ -962,6 +963,12 @@ public class ProductServiceImpl implements ProductService {
                 throw new IllegalArgumentException("originalPrice must be greater than or equal to price");
             }
         }
+        if (updateFields.contains("price") || updateFields.contains("limitedTimePrice")) {
+            BigDecimal limitedTimePrice = updateFields.contains("limitedTimePrice")
+                    ? imported.getLimitedTimePrice()
+                    : existing.getLimitedTimePrice();
+            validateLimitedTimePrice(price, limitedTimePrice);
+        }
         if (updateFields.contains("limitedTimeStartAt") || updateFields.contains("limitedTimeEndAt")) {
             LocalDateTime start = updateFields.contains("limitedTimeStartAt")
                     ? imported.getLimitedTimeStartAt()
@@ -972,6 +979,12 @@ public class ProductServiceImpl implements ProductService {
             if (start != null && end != null && !end.isAfter(start)) {
                 throw new IllegalArgumentException("limitedTimeEndAt must be after limitedTimeStartAt");
             }
+        }
+    }
+
+    private void validateLimitedTimePrice(BigDecimal price, BigDecimal limitedTimePrice) {
+        if (limitedTimePrice != null && price != null && limitedTimePrice.compareTo(price) > 0) {
+            throw new IllegalArgumentException("limitedTimePrice must be less than or equal to price");
         }
     }
 
