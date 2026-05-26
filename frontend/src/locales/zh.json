@@ -1680,7 +1680,7 @@
       "filterCategory": "筛选分类",
       "addProduct": "添加商品",
       "importProducts": "导入商品",
-      "importCsvHint": "CSV 导入支持 UTF-8 或 UTF-16 文件、逗号或分号分隔、小数点或小数逗号金额、带引号的分隔符和换行字段。新建商品请留空 id；填写 id 时必须对应已存在商品，并按更新处理。分类可填 categoryId，也可填 categoryName/分类路径；预检整份文件后再确认写入。",
+      "importCsvHint": "CSV 导入支持 UTF-8 或 UTF-16 文件、逗号或分号分隔、小数点或小数逗号金额、带引号的分隔符和换行字段。新建商品请留空 id；填写 id 时必须对应已存在商品，并按更新处理。分类可填 categoryId，也可填 categoryName/分类路径；整份文件内的 SKU 不可重复。预检整份文件后再确认写入。",
       "downloadTemplate": "CSV 模板",
       "importTemplateDownloaded": "商品导入模板已下载",
       "downloadUpdateTemplate": "价格/库存更新表",

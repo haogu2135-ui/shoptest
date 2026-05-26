@@ -1808,7 +1808,7 @@
       "filterCategory": "Filter category",
       "addProduct": "Add product",
       "importProducts": "Import products",
-      "importCsvHint": "CSV import supports UTF-8 or UTF-16 files, comma or semicolon separators, decimal dot or decimal comma money, quoted delimiters, and line breaks. Leave id blank to create products; filled ids must already exist and are treated as updates. Use either categoryId or categoryName/category path; preflight validates the whole file before confirmation.",
+      "importCsvHint": "CSV import supports UTF-8 or UTF-16 files, comma or semicolon separators, decimal dot or decimal comma money, quoted delimiters, and line breaks. Leave id blank to create products; filled ids must already exist and are treated as updates. Use either categoryId or categoryName/category path; variant SKUs must be unique in the file. Preflight validates the whole file before confirmation.",
       "downloadTemplate": "Download template",
       "importTemplateDownloaded": "Product import template downloaded",
       "downloadUpdateTemplate": "Price/stock update CSV",

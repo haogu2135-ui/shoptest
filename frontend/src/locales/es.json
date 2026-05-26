@@ -1851,7 +1851,7 @@
       "filterCategory": "Filtrar categoría",
       "addProduct": "Agregar producto",
       "importProducts": "Importar productos",
-      "importCsvHint": "La importación CSV admite archivos UTF-8 o UTF-16, separadores de coma o punto y coma, importes con punto o coma decimal, delimitadores entre comillas y saltos de línea. Deja id vacío para crear productos; los ids informados deben existir y se tratan como actualizaciones. Usa categoryId o categoryName/ruta de categoría; la prevalidación revisa todo el archivo antes de confirmar.",
+      "importCsvHint": "La importación CSV admite archivos UTF-8 o UTF-16, separadores de coma o punto y coma, importes con punto o coma decimal, delimitadores entre comillas y saltos de línea. Deja id vacío para crear productos; los ids informados deben existir y se tratan como actualizaciones. Usa categoryId o categoryName/ruta de categoría; los SKU de variantes deben ser únicos en el archivo. La prevalidación revisa todo el archivo antes de confirmar.",
       "downloadTemplate": "Plantilla CSV",
       "importTemplateDownloaded": "Plantilla de importación descargada",
       "downloadUpdateTemplate": "CSV de precio/inventario",

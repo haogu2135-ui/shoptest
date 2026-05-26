@@ -1254,6 +1254,30 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsDuplicateVariantSkusAcrossImportFileBeforeSavingRows() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryId,variants\n"
+                        + "Harness,Safe,19.99,8,1,\"[{\"\"sku\"\":\"\"SKU-100\"\",\"\"options\"\":{\"\"Size\"\":\"\"S\"\"},\"\"price\"\":19.99,\"\"stock\"\":2}]\"\n"
+                        + "Leash,Strong,9.99,5,1,\"[{\"\"sku\"\":\"\" sku-100 \"\",\"\"options\"\":{\"\"Size\"\":\"\"M\"\"},\"\"price\"\":9.99,\"\"stock\"\":3}]\"\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(2, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals("variants", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("sku appears more than once"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsImportedVariantPricesWithMoreThanTwoDecimalsBeforeSavingRow() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(

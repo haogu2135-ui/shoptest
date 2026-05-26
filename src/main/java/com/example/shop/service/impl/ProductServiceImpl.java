@@ -436,6 +436,7 @@ public class ProductServiceImpl implements ProductService {
         populateImportFileFingerprint(file, result);
         Set<Long> importedIds = new HashSet<>();
         Set<String> importedCreateIdentities = new HashSet<>();
+        Set<String> importedVariantSkus = new HashSet<>();
         ImportCategoryLookup categoryLookup = loadImportCategoryLookup();
         List<ProductImportRow> importRows = new ArrayList<>();
         try (BufferedReader reader = importCsvReader(file)) {
@@ -505,6 +506,7 @@ public class ProductServiceImpl implements ProductService {
                     }
                     validateImportedProduct(product, importedIds, categoryLookup, updateFields, existingProduct != null);
                     validateImportCreateIdentity(product, importedCreateIdentities, existingProduct != null);
+                    validateImportVariantSkusAcrossFile(product.getVariants(), importedVariantSkus);
                     validateMergedImportUpdate(existingProduct, product, updateFields);
                     if (existingProduct != null) {
                         result.setUpdated(result.getUpdated() + 1);
@@ -1222,7 +1224,7 @@ public class ProductServiceImpl implements ProductService {
             String sku = jsonText(variant.get("sku"));
             if (sku != null && !sku.isBlank()) {
                 requireLength(sku, 80, "variants sku");
-                if (!seenSkus.add(sku)) {
+                if (!seenSkus.add(normalizeImportSkuKey(sku))) {
                     throw new IllegalArgumentException("variants sku must be unique");
                 }
             }
@@ -1255,6 +1257,29 @@ public class ProductServiceImpl implements ProductService {
             }
             validateImportImageUrl(jsonText(variant.get("imageUrl")), "variants");
         }
+    }
+
+    private void validateImportVariantSkusAcrossFile(String value, Set<String> importedVariantSkus) {
+        JsonNode variants = validateImportJsonArray(value, "variants", 200);
+        if (variants == null) {
+            return;
+        }
+        for (JsonNode variant : variants) {
+            if (variant == null || !variant.isObject()) {
+                continue;
+            }
+            String sku = jsonText(variant.get("sku"));
+            if (sku == null || sku.isBlank()) {
+                continue;
+            }
+            if (!importedVariantSkus.add(normalizeImportSkuKey(sku))) {
+                throw new IllegalArgumentException("variants sku appears more than once in this import file");
+            }
+        }
+    }
+
+    private String normalizeImportSkuKey(String sku) {
+        return normalizeImportText(sku).toUpperCase(Locale.ROOT);
     }
 
     private String jsonText(JsonNode node) {
