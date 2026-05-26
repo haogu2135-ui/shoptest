@@ -222,6 +222,65 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsConflictingCategoryIdAndCategoryNameBeforeSaving() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Category dog = new Category();
+        dog.setId(10L);
+        dog.setName("Dog");
+        Category cat = new Category();
+        cat.setId(20L);
+        cat.setName("Cat");
+        when(categoryRepository.findAll()).thenReturn(List.of(dog, cat));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryId,categoryName\n"
+                        + "Harness,Safe fit,19.99,8,10,Cat\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertTrue(result.getErrors().get(0).contains("categoryName does not match categoryId"));
+        assertEquals("categoryName", result.getRowErrors().get(0).getField());
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertFalse(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void acceptsAmbiguousCategoryNameWhenCategoryIdDisambiguatesIt() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Category dogHarnesses = new Category();
+        dogHarnesses.setId(10L);
+        dogHarnesses.setName("Harnesses");
+        Category catHarnesses = new Category();
+        catHarnesses.setId(20L);
+        catHarnesses.setName("Harnesses");
+        when(categoryRepository.findAll()).thenReturn(List.of(dogHarnesses, catHarnesses));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryId,categoryName\n"
+                        + "Harness,Safe fit,19.99,8,10,Harnesses\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(0, result.getFailed());
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        assertEquals(10L, captor.getValue().getCategoryId());
+    }
+
+    @Test
     void rejectsAmbiguousCategoryNameImports() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         Category dogHarnesses = new Category();
