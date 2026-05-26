@@ -18,6 +18,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("select p from Product p where p.categoryId = :categoryId and (p.status is null or upper(p.status) = 'ACTIVE') order by p.id asc")
     List<Product> findActiveByCategoryId(@Param("categoryId") Long categoryId, Pageable pageable);
     List<Product> findByCategoryIdIn(List<Long> categoryIds);
+    List<Product> findByNameIgnoreCase(String name);
     List<Product> findByNameContainingIgnoreCase(String keyword);
     @Query("select count(p) from Product p where upper(coalesce(p.status, '')) = 'ACTIVE'")
     long countActiveProducts();

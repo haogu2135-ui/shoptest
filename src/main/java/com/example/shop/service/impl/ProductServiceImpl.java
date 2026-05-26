@@ -508,6 +508,7 @@ public class ProductServiceImpl implements ProductService {
                     validateImportCreateIdentity(product, importedCreateIdentities, existingProduct != null);
                     validateImportVariantSkusAcrossFile(product.getVariants(), importedVariantSkus);
                     validateMergedImportUpdate(existingProduct, product, updateFields);
+                    validateImportProductNameDoesNotDuplicateExisting(existingProduct, product, updateFields);
                     if (existingProduct != null) {
                         result.setUpdated(result.getUpdated() + 1);
                     } else {
@@ -1073,6 +1074,32 @@ public class ProductServiceImpl implements ProductService {
                     : existing.getLimitedTimeEndAt();
             if (start != null && end != null && !end.isAfter(start)) {
                 throw new IllegalArgumentException("limitedTimeEndAt must be after limitedTimeStartAt");
+            }
+        }
+    }
+
+    private void validateImportProductNameDoesNotDuplicateExisting(Product existing, Product imported, Set<String> updateFields) {
+        String name = existing != null && !updateFields.contains("name") ? existing.getName() : imported.getName();
+        Long categoryId = existing != null && !updateFields.contains("categoryId") ? existing.getCategoryId() : imported.getCategoryId();
+        if (name == null || name.isBlank() || categoryId == null || productRepository == null) {
+            return;
+        }
+        String nameKey = normalizeImportProductNameKey(name);
+        Long currentId = existing == null ? null : existing.getId();
+        List<Product> matches = productRepository.findByNameIgnoreCase(name);
+        if (matches == null || matches.isEmpty()) {
+            return;
+        }
+        for (Product match : matches) {
+            if (match == null || match.getId() == null || !categoryId.equals(match.getCategoryId())) {
+                continue;
+            }
+            if (currentId != null && currentId.equals(match.getId())) {
+                continue;
+            }
+            String matchName = normalizeImportProductNameKey(match.getName());
+            if (nameKey.equals(matchName)) {
+                throw new IllegalArgumentException("name already exists in this category: " + name);
             }
         }
     }
