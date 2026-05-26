@@ -489,6 +489,28 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsNamedHeaderRowsWithNonBlankCellsBeyondHeaderColumns() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryId\n"
+                        + "Harness,Safe,19.99,8,1,Unexpected value\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertTrue(result.getErrors().get(0).contains("beyond the header columns"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void normalizesImportedTextAndStatusBeforeSaving() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(

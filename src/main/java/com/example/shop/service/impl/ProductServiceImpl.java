@@ -61,6 +61,7 @@ public class ProductServiceImpl implements ProductService {
     private static final int MAX_IMPORT_IMAGE_URL_LENGTH = 2048;
     private static final int MAX_IMPORT_MONEY_SCALE = 2;
     private static final BigDecimal MAX_IMPORT_MONEY_AMOUNT = new BigDecimal("99999999.99");
+    private static final int LEGACY_IMPORT_COLUMN_COUNT = 24;
     private static final Set<String> REQUIRED_IMPORT_HEADERS = Set.of("name", "price", "stock", "categoryid");
     private static final Set<String> SUPPORTED_IMPORT_HEADERS = Set.of(
             "id", "name", "description", "price", "stock", "categoryid", "categoryname", "imageurl",
@@ -438,6 +439,7 @@ public class ProductServiceImpl implements ProductService {
         try (BufferedReader reader = importCsvReader(file)) {
             List<CsvUtils.Record> records = CsvUtils.parseRecords(reader);
             Map<String, Integer> headerIndex = null;
+            int headerColumnCount = 0;
             for (int i = 0; i < records.size(); i++) {
                 CsvUtils.Record record = records.get(i);
                 List<String> values = new ArrayList<>(record.getValues());
@@ -447,6 +449,7 @@ public class ProductServiceImpl implements ProductService {
                 }
                 if (i == 0 && isProductImportHeader(values)) {
                     headerIndex = productImportHeaderIndex(values);
+                    headerColumnCount = values.size();
                     List<String> duplicateHeaders = duplicateImportHeaders(values);
                     if (!duplicateHeaders.isEmpty()) {
                         result.addError(
@@ -484,6 +487,7 @@ public class ProductServiceImpl implements ProductService {
 
                 result.setTotalRows(result.getTotalRows() + 1);
                 try {
+                    validateImportRowColumnCount(values, headerIndex, headerColumnCount);
                     Product product = toProduct(values, headerIndex, categoryLookup);
                     Set<String> updateFields = importUpdateFields(headerIndex);
                     populateImportUpdateFields(result, updateFields);
@@ -555,6 +559,21 @@ public class ProductServiceImpl implements ProductService {
             input.unread(bom, skip, bytesRead - skip);
         }
         return new BufferedReader(new InputStreamReader(input, charset));
+    }
+
+    private void validateImportRowColumnCount(List<String> values, Map<String, Integer> headerIndex, int headerColumnCount) {
+        int expectedColumns = headerIndex == null ? LEGACY_IMPORT_COLUMN_COUNT : headerColumnCount;
+        if (values == null || values.size() <= expectedColumns) {
+            return;
+        }
+        boolean extraData = values.subList(expectedColumns, values.size()).stream()
+                .anyMatch(value -> value != null && !value.trim().isEmpty());
+        if (extraData) {
+            if (headerIndex == null) {
+                throw new IllegalArgumentException("CSV row contains unsupported extra columns after the legacy import fields");
+            }
+            throw new IllegalArgumentException("CSV row contains values beyond the header columns. Remove extra cells or add supported headers before import.");
+        }
     }
 
     private void markCurrentTransactionRollbackOnly() {
