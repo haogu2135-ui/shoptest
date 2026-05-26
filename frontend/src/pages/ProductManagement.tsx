@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, InputNumber, message, Space, Select, Tag, Switch, DatePicker,
-  Tooltip, Typography, Divider, Image, Popconfirm, TreeSelect, Upload, Tabs,
+  Tooltip, Typography, Divider, Image, Popconfirm, TreeSelect, Upload, Tabs, Alert,
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
   SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined, LinkOutlined,
 } from '@ant-design/icons';
 import { productApi, categoryApi, adminApi, brandApi } from '../api';
-import type { Product, Category, Brand, ProductUrlImportPreview } from '../types';
+import type { Product, Category, Brand, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview } from '../types';
 import { buildCategoryTree, descendantIdSet, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import dayjs from 'dayjs';
@@ -22,7 +22,6 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 const productAdminImageFallback = productImageFallback;
 const resolveProductAdminImage = resolveProductImage;
-const PRODUCT_IMPORT_MAX_FILE_SIZE = 1024 * 1024;
 
 const tagColorMap: Record<string, string> = { hot: 'red', new: 'blue', discount: 'orange' };
 const productStatusColors: Record<string, string> = {
@@ -144,6 +143,63 @@ const isCsvImportFile = (file: File) => {
   return name.endsWith('.csv') && (!type || ['text/csv', 'application/csv', 'application/vnd.ms-excel'].includes(type));
 };
 
+const formatBytes = (bytes?: number) => {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes >= 1024 * 1024) return `${Math.round(bytes / 1024 / 1024)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+};
+
+const productImportStatusColor = (status?: string) => {
+  switch (status) {
+    case 'APPLIED':
+    case 'PREVIEW_READY':
+      return 'green';
+    case 'PREVIEW_BLOCKED':
+      return 'orange';
+    case 'REJECTED':
+      return 'red';
+    default:
+      return 'default';
+  }
+};
+
+const renderImportErrors = (result: { rowErrors?: Array<{ rowNumber: number; field?: string; message: string }>; errors?: string[] }) => {
+  if (Array.isArray(result.rowErrors) && result.rowErrors.length > 0) {
+    return result.rowErrors.map((rowError) => (
+      <li key={`${rowError.rowNumber}-${rowError.field || 'row'}-${rowError.message}`}>
+        <Text strong>{rowError.rowNumber > 0 ? `Row ${rowError.rowNumber}` : 'File'}</Text>
+        {rowError.field ? <Tag style={{ marginLeft: 8 }}>{rowError.field}</Tag> : null}
+        <span>{rowError.message}</span>
+      </li>
+    ));
+  }
+  return (result.errors || []).map((errorText) => <li key={errorText}>{errorText}</li>);
+};
+
+const downloadImportErrorReport = (result: ProductImportResult) => {
+  const rowErrors = Array.isArray(result.rowErrors) && result.rowErrors.length > 0
+    ? result.rowErrors
+    : (result.errors || []).map((errorText) => ({ rowNumber: 0, field: '', message: errorText }));
+  const rows = [
+    ['importId', result.importId || ''],
+    ['fileSha256', result.fileSha256 || ''],
+    ['status', result.status || ''],
+    ['applied', result.applied ? 'true' : 'false'],
+    [],
+    ['rowNumber', 'field', 'message'],
+    ...rowErrors.map((rowError) => [rowError.rowNumber || '', rowError.field || '', rowError.message || '']),
+  ];
+  const csv = rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF', `${csv}\r\n`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `product-import-errors-${dayjs().format('YYYYMMDD-HHmm')}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 const productCreateDefaults = () => ({
   images: [],
   specifications: [{}],
@@ -215,6 +271,8 @@ const ProductManagement: React.FC = () => {
   const [urlImportVisible, setUrlImportVisible] = useState(false);
   const [urlImportSubmitting, setUrlImportSubmitting] = useState(false);
   const [urlImportPreview, setUrlImportPreview] = useState<ProductUrlImportPreview | null>(null);
+  const [importHistory, setImportHistory] = useState<ProductImportHistoryEntry[]>([]);
+  const [importHistoryLoading, setImportHistoryLoading] = useState(false);
   const [batchStatusUpdating, setBatchStatusUpdating] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -305,11 +363,24 @@ const ProductManagement: React.FC = () => {
     }
   }, [t]);
 
+  const fetchImportHistory = useCallback(async () => {
+    try {
+      setImportHistoryLoading(true);
+      const response = await adminApi.getProductImportHistory(6);
+      setImportHistory(response.data);
+    } catch (error) {
+      setImportHistory([]);
+    } finally {
+      setImportHistoryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
     fetchCategories();
     fetchBrands();
-  }, [fetchProducts, fetchCategories, fetchBrands]);
+    fetchImportHistory();
+  }, [fetchProducts, fetchCategories, fetchBrands, fetchImportHistory]);
 
   const baseFilteredProducts = useMemo(() => {
     const normalizedKeyword = searchKeyword.trim().toLowerCase();
@@ -701,7 +772,7 @@ const ProductManagement: React.FC = () => {
     const headers = [
       'id', 'name', 'description', 'price', 'stock', 'categoryId', 'imageUrl', 'isFeatured',
       'brand', 'originalPrice', 'discount', 'limitedTimePrice', 'limitedTimeStartAt',
-      'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping', 'status', 'freeShipping', 'freeShippingThreshold',
+      'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping', 'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
     const sample = [
       '', 'Sample product', 'Product description', '99.90', '100', categories[0]?.id || 1,
@@ -709,6 +780,7 @@ const ProductManagement: React.FC = () => {
       'new', '["https://example.com/extra.jpg"]', '{"material":"cotton"}',
       '[{"type":"text","content":"Detailed product story"},{"type":"image","url":"https://example.com/detail.jpg","caption":"Detail image"}]',
       '1 year', 'Free shipping', 'ACTIVE', 'false', '',
+      '[{"sku":"SKU-S-BLK","options":{"Size":"S","Color":"Black"},"price":99.90,"stock":50,"imageUrl":"https://example.com/variant.jpg"}]',
     ];
     const csv = `${headers.join(',')}\r\n${sample.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')}\r\n`;
     const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
@@ -769,6 +841,72 @@ const ProductManagement: React.FC = () => {
     message.success(t('pages.productAdmin.exportSuccess', { count: filteredProducts.length }));
   };
 
+  const copyImportTraceValue = async (value?: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      message.success(t('pages.productAdmin.importTraceCopied'));
+    } catch (error) {
+      message.warning(t('pages.productAdmin.importTraceCopyFailed'));
+    }
+  };
+
+  const renderImportTrace = (result: ProductImportResult) => {
+    if (!result.importId && !result.fileSha256 && !result.status) {
+      return null;
+    }
+    return (
+      <Space wrap className="product-import-result__trace">
+        {result.status ? (
+          <Tag color={productImportStatusColor(result.status)}>
+            {t(`pages.productAdmin.importStatus.${result.status}`, { defaultValue: result.status })}
+          </Tag>
+        ) : null}
+        {typeof result.applied === 'boolean' ? (
+          <Tag color={result.applied ? 'green' : 'default'}>
+            {result.applied ? t('pages.productAdmin.importApplied') : t('pages.productAdmin.importNotApplied')}
+          </Tag>
+        ) : null}
+        {result.importId ? (
+          <Tag icon={<CopyOutlined />} onClick={() => copyImportTraceValue(result.importId)}>
+            {t('pages.productAdmin.importId')}: {result.importId}
+          </Tag>
+        ) : null}
+        {result.fileSha256 ? (
+          <Tooltip title={result.fileSha256}>
+            <Tag icon={<CopyOutlined />} onClick={() => copyImportTraceValue(result.fileSha256)}>
+              {t('pages.productAdmin.importFileFingerprint')}: {result.fileSha256.slice(0, 12)}
+            </Tag>
+          </Tooltip>
+        ) : null}
+      </Space>
+    );
+  };
+
+  const findDuplicateSuccessfulImport = useCallback((fileSha256?: string) => {
+    if (!fileSha256) return undefined;
+    return importHistory.find((log) => {
+      return log.action === 'PRODUCT_IMPORT_APPLY'
+        && log.result === 'SUCCESS'
+        && log.fileSha256 === fileSha256;
+    });
+  }, [importHistory]);
+
+  const renderDuplicateImportWarning = (duplicateImport?: ProductImportHistoryEntry) => {
+    if (!duplicateImport) return null;
+    return (
+      <Alert
+        type="warning"
+        showIcon
+        message={t('pages.productAdmin.importDuplicateWarningTitle')}
+        description={t('pages.productAdmin.importDuplicateWarningDescription', {
+          date: dayjs(duplicateImport.createdAt).format('YYYY-MM-DD HH:mm'),
+          filename: duplicateImport.filename || '-',
+        })}
+      />
+    );
+  };
+
   const handleImportProducts = async (file: File) => {
     if (importSubmitting) {
       return false;
@@ -777,30 +915,108 @@ const ProductManagement: React.FC = () => {
       message.error(t('pages.productAdmin.importInvalidType'));
       return false;
     }
-    if (file.size > PRODUCT_IMPORT_MAX_FILE_SIZE) {
-      message.error(t('pages.productAdmin.importTooLarge', { size: '1 MB' }));
-      return false;
-    }
     try {
       setImportSubmitting(true);
       setLoading(true);
-      const res = await adminApi.importProducts(file);
-      const result = res.data;
-      if (result.failed > 0) {
+      const previewRes = await adminApi.previewImportProducts(file);
+      const preview = previewRes.data;
+      const duplicateImport = findDuplicateSuccessfulImport(preview.fileSha256);
+      setLoading(false);
+      if (preview.failed > 0 || !preview.readyToImport) {
         Modal.warning({
-          title: t('pages.productAdmin.importPartialTitle'),
+          title: t('pages.productAdmin.importPreviewBlockedTitle'),
           content: (
-            <div>
-              <p>{t('pages.productAdmin.importSummary', result as any)}</p>
-              <pre style={{ whiteSpace: 'pre-wrap', maxHeight: 240, overflow: 'auto' }}>{result.errors.join('\n')}</pre>
+            <div className="product-import-result">
+              <Alert type="warning" showIcon message={t('pages.productAdmin.importPreviewBlockedNotice')} />
+              <p>{t('pages.productAdmin.importSummary', preview as any)}</p>
+              {(preview.maxRows || preview.maxFileSizeBytes) && (
+                <Space wrap className="product-import-result__limits">
+                  {preview.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: preview.maxRows })}</Tag> : null}
+                  {preview.maxFileSizeBytes ? <Tag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(preview.maxFileSizeBytes) })}</Tag> : null}
+                </Space>
+              )}
+              {renderImportTrace(preview)}
+              {renderDuplicateImportWarning(duplicateImport)}
+              <ul>{renderImportErrors(preview)}</ul>
+              {preview.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
+              {(preview.errors?.length || preview.rowErrors?.length) ? (
+                <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(preview)}>
+                  {t('pages.productAdmin.importDownloadErrors')}
+                </Button>
+              ) : null}
             </div>
           ),
-          width: 640,
+          width: 720,
         });
-      } else {
-        message.success(t('pages.productAdmin.importSuccess', result as any));
+        fetchImportHistory();
+        return false;
       }
-      fetchProducts();
+      Modal.confirm({
+        title: t('pages.productAdmin.importPreviewTitle'),
+        content: (
+          <div className="product-import-result">
+            <Alert type="success" showIcon message={t('pages.productAdmin.importPreviewReadyNotice')} />
+            <p>{t('pages.productAdmin.importPreviewMessage', preview as any)}</p>
+            <Space wrap className="product-import-result__limits">
+              {preview.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: preview.maxRows })}</Tag> : null}
+              {preview.maxFileSizeBytes ? <Tag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(preview.maxFileSizeBytes) })}</Tag> : null}
+            </Space>
+            {renderImportTrace(preview)}
+            {renderDuplicateImportWarning(duplicateImport)}
+          </div>
+        ),
+        okText: t('pages.productAdmin.importConfirmApply'),
+        cancelText: t('common.cancel'),
+        width: 640,
+        onOk: async () => {
+          setImportSubmitting(true);
+          setLoading(true);
+          try {
+            const res = await adminApi.importProducts(file);
+            const result = res.data;
+            if (!result.applied) {
+              Modal.warning({
+                title: t('pages.productAdmin.importRejectedTitle'),
+                content: (
+                  <div className="product-import-result">
+                    <Alert type="warning" showIcon message={t('pages.productAdmin.importRejectedNoWrite')} />
+                    <p>{t('pages.productAdmin.importSummary', result as any)}</p>
+                    {renderImportTrace(result)}
+                    <ul>{renderImportErrors(result)}</ul>
+                    {result.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
+                    {(result.errors?.length || result.rowErrors?.length) ? (
+                      <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(result)}>
+                        {t('pages.productAdmin.importDownloadErrors')}
+                      </Button>
+                    ) : null}
+                  </div>
+                ),
+                width: 720,
+              });
+            } else {
+              Modal.success({
+                title: t('pages.productAdmin.importSuccessTitle'),
+                content: (
+                  <div className="product-import-result">
+                    <Alert type="success" showIcon message={t('pages.productAdmin.importAppliedNotice')} />
+                    <p>{t('pages.productAdmin.importSuccess', result as any)}</p>
+                    {renderImportTrace(result)}
+                  </div>
+                ),
+                width: 640,
+              });
+              fetchImportHistory();
+            }
+            fetchProducts();
+          } catch (error: any) {
+            message.error(error.response?.data?.errors?.join('\n') || t('pages.productAdmin.importFailed'));
+          } finally {
+            setImportSubmitting(false);
+            setLoading(false);
+            fetchImportHistory();
+          }
+        },
+      });
     } catch (error: any) {
       message.error(error.response?.data?.errors?.join('\n') || t('pages.productAdmin.importFailed'));
     } finally {
@@ -1063,7 +1279,9 @@ const ProductManagement: React.FC = () => {
             {t('pages.productAdmin.exportProducts')}
           </Button>
           <Upload accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts}>
-            <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={importSubmitting}>{t('pages.productAdmin.importProducts')}</Button>
+            <Tooltip title={t('pages.productAdmin.importCsvHint')}>
+              <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={importSubmitting}>{t('pages.productAdmin.importProducts')}</Button>
+            </Tooltip>
           </Upload>
           <Button icon={<LinkOutlined />} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
             {t('pages.productAdmin.importFromUrl')}
@@ -1073,6 +1291,59 @@ const ProductManagement: React.FC = () => {
           </Button>
         </Space>
       </div>
+
+      <section className="product-import-history">
+        <div className="product-import-history__header">
+          <div>
+            <Text type="secondary">{t('pages.productAdmin.importHistoryEyebrow')}</Text>
+            <h3>{t('pages.productAdmin.importHistoryTitle')}</h3>
+          </div>
+          <Button size="small" icon={<SyncOutlined />} loading={importHistoryLoading} onClick={fetchImportHistory}>
+            {t('common.refresh')}
+          </Button>
+        </div>
+        {importHistory.length > 0 ? (
+          <div className="product-import-history__list">
+            {importHistory.map((log) => {
+              const importId = log.importId || '';
+              const fingerprint = log.fileSha256 || '';
+              const status = log.status || (log.result === 'SUCCESS' ? 'APPLIED' : 'REJECTED');
+              const applied = typeof log.applied === 'boolean' ? log.applied : status === 'APPLIED';
+              return (
+                <div className="product-import-history__item" key={log.auditLogId}>
+                  <div className="product-import-history__main">
+                    <Tag color={productImportStatusColor(status)}>
+                      {t(`pages.productAdmin.importStatus.${status}`, { defaultValue: status })}
+                    </Tag>
+                    <strong>{t(`pages.productAdmin.importHistoryAction.${log.action}`, { defaultValue: log.action })}</strong>
+                    <Text type="secondary">{dayjs(log.createdAt).format('YYYY-MM-DD HH:mm')}</Text>
+                    {log.filename ? <Text type="secondary">{log.filename}</Text> : null}
+                  </div>
+                  <div className="product-import-history__meta">
+                    <span>{t('pages.productAdmin.importHistoryRows', { count: log.totalRows || 0 })}</span>
+                    <span>{t('pages.productAdmin.importHistoryCreated', { count: log.created || 0 })}</span>
+                    <span>{t('pages.productAdmin.importHistoryUpdated', { count: log.updated || 0 })}</span>
+                    <span>{t('pages.productAdmin.importHistoryFailed', { count: log.failed || 0 })}</span>
+                    <span>{applied ? t('pages.productAdmin.importApplied') : t('pages.productAdmin.importNotApplied')}</span>
+                    {importId ? (
+                      <button type="button" onClick={() => copyImportTraceValue(importId)}>
+                        {t('pages.productAdmin.importId')}: {importId.slice(0, 8)}
+                      </button>
+                    ) : null}
+                    {fingerprint ? (
+                      <button type="button" onClick={() => copyImportTraceValue(fingerprint)}>
+                        {t('pages.productAdmin.importFileFingerprint')}: {fingerprint.slice(0, 12)}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <Text type="secondary">{importHistoryLoading ? t('pages.productAdmin.importHistoryLoading') : t('pages.productAdmin.importHistoryEmpty')}</Text>
+        )}
+      </section>
 
       <section className="product-listing-quality" aria-label={t('pages.productAdmin.listingQualityTitle')}>
         <div className="product-listing-quality__summary">
@@ -1576,6 +1847,7 @@ const ProductManagement: React.FC = () => {
         okText={urlImportPreview ? t('pages.productAdmin.urlImportApply') : t('pages.productAdmin.urlImportAction')}
         confirmLoading={urlImportSubmitting}
         destroyOnHidden
+        width={720}
       >
         <Form form={urlImportForm} layout="vertical" onValuesChange={() => setUrlImportPreview(null)}>
           <Form.Item
@@ -1620,6 +1892,14 @@ const ProductManagement: React.FC = () => {
                     <Tag color="gold" key={warning}>{t(`pages.productAdmin.urlImportWarning.${warning}`)}</Tag>
                   ))}
                 </div>
+              )}
+              {urlImportPreview.blockedImages && urlImportPreview.blockedImages.length > 0 && (
+                <Alert
+                  className="product-url-import-preview__alert"
+                  type="warning"
+                  showIcon
+                  message={t('pages.productAdmin.urlImportBlockedImages', { count: urlImportPreview.blockedImages.length })}
+                />
               )}
             </div>
           </div>

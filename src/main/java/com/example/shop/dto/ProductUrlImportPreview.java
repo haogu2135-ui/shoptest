@@ -20,4 +20,5 @@ public class ProductUrlImportPreview {
     private String brand;
     private Integer confidenceScore;
     private List<String> warnings = new ArrayList<>();
+    private List<String> blockedImages = new ArrayList<>();
 }

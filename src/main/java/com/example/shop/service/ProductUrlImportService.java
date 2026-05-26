@@ -31,6 +31,7 @@ public class ProductUrlImportService {
     private static final int MAX_REDIRECTS = 3;
     private static final int MAX_HTML_BYTES = 2 * 1024 * 1024;
     private static final int MAX_CACHE_ENTRIES = 100;
+    private static final int MAX_URL_LENGTH = 2048;
     private static final Duration CACHE_TTL = Duration.ofMinutes(10);
     private static final Pattern TITLE_PATTERN = Pattern.compile("(?is)<title[^>]*>(.*?)</title>");
     private static final Pattern JSON_LD_PATTERN = Pattern.compile("(?is)<script[^>]+type=[\"']application/ld\\+json[\"'][^>]*>(.*?)</script>");
@@ -40,6 +41,8 @@ public class ProductUrlImportService {
     private static final Pattern EMBEDDED_PRICE_PATTERN = Pattern.compile("(?is)\"(?:price|salePrice|currentPrice|reservePrice)\"\\s*:\\s*\"?([0-9][0-9.,]{0,16})\"?");
     private static final Pattern EMBEDDED_ORIGINAL_PRICE_PATTERN = Pattern.compile("(?is)\"(?:originalPrice|marketPrice|listPrice|compareAtPrice)\"\\s*:\\s*\"?([0-9][0-9.,]{0,16})\"?");
     private static final Pattern EMBEDDED_IMAGE_PATTERN = Pattern.compile("(?is)\"(?:image|imageUrl|picUrl|mainPic|mainImage)\"\\s*:\\s*\"(https?:\\\\?/\\\\?/[^\\\"]+)\"");
+    private static final Pattern IPV4_HOST_PATTERN = Pattern.compile("^\\d{1,3}(?:\\.\\d{1,3}){3}$");
+    private static final Pattern IPV6_HOST_PATTERN = Pattern.compile("^[0-9a-fA-F:]+$");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -145,6 +148,9 @@ public class ProductUrlImportService {
         }
         try {
             URI uri = URI.create(rawUrl.trim());
+            if (uri.toString().length() > MAX_URL_LENGTH) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product URL is too long");
+            }
             String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
             if (!scheme.equals("http") && !scheme.equals("https")) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only http and https product URLs are supported");
@@ -318,16 +324,80 @@ public class ProductUrlImportService {
     private void normalizeImages(ProductUrlImportPreview preview, URI baseUri) {
         List<String> normalizedImages = new ArrayList<>();
         for (String image : preview.getImages()) {
-            addImage(normalizedImages, absolutizeUrl(baseUri, image));
+            addSafeImage(preview, normalizedImages, baseUri, image);
         }
         String mainImage = absolutizeUrl(baseUri, preview.getImageUrl());
-        if (!isBlank(mainImage)) {
+        if (!isBlank(mainImage) && isSafePublicMediaUrl(mainImage)) {
             preview.setImageUrl(mainImage);
             if (!normalizedImages.contains(mainImage)) {
                 normalizedImages.add(0, mainImage);
             }
+        } else if (!isBlank(mainImage)) {
+            if (!preview.getBlockedImages().contains(mainImage)) {
+                preview.getBlockedImages().add(mainImage);
+            }
+            preview.setImageUrl(null);
         }
         preview.setImages(normalizedImages.size() > 8 ? new ArrayList<>(normalizedImages.subList(0, 8)) : normalizedImages);
+    }
+
+    private void addSafeImage(ProductUrlImportPreview preview, List<String> images, URI baseUri, String image) {
+        String normalized = absolutizeUrl(baseUri, image);
+        if (isBlank(normalized)) {
+            return;
+        }
+        if (!isSafePublicMediaUrl(normalized)) {
+            if (!preview.getBlockedImages().contains(normalized)) {
+                preview.getBlockedImages().add(normalized);
+            }
+            return;
+        }
+        addImage(images, normalized);
+    }
+
+    private boolean isSafePublicMediaUrl(String url) {
+        try {
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            if (!scheme.equals("http") && !scheme.equals("https")) {
+                return false;
+            }
+            if (uri.toString().length() > MAX_URL_LENGTH || uri.getUserInfo() != null) {
+                return false;
+            }
+            int port = uri.getPort();
+            if (port != -1 && port != 80 && port != 443) {
+                return false;
+            }
+            return !hasUnsafeMediaHost(uri.getHost());
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private boolean hasUnsafeMediaHost(String host) {
+        if (isBlank(host)) {
+            return true;
+        }
+        String normalized = host.toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
+        if ("localhost".equals(normalized)
+                || normalized.endsWith(".localhost")
+                || normalized.endsWith(".local")
+                || normalized.endsWith(".internal")
+                || normalized.endsWith(".lan")) {
+            return true;
+        }
+        if (IPV4_HOST_PATTERN.matcher(normalized).matches() || (normalized.contains(":") && IPV6_HOST_PATTERN.matcher(normalized).matches())) {
+            try {
+                return isBlockedAddress(InetAddress.getByName(normalized));
+            } catch (Exception ex) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String absolutizeUrl(URI baseUri, String url) {
@@ -352,6 +422,7 @@ public class ProductUrlImportService {
         if (!isBlank(preview.getImageUrl())) score += 25; else preview.getWarnings().add("missing_image");
         if (!isBlank(preview.getDescription())) score += 15; else preview.getWarnings().add("missing_description");
         if (!isBlank(preview.getBrand())) score += 10;
+        if (!preview.getBlockedImages().isEmpty()) preview.getWarnings().add("blocked_image_url");
         preview.setConfidenceScore(Math.min(score, 100));
     }
 

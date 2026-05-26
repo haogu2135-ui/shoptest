@@ -12,6 +12,9 @@ import com.example.shop.service.ProductService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.util.CsvUtils;
 import com.example.shop.util.ProductStatusUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -22,7 +25,10 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.InetAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.Period;
@@ -38,12 +44,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
+    private static final int MAX_IMPORT_IMAGE_URL_LENGTH = 2048;
+    private static final Pattern IPV4_HOST_PATTERN = Pattern.compile("^\\d{1,3}(?:\\.\\d{1,3}){3}$");
+    private static final Pattern IPV6_HOST_PATTERN = Pattern.compile("^[0-9a-fA-F:]+$");
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
     private ProductRepository productRepository;
@@ -305,24 +317,45 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public ProductImportResult previewImportCsv(MultipartFile file) {
+        return processCsvImport(file, true);
+    }
+
+    @Override
     @Transactional
     public ProductImportResult importCsv(MultipartFile file) {
+        return processCsvImport(file, false);
+    }
+
+    private ProductImportResult processCsvImport(MultipartFile file, boolean preview) {
         ProductImportResult result = new ProductImportResult();
+        result.setImportId(UUID.randomUUID().toString());
+        result.setPreview(preview);
+        result.setMaxRows(normalizedImportMaxRows());
+        result.setMaxFileSizeBytes(normalizedImportMaxFileSizeBytes());
         if (!validateImportFile(file, result)) {
+            result.setStatus(importStatus(preview, result));
             return result;
         }
+        populateImportFileFingerprint(file, result);
+        Set<Long> importedIds = new HashSet<>();
+        Set<Long> categoryIds = loadImportCategoryIds();
+        List<ProductImportRow> importRows = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            int rowNumber = 0;
-            while ((line = reader.readLine()) != null) {
-                rowNumber++;
-                if (rowNumber == 1) {
-                    line = line.replace("\uFEFF", "");
+            List<CsvUtils.Record> records = CsvUtils.parseRecords(reader);
+            Map<String, Integer> headerIndex = null;
+            for (int i = 0; i < records.size(); i++) {
+                CsvUtils.Record record = records.get(i);
+                List<String> values = new ArrayList<>(record.getValues());
+                int rowNumber = record.getLineNumber();
+                if (i == 0 && !values.isEmpty()) {
+                    values.set(0, values.get(0).replace("\uFEFF", ""));
                 }
-                if (rowNumber == 1 && line.toLowerCase().startsWith("id,")) {
+                if (i == 0 && isProductImportHeader(values)) {
+                    headerIndex = productImportHeaderIndex(values);
                     continue;
                 }
-                if (line.trim().isEmpty()) {
+                if (values.stream().allMatch(value -> value == null || value.trim().isEmpty())) {
                     continue;
                 }
                 if (result.getTotalRows() >= normalizedImportMaxRows()) {
@@ -332,30 +365,98 @@ public class ProductServiceImpl implements ProductService {
 
                 result.setTotalRows(result.getTotalRows() + 1);
                 try {
-                    Product product = toProduct(CsvUtils.parseLine(line));
+                    Product product = toProduct(values, headerIndex);
+                    validateImportedProduct(product, importedIds, categoryIds);
+                    Product existingProduct = null;
                     if (product.getId() != null) {
                         Optional<Product> existing = productRepository.findById(product.getId());
                         if (existing.isPresent()) {
-                            mergeForImport(existing.get(), product);
-                            productRepository.save(existing.get());
+                            existingProduct = existing.get();
                             result.setUpdated(result.getUpdated() + 1);
-                            continue;
+                        } else {
+                            result.setCreated(result.getCreated() + 1);
                         }
+                    } else {
+                        result.setCreated(result.getCreated() + 1);
                     }
-                    product.setId(null);
-                    productRepository.save(product);
-                    result.setCreated(result.getCreated() + 1);
+                    importRows.add(new ProductImportRow(product, existingProduct));
                 } catch (Exception ex) {
-                    result.addError(rowNumber, ex.getMessage());
+                    result.addError(rowNumber, importFieldFromException(ex), ex.getMessage());
                 }
             }
         } catch (Exception ex) {
             result.addError(0, "Failed to read CSV: " + ex.getMessage());
         }
-        if (result.getCreated() > 0 || result.getUpdated() > 0) {
+        if (result.getFailed() == 0 && result.getTotalRows() == 0) {
+            result.addError(0, "CSV file does not contain any product rows");
+        }
+        result.setReadyToImport(result.getFailed() == 0 && result.getTotalRows() > 0);
+        if (!preview && result.isReadyToImport()) {
+            importRows.forEach(this::saveImportRow);
+            result.setApplied(true);
             clearProductSearchCache();
         }
+        result.setStatus(importStatus(preview, result));
         return result;
+    }
+
+    private String importStatus(boolean preview, ProductImportResult result) {
+        if (preview) {
+            return result.isReadyToImport()
+                    ? ProductImportResult.STATUS_PREVIEW_READY
+                    : ProductImportResult.STATUS_PREVIEW_BLOCKED;
+        }
+        return result.isApplied()
+                ? ProductImportResult.STATUS_APPLIED
+                : ProductImportResult.STATUS_REJECTED;
+    }
+
+    private void populateImportFileFingerprint(MultipartFile file, ProductImportResult result) {
+        if (file == null || file.isEmpty()) {
+            return;
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(file.getBytes());
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte value : hash) {
+                hex.append(String.format("%02x", value));
+            }
+            result.setFileSha256(hex.toString());
+        } catch (Exception ex) {
+            result.addError(0, "Failed to fingerprint CSV file");
+        }
+    }
+
+    private boolean isProductImportHeader(List<String> values) {
+        return values.size() >= 6
+                && "id".equalsIgnoreCase(values.get(0).trim())
+                && "name".equalsIgnoreCase(values.get(1).trim())
+                && "description".equalsIgnoreCase(values.get(2).trim())
+                && "price".equalsIgnoreCase(values.get(3).trim())
+                && "stock".equalsIgnoreCase(values.get(4).trim())
+                && "categoryId".equalsIgnoreCase(values.get(5).trim());
+    }
+
+    private Map<String, Integer> productImportHeaderIndex(List<String> values) {
+        Map<String, Integer> index = new LinkedHashMap<>();
+        for (int i = 0; i < values.size(); i++) {
+            String header = values.get(i) == null ? "" : values.get(i).trim();
+            if (!header.isEmpty()) {
+                index.put(header.toLowerCase(Locale.ROOT), i);
+            }
+        }
+        return index;
+    }
+
+    private void saveImportRow(ProductImportRow row) {
+        if (row.existingProduct != null) {
+            mergeForImport(row.existingProduct, row.importedProduct);
+            productRepository.save(row.existingProduct);
+            return;
+        }
+        row.importedProduct.setId(null);
+        productRepository.save(row.importedProduct);
     }
 
     private boolean validateImportFile(MultipartFile file, ProductImportResult result) {
@@ -363,7 +464,7 @@ public class ProductServiceImpl implements ProductService {
             result.addError(0, "CSV file is required");
             return false;
         }
-        long maxBytes = Math.max(1024L, runtimeConfig.getLong("product.import.max-file-size-bytes", 1048576));
+        long maxBytes = normalizedImportMaxFileSizeBytes();
         if (file.getSize() > maxBytes) {
             result.addError(0, "CSV file is too large. Maximum size: " + maxBytes + " bytes");
             return false;
@@ -380,39 +481,397 @@ public class ProductServiceImpl implements ProductService {
         return Math.max(1, runtimeConfig.getInt("product.import.max-rows", 1000));
     }
 
+    private long normalizedImportMaxFileSizeBytes() {
+        return Math.max(1024L, runtimeConfig.getLong("product.import.max-file-size-bytes", 1048576));
+    }
+
     private Product toProduct(List<String> values) {
+        return toProduct(values, null);
+    }
+
+    private Product toProduct(List<String> values, Map<String, Integer> headerIndex) {
         if (values.size() < 6) {
             throw new IllegalArgumentException("Expected at least 6 columns: id,name,description,price,stock,categoryId");
         }
 
         Product product = new Product();
-        product.setId(parseLong(value(values, 0), false, "id"));
-        product.setName(required(value(values, 1), "name"));
-        product.setDescription(value(values, 2));
-        product.setPrice(parseDecimal(value(values, 3), true, "price"));
-        product.setStock(parseInteger(value(values, 4), true, "stock"));
-        product.setCategoryId(parseLong(value(values, 5), true, "categoryId"));
-        product.setImageUrl(value(values, 6));
-        product.setIsFeatured(parseBoolean(value(values, 7)));
-        product.setBrand(value(values, 8));
-        product.setOriginalPrice(parseDecimal(value(values, 9), false, "originalPrice"));
-        product.setDiscount(parseInteger(value(values, 10), false, "discount"));
-        product.setLimitedTimePrice(parseDecimal(value(values, 11), false, "limitedTimePrice"));
-        product.setLimitedTimeStartAt(parseDateTime(value(values, 12), "limitedTimeStartAt"));
-        product.setLimitedTimeEndAt(parseDateTime(value(values, 13), "limitedTimeEndAt"));
-        product.setTag(value(values, 14));
-        boolean hasDetailContentColumn = values.size() > 20;
-        String status = value(values, hasDetailContentColumn ? 20 : 19);
+        product.setId(parseLong(importValue(values, headerIndex, "id", 0), false, "id"));
+        product.setName(required(importValue(values, headerIndex, "name", 1), "name"));
+        product.setDescription(importValue(values, headerIndex, "description", 2));
+        product.setPrice(parseDecimal(importValue(values, headerIndex, "price", 3), true, "price"));
+        product.setStock(parseInteger(importValue(values, headerIndex, "stock", 4), true, "stock"));
+        product.setCategoryId(parseLong(importValue(values, headerIndex, "categoryId", 5), true, "categoryId"));
+        product.setImageUrl(importValue(values, headerIndex, "imageUrl", 6));
+        product.setIsFeatured(parseBoolean(importValue(values, headerIndex, "isFeatured", 7), "isFeatured"));
+        product.setBrand(importValue(values, headerIndex, "brand", 8));
+        product.setOriginalPrice(parseDecimal(importValue(values, headerIndex, "originalPrice", 9), false, "originalPrice"));
+        product.setDiscount(parseInteger(importValue(values, headerIndex, "discount", 10), false, "discount"));
+        product.setLimitedTimePrice(parseDecimal(importValue(values, headerIndex, "limitedTimePrice", 11), false, "limitedTimePrice"));
+        product.setLimitedTimeStartAt(parseDateTime(importValue(values, headerIndex, "limitedTimeStartAt", 12), "limitedTimeStartAt"));
+        product.setLimitedTimeEndAt(parseDateTime(importValue(values, headerIndex, "limitedTimeEndAt", 13), "limitedTimeEndAt"));
+        product.setTag(importValue(values, headerIndex, "tag", 14));
+        boolean hasDetailContentColumn = headerIndex != null ? headerIndex.containsKey("detailcontent") : values.size() > 20;
+        String status = importValue(values, headerIndex, "status", hasDetailContentColumn ? 20 : 19);
         product.setStatus(normalizeImportedStatus(status));
-        product.setImages(value(values, 15));
-        product.setSpecifications(value(values, 16));
-        product.setDetailContent(hasDetailContentColumn ? value(values, 17) : null);
-        product.setWarranty(value(values, hasDetailContentColumn ? 18 : 17));
-        product.setShipping(value(values, hasDetailContentColumn ? 19 : 18));
-        product.setFreeShipping(parseBoolean(value(values, hasDetailContentColumn ? 21 : 20)));
-        product.setFreeShippingThreshold(parseDecimal(value(values, hasDetailContentColumn ? 22 : 21), false, "freeShippingThreshold"));
-        product.setVariants(value(values, hasDetailContentColumn ? 23 : 22));
+        product.setImages(importValue(values, headerIndex, "images", 15));
+        product.setSpecifications(importValue(values, headerIndex, "specifications", 16));
+        product.setDetailContent(headerIndex != null || hasDetailContentColumn ? importValue(values, headerIndex, "detailContent", 17) : null);
+        product.setWarranty(importValue(values, headerIndex, "warranty", hasDetailContentColumn ? 18 : 17));
+        product.setShipping(importValue(values, headerIndex, "shipping", hasDetailContentColumn ? 19 : 18));
+        product.setFreeShipping(parseBoolean(importValue(values, headerIndex, "freeShipping", hasDetailContentColumn ? 21 : 20), "freeShipping"));
+        product.setFreeShippingThreshold(parseDecimal(importValue(values, headerIndex, "freeShippingThreshold", hasDetailContentColumn ? 22 : 21), false, "freeShippingThreshold"));
+        product.setVariants(importValue(values, headerIndex, "variants", hasDetailContentColumn ? 23 : 22));
         return product;
+    }
+
+    private String importValue(List<String> values, Map<String, Integer> headerIndex, String field, int fallbackIndex) {
+        if (headerIndex != null) {
+            Integer index = headerIndex.get(field.toLowerCase(Locale.ROOT));
+            return index == null ? null : value(values, index);
+        }
+        return value(values, fallbackIndex);
+    }
+
+    private Set<Long> loadImportCategoryIds() {
+        if (categoryRepository == null) {
+            return Set.of();
+        }
+        return categoryRepository.findAll().stream()
+                .map(Category::getId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toSet());
+    }
+
+    private void validateImportedProduct(Product product, Set<Long> importedIds, Set<Long> categoryIds) {
+        if (product.getId() != null) {
+            requirePositive(product.getId(), "id");
+            if (!importedIds.add(product.getId())) {
+                throw new IllegalArgumentException("id appears more than once in this file");
+            }
+        }
+        requireLength(product.getName(), 180, "name");
+        requireLength(product.getDescription(), 2000, "description");
+        requireLength(product.getBrand(), 120, "brand");
+        requireLength(product.getTag(), 80, "tag");
+        requireLength(product.getWarranty(), 500, "warranty");
+        requireLength(product.getShipping(), 500, "shipping");
+        requireNonNegative(product.getPrice(), "price");
+        requireNonNegative(product.getOriginalPrice(), "originalPrice");
+        requireNonNegative(product.getLimitedTimePrice(), "limitedTimePrice");
+        requireNonNegative(product.getFreeShippingThreshold(), "freeShippingThreshold");
+        if (product.getOriginalPrice() != null && product.getPrice() != null
+                && product.getOriginalPrice().compareTo(product.getPrice()) < 0) {
+            throw new IllegalArgumentException("originalPrice must be greater than or equal to price");
+        }
+        if (product.getStock() != null && product.getStock() < 0) {
+            throw new IllegalArgumentException("stock must be greater than or equal to 0");
+        }
+        if (product.getDiscount() != null && (product.getDiscount() < 0 || product.getDiscount() > 100)) {
+            throw new IllegalArgumentException("discount must be between 0 and 100");
+        }
+        if (product.getLimitedTimeStartAt() != null && product.getLimitedTimeEndAt() != null
+                && !product.getLimitedTimeEndAt().isAfter(product.getLimitedTimeStartAt())) {
+            throw new IllegalArgumentException("limitedTimeEndAt must be after limitedTimeStartAt");
+        }
+        if (product.getCategoryId() == null || product.getCategoryId() <= 0) {
+            throw new IllegalArgumentException("categoryId must be a positive category id");
+        }
+        if (categoryIds != null && !categoryIds.isEmpty() && !categoryIds.contains(product.getCategoryId())) {
+            throw new IllegalArgumentException("categoryId does not exist: " + product.getCategoryId());
+        }
+        validateImportImageUrl(product.getImageUrl(), "imageUrl");
+        validateImportImageList(product.getImages());
+        validateImportSpecifications(product.getSpecifications());
+        validateImportDetailContent(product.getDetailContent());
+        validateImportVariants(product.getVariants());
+    }
+
+    private void requirePositive(Long value, String field) {
+        if (value != null && value <= 0) {
+            throw new IllegalArgumentException(field + " must be greater than 0");
+        }
+    }
+
+    private void requireNonNegative(BigDecimal value, String field) {
+        if (value != null && value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(field + " must be greater than or equal to 0");
+        }
+    }
+
+    private void requireLength(String value, int maxLength, String field) {
+        if (value != null && value.length() > maxLength) {
+            throw new IllegalArgumentException(field + " must be " + maxLength + " characters or fewer");
+        }
+    }
+
+    private void validateImportImageList(String images) {
+        if (images == null || images.isBlank()) {
+            return;
+        }
+        try {
+            List<String> urls = OBJECT_MAPPER.readValue(images, new TypeReference<List<String>>() {});
+            if (urls.size() > 8) {
+                throw new IllegalArgumentException("images must include 8 URLs or fewer");
+            }
+            for (String url : urls) {
+                validateImportImageUrl(url, "images");
+            }
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("images must be a JSON array of image URLs");
+        }
+    }
+
+    private void validateImportSpecifications(String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        try {
+            JsonNode node = OBJECT_MAPPER.readTree(value);
+            if (!node.isObject()) {
+                throw new IllegalArgumentException("specifications must be a JSON object");
+            }
+            if (node.size() > 100) {
+                throw new IllegalArgumentException("specifications must include 100 keys or fewer");
+            }
+            node.fields().forEachRemaining(entry -> {
+                String key = entry.getKey() == null ? "" : entry.getKey().trim();
+                if (key.isBlank()) {
+                    throw new IllegalArgumentException("specifications keys must not be blank");
+                }
+                requireLength(key, 120, "specifications key");
+                JsonNode item = entry.getValue();
+                if (item != null && (item.isObject() || item.isArray())) {
+                    throw new IllegalArgumentException("specifications values must be text, numbers, or booleans");
+                }
+                requireLength(jsonText(item), 1000, "specifications value");
+            });
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("specifications must be a valid JSON object");
+        }
+    }
+
+    private JsonNode validateImportJsonArray(String value, String field, int maxItems) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode node = OBJECT_MAPPER.readTree(value);
+            if (!node.isArray()) {
+                throw new IllegalArgumentException(field + " must be a JSON array");
+            }
+            if (node.size() > maxItems) {
+                throw new IllegalArgumentException(field + " must include " + maxItems + " items or fewer");
+            }
+            return node;
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(field + " must be a valid JSON array");
+        }
+    }
+
+    private void validateImportDetailContent(String value) {
+        JsonNode blocks = validateImportJsonArray(value, "detailContent", 24);
+        if (blocks == null) {
+            return;
+        }
+        for (JsonNode block : blocks) {
+            if (!block.isObject()) {
+                throw new IllegalArgumentException("detailContent items must be JSON objects");
+            }
+            String type = jsonText(block.get("type"));
+            if (type == null || type.isBlank()) {
+                throw new IllegalArgumentException("detailContent type is required");
+            }
+            if (!Set.of("text", "image", "video").contains(type)) {
+                throw new IllegalArgumentException("detailContent type must be text, image, or video");
+            }
+            requireLength(jsonText(block.get("caption")), 180, "detailContent caption");
+            if ("text".equals(type)) {
+                String content = jsonText(block.get("content"));
+                if (content == null || content.isBlank()) {
+                    throw new IllegalArgumentException("detailContent text content is required");
+                }
+                requireLength(content, 4000, "detailContent content");
+                continue;
+            }
+            String url = jsonText(block.get("url"));
+            if (url == null || url.isBlank()) {
+                throw new IllegalArgumentException("detailContent media URL is required");
+            }
+            validateImportImageUrl(url, "detailContent");
+        }
+    }
+
+    private void validateImportVariants(String value) {
+        JsonNode variants = validateImportJsonArray(value, "variants", 200);
+        if (variants == null) {
+            return;
+        }
+        Set<String> seenSkus = new HashSet<>();
+        Set<String> seenOptionCombinations = new HashSet<>();
+        for (JsonNode variant : variants) {
+            if (!variant.isObject()) {
+                throw new IllegalArgumentException("variants items must be JSON objects");
+            }
+            String sku = jsonText(variant.get("sku"));
+            if (sku != null && !sku.isBlank()) {
+                requireLength(sku, 80, "variants sku");
+                if (!seenSkus.add(sku)) {
+                    throw new IllegalArgumentException("variants sku must be unique");
+                }
+            }
+            JsonNode options = variant.get("options");
+            if (options == null || !options.isObject() || options.size() == 0) {
+                throw new IllegalArgumentException("variants options are required");
+            }
+            List<String> optionPairs = new ArrayList<>();
+            options.fields().forEachRemaining(entry -> {
+                String optionName = entry.getKey() == null ? "" : entry.getKey().trim();
+                String optionValue = jsonText(entry.getValue());
+                if (optionName.isBlank() || optionValue == null || optionValue.isBlank()) {
+                    throw new IllegalArgumentException("variants options must include non-empty names and values");
+                }
+                requireLength(optionName, 60, "variants option name");
+                requireLength(optionValue, 120, "variants option value");
+                optionPairs.add(optionName + "=" + optionValue);
+            });
+            optionPairs.sort(String::compareTo);
+            if (!seenOptionCombinations.add(String.join("|", optionPairs))) {
+                throw new IllegalArgumentException("variants option combinations must be unique");
+            }
+            BigDecimal variantPrice = jsonDecimal(variant.get("price"), "variants price");
+            if (variantPrice == null || variantPrice.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("variants price must be greater than 0");
+            }
+            Integer variantStock = jsonInteger(variant.get("stock"), "variants stock");
+            if (variantStock != null && variantStock < 0) {
+                throw new IllegalArgumentException("variants stock must be greater than or equal to 0");
+            }
+            validateImportImageUrl(jsonText(variant.get("imageUrl")), "variants");
+        }
+    }
+
+    private String jsonText(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isTextual() && !node.isNumber() && !node.isBoolean()) {
+            return null;
+        }
+        return node.asText().trim();
+    }
+
+    private BigDecimal jsonDecimal(JsonNode node, String field) {
+        String value = jsonText(node);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(field + " must be a decimal number");
+        }
+    }
+
+    private Integer jsonInteger(JsonNode node, String field) {
+        String value = jsonText(node);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(field + " must be a whole number");
+        }
+    }
+
+    private void validateImportImageUrl(String value, String field) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        String url = value.trim();
+        if (url.length() > MAX_IMPORT_IMAGE_URL_LENGTH) {
+            throw new IllegalArgumentException(field + " is too long");
+        }
+        if (url.startsWith("//")) {
+            throw new IllegalArgumentException(field + " must include http or https");
+        }
+        if (url.startsWith("/")) {
+            return;
+        }
+        try {
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            if (!scheme.equals("http") && !scheme.equals("https")) {
+                throw new IllegalArgumentException(field + " must use http, https, or a site-relative path");
+            }
+            if (uri.getUserInfo() != null) {
+                throw new IllegalArgumentException(field + " must not include credentials");
+            }
+            int port = uri.getPort();
+            if (port != -1 && port != 80 && port != 443) {
+                throw new IllegalArgumentException(field + " must use a standard web port");
+            }
+            if (hasUnsafeImportMediaHost(uri.getHost())) {
+                throw new IllegalArgumentException(field + " must not point to localhost or a private network");
+            }
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(field + " must be a valid image URL");
+        }
+    }
+
+    private boolean hasUnsafeImportMediaHost(String host) {
+        if (host == null || host.isBlank()) {
+            return true;
+        }
+        String normalized = host.toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
+        if ("localhost".equals(normalized)
+                || normalized.endsWith(".localhost")
+                || normalized.endsWith(".local")
+                || normalized.endsWith(".internal")
+                || normalized.endsWith(".lan")) {
+            return true;
+        }
+        if (IPV4_HOST_PATTERN.matcher(normalized).matches() || (normalized.contains(":") && IPV6_HOST_PATTERN.matcher(normalized).matches())) {
+            try {
+                InetAddress address = InetAddress.getByName(normalized);
+                return address.isAnyLocalAddress()
+                        || address.isLoopbackAddress()
+                        || address.isLinkLocalAddress()
+                        || address.isSiteLocalAddress()
+                        || address.isMulticastAddress();
+            } catch (Exception ex) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String importFieldFromException(Exception ex) {
+        String message = ex.getMessage();
+        if (message == null) {
+            return null;
+        }
+        for (String field : List.of(
+                "id", "name", "description", "price", "stock", "categoryId", "imageUrl",
+                "originalPrice", "discount", "limitedTimePrice", "limitedTimeStartAt",
+                "limitedTimeEndAt", "status", "isFeatured", "freeShipping", "freeShippingThreshold", "images",
+                "specifications", "detailContent", "variants")) {
+            if (message.startsWith(field + " ") || message.startsWith(field + ":") || message.contains("[" + field + "]")) {
+                return field;
+            }
+        }
+        return null;
     }
 
     private void mergeForImport(Product existing, Product imported) {
@@ -479,7 +938,11 @@ public class ProductServiceImpl implements ProductService {
             }
             return null;
         }
-        return Long.parseLong(value);
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(field + " must be a whole number");
+        }
     }
 
     private Integer parseInteger(String value, boolean required, String field) {
@@ -489,7 +952,11 @@ public class ProductServiceImpl implements ProductService {
             }
             return null;
         }
-        return Integer.parseInt(value);
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(field + " must be a whole number");
+        }
     }
 
     private BigDecimal parseDecimal(String value, boolean required, String field) {
@@ -499,14 +966,24 @@ public class ProductServiceImpl implements ProductService {
             }
             return null;
         }
-        return new BigDecimal(value);
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(field + " must be a decimal number");
+        }
     }
 
-    private Boolean parseBoolean(String value) {
+    private Boolean parseBoolean(String value, String field) {
         if (value == null || value.isEmpty()) {
             return false;
         }
-        return "true".equalsIgnoreCase(value) || "1".equals(value) || "yes".equalsIgnoreCase(value);
+        if ("true".equalsIgnoreCase(value) || "1".equals(value) || "yes".equalsIgnoreCase(value)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(value) || "0".equals(value) || "no".equalsIgnoreCase(value)) {
+            return false;
+        }
+        throw new IllegalArgumentException(field + " must be true or false");
     }
 
     private LocalDateTime parseDateTime(String value, String field) {
@@ -516,7 +993,11 @@ public class ProductServiceImpl implements ProductService {
         try {
             return LocalDateTime.parse(value);
         } catch (Exception ex) {
-            return LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            try {
+                return LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } catch (Exception nested) {
+                throw new IllegalArgumentException(field + " must use ISO datetime or yyyy-MM-dd HH:mm:ss");
+            }
         }
     }
 
@@ -679,6 +1160,16 @@ public class ProductServiceImpl implements ProductService {
 
     private BigDecimal safePositiveAmount(BigDecimal value, BigDecimal fallback) {
         return value == null || value.compareTo(BigDecimal.ZERO) <= 0 ? fallback : value;
+    }
+
+    private static class ProductImportRow {
+        private final Product importedProduct;
+        private final Product existingProduct;
+
+        private ProductImportRow(Product importedProduct, Product existingProduct) {
+            this.importedProduct = importedProduct;
+            this.existingProduct = existingProduct;
+        }
     }
 
     private static class ProductScore {

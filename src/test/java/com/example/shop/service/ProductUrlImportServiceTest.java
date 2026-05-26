@@ -1,4 +1,4 @@
-﻿package com.example.shop.service;
+package com.example.shop.service;
 
 import com.example.shop.dto.ProductUrlImportPreview;
 import org.junit.jupiter.api.Test;
@@ -8,6 +8,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ProductUrlImportServiceTest {
@@ -102,6 +103,32 @@ class ProductUrlImportServiceTest {
     void rejectsNonStandardWebPortsBeforeFetching() {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> service.importFromUrl("https://example.com:8443/products/1"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
+
+    @Test
+    void removesPrivateImageUrlsFromPreview() {
+        String html = "<html><head>"
+                + "<meta property=\"og:title\" content=\"Private CDN Test\">"
+                + "<meta property=\"og:image\" content=\"http://127.0.0.1/internal.jpg\">"
+                + "<meta property=\"product:price:amount\" content=\"12.00\">"
+                + "</head></html>";
+
+        ProductUrlImportPreview preview = service.parseProductHtml("https://shop.example.com/products/private-image", html);
+
+        assertEquals("Private CDN Test", preview.getName());
+        assertNull(preview.getImageUrl());
+        assertEquals(1, preview.getBlockedImages().size());
+        assertEquals("blocked_image_url", preview.getWarnings().get(preview.getWarnings().size() - 1));
+    }
+
+    @Test
+    void rejectsOverlongUrlsBeforeFetching() {
+        String url = "https://example.com/products/" + "a".repeat(2050);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> service.importFromUrl(url));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
     }

@@ -606,16 +606,20 @@ describe('api parameter normalization', () => {
     ]);
   });
 
-  it('caches admin dashboard and clears it after order mutations', async () => {
+  it('caches admin dashboard and keeps operational health endpoints explicit', async () => {
     const { adminApi } = require('./index');
 
     await adminApi.getDashboard();
     await adminApi.getDashboard();
+    await adminApi.getAlertSummary();
+    await adminApi.getIpBlacklistStatus();
     await adminApi.updateOrderStatus(10, 'SHIPPED');
     await adminApi.getDashboard();
 
     expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
       '/admin/dashboard',
+      '/admin/alerts/summary',
+      '/admin/ip-blacklist/status',
       '/admin/dashboard',
     ]);
   });
@@ -726,14 +730,29 @@ describe('api parameter normalization', () => {
     const imageFile = new File(['image'], 'pet.jpg', { type: 'image/jpeg' });
 
     await adminApi.importProducts(csvFile);
+    await adminApi.previewImportProducts(csvFile);
     await petGalleryApi.upload(imageFile);
 
     expect(mockPost.mock.calls[0][0]).toBe('/admin/products/import');
     expect(mockPost.mock.calls[0][1]).toBeInstanceOf(FormData);
     expect(mockPost.mock.calls[0][2]).toBeUndefined();
-    expect(mockPost.mock.calls[1][0]).toBe('/pet-gallery');
+    expect(mockPost.mock.calls[1][0]).toBe('/admin/products/import/preview');
     expect(mockPost.mock.calls[1][1]).toBeInstanceOf(FormData);
     expect(mockPost.mock.calls[1][2]).toBeUndefined();
+    expect(mockPost.mock.calls[2][0]).toBe('/pet-gallery');
+    expect(mockPost.mock.calls[2][1]).toBeInstanceOf(FormData);
+    expect(mockPost.mock.calls[2][2]).toBeUndefined();
+  });
+
+  it('requests typed product import history with a bounded limit', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getProductImportHistory(999);
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/products/import/history',
+      { params: { limit: 20 } },
+    ]);
   });
 
   it('normalizes product URL imports before requesting a preview', async () => {

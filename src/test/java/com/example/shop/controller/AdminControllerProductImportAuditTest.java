@@ -1,0 +1,189 @@
+package com.example.shop.controller;
+
+import com.example.shop.dto.ProductImportResult;
+import com.example.shop.dto.ProductImportHistoryEntry;
+import com.example.shop.entity.SecurityAuditLog;
+import com.example.shop.repository.PaymentRepository;
+import com.example.shop.service.AdminRoleService;
+import com.example.shop.service.CouponService;
+import com.example.shop.service.LogisticsCarrierService;
+import com.example.shop.service.NotificationService;
+import com.example.shop.service.OrderItemService;
+import com.example.shop.service.OrderService;
+import com.example.shop.service.PetBirthdayCouponService;
+import com.example.shop.service.ProductQuestionService;
+import com.example.shop.service.ProductService;
+import com.example.shop.service.ProductUrlImportService;
+import com.example.shop.service.ReviewService;
+import com.example.shop.service.RuntimeConfigService;
+import com.example.shop.service.SecurityAuditLogService;
+import com.example.shop.service.UserService;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.core.Authentication;
+
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.same;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class AdminControllerProductImportAuditTest {
+
+    private final ProductService productService = mock(ProductService.class);
+    private final ProductUrlImportService productUrlImportService = mock(ProductUrlImportService.class);
+    private final SecurityAuditLogService auditLogService = mock(SecurityAuditLogService.class);
+    private final AdminController controller = new AdminController(
+            mock(UserService.class),
+            mock(OrderService.class),
+            mock(OrderItemService.class),
+            productService,
+            mock(ProductQuestionService.class),
+            productUrlImportService,
+            mock(ReviewService.class),
+            mock(CouponService.class),
+            mock(NotificationService.class),
+            mock(PetBirthdayCouponService.class),
+            mock(LogisticsCarrierService.class),
+            auditLogService,
+            mock(AdminRoleService.class),
+            mock(PaymentRepository.class),
+            mock(RuntimeConfigService.class)
+    );
+
+    @Test
+    void previewImportWritesSuccessfulAuditLog() {
+        MockMultipartFile file = csvFile("products.csv");
+        ProductImportResult result = new ProductImportResult();
+        result.setPreview(true);
+        result.setImportId("import-123");
+        result.setFileSha256("abc123");
+        result.setReadyToImport(true);
+        result.setTotalRows(2);
+        result.setCreated(1);
+        result.setUpdated(1);
+        when(productService.previewImportCsv(file)).thenReturn(result);
+        Authentication authentication = mock(Authentication.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+
+        ResponseEntity<ProductImportResult> response = controller.previewImportProducts(file, authentication, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(result, response.getBody());
+        verify(auditLogService).record(
+                eq("PRODUCT_IMPORT_PREVIEW"),
+                eq("SUCCESS"),
+                same(authentication),
+                eq("PRODUCT_IMPORT"),
+                eq("products.csv"),
+                same(request),
+                eq("Product import preview passed"),
+                metadata.capture()
+        );
+        assertTrue(metadata.getValue().contains("preview=true"));
+        assertTrue(metadata.getValue().contains("importId=import-123"));
+        assertTrue(metadata.getValue().contains("fileSha256=abc123"));
+        assertTrue(metadata.getValue().contains("status=" + ProductImportResult.STATUS_PREVIEW_READY));
+        assertTrue(metadata.getValue().contains("readyToImport=true"));
+        assertTrue(metadata.getValue().contains("applied=false"));
+        assertTrue(metadata.getValue().contains("totalRows=2"));
+        assertTrue(metadata.getValue().contains("created=1"));
+        assertTrue(metadata.getValue().contains("updated=1"));
+    }
+
+    @Test
+    void applyImportWritesFailureAuditLogWhenRowsAreRejected() {
+        MockMultipartFile file = csvFile("bad-products.csv");
+        ProductImportResult result = new ProductImportResult();
+        result.setTotalRows(1);
+        result.addError(2, "price", "price must be greater than or equal to zero");
+        when(productService.importCsv(file)).thenReturn(result);
+        Authentication authentication = mock(Authentication.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
+
+        ResponseEntity<ProductImportResult> response = controller.importProducts(file, authentication, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(result, response.getBody());
+        verify(auditLogService).record(
+                eq("PRODUCT_IMPORT_APPLY"),
+                eq("FAILURE"),
+                same(authentication),
+                eq("PRODUCT_IMPORT"),
+                eq("bad-products.csv"),
+                same(request),
+                eq("Product import rejected"),
+                metadata.capture()
+        );
+        assertTrue(metadata.getValue().contains("preview=false"));
+        assertTrue(metadata.getValue().contains("status=" + ProductImportResult.STATUS_REJECTED));
+        assertTrue(metadata.getValue().contains("readyToImport=false"));
+        assertTrue(metadata.getValue().contains("applied=false"));
+        assertTrue(metadata.getValue().contains("failed=1"));
+    }
+
+    @Test
+    void importHistoryReturnsTypedEntriesFromAuditMetadata() {
+        SecurityAuditLog applyLog = new SecurityAuditLog();
+        applyLog.setId(42L);
+        applyLog.setAction("PRODUCT_IMPORT_APPLY");
+        applyLog.setResult("SUCCESS");
+        applyLog.setResourceType("PRODUCT_IMPORT");
+        applyLog.setResourceId("products.csv");
+        applyLog.setMessage("Product import completed");
+        applyLog.setCreatedAt(LocalDateTime.of(2026, 5, 25, 10, 30));
+        applyLog.setMetadata("importId=import-123;fileSha256=abc123;filename=products.csv;sizeBytes=512;preview=false;readyToImport=true;totalRows=3;created=2;updated=1;failed=0");
+
+        SecurityAuditLog urlLog = new SecurityAuditLog();
+        urlLog.setId(43L);
+        urlLog.setAction("PRODUCT_URL_IMPORT");
+        urlLog.setResult("SUCCESS");
+        urlLog.setResourceType("PRODUCT_IMPORT");
+
+        when(auditLogService.search(isNull(), isNull(), isNull(), eq("PRODUCT_IMPORT"), isNull(), isNull(), eq(18)))
+                .thenReturn(List.of(applyLog, urlLog));
+
+        ResponseEntity<List<ProductImportHistoryEntry>> response = controller.getProductImportHistory(6);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+        ProductImportHistoryEntry entry = response.getBody().get(0);
+        assertEquals(42L, entry.getAuditLogId());
+        assertEquals("PRODUCT_IMPORT_APPLY", entry.getAction());
+        assertEquals("SUCCESS", entry.getResult());
+        assertEquals("products.csv", entry.getFilename());
+        assertEquals("import-123", entry.getImportId());
+        assertEquals("abc123", entry.getFileSha256());
+        assertEquals(ProductImportResult.STATUS_APPLIED, entry.getStatus());
+        assertEquals(512L, entry.getSizeBytes());
+        assertEquals(3, entry.getTotalRows());
+        assertEquals(2, entry.getCreated());
+        assertEquals(1, entry.getUpdated());
+        assertEquals(0, entry.getFailed());
+        assertTrue(entry.isReadyToImport());
+        assertTrue(entry.isApplied());
+    }
+
+    private MockMultipartFile csvFile(String filename) {
+        return new MockMultipartFile(
+                "file",
+                filename,
+                "text/csv",
+                "id,name,description,price,stock,categoryId\n".getBytes(StandardCharsets.UTF_8)
+        );
+    }
+}

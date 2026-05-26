@@ -1,9 +1,11 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.CouponGrantRequest;
+import com.example.shop.dto.AdminOrderBatchShipResponse;
 import com.example.shop.dto.CouponAdminSummaryResponse;
 import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
+import com.example.shop.dto.ProductImportHistoryEntry;
 import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
 import com.example.shop.dto.ProductImportResult;
 import com.example.shop.dto.ProductUrlImportPreview;
@@ -345,9 +347,19 @@ public class AdminController {
     }
 
     @PostMapping("/pet-birthday-coupons/run")
-    public ResponseEntity<?> runPetBirthdayCoupons() {
-        int granted = petBirthdayCouponService.grantBirthdayCoupons(LocalDate.now());
-        return ResponseEntity.ok(Map.of("granted", granted));
+    public ResponseEntity<?> runPetBirthdayCoupons(Authentication authentication,
+                                                  HttpServletRequest httpRequest) {
+        LocalDate runDate = LocalDate.now();
+        try {
+            int granted = petBirthdayCouponService.grantBirthdayCoupons(runDate);
+            auditLogService.record("PET_BIRTHDAY_COUPON_RUN", "SUCCESS", authentication, "COUPON", null, httpRequest,
+                    "Pet birthday coupons granted", "date=" + runDate + ",granted=" + granted);
+            return ResponseEntity.ok(Map.of("granted", granted));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            auditLogService.record("PET_BIRTHDAY_COUPON_RUN", "FAILURE", authentication, "COUPON", null, httpRequest,
+                    e.getMessage(), "date=" + runDate);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/pet-birthday-coupons/config")
@@ -356,10 +368,17 @@ public class AdminController {
     }
 
     @PutMapping("/pet-birthday-coupons/config")
-    public ResponseEntity<?> updatePetBirthdayCouponConfig(@RequestBody PetBirthdayCouponConfigRequest request) {
+    public ResponseEntity<?> updatePetBirthdayCouponConfig(@RequestBody PetBirthdayCouponConfigRequest request,
+                                                           Authentication authentication,
+                                                           HttpServletRequest httpRequest) {
         try {
-            return ResponseEntity.ok(petBirthdayCouponService.updateConfig(request));
+            PetBirthdayCouponConfig config = petBirthdayCouponService.updateConfig(request);
+            auditLogService.record("PET_BIRTHDAY_COUPON_CONFIG_UPDATE", "SUCCESS", authentication, "COUPON_CONFIG", config.getId(), httpRequest,
+                    "Pet birthday coupon configuration updated", petBirthdayCouponConfigMetadata(config));
+            return ResponseEntity.ok(config);
         } catch (IllegalArgumentException e) {
+            auditLogService.record("PET_BIRTHDAY_COUPON_CONFIG_UPDATE", "FAILURE", authentication, "COUPON_CONFIG", null, httpRequest,
+                    e.getMessage(), petBirthdayCouponConfigRequestMetadata(request));
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -673,28 +692,30 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("error", "too many orderIds", "max", maxBatchSize));
         }
 
+        AdminOrderBatchShipResponse response = new AdminOrderBatchShipResponse();
+        response.setRequestedCount(rawIds.size());
+        response.setMaxBatchSize(maxBatchSize);
+        response.setTrackingPrefix(trackingPrefix);
+        response.setTrackingCarrierCode(trackingCarrierCode);
         int success = 0;
-        int failed = 0;
-        StringBuilder failedIds = new StringBuilder();
         for (Object idValue : rawIds) {
+            Long id = null;
             try {
-                Long id = parseBatchId(idValue);
-                orderService.shipOrder(id, trackingPrefix + "-" + id, trackingCarrierCode);
-                success++;
-            } catch (Exception e) {
-                failed++;
-                if (failedIds.length() < 500) {
-                    if (failedIds.length() > 0) {
-                        failedIds.append(",");
-                    }
-                    failedIds.append(idValue);
+                id = parseBatchId(idValue);
+                if (orderService.shipOrder(id, trackingPrefix + "-" + id, trackingCarrierCode)) {
+                    success++;
+                } else {
+                    response.addFailure(id, String.valueOf(idValue), "Order shipment failed");
                 }
+            } catch (Exception e) {
+                response.addFailure(id, String.valueOf(idValue), safeBatchFailureReason(e));
             }
         }
-        auditLogService.record("ORDER_BATCH_SHIP", failed == 0 ? "SUCCESS" : "FAILURE", authentication, "ORDER", null, request,
+        response.setSuccess(success);
+        auditLogService.record("ORDER_BATCH_SHIP", response.getFailed() == 0 ? "SUCCESS" : "FAILURE", authentication, "ORDER", null, request,
                 "Batch ship completed",
-                "success=" + success + ",failed=" + failed + ",failedIds=" + failedIds + ",trackingPrefix=" + trackingPrefix + ",carrier=" + trackingCarrierCode);
-        return ResponseEntity.ok(Map.of("success", success, "failed", failed));
+                batchShipMetadata(response));
+        return ResponseEntity.ok(response);
     }
 
     // ==================== Logistics Carrier Management ====================
@@ -786,20 +807,217 @@ public class AdminController {
 
     // ==================== Product Import ====================
 
-    @PostMapping(value = "/products/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProductImportResult> importProducts(@RequestParam("file") MultipartFile file) {
+    @PostMapping(value = "/products/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductImportResult> previewImportProducts(@RequestParam("file") MultipartFile file,
+                                                                     Authentication authentication,
+                                                                     HttpServletRequest request) {
         if (file == null || file.isEmpty()) {
             ProductImportResult result = new ProductImportResult();
+            result.setPreview(true);
+            result.setStatus(ProductImportResult.STATUS_PREVIEW_BLOCKED);
             result.addError(0, "CSV file is required");
+            auditProductImport("PRODUCT_IMPORT_PREVIEW", result, file, authentication, request);
             return ResponseEntity.badRequest().body(result);
         }
-        return ResponseEntity.ok(productService.importCsv(file));
+        ProductImportResult result = productService.previewImportCsv(file);
+        auditProductImport("PRODUCT_IMPORT_PREVIEW", result, file, authentication, request);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping(value = "/products/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductImportResult> importProducts(@RequestParam("file") MultipartFile file,
+                                                              Authentication authentication,
+                                                              HttpServletRequest request) {
+        if (file == null || file.isEmpty()) {
+            ProductImportResult result = new ProductImportResult();
+            result.setStatus(ProductImportResult.STATUS_REJECTED);
+            result.addError(0, "CSV file is required");
+            auditProductImport("PRODUCT_IMPORT_APPLY", result, file, authentication, request);
+            return ResponseEntity.badRequest().body(result);
+        }
+        ProductImportResult result = productService.importCsv(file);
+        auditProductImport("PRODUCT_IMPORT_APPLY", result, file, authentication, request);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/products/import/history")
+    public ResponseEntity<List<ProductImportHistoryEntry>> getProductImportHistory(
+            @RequestParam(required = false, defaultValue = "6") int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        List<ProductImportHistoryEntry> entries = auditLogService.search(
+                        null, null, null, "PRODUCT_IMPORT", null, null, safeLimit * 3)
+                .stream()
+                .filter(log -> "PRODUCT_IMPORT_PREVIEW".equals(log.getAction()) || "PRODUCT_IMPORT_APPLY".equals(log.getAction()))
+                .limit(safeLimit)
+                .map(this::toProductImportHistoryEntry)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(entries);
     }
 
     @PostMapping("/products/import-url")
-    public ResponseEntity<ProductUrlImportPreview> importProductFromUrl(@RequestBody ProductUrlImportRequest request) {
+    public ResponseEntity<ProductUrlImportPreview> importProductFromUrl(@RequestBody ProductUrlImportRequest request,
+                                                                        Authentication authentication,
+                                                                        HttpServletRequest httpRequest) {
         String url = request == null ? null : request.getUrl();
-        return ResponseEntity.ok(productUrlImportService.importFromUrl(url));
+        try {
+            ProductUrlImportPreview preview = productUrlImportService.importFromUrl(url);
+            auditLogService.record("PRODUCT_URL_IMPORT", "SUCCESS", authentication, "PRODUCT_IMPORT", preview.getSourceHost(), httpRequest,
+                    "Product URL import preview generated", productUrlImportMetadata(preview));
+            return ResponseEntity.ok(preview);
+        } catch (RuntimeException ex) {
+            auditLogService.record("PRODUCT_URL_IMPORT", "FAILURE", authentication, "PRODUCT_IMPORT", safeImportResourceId(url), httpRequest,
+                    "Product URL import failed", "urlHost=" + safeImportResourceId(url));
+            throw ex;
+        }
+    }
+
+    private void auditProductImport(String action,
+                                    ProductImportResult result,
+                                    MultipartFile file,
+                                    Authentication authentication,
+                                    HttpServletRequest request) {
+        boolean preview = "PRODUCT_IMPORT_PREVIEW".equals(action);
+        boolean success = result != null && (preview ? result.isReadyToImport() : result.isApplied());
+        String auditResult = success ? "SUCCESS" : "FAILURE";
+        String filename = file == null ? null : file.getOriginalFilename();
+        auditLogService.record(action, auditResult, authentication, "PRODUCT_IMPORT", safeImportResourceId(filename), request,
+                productImportMessage(action, result), productImportMetadata(result, file));
+    }
+
+    private String productImportMessage(String action, ProductImportResult result) {
+        boolean preview = "PRODUCT_IMPORT_PREVIEW".equals(action);
+        if (result == null) {
+            return preview ? "Product import preview failed" : "Product import failed";
+        }
+        if (preview) {
+            return result.isReadyToImport()
+                    ? "Product import preview passed"
+                    : "Product import preview found errors";
+        }
+        return result.isApplied() ? "Product import completed" : "Product import rejected";
+    }
+
+    private String productImportMetadata(ProductImportResult result, MultipartFile file) {
+        long size = file == null ? 0 : file.getSize();
+        String filename = file == null ? "" : String.valueOf(file.getOriginalFilename());
+        int totalRows = result == null ? 0 : result.getTotalRows();
+        int created = result == null ? 0 : result.getCreated();
+        int updated = result == null ? 0 : result.getUpdated();
+        int failed = result == null ? 0 : result.getFailed();
+        boolean preview = result != null && result.isPreview();
+        boolean ready = result != null && result.isReadyToImport();
+        boolean applied = result != null && result.isApplied();
+        String status = result == null ? "" : productImportStatusForMetadata(preview, ready, applied);
+        String importId = result == null || result.getImportId() == null ? "" : result.getImportId();
+        String fileSha256 = result == null || result.getFileSha256() == null ? "" : result.getFileSha256();
+        return "importId=" + importId
+                + ";fileSha256=" + fileSha256
+                + ";status=" + status
+                + ";filename=" + filename
+                + ";sizeBytes=" + size
+                + ";preview=" + preview
+                + ";readyToImport=" + ready
+                + ";applied=" + applied
+                + ";totalRows=" + totalRows
+                + ";created=" + created
+                + ";updated=" + updated
+                + ";failed=" + failed;
+    }
+
+    private String productUrlImportMetadata(ProductUrlImportPreview preview) {
+        if (preview == null) {
+            return "";
+        }
+        return "sourceHost=" + preview.getSourceHost()
+                + ";confidenceScore=" + preview.getConfidenceScore()
+                + ";imageCount=" + (preview.getImages() == null ? 0 : preview.getImages().size())
+                + ";blockedImageCount=" + (preview.getBlockedImages() == null ? 0 : preview.getBlockedImages().size())
+                + ";warningCount=" + (preview.getWarnings() == null ? 0 : preview.getWarnings().size());
+    }
+
+    private String productImportStatusForMetadata(boolean preview, boolean ready, boolean applied) {
+        if (preview) {
+            return ready ? ProductImportResult.STATUS_PREVIEW_READY : ProductImportResult.STATUS_PREVIEW_BLOCKED;
+        }
+        return applied ? ProductImportResult.STATUS_APPLIED : ProductImportResult.STATUS_REJECTED;
+    }
+
+    private ProductImportHistoryEntry toProductImportHistoryEntry(SecurityAuditLog log) {
+        Map<String, String> metadata = parseSemicolonMetadata(log.getMetadata());
+        ProductImportHistoryEntry entry = new ProductImportHistoryEntry();
+        entry.setAuditLogId(log.getId());
+        entry.setAction(log.getAction());
+        entry.setResult(log.getResult());
+        entry.setFilename(metadata.getOrDefault("filename", log.getResourceId()));
+        entry.setImportId(metadata.getOrDefault("importId", ""));
+        entry.setFileSha256(metadata.getOrDefault("fileSha256", ""));
+        String status = metadata.getOrDefault("status", fallbackProductImportStatus(log, metadata));
+        entry.setStatus(status);
+        entry.setSizeBytes(parseLongMetadata(metadata.get("sizeBytes")));
+        entry.setTotalRows(parseIntMetadata(metadata.get("totalRows")));
+        entry.setCreated(parseIntMetadata(metadata.get("created")));
+        entry.setUpdated(parseIntMetadata(metadata.get("updated")));
+        entry.setFailed(parseIntMetadata(metadata.get("failed")));
+        entry.setPreview(Boolean.parseBoolean(metadata.getOrDefault("preview", "false")));
+        entry.setReadyToImport(Boolean.parseBoolean(metadata.getOrDefault("readyToImport", "false")));
+        entry.setApplied(metadata.containsKey("applied")
+                ? Boolean.parseBoolean(metadata.get("applied"))
+                : ProductImportResult.STATUS_APPLIED.equals(status));
+        entry.setMessage(log.getMessage());
+        entry.setCreatedAt(log.getCreatedAt());
+        return entry;
+    }
+
+    private String fallbackProductImportStatus(SecurityAuditLog log, Map<String, String> metadata) {
+        boolean preview = Boolean.parseBoolean(metadata.getOrDefault("preview", "PRODUCT_IMPORT_PREVIEW".equals(log.getAction()) ? "true" : "false"));
+        boolean ready = Boolean.parseBoolean(metadata.getOrDefault("readyToImport", "false"));
+        if (preview) {
+            return ready ? ProductImportResult.STATUS_PREVIEW_READY : ProductImportResult.STATUS_PREVIEW_BLOCKED;
+        }
+        return "SUCCESS".equals(log.getResult()) ? ProductImportResult.STATUS_APPLIED : ProductImportResult.STATUS_REJECTED;
+    }
+
+    private Map<String, String> parseSemicolonMetadata(String metadata) {
+        Map<String, String> values = new LinkedHashMap<>();
+        if (metadata == null || metadata.isBlank()) {
+            return values;
+        }
+        for (String part : metadata.split(";")) {
+            int index = part.indexOf('=');
+            if (index <= 0) {
+                continue;
+            }
+            values.put(part.substring(0, index), part.substring(index + 1));
+        }
+        return values;
+    }
+
+    private int parseIntMetadata(String value) {
+        try {
+            return value == null || value.isBlank() ? 0 : Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private long parseLongMetadata(String value) {
+        try {
+            return value == null || value.isBlank() ? 0L : Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            return 0L;
+        }
+    }
+
+    private String safeImportResourceId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            java.net.URI uri = java.net.URI.create(value.trim());
+            return uri.getHost() == null ? value : uri.getHost();
+        } catch (Exception ex) {
+            return value;
+        }
     }
 
     // ==================== Order Export ====================
@@ -1004,6 +1222,34 @@ public class AdminController {
                 + ",totalQuantity=" + request.getTotalQuantity();
     }
 
+    private String petBirthdayCouponConfigMetadata(PetBirthdayCouponConfig config) {
+        if (config == null) {
+            return null;
+        }
+        return "enabled=" + config.getEnabled()
+                + ",namePrefix=" + normalizeAdminFilter(config.getNamePrefix(), 80)
+                + ",couponType=" + config.getCouponType()
+                + ",thresholdAmount=" + config.getThresholdAmount()
+                + ",reductionAmount=" + config.getReductionAmount()
+                + ",discountPercent=" + config.getDiscountPercent()
+                + ",maxDiscountAmount=" + config.getMaxDiscountAmount()
+                + ",validDays=" + config.getValidDays()
+                + ",maxBenefitsPerUser=" + config.getMaxBenefitsPerUser()
+                + ",totalQuantityPerCoupon=" + config.getTotalQuantityPerCoupon();
+    }
+
+    private String petBirthdayCouponConfigRequestMetadata(PetBirthdayCouponConfigRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return "enabled=" + request.getEnabled()
+                + ",namePrefix=" + normalizeAdminFilter(request.getNamePrefix(), 80)
+                + ",couponType=" + normalizeAdminFilter(request.getCouponType(), 40)
+                + ",validDays=" + request.getValidDays()
+                + ",maxBenefitsPerUser=" + request.getMaxBenefitsPerUser()
+                + ",totalQuantityPerCoupon=" + request.getTotalQuantityPerCoupon();
+    }
+
     private Map<String, Long> buildAdminOrderSummary(String status, String search) {
         Map<String, Long> summary = new LinkedHashMap<>();
         for (String quick : List.of(
@@ -1056,6 +1302,25 @@ public class AdminController {
             throw new IllegalArgumentException("id is required");
         }
         return Long.valueOf(String.valueOf(value).trim());
+    }
+
+    private String safeBatchFailureReason(Exception exception) {
+        String message = exception == null ? null : exception.getMessage();
+        String normalized = normalizeAdminFilter(message, 240);
+        return normalized == null ? "Operation failed" : normalized;
+    }
+
+    private String batchShipMetadata(AdminOrderBatchShipResponse response) {
+        String failedInputs = response.getFailures().stream()
+                .limit(25)
+                .map(failure -> failure.getOrderId() == null ? failure.getInput() : String.valueOf(failure.getOrderId()))
+                .collect(Collectors.joining(","));
+        return "requested=" + response.getRequestedCount()
+                + ",success=" + response.getSuccess()
+                + ",failed=" + response.getFailed()
+                + ",failedIds=" + failedInputs
+                + ",trackingPrefix=" + response.getTrackingPrefix()
+                + ",carrier=" + response.getTrackingCarrierCode();
     }
 
     // ==================== Review Management ====================

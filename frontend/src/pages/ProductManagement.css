@@ -1294,8 +1294,122 @@
   margin-top: 10px;
 }
 
+.product-url-import-preview__alert {
+  margin-top: 12px;
+}
+
+.product-import-history {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid rgba(18, 71, 52, 0.1);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.product-import-history__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-import-history__header h3 {
+  margin: 2px 0 0;
+  font-size: 16px;
+}
+
+.product-import-history__list {
+  display: grid;
+  gap: 10px;
+}
+
+.product-import-history__item {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(18, 71, 52, 0.08);
+}
+
+.product-import-history__main,
+.product-import-history__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.product-import-history__meta {
+  color: #5f6f67;
+  font-size: 12px;
+}
+
+.product-import-history__meta button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1677ff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.product-import-result {
+  display: grid;
+  gap: 10px;
+}
+
+.product-import-result p {
+  margin: 0;
+}
+
+.product-import-result__limits {
+  row-gap: 6px;
+}
+
+.product-import-result__trace {
+  row-gap: 6px;
+}
+
+.product-import-result__trace .ant-tag {
+  max-width: 100%;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-import-result ul {
+  max-height: 280px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.product-import-result li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(18, 71, 52, 0.08);
+  overflow-wrap: anywhere;
+}
+
+.product-import-result li:last-child {
+  border-bottom: 0;
+}
+
 @media (max-width: 520px) {
   .product-url-import-preview {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-import-history__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .product-import-result li {
+    flex-wrap: wrap;
   }
 }

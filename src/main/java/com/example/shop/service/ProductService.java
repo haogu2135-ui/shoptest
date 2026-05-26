@@ -31,5 +31,6 @@ public interface ProductService {
     long countPendingReviewProducts();
     long countLowStockProducts();
     List<Product> findLowStockProducts(int limit);
+    ProductImportResult previewImportCsv(MultipartFile file);
     ProductImportResult importCsv(MultipartFile file);
 } 

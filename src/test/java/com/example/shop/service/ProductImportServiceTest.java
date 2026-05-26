@@ -1,7 +1,9 @@
 package com.example.shop.service;
 
 import com.example.shop.dto.ProductImportResult;
+import com.example.shop.entity.Category;
 import com.example.shop.entity.Product;
+import com.example.shop.repository.CategoryRepository;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.service.impl.ProductServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,29 +13,39 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 class ProductImportServiceTest {
     private ProductServiceImpl service;
     private ProductRepository productRepository;
+    private CategoryRepository categoryRepository;
     private RuntimeConfigService runtimeConfig;
 
     @BeforeEach
     void setUp() {
         service = new ProductServiceImpl();
         productRepository = mock(ProductRepository.class);
+        categoryRepository = mock(CategoryRepository.class);
         runtimeConfig = mock(RuntimeConfigService.class);
         ReflectionTestUtils.setField(service, "productRepository", productRepository);
+        ReflectionTestUtils.setField(service, "categoryRepository", categoryRepository);
         ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
         when(runtimeConfig.getLong("product.import.max-file-size-bytes", 1048576)).thenReturn(1024L);
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(1);
+        Category category = new Category();
+        category.setId(1L);
+        when(categoryRepository.findAll()).thenReturn(List.of(category));
     }
 
     @Test
@@ -49,6 +61,11 @@ class ProductImportServiceTest {
 
         assertEquals(1, result.getFailed());
         assertTrue(result.getErrors().get(0).contains("Only .csv"));
+        assertEquals(1, result.getRowErrors().size());
+        assertEquals(1024L, result.getMaxFileSizeBytes());
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        assertFalse(result.isReadyToImport());
         verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -68,6 +85,8 @@ class ProductImportServiceTest {
 
         assertEquals(1, result.getFailed());
         assertTrue(result.getErrors().get(0).contains("too large"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
         verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -86,6 +105,30 @@ class ProductImportServiceTest {
         assertEquals(1, result.getTotalRows());
         assertEquals(1, result.getFailed());
         assertTrue(result.getErrors().get(0).contains("row limit exceeded"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+    }
+
+    @Test
+    void rejectsHeaderOnlyCsvWithClearNoRowsError() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                "id,name,description,price,stock,categoryId\n".getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertTrue(result.isPreview());
+        assertEquals(0, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertTrue(result.getErrors().get(0).contains("does not contain any product rows"));
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertFalse(result.isApplied());
+        assertFalse(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
     }
 
     @Test
@@ -105,9 +148,61 @@ class ProductImportServiceTest {
         ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
         verify(productRepository).save(captor.capture());
         assertEquals(1, result.getCreated());
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertTrue(result.isApplied());
         assertEquals("Dog Harness", captor.getValue().getName());
         assertEquals("Safe fit", captor.getValue().getDescription());
         assertEquals("PENDING_REVIEW", captor.getValue().getStatus());
+    }
+
+    @Test
+    void previewImportValidatesAndCountsRowsWithoutSaving() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/harness.jpg\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertTrue(result.isPreview());
+        assertTrue(result.isReadyToImport());
+        assertEquals(ProductImportResult.STATUS_PREVIEW_READY, result.getStatus());
+        assertFalse(result.isApplied());
+        assertImportTrace(result);
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getCreated());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void previewCountsExistingRowsAsUpdatesWithoutSaving() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product existing = new Product();
+        existing.setId(3L);
+        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + "3,Harness,Safe,19.99,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertTrue(result.isPreview());
+        assertEquals(ProductImportResult.STATUS_PREVIEW_READY, result.getStatus());
+        assertFalse(result.isApplied());
+        assertEquals(1, result.getUpdated());
+        assertEquals(0, result.getCreated());
+        verify(productRepository, times(1)).findById(3L);
+        verify(productRepository, never()).save(any());
     }
 
     @Test
@@ -126,6 +221,297 @@ class ProductImportServiceTest {
 
         assertEquals(1, result.getFailed());
         assertTrue(result.getErrors().get(0).contains("status must be one of"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
         verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsWholeFileWithoutPartialSaveWhenAnyRowFails() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,Safe,19.99,8,1\n"
+                        + ",Broken,Invalid,-4.00,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(2, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals(1, result.getCreated());
+        assertTrue(result.getErrors().get(0).contains("price"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsUnknownImportedCategoryBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,Safe,19.99,8,999\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("categoryId", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("categoryId does not exist"));
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsNegativePriceBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,Safe,-1.00,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("price", result.getRowErrors().get(0).getField());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsPrivateImportedImageUrlBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl\n"
+                        + ",Harness,Safe,19.99,8,1,http://127.0.0.1/private.jpg\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("imageUrl", result.getRowErrors().get(0).getField());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsInvalidImportedImageJsonBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,false,,,,,,,,not-json\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("images", result.getRowErrors().get(0).getField());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsInvalidImportedSpecificationsJsonBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images,specifications\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,false,,,,,,,,[],not-json\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("specifications", result.getRowErrors().get(0).getField());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsNestedImportedSpecificationsBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images,specifications\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,false,,,,,,,,[],\"{\"\"material\"\":{\"\"name\"\":\"\"cotton\"\"}}\"\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("specifications", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("values must be text"));
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsInvalidImportedDetailContentJsonBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images,specifications,detailContent\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,false,,,,,,,,[],{},not-json\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("detailContent", result.getRowErrors().get(0).getField());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsInvalidImportedVariantsJsonBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images,specifications,detailContent,warranty,shipping,status,freeShipping,freeShippingThreshold,variants\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,false,,,,,,,,[],{},[],Warranty,Shipping,ACTIVE,false,,not-json\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("variants", result.getRowErrors().get(0).getField());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsImportedVariantsWithoutRequiredStructureBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images,specifications,detailContent,warranty,shipping,status,freeShipping,freeShippingThreshold,variants\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,false,,,,,,,,[],{},[],Warranty,Shipping,ACTIVE,false,,\"[{\"\"sku\"\":\"\"DUP\"\",\"\"options\"\":{\"\"Size\"\":\"\"S\"\"},\"\"price\"\":19.99,\"\"stock\"\":2},{\"\"sku\"\":\"\"DUP\"\",\"\"options\"\":{\"\"Size\"\":\"\"M\"\"},\"\"price\"\":21.99,\"\"stock\"\":1}]\"\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("variants", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("sku must be unique"));
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsImportedDetailContentWithoutRequiredStructureBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images,specifications,detailContent,warranty,shipping,status,freeShipping,freeShippingThreshold,variants\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,false,,,,,,,,[],{},\"[{\"\"type\"\":\"\"image\"\",\"\"caption\"\":\"\"Missing URL\"\"}]\",Warranty,Shipping,ACTIVE,false,,[]\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("detailContent", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("media URL is required"));
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsInvalidBooleanValuesBeforeSavingRow() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl,isFeatured,brand,originalPrice,discount,limitedTimePrice,limitedTimeStartAt,limitedTimeEndAt,tag,images,specifications,detailContent,warranty,shipping,status,freeShipping,freeShippingThreshold,variants\n"
+                        + ",Harness,Safe,19.99,8,1,https://example.com/main.jpg,maybe,,,,,,,,[],{},[],Warranty,Shipping,ACTIVE,false,,[]\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("isFeatured", result.getRowErrors().get(0).getField());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void importsQuotedCsvRecordWithMultilineDescription() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,\"Line one\nLine two\",19.99,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        assertImportTrace(result);
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertTrue(result.isApplied());
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getCreated());
+        assertEquals("Line one Line two", captor.getValue().getDescription());
+    }
+
+    @Test
+    void rejectsMalformedMultilineCsvBeforeSaving() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,\"Line one\nLine two,19.99,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertTrue(result.getErrors().get(0).contains("unterminated quoted field"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    private void assertImportTrace(ProductImportResult result) {
+        assertNotNull(result.getImportId());
+        assertTrue(result.getImportId().matches("[0-9a-fA-F-]{36}"));
+        assertNotNull(result.getFileSha256());
+        assertTrue(result.getFileSha256().matches("[0-9a-f]{64}"));
     }
 }

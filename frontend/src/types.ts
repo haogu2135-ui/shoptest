@@ -423,12 +423,48 @@ export interface ProductDetailBlock {
     caption?: string;
 }
 
+export interface ProductImportRowError {
+    rowNumber: number;
+    field?: string;
+    message: string;
+}
+
 export interface ProductImportResult {
+    importId?: string;
+    fileSha256?: string;
+    status?: 'PREVIEW_READY' | 'PREVIEW_BLOCKED' | 'APPLIED' | 'REJECTED' | string;
     totalRows: number;
     created: number;
     updated: number;
     failed: number;
+    maxRows?: number;
+    maxFileSizeBytes?: number;
+    preview?: boolean;
+    readyToImport?: boolean;
+    applied?: boolean;
+    truncatedErrors?: boolean;
     errors: string[];
+    rowErrors?: ProductImportRowError[];
+}
+
+export interface ProductImportHistoryEntry {
+    auditLogId: number;
+    action: string;
+    result: string;
+    filename?: string;
+    importId?: string;
+    fileSha256?: string;
+    status?: 'PREVIEW_READY' | 'PREVIEW_BLOCKED' | 'APPLIED' | 'REJECTED' | string;
+    sizeBytes: number;
+    totalRows: number;
+    created: number;
+    updated: number;
+    failed: number;
+    preview: boolean;
+    readyToImport: boolean;
+    applied?: boolean;
+    message?: string;
+    createdAt: string;
 }
 
 export interface ProductUrlImportPreview {
@@ -444,6 +480,7 @@ export interface ProductUrlImportPreview {
     brand?: string;
     confidenceScore?: number;
     warnings?: string[];
+    blockedImages?: string[];
 }
 
 export interface Category {
@@ -523,6 +560,22 @@ export interface AdminOrderPage {
     size: number;
     totalPages: number;
     summary?: Record<string, number>;
+}
+
+export interface AdminOrderBatchShipFailure {
+    orderId?: number;
+    input?: string;
+    reason: string;
+}
+
+export interface AdminOrderBatchShipResponse {
+    requestedCount: number;
+    success: number;
+    failed: number;
+    maxBatchSize: number;
+    trackingPrefix?: string;
+    trackingCarrierCode?: string;
+    failures: AdminOrderBatchShipFailure[];
 }
 
 export interface LogisticsTrackEvent {
