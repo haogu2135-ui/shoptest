@@ -16,6 +16,7 @@ import ProductRichDetailEditor from '../components/ProductRichDetailEditor';
 import ProductRichDetail, { isHttpMediaUrl } from '../components/ProductRichDetail';
 import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { csvRow } from '../utils/csvExport';
 import './ProductManagement.css';
 
 const { Title, Text } = Typography;
@@ -136,7 +137,6 @@ const createSkuFromOptions = (options: Record<string, string>, index: number) =>
   return suffix ? `SKU-${suffix}` : `SKU-${index + 1}`;
 };
 
-const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 const importJsonValue = (value: unknown) => {
   if (value == null || value === '') return '';
   if (typeof value === 'string') return value;
@@ -195,7 +195,7 @@ const downloadImportErrorReport = (result: ProductImportResult) => {
     ['rowNumber', 'field', 'message'],
     ...rowErrors.map((rowError) => [rowError.rowNumber || '', rowError.field || '', rowError.message || '']),
   ];
-  const csv = rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+  const csv = rows.map(csvRow).join('\r\n');
   const blob = new Blob(['\uFEFF', `${csv}\r\n`], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -791,7 +791,7 @@ const ProductManagement: React.FC = () => {
       '1 year', 'Free shipping', 'ACTIVE', 'false', '',
       '[{"sku":"SKU-S-BLK","options":{"Size":"S","Color":"Black"},"price":99.90,"stock":50,"imageUrl":"https://example.com/variant.jpg"}]',
     ];
-    const csv = `${headers.join(',')}\r\n${sample.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')}\r\n`;
+    const csv = `${csvRow(headers)}\r\n${csvRow(sample)}\r\n`;
     const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -843,8 +843,8 @@ const ProductManagement: React.FC = () => {
       ];
     });
     const csv = [
-      headers.map(csvCell).join(','),
-      ...rows.map((row) => row.map(csvCell).join(',')),
+      csvRow(headers),
+      ...rows.map(csvRow),
     ].join('\r\n');
     const blob = new Blob(['\uFEFF', `${csv}\r\n`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
