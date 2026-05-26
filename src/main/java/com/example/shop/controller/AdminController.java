@@ -995,11 +995,14 @@ public class AdminController {
     }
 
     private String encodeMetadataValue(String value) {
-        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     private String decodeMetadataValue(String value) {
         if (value == null || value.isBlank()) {
+            return value;
+        }
+        if (!value.contains("%")) {
             return value;
         }
         try {

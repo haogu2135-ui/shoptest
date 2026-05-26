@@ -106,7 +106,7 @@ class AdminControllerProductImportAuditTest {
 
     @Test
     void importAuditMetadataEscapesFilenamesForHistoryParsing() {
-        MockMultipartFile file = csvFile("products;v=2.csv");
+        MockMultipartFile file = csvFile("products + summer;v=2.csv");
         ProductImportResult result = new ProductImportResult();
         result.setPreview(true);
         result.setImportId("import-456");
@@ -126,19 +126,19 @@ class AdminControllerProductImportAuditTest {
                 eq("SUCCESS"),
                 same(authentication),
                 eq("PRODUCT_IMPORT"),
-                eq("products;v=2.csv"),
+                eq("products + summer;v=2.csv"),
                 same(request),
                 eq("Product import preview passed"),
                 metadata.capture()
         );
-        assertTrue(metadata.getValue().contains("filename=products%3Bv%3D2.csv"));
+        assertTrue(metadata.getValue().contains("filename=products%20%2B%20summer%3Bv%3D2.csv"));
 
         SecurityAuditLog log = new SecurityAuditLog();
         log.setId(44L);
         log.setAction("PRODUCT_IMPORT_PREVIEW");
         log.setResult("SUCCESS");
         log.setResourceType("PRODUCT_IMPORT");
-        log.setResourceId("products;v=2.csv");
+        log.setResourceId("products + summer;v=2.csv");
         log.setMessage("Product import preview passed");
         log.setCreatedAt(LocalDateTime.of(2026, 5, 25, 11, 30));
         log.setMetadata(metadata.getValue());
@@ -148,9 +148,30 @@ class AdminControllerProductImportAuditTest {
         ResponseEntity<List<ProductImportHistoryEntry>> history = controller.getProductImportHistory(1);
 
         assertEquals(1, history.getBody().size());
-        assertEquals("products;v=2.csv", history.getBody().get(0).getFilename());
+        assertEquals("products + summer;v=2.csv", history.getBody().get(0).getFilename());
         assertEquals("import-456", history.getBody().get(0).getImportId());
         assertEquals("def456", history.getBody().get(0).getFileSha256());
+    }
+
+    @Test
+    void importHistoryKeepsLegacyPlusSignsInUnencodedMetadata() {
+        SecurityAuditLog applyLog = new SecurityAuditLog();
+        applyLog.setId(45L);
+        applyLog.setAction("PRODUCT_IMPORT_APPLY");
+        applyLog.setResult("SUCCESS");
+        applyLog.setResourceType("PRODUCT_IMPORT");
+        applyLog.setResourceId("products+legacy.csv");
+        applyLog.setMessage("Product import completed");
+        applyLog.setCreatedAt(LocalDateTime.of(2026, 5, 25, 12, 30));
+        applyLog.setMetadata("importId=import-plus;fileSha256=abc789;filename=products+legacy.csv;sizeBytes=128;preview=false;readyToImport=true;applied=true;totalRows=1;created=1;updated=0;failed=0");
+        when(auditLogService.search(isNull(), isNull(), isNull(), eq("PRODUCT_IMPORT"), isNull(), isNull(), eq(3)))
+                .thenReturn(List.of(applyLog));
+
+        ResponseEntity<List<ProductImportHistoryEntry>> history = controller.getProductImportHistory(1);
+
+        assertEquals(1, history.getBody().size());
+        assertEquals("products+legacy.csv", history.getBody().get(0).getFilename());
+        assertEquals("import-plus", history.getBody().get(0).getImportId());
     }
 
     @Test
