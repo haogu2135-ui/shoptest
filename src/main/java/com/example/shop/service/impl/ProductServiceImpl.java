@@ -63,6 +63,38 @@ public class ProductServiceImpl implements ProductService {
             "limitedtimeendat", "tag", "images", "specifications", "detailcontent", "warranty",
             "shipping", "status", "freeshipping", "freeshippingthreshold", "variants"
     );
+    private static final Set<String> FULL_IMPORT_UPDATE_FIELDS = Set.of(
+            "name", "description", "price", "stock", "categoryId", "imageUrl", "isFeatured",
+            "brand", "originalPrice", "discount", "limitedTimePrice", "limitedTimeStartAt",
+            "limitedTimeEndAt", "tag", "status", "images", "specifications", "detailContent",
+            "variants", "warranty", "shipping", "freeShipping", "freeShippingThreshold"
+    );
+    private static final Map<String, String> IMPORT_HEADER_UPDATE_FIELDS = Map.ofEntries(
+            Map.entry("name", "name"),
+            Map.entry("description", "description"),
+            Map.entry("price", "price"),
+            Map.entry("stock", "stock"),
+            Map.entry("categoryid", "categoryId"),
+            Map.entry("categoryname", "categoryId"),
+            Map.entry("imageurl", "imageUrl"),
+            Map.entry("isfeatured", "isFeatured"),
+            Map.entry("brand", "brand"),
+            Map.entry("originalprice", "originalPrice"),
+            Map.entry("discount", "discount"),
+            Map.entry("limitedtimeprice", "limitedTimePrice"),
+            Map.entry("limitedtimestartat", "limitedTimeStartAt"),
+            Map.entry("limitedtimeendat", "limitedTimeEndAt"),
+            Map.entry("tag", "tag"),
+            Map.entry("status", "status"),
+            Map.entry("images", "images"),
+            Map.entry("specifications", "specifications"),
+            Map.entry("detailcontent", "detailContent"),
+            Map.entry("variants", "variants"),
+            Map.entry("warranty", "warranty"),
+            Map.entry("shipping", "shipping"),
+            Map.entry("freeshipping", "freeShipping"),
+            Map.entry("freeshippingthreshold", "freeShippingThreshold")
+    );
     private static final Map<String, String> IMPORT_HEADER_DISPLAY_NAMES = Map.ofEntries(
             Map.entry("categoryid", "categoryId"),
             Map.entry("categoryname", "categoryName"),
@@ -450,7 +482,7 @@ public class ProductServiceImpl implements ProductService {
                     } else {
                         result.setCreated(result.getCreated() + 1);
                     }
-                    importRows.add(new ProductImportRow(product, existingProduct));
+                    importRows.add(new ProductImportRow(product, existingProduct, importUpdateFields(headerIndex)));
                 } catch (Exception ex) {
                     result.addError(rowNumber, importFieldFromException(ex), ex.getMessage());
                 }
@@ -589,12 +621,22 @@ public class ProductServiceImpl implements ProductService {
 
     private void saveImportRow(ProductImportRow row) {
         if (row.existingProduct != null) {
-            mergeForImport(row.existingProduct, row.importedProduct);
+            mergeForImport(row.existingProduct, row.importedProduct, row.updateFields);
             productRepository.save(row.existingProduct);
             return;
         }
         row.importedProduct.setId(null);
         productRepository.save(row.importedProduct);
+    }
+
+    private Set<String> importUpdateFields(Map<String, Integer> headerIndex) {
+        if (headerIndex == null) {
+            return FULL_IMPORT_UPDATE_FIELDS;
+        }
+        return headerIndex.keySet().stream()
+                .map(IMPORT_HEADER_UPDATE_FIELDS::get)
+                .filter(field -> field != null && !field.equals("id"))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private boolean validateImportFile(MultipartFile file, ProductImportResult result) {
@@ -1090,30 +1132,76 @@ public class ProductServiceImpl implements ProductService {
         return null;
     }
 
-    private void mergeForImport(Product existing, Product imported) {
-        existing.setName(imported.getName());
-        existing.setDescription(imported.getDescription());
-        existing.setPrice(imported.getPrice());
-        existing.setStock(imported.getStock());
-        existing.setCategoryId(imported.getCategoryId());
-        existing.setImageUrl(imported.getImageUrl());
-        existing.setIsFeatured(imported.getIsFeatured());
-        existing.setBrand(imported.getBrand());
-        existing.setOriginalPrice(imported.getOriginalPrice());
-        existing.setDiscount(imported.getDiscount());
-        existing.setLimitedTimePrice(imported.getLimitedTimePrice());
-        existing.setLimitedTimeStartAt(imported.getLimitedTimeStartAt());
-        existing.setLimitedTimeEndAt(imported.getLimitedTimeEndAt());
-        existing.setTag(imported.getTag());
-        existing.setStatus(imported.getStatus());
-        existing.setImages(imported.getImages());
-        existing.setSpecifications(imported.getSpecifications());
-        existing.setDetailContent(imported.getDetailContent());
-        existing.setVariants(imported.getVariants());
-        existing.setWarranty(imported.getWarranty());
-        existing.setShipping(imported.getShipping());
-        existing.setFreeShipping(imported.getFreeShipping());
-        existing.setFreeShippingThreshold(imported.getFreeShippingThreshold());
+    private void mergeForImport(Product existing, Product imported, Set<String> updateFields) {
+        if (updateFields.contains("name")) {
+            existing.setName(imported.getName());
+        }
+        if (updateFields.contains("description")) {
+            existing.setDescription(imported.getDescription());
+        }
+        if (updateFields.contains("price")) {
+            existing.setPrice(imported.getPrice());
+        }
+        if (updateFields.contains("stock")) {
+            existing.setStock(imported.getStock());
+        }
+        if (updateFields.contains("categoryId")) {
+            existing.setCategoryId(imported.getCategoryId());
+        }
+        if (updateFields.contains("imageUrl")) {
+            existing.setImageUrl(imported.getImageUrl());
+        }
+        if (updateFields.contains("isFeatured")) {
+            existing.setIsFeatured(imported.getIsFeatured());
+        }
+        if (updateFields.contains("brand")) {
+            existing.setBrand(imported.getBrand());
+        }
+        if (updateFields.contains("originalPrice")) {
+            existing.setOriginalPrice(imported.getOriginalPrice());
+        }
+        if (updateFields.contains("discount")) {
+            existing.setDiscount(imported.getDiscount());
+        }
+        if (updateFields.contains("limitedTimePrice")) {
+            existing.setLimitedTimePrice(imported.getLimitedTimePrice());
+        }
+        if (updateFields.contains("limitedTimeStartAt")) {
+            existing.setLimitedTimeStartAt(imported.getLimitedTimeStartAt());
+        }
+        if (updateFields.contains("limitedTimeEndAt")) {
+            existing.setLimitedTimeEndAt(imported.getLimitedTimeEndAt());
+        }
+        if (updateFields.contains("tag")) {
+            existing.setTag(imported.getTag());
+        }
+        if (updateFields.contains("status")) {
+            existing.setStatus(imported.getStatus());
+        }
+        if (updateFields.contains("images")) {
+            existing.setImages(imported.getImages());
+        }
+        if (updateFields.contains("specifications")) {
+            existing.setSpecifications(imported.getSpecifications());
+        }
+        if (updateFields.contains("detailContent")) {
+            existing.setDetailContent(imported.getDetailContent());
+        }
+        if (updateFields.contains("variants")) {
+            existing.setVariants(imported.getVariants());
+        }
+        if (updateFields.contains("warranty")) {
+            existing.setWarranty(imported.getWarranty());
+        }
+        if (updateFields.contains("shipping")) {
+            existing.setShipping(imported.getShipping());
+        }
+        if (updateFields.contains("freeShipping")) {
+            existing.setFreeShipping(imported.getFreeShipping());
+        }
+        if (updateFields.contains("freeShippingThreshold")) {
+            existing.setFreeShippingThreshold(imported.getFreeShippingThreshold());
+        }
     }
 
     private String value(List<String> values, int index) {
@@ -1381,10 +1469,12 @@ public class ProductServiceImpl implements ProductService {
     private static class ProductImportRow {
         private final Product importedProduct;
         private final Product existingProduct;
+        private final Set<String> updateFields;
 
-        private ProductImportRow(Product importedProduct, Product existingProduct) {
+        private ProductImportRow(Product importedProduct, Product existingProduct, Set<String> updateFields) {
             this.importedProduct = importedProduct;
             this.existingProduct = existingProduct;
+            this.updateFields = updateFields;
         }
     }
 

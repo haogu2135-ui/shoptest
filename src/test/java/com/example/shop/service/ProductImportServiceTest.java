@@ -12,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -391,6 +392,62 @@ class ProductImportServiceTest {
         assertEquals(0, result.getCreated());
         verify(productRepository, times(1)).findById(3L);
         verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void namedHeaderUpdatePreservesOmittedExistingProductFields() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product existing = new Product();
+        existing.setId(3L);
+        existing.setName("Old Harness");
+        existing.setDescription("Existing detailed copy");
+        existing.setPrice(new BigDecimal("18.00"));
+        existing.setStock(4);
+        existing.setCategoryId(99L);
+        existing.setImageUrl("https://example.com/existing.jpg");
+        existing.setIsFeatured(true);
+        existing.setBrand("Existing Brand");
+        existing.setStatus("PENDING_REVIEW");
+        existing.setImages("[\"https://example.com/existing-extra.jpg\"]");
+        existing.setSpecifications("{\"material\":\"nylon\"}");
+        existing.setDetailContent("[{\"type\":\"text\",\"content\":\"Existing detail\"}]");
+        existing.setWarranty("Existing warranty");
+        existing.setShipping("Existing shipping");
+        existing.setFreeShipping(true);
+        existing.setFreeShippingThreshold(new BigDecimal("49.00"));
+        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,price,stock,categoryName\n"
+                        + "3,Updated Harness,21.99,12,Harnesses\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertEquals(1, result.getUpdated());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("Updated Harness", saved.getName());
+        assertEquals(0, saved.getPrice().compareTo(new BigDecimal("21.99")));
+        assertEquals(12, saved.getStock());
+        assertEquals(1L, saved.getCategoryId());
+        assertEquals("Existing detailed copy", saved.getDescription());
+        assertEquals("https://example.com/existing.jpg", saved.getImageUrl());
+        assertTrue(saved.getIsFeatured());
+        assertEquals("Existing Brand", saved.getBrand());
+        assertEquals("PENDING_REVIEW", saved.getStatus());
+        assertEquals("[\"https://example.com/existing-extra.jpg\"]", saved.getImages());
+        assertEquals("{\"material\":\"nylon\"}", saved.getSpecifications());
+        assertEquals("[{\"type\":\"text\",\"content\":\"Existing detail\"}]", saved.getDetailContent());
+        assertEquals("Existing warranty", saved.getWarranty());
+        assertEquals("Existing shipping", saved.getShipping());
+        assertTrue(saved.getFreeShipping());
+        assertEquals(0, saved.getFreeShippingThreshold().compareTo(new BigDecimal("49.00")));
     }
 
     @Test
