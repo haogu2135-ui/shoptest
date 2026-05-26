@@ -24,11 +24,14 @@ import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PushbackInputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.InetAddress;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -432,7 +435,7 @@ public class ProductServiceImpl implements ProductService {
         Set<Long> importedIds = new HashSet<>();
         ImportCategoryLookup categoryLookup = loadImportCategoryLookup();
         List<ProductImportRow> importRows = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = importCsvReader(file)) {
             List<CsvUtils.Record> records = CsvUtils.parseRecords(reader);
             Map<String, Integer> headerIndex = null;
             for (int i = 0; i < records.size(); i++) {
@@ -524,6 +527,34 @@ public class ProductServiceImpl implements ProductService {
         }
         result.setStatus(importStatus(preview, result));
         return result;
+    }
+
+    private BufferedReader importCsvReader(MultipartFile file) throws IOException {
+        PushbackInputStream input = new PushbackInputStream(file.getInputStream(), 3);
+        byte[] bom = new byte[3];
+        int bytesRead = input.read(bom);
+        int skip = 0;
+        Charset charset = StandardCharsets.UTF_8;
+        if (bytesRead >= 3
+                && (bom[0] & 0xFF) == 0xEF
+                && (bom[1] & 0xFF) == 0xBB
+                && (bom[2] & 0xFF) == 0xBF) {
+            skip = 3;
+        } else if (bytesRead >= 2
+                && (bom[0] & 0xFF) == 0xFF
+                && (bom[1] & 0xFF) == 0xFE) {
+            charset = StandardCharsets.UTF_16LE;
+            skip = 2;
+        } else if (bytesRead >= 2
+                && (bom[0] & 0xFF) == 0xFE
+                && (bom[1] & 0xFF) == 0xFF) {
+            charset = StandardCharsets.UTF_16BE;
+            skip = 2;
+        }
+        if (bytesRead > skip) {
+            input.unread(bom, skip, bytesRead - skip);
+        }
+        return new BufferedReader(new InputStreamReader(input, charset));
     }
 
     private void markCurrentTransactionRollbackOnly() {

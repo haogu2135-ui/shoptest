@@ -191,6 +191,39 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void importsUtf16LittleEndianCsvWithBomFromSpreadsheetExport() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        byte[] body = ("stock;categoryName;price;name;categoryId;id;description;status\n"
+                + "8;Harnesses;19,99;Harness;1;;Safe;ACTIVE\n")
+                .getBytes(StandardCharsets.UTF_16LE);
+        byte[] csv = new byte[body.length + 2];
+        csv[0] = (byte) 0xFF;
+        csv[1] = (byte) 0xFE;
+        System.arraycopy(body, 0, csv, 2, body.length);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                csv
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(0, result.getFailed());
+        assertEquals(1, result.getCreated());
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertTrue(result.isApplied());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("Harness", saved.getName());
+        assertEquals(new BigDecimal("19.99"), saved.getPrice());
+        assertEquals(8, saved.getStock());
+        assertEquals(1L, saved.getCategoryId());
+    }
+
+    @Test
     void importsDecimalCommaMoneyFromSpreadsheetExport() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
