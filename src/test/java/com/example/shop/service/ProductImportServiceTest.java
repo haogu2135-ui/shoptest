@@ -540,6 +540,45 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsExistingProductUpdatesThatWouldDuplicateNamesAfterImport() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product leash = new Product();
+        leash.setId(3L);
+        leash.setName("Travel Leash");
+        leash.setPrice(new BigDecimal("12.00"));
+        leash.setStock(4);
+        leash.setCategoryId(1L);
+        Product collar = new Product();
+        collar.setId(4L);
+        collar.setName("Travel Collar");
+        collar.setPrice(new BigDecimal("14.00"));
+        collar.setStock(6);
+        collar.setCategoryId(1L);
+        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(leash));
+        when(productRepository.findById(4L)).thenReturn(java.util.Optional.of(collar));
+        when(productRepository.findByCategoryId(1L)).thenReturn(List.of(leash, collar));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,categoryId\n"
+                        + "3,Travel Harness,1\n"
+                        + "4, travel   harness ,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals(2, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals("name", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("after applying this file"));
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertFalse(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsUnsupportedImportHeadersBeforeReadingRows() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(

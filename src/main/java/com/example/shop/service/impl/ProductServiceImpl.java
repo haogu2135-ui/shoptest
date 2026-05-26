@@ -435,7 +435,7 @@ public class ProductServiceImpl implements ProductService {
         }
         populateImportFileFingerprint(file, result);
         Set<Long> importedIds = new HashSet<>();
-        Set<String> importedCreateIdentities = new HashSet<>();
+        Set<String> importedTargetIdentities = new HashSet<>();
         Set<String> importedVariantSkus = new HashSet<>();
         ImportCategoryLookup categoryLookup = loadImportCategoryLookup();
         List<ProductImportRow> importRows = new ArrayList<>();
@@ -505,7 +505,7 @@ public class ProductServiceImpl implements ProductService {
                         }
                     }
                     validateImportedProduct(product, importedIds, categoryLookup, updateFields, existingProduct != null);
-                    validateImportCreateIdentity(product, importedCreateIdentities, existingProduct != null);
+                    validateImportTargetIdentity(existingProduct, product, importedTargetIdentities, updateFields);
                     validateImportVariantSkusAcrossFile(product.getVariants(), importedVariantSkus);
                     validateMergedImportUpdate(existingProduct, product, updateFields);
                     validateImportProductNameDoesNotDuplicateExisting(existingProduct, product, updateFields);
@@ -1025,13 +1025,18 @@ public class ProductServiceImpl implements ProductService {
         validateImportVariants(product.getVariants());
     }
 
-    private void validateImportCreateIdentity(Product product, Set<String> importedCreateIdentities, boolean existingProduct) {
-        if (existingProduct || product == null || product.getName() == null || product.getCategoryId() == null) {
+    private void validateImportTargetIdentity(Product existing, Product imported, Set<String> importedTargetIdentities, Set<String> updateFields) {
+        if (imported == null) {
             return;
         }
-        String identity = product.getCategoryId() + ":" + normalizeImportProductNameKey(product.getName());
-        if (!importedCreateIdentities.add(identity)) {
-            throw new IllegalArgumentException("name appears more than once for this category in this file");
+        String name = existing != null && !updateFields.contains("name") ? existing.getName() : imported.getName();
+        Long categoryId = existing != null && !updateFields.contains("categoryId") ? existing.getCategoryId() : imported.getCategoryId();
+        if (name == null || categoryId == null) {
+            return;
+        }
+        String identity = categoryId + ":" + normalizeImportProductNameKey(name);
+        if (!importedTargetIdentities.add(identity)) {
+            throw new IllegalArgumentException("name appears more than once for this category after applying this file");
         }
     }
 
