@@ -518,13 +518,13 @@ class ProductImportServiceTest {
         existing.setId(10L);
         existing.setName("Travel Harness");
         existing.setCategoryId(1L);
-        when(productRepository.findByNameIgnoreCase("Travel Harness")).thenReturn(List.of(existing));
+        when(productRepository.findByCategoryId(1L)).thenReturn(List.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
                 "text/csv",
                 ("name,description,price,stock,categoryId\n"
-                        + "Travel Harness,Safe,19.99,8,1\n")
+                        + " travel   harness ,Safe,19.99,8,1\n")
                         .getBytes(StandardCharsets.UTF_8)
         );
 

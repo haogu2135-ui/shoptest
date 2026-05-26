@@ -1086,12 +1086,12 @@ public class ProductServiceImpl implements ProductService {
         }
         String nameKey = normalizeImportProductNameKey(name);
         Long currentId = existing == null ? null : existing.getId();
-        List<Product> matches = productRepository.findByNameIgnoreCase(name);
+        List<Product> matches = productRepository.findByCategoryId(categoryId);
         if (matches == null || matches.isEmpty()) {
             return;
         }
         for (Product match : matches) {
-            if (match == null || match.getId() == null || !categoryId.equals(match.getCategoryId())) {
+            if (match == null || match.getId() == null) {
                 continue;
             }
             if (currentId != null && currentId.equals(match.getId())) {
