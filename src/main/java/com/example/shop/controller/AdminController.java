@@ -914,9 +914,11 @@ public class AdminController {
         String status = result == null ? "" : productImportStatusForMetadata(preview, ready, applied);
         String importId = result == null || result.getImportId() == null ? "" : result.getImportId();
         String fileSha256 = result == null || result.getFileSha256() == null ? "" : result.getFileSha256();
+        String updateFields = result == null || result.getUpdateFields() == null ? "" : String.join(",", result.getUpdateFields());
         return "importId=" + encodeMetadataValue(importId)
                 + ";fileSha256=" + encodeMetadataValue(fileSha256)
                 + ";status=" + encodeMetadataValue(status)
+                + ";updateFields=" + encodeMetadataValue(updateFields)
                 + ";filename=" + encodeMetadataValue(filename)
                 + ";sizeBytes=" + size
                 + ";preview=" + preview
@@ -962,6 +964,7 @@ public class AdminController {
         entry.setCreated(parseIntMetadata(metadata.get("created")));
         entry.setUpdated(parseIntMetadata(metadata.get("updated")));
         entry.setFailed(parseIntMetadata(metadata.get("failed")));
+        entry.setUpdateFields(parseListMetadata(metadata.get("updateFields")));
         boolean urlImport = "PRODUCT_URL_IMPORT".equals(log.getAction());
         entry.setPreview(Boolean.parseBoolean(metadata.getOrDefault("preview", urlImport ? "true" : "false")));
         entry.setReadyToImport(Boolean.parseBoolean(metadata.getOrDefault("readyToImport", urlImport && "SUCCESS".equals(log.getResult()) ? "true" : "false")));
@@ -1039,6 +1042,16 @@ public class AdminController {
         } catch (NumberFormatException ex) {
             return null;
         }
+    }
+
+    private List<String> parseListMetadata(String value) {
+        if (value == null || value.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isBlank())
+                .collect(Collectors.toList());
     }
 
     private long parseLongMetadata(String value) {

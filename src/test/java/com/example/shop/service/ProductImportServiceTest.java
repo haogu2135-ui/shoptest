@@ -497,6 +497,7 @@ class ProductImportServiceTest {
         assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
         assertEquals(1, result.getUpdated());
         assertEquals(0, result.getCreated());
+        assertEquals(List.of("stock"), result.getUpdateFields());
         ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
         verify(productRepository).save(captor.capture());
         Product saved = captor.getValue();
@@ -505,6 +506,42 @@ class ProductImportServiceTest {
         assertEquals(12, saved.getStock());
         assertEquals(1L, saved.getCategoryId());
         assertEquals("Existing Brand", saved.getBrand());
+    }
+
+    @Test
+    void importsPriceAndStockOnlyUpdateForExistingProductId() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product existing = new Product();
+        existing.setId(3L);
+        existing.setName("Existing Harness");
+        existing.setPrice(new BigDecimal("18.00"));
+        existing.setStock(4);
+        existing.setCategoryId(1L);
+        existing.setDescription("Keep this copy");
+        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,price,stock\n"
+                        + "3,22.50,9\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertEquals(1, result.getUpdated());
+        assertEquals(0, result.getCreated());
+        assertEquals(List.of("price", "stock"), result.getUpdateFields());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("Existing Harness", saved.getName());
+        assertEquals(0, saved.getPrice().compareTo(new BigDecimal("22.50")));
+        assertEquals(9, saved.getStock());
+        assertEquals(1L, saved.getCategoryId());
+        assertEquals("Keep this copy", saved.getDescription());
     }
 
     @Test

@@ -1713,6 +1713,7 @@
       "importTooLarge": "CSV 文件必须小于或等于 {size}",
       "importId": "导入批次",
       "importFileFingerprint": "文件 SHA-256",
+      "importUpdateFields": "字段：{fields}",
       "importTraceCopied": "已复制导入追踪信息",
       "importTraceCopyFailed": "无法复制导入追踪信息",
       "importDuplicateWarningTitle": "该 CSV 与最近成功导入的文件一致",

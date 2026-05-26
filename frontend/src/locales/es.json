@@ -1884,6 +1884,7 @@
       "importTooLarge": "El archivo CSV debe pesar {size} o menos",
       "importId": "ID de importación",
       "importFileFingerprint": "SHA-256 del archivo",
+      "importUpdateFields": "Campos: {fields}",
       "importTraceCopied": "Valor de trazabilidad copiado",
       "importTraceCopyFailed": "No se pudo copiar el valor de trazabilidad",
       "importDuplicateWarningTitle": "Este CSV coincide con una importación exitosa reciente",

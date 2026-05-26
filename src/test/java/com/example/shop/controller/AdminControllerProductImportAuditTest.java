@@ -75,6 +75,7 @@ class AdminControllerProductImportAuditTest {
         result.setTotalRows(2);
         result.setCreated(1);
         result.setUpdated(1);
+        result.setUpdateFields(List.of("price", "stock"));
         when(productService.previewImportCsv(file)).thenReturn(result);
         Authentication authentication = mock(Authentication.class);
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -98,6 +99,7 @@ class AdminControllerProductImportAuditTest {
         assertTrue(metadata.getValue().contains("importId=import-123"));
         assertTrue(metadata.getValue().contains("fileSha256=abc123"));
         assertTrue(metadata.getValue().contains("status=" + ProductImportResult.STATUS_PREVIEW_READY));
+        assertTrue(metadata.getValue().contains("updateFields=price%2Cstock"));
         assertTrue(metadata.getValue().contains("readyToImport=true"));
         assertTrue(metadata.getValue().contains("applied=false"));
         assertTrue(metadata.getValue().contains("totalRows=2"));
@@ -115,6 +117,7 @@ class AdminControllerProductImportAuditTest {
         result.setReadyToImport(true);
         result.setTotalRows(1);
         result.setCreated(1);
+        result.setUpdateFields(List.of("price", "stock"));
         when(productService.previewImportCsv(file)).thenReturn(result);
         Authentication authentication = mock(Authentication.class);
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -152,6 +155,7 @@ class AdminControllerProductImportAuditTest {
         assertEquals("products + summer;v=2.csv", history.getBody().get(0).getFilename());
         assertEquals("import-456", history.getBody().get(0).getImportId());
         assertEquals("def456", history.getBody().get(0).getFileSha256());
+        assertEquals(List.of("price", "stock"), history.getBody().get(0).getUpdateFields());
     }
 
     @Test
@@ -217,7 +221,7 @@ class AdminControllerProductImportAuditTest {
         applyLog.setResourceId("products.csv");
         applyLog.setMessage("Product import completed");
         applyLog.setCreatedAt(LocalDateTime.of(2026, 5, 25, 10, 30));
-        applyLog.setMetadata("importId=import-123;fileSha256=abc123;filename=products.csv;sizeBytes=512;preview=false;readyToImport=true;totalRows=3;created=2;updated=1;failed=0");
+        applyLog.setMetadata("importId=import-123;fileSha256=abc123;filename=products.csv;sizeBytes=512;preview=false;readyToImport=true;updateFields=price%2Cstock;totalRows=3;created=2;updated=1;failed=0");
 
         SecurityAuditLog urlLog = new SecurityAuditLog();
         urlLog.setId(43L);
@@ -249,6 +253,7 @@ class AdminControllerProductImportAuditTest {
         assertEquals(2, entry.getCreated());
         assertEquals(1, entry.getUpdated());
         assertEquals(0, entry.getFailed());
+        assertEquals(List.of("price", "stock"), entry.getUpdateFields());
         assertTrue(entry.isReadyToImport());
         assertTrue(entry.isApplied());
 

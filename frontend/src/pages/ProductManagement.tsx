@@ -220,11 +220,15 @@ const productCreateDefaults = () => ({
 type ListingQualityIssue = 'image' | 'content' | 'stock' | 'localized' | 'commercialHook';
 type ListingQualityFilter = ListingQualityIssue | 'ready';
 type ProductImportHistoryDisplayEntry = ProductImportHistoryEntry & {
+  updateFields?: string[];
   sourceHost?: string;
   confidenceScore?: number;
   imageCount?: number;
   blockedImageCount?: number;
   warningCount?: number;
+};
+type ProductImportTraceResult = ProductImportResult & {
+  updateFields?: string[];
 };
 
 const hasMeaningfulText = (value: unknown, minLength = 12) =>
@@ -271,6 +275,15 @@ const getListingQualityIssues = (product: Product): ListingQualityIssue[] => {
   if (!hasLocalizedContent(product)) issues.push('localized');
   if (!hasCommercialHook(product)) issues.push('commercialHook');
   return issues;
+};
+
+const formatImportUpdateFields = (fields?: string[]) => {
+  const normalized = Array.isArray(fields)
+    ? fields.map((field) => String(field || '').trim()).filter(Boolean)
+    : [];
+  if (normalized.length === 0) return '';
+  const visibleFields = normalized.slice(0, 6).join(', ');
+  return normalized.length > 6 ? `${visibleFields} +${normalized.length - 6}` : visibleFields;
 };
 
 const ProductManagement: React.FC = () => {
@@ -906,10 +919,11 @@ const ProductManagement: React.FC = () => {
     }
   };
 
-  const renderImportTrace = (result: ProductImportResult) => {
+  const renderImportTrace = (result: ProductImportTraceResult) => {
     if (!result.importId && !result.fileSha256 && !result.status) {
       return null;
     }
+    const updateFields = formatImportUpdateFields(result.updateFields);
     return (
       <Space wrap className="product-import-result__trace">
         {result.status ? (
@@ -932,6 +946,11 @@ const ProductManagement: React.FC = () => {
             <Tag icon={<CopyOutlined />} onClick={() => copyImportTraceValue(result.fileSha256)}>
               {t('pages.productAdmin.importFileFingerprint')}: {result.fileSha256.slice(0, 12)}
             </Tag>
+          </Tooltip>
+        ) : null}
+        {updateFields ? (
+          <Tooltip title={result.updateFields?.join(', ')}>
+            <Tag>{t('pages.productAdmin.importUpdateFields', { fields: updateFields })}</Tag>
           </Tooltip>
         ) : null}
       </Space>
@@ -1400,6 +1419,7 @@ const ProductManagement: React.FC = () => {
                         <span>{t('pages.productAdmin.importHistoryCreated', { count: historyLog.created || 0 })}</span>
                         <span>{t('pages.productAdmin.importHistoryUpdated', { count: historyLog.updated || 0 })}</span>
                         <span>{t('pages.productAdmin.importHistoryFailed', { count: historyLog.failed || 0 })}</span>
+                        {formatImportUpdateFields(historyLog.updateFields) ? <span>{t('pages.productAdmin.importUpdateFields', { fields: formatImportUpdateFields(historyLog.updateFields) })}</span> : null}
                         <span>{applied ? t('pages.productAdmin.importApplied') : t('pages.productAdmin.importNotApplied')}</span>
                       </>
                     )}

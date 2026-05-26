@@ -63,7 +63,7 @@ public class ProductServiceImpl implements ProductService {
             "limitedtimeendat", "tag", "images", "specifications", "detailcontent", "warranty",
             "shipping", "status", "freeshipping", "freeshippingthreshold", "variants"
     );
-    private static final Set<String> FULL_IMPORT_UPDATE_FIELDS = Set.of(
+    private static final List<String> FULL_IMPORT_UPDATE_FIELDS = List.of(
             "name", "description", "price", "stock", "categoryId", "imageUrl", "isFeatured",
             "brand", "originalPrice", "discount", "limitedTimePrice", "limitedTimeStartAt",
             "limitedTimeEndAt", "tag", "status", "images", "specifications", "detailContent",
@@ -456,6 +456,7 @@ public class ProductServiceImpl implements ProductService {
                         result.addError(rowNumber, "CSV header missing required columns: " + String.join(", ", missingHeaders));
                         break;
                     }
+                    populateImportUpdateFields(result, importUpdateFields(headerIndex));
                     continue;
                 }
                 if (values.stream().allMatch(value -> value == null || value.trim().isEmpty())) {
@@ -470,6 +471,7 @@ public class ProductServiceImpl implements ProductService {
                 try {
                     Product product = toProduct(values, headerIndex, categoryLookup);
                     Set<String> updateFields = importUpdateFields(headerIndex);
+                    populateImportUpdateFields(result, updateFields);
                     Product existingProduct = null;
                     if (product.getId() != null) {
                         Optional<Product> existing = productRepository.findById(product.getId());
@@ -645,12 +647,21 @@ public class ProductServiceImpl implements ProductService {
 
     private Set<String> importUpdateFields(Map<String, Integer> headerIndex) {
         if (headerIndex == null) {
-            return FULL_IMPORT_UPDATE_FIELDS;
+            return new LinkedHashSet<>(FULL_IMPORT_UPDATE_FIELDS);
         }
         return headerIndex.keySet().stream()
                 .map(IMPORT_HEADER_UPDATE_FIELDS::get)
                 .filter(field -> field != null && !field.equals("id"))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private void populateImportUpdateFields(ProductImportResult result, Set<String> updateFields) {
+        if (result == null || result.getUpdateFields() == null || !result.getUpdateFields().isEmpty()) {
+            return;
+        }
+        result.setUpdateFields(FULL_IMPORT_UPDATE_FIELDS.stream()
+                .filter(updateFields::contains)
+                .collect(Collectors.toList()));
     }
 
     private boolean validateImportFile(MultipartFile file, ProductImportResult result) {

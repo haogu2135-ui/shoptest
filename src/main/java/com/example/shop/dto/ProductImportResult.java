@@ -25,6 +25,7 @@ public class ProductImportResult {
     private boolean readyToImport;
     private boolean applied;
     private boolean truncatedErrors;
+    private List<String> updateFields = new ArrayList<>();
     private List<String> errors = new ArrayList<>();
     private List<ProductImportRowError> rowErrors = new ArrayList<>();
 

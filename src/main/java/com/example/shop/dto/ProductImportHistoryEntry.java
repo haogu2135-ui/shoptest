@@ -3,6 +3,8 @@ package com.example.shop.dto;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 public class ProductImportHistoryEntry {
@@ -18,6 +20,7 @@ public class ProductImportHistoryEntry {
     private int created;
     private int updated;
     private int failed;
+    private List<String> updateFields = new ArrayList<>();
     private boolean preview;
     private boolean readyToImport;
     private boolean applied;

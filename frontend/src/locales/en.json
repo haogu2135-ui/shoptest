@@ -1841,6 +1841,7 @@
       "importTooLarge": "CSV file must be {size} or smaller",
       "importId": "Import ID",
       "importFileFingerprint": "File SHA-256",
+      "importUpdateFields": "Fields: {fields}",
       "importTraceCopied": "Copied import trace value",
       "importTraceCopyFailed": "Could not copy import trace value",
       "importDuplicateWarningTitle": "This CSV matches a recent successful import",
