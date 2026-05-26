@@ -4843,3 +4843,54 @@
     -webkit-line-clamp: unset;
   }
 }
+
+/* Mobile audit fixes: keep coupon rails and meta pills compact on narrow Spanish copy. */
+@media (max-width: 560px) {
+  .coupon-center-page__quickNav button {
+    max-width: min(192px, 58vw);
+    height: 40px;
+    min-height: 40px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+  }
+
+  .coupon-center-page__quickNav button span,
+  .coupon-next-action__metaItem,
+  .coupon-next-action__metaItem strong,
+  .coupon-next-action__metaItem .ant-typography {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .coupon-next-action__metaItem {
+    min-height: 42px;
+    height: 42px;
+    align-items: center;
+  }
+
+  .coupon-center-page__heroBadges {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .coupon-center-page__heroBadges::-webkit-scrollbar {
+    display: none;
+  }
+
+  .coupon-center-page__heroBadges span {
+    flex: 0 0 auto;
+    max-width: min(172px, 54vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .coupon-priority-card--empty {
+    min-width: min(238px, 72vw);
+  }
+}

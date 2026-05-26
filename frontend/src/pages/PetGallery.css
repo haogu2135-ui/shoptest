@@ -1456,3 +1456,62 @@
     padding-inline: 8px;
   }
 }
+
+/* Mobile audit fixes: gallery cards keep owner/like metadata as compact single-line fields. */
+@media (max-width: 620px) {
+  .pet-gallery-card__owner {
+    left: 8px;
+    right: 8px;
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pet-gallery-card__meta {
+    min-height: 40px;
+    height: 40px;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .pet-gallery-card__like,
+  .pet-gallery-card__delete,
+  .pet-gallery-card__camera {
+    min-width: 0;
+    max-height: 36px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+  }
+
+  .pet-gallery-card__like .anticon,
+  .pet-gallery-card__like svg {
+    width: 1em;
+    min-width: 1em;
+    height: 1em;
+    flex: 0 0 1em;
+  }
+
+  .pet-gallery-hero__stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pet-gallery-hero__stats .ant-statistic,
+  .pet-gallery-hero__stats .ant-statistic-content,
+  .pet-gallery-hero__stats .ant-statistic-content-value {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pet-gallery-conversion__signals span {
+    flex: 0 0 auto;
+    max-width: min(260px, calc(100vw - 48px));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+  }
+}

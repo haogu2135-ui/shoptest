@@ -1364,6 +1364,7 @@ const ProductList: React.FC = () => {
                   onChange={e => setKeyword(e.target.value.slice(0, MAX_SEARCH_LENGTH))}
                   onSearch={handleSearch}
                   className="product-list__search"
+                  enterButton={<SearchOutlined aria-label={t('common.search')} title={t('common.search')} />}
                 />
               </Col>
               <Col xs={12} sm={5} md={6}>

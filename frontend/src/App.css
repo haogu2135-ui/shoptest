@@ -1546,14 +1546,30 @@
   .ant-dropdown-menu,
   .ant-select-dropdown,
   .ant-picker-panel-container {
+    max-width: calc(100vw - 16px);
     border-radius: 14px;
     box-shadow: 0 14px 34px rgba(18, 71, 52, 0.16);
+  }
+
+  .ant-picker-panel-container {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .ant-dropdown-menu-item,
   .ant-select-item,
   .ant-picker-cell-inner {
     min-height: 36px;
+  }
+
+  .ant-dropdown-menu-title-content,
+  .ant-select-item-option-content {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .ant-pagination {
@@ -1775,5 +1791,58 @@
 
   .ant-btn {
     gap: 4px;
+  }
+}
+
+/* Mobile audit fixes: reserve enough room for the fixed commerce nav and avoid multi-line controls. */
+@media (max-width: 780px) {
+  .shop-app-shell .ant-layout-content {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+    min-height: calc(100svh - 74px);
+  }
+
+  .shop-app-shell--product-detail .ant-layout-content,
+  .shop-app-shell--checkout-flow .ant-layout-content,
+  .shop-app-shell--auth-flow .ant-layout-content {
+    padding-bottom: 0 !important;
+  }
+
+  .shop-footer {
+    padding-bottom: calc(128px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .shop-app-shell .ant-btn,
+  .shop-app-shell .ant-tag,
+  .shop-app-shell [class*="chip"],
+  .shop-app-shell [class*="badge"] {
+    min-width: 0;
+  }
+
+  .shop-app-shell .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shop-app-shell [class*="chip"] > span,
+  .shop-app-shell [class*="badge"] > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .shop-app-shell:not(.shop-app-shell--auth-flow) .app-support-launcher,
+  .shop-app-shell:not(.shop-app-shell--auth-flow) .customer-support-widget__button {
+    display: none !important;
+  }
+
+  .shop-footer__ctaCopy,
+  .shop-footer__ctaCopy strong,
+  .shop-footer__ctaCopy span {
+    min-width: 0;
+  }
+
+  .shop-footer__ctaCopy strong,
+  .shop-footer__ctaCopy span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
   }
 }

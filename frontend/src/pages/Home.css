@@ -4293,3 +4293,37 @@
     font-size: 10px;
   }
 }
+
+/* Mobile audit fixes: UGC image buttons and like rows should not report as multi-line fields. */
+@media (max-width: 600px) {
+  .pet-ugc__imageButton > span {
+    left: 8px;
+    right: 8px;
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pet-ugc__meta {
+    min-height: 40px;
+    align-items: center;
+  }
+
+  .pet-ugc__like,
+  .pet-ugc__delete,
+  .pet-ugc__upload {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+  }
+
+  .pet-ugc__like .anticon,
+  .pet-ugc__like svg {
+    width: 1em;
+    min-width: 1em;
+    height: 1em;
+    flex: 0 0 1em;
+  }
+}

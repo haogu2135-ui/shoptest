@@ -720,6 +720,33 @@ describe('api parameter normalization', () => {
     ]);
   });
 
+  it('lets the browser set multipart upload boundaries', async () => {
+    const { adminApi, petGalleryApi } = require('./index');
+    const csvFile = new File(['id,name,description,price,stock,categoryId\n'], 'products.csv', { type: 'text/csv' });
+    const imageFile = new File(['image'], 'pet.jpg', { type: 'image/jpeg' });
+
+    await adminApi.importProducts(csvFile);
+    await petGalleryApi.upload(imageFile);
+
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/products/import');
+    expect(mockPost.mock.calls[0][1]).toBeInstanceOf(FormData);
+    expect(mockPost.mock.calls[0][2]).toBeUndefined();
+    expect(mockPost.mock.calls[1][0]).toBe('/pet-gallery');
+    expect(mockPost.mock.calls[1][1]).toBeInstanceOf(FormData);
+    expect(mockPost.mock.calls[1][2]).toBeUndefined();
+  });
+
+  it('normalizes product URL imports before requesting a preview', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.importProductFromUrl('  https://item.taobao.com/item.htm?id=123  ');
+
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/admin/products/import-url',
+      { url: 'https://item.taobao.com/item.htm?id=123' },
+    ]);
+  });
+
   it('normalizes notification, pet profile, pet gallery, and logistics params', async () => {
     const { notificationApi, petProfileApi, petGalleryApi, logisticsApi } = require('./index');
 

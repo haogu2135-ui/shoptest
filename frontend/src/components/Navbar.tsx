@@ -404,7 +404,7 @@ const Navbar: React.FC = () => {
     }
     if (/^https?:\/\//i.test(linkUrl)) {
       return (
-        <a key={announcement.id || text} href={linkUrl} target="_blank" rel="noreferrer">
+        <a key={announcement.id || text} href={linkUrl} target="_blank" rel="noopener noreferrer">
           {text}
         </a>
       );
@@ -514,7 +514,7 @@ const Navbar: React.FC = () => {
                 <Search
                   placeholder={t('nav.searchPlaceholder')}
                   onSearch={handleSearch}
-                  enterButton={<SearchOutlined />}
+                  enterButton={<SearchOutlined aria-label={t('common.search')} title={t('common.search')} />}
                   size="large"
                   allowClear
                 />

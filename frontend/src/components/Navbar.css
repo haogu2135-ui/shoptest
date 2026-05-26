@@ -2245,3 +2245,45 @@
     z-index: 1250;
   }
 }
+
+/* Mobile audit fixes: keep category chips compact and leave content clear of the fixed bar. */
+@media (max-width: 780px) {
+  .shop-nav__mega button,
+  .shop-nav__megaButton,
+  .shop-nav--es .shop-nav__mega button,
+  .shop-nav--es .shop-nav__megaButton {
+    max-width: min(176px, 58vw);
+    min-height: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+    overflow-wrap: normal;
+    word-break: normal;
+    line-height: 1;
+  }
+
+  .shop-nav__bottomBar {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    min-height: 58px;
+    z-index: 900;
+  }
+
+  .shop-nav__bottomItem {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 380px) {
+  .shop-nav__mega button,
+  .shop-nav__megaButton,
+  .shop-nav--es .shop-nav__mega button,
+  .shop-nav--es .shop-nav__megaButton {
+    max-width: min(150px, 54vw);
+    height: 32px;
+    min-height: 32px;
+  }
+}

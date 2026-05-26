@@ -1,4 +1,6 @@
-import { apiBaseUrl } from '../api';
+import { resolveApiBaseUrl } from './runtimeConfig';
+
+const apiAssetBaseUrl = String(resolveApiBaseUrl() || window.location.origin).replace(/\/$/, '');
 
 type PlaceholderOptions = {
   label: string;
@@ -59,7 +61,7 @@ export const resolveApiAssetUrl = (assetUrl?: string | null, fallback = '') => {
     }
   }
   if (/^[a-z][a-z\d+.-]*:/i.test(value) || value.startsWith('//')) return fallback;
-  return `${apiBaseUrl}${value.startsWith('/') ? value : `/${value}`}`;
+  return `${apiAssetBaseUrl}${value.startsWith('/') ? value : `/${value}`}`;
 };
 
 export const buildResponsiveImageSrcSet = (

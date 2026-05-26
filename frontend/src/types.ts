@@ -431,6 +431,21 @@ export interface ProductImportResult {
     errors: string[];
 }
 
+export interface ProductUrlImportPreview {
+    sourceUrl: string;
+    sourceHost?: string;
+    name?: string;
+    description?: string;
+    price?: number;
+    originalPrice?: number;
+    currency?: string;
+    imageUrl?: string;
+    images?: string[];
+    brand?: string;
+    confidenceScore?: number;
+    warnings?: string[];
+}
+
 export interface Category {
     id: number;
     name: string;

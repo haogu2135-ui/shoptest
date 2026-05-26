@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
-import { User, UserAdminSummary, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductQuestion, ProductQuestionAdminSummary, SupportSession, SupportAdminSummary, SupportMessage, Coupon, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementAdminSummary } from '../types';
+import { User, UserAdminSummary, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, PaymentChannel, ProductImportResult, ProductUrlImportPreview, ProductQuestion, ProductQuestionAdminSummary, SupportSession, SupportAdminSummary, SupportMessage, Coupon, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementAdminSummary } from '../types';
 import { buildLoginUrl, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -1142,10 +1142,10 @@ export const adminApi = {
     importProducts: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
-        return api.post<ProductImportResult>('/admin/products/import', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        }).finally(() => clearProductCache());
+        return api.post<ProductImportResult>('/admin/products/import', formData).finally(() => clearProductCache());
     },
+    importProductFromUrl: (url: string) =>
+        api.post<ProductUrlImportPreview>('/admin/products/import-url', { url: normalizeTextParam(url, 2048) }),
     getReviews: () => cachedGet(adminReviewCache, adminReviewRequests, 'reviews', ADMIN_REVIEW_CACHE_MS, () => api.get<Review[]>('/admin/reviews')),
     deleteReview: (id: number) => api.delete(`/admin/reviews/${toPathId(id)}`).finally(() => {
         clearReviewCache();
@@ -1360,9 +1360,7 @@ export const petGalleryApi = {
     upload: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
-        return api.post<PetGalleryPhoto>('/pet-gallery', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        }).finally(clearPetGalleryCache);
+        return api.post<PetGalleryPhoto>('/pet-gallery', formData).finally(clearPetGalleryCache);
     },
 };
 

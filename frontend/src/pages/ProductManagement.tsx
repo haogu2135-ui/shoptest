@@ -5,10 +5,10 @@ import {
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
-  SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined,
+  SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined, LinkOutlined,
 } from '@ant-design/icons';
 import { productApi, categoryApi, adminApi, brandApi } from '../api';
-import type { Product, Category, Brand } from '../types';
+import type { Product, Category, Brand, ProductUrlImportPreview } from '../types';
 import { buildCategoryTree, descendantIdSet, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import dayjs from 'dayjs';
@@ -22,6 +22,7 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 const productAdminImageFallback = productImageFallback;
 const resolveProductAdminImage = resolveProductImage;
+const PRODUCT_IMPORT_MAX_FILE_SIZE = 1024 * 1024;
 
 const tagColorMap: Record<string, string> = { hot: 'red', new: 'blue', discount: 'orange' };
 const productStatusColors: Record<string, string> = {
@@ -137,6 +138,23 @@ const createSkuFromOptions = (options: Record<string, string>, index: number) =>
 };
 
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+const isCsvImportFile = (file: File) => {
+  const name = String(file.name || '').trim().toLowerCase();
+  const type = String(file.type || '').trim().toLowerCase();
+  return name.endsWith('.csv') && (!type || ['text/csv', 'application/csv', 'application/vnd.ms-excel'].includes(type));
+};
+
+const productCreateDefaults = () => ({
+  images: [],
+  specifications: [{}],
+  optionGroups: [{ name: 'Size', values: '' }, { name: 'Color', values: '' }],
+  variants: [],
+  detailContent: [emptyDetailBlock],
+  bundleEnabled: false,
+  bundleItems: [{ name: '', quantity: 1 }],
+  status: 'ACTIVE',
+  freeShipping: false,
+});
 
 type ListingQualityIssue = 'image' | 'content' | 'stock' | 'localized' | 'commercialHook';
 type ListingQualityFilter = ListingQualityIssue | 'ready';
@@ -193,10 +211,15 @@ const ProductManagement: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
   const [productSubmitting, setProductSubmitting] = useState(false);
+  const [importSubmitting, setImportSubmitting] = useState(false);
+  const [urlImportVisible, setUrlImportVisible] = useState(false);
+  const [urlImportSubmitting, setUrlImportSubmitting] = useState(false);
+  const [urlImportPreview, setUrlImportPreview] = useState<ProductUrlImportPreview | null>(null);
   const [batchStatusUpdating, setBatchStatusUpdating] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form] = Form.useForm();
+  const [urlImportForm] = Form.useForm();
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filterCategory, setFilterCategory] = useState<number | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
@@ -244,12 +267,13 @@ const ProductManagement: React.FC = () => {
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
+  const categoryLookup = useMemo(() => new Map(flatCategories.map((category) => [category.id, category])), [flatCategories]);
   const categoryOptions = useMemo(() => toTreeOptions(categoryTree, undefined, language), [categoryTree, language]);
   const selectedCategoryIds = useMemo(() => {
     if (!filterCategory) return null;
-    const category = flatCategories.find(item => item.id === filterCategory);
+    const category = categoryLookup.get(filterCategory);
     return category ? descendantIdSet(category) : new Set<number>([filterCategory]);
-  }, [filterCategory, flatCategories]);
+  }, [filterCategory, categoryLookup]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -288,13 +312,27 @@ const ProductManagement: React.FC = () => {
   }, [fetchProducts, fetchCategories, fetchBrands]);
 
   const baseFilteredProducts = useMemo(() => {
+    const normalizedKeyword = searchKeyword.trim().toLowerCase();
     return products.filter(p => {
-      const matchKeyword = !searchKeyword || p.name.toLowerCase().includes(searchKeyword.toLowerCase());
+      const specs = normalizedKeyword ? parseJsonObject(p.specifications) : {};
+      const categoryName = p.categoryName || categoryLookup.get(p.categoryId)?.name || '';
+      const keywordTarget = [
+        p.name,
+        p.description,
+        p.brand,
+        p.tag,
+        categoryName,
+        specs['i18n.es.name'],
+        specs['i18n.es.brand'],
+        specs['i18n.zh.name'],
+        specs['i18n.zh.brand'],
+      ].join(' ').toLowerCase();
+      const matchKeyword = !normalizedKeyword || keywordTarget.includes(normalizedKeyword);
       const matchCategory = !selectedCategoryIds || selectedCategoryIds.has(p.categoryId);
       const matchStatus = !filterStatus || (p.status || 'ACTIVE') === filterStatus;
       return matchKeyword && matchCategory && matchStatus;
     });
-  }, [products, searchKeyword, selectedCategoryIds, filterStatus]);
+  }, [products, searchKeyword, categoryLookup, selectedCategoryIds, filterStatus]);
 
   const listingQualityStats = useMemo(() => {
     const initial = {
@@ -331,19 +369,60 @@ const ProductManagement: React.FC = () => {
   const handleAdd = () => {
     setEditingProduct(null);
     form.resetFields();
-    form.setFieldsValue({
-      images: [],
-      specifications: [{}],
-      optionGroups: [{ name: 'Size', values: '' }, { name: 'Color', values: '' }],
-      variants: [],
-      detailContent: [emptyDetailBlock],
-      bundleEnabled: false,
-      bundleItems: [{ name: '', quantity: 1 }],
-      status: 'ACTIVE',
-      freeShipping: false,
-    });
+    form.setFieldsValue(productCreateDefaults());
     setImagePreviewUrl('');
     setModalVisible(true);
+  };
+
+  const applyUrlImportPreview = (preview: ProductUrlImportPreview) => {
+    const imageList = Array.isArray(preview.images) ? preview.images.filter(Boolean).slice(0, 8) : [];
+    const mainImage = preview.imageUrl || imageList[0] || '';
+    const specs = [
+      { key: 'source.url', value: preview.sourceUrl },
+      { key: 'source.host', value: preview.sourceHost },
+      { key: 'source.currency', value: preview.currency },
+      { key: 'source.confidence', value: preview.confidenceScore == null ? undefined : String(preview.confidenceScore) },
+    ].filter((item) => item.value);
+
+    setEditingProduct(null);
+    form.resetFields();
+    form.setFieldsValue({
+      ...productCreateDefaults(),
+      name: preview.name,
+      description: preview.description || preview.name || '',
+      price: preview.price ?? 0,
+      originalPrice: preview.originalPrice,
+      stock: 0,
+      brand: preview.brand,
+      imageUrl: mainImage,
+      images: imageList.filter((image) => image !== mainImage),
+      specifications: specs.length > 0 ? specs : [{}],
+      detailContent: preview.description ? [{ type: 'text', content: preview.description }] : [emptyDetailBlock],
+      status: 'PENDING_REVIEW',
+    });
+    setImagePreviewUrl(mainImage);
+    setUrlImportVisible(false);
+    setUrlImportPreview(null);
+    setModalVisible(true);
+    message.success(t('pages.productAdmin.urlImportSuccess'));
+  };
+
+  const handleImportProductFromUrl = async () => {
+    if (urlImportPreview) {
+      applyUrlImportPreview(urlImportPreview);
+      return;
+    }
+    try {
+      const values = await urlImportForm.validateFields();
+      setUrlImportSubmitting(true);
+      const response = await adminApi.importProductFromUrl(values.importUrl);
+      setUrlImportPreview(response.data || null);
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(error.response?.data?.message || error.response?.data?.error || t('pages.productAdmin.urlImportFailed'));
+    } finally {
+      setUrlImportSubmitting(false);
+    }
   };
 
   const handleEdit = (record: Product) => {
@@ -691,7 +770,19 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleImportProducts = async (file: File) => {
+    if (importSubmitting) {
+      return false;
+    }
+    if (!isCsvImportFile(file)) {
+      message.error(t('pages.productAdmin.importInvalidType'));
+      return false;
+    }
+    if (file.size > PRODUCT_IMPORT_MAX_FILE_SIZE) {
+      message.error(t('pages.productAdmin.importTooLarge', { size: '1 MB' }));
+      return false;
+    }
     try {
+      setImportSubmitting(true);
       setLoading(true);
       const res = await adminApi.importProducts(file);
       const result = res.data;
@@ -713,6 +804,7 @@ const ProductManagement: React.FC = () => {
     } catch (error: any) {
       message.error(error.response?.data?.errors?.join('\n') || t('pages.productAdmin.importFailed'));
     } finally {
+      setImportSubmitting(false);
       setLoading(false);
     }
     return false;
@@ -967,12 +1059,15 @@ const ProductManagement: React.FC = () => {
           <Button icon={<DownloadOutlined />} onClick={downloadImportTemplate}>
             {t('pages.productAdmin.downloadTemplate')}
           </Button>
-          <Button icon={<DownloadOutlined />} onClick={exportFilteredProducts}>
+          <Button icon={<DownloadOutlined />} onClick={exportFilteredProducts} disabled={filteredProducts.length === 0}>
             {t('pages.productAdmin.exportProducts')}
           </Button>
           <Upload accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts}>
-            <Button icon={<UploadOutlined />}>{t('pages.productAdmin.importProducts')}</Button>
+            <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={importSubmitting}>{t('pages.productAdmin.importProducts')}</Button>
           </Upload>
+          <Button icon={<LinkOutlined />} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
+            {t('pages.productAdmin.importFromUrl')}
+          </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
             {t('pages.productAdmin.addProduct')}
           </Button>
@@ -1471,6 +1566,64 @@ const ProductManagement: React.FC = () => {
             </aside>
           </div>
         </Form>
+      </Modal>
+
+      <Modal
+        title={t('pages.productAdmin.urlImportTitle')}
+        open={urlImportVisible}
+        onOk={handleImportProductFromUrl}
+        onCancel={() => { setUrlImportVisible(false); setUrlImportPreview(null); }}
+        okText={urlImportPreview ? t('pages.productAdmin.urlImportApply') : t('pages.productAdmin.urlImportAction')}
+        confirmLoading={urlImportSubmitting}
+        destroyOnHidden
+      >
+        <Form form={urlImportForm} layout="vertical" onValuesChange={() => setUrlImportPreview(null)}>
+          <Form.Item
+            name="importUrl"
+            label={t('pages.productAdmin.urlImportField')}
+            rules={[
+              { required: true, message: t('pages.productAdmin.urlImportRequired') },
+              { type: 'url', message: t('pages.productAdmin.urlImportInvalid') },
+            ]}
+          >
+            <Input placeholder={t('pages.productAdmin.urlImportPlaceholder')} allowClear />
+          </Form.Item>
+          <Text type="secondary">{t('pages.productAdmin.urlImportHint')}</Text>
+        </Form>
+        {urlImportPreview && (
+          <div className="product-url-import-preview">
+            <div className="product-url-import-preview__media">
+              {urlImportPreview.imageUrl ? (
+                <Image src={resolveProductAdminImage(urlImportPreview.imageUrl)} width={88} height={88} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
+              ) : (
+                <div className="product-url-import-preview__placeholder">{t('pages.productAdmin.urlImportNoImage')}</div>
+              )}
+            </div>
+            <div className="product-url-import-preview__body">
+              <div className="product-url-import-preview__score">
+                <Tag color={(urlImportPreview.confidenceScore || 0) >= 75 ? 'green' : (urlImportPreview.confidenceScore || 0) >= 45 ? 'orange' : 'red'}>
+                  {t('pages.productAdmin.urlImportConfidence', { score: urlImportPreview.confidenceScore || 0 })}
+                </Tag>
+                {urlImportPreview.sourceHost && <Text type="secondary">{urlImportPreview.sourceHost}</Text>}
+              </div>
+              <h4>{urlImportPreview.name || t('pages.productAdmin.urlImportMissingName')}</h4>
+              <p>{urlImportPreview.description || t('pages.productAdmin.urlImportMissingDescription')}</p>
+              <Space wrap>
+                <Tag>{urlImportPreview.price != null ? formatMoney(Number(urlImportPreview.price)) : t('pages.productAdmin.urlImportMissingPrice')}</Tag>
+                {urlImportPreview.originalPrice != null && <Tag color="volcano">{t('pages.productAdmin.urlImportOriginalPrice', { price: formatMoney(Number(urlImportPreview.originalPrice)) })}</Tag>}
+                {urlImportPreview.brand && <Tag>{urlImportPreview.brand}</Tag>}
+                <Tag>{t('pages.productAdmin.urlImportImageCount', { count: urlImportPreview.images?.length || 0 })}</Tag>
+              </Space>
+              {urlImportPreview.warnings && urlImportPreview.warnings.length > 0 && (
+                <div className="product-url-import-preview__warnings">
+                  {urlImportPreview.warnings.map((warning) => (
+                    <Tag color="gold" key={warning}>{t(`pages.productAdmin.urlImportWarning.${warning}`)}</Tag>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

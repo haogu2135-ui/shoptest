@@ -620,3 +620,63 @@
     max-width: calc(100vw - 16px);
   }
 }
+
+/* Mobile audit fixes: preserve admin readability without allowing page-level overflow. */
+@media (max-width: 720px) {
+  .admin-layout {
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+
+  .admin-layout__sider.ant-layout-sider {
+    flex: 0 0 64px !important;
+    min-width: 64px !important;
+    max-width: 64px !important;
+    width: 64px !important;
+  }
+
+  .admin-layout__content.ant-layout-content {
+    overflow-x: clip;
+  }
+
+  .admin-layout__content .ant-table-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .admin-layout__content .ant-space:not(.ant-space-vertical) {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .admin-layout__content .ant-btn,
+  .admin-layout__content .ant-tag {
+    max-width: 100%;
+    min-height: 34px;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .admin-layout__content .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .admin-layout__content .ant-tag {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-layout__content .ant-card-head-wrapper {
+    gap: 8px;
+  }
+
+  .admin-layout__content .ant-card-extra {
+    flex: 0 1 auto;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-layout__sider.ant-layout-sider {
+    flex-basis: 58px !important;
+    min-width: 58px !important;
+    max-width: 58px !important;
+    width: 58px !important;
+  }
+}

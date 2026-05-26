@@ -6,6 +6,8 @@ import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
 import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
 import com.example.shop.dto.ProductImportResult;
+import com.example.shop.dto.ProductUrlImportPreview;
+import com.example.shop.dto.ProductUrlImportRequest;
 import com.example.shop.dto.SecurityAuditPurgeResponse;
 import com.example.shop.dto.SecurityAuditSummaryResponse;
 import com.example.shop.dto.UserAdminSummaryResponse;
@@ -30,6 +32,7 @@ import com.example.shop.service.NotificationService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.ProductQuestionService;
+import com.example.shop.service.ProductUrlImportService;
 import com.example.shop.service.ReviewService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
@@ -80,6 +83,7 @@ public class AdminController {
     private final OrderItemService orderItemService;
     private final ProductService productService;
     private final ProductQuestionService productQuestionService;
+    private final ProductUrlImportService productUrlImportService;
     private final ReviewService reviewService;
     private final CouponService couponService;
     private final NotificationService notificationService;
@@ -790,6 +794,12 @@ public class AdminController {
             return ResponseEntity.badRequest().body(result);
         }
         return ResponseEntity.ok(productService.importCsv(file));
+    }
+
+    @PostMapping("/products/import-url")
+    public ResponseEntity<ProductUrlImportPreview> importProductFromUrl(@RequestBody ProductUrlImportRequest request) {
+        String url = request == null ? null : request.getUrl();
+        return ResponseEntity.ok(productUrlImportService.importFromUrl(url));
     }
 
     // ==================== Order Export ====================

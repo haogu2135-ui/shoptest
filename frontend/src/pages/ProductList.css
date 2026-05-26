@@ -5708,3 +5708,50 @@
     font-size: 12px;
   }
 }
+
+/* Mobile audit fixes: discovery actions scroll horizontally instead of becoming tall wrapped chips. */
+@media (max-width: 780px) {
+  .product-list__mobileDiscovery {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .product-list__mobileDiscovery::-webkit-scrollbar {
+    display: none;
+  }
+
+  .product-list__mobileDiscoveryButton {
+    flex: 0 0 auto;
+    max-width: min(196px, 62vw);
+    height: 36px;
+    min-height: 36px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .product-list__mobileDiscoveryButton > span:not(.product-list__mobileDiscoveryIcon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .product-list--empty .product-list__emptyDiscoveryCard {
+    height: 54px;
+    min-height: 54px;
+    overflow: hidden;
+  }
+
+  .product-list--empty .product-list__emptyDiscoveryCard strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .product-list--empty .product-list__emptyDiscoveryCard small {
+    display: none;
+  }
+}
