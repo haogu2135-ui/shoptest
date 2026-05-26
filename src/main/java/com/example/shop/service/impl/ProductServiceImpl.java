@@ -451,6 +451,16 @@ public class ProductServiceImpl implements ProductService {
                         );
                         break;
                     }
+                    List<String> unsupportedHeaders = unsupportedImportHeaders(values);
+                    if (!unsupportedHeaders.isEmpty()) {
+                        result.addError(
+                                rowNumber,
+                                null,
+                                "CSV header contains unsupported import columns: " + String.join(", ", unsupportedHeaders)
+                                        + ". Remove or rename unsupported columns before import."
+                        );
+                        break;
+                    }
                     List<String> missingHeaders = missingRequiredImportHeaders(headerIndex);
                     if (!missingHeaders.isEmpty()) {
                         result.addError(rowNumber, "CSV header missing required columns: " + String.join(", ", missingHeaders));
@@ -600,6 +610,19 @@ public class ProductServiceImpl implements ProductService {
             }
         }
         return new ArrayList<>(duplicates);
+    }
+
+    private List<String> unsupportedImportHeaders(List<String> values) {
+        Set<String> unsupported = new LinkedHashSet<>();
+        for (String value : values) {
+            String header = normalizeImportHeader(value);
+            if (header.isEmpty() || SUPPORTED_IMPORT_HEADERS.contains(header)) {
+                continue;
+            }
+            String rawHeader = value == null ? "" : value.trim().replace("\uFEFF", "");
+            unsupported.add(rawHeader.isBlank() ? header : rawHeader);
+        }
+        return new ArrayList<>(unsupported);
     }
 
     private String normalizeImportHeader(String header) {
