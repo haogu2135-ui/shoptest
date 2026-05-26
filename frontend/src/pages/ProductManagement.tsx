@@ -220,15 +220,11 @@ const productCreateDefaults = () => ({
 type ListingQualityIssue = 'image' | 'content' | 'stock' | 'localized' | 'commercialHook';
 type ListingQualityFilter = ListingQualityIssue | 'ready';
 type ProductImportHistoryDisplayEntry = ProductImportHistoryEntry & {
-  updateFields?: string[];
   sourceHost?: string;
   confidenceScore?: number;
   imageCount?: number;
   blockedImageCount?: number;
   warningCount?: number;
-};
-type ProductImportTraceResult = ProductImportResult & {
-  updateFields?: string[];
 };
 
 const hasMeaningfulText = (value: unknown, minLength = 12) =>
@@ -919,7 +915,7 @@ const ProductManagement: React.FC = () => {
     }
   };
 
-  const renderImportTrace = (result: ProductImportTraceResult) => {
+  const renderImportTrace = (result: ProductImportResult) => {
     if (!result.importId && !result.fileSha256 && !result.status) {
       return null;
     }

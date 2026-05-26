@@ -437,6 +437,7 @@ export interface ProductImportResult {
     created: number;
     updated: number;
     failed: number;
+    updateFields?: string[];
     maxRows?: number;
     maxFileSizeBytes?: number;
     preview?: boolean;
@@ -460,6 +461,7 @@ export interface ProductImportHistoryEntry {
     created: number;
     updated: number;
     failed: number;
+    updateFields?: string[];
     preview: boolean;
     readyToImport: boolean;
     applied?: boolean;
