@@ -1709,6 +1709,8 @@
       "importErrorRow": "第 {row} 行",
       "importErrorReport": {
         "importId": "导入批次",
+        "filename": "文件名",
+        "sizeBytes": "文件字节数",
         "fileSha256": "文件 SHA-256",
         "status": "状态",
         "applied": "是否写入",
@@ -1726,6 +1728,8 @@
       "importInvalidType": "只能导入 CSV 文件",
       "importTooLarge": "CSV 文件必须小于或等于 {size}",
       "importId": "导入批次",
+      "importFilename": "文件名",
+      "importFileSize": "文件大小",
       "importFileFingerprint": "文件 SHA-256",
       "importUpdateFields": "字段：{fields}",
       "importUpdateField": {

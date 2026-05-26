@@ -13,8 +13,10 @@ public class ProductImportResult {
     public static final String STATUS_REJECTED = "REJECTED";
 
     private String importId;
+    private String filename;
     private String fileSha256;
     private String status = STATUS_REJECTED;
+    private long sizeBytes;
     private int totalRows;
     private int created;
     private int updated;

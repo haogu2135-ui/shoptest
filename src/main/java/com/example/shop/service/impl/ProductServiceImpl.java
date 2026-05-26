@@ -428,6 +428,7 @@ public class ProductServiceImpl implements ProductService {
         result.setPreview(preview);
         result.setMaxRows(normalizedImportMaxRows());
         result.setMaxFileSizeBytes(normalizedImportMaxFileSizeBytes());
+        populateImportFileMetadata(file, result);
         if (!validateImportFile(file, result)) {
             result.setStatus(importStatus(preview, result));
             return result;
@@ -615,6 +616,24 @@ public class ProductServiceImpl implements ProductService {
         } catch (Exception ex) {
             result.addError(0, "Failed to fingerprint CSV file");
         }
+    }
+
+    private void populateImportFileMetadata(MultipartFile file, ProductImportResult result) {
+        if (file == null || result == null) {
+            return;
+        }
+        result.setFilename(safeImportFilename(file.getOriginalFilename()));
+        result.setSizeBytes(Math.max(0L, file.getSize()));
+    }
+
+    private String safeImportFilename(String filename) {
+        String normalized = normalizeImportText(filename);
+        if (normalized == null || normalized.isBlank()) {
+            return null;
+        }
+        String portable = normalized.replace('\\', '/');
+        int slashIndex = portable.lastIndexOf('/');
+        return slashIndex >= 0 ? portable.substring(slashIndex + 1) : portable;
     }
 
     private boolean isProductImportHeader(List<String> values) {

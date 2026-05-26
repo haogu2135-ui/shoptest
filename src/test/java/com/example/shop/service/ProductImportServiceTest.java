@@ -93,6 +93,27 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void previewIncludesSanitizedImportFileMetadata() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        byte[] content = "name,description,price,stock,categoryId\nHarness,Safe,19.99,8,1\n"
+                .getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "C:\\exports\\products.csv",
+                "text/csv",
+                content
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals("products.csv", result.getFilename());
+        assertEquals(content.length, result.getSizeBytes());
+        assertEquals(ProductImportResult.STATUS_PREVIEW_READY, result.getStatus());
+        assertTrue(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void stopsWhenImportRowLimitIsExceeded() {
         MockMultipartFile file = new MockMultipartFile(
                 "file",

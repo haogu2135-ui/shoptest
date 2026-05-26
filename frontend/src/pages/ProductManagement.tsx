@@ -187,6 +187,8 @@ type ImportErrorCopy = {
 
 type ImportErrorReportCopy = {
   importId: string;
+  filename: string;
+  sizeBytes: string;
   fileSha256: string;
   status: string;
   applied: string;
@@ -196,6 +198,19 @@ type ImportErrorReportCopy = {
   message: string;
   trueValue: string;
   falseValue: string;
+};
+
+type ProductImportFileMetadata = ProductImportResult & {
+  filename?: string;
+  sizeBytes?: number;
+};
+
+const productImportFilename = (result: ProductImportResult) =>
+  String((result as ProductImportFileMetadata).filename || '').trim();
+
+const productImportSizeBytes = (result: ProductImportResult) => {
+  const value = Number((result as ProductImportFileMetadata).sizeBytes || 0);
+  return Number.isFinite(value) && value > 0 ? value : 0;
 };
 
 const renderImportErrors = (
@@ -224,6 +239,8 @@ const downloadImportErrorReport = (
   labels: Record<string, string> = {},
   copy: ImportErrorReportCopy = {
     importId: 'importId',
+    filename: 'filename',
+    sizeBytes: 'sizeBytes',
     fileSha256: 'fileSha256',
     status: 'status',
     applied: 'applied',
@@ -240,6 +257,8 @@ const downloadImportErrorReport = (
     : (result.errors || []).map((errorText) => ({ rowNumber: 0, field: '', message: errorText }));
   const rows = [
     [copy.importId, result.importId || ''],
+    [copy.filename, productImportFilename(result)],
+    [copy.sizeBytes, productImportSizeBytes(result) || ''],
     [copy.fileSha256, result.fileSha256 || ''],
     [copy.status, result.status || ''],
     [copy.applied, result.applied ? copy.trueValue : copy.falseValue],
@@ -458,6 +477,8 @@ const ProductManagement: React.FC = () => {
   }), [t]);
   const importErrorReportCopy = useMemo<ImportErrorReportCopy>(() => ({
     importId: t('pages.productAdmin.importErrorReport.importId'),
+    filename: t('pages.productAdmin.importErrorReport.filename'),
+    sizeBytes: t('pages.productAdmin.importErrorReport.sizeBytes'),
     fileSha256: t('pages.productAdmin.importErrorReport.fileSha256'),
     status: t('pages.productAdmin.importErrorReport.status'),
     applied: t('pages.productAdmin.importErrorReport.applied'),
@@ -1056,6 +1077,8 @@ const ProductManagement: React.FC = () => {
       return null;
     }
     const updateFields = formatImportUpdateFields(result.updateFields, importUpdateFieldLabels);
+    const filename = productImportFilename(result);
+    const sizeBytes = productImportSizeBytes(result);
     return (
       <Space wrap className="product-import-result__trace">
         {result.status ? (
@@ -1072,6 +1095,14 @@ const ProductManagement: React.FC = () => {
           <Tag icon={<CopyOutlined />} onClick={() => copyImportTraceValue(result.importId)}>
             {t('pages.productAdmin.importId')}: {result.importId}
           </Tag>
+        ) : null}
+        {filename ? (
+          <Tooltip title={filename}>
+            <Tag>{t('pages.productAdmin.importFilename')}: {filename}</Tag>
+          </Tooltip>
+        ) : null}
+        {sizeBytes ? (
+          <Tag>{t('pages.productAdmin.importFileSize')}: {formatBytes(sizeBytes)}</Tag>
         ) : null}
         {result.fileSha256 ? (
           <Tooltip title={result.fileSha256}>

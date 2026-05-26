@@ -1880,6 +1880,8 @@
       "importErrorRow": "Fila {row}",
       "importErrorReport": {
         "importId": "ID de importación",
+        "filename": "Nombre de archivo",
+        "sizeBytes": "Tamaño en bytes",
         "fileSha256": "SHA-256 del archivo",
         "status": "Estado",
         "applied": "Escrito",
@@ -1897,6 +1899,8 @@
       "importInvalidType": "Solo se pueden importar archivos CSV",
       "importTooLarge": "El archivo CSV debe pesar {size} o menos",
       "importId": "ID de importación",
+      "importFilename": "Archivo",
+      "importFileSize": "Tamaño",
       "importFileFingerprint": "SHA-256 del archivo",
       "importUpdateFields": "Campos: {fields}",
       "importUpdateField": {
