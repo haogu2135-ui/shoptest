@@ -55,6 +55,13 @@ import java.util.stream.Collectors;
 @Service
 public class ProductServiceImpl implements ProductService {
     private static final int MAX_IMPORT_IMAGE_URL_LENGTH = 2048;
+    private static final Set<String> REQUIRED_IMPORT_HEADERS = Set.of("name", "price", "stock", "categoryid");
+    private static final Set<String> SUPPORTED_IMPORT_HEADERS = Set.of(
+            "id", "name", "description", "price", "stock", "categoryid", "categoryname", "imageurl",
+            "isfeatured", "brand", "originalprice", "discount", "limitedtimeprice", "limitedtimestartat",
+            "limitedtimeendat", "tag", "images", "specifications", "detailcontent", "warranty",
+            "shipping", "status", "freeshipping", "freeshippingthreshold", "variants"
+    );
     private static final Pattern IPV4_HOST_PATTERN = Pattern.compile("^\\d{1,3}(?:\\.\\d{1,3}){3}$");
     private static final Pattern IPV6_HOST_PATTERN = Pattern.compile("^[0-9a-fA-F:]+$");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -355,6 +362,11 @@ public class ProductServiceImpl implements ProductService {
                 }
                 if (i == 0 && isProductImportHeader(values)) {
                     headerIndex = productImportHeaderIndex(values);
+                    List<String> missingHeaders = missingRequiredImportHeaders(headerIndex);
+                    if (!missingHeaders.isEmpty()) {
+                        result.addError(rowNumber, "CSV header missing required columns: " + String.join(", ", missingHeaders));
+                        break;
+                    }
                     continue;
                 }
                 if (values.stream().allMatch(value -> value == null || value.trim().isEmpty())) {
@@ -451,24 +463,46 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private boolean isProductImportHeader(List<String> values) {
-        return values.size() >= 6
-                && "id".equalsIgnoreCase(values.get(0).trim())
-                && "name".equalsIgnoreCase(values.get(1).trim())
-                && "description".equalsIgnoreCase(values.get(2).trim())
-                && "price".equalsIgnoreCase(values.get(3).trim())
-                && "stock".equalsIgnoreCase(values.get(4).trim())
-                && "categoryId".equalsIgnoreCase(values.get(5).trim());
+        Set<String> headers = values.stream()
+                .map(this::normalizeImportHeader)
+                .filter(header -> !header.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (headers.containsAll(REQUIRED_IMPORT_HEADERS)) {
+            return true;
+        }
+        long knownHeaders = headers.stream()
+                .filter(SUPPORTED_IMPORT_HEADERS::contains)
+                .count();
+        return headers.contains("name") && knownHeaders >= 3;
     }
 
     private Map<String, Integer> productImportHeaderIndex(List<String> values) {
         Map<String, Integer> index = new LinkedHashMap<>();
         for (int i = 0; i < values.size(); i++) {
-            String header = values.get(i) == null ? "" : values.get(i).trim();
+            String header = normalizeImportHeader(values.get(i));
             if (!header.isEmpty()) {
-                index.put(header.toLowerCase(Locale.ROOT), i);
+                index.put(header, i);
             }
         }
         return index;
+    }
+
+    private String normalizeImportHeader(String header) {
+        return header == null ? "" : header.trim().replace("\uFEFF", "").toLowerCase(Locale.ROOT);
+    }
+
+    private List<String> missingRequiredImportHeaders(Map<String, Integer> headerIndex) {
+        return REQUIRED_IMPORT_HEADERS.stream()
+                .filter(header -> !headerIndex.containsKey(header))
+                .map(this::displayImportHeader)
+                .collect(Collectors.toList());
+    }
+
+    private String displayImportHeader(String normalizedHeader) {
+        if ("categoryid".equals(normalizedHeader)) {
+            return "categoryId";
+        }
+        return normalizedHeader;
     }
 
     private void saveImportRow(ProductImportRow row) {
@@ -512,7 +546,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private Product toProduct(List<String> values, Map<String, Integer> headerIndex) {
-        if (values.size() < 6) {
+        if (headerIndex == null && values.size() < 6) {
             throw new IllegalArgumentException("Expected at least 6 columns: id,name,description,price,stock,categoryId");
         }
 

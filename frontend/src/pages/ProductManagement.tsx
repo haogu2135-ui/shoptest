@@ -137,6 +137,11 @@ const createSkuFromOptions = (options: Record<string, string>, index: number) =>
 };
 
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+const importJsonValue = (value: unknown) => {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value);
+};
 const isCsvImportFile = (file: File) => {
   const name = String(file.name || '').trim().toLowerCase();
   const type = String(file.type || '').trim().toLowerCase();
@@ -799,12 +804,11 @@ const ProductManagement: React.FC = () => {
     }
     const headers = [
       'id', 'name', 'description', 'price', 'stock', 'categoryId', 'categoryName', 'imageUrl',
-      'isFeatured', 'brand', 'originalPrice', 'discount', 'tag', 'status', 'freeShipping',
-      'freeShippingThreshold', 'variantCount', 'variantStock', 'createdAt',
+      'isFeatured', 'brand', 'originalPrice', 'discount', 'limitedTimePrice', 'limitedTimeStartAt',
+      'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping',
+      'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
     const rows = filteredProducts.map((product: any) => {
-      const variants = parseJsonArray(product.variants);
-      const variantStock = variants.reduce((sum: number, variant: any) => sum + toSafeNumber(variant?.stock), 0);
       return [
         product.id,
         product.name,
@@ -818,13 +822,19 @@ const ProductManagement: React.FC = () => {
         product.brand,
         product.originalPrice,
         product.discount,
+        product.limitedTimePrice,
+        product.limitedTimeStartAt,
+        product.limitedTimeEndAt,
         product.tag,
+        importJsonValue(product.images),
+        importJsonValue(product.specifications),
+        importJsonValue(product.detailContent),
+        product.warranty,
+        product.shipping,
         product.status || 'ACTIVE',
         product.freeShipping ? 'true' : 'false',
         product.freeShippingThreshold,
-        variants.length,
-        variantStock,
-        product.createdAt,
+        importJsonValue(product.variants),
       ];
     });
     const csv = [

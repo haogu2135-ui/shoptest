@@ -132,6 +132,56 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void importsCsvWithReorderedNamedHeadersAndIgnoredExportColumns() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("stock,categoryName,price,name,categoryId,id,description,status\n"
+                        + "8,Harnesses,19.99,Harness,1,,Safe,ACTIVE\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(0, result.getFailed());
+        assertEquals(1, result.getCreated());
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertTrue(result.isApplied());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("Harness", saved.getName());
+        assertEquals("Safe", saved.getDescription());
+        assertEquals(8, saved.getStock());
+        assertEquals(1L, saved.getCategoryId());
+    }
+
+    @Test
+    void rejectsNamedHeaderCsvWhenRequiredColumnsAreMissing() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,price,stock\n"
+                        + "Harness,19.99,8\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals(0, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertTrue(result.getErrors().get(0).contains("CSV header missing required columns: categoryId"));
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertFalse(result.isReadyToImport());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void normalizesImportedTextAndStatusBeforeSaving() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
