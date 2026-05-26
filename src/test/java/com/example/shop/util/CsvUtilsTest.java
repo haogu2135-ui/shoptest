@@ -40,6 +40,20 @@ class CsvUtilsTest {
     }
 
     @Test
+    void parsesSemicolonDelimitedCsvRecordsFromSpreadsheetExports() throws Exception {
+        List<CsvUtils.Record> records = CsvUtils.parseRecords(new StringReader(
+                "id;name;description\r\n"
+                        + "1;Harness;\"Works; safely\"\r\n"
+                        + "2;Leash;Plain\r\n"
+        ));
+
+        assertEquals(3, records.size());
+        assertEquals(List.of("id", "name", "description"), records.get(0).getValues());
+        assertEquals(List.of("1", "Harness", "Works; safely"), records.get(1).getValues());
+        assertEquals(List.of("2", "Leash", "Plain"), records.get(2).getValues());
+    }
+
+    @Test
     void rejectsUnterminatedQuotedCsvRecord() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> CsvUtils.parseRecords(new StringReader("id,name\n1,\"Harness")));

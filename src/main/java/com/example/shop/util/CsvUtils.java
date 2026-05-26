@@ -18,6 +18,7 @@ public final class CsvUtils {
         int lineNumber = 1;
         int recordStartLine = 1;
         int value;
+        Character delimiter = null;
 
         while ((value = pushbackReader.read()) != -1) {
             char ch = (char) value;
@@ -51,7 +52,10 @@ public final class CsvUtils {
                 if (quoted) {
                     record.append(newline);
                 } else if (record.length() > 0) {
-                    records.add(new Record(recordStartLine, parseLine(record.toString())));
+                    if (delimiter == null) {
+                        delimiter = detectDelimiter(record.toString());
+                    }
+                    records.add(new Record(recordStartLine, parseLine(record.toString(), delimiter)));
                     record.setLength(0);
                     recordStartLine = lineNumber + 1;
                 } else {
@@ -67,12 +71,19 @@ public final class CsvUtils {
             throw new IllegalArgumentException("CSV contains an unterminated quoted field");
         }
         if (record.length() > 0) {
-            records.add(new Record(recordStartLine, parseLine(record.toString())));
+            if (delimiter == null) {
+                delimiter = detectDelimiter(record.toString());
+            }
+            records.add(new Record(recordStartLine, parseLine(record.toString(), delimiter)));
         }
         return records;
     }
 
     public static List<String> parseLine(String line) {
+        return parseLine(line, ',');
+    }
+
+    private static List<String> parseLine(String line, char delimiter) {
         List<String> values = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         boolean quoted = false;
@@ -86,7 +97,7 @@ public final class CsvUtils {
                 } else {
                     quoted = !quoted;
                 }
-            } else if (ch == ',' && !quoted) {
+            } else if (ch == delimiter && !quoted) {
                 values.add(current.toString());
                 current.setLength(0);
             } else {
@@ -96,6 +107,30 @@ public final class CsvUtils {
 
         values.add(current.toString());
         return values;
+    }
+
+    private static char detectDelimiter(String record) {
+        int commas = countDelimiter(record, ',');
+        int semicolons = countDelimiter(record, ';');
+        return semicolons > commas ? ';' : ',';
+    }
+
+    private static int countDelimiter(String record, char delimiter) {
+        int count = 0;
+        boolean quoted = false;
+        for (int i = 0; i < record.length(); i++) {
+            char ch = record.charAt(i);
+            if (ch == '"') {
+                if (quoted && i + 1 < record.length() && record.charAt(i + 1) == '"') {
+                    i++;
+                } else {
+                    quoted = !quoted;
+                }
+            } else if (ch == delimiter && !quoted) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public static String row(List<?> values) {

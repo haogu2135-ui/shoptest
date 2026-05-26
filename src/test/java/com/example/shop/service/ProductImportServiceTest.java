@@ -162,6 +162,35 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void importsSemicolonDelimitedCsvFromSpreadsheetExport() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("stock;categoryName;price;name;categoryId;id;description;status\n"
+                        + "8;Harnesses;19.99;Harness;1;;\"Safe; reflective\";ACTIVE\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(0, result.getFailed());
+        assertEquals(1, result.getCreated());
+        assertEquals(ProductImportResult.STATUS_APPLIED, result.getStatus());
+        assertTrue(result.isApplied());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("Harness", saved.getName());
+        assertEquals("Safe; reflective", saved.getDescription());
+        assertEquals(new BigDecimal("19.99"), saved.getPrice());
+        assertEquals(8, saved.getStock());
+        assertEquals(1L, saved.getCategoryId());
+    }
+
+    @Test
     void importsCsvWithCommonSpreadsheetHeaderAliases() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
