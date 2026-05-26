@@ -480,6 +480,7 @@ public class ProductServiceImpl implements ProductService {
                         }
                     }
                     validateImportedProduct(product, importedIds, categoryLookup.ids, updateFields, existingProduct != null);
+                    validateMergedImportUpdate(existingProduct, product, updateFields);
                     if (existingProduct != null) {
                         result.setUpdated(result.getUpdated() + 1);
                     } else {
@@ -894,6 +895,39 @@ public class ProductServiceImpl implements ProductService {
         validateImportSpecifications(product.getSpecifications());
         validateImportDetailContent(product.getDetailContent());
         validateImportVariants(product.getVariants());
+    }
+
+    private void validateMergedImportUpdate(Product existing, Product imported, Set<String> updateFields) {
+        if (existing == null) {
+            return;
+        }
+        String name = updateFields.contains("name") ? imported.getName() : existing.getName();
+        BigDecimal price = updateFields.contains("price") ? imported.getPrice() : existing.getPrice();
+        Integer stock = updateFields.contains("stock") ? imported.getStock() : existing.getStock();
+        Long categoryId = updateFields.contains("categoryId") ? imported.getCategoryId() : existing.getCategoryId();
+        required(name, "name");
+        requirePresent(price, "price");
+        requirePresent(stock, "stock");
+        requirePresent(categoryId, "categoryId");
+        if (updateFields.contains("price") || updateFields.contains("originalPrice")) {
+            BigDecimal originalPrice = updateFields.contains("originalPrice")
+                    ? imported.getOriginalPrice()
+                    : existing.getOriginalPrice();
+            if (originalPrice != null && price != null && originalPrice.compareTo(price) < 0) {
+                throw new IllegalArgumentException("originalPrice must be greater than or equal to price");
+            }
+        }
+        if (updateFields.contains("limitedTimeStartAt") || updateFields.contains("limitedTimeEndAt")) {
+            LocalDateTime start = updateFields.contains("limitedTimeStartAt")
+                    ? imported.getLimitedTimeStartAt()
+                    : existing.getLimitedTimeStartAt();
+            LocalDateTime end = updateFields.contains("limitedTimeEndAt")
+                    ? imported.getLimitedTimeEndAt()
+                    : existing.getLimitedTimeEndAt();
+            if (start != null && end != null && !end.isAfter(start)) {
+                throw new IllegalArgumentException("limitedTimeEndAt must be after limitedTimeStartAt");
+            }
+        }
     }
 
     private void requirePositive(Long value, String field) {

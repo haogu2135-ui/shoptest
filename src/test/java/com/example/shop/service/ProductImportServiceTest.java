@@ -545,6 +545,39 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsPriceOnlyUpdateThatWouldExceedExistingOriginalPrice() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        Product existing = new Product();
+        existing.setId(3L);
+        existing.setName("Existing Harness");
+        existing.setPrice(new BigDecimal("18.00"));
+        existing.setOriginalPrice(new BigDecimal("20.00"));
+        existing.setStock(4);
+        existing.setCategoryId(1L);
+        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,price\n"
+                        + "3,22.50\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getFailed());
+        assertEquals(0, result.getCreated());
+        assertEquals(0, result.getUpdated());
+        assertEquals("originalPrice", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("originalPrice must be greater than or equal to price"));
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsLightweightUpdateRowsThatWouldCreateIncompleteProducts() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         when(productRepository.findById(404L)).thenReturn(java.util.Optional.empty());
