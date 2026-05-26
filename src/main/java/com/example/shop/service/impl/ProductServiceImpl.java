@@ -18,7 +18,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.NoTransactionException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -392,12 +394,32 @@ public class ProductServiceImpl implements ProductService {
         }
         result.setReadyToImport(result.getFailed() == 0 && result.getTotalRows() > 0);
         if (!preview && result.isReadyToImport()) {
-            importRows.forEach(this::saveImportRow);
-            result.setApplied(true);
-            clearProductSearchCache();
+            try {
+                importRows.forEach(this::saveImportRow);
+                result.setApplied(true);
+                clearProductSearchCache();
+            } catch (RuntimeException ex) {
+                markCurrentTransactionRollbackOnly();
+                result.setApplied(false);
+                result.setReadyToImport(false);
+                result.addError(0, "Failed to write product import: " + safeImportExceptionMessage(ex));
+            }
         }
         result.setStatus(importStatus(preview, result));
         return result;
+    }
+
+    private void markCurrentTransactionRollbackOnly() {
+        try {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        } catch (NoTransactionException ignored) {
+            // Unit tests may exercise the importer without a Spring transaction.
+        }
+    }
+
+    private String safeImportExceptionMessage(RuntimeException ex) {
+        String message = ex == null ? null : ex.getMessage();
+        return message == null || message.isBlank() ? "database write failed" : normalizeImportText(message);
     }
 
     private String importStatus(boolean preview, ProductImportResult result) {

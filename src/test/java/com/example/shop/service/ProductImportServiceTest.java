@@ -156,6 +156,30 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void returnsRejectedResultWhenDatabaseWriteFails() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        when(productRepository.save(any())).thenThrow(new IllegalStateException("database unavailable"));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId\n"
+                        + ",Harness,Safe,19.99,8,1\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(1, result.getCreated());
+        assertEquals(1, result.getFailed());
+        assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
+        assertFalse(result.isApplied());
+        assertFalse(result.isReadyToImport());
+        assertTrue(result.getErrors().get(0).contains("Failed to write product import"));
+    }
+
+    @Test
     void previewImportValidatesAndCountsRowsWithoutSaving() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(
