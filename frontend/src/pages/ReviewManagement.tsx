@@ -59,7 +59,7 @@ const ReviewManagement: React.FC = () => {
     try {
       setLoading(true);
       const res = await adminApi.getReviews();
-      setReviews(res.data);
+      setReviews(res.data.items ?? res.data);
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('pages.adminReviews.fetchFailed'), language));
     } finally {

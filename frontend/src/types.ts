@@ -418,8 +418,23 @@ export interface Product {
     specifications?: { [key: string]: string };
     detailContent?: ProductDetailBlock[];
     variants?: ProductVariant[];
+    optionGroups?: ProductOptionGroup[];
+    bundle?: ProductBundleConfig | null;
+    localizedContent?: Record<string, unknown> | null;
     warranty?: string;
     shipping?: string;
+}
+
+export interface ProductBundleConfig {
+    enabled?: boolean;
+    title?: string;
+    price?: number;
+    items?: ProductBundleItem[];
+}
+
+export interface ProductOptionGroup {
+    name: string;
+    options: string[];
 }
 
 export interface ProductBundleItem {
@@ -582,6 +597,14 @@ export interface AdminOrderPage {
     size: number;
     totalPages: number;
     summary?: Record<string, number>;
+}
+
+export interface AdminReviewPage {
+    items: Review[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
 }
 
 export interface AdminOrderBatchShipFailure {
@@ -850,6 +873,9 @@ export interface Payment {
     updatedAt?: string;
 }
 
+/** Admin view of a payment — same fields as Payment. */
+export type AdminPayment = Payment;
+
 export interface PaymentChannel {
     code: string;
     displayName: string;
@@ -958,4 +984,22 @@ export interface SupportMessage {
     senderName?: string;
     messageType?: string;
     payload?: string;
+}
+
+export interface MembershipPlan {
+    code: string;
+    name: string;
+    description?: string;
+    price: number;
+    durationDays: number;
+    discountPercent?: number;
+    enabled?: boolean;
+}
+
+export interface MembershipStatus {
+    active: boolean;
+    planCode?: string;
+    planName?: string;
+    expiresAt?: string;
+    discountPercent?: number;
 }
