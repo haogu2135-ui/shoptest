@@ -46,7 +46,10 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createPayment(@Valid @RequestBody PaymentCreateRequest request, Authentication authentication, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> createPayment(@Valid @RequestBody(required = false) PaymentCreateRequest request, Authentication authentication, HttpServletRequest httpRequest) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment request is required");
+        }
         try {
             assertCanCreatePayment(request, authentication);
             Payment payment = paymentService.createPayment(request);
@@ -73,7 +76,7 @@ public class PaymentController {
                                           Authentication authentication,
                                           HttpServletRequest request) {
         try {
-            assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null);
+            assertAdminPaymentSimulation(authentication);
             Payment payment = paymentService.simulatePaid(id);
             auditLogService.record("PAYMENT_SIMULATE_PAID", "SUCCESS", authentication, "PAYMENT", id, request,
                     "Payment simulated as paid", payment.getOrderNo());
@@ -97,7 +100,7 @@ public class PaymentController {
                                               Authentication authentication,
                                               HttpServletRequest request) {
         try {
-            assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null);
+            assertAdminPaymentSimulation(authentication);
             Payment payment = paymentService.simulateCallback(id);
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "SUCCESS", authentication, "PAYMENT", id, request,
                     "Payment callback simulated", payment.getOrderNo());
@@ -121,7 +124,7 @@ public class PaymentController {
                                          Authentication authentication,
                                          HttpServletRequest request) {
         try {
-            assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null);
+            assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null, body != null ? body.get("orderNo") : null);
             Payment payment = paymentService.syncPayment(id);
             auditLogService.record("PAYMENT_SYNC", "SUCCESS", authentication, "PAYMENT", id, request,
                     "Payment state synced", payment.getOrderNo());
@@ -140,7 +143,10 @@ public class PaymentController {
     }
 
     @PostMapping("/callback")
-    public ResponseEntity<?> callback(@Valid @RequestBody PaymentCallbackRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> callback(@Valid @RequestBody(required = false) PaymentCallbackRequest request, HttpServletRequest httpRequest) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment callback payload is required");
+        }
         try {
             Payment payment = paymentService.handleCallback(request);
             auditLogService.record("PAYMENT_CALLBACK", "SUCCESS", null, null, null, "PAYMENT", payment.getId(), httpRequest,
@@ -157,9 +163,12 @@ public class PaymentController {
 
     @PostMapping("/stripe/webhook")
     public ResponseEntity<?> stripeWebhook(
-            @RequestBody String payload,
+            @RequestBody(required = false) String payload,
             @RequestHeader(value = "Stripe-Signature", required = false) String signatureHeader,
             HttpServletRequest request) {
+        if (payload == null || payload.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stripe webhook payload is required");
+        }
         try {
             Payment payment = paymentService.handleStripeWebhook(payload, signatureHeader);
             auditLogService.record("STRIPE_WEBHOOK", "SUCCESS", null, null, null,
@@ -180,16 +189,18 @@ public class PaymentController {
     @GetMapping("/order/{orderId}")
     public ResponseEntity<List<Payment>> findByOrderId(@PathVariable Long orderId,
                                                        @RequestParam(required = false) String guestEmail,
+                                                       @RequestParam(required = false) String orderNo,
                                                        Authentication authentication) {
-        assertCanSeeOrder(orderId, authentication, guestEmail);
+        assertCanSeeOrder(orderId, authentication, guestEmail, orderNo);
         return ResponseEntity.ok(paymentService.findByOrderId(orderId));
     }
 
     @GetMapping("/order/{orderId}/latest")
     public ResponseEntity<Payment> findLatestByOrderId(@PathVariable Long orderId,
                                                        @RequestParam(required = false) String guestEmail,
+                                                       @RequestParam(required = false) String orderNo,
                                                        Authentication authentication) {
-        assertCanSeeOrder(orderId, authentication, guestEmail);
+        assertCanSeeOrder(orderId, authentication, guestEmail, orderNo);
         Payment payment = paymentService.findLatestByOrderId(orderId);
         return payment != null ? ResponseEntity.ok(payment) : ResponseEntity.notFound().build();
     }
@@ -199,22 +210,29 @@ public class PaymentController {
     }
 
     private void assertCanSeeOrder(Long orderId, Authentication authentication, String guestEmail) {
+        assertCanSeeOrder(orderId, authentication, guestEmail, null);
+    }
+
+    private void assertCanSeeOrder(Long orderId, Authentication authentication, String guestEmail, String orderNo) {
         Order order = orderService.getOrderById(orderId);
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        assertCanOperateOrder(order, authentication, guestEmail, "Payment is not available for this order");
+        assertCanOperateOrder(order, authentication, guestEmail, orderNo, "Payment is not available for this order");
     }
 
     private void assertCanCreatePayment(PaymentCreateRequest request, Authentication authentication) {
+        if (request == null || request.getOrderId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is required");
+        }
         Order order = orderService.getOrderById(request.getOrderId());
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        assertCanOperateOrder(order, authentication, request.getGuestEmail(), "Payment is not available for this order");
+        assertCanOperateOrder(order, authentication, request.getGuestEmail(), request.getOrderNo(), "Payment is not available for this order");
     }
 
-    private void assertCanOperatePayment(Long paymentId, Authentication authentication, String guestEmail) {
+    private void assertCanOperatePayment(Long paymentId, Authentication authentication, String guestEmail, String orderNo) {
         Payment payment = paymentService.findById(paymentId);
         if (payment == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found");
@@ -223,38 +241,36 @@ public class PaymentController {
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        assertCanOperateOrder(order, authentication, guestEmail, "Payment operation is not available for this order");
+        assertCanOperateOrder(order, authentication, guestEmail, orderNo, "Payment operation is not available for this order");
     }
 
-    private void assertCanOperateOrder(Order order, Authentication authentication, String guestEmail, String forbiddenMessage) {
+    private void assertAdminPaymentSimulation(Authentication authentication) {
+        SecurityUtils.assertAdmin(authentication);
+    }
+
+    private void assertCanOperateOrder(Order order, Authentication authentication, String guestEmail, String orderNo, String forbiddenMessage) {
+        if (customerAccessMatches(order, guestEmail, orderNo)) {
+            return;
+        }
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
-            try {
-                SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
-                return;
-            } catch (ResponseStatusException e) {
-                if (isGuestOrder(order) && guestEmailMatches(order, guestEmail)) {
-                    return;
-                }
-                throw e;
-            }
+            SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
+            return;
         }
-        if (!isGuestOrder(order) || !guestEmailMatches(order, guestEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
-        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
     }
 
-    private boolean isGuestOrder(Order order) {
-        String shippingAddress = order.getShippingAddress();
-        return shippingAddress != null && shippingAddress.startsWith("[Guest] ");
+    private boolean customerAccessMatches(Order order, String email, String orderNo) {
+        return orderNoMatches(order, orderNo) && customerEmailMatches(order, email);
     }
 
-    private boolean guestEmailMatches(Order order, String guestEmail) {
-        if (guestEmail == null || guestEmail.trim().isEmpty() || order.getShippingAddress() == null) {
-            return false;
-        }
-        String normalizedEmail = guestEmail.trim().toLowerCase();
-        String normalizedAddress = order.getShippingAddress().toLowerCase();
-        return normalizedAddress.contains(" / " + normalizedEmail + " / ");
+    private boolean orderNoMatches(Order order, String orderNo) {
+        return orderNo != null
+                && order.getOrderNo() != null
+                && order.getOrderNo().trim().equalsIgnoreCase(orderNo.trim());
+    }
+
+    private boolean customerEmailMatches(Order order, String email) {
+        return orderService.orderEmailMatches(order, email) || orderService.guestOrderEmailMatches(order, email);
     }
 
     private String reasonOf(ResponseStatusException e) {

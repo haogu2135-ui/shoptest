@@ -21,7 +21,7 @@ public class PaymentChannelConfig {
     private static final String PROVIDER_GENERIC_API = "GENERIC_API";
 
     private String supportedChannels = "STRIPE,SHOP_PAY,PAYPAL,APPLE_PAY,GOOGLE_PAY,VISA,MX_LOCAL_CARD,SPEI,OXXO,ALIPAY,WECHAT_PAY,UNIONPAY,CODI,MERCADO_PAGO";
-    private String checkoutBaseUrl = "https://pay.example.local/checkout";
+    private String checkoutBaseUrl = "https://pet.686888666.xyz/payment";
     private String defaultCurrency = "MXN";
     private List<Channel> channels = new ArrayList<>();
     private Geo geo = new Geo();

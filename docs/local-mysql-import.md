@@ -5,7 +5,7 @@ This project can run against a local MySQL 8 instance using the defaults in
 
 - Database: `shop`
 - Username: `root`
-- Password: `84813378`
+- Password: `YOUR_PASSWORD_HERE`
 - Port: `3306`
 
 ## Start a Local Development Instance
@@ -22,7 +22,7 @@ data directory can be initialized and started from the repository root:
 ```powershell
 $env:JAVA_HOME='C:\Program Files\Java\jdk-22'
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
-$env:DB_PASSWORD='84813378'
+$env:DB_PASSWORD='YOUR_PASSWORD_HERE'
 .\mvnw.cmd -q dependency:build-classpath "-Dmdep.outputFile=target\classpath.txt"
 $cp = Get-Content target\classpath.txt -Raw
 javac -encoding UTF-8 -proc:none -cp $cp -d target\script-classes scripts\ImportMysqlData.java
@@ -38,6 +38,6 @@ rows.
 paths to import only those files, in order:
 
 ```powershell
-$env:DB_PASSWORD='84813378'
+$env:DB_PASSWORD='YOUR_PASSWORD_HERE'
 java -cp "target\script-classes;$cp" scripts.ImportMysqlData src/main/resources/schema.sql scripts/pet_catalog_test_data.sql
 ```

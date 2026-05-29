@@ -178,5 +178,5 @@ export const resolveApiGatewayEnabled = () =>
     runtimeConfig().apiGatewayEnabled !== undefined
       ? runtimeConfig().apiGatewayEnabled
       : process.env.REACT_APP_API_GATEWAY_ENABLED,
-    true,
+    false,
   );

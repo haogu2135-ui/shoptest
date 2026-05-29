@@ -456,7 +456,7 @@ const PetGallery: React.FC = () => {
         footer={null}
         centered
         width={760}
-        className="pet-gallery-preview"
+        className="profile-mobile-safe-modal pet-gallery-preview"
         destroyOnHidden
         onCancel={() => setPreviewItem(null)}
       >

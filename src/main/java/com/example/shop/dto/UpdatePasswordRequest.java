@@ -8,7 +8,7 @@ public class UpdatePasswordRequest {
     private String oldPassword;
 
     @NotBlank
-    @Size(min = 6, max = 128)
+    @Size(min = 8, max = 128)
     private String newPassword;
 
     public String getOldPassword() {

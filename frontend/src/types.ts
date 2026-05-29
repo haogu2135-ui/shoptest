@@ -189,6 +189,26 @@ export interface AdminSystemStatus {
         errors?: string[];
         error?: string;
     };
+    productionConfig?: {
+        runtimeMode?: string;
+        status?: string;
+        healthy?: boolean;
+        ready?: boolean;
+        required?: boolean;
+        checkedAt?: string;
+        issues?: string[];
+        warnings?: string[];
+        checks?: Record<string, {
+            status?: string;
+            configured?: boolean;
+            minLength?: number;
+            configuredAccountCount?: number;
+            corsOriginCount?: number;
+            websocketOriginCount?: number;
+            enabledChannelCount?: number;
+            availableCheckoutChannelCount?: number;
+        }>;
+    };
 }
 
 export interface AdminConfigCenterSnapshot {
@@ -848,6 +868,7 @@ export interface PaymentChannel {
 export interface AppConfig {
     runtimeMode: 'production' | 'debug' | 'dev' | 'test' | string;
     paymentSimulationEnabled: boolean;
+    emailCodeEnabled?: boolean;
     defaultShippingFee?: number;
     freeShippingThreshold?: number;
 }

@@ -17,11 +17,12 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { CheckCircleOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { brandApi } from '../api';
 import type { Brand } from '../types';
 import { useLanguage } from '../i18n';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
+import { getApiErrorMessage } from '../utils/apiError';
 import './BrandManagement.css';
 
 const { Title, Text } = Typography;
@@ -37,6 +38,9 @@ const statusColors: Record<string, string> = {
 const BrandManagement: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [keyword, setKeyword] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
@@ -73,17 +77,28 @@ const BrandManagement: React.FC = () => {
     (brand.status || 'ACTIVE') === 'ACTIVE',
   ].filter(Boolean).length;
 
+  const filteredBrands = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    return brands.filter((brand) => {
+      const status = brand.status || 'ACTIVE';
+      if (statusFilter && status !== statusFilter) return false;
+      if (!text) return true;
+      return [brand.name, brand.description, brand.logoUrl, brand.websiteUrl, status, brand.sortOrder]
+        .some((value) => String(value || '').toLowerCase().includes(text));
+    });
+  }, [brands, keyword, statusFilter]);
+
   const fetchBrands = useCallback(async () => {
     setLoading(true);
     try {
       const response = await brandApi.getAll();
       setBrands(response.data);
-    } catch {
-      message.error(t('pages.brandAdmin.fetchFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.brandAdmin.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   useEffect(() => {
     fetchBrands();
@@ -107,6 +122,7 @@ const BrandManagement: React.FC = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      setSaving(true);
       const payload = {
         name: values.name.trim(),
         description: values.description?.trim() || null,
@@ -123,11 +139,24 @@ const BrandManagement: React.FC = () => {
         message.success(t('pages.brandAdmin.created'));
       }
       setModalVisible(false);
+      setEditingBrand(null);
+      setLogoPreviewUrl('');
+      form.resetFields();
       fetchBrands();
     } catch (error: any) {
-      const detail = error?.response?.data?.error;
-      message.error(detail || t('pages.brandAdmin.saveFailed'));
+      if (error?.errorFields) return;
+      message.error(getApiErrorMessage(error, t('pages.brandAdmin.saveFailed'), language));
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setModalVisible(false);
+    setEditingBrand(null);
+    setLogoPreviewUrl('');
+    form.resetFields();
   };
 
   const handleDelete = async (id: number) => {
@@ -135,8 +164,8 @@ const BrandManagement: React.FC = () => {
       await brandApi.delete(id);
       message.success(t('pages.brandAdmin.deleted'));
       fetchBrands();
-    } catch {
-      message.error(t('pages.brandAdmin.deleteFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.brandAdmin.deleteFailed'), language));
     }
   };
 
@@ -224,6 +253,27 @@ const BrandManagement: React.FC = () => {
       <Card className="brand-management-page__toolbar">
         <Space wrap>
           <Text type="secondary">{t('pages.brandAdmin.healthSubtitle')}</Text>
+          <Input
+            allowClear
+            prefix={<SearchOutlined />}
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={t('common.search')}
+            className="brand-management-page__keywordInput"
+          />
+          <Select
+            allowClear
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder={t('common.status')}
+            className="brand-management-page__statusFilterSelect"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
+            options={[
+              { value: 'ACTIVE', label: t('status.ACTIVE') },
+              { value: 'INACTIVE', label: t('status.INACTIVE') },
+            ]}
+          />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
             {t('pages.brandAdmin.addBrand')}
           </Button>
@@ -270,14 +320,15 @@ const BrandManagement: React.FC = () => {
         </div>
       </section>
 
-      <Table columns={columns} dataSource={brands} rowKey="id" loading={loading} bordered size="middle" scroll={{ x: 860 }} />
+      <Table columns={columns} dataSource={filteredBrands} rowKey="id" loading={loading} bordered size="middle" scroll={{ x: 860 }} />
 
       <Modal
-        className="brand-management-page__editorModal"
+        className="profile-mobile-safe-modal brand-management-page__editorModal"
         title={editingBrand ? t('pages.brandAdmin.editTitle') : t('pages.brandAdmin.addTitle')}
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
+        onCancel={closeModal}
+        confirmLoading={saving}
         destroyOnHidden
       >
         <Form form={form} layout="vertical">
@@ -306,6 +357,8 @@ const BrandManagement: React.FC = () => {
           <Space className="brand-management-page__formRow" align="start">
             <Form.Item name="status" label={t('common.status')} className="brand-management-page__statusField">
               <Select
+                popupClassName="shop-mobile-popup-layer"
+                getPopupContainer={() => document.body}
                 options={[
                   { value: 'ACTIVE', label: t('status.ACTIVE') },
                   { value: 'INACTIVE', label: t('status.INACTIVE') },

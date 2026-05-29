@@ -28,6 +28,7 @@ config/*.local.properties
 *.iml
 
 *.log
+logs/
 *.tmp
 *.class
 *.png

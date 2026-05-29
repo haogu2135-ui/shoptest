@@ -17,7 +17,7 @@ import {
   TreeSelect,
   Typography,
 } from 'antd';
-import { BranchesOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
+import { BranchesOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { categoryApi } from '../api';
 import type { Category } from '../types';
 import {
@@ -29,6 +29,7 @@ import {
 } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
+import { getApiErrorMessage } from '../utils/apiError';
 import './CategoryManagement.css';
 
 const { TextArea } = Input;
@@ -39,6 +40,8 @@ const resolveCategoryImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl,
 const CategoryManagement: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [keyword, setKeyword] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
@@ -80,17 +83,45 @@ const CategoryManagement: React.FC = () => {
     category.description?.trim() || category.localizedContent?.en?.description?.trim(),
   ].filter(Boolean).length;
 
+  const displayCategoryTree = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    if (!text) return categoryTree;
+
+    const matches = (category: Category) => [
+      category.name,
+      category.description,
+      category.localizedContent?.en?.name,
+      category.localizedContent?.en?.description,
+      category.localizedContent?.es?.name,
+      category.localizedContent?.es?.description,
+      category.localizedContent?.zh?.name,
+      category.localizedContent?.zh?.description,
+      category.imageUrl,
+      getCategoryPath(flatCategories, category.id, language),
+    ].some((value) => String(value || '').toLowerCase().includes(text));
+
+    const filterTree = (items: Category[]): Category[] => items.reduce<Category[]>((result, category) => {
+      const children = filterTree(category.children || []);
+      if (matches(category) || children.length) {
+        result.push({ ...category, children });
+      }
+      return result;
+    }, []);
+
+    return filterTree(categoryTree);
+  }, [categoryTree, flatCategories, keyword, language]);
+
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
       const res = await categoryApi.getAll();
       setCategories(res.data);
-    } catch {
-      message.error(t('pages.categoryAdmin.fetchFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.categoryAdmin.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   useEffect(() => {
     fetchCategories();
@@ -128,14 +159,15 @@ const CategoryManagement: React.FC = () => {
       await categoryApi.delete(id);
       message.success(t('messages.deleteSuccess'));
       fetchCategories();
-    } catch {
-      message.error(t('pages.categoryAdmin.deleteChildFirst'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.categoryAdmin.deleteChildFirst'), language));
     }
   };
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      setSaving(true);
       const localizedContent = ['en', 'es', 'zh'].reduce<Record<string, { name?: string; description?: string }>>((result, locale) => {
         const localized = values.localizedContent?.[locale] || {};
         const name = localized.name?.trim();
@@ -164,10 +196,24 @@ const CategoryManagement: React.FC = () => {
         message.success(t('pages.categoryAdmin.created'));
       }
       setModalVisible(false);
+      setEditingCategory(null);
+      setImagePreviewUrl('');
+      form.resetFields();
       fetchCategories();
-    } catch (error) {
-      message.error(t('pages.categoryAdmin.saveFailed'));
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(getApiErrorMessage(error, t('pages.categoryAdmin.saveFailed'), language));
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setModalVisible(false);
+    setEditingCategory(null);
+    setImagePreviewUrl('');
+    form.resetFields();
   };
 
   const columns = [
@@ -268,6 +314,14 @@ const CategoryManagement: React.FC = () => {
       <Card className="category-management-page__toolbar">
         <Space wrap>
           <Text type="secondary">{t('pages.categoryAdmin.healthSubtitle')}</Text>
+          <Input
+            allowClear
+            prefix={<SearchOutlined />}
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={t('common.search')}
+            className="category-management-page__keywordInput"
+          />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
             {t('pages.categoryAdmin.addRoot')}
           </Button>
@@ -316,7 +370,7 @@ const CategoryManagement: React.FC = () => {
 
       <Table
         columns={columns}
-        dataSource={categoryTree}
+        dataSource={displayCategoryTree}
         rowKey="id"
         loading={loading}
         bordered
@@ -325,11 +379,12 @@ const CategoryManagement: React.FC = () => {
       />
 
       <Modal
-        className="category-management-page__editorModal"
+        className="profile-mobile-safe-modal category-management-page__editorModal"
         title={editingCategory ? t('pages.categoryAdmin.editTitle') : t('pages.categoryAdmin.addTitle')}
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
+        onCancel={closeModal}
+        confirmLoading={saving}
         destroyOnHidden
       >
         <Form form={form} layout="vertical">
@@ -391,6 +446,8 @@ const CategoryManagement: React.FC = () => {
               treeDefaultExpandAll
               placeholder={t('pages.categoryAdmin.noParent')}
               treeData={parentOptions}
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
             />
           </Form.Item>
 

@@ -25,6 +25,7 @@ class LogisticsServiceTest {
         when(runtimeConfig.getInt("logistics.carrier-max-chars", 40)).thenReturn(8);
         when(runtimeConfig.getBoolean("kuaidi100.enabled", true)).thenReturn(false);
         when(runtimeConfig.getString("logistics.api-url", "")).thenReturn("");
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
     }
 
     @Test
@@ -55,5 +56,14 @@ class LogisticsServiceTest {
     @Test
     void rejectsOverlongCarrier() {
         assertThrows(IllegalArgumentException.class, () -> service.track("TN123", "C".repeat(9)));
+    }
+
+    @Test
+    void rejectsMockTrackingInProductionWhenProviderIsMissing() {
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("production");
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> service.track("TN123", "DHL"));
+
+        assertEquals("Production logistics tracking provider is not configured", error.getMessage());
     }
 }

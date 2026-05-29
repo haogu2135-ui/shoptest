@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.Map;
@@ -60,7 +62,10 @@ public class UserAddressController {
     }
 
     @PostMapping
-    public UserAddress addAddress(@RequestBody UserAddress address, Authentication authentication) {
+    public UserAddress addAddress(@RequestBody(required = false) UserAddress address, Authentication authentication) {
+        if (address == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address is required");
+        }
         UserDetailsImpl user = SecurityUtils.requireUser(authentication);
         if (!SecurityUtils.isAdmin(user)) {
             address.setUserId(user.getId());
@@ -72,7 +77,10 @@ public class UserAddressController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateAddress(@PathVariable Long id, @RequestBody UserAddress address, Authentication authentication) {
+    public ResponseEntity<?> updateAddress(@PathVariable Long id, @RequestBody(required = false) UserAddress address, Authentication authentication) {
+        if (address == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address is required");
+        }
         UserAddress existing = userAddressService.getAddress(id);
         if (existing == null) {
             return ResponseEntity.notFound().build();
@@ -84,7 +92,7 @@ public class UserAddressController {
         try {
             userAddressService.updateAddress(address);
             return ResponseEntity.ok(address);
-        } catch (IllegalStateException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

@@ -5,6 +5,7 @@ import type { AppConfig } from '../types';
 const envFallbackConfig: AppConfig = {
   runtimeMode: 'production',
   paymentSimulationEnabled: process.env.REACT_APP_PAYMENT_SIMULATION_ENABLED === 'true',
+  emailCodeEnabled: process.env.REACT_APP_EMAIL_CODE_ENABLED === 'true',
 };
 
 let cachedConfig: AppConfig | null = null;

@@ -1,31 +1,38 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Input, Space, Typography, message } from 'antd';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Button, Empty, Input, Space, Tag, Typography, message } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import { logisticsApi } from '../api';
 import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
+import type { LogisticsTrackResponse } from '../types';
 import './SeventeenTrackWidget.css';
 
-declare global {
-  interface Window {
-    YQV5?: {
-      trackSingle: (options: {
-        YQ_ContainerId: string;
-        YQ_Height: number;
-        YQ_Fc: string;
-        YQ_Lang: string;
-        YQ_Num: string;
-      }) => void;
-    };
-  }
-}
+const localeByLanguage = {
+  zh: 'zh-CN',
+  es: 'es-MX',
+  en: 'en-US',
+} as const;
 
-const SCRIPT_ID = 'seventeen-track-external-call';
-const SCRIPT_SRC = 'https://www.17track.net/externalcall.js';
-
-const getWidgetLanguage = (language: string) => {
-  if (language === 'zh') return 'zh-cn';
-  if (language === 'es') return 'es';
-  return 'en';
+const statusColors: Record<string, string> = {
+  DELIVERED: 'green',
+  IN_TRANSIT: 'blue',
+  PICKED_UP: 'cyan',
+  DISPATCHING: 'gold',
+  PROBLEM: 'red',
+  RETURNED: 'volcano',
+  RETURNING: 'orange',
+  EXTERNAL_EMPTY: 'default',
+  EXTERNAL: 'blue',
 };
+
+const formatEventTime = (value: string | undefined, locale: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleString(locale) : value;
+};
+
+const isProviderConfigurationError = (value: string) =>
+  /not configured|provider.*configured|customer\/key/i.test(value);
 
 type SeventeenTrackWidgetProps = {
   trackingNumber?: string;
@@ -33,62 +40,76 @@ type SeventeenTrackWidgetProps = {
   height?: number;
 };
 
-const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNumber = '', height = 560 }) => {
+const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNumber = '', carrierCode, height = 560 }) => {
   const { t, language } = useLanguage();
   const [value, setValue] = useState(trackingNumber);
-  const [scriptReady, setScriptReady] = useState(Boolean(window.YQV5?.trackSingle));
-  const containerId = useMemo(() => `YQContainer-${Math.random().toString(36).slice(2)}`, []);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<LogisticsTrackResponse | null>(null);
+  const [error, setError] = useState('');
+  const requestSeq = useRef(0);
+  const dateLocale = localeByLanguage[language] || localeByLanguage.en;
+  const resultsMinHeight = Math.max(220, Math.min(height, 560));
 
-  useEffect(() => {
-    setValue(trackingNumber);
-  }, [trackingNumber]);
-
-  useEffect(() => {
-    if (window.YQV5?.trackSingle) {
-      setScriptReady(true);
-      return undefined;
-    }
-
-    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
-    const handleLoad = () => setScriptReady(true);
-    const handleError = () => message.error(t('pages.orderTracking.trackingFailed'));
-
-    if (!script) {
-      script = document.createElement('script');
-      script.id = SCRIPT_ID;
-      script.src = SCRIPT_SRC;
-      script.async = true;
-      document.body.appendChild(script);
-    }
-
-    script.addEventListener('load', handleLoad);
-    script.addEventListener('error', handleError);
-
-    return () => {
-      script?.removeEventListener('load', handleLoad);
-      script?.removeEventListener('error', handleError);
-    };
-  }, [t]);
-
-  const runTrack = () => {
-    const num = value.trim();
+  const queryTracking = useCallback(async (nextValue: string, silent = false) => {
+    const num = nextValue.trim();
     if (!num) {
       message.warning(t('pages.adminOrders.noTrackingNumber'));
       return;
     }
-    if (!window.YQV5?.trackSingle) {
-      message.warning(t('common.loading'));
-      return;
-    }
 
-    window.YQV5.trackSingle({
-      YQ_ContainerId: containerId,
-      YQ_Height: height,
-      YQ_Fc: '0',
-      YQ_Lang: getWidgetLanguage(language),
-      YQ_Num: num,
-    });
+    const requestId = requestSeq.current + 1;
+    requestSeq.current = requestId;
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await logisticsApi.track(num, carrierCode);
+      if (requestSeq.current !== requestId) return;
+      setResult(response.data);
+    } catch (err: any) {
+      if (requestSeq.current !== requestId) return;
+      const providerError = String(err?.response?.data?.error || err?.response?.data?.message || err?.message || '');
+      if (isProviderConfigurationError(providerError)) {
+        setResult({
+          trackingNumber: num,
+          carrier: carrierCode,
+          status: 'EXTERNAL_EMPTY',
+          summary: t('pages.orderTracking.noTrackingData'),
+          events: [],
+        });
+        setError('');
+        return;
+      }
+      const localizedError = getApiErrorMessage(err, t('pages.orderTracking.trackingFailed'), language);
+      setResult(null);
+      setError(localizedError);
+      if (!silent) {
+        message.error(localizedError);
+      }
+    } finally {
+      if (requestSeq.current === requestId) {
+        setLoading(false);
+      }
+    }
+  }, [carrierCode, language, t]);
+
+  useEffect(() => {
+    const normalized = trackingNumber.trim();
+    setValue(normalized);
+    setResult(null);
+    setError('');
+    if (normalized) {
+      void queryTracking(normalized, true);
+    }
+  }, [queryTracking, trackingNumber]);
+
+  const runTrack = () => {
+    void queryTracking(value);
   };
+
+  const events = result?.events || [];
+  const hasRawResponse = Boolean(result?.rawResponse && Object.keys(result.rawResponse).length > 0);
+  const status = result?.status || '';
 
   return (
     <Space className="seventeen-track-widget" direction="vertical" size="middle">
@@ -100,17 +121,63 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
           placeholder={t('pages.orderTracking.trackingNumber')}
           autoComplete="off"
         />
-        <Button type="primary" icon={<SearchOutlined />} loading={!scriptReady} onClick={runTrack}>
+        <Button type="primary" icon={<SearchOutlined />} loading={loading} onClick={runTrack}>
           {t('pages.adminOrders.track')}
         </Button>
       </Space.Compact>
       <div
-        id={containerId}
         className="seventeen-track-widget__results"
+        style={{ minHeight: resultsMinHeight }}
+        aria-live="polite"
       >
-        <Typography.Text type="secondary" className="seventeen-track-widget__empty">
-          {t('pages.orderTracking.noTrackingData')}
-        </Typography.Text>
+        {loading ? (
+          <Typography.Text type="secondary" className="seventeen-track-widget__empty">
+            {t('common.loading')}
+          </Typography.Text>
+        ) : error ? (
+          <Alert
+            className="seventeen-track-widget__alert"
+            type="warning"
+            showIcon
+            message={t('pages.orderTracking.trackingFailed')}
+            description={error}
+          />
+        ) : result ? (
+          <div className="seventeen-track-widget__content">
+            <div className="seventeen-track-widget__summary">
+              <Space wrap size={[8, 8]}>
+                <Tag color={statusColors[status] || 'default'}>{status || t('common.status')}</Tag>
+                {result.carrier ? <Tag>{result.carrier}</Tag> : null}
+                <Typography.Text strong>{result.trackingNumber}</Typography.Text>
+              </Space>
+              {result.summary ? (
+                <Typography.Text type="secondary">{result.summary}</Typography.Text>
+              ) : null}
+            </div>
+            {events.length > 0 ? (
+              <div className="seventeen-track-widget__events">
+                {events.map((event, index) => (
+                  <div className="seventeen-track-widget__event" key={`${event.time || 'event'}-${index}`}>
+                    <span className="seventeen-track-widget__eventDot" aria-hidden="true" />
+                    <div className="seventeen-track-widget__eventBody">
+                      <Typography.Text strong>{event.description || t('pages.orderTracking.noTrackingData')}</Typography.Text>
+                      <Typography.Text type="secondary" className="seventeen-track-widget__eventMeta">
+                        {[formatEventTime(event.time, dateLocale), event.location].filter(Boolean).join(' · ')}
+                      </Typography.Text>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={hasRawResponse ? t('pages.adminOrders.rawTrackingData') : t('pages.orderTracking.noTrackingData')}
+              />
+            )}
+          </div>
+        ) : (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.orderTracking.noTrackingData')} />
+        )}
       </div>
     </Space>
   );

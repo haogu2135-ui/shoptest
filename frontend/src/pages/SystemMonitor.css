@@ -70,6 +70,13 @@
   width: 100%;
 }
 
+.system-monitor__productionConfig {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
 .system-monitor__statusTitle {
   max-width: 100%;
   align-items: center;
@@ -112,6 +119,10 @@
   }
 
   .system-monitor__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .system-monitor__productionConfig {
     grid-template-columns: 1fr;
   }
 }

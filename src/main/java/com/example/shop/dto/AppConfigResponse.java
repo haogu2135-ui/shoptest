@@ -10,6 +10,7 @@ import lombok.Data;
 public class AppConfigResponse {
     private String runtimeMode;
     private boolean paymentSimulationEnabled;
+    private boolean emailCodeEnabled;
     private BigDecimal defaultShippingFee;
     private BigDecimal freeShippingThreshold;
 }

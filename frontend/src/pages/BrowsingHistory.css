@@ -1632,3 +1632,54 @@
     grid-template-columns: minmax(0, 1fr) minmax(104px, 0.82fr);
   }
 }
+
+/* Final browsing history atomic-text pass */
+.browsing-history__priceStack,
+.browsing-history__priceStack *,
+.browsing-history__mobileAction strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.browsing-history__priceStack,
+.browsing-history__mobileAction strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.browsing-history__tools .ant-btn,
+.browsing-history__footer .ant-btn,
+.browsing-history__emptyActions .ant-btn,
+.browsing-history__mobileAction .ant-btn {
+  white-space: nowrap;
+}
+
+.browsing-history__tools .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.browsing-history__footer .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.browsing-history__emptyActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.browsing-history__mobileAction .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .browsing-history__tools .ant-btn,
+  .browsing-history__footer .ant-btn,
+  .browsing-history__emptyActions .ant-btn,
+  .browsing-history__mobileAction .ant-btn {
+    white-space: nowrap !important;
+  }
+
+  .browsing-history__priceStack {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+}

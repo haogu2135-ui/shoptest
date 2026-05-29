@@ -4,6 +4,8 @@ import { BugOutlined, ClockCircleOutlined, DownloadOutlined, FileTextOutlined, R
 import dayjs, { Dayjs } from 'dayjs';
 import { adminApi } from '../api';
 import type { AdminLogManagementStatus } from '../types';
+import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 import './LogManagement.css';
 
 const { RangePicker } = DatePicker;
@@ -12,6 +14,7 @@ const { Text, Title } = Typography;
 const DEFAULT_LOGGER = 'com.example.shop';
 
 const LogManagement: React.FC = () => {
+  const { t, language } = useLanguage();
   const [status, setStatus] = useState<AdminLogManagementStatus | null>(null);
   const [loggerName, setLoggerName] = useState(DEFAULT_LOGGER);
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(1, 'hour'), dayjs()]);
@@ -21,18 +24,19 @@ const LogManagement: React.FC = () => {
   const [switching, setSwitching] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const loadStatus = useCallback(async (nextLogger = loggerName) => {
+  const loadStatus = useCallback(async (nextLogger: string) => {
+    const requestedLogger = nextLogger.trim() || DEFAULT_LOGGER;
     setLoading(true);
     try {
-      const response = await adminApi.getLogManagementStatus({ loggerName: nextLogger });
+      const response = await adminApi.getLogManagementStatus({ loggerName: requestedLogger });
       setStatus(response.data);
       setLoggerName(response.data.loggerName);
-    } catch {
-      message.error('日志状态加载失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.logAdmin.loadFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [loggerName]);
+  }, [language, t]);
 
   useEffect(() => {
     loadStatus(DEFAULT_LOGGER);
@@ -43,9 +47,9 @@ const LogManagement: React.FC = () => {
     try {
       const response = await adminApi.setDebugLogging({ loggerName, enabled });
       setStatus(response.data);
-      message.success(enabled ? 'Debug 日志已开启' : 'Debug 日志已关闭');
-    } catch {
-      message.error('日志级别切换失败');
+      message.success(enabled ? t('pages.logAdmin.debugEnabled') : t('pages.logAdmin.debugDisabled'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.logAdmin.levelToggleFailed'), language));
     } finally {
       setSwitching(false);
     }
@@ -53,7 +57,7 @@ const LogManagement: React.FC = () => {
 
   const downloadLogs = async () => {
     if (!range[0] || !range[1]) {
-      message.warning('请选择日志时间范围');
+      message.warning(t('pages.logAdmin.rangeRequired'));
       return;
     }
     setDownloading(true);
@@ -73,9 +77,9 @@ const LogManagement: React.FC = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      message.success('日志已开始下载');
-    } catch {
-      message.error('日志下载失败，请确认服务端已生成日志文件');
+      message.success(t('pages.logAdmin.downloadStarted'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.logAdmin.downloadFailed'), language));
     } finally {
       setDownloading(false);
     }
@@ -86,15 +90,15 @@ const LogManagement: React.FC = () => {
       <div className="log-management__hero">
         <div>
           <Text className="log-management__eyebrow">Runtime Logs</Text>
-          <Title level={2}>日志管理</Title>
-          <Text type="secondary">运行时开启或关闭 debug，并按指定时间段下载后台日志。</Text>
+          <Title level={2}>{t('pages.logAdmin.title')}</Title>
+          <Text type="secondary">{t('pages.logAdmin.description')}</Text>
         </div>
         <Space className="log-management__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => loadStatus()}>
-            刷新
+          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => loadStatus(loggerName)}>
+            {t('common.refresh')}
           </Button>
           <Button type="primary" icon={<DownloadOutlined />} loading={downloading} onClick={downloadLogs}>
-            下载日志
+            {t('pages.logAdmin.downloadLogs')}
           </Button>
         </Space>
       </div>
@@ -106,14 +110,14 @@ const LogManagement: React.FC = () => {
           </Card>
           <Card>
             <Statistic
-              title="当前级别"
+              title={t('pages.logAdmin.currentLevel')}
               value={status?.effectiveLevel || '-'}
               valueStyle={{ color: status?.debugEnabled ? '#c2410c' : '#1f8a4c' }}
               prefix={<BugOutlined />}
             />
           </Card>
           <Card>
-            <Statistic title="日志文件数" value={status?.availableFiles?.length || 0} prefix={<ClockCircleOutlined />} />
+            <Statistic title={t('pages.logAdmin.logFileCount')} value={status?.availableFiles?.length || 0} prefix={<ClockCircleOutlined />} />
           </Card>
         </div>
 
@@ -121,14 +125,14 @@ const LogManagement: React.FC = () => {
           className="log-management__alert"
           type="info"
           showIcon
-          message="Debug 日志会增加输出量，排查完成后建议关闭。下载范围会按日志行开头时间筛选，异常堆栈会跟随上一条匹配日志一起导出。"
+          message={t('pages.logAdmin.debugHint')}
         />
 
         <div className="log-management__grid">
-          <Card title="Debug 控制" className="log-management__card">
+          <Card title={t('pages.logAdmin.debugControl')} className="log-management__card">
             <div className="log-management__control">
               <label>
-                <span>Logger 名称</span>
+                <span>{t('pages.logAdmin.loggerName')}</span>
                 <Input
                   value={loggerName}
                   onChange={(event) => setLoggerName(event.target.value)}
@@ -138,28 +142,30 @@ const LogManagement: React.FC = () => {
               </label>
               <div className="log-management__switchRow">
                 <div>
-                  <Text strong>Debug 日志</Text>
-                  <Text type="secondary">仅影响当前运行中的后台进程</Text>
+                  <Text strong>{t('pages.logAdmin.debugLogs')}</Text>
+                  <Text type="secondary">{t('pages.logAdmin.runtimeOnly')}</Text>
                 </div>
                 <Switch
                   checked={Boolean(status?.debugEnabled)}
                   loading={switching}
                   onChange={toggleDebug}
-                  checkedChildren="开"
-                  unCheckedChildren="关"
+                  checkedChildren={t('pages.logAdmin.on')}
+                  unCheckedChildren={t('pages.logAdmin.off')}
                 />
               </div>
               <Button onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />}>
-                读取该 Logger
+                {t('pages.logAdmin.loadLogger')}
               </Button>
             </div>
           </Card>
 
-          <Card title="时间段下载" className="log-management__card">
+          <Card title={t('pages.logAdmin.rangeDownload')} className="log-management__card">
             <div className="log-management__download">
               <RangePicker
                 showTime
                 allowClear={false}
+                popupClassName="shop-mobile-popup-layer"
+                getPopupContainer={() => document.body}
                 value={range}
                 onChange={(values) => {
                   if (values?.[0] && values?.[1]) {
@@ -171,6 +177,8 @@ const LogManagement: React.FC = () => {
                 <Select
                   value={level}
                   onChange={setLevel}
+                  popupClassName="shop-mobile-popup-layer"
+                  getPopupContainer={() => document.body}
                   options={['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'].map((value) => ({ value, label: value }))}
                   style={{ width: 110 }}
                 />
@@ -181,26 +189,26 @@ const LogManagement: React.FC = () => {
                 />
               </Space.Compact>
               <Button type="primary" icon={<DownloadOutlined />} loading={downloading} onClick={downloadLogs}>
-                下载所选时间段
+                {t('pages.logAdmin.downloadSelectedRange')}
               </Button>
             </div>
             <Descriptions column={1} size="small" bordered className="log-management__meta">
-              <Descriptions.Item label="日志目录">{status?.logDirectory || '-'}</Descriptions.Item>
-              <Descriptions.Item label="当前文件">{status?.logFileName || '-'}</Descriptions.Item>
-              <Descriptions.Item label="配置级别">
+              <Descriptions.Item label={t('pages.logAdmin.logDirectory')}>{status?.logDirectory || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('pages.logAdmin.currentFile')}>{status?.logFileName || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('pages.logAdmin.configuredLevel')}>
                 <Tag color={status?.configuredLevel === 'INHERITED' ? 'default' : 'blue'}>{status?.configuredLevel || '-'}</Tag>
               </Descriptions.Item>
             </Descriptions>
           </Card>
         </div>
 
-        <Card title="可下载日志文件" className="log-management__card">
+        <Card title={t('pages.logAdmin.availableLogFiles')} className="log-management__card">
           {(status?.availableFiles || []).length ? (
             <Space wrap size={[8, 8]}>
               {status?.availableFiles.map((file) => <Tag key={file}>{file}</Tag>)}
             </Space>
           ) : (
-            <Empty description="暂无日志文件，应用重启并产生日志后会显示" />
+            <Empty description={t('pages.logAdmin.noLogFiles')} />
           )}
         </Card>
       </Spin>

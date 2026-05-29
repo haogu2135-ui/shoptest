@@ -33,6 +33,15 @@ const normalizePrice = (value: unknown) => {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
 };
 
+const resolveProductSnapshotImage = (product: Partial<Product> | any) => {
+  const primary = String(product?.imageUrl || '').trim();
+  if (primary) return primary;
+  const galleryImage = Array.isArray(product?.images)
+    ? product.images.find((image: unknown) => String(image || '').trim())
+    : '';
+  return String(galleryImage || '').trim();
+};
+
 const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
   const id = normalizeSafeId(item.id);
   const productId = normalizeSafeId(item.productId);
@@ -98,7 +107,7 @@ export const addGuestCartItem = (product: Product | any, quantity = 1, selectedS
     productId,
     quantity: normalizedQuantity,
     productName,
-    imageUrl: product.imageUrl,
+    imageUrl: resolveProductSnapshotImage(product),
     price: price ?? product.effectivePrice ?? product.price,
     stock: product.stock,
     productStatus: product.status || 'ACTIVE',

@@ -20,6 +20,17 @@
   box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
+.product-review__composer--login {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-review__composer--login .ant-typography {
+  min-width: 0;
+}
+
 .product-review__form {
   width: 100%;
 }
@@ -89,6 +100,15 @@
   .product-review__composer {
     padding: 12px;
     border-radius: 16px;
+  }
+
+  .product-review__composer--login {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .product-review__composer--login .ant-btn {
+    width: 100%;
   }
 
   .product-review__orderSelect {

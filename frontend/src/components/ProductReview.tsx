@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Rate, Input, Button, List, Avatar, Space, message, Select, Empty, Typography } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import type { Order } from '../types';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { formatSafeDate, formatSafeDateTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import './ProductReview.css';
 
 const { TextArea } = Input;
@@ -35,6 +38,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     reviewableOrders,
     onAddReview,
 }) => {
+    const navigate = useNavigate();
     const isLoggedIn = !!getLocalStorageItem('token');
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState('');
@@ -54,6 +58,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     const handleSubmit = async () => {
         if (!isLoggedIn) {
             message.warning(t('messages.loginRequired'));
+            navigate(buildLoginUrlFromWindow());
             return;
         }
         if (!orderId) {
@@ -73,7 +78,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
             setOrderId(undefined);
             message.success(t('pages.review.success'));
         } catch (error: any) {
-            message.error(error?.response?.data?.error || t('pages.review.failed'));
+            message.error(getApiErrorMessage(error, t('pages.review.failed'), language));
         } finally {
             setSubmitting(false);
         }
@@ -82,7 +87,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     return (
         <div className="product-review">
             <h3 className="product-review__title">{t('pages.review.title')}</h3>
-            {isLoggedIn && (
+            {isLoggedIn ? (
                 <div className="product-review__composer">
                     {reviewableOrders.length > 0 ? (
                         <Space direction="vertical" className="product-review__form">
@@ -91,6 +96,8 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 onChange={setOrderId}
                                 placeholder={t('pages.review.selectOrder')}
                                 className="product-review__orderSelect"
+                                popupClassName="shop-mobile-popup-layer"
+                                getPopupContainer={() => document.body}
                                 options={reviewableOrders.map((order) => ({
                                     value: order.id,
                                     label: `${order.orderNo || `#${order.id}`}${formatSafeDate(order.createdAt, dateLocale, '') ? ` - ${formatSafeDate(order.createdAt, dateLocale)}` : ''}`,
@@ -103,6 +110,8 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 value={comment}
                                 onChange={(e) => setComment(e.target.value)}
                                 placeholder={t('pages.review.placeholder')}
+                                maxLength={1000}
+                                showCount
                             />
                             <Button
                                 type="primary"
@@ -116,6 +125,13 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                     ) : (
                         <Empty description={t('pages.review.noReviewableOrder')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                     )}
+                </div>
+            ) : (
+                <div className="product-review__composer product-review__composer--login">
+                    <Text type="secondary">{t('messages.loginRequired')}</Text>
+                    <Button type="primary" onClick={() => navigate(buildLoginUrlFromWindow())}>
+                        {t('nav.login')}
+                    </Button>
                 </div>
             )}
             <List

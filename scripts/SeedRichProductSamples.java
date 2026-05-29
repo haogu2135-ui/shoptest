@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 public class SeedRichProductSamples {
-    private static final String DEFAULT_URL = "jdbc:mysql://localhost:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+    private static final String DEFAULT_URL = "jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
     private static final String DEFAULT_USER = "root";
     private static final String DEFAULT_PASSWORD = "84813378";
 

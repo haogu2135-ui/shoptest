@@ -75,6 +75,18 @@ class LogManagementServiceTest {
     }
 
     @Test
+    void statusDoesNotFollowSymlinkedLogFiles() throws Exception {
+        Path outside = tempDir.resolve("outside-secret.log");
+        Files.writeString(outside, "2026-05-24 10:00:00.000 ERROR secret\n", StandardCharsets.UTF_8);
+        Files.createSymbolicLink(tempDir.resolve("linked-secret.log"), outside);
+
+        LogManagementStatusResponse status = service.status(null);
+
+        assertTrue(status.getAvailableFiles().contains("shop-backend.log"));
+        assertTrue(status.getAvailableFiles().stream().noneMatch("linked-secret.log"::equals));
+    }
+
+    @Test
     void previewClampsLineLimitAndRejectsLargeTimeRanges() {
         LocalDateTime start = LocalDateTime.of(2026, 5, 24, 10, 0);
         LocalDateTime end = LocalDateTime.of(2026, 5, 24, 10, 30);

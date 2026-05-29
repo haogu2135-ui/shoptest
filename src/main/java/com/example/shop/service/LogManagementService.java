@@ -279,10 +279,20 @@ public class LogManagementService {
         }
         try (Stream<Path> paths = Files.list(directory)) {
             return paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> {
-                        String filename = path.getFileName().toString().toLowerCase(Locale.ROOT);
-                        return filename.contains(".log") && !filename.endsWith(".gz");
+                .filter(Files::isRegularFile)
+                .filter(path -> {
+                    try {
+                        return Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                                && path.toRealPath(java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                                        .getParent()
+                                        .equals(directory.toRealPath(java.nio.file.LinkOption.NOFOLLOW_LINKS));
+                    } catch (IOException e) {
+                        return false;
+                    }
+                })
+                .filter(path -> {
+                    String filename = path.getFileName().toString().toLowerCase(Locale.ROOT);
+                    return filename.contains(".log") && !filename.endsWith(".gz");
                     })
                     .sorted(Comparator.comparing(this::lastModifiedTime))
                     .collect(Collectors.toList());

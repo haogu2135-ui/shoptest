@@ -42,9 +42,12 @@ public class ReviewController {
     @PostMapping("/product/{productId}")
     public ResponseEntity<?> addReview(
             @PathVariable Long productId,
-            @RequestBody Map<String, Object> request,
+            @RequestBody(required = false) Map<String, Object> request,
             Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        if (request == null) {
+            throw new IllegalArgumentException("Review payload is required");
+        }
         Long orderId = parseLong(request.get("orderId"), "orderId");
         Integer rating = parseRating(request.get("rating"));
         Review review = reviewService.addReview(

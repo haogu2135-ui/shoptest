@@ -1,5 +1,6 @@
 package com.example.shop.util;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
@@ -36,19 +37,34 @@ public final class GatewayUrlValidator {
         return uri.toString();
     }
 
-    private static boolean isLocalOrPrivateHost(String host) {
+    public static boolean isLocalOrPrivateHost(String host) {
+        if (host == null || host.trim().isEmpty()) {
+            return true;
+        }
         String normalized = host.trim().toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
         if ("localhost".equals(normalized) || "0.0.0.0".equals(normalized) || "::1".equals(normalized)) {
             return true;
         }
         if (normalized.endsWith(".localhost") || normalized.endsWith(".local")) {
             return true;
         }
-        String ipv4 = normalized;
-        if (ipv4.startsWith("[")) {
-            ipv4 = ipv4.substring(1, ipv4.length() - 1);
+        if (isIpLiteral(normalized)) {
+            try {
+                InetAddress address = InetAddress.getByName(normalized);
+                if (address.isAnyLocalAddress()
+                        || address.isLoopbackAddress()
+                        || address.isLinkLocalAddress()
+                        || address.isSiteLocalAddress()) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+                // Fall through to prefix checks below.
+            }
         }
-        String[] parts = ipv4.split("\\.");
+        String[] parts = normalized.split("\\.");
         if (parts.length == 4) {
             try {
                 int first = Integer.parseInt(parts[0]);
@@ -64,5 +80,9 @@ public final class GatewayUrlValidator {
         }
         return normalized.contains(":")
                 && (normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80"));
+    }
+
+    private static boolean isIpLiteral(String host) {
+        return host.contains(":") || host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+");
     }
 }

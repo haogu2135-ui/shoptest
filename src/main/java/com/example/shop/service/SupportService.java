@@ -13,6 +13,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class SupportService {
     private final SupportSessionMapper supportSessionMapper;
     private final SupportMessageMapper supportMessageMapper;
     private final RuntimeConfigService runtimeConfig;
+    private final ConcurrentMap<String, RateBucket> messageRateBuckets = new ConcurrentHashMap<>();
 
     @Transactional
     public SupportSession getOrCreateOpenSession(Long userId) {
@@ -123,6 +126,7 @@ public class SupportService {
         if ("ADMIN".equals(senderRole) && session.getAssignedAdminId() == null) {
             supportSessionMapper.assignAdmin(sessionId, senderId);
         }
+        consumeMessageRate(senderId, senderRole);
         SupportMessage message = new SupportMessage();
         message.setSessionId(sessionId);
         message.setSenderId(senderId);
@@ -151,6 +155,34 @@ public class SupportService {
             throw new IllegalArgumentException("Message is too long");
         }
         return normalized;
+    }
+
+    private void consumeMessageRate(Long senderId, String senderRole) {
+        if (!runtimeConfig.getBoolean("support.message.rate-limit-enabled", true)) {
+            return;
+        }
+        String normalizedRole = senderRole == null ? "USER" : senderRole.trim().toUpperCase();
+        int defaultLimit = "ADMIN".equals(normalizedRole) ? 60 : 20;
+        int maxPerMinute = runtimeConfig.getInt("support.message.max-per-minute", defaultLimit);
+        if (maxPerMinute <= 0) {
+            return;
+        }
+        long now = Instant.now().getEpochSecond();
+        long windowStart = now - Math.floorMod(now, 60);
+        String key = normalizedRole + ":" + senderId;
+        RateBucket bucket = messageRateBuckets.compute(key, (ignored, current) -> {
+            if (current == null || current.windowStart != windowStart) {
+                return new RateBucket(windowStart, 1);
+            }
+            current.count++;
+            return current;
+        });
+        if (bucket.count > maxPerMinute) {
+            throw new IllegalStateException("Too many support messages. Please try again later.");
+        }
+        if (messageRateBuckets.size() > runtimeConfig.getInt("support.message.max-rate-buckets", 5000)) {
+            messageRateBuckets.entrySet().removeIf(entry -> entry.getValue().windowStart < windowStart);
+        }
     }
 
     @Transactional
@@ -236,5 +268,15 @@ public class SupportService {
 
     private String camelToSnake(String value) {
         return value.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+    }
+
+    private static class RateBucket {
+        private final long windowStart;
+        private int count;
+
+        private RateBucket(long windowStart, int count) {
+            this.windowStart = windowStart;
+            this.count = count;
+        }
     }
 }

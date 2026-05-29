@@ -69,6 +69,10 @@ public class AdminRoleService {
         if (!columnExists("users", "role_code")) {
             jdbcTemplate.execute("ALTER TABLE users ADD COLUMN role_code VARCHAR(50) NULL");
         }
+        if (!columnExists("users", "status")) {
+            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'");
+        }
+        jdbcTemplate.update("UPDATE users SET status = 'ACTIVE' WHERE status IS NULL OR TRIM(status) = ''");
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS admin_roles ("
                 + "id BIGINT PRIMARY KEY AUTO_INCREMENT,"
                 + "code VARCHAR(50) NOT NULL UNIQUE,"

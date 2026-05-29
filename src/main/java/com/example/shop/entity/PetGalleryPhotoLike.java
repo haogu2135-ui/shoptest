@@ -13,6 +13,9 @@ import java.time.LocalDateTime;
         @Index(name = "idx_pet_gallery_like_photo", columnList = "photo_id"),
         @Index(name = "idx_pet_gallery_like_user", columnList = "user_id"),
         @Index(name = "idx_pet_gallery_like_ip", columnList = "ip_address")
+    },
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_gallery_like_photo_user", columnNames = {"photo_id", "user_id"})
     }
 )
 public class PetGalleryPhotoLike {

@@ -19,11 +19,14 @@ import com.example.shop.repository.OrderItemRepository;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.math.BigDecimal;
@@ -34,6 +37,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -42,6 +46,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class OrderService {
     private static final String RETURN_REFUNDING = "RETURN_REFUNDING";
 
@@ -68,6 +73,12 @@ public class OrderService {
     private RefundService refundService;
     @Autowired
     private RuntimeConfigService runtimeConfig;
+    @Autowired(required = false)
+    private PaymentChannelAvailabilityService paymentChannelAvailabilityService;
+    @Autowired(required = false)
+    private NotificationService notificationService;
+    @Autowired(required = false)
+    private OrderEmailNotificationService orderEmailNotificationService;
     @Lazy
     @Autowired
     private OrderService self;
@@ -88,6 +99,7 @@ public class OrderService {
     @Transactional
     public Order checkout(CheckoutRequest request) {
         normalizeCheckoutRequest(request);
+        requirePaymentChannelAvailable(request.getPaymentMethod());
         List<CartItem> selectedItems = prepareCheckoutItems(request.getUserId(), request.getCartItemIds(), true);
         CouponQuoteResponse quote = couponService.quote(request.getUserId(), selectedItems, request.getUserCouponId());
         BigDecimal originalAmount = quote.getSubtotal();
@@ -143,6 +155,7 @@ public class OrderService {
     @Transactional
     public Order guestCheckout(GuestCheckoutRequest request) {
         normalizeGuestCheckoutRequest(request);
+        requirePaymentChannelAvailable(request.getPaymentMethod());
         Long guestUserId = getOrCreateGuestUser(request);
         List<CartItem> selectedItems = prepareGuestCheckoutItems(guestUserId, request.getItems(), true);
         BigDecimal originalAmount = selectedItems.stream()
@@ -218,6 +231,8 @@ public class OrderService {
                 reserveProductStock(product, item.getSelectedSpecs(), item.getQuantity());
             }
             BigDecimal effectivePrice = productVariantService.resolvePrice(product, item.getSelectedSpecs());
+            item.setProductName(product.getName());
+            item.setImageUrl(resolveProductImageUrl(product));
             item.setPrice(effectivePrice);
         }
         return selectedItems;
@@ -268,11 +283,26 @@ public class OrderService {
             item.setPrice(productVariantService.resolvePrice(product, normalizedSpecs));
             item.setSelectedSpecs(normalizedSpecs);
             item.setProductName(product.getName());
-            item.setImageUrl(product.getImageUrl());
+            item.setImageUrl(resolveProductImageUrl(product));
             item.setStock(product.getStock());
             item.setProductStatus(product.getStatus());
             return item;
         }).collect(Collectors.toList());
+    }
+
+    private String resolveProductImageUrl(Product product) {
+        if (product == null) {
+            return null;
+        }
+        if (product.getImageUrl() != null && !product.getImageUrl().trim().isEmpty()) {
+            return product.getImageUrl().trim();
+        }
+        for (String image : product.getImagesList()) {
+            if (image != null && !image.trim().isEmpty()) {
+                return image.trim();
+            }
+        }
+        return null;
     }
 
     private void reserveProductStock(Product product, String selectedSpecs, int quantity) {
@@ -385,6 +415,12 @@ public class OrderService {
         request.setShippingAddress(normalizeRequiredText(request.getShippingAddress(), "Shipping address", runtimeConfig.getInt("order.shipping-address-max-chars", 500)));
         request.setPaymentMethod(normalizeRequiredText(request.getPaymentMethod(), "Payment method", runtimeConfig.getInt("order.payment-method-max-chars", 40)));
         request.setItems(normalizeGuestItems(request.getItems()));
+    }
+
+    private void requirePaymentChannelAvailable(String paymentMethod) {
+        if (paymentChannelAvailabilityService != null) {
+            paymentChannelAvailabilityService.requireAvailableForCheckout(paymentMethod);
+        }
     }
 
     private List<Long> normalizeCheckoutItemIds(List<Long> cartItemIds) {
@@ -514,6 +550,21 @@ public class OrderService {
         return new OrderTrackResponse(order, orderItemRepository.findByOrderId(order.getId()));
     }
 
+    public boolean orderEmailMatches(Order order, String email) {
+        if (order == null || order.getId() == null || order.getOrderNo() == null
+                || email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        Order matched = orderRepository.findByOrderNoAndEmail(order.getOrderNo(), email.trim().toLowerCase());
+        return matched != null && order.getId().equals(matched.getId());
+    }
+
+    public boolean guestOrderEmailMatches(Order order, String email) {
+        String guestEmail = order == null ? null : extractGuestEmail(order.getShippingAddress());
+        String normalizedEmail = normalizeEmail(email);
+        return guestEmail != null && guestEmail.equals(normalizedEmail);
+    }
+
     /**
      * 更新订单信息
      */
@@ -546,7 +597,11 @@ public class OrderService {
             return false;
         }
         assertNextStatus(order.getStatus(), status);
-        return orderRepository.updateStatus(id, status) > 0;
+        boolean updated = orderRepository.updateStatus(id, status) > 0;
+        if (updated) {
+            notifyOrderStatusChanged(order, status, null);
+        }
+        return updated;
     }
 
     @Transactional
@@ -558,7 +613,9 @@ public class OrderService {
         Payment paidPayment = paymentRepository.findLatestPaidByOrderId(id);
         if (paidPayment != null) {
             if ("PENDING_PAYMENT".equals(order.getStatus())) {
-                orderRepository.updateStatusIfCurrent(id, "PENDING_PAYMENT", "PENDING_SHIPMENT");
+                if (orderRepository.updateStatusIfCurrent(id, "PENDING_PAYMENT", "PENDING_SHIPMENT") > 0) {
+                    notifyPaymentConfirmed(order, paidPayment);
+                }
             }
             return paidPayment;
         }
@@ -607,7 +664,9 @@ public class OrderService {
         if (updated == 0) {
             throw new IllegalStateException("Order payment confirmation failed");
         }
-        return paymentRepository.findById(payment.getId());
+        Payment latest = paymentRepository.findById(payment.getId());
+        notifyPaymentConfirmed(order, latest != null ? latest : payment);
+        return latest;
     }
 
     @Transactional
@@ -632,6 +691,11 @@ public class OrderService {
         if ("PENDING_PAYMENT".equals(order.getStatus())) {
             couponService.releaseUsedCoupon(order.getUserCouponId());
         }
+        notifyCustomer(
+                order,
+                "Order cancelled",
+                "Order " + safeOrderNo(order) + " has been cancelled."
+        );
         return true;
     }
 
@@ -655,6 +719,9 @@ public class OrderService {
         }
         LocalDateTime cutoff = LocalDateTime.now().minusMinutes(runtimeConfig.getLong("order.unpaid-timeout-minutes", 30));
         if (order.getCreatedAt() == null || !order.getCreatedAt().isBefore(cutoff)) {
+            return;
+        }
+        if (paymentRepository.countActivePendingByOrderId(order.getId()) > 0) {
             return;
         }
         Payment pendingPayment = paymentRepository.findPendingByOrderId(order.getId());
@@ -683,7 +750,15 @@ public class OrderService {
             throw new IllegalStateException("Return window has expired");
         }
         String cleanedReason = normalizeOptionalText(reason, "Return reason", runtimeConfig.getInt("order.return-reason-max-chars", 500));
-        return orderRepository.requestReturnIfCurrent(id, "COMPLETED", cleanedReason) > 0;
+        boolean updated = orderRepository.requestReturnIfCurrent(id, "COMPLETED", cleanedReason) > 0;
+        if (updated) {
+            notifyCustomer(
+                    order,
+                    "Return request received",
+                    "Return request for order " + safeOrderNo(order) + " has been submitted for review."
+            );
+        }
+        return updated;
     }
 
     @Transactional
@@ -695,7 +770,15 @@ public class OrderService {
         if (!"RETURN_REQUESTED".equals(order.getStatus())) {
             throw new IllegalStateException("Only return-requested orders can be approved");
         }
-        return orderRepository.approveReturnIfCurrent(id, "RETURN_REQUESTED") > 0;
+        boolean updated = orderRepository.approveReturnIfCurrent(id, "RETURN_REQUESTED") > 0;
+        if (updated) {
+            notifyCustomer(
+                    order,
+                    "Return approved",
+                    "Return request for order " + safeOrderNo(order) + " has been approved. Please send the return shipment and submit the tracking number."
+            );
+        }
+        return updated;
     }
 
     @Transactional
@@ -707,7 +790,15 @@ public class OrderService {
         if (!"RETURN_REQUESTED".equals(order.getStatus())) {
             throw new IllegalStateException("Only return-requested orders can be rejected");
         }
-        return orderRepository.rejectReturnIfCurrent(id, "RETURN_REQUESTED") > 0;
+        boolean updated = orderRepository.rejectReturnIfCurrent(id, "RETURN_REQUESTED") > 0;
+        if (updated) {
+            notifyCustomer(
+                    order,
+                    "Return request closed",
+                    "Return request for order " + safeOrderNo(order) + " was not approved. The order is now back to completed status."
+            );
+        }
+        return updated;
     }
 
     @Transactional
@@ -723,7 +814,15 @@ public class OrderService {
             throw new IllegalStateException("Only approved return orders can submit return shipment");
         }
         String cleanedTrackingNumber = normalizeRequiredText(returnTrackingNumber, "Return tracking number", runtimeConfig.getInt("order.tracking-number-max-chars", 120));
-        return orderRepository.updateReturnTracking(id, "RETURN_SHIPPED", cleanedTrackingNumber) > 0;
+        boolean updated = orderRepository.updateReturnTrackingIfCurrent(id, "RETURN_APPROVED", "RETURN_SHIPPED", cleanedTrackingNumber) > 0;
+        if (updated) {
+            notifyCustomer(
+                    order,
+                    "Return shipment submitted",
+                    "Return tracking number " + cleanedTrackingNumber + " was saved for order " + safeOrderNo(order) + "."
+            );
+        }
+        return updated;
     }
 
     @Transactional
@@ -731,6 +830,10 @@ public class OrderService {
         Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
+        }
+        if (RETURN_REFUNDING.equals(order.getStatus())) {
+            refundService.refundPaidPayment(order, order.getReturnReason());
+            return finalizeCompletedReturnRefund(order);
         }
         if (!"RETURN_SHIPPED".equals(order.getStatus())) {
             throw new IllegalStateException("Only return-shipped orders can be completed");
@@ -744,6 +847,11 @@ public class OrderService {
             return false;
         }
         refundService.refundPaidPayment(order, order.getReturnReason());
+        return finalizeCompletedReturnRefund(order);
+    }
+
+    private boolean finalizeCompletedReturnRefund(Order order) {
+        Long id = order.getId();
         int updated = orderRepository.completeReturnAndRefundIfCurrent(id, RETURN_REFUNDING);
         if (updated == 0) {
             Order latest = orderRepository.findById(id);
@@ -756,6 +864,11 @@ public class OrderService {
         for (OrderItem item : items) {
             restoreStock(item);
         }
+        notifyCustomer(
+                order,
+                "Return completed",
+                "Return refund for order " + safeOrderNo(order) + " has been completed."
+        );
         return true;
     }
 
@@ -805,6 +918,11 @@ public class OrderService {
                 restoreStock(item);
             }
         }
+        notifyCustomer(
+                order,
+                "Order refunded",
+                "Refund for order " + safeOrderNo(order) + " has been completed."
+        );
         return refundedPayment;
     }
 
@@ -850,7 +968,151 @@ public class OrderService {
             carrierName = carrier.getName();
         }
         assertNextStatus(order.getStatus(), "SHIPPED");
-        return orderRepository.updateShipping(id, "SHIPPED", cleanedTrackingNumber, carrierCode, carrierName) > 0;
+        boolean updated = orderRepository.updateShipping(id, "SHIPPED", cleanedTrackingNumber, carrierCode, carrierName) > 0;
+        if (updated) {
+            String carrierLabel = trimToNull(carrierName) == null ? "" : " via " + carrierName;
+            notifyCustomer(
+                    order,
+                    "Order shipped",
+                    "Order " + safeOrderNo(order) + " has shipped" + carrierLabel + ". Tracking number: " + cleanedTrackingNumber + "."
+            );
+        }
+        return updated;
+    }
+
+    private void notifyOrderStatusChanged(Order order, String nextStatus, Payment payment) {
+        if ("PENDING_SHIPMENT".equals(nextStatus)) {
+            notifyPaymentConfirmed(order, payment);
+            return;
+        }
+        if ("SHIPPED".equals(nextStatus)) {
+            notifyCustomer(
+                    order,
+                    "Order shipped",
+                    "Order " + safeOrderNo(order) + " has shipped."
+            );
+            return;
+        }
+        if ("COMPLETED".equals(nextStatus)) {
+            notifyCustomer(
+                    order,
+                    "Order completed",
+                    "Order " + safeOrderNo(order) + " has been completed. You can request a return from order tracking while the return window is open."
+            );
+        }
+    }
+
+    private void notifyPaymentConfirmed(Order order, Payment payment) {
+        String amountText = payment != null && payment.getAmount() != null
+                ? " Amount: " + payment.getAmount().stripTrailingZeros().toPlainString() + "."
+                : "";
+        notifyCustomer(
+                order,
+                "Payment received",
+                "Payment for order " + safeOrderNo(order) + " has been received." + amountText + " We will prepare shipment next."
+        );
+    }
+
+    private void notifyCustomer(Order order, String title, String message) {
+        if (order == null || isBlank(title) || isBlank(message)) {
+            return;
+        }
+        Long userId = order.getUserId();
+        String shippingAddress = order.getShippingAddress();
+        String orderNo = safeOrderNo(order);
+        runAfterCommit(() -> dispatchCustomerNotification(userId, shippingAddress, orderNo, title.trim(), message.trim()));
+    }
+
+    private void dispatchCustomerNotification(Long userId, String shippingAddress, String orderNo, String title, String message) {
+        try {
+            CustomerContact contact = resolveCustomerContact(userId, shippingAddress);
+            if (notificationService != null && userId != null && !contact.guestUser) {
+                notificationService.tryCreateNotification(userId, "ORDER", title, message);
+            }
+            if (orderEmailNotificationService != null && contact.email != null) {
+                orderEmailNotificationService.trySendOrderStatusEmail(contact.email, title, message);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Customer notification dispatch failed for order {}", orderNo, e);
+        }
+    }
+
+    private CustomerContact resolveCustomerContact(Long userId, String shippingAddress) {
+        String email = null;
+        boolean guestUser = shippingAddress != null && shippingAddress.startsWith("[Guest]");
+        if (userId != null && userRepository != null) {
+            try {
+                Optional<User> user = userRepository.findById(userId);
+                if (user.isPresent()) {
+                    email = normalizeEmail(user.get().getEmail());
+                    guestUser = "GUEST".equalsIgnoreCase(trimToNull(user.get().getStatus()));
+                }
+            } catch (RuntimeException e) {
+                log.warn("Customer lookup failed while resolving order notification contact: userId={}", userId, e);
+            }
+        }
+        if (email == null) {
+            email = extractGuestEmail(shippingAddress);
+            guestUser = guestUser || email != null;
+        }
+        return new CustomerContact(email, guestUser);
+    }
+
+    private String extractGuestEmail(String shippingAddress) {
+        if (shippingAddress == null || !shippingAddress.startsWith("[Guest]")) {
+            return null;
+        }
+        String[] parts = shippingAddress.split(" / ");
+        for (String part : parts) {
+            String email = normalizeEmail(part);
+            if (email != null) {
+                return email;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeEmail(String email) {
+        String normalized = trimToNull(email);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        return normalized.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$") ? normalized : null;
+    }
+
+    private void runAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+            return;
+        }
+        action.run();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private static class CustomerContact {
+        private final String email;
+        private final boolean guestUser;
+
+        private CustomerContact(String email, boolean guestUser) {
+            this.email = email;
+            this.guestUser = guestUser;
+        }
+    }
+
+    private String safeOrderNo(Order order) {
+        if (order == null || trimToNull(order.getOrderNo()) == null) {
+            return "";
+        }
+        return order.getOrderNo().trim();
     }
 
     public void assertNextStatus(String currentStatus, String nextStatus) {

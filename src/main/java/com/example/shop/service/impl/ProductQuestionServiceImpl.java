@@ -17,6 +17,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Service
 public class ProductQuestionServiceImpl implements ProductQuestionService {
@@ -24,6 +26,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final RuntimeConfigService runtimeConfig;
+    private final ConcurrentMap<Long, RateBucket> askRateBuckets = new ConcurrentHashMap<>();
 
     public ProductQuestionServiceImpl(
             ProductQuestionRepository questionRepository,
@@ -83,6 +86,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
         if (normalizedQuestion.isEmpty()) {
             throw new IllegalArgumentException("Question is required");
         }
+        consumeAskRate(userId);
 
         ProductQuestion question = new ProductQuestion();
         question.setProduct(product);
@@ -116,6 +120,31 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
             throw new IllegalArgumentException(label + " is too long");
         }
         return normalized;
+    }
+
+    private void consumeAskRate(Long userId) {
+        if (!runtimeConfig.getBoolean("product-question.rate-limit-enabled", true)) {
+            return;
+        }
+        int maxPerMinute = runtimeConfig.getInt("product-question.max-asks-per-minute", 5);
+        if (maxPerMinute <= 0) {
+            return;
+        }
+        long now = Instant.now().getEpochSecond();
+        long windowStart = now - Math.floorMod(now, 60);
+        RateBucket bucket = askRateBuckets.compute(userId, (ignored, current) -> {
+            if (current == null || current.windowStart != windowStart) {
+                return new RateBucket(windowStart, 1);
+            }
+            current.count++;
+            return current;
+        });
+        if (bucket.count > maxPerMinute) {
+            throw new IllegalStateException("Too many product questions. Please try again later.");
+        }
+        if (askRateBuckets.size() > runtimeConfig.getInt("product-question.max-rate-buckets", 5000)) {
+            askRateBuckets.entrySet().removeIf(entry -> entry.getValue().windowStart < windowStart);
+        }
     }
 
     private int normalizedMaxQuestionChars() {
@@ -156,5 +185,15 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
                 - summary.getUnansweredQuestions() * 8
                 - summary.getStaleUnansweredQuestions() * 18;
         return (int) Math.max(0, Math.min(100, rawScore));
+    }
+
+    private static class RateBucket {
+        private final long windowStart;
+        private int count;
+
+        private RateBucket(long windowStart, int count) {
+            this.windowStart = windowStart;
+            this.count = count;
+        }
     }
 }

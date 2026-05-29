@@ -159,7 +159,14 @@ public final class CsvUtils {
         if (value.isEmpty()) {
             return value;
         }
-        char first = value.charAt(0);
+        int firstNonWhitespace = 0;
+        while (firstNonWhitespace < value.length() && Character.isWhitespace(value.charAt(firstNonWhitespace))) {
+            firstNonWhitespace++;
+        }
+        if (firstNonWhitespace >= value.length()) {
+            return value;
+        }
+        char first = value.charAt(firstNonWhitespace);
         return first == '=' || first == '+' || first == '-' || first == '@'
                 ? "'" + value
                 : value;

@@ -75,6 +75,13 @@
         SELECT COUNT(*) FROM payments WHERE status = #{status}
     </select>
 
+    <select id="countActivePendingByOrderId" resultType="long">
+        SELECT COUNT(*) FROM payments
+        WHERE order_id = #{orderId}
+          AND status = 'PENDING'
+          AND (expires_at IS NULL OR expires_at &gt; NOW())
+    </select>
+
     <select id="findPendingByOrderId" resultMap="paymentMap">
         SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'PENDING'
         ORDER BY id DESC

@@ -77,6 +77,19 @@
   box-shadow: 0 12px 28px rgba(18, 71, 52, 0.06);
 }
 
+.announcement-management__toolbar {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.announcement-management__keywordInput {
+  width: 280px;
+}
+
+.announcement-management__statusFilter {
+  width: 170px;
+}
+
 @media (max-width: 720px) {
   .announcement-management__hero {
     align-items: flex-start;
@@ -141,6 +154,11 @@
   min-width: 140px;
 }
 
+.announcement-management__datePicker {
+  width: 220px;
+  max-width: 100%;
+}
+
 .announcement-management__hero,
 .announcement-management__stats div,
 .announcement-management__card,
@@ -198,6 +216,13 @@
 
   .announcement-management__card .ant-card-body {
     padding: 12px;
+  }
+
+  .announcement-management__toolbar,
+  .announcement-management__toolbar .ant-space-item,
+  .announcement-management__toolbar .ant-input-affix-wrapper,
+  .announcement-management__toolbar .ant-select {
+    width: 100% !important;
   }
 }
 
@@ -323,6 +348,8 @@
   .announcement-management .ant-modal-body {
     flex: 1 1 auto;
     overflow-y: auto;
+    scroll-padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -339,6 +366,8 @@
   .announcement-management .ant-select-selector {
     min-width: 0;
     max-width: 100%;
+    scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
   }
 
   .announcement-management .ant-modal-footer {

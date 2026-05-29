@@ -3,22 +3,74 @@ import { Form, Input, Button, Typography, message, Tabs } from 'antd';
 import { CompassOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartApi, userApi } from '../api';
+import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import { getEffectiveRole } from '../utils/roles';
-import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import { getLocalStorageItem, getSessionStorageItem, removeLocalStorageItem, removeSessionStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import './Login.css';
 
 const { Text, Title } = Typography;
 
-const normalizeEmail = (value: unknown) => String(value || '').trim().toLowerCase();
+const stripControlChars = (value: unknown) => String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ');
+const normalizeEmail = (value: unknown) => stripControlChars(value).trim().toLowerCase();
 const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
+const normalizePasswordLogin = (value: unknown) => {
+  const login = stripControlChars(value).replace(/\s+/g, ' ').trim();
+  if (login.includes('@')) return login.toLowerCase();
+  const compactLogin = login.replace(/\s+/g, '');
+  const digitCount = (compactLogin.match(/\d/g) || []).length;
+  if (digitCount >= 8 && /^[+\d().\-\s]+$/.test(login)) {
+    return compactLogin.startsWith('+') ? `+${compactLogin.slice(1).replace(/\D+/g, '')}` : compactLogin.replace(/\D+/g, '');
+  }
+  return compactLogin;
+};
+const readLoginCandidates = (primary: string) => {
+  const candidates = [primary];
+  try {
+    const parsed = JSON.parse(getSessionStorageItem('loginCandidates') || '[]');
+    if (Array.isArray(parsed)) {
+      const storedCandidates = parsed.map((value) => normalizePasswordLogin(value)).filter(Boolean);
+      if (!storedCandidates.includes(primary)) {
+        return candidates;
+      }
+      storedCandidates.forEach((value) => candidates.push(value));
+    }
+  } catch {
+    // Ignore malformed session data; the primary login remains authoritative.
+  }
+  return Array.from(new Set(candidates.filter(Boolean)));
+};
 const maskEmail = (value: unknown) => {
   const email = normalizeEmail(value);
   const [name, domain] = email.split('@');
   if (!name || !domain) return email;
   return `${name.charAt(0)}***@${domain}`;
+};
+
+const resolvePasswordLoginError = (error: any, fallback: string, t: (key: string, params?: any) => string, language: any) => {
+  const status = Number(error?.response?.status);
+  const serverMessage = String(error?.response?.data?.error || error?.response?.data?.message || '').toLowerCase();
+  if (status === 429 || serverMessage.includes('too many') || serverMessage.includes('rate limited')) {
+    return t('pages.auth.loginRateLimited');
+  }
+  if (status === 503 || serverMessage.includes('temporarily unavailable') || serverMessage.includes('service unavailable')) {
+    return t('pages.auth.loginServiceUnavailable');
+  }
+  if (serverMessage.includes('locked')) {
+    return t('pages.auth.loginLocked');
+  }
+  return getApiErrorMessage(error, fallback, language);
+};
+
+const shouldTryNextLoginCandidate = (error: any) => {
+  const status = Number(error?.response?.status);
+  const code = String(error?.response?.data?.code || '').toUpperCase();
+  const serverMessage = String(error?.response?.data?.error || error?.response?.data?.message || '').toLowerCase();
+  if ([400, 401, 404].includes(status)) return true;
+  return code.includes('INVALID') || code.includes('NOT_FOUND') || serverMessage.includes('invalid') || serverMessage.includes('not found');
 };
 
 const Login: React.FC = () => {
@@ -29,15 +81,18 @@ const Login: React.FC = () => {
   const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
   const [sentEmailHint, setSentEmailHint] = useState('');
   const [activeLoginTab, setActiveLoginTab] = useState('password');
+  const [passwordForm] = Form.useForm();
   const [emailForm] = Form.useForm();
   const watchedEmailCode = Form.useWatch('code', emailForm);
   const codeInputRef = useRef<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const guestCartCount = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
   const emailCodeLength = normalizeEmailCode(watchedEmailCode).length;
-  const canSubmitEmailCode = emailCodeLength === 6 && verifyRetryCountdown <= 0;
+  const emailCodeEnabled = appConfig.emailCodeEnabled === true;
+  const canSubmitEmailCode = emailCodeEnabled && emailCodeLength === 6 && verifyRetryCountdown <= 0;
   const postLoginRedirectTarget = getPostLoginRedirectTarget(location.search);
 
   useEffect(() => {
@@ -45,6 +100,14 @@ const Login: React.FC = () => {
       navigate(postLoginRedirectTarget, { replace: true });
     }
   }, [navigate, postLoginRedirectTarget]);
+
+  useEffect(() => {
+    const prefill = normalizePasswordLogin(getSessionStorageItem('loginPrefill'));
+    if (!prefill) return;
+    setActiveLoginTab('password');
+    passwordForm.setFieldValue('username', prefill);
+    removeSessionStorageItem('loginPrefill');
+  }, [passwordForm]);
 
   useEffect(() => {
     if (sendCodeCountdown <= 0) return undefined;
@@ -97,10 +160,14 @@ const Login: React.FC = () => {
   };
 
   const completeLogin = async (responseData: any) => {
-    const { token, id, username, role, roleCode } = responseData;
+    const { token, refreshToken, id, username, email, phone, role, roleCode } = responseData || {};
+    if (!token || !id) {
+      throw new Error(t('pages.auth.loginFailed'));
+    }
     setLocalStorageItem('token', token);
+    if (refreshToken) setLocalStorageItem('refreshToken', refreshToken);
     setLocalStorageItem('userId', String(id));
-    setLocalStorageItem('username', username);
+    setLocalStorageItem('username', String(username || email || phone || id));
     setLocalStorageItem('role', getEffectiveRole(role, roleCode));
     removeLocalStorageItem('adminDefaultPath');
     await mergeGuestCart(Number(id));
@@ -109,18 +176,53 @@ const Login: React.FC = () => {
   };
 
   const onFinish = async (values: any) => {
+    const normalizedLogin = normalizePasswordLogin(values.username);
+    passwordForm.setFieldValue('username', normalizedLogin);
     setLoading(true);
+    passwordForm.setFields([
+      { name: 'username', errors: [] },
+      { name: 'password', errors: [] },
+    ]);
+    let lastError: any = null;
     try {
-      const response = await userApi.login(values.username, values.password);
+      const loginCandidates = readLoginCandidates(normalizedLogin);
+      let response: any = null;
+      for (const candidate of loginCandidates) {
+        try {
+          response = await userApi.login(candidate, values.password);
+          if (candidate !== normalizedLogin) {
+            passwordForm.setFieldValue('username', candidate);
+          }
+          removeSessionStorageItem('loginCandidates');
+          break;
+        } catch (candidateError: any) {
+          lastError = candidateError;
+          if (!shouldTryNextLoginCandidate(candidateError)) {
+            break;
+          }
+        }
+      }
+      if (!response) {
+        throw lastError || new Error(t('pages.auth.loginFailed'));
+      }
       await completeLogin(response.data);
-    } catch {
-      message.error(t('pages.auth.loginFailed'));
+    } catch (error: any) {
+      const loginError = resolvePasswordLoginError(error, t('pages.auth.loginFailed'), t, language);
+      passwordForm.setFields([
+        { name: 'username', errors: [loginError] },
+        { name: 'password', errors: [loginError] },
+      ]);
+      message.error(loginError);
     } finally {
       setLoading(false);
     }
   };
 
   const sendEmailCode = async () => {
+    if (!emailCodeEnabled) {
+      message.warning(t('pages.auth.emailCodeUnavailable'));
+      return;
+    }
     try {
       const { email } = await emailForm.validateFields(['email']);
       const normalizedEmail = normalizeEmail(email);
@@ -177,7 +279,7 @@ const Login: React.FC = () => {
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
         message.error(errorMessage);
       } else {
-        message.error(t('pages.auth.emailLoginFailed'));
+        message.error(getApiErrorMessage(error, t('pages.auth.emailLoginFailed'), language));
       }
     } finally {
       setLoading(false);
@@ -284,11 +386,23 @@ const Login: React.FC = () => {
                 key: 'password',
                 label: t('pages.auth.passwordLogin'),
                 children: (
-                  <Form name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">
-                    <Form.Item name="username" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
-                      <Input prefix={<UserOutlined />} placeholder={t('pages.auth.username')} size="large" autoComplete="username" />
+                  <Form form={passwordForm} name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">
+                    <Form.Item name="username" rules={[
+                      { required: true, message: t('pages.auth.usernameRequired') },
+                      { min: 3, message: t('pages.auth.usernameMinLength') },
+                    ]}>
+                      <Input
+                        prefix={<UserOutlined />}
+                        placeholder={t('pages.auth.username')}
+                        size="large"
+                        autoComplete="username"
+                        onBlur={(event) => passwordForm.setFieldValue('username', normalizePasswordLogin(event.target.value))}
+                      />
                     </Form.Item>
-                    <Form.Item name="password" rules={[{ required: true, message: t('pages.auth.passwordRequired') }]}>
+                    <Form.Item name="password" rules={[
+                      { required: true, message: t('pages.auth.passwordRequired') },
+                      { min: 8, message: t('pages.auth.passwordMinLength') },
+                    ]}>
                       <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.password')} size="large" autoComplete="current-password" />
                     </Form.Item>
                     <Form.Item>
@@ -321,8 +435,14 @@ const Login: React.FC = () => {
                   >
                     <div className="shopee-login-emailHint">
                       <MailOutlined />
-                      <span>{t('pages.auth.emailLoginHint')}</span>
+                      <span>{appConfigLoading ? t('common.loading') : t('pages.auth.emailLoginHint')}</span>
                     </div>
+                    {!emailCodeEnabled && !appConfigLoading && (
+                      <div className="shopee-login-emailHint shopee-login-emailHint--warning" role="status">
+                        <SafetyCertificateOutlined />
+                        <span>{t('pages.auth.emailCodeUnavailable')}</span>
+                      </div>
+                    )}
                     {sentEmailHint && (
                       <div className="shopee-login-emailSent" role="status">
                         <SafetyCertificateOutlined />
@@ -348,7 +468,7 @@ const Login: React.FC = () => {
                         size="large"
                         autoComplete="email"
                         allowClear
-                        disabled={loading}
+                        disabled={loading || !emailCodeEnabled}
                         aria-label={t('pages.auth.email')}
                       />
                     </Form.Item>
@@ -371,7 +491,7 @@ const Login: React.FC = () => {
                         inputMode="numeric"
                         pattern="[0-9]*"
                         enterKeyHint="done"
-                        disabled={loading}
+                        disabled={loading || !emailCodeEnabled}
                         aria-label={t('pages.auth.verificationCode')}
                         onChange={(event) => {
                           const normalized = normalizeEmailCode(event.target.value);
@@ -385,7 +505,7 @@ const Login: React.FC = () => {
                             size="small"
                             className="shopee-login-codeButton"
                             loading={codeSending}
-                            disabled={loading || codeSending || sendCodeCountdown > 0}
+                            disabled={loading || codeSending || sendCodeCountdown > 0 || !emailCodeEnabled}
                             onClick={sendEmailCode}
                             aria-label={codeSending
                               ? t('pages.auth.emailCodeSending')

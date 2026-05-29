@@ -24,6 +24,19 @@ public class MailAccountProperties {
     private String redisKeyPrefix = "shop:mail-code";
     private String codePepper = "";
 
+    public boolean hasConfiguredAccount() {
+        return accounts.stream().anyMatch(account -> !isBlank(account.getHost())
+                && account.getPort() != null
+                && account.getPort() > 0
+                && !isBlank(account.getUsername())
+                && !isBlank(account.getPassword())
+                && !isBlank(account.getFrom()));
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
     @Data
     public static class Account {
         private String host;

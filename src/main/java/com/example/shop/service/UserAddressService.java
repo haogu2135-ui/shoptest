@@ -12,6 +12,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserAddressService {
     private final UserAddressMapper userAddressMapper;
+    private final RuntimeConfigService runtimeConfig;
 
     public List<UserAddress> getAddresses(Long userId) {
         return userAddressMapper.findByUserId(userId);
@@ -27,8 +28,17 @@ public class UserAddressService {
 
     @Transactional
     public void addAddress(UserAddress address) {
+        normalizeAddress(address);
         List<UserAddress> existing = userAddressMapper.findByUserId(address.getUserId());
-        address.setIsDefault(existing.isEmpty());
+        int maxAddresses = normalizedMaxAddressesPerUser();
+        if (existing.size() >= maxAddresses) {
+            throw new IllegalStateException("Address limit reached");
+        }
+        boolean shouldBeDefault = existing.isEmpty() || Boolean.TRUE.equals(address.getIsDefault());
+        if (shouldBeDefault && !existing.isEmpty()) {
+            userAddressMapper.clearDefault(address.getUserId());
+        }
+        address.setIsDefault(shouldBeDefault);
         address.setCreatedAt(LocalDateTime.now());
         address.setUpdatedAt(LocalDateTime.now());
         userAddressMapper.insert(address);
@@ -36,6 +46,7 @@ public class UserAddressService {
 
     @Transactional
     public void updateAddress(UserAddress address) {
+        normalizeAddress(address);
         address.setUpdatedAt(LocalDateTime.now());
         if (userAddressMapper.update(address) == 0) {
             throw new IllegalStateException("Address update failed");
@@ -69,5 +80,39 @@ public class UserAddressService {
         if (updated == 0) {
             throw new IllegalStateException("Default address update failed");
         }
+    }
+
+    private void normalizeAddress(UserAddress address) {
+        if (address == null) {
+            throw new IllegalArgumentException("Address is required");
+        }
+        if (address.getUserId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+        address.setRecipientName(normalizeRequiredText(address.getRecipientName(), "Recipient name",
+                runtimeConfig.getInt("user-address.recipient-name-max-chars", 80)));
+        address.setPhone(normalizeRequiredText(address.getPhone(), "Phone number",
+                runtimeConfig.getInt("user-address.phone-max-chars", 30)));
+        address.setAddress(normalizeRequiredText(address.getAddress(), "Address",
+                runtimeConfig.getInt("user-address.address-max-chars", 500)));
+    }
+
+    private String normalizeRequiredText(String value, String field, int maxLength) {
+        String normalized = value == null ? "" : value
+                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException(field + " is required");
+        }
+        int safeMaxLength = Math.max(1, maxLength);
+        if (normalized.length() > safeMaxLength) {
+            throw new IllegalArgumentException(field + " is too long");
+        }
+        return normalized;
+    }
+
+    private int normalizedMaxAddressesPerUser() {
+        return Math.max(1, Math.min(runtimeConfig.getInt("user-address.max-per-user", 20), 100));
     }
 }

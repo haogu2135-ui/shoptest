@@ -6,6 +6,7 @@ import com.shop.entity.Order;
 import com.shop.entity.Payment;
 import com.shop.repository.OrderRepository;
 import com.shop.repository.PaymentRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,14 +20,20 @@ public class PaymentService {
     private final AlipayClient alipayClient;
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final String backendBaseUrl;
+    private final String storefrontBaseUrl;
 
     public PaymentService(
             AlipayClient alipayClient,
             PaymentRepository paymentRepository,
-            OrderRepository orderRepository) {
+            OrderRepository orderRepository,
+            @Value("${app.backend-base-url:http://158.101.11.223:8081}") String backendBaseUrl,
+            @Value("${app.storefront-base-url:https://pet.686888666.xyz}") String storefrontBaseUrl) {
         this.alipayClient = alipayClient;
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.backendBaseUrl = normalizeBaseUrl(backendBaseUrl, "http://158.101.11.223:8081");
+        this.storefrontBaseUrl = normalizeBaseUrl(storefrontBaseUrl, "https://pet.686888666.xyz");
     }
 
     @Transactional
@@ -54,8 +61,8 @@ public class PaymentService {
 
     private String createAlipayPayment(Order order, Payment payment) throws Exception {
         AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
-        request.setNotifyUrl("http://localhost:8080/api/payment/notify");
-        request.setReturnUrl("http://localhost:3000/payment/result");
+        request.setNotifyUrl(backendBaseUrl + "/api/payment/notify");
+        request.setReturnUrl(storefrontBaseUrl + "/payment/result");
 
         String bizContent = String.format(
             "{\"out_trade_no\":\"%s\"," +
@@ -69,6 +76,11 @@ public class PaymentService {
         request.setBizContent(bizContent);
 
         return alipayClient.pageExecute(request).getBody();
+    }
+
+    private String normalizeBaseUrl(String value, String fallback) {
+        String normalized = value == null ? "" : value.trim().replaceAll("/+$", "");
+        return normalized.isEmpty() ? fallback : normalized;
     }
 
     @Transactional

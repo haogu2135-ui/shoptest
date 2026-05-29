@@ -1,21 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Modal, Radio, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Modal, Radio, Space, Tag, Typography, message } from 'antd';
 import { SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
-import { createPaymentMethodOptions, fallbackPaymentChannels, PaymentMethod } from '../utils/paymentMethods';
+import { createPaymentMethodOptions, PaymentMethod } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { navigateToSafeUrl } from '../utils/safeUrl';
+import { getApiErrorMessage } from '../utils/apiError';
 import type { PaymentChannel } from '../types';
 import './Payment.css';
 
 const { Text, Title } = Typography;
 const getDefaultPaymentMethod = (channels: PaymentChannel[]) =>
-    channels.find((channel) => channel.recommended)?.code || channels[0]?.code || 'STRIPE';
+    channels.find((channel) => channel.recommended)?.code || channels[0]?.code || '';
 
 interface PaymentProps {
     amount: number;
     orderId: number;
+    orderNo?: string;
+    guestEmail?: string;
     onSuccess: () => void;
     onCancel: () => void;
 }
@@ -23,13 +26,15 @@ interface PaymentProps {
 export const Payment: React.FC<PaymentProps> = ({
     amount,
     orderId,
+    orderNo,
+    guestEmail,
     onSuccess,
     onCancel,
 }) => {
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => getDefaultPaymentMethod(fallbackPaymentChannels));
-    const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>(fallbackPaymentChannels);
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('');
+    const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
     const [loading, setLoading] = useState(false);
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const { formatMoney } = useMarket();
     const paymentOptions = useMemo(() => createPaymentMethodOptions(t, paymentChannels), [paymentChannels, t]);
     const selectedChannel = useMemo(
@@ -44,13 +49,13 @@ export const Payment: React.FC<PaymentProps> = ({
     useEffect(() => {
         paymentApi.getChannels()
             .then((res) => {
-                const channels = res.data.length > 0 ? res.data : fallbackPaymentChannels;
+                const channels = res.data;
                 setPaymentChannels(channels);
                 setPaymentMethod(getDefaultPaymentMethod(channels));
             })
             .catch(() => {
-                setPaymentChannels(fallbackPaymentChannels);
-                setPaymentMethod(getDefaultPaymentMethod(fallbackPaymentChannels));
+                setPaymentChannels([]);
+                setPaymentMethod('');
             });
     }, []);
 
@@ -60,20 +65,26 @@ export const Payment: React.FC<PaymentProps> = ({
             const safePaymentMethod = paymentChannels.some((channel) => channel.code === paymentMethod)
                 ? paymentMethod
                 : getDefaultPaymentMethod(paymentChannels);
+            if (!safePaymentMethod) {
+                message.error(t('pages.checkout.paymentUnavailable'));
+                return;
+            }
             if (safePaymentMethod !== paymentMethod) {
                 setPaymentMethod(safePaymentMethod);
             }
-            const response = await paymentApi.create(orderId, safePaymentMethod);
+            const response = await paymentApi.create(orderId, safePaymentMethod, guestEmail, orderNo);
             const payment = response.data;
             if (payment.paymentUrl) {
                 if (!navigateToSafeUrl(payment.paymentUrl)) {
                     message.error(t('pages.payment.failed'));
                     return;
                 }
+                message.success(t('pages.checkout.paymentReady'));
+                return;
             }
             onSuccess();
         } catch (error: any) {
-            message.error(error?.response?.data?.error || t('pages.payment.createFailed'));
+            message.error(getApiErrorMessage(error, t('pages.payment.createFailed'), language));
         } finally {
             setLoading(false);
         }
@@ -85,12 +96,12 @@ export const Payment: React.FC<PaymentProps> = ({
             open={true}
             onCancel={onCancel}
             footer={null}
-            className="payment-modal"
+            className="profile-mobile-safe-modal payment-modal"
         >
             <Space direction="vertical" className="payment-modal__content">
                 <div className="payment-modal__summary">
                     <Text className="payment-modal__eyebrow">{t('pages.payment.secureEyebrow')}</Text>
-                    <Title level={3}>{t('pages.payment.amount', { amount: formattedAmount })}</Title>
+                    <Title level={3} className="commerce-money">{t('pages.payment.amount', { amount: formattedAmount })}</Title>
                     <Text type="secondary">{t('pages.payment.secureSubtitle')}</Text>
                     <div className="payment-modal__badges">
                         <Tag icon={<SafetyCertificateOutlined />} color="green">{t('pages.payment.encrypted')}</Tag>
@@ -106,6 +117,9 @@ export const Payment: React.FC<PaymentProps> = ({
                     className="payment-modal__methodGroup"
                 >
                     <Space direction="vertical" className="payment-modal__methodList">
+                        {paymentOptions.length === 0 ? (
+                            <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
+                        ) : null}
                         {paymentOptions.map((option) => (
                             <Radio.Button key={option.value} value={option.value} className="payment-modal__method">
                                 <Space>{option.label}</Space>
@@ -126,6 +140,7 @@ export const Payment: React.FC<PaymentProps> = ({
                     block
                     onClick={handlePayment}
                     loading={loading}
+                    disabled={paymentOptions.length === 0}
                     className="payment-modal__confirm"
                 >
                     {t('pages.payment.confirm')}

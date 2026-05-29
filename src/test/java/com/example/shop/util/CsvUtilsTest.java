@@ -11,11 +11,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class CsvUtilsTest {
     @Test
     void escapesFormulaLikeCellsForSpreadsheetExports() {
-        assertEquals("'=SUM(A1:A2),'+1,'-2,'@cmd", CsvUtils.row(List.of(
+        assertEquals("'=SUM(A1:A2),'+1,'-2,'@cmd,'  =1,'\t@cmd", CsvUtils.row(List.of(
                 "=SUM(A1:A2)",
                 "+1",
                 "-2",
-                "@cmd"
+                "@cmd",
+                "  =1",
+                "\t@cmd"
         )));
     }
 

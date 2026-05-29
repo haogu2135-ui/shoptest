@@ -117,6 +117,8 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                   <Select
                     className="product-rich-detail-editor__typeSelect"
                     value={block.type}
+                    popupClassName="shop-mobile-popup-layer"
+                    getPopupContainer={() => document.body}
                     options={[
                       { value: 'text', label: t('pages.productAdmin.richText') },
                       { value: 'image', label: t('pages.productAdmin.richImage') },

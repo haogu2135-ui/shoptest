@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: ${SPRING_APPLICATION_NAME:shop-gateway}
+    name: ${GATEWAY_APPLICATION_NAME:${SPRING_APPLICATION_NAME:shop-gateway}}
   cloud:
     nacos:
       discovery:
@@ -20,7 +20,7 @@ spring:
         add-to-simple-url-handler-mapping: true
         corsConfigurations:
           '[/**]':
-            allowedOriginPatterns: ${GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://10.*:*,http://172.*:*,http://192.168.*:*}
+            allowedOriginPatterns: ${GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:https://pet.686888666.xyz,http://localhost:*,http://127.0.0.1:*,http://10.*:*,http://172.*:*,http://192.168.*:*}
             allowedMethods:
               - GET
               - POST
@@ -36,6 +36,13 @@ spring:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials X-Request-Id, RETAIN_FIRST
       routes:
+        # Nginx serves the static storefront at / and proxies /api/* to this gateway
+        # with the /api prefix stripped. Keep these direct paths alongside the
+        # namespaced /gateway/* routes so production same-origin API calls work.
+        - id: shop-direct-api
+          uri: lb://shop-backend
+          predicates:
+            - Path=/app,/app/**,/auth,/auth/**,/users,/users/**,/products,/products/**,/categories,/categories/**,/brands,/brands/**,/reviews,/reviews/**,/product-questions,/product-questions/**,/pet-gallery,/pet-gallery/**,/addresses,/addresses/**,/wishlist,/wishlist/**,/pet-profiles,/pet-profiles/**,/cart,/cart/**,/coupons,/coupons/**,/orders,/orders/**,/payments,/payments/**,/support,/support/**,/notifications,/notifications/**,/announcements,/announcements/**,/logistics,/logistics/**,/admin,/admin/**
         - id: shop-app
           uri: lb://shop-backend
           predicates:

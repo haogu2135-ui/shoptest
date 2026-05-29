@@ -149,7 +149,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
                 token = token.substring(7);
             }
             String username = jwtService.extractUsername(token);
-            User user = userMapper.findByUsernameOrPhone(username);
+            User user = userMapper.findByUsernameOrPhoneOrEmail(username);
             if (user == null || "BANNED".equalsIgnoreCase(user.getStatus()) || !jwtService.isTokenValid(token, UserDetailsImpl.build(user))) {
                 return null;
             }

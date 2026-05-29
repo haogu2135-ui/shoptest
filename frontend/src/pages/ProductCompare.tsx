@@ -322,9 +322,9 @@ const ProductCompare: React.FC = () => {
       isDifferent: priceDifferent,
       render: (product: Product) => (
         <Space direction="vertical" size={0}>
-          <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(getPrice(product))}</Text>
+          <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(getPrice(product))}</Text>
           {product.originalPrice && product.originalPrice > getPrice(product) ? (
-            <Text delete type="secondary">{formatMoney(product.originalPrice)}</Text>
+            <Text delete type="secondary" className="commerce-money">{formatMoney(product.originalPrice)}</Text>
           ) : null}
         </Space>
       ),
@@ -494,7 +494,7 @@ const ProductCompare: React.FC = () => {
                 </div>
                 <div className="product-compare__decisionItem is-warm">
                   <FireOutlined />
-                  <strong>{compareDecision.bestValue ? formatMoney(getPrice(compareDecision.bestValue)) : '-'}</strong>
+                  <strong className="commerce-money">{compareDecision.bestValue ? formatMoney(getPrice(compareDecision.bestValue)) : '-'}</strong>
                   <span>{t('pages.compare.bestValue')}</span>
                 </div>
                 <div className="product-compare__decisionItem is-ok">
@@ -547,7 +547,7 @@ const ProductCompare: React.FC = () => {
               </div>
               <div className="product-compare__riskGrid">
                 <div>
-                  <strong>{formatMoney(compareDecision.priceSpread)}</strong>
+                  <strong className="commerce-money">{formatMoney(compareDecision.priceSpread)}</strong>
                   <span>{t('pages.compare.priceSpread')}</span>
                 </div>
                 <div>

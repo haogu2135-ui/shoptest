@@ -62,7 +62,19 @@ public class LogisticsService {
         if (!isBlank(runtimeConfig.getString("logistics.api-url", ""))) {
             return trackWithProvider(normalizedTrackingNumber, normalizedCarrier);
         }
+        if (isProductionMode()) {
+            throw new IllegalStateException("Production logistics tracking provider is not configured");
+        }
         return mockTrack(normalizedTrackingNumber, normalizedCarrier);
+    }
+
+    private boolean isProductionMode() {
+        String mode = runtimeConfig.getString("app.runtime-mode", "production");
+        if (mode == null) {
+            mode = "production";
+        }
+        mode = mode.trim().toLowerCase(Locale.ROOT);
+        return "production".equals(mode) || "prod".equals(mode);
     }
 
     private boolean shouldUseKuaidi100(Order order) {

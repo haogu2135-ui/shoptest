@@ -163,6 +163,8 @@
 
   .brand-management-page__toolbar .ant-space,
   .brand-management-page__toolbar .ant-space-item,
+  .brand-management-page__toolbar .ant-input-affix-wrapper,
+  .brand-management-page__toolbar .ant-select,
   .brand-management-page__toolbar .ant-btn {
     width: 100%;
   }
@@ -227,6 +229,14 @@
 .brand-management-page__preview {
   margin-bottom: 16px;
   text-align: center;
+}
+
+.brand-management-page__keywordInput {
+  width: 260px;
+}
+
+.brand-management-page__statusFilterSelect {
+  width: 160px;
 }
 
 .brand-management-page__formRow {
@@ -484,7 +494,9 @@
     max-width: 100%;
   }
 
-  .brand-management-page__toolbar .ant-space {
+  .brand-management-page__toolbar .ant-space,
+  .brand-management-page__toolbar .ant-input-affix-wrapper,
+  .brand-management-page__toolbar .ant-select {
     width: 100%;
   }
 

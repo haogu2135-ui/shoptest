@@ -49,6 +49,7 @@ import java.util.UUID;
 
 @Service
 public class PaymentService {
+    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
     private static final String PENDING = "PENDING";
     private static final String PAID = "PAID";
     private static final String FAILED = "FAILED";
@@ -62,6 +63,8 @@ public class PaymentService {
     @Autowired
     private PaymentChannelConfig paymentChannelConfig;
     @Autowired
+    private PaymentChannelAvailabilityService paymentChannelAvailabilityService;
+    @Autowired
     private RuntimeConfigService runtimeConfig;
     @Autowired
     private CircuitBreakerService circuitBreakerService;
@@ -71,16 +74,19 @@ public class PaymentService {
 
     @Transactional
     public Payment createPayment(PaymentCreateRequest request) {
+        if (request == null || request.getOrderId() == null || request.getOrderId() <= 0) {
+            throw new IllegalArgumentException("Order id is required");
+        }
         Order order = orderService.getOrderById(request.getOrderId());
         if (order == null) {
             throw new IllegalArgumentException("Order not found");
         }
+        validateOrderReadyForPayment(order);
         if (!"PENDING_PAYMENT".equals(order.getStatus())) {
             throw new IllegalStateException("Only pending-payment orders can create payment");
         }
 
-        PaymentChannelConfig.Channel channelConfig = paymentChannelConfig.requireEnabled(request.getChannel());
-        assertChannelAvailableForCheckout(channelConfig);
+        PaymentChannelConfig.Channel channelConfig = paymentChannelAvailabilityService.requireAvailableForCheckout(request.getChannel());
         String channel = channelConfig.getCode();
         Payment existingForChannel = paymentRepository.findByOrderIdAndChannel(order.getId(), channel);
         if (existingForChannel != null) {
@@ -318,20 +324,7 @@ public class PaymentService {
     }
 
     public boolean isChannelAvailableForCheckout(PaymentChannelConfig.Channel channelConfig) {
-        if (channelConfig == null || !channelConfig.isEnabled()) {
-            return false;
-        }
-        if (!isProductionMode()) {
-            return true;
-        }
-        if (channelConfig.isStripeProvider()) {
-            return !isBlank(stripeSecretKey());
-        }
-        if (channelConfig.isGenericApiProvider()) {
-            return !isBlank(channelConfig.getCreateUrl());
-        }
-        String configuredUrl = firstNonBlank(channelConfig.getCheckoutUrl(), paymentChannelConfig.getCheckoutBaseUrl());
-        return !isBlank(configuredUrl) && !configuredUrl.contains("pay.example.local");
+        return paymentChannelAvailabilityService.isChannelAvailableForCheckout(channelConfig);
     }
 
     @Scheduled(fixedDelayString = "${payment.expiry-scan-ms:60000}")
@@ -364,6 +357,7 @@ public class PaymentService {
     }
 
     private Payment createRedirectPayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
+        validateOrderReadyForPayment(order);
         Payment payment = new Payment();
         payment.setOrderId(order.getId());
         payment.setOrderNo(order.getOrderNo());
@@ -380,7 +374,7 @@ public class PaymentService {
 
     private void expirePayment(Payment payment) {
         int updated = paymentRepository.markExpired(payment.getId());
-        if (updated > 0) {
+        if (updated > 0 && paymentRepository.countActivePendingByOrderId(payment.getOrderId()) == 0) {
             try {
                 orderService.cancelOrder(payment.getOrderId());
             } catch (IllegalStateException ignored) {
@@ -390,6 +384,7 @@ public class PaymentService {
     }
 
     private Payment refreshPayment(Payment payment, Order order, String channel) {
+        validateOrderReadyForPayment(order);
         LocalDateTime now = LocalDateTime.now();
         PaymentChannelConfig.Channel channelConfig = paymentChannelConfig.requireEnabled(channel);
         if (channelConfig.isStripeProvider()) {
@@ -414,6 +409,7 @@ public class PaymentService {
     }
 
     private Payment createStripePayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
+        validateOrderReadyForPayment(order);
         String secretKey = stripeSecretKey();
         if (isBlank(secretKey)) {
             throw new IllegalStateException("Stripe secret key is not configured");
@@ -476,12 +472,17 @@ public class PaymentService {
     }
 
     private Payment createGenericApiPayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
+        validateOrderReadyForPayment(order);
         String createUrl = trimToNull(channelConfig.getCreateUrl());
         if (createUrl == null) {
             throw new IllegalStateException("Create payment URL is not configured for channel " + channelConfig.getCode());
         }
         createUrl = GatewayUrlValidator.requireOutboundHttpUrl(createUrl, paymentGatewayAllowLocal(), "Create payment URL");
-        ResponseEntity<String> response = requestGenericApiPayment(order, channelConfig, createUrl);
+        ResponseEntity<String> response = requestGenericApiPayment(
+                order,
+                channelConfig,
+                createUrl,
+                paymentCreateIdempotencyKey(order, channelConfig));
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new IllegalStateException("Gateway create payment failed with status " + response.getStatusCodeValue());
         }
@@ -508,7 +509,11 @@ public class PaymentService {
             throw new IllegalStateException("Create payment URL is not configured for channel " + channelConfig.getCode());
         }
         createUrl = GatewayUrlValidator.requireOutboundHttpUrl(createUrl, paymentGatewayAllowLocal(), "Create payment URL");
-        ResponseEntity<String> response = requestGenericApiPayment(order, channelConfig, createUrl);
+        ResponseEntity<String> response = requestGenericApiPayment(
+                order,
+                channelConfig,
+                createUrl,
+                paymentRefreshIdempotencyKey(order, payment, channelConfig));
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new IllegalStateException("Gateway create payment failed with status " + response.getStatusCodeValue());
         }
@@ -529,7 +534,10 @@ public class PaymentService {
         return paymentRepository.findById(payment.getId());
     }
 
-    private ResponseEntity<String> requestGenericApiPayment(Order order, PaymentChannelConfig.Channel channelConfig, String createUrl) {
+    private ResponseEntity<String> requestGenericApiPayment(Order order,
+                                                            PaymentChannelConfig.Channel channelConfig,
+                                                            String createUrl,
+                                                            String idempotencyKey) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("orderId", order.getId());
         payload.put("orderNo", order.getOrderNo());
@@ -538,13 +546,14 @@ public class PaymentService {
         payload.put("currency", resolveCurrency(channelConfig));
         payload.put("expiresMinutes", resolveTimeoutMinutes(channelConfig));
         payload.put("merchantId", trimToNull(channelConfig.getMerchantId()));
-        payload.put("returnUrl", paymentSuccessUrl());
-        payload.put("cancelUrl", paymentCancelUrl());
+        payload.put("returnUrl", contextualPaymentSuccessUrl(order));
+        payload.put("cancelUrl", contextualPaymentCancelUrl(order));
+        payload.put("idempotencyKey", idempotencyKey);
         try {
             return circuitBreakerService.execute("payment-create-" + channelConfig.getCode(), () -> restTemplate.exchange(
                     createUrl,
                     HttpMethod.POST,
-                    new HttpEntity<>(payload, buildGatewayHeaders(channelConfig)),
+                    new HttpEntity<>(payload, buildGatewayHeaders(channelConfig, idempotencyKey)),
                     String.class));
         } catch (RestClientException e) {
             throw new IllegalStateException("Gateway create payment request failed: " + e.getMessage());
@@ -609,8 +618,8 @@ public class PaymentService {
         metadata.put("orderNo", order.getOrderNo());
         return SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(stripeSuccessUrl() + (stripeSuccessUrl().contains("?") ? "&" : "?") + "orderNo=" + order.getOrderNo())
-                .setCancelUrl(stripeCancelUrl() + (stripeCancelUrl().contains("?") ? "&" : "?") + "orderNo=" + order.getOrderNo())
+                .setSuccessUrl(contextualStripeSuccessUrl(order))
+                .setCancelUrl(contextualStripeCancelUrl(order))
                 .setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
                         .putAllMetadata(metadata)
                         .build())
@@ -700,6 +709,20 @@ public class PaymentService {
         if (!"PENDING_PAYMENT".equals(order.getStatus())) {
             throw new IllegalStateException("Order is no longer awaiting payment");
         }
+        validateOrderReadyForPayment(order);
+    }
+
+    private void validateOrderReadyForPayment(Order order) {
+        if (order == null) {
+            throw new IllegalStateException("Order not found");
+        }
+        if (trimToNull(order.getOrderNo()) == null) {
+            throw new IllegalStateException("Order number is missing");
+        }
+        BigDecimal amount = order.getTotalAmount();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Order amount is invalid");
+        }
     }
 
     private boolean isExpired(Payment payment) {
@@ -737,7 +760,7 @@ public class PaymentService {
     }
 
     private void assertChannelAvailableForCheckout(PaymentChannelConfig.Channel channelConfig) {
-        if (!isChannelAvailableForCheckout(channelConfig)) {
+        if (!paymentChannelAvailabilityService.isChannelAvailableForCheckout(channelConfig)) {
             throw new IllegalStateException("Payment channel is not configured for checkout");
         }
     }
@@ -745,13 +768,43 @@ public class PaymentService {
     private String buildPaymentUrl(Order order, PaymentChannelConfig.Channel channel, LocalDateTime expiresAt) {
         String configuredUrl = firstNonBlank(channel.getCheckoutUrl(), paymentChannelConfig.getCheckoutBaseUrl());
         String baseUrl = isBlank(configuredUrl)
-                ? "https://pay.example.local/checkout"
+                ? storefrontBaseUrl() + "/payment"
                 : configuredUrl.trim().replaceAll("/+$", "");
+        String guestEmail = guestEmailForOrder(order);
+        String guestQuery = guestEmail == null ? "" : "&guestEmail=" + urlEncode(guestEmail);
         return baseUrl + "/" + urlEncode(order.getOrderNo())
                 + "?channel=" + urlEncode(channel.getCode())
                 + "&amount=" + urlEncode(order.getTotalAmount().stripTrailingZeros().toPlainString())
                 + "&currency=" + urlEncode(resolveCurrency(channel))
-                + "&expiresAt=" + urlEncode(expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                + "&expiresAt=" + urlEncode(expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                + guestQuery;
+    }
+
+    private String extractGuestEmail(String shippingAddress) {
+        if (shippingAddress == null || !shippingAddress.startsWith("[Guest]")) {
+            return null;
+        }
+        String[] parts = shippingAddress.split(" / ");
+        for (String part : parts) {
+            String email = normalizeEmail(part);
+            if (email != null) {
+                return email;
+            }
+        }
+        return null;
+    }
+
+    private String guestEmailForOrder(Order order) {
+        return order == null ? null : extractGuestEmail(order.getShippingAddress());
+    }
+
+    private String normalizeEmail(String value) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        return normalized.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$") ? normalized : null;
     }
 
     private long resolveTimeoutMinutes(PaymentChannelConfig.Channel channel) {
@@ -801,14 +854,22 @@ public class PaymentService {
     public boolean isPaymentSimulationEnabled() {
         String mode = runtimeMode();
         boolean productionMode = "production".equals(mode) || "prod".equals(mode);
-        if (productionMode && !runtimeConfig.getBoolean("payment.simulation-allow-production", false)) {
-            return false;
+        if (productionMode) {
+            boolean runtimeAllowsSimulation = runtimeConfig.getBoolean("payment.simulation-allow-production", false);
+            if (!runtimeAllowsSimulation || !hostAllowsProductionPaymentSimulation()) {
+                return false;
+            }
         }
         String paymentSimulationEnabled = runtimeConfig.getString("payment.simulation-enabled", "");
         if (!isBlank(paymentSimulationEnabled)) {
             return Boolean.parseBoolean(paymentSimulationEnabled.trim());
         }
         return "debug".equals(mode) || "dev".equals(mode) || "test".equals(mode);
+    }
+
+    private boolean hostAllowsProductionPaymentSimulation() {
+        return "true".equalsIgnoreCase(System.getenv("PAYMENT_SIMULATION_ALLOW_PRODUCTION"))
+                || Boolean.getBoolean("PAYMENT_SIMULATION_ALLOW_PRODUCTION");
     }
 
     private String sha256(String value) {
@@ -829,15 +890,24 @@ public class PaymentService {
         return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 
-    private HttpHeaders buildGatewayHeaders(PaymentChannelConfig.Channel channel) {
+    private HttpHeaders buildGatewayHeaders(PaymentChannelConfig.Channel channel, String idempotencyKey) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Idempotency-Key", idempotencyKey);
         String authHeaderName = trimToNull(channel.getAuthHeaderName());
         String authHeaderValue = trimToNull(channel.getAuthHeaderValue());
         if (authHeaderName != null && authHeaderValue != null) {
             headers.set(authHeaderName, authHeaderValue);
         }
         return headers;
+    }
+
+    private String paymentCreateIdempotencyKey(Order order, PaymentChannelConfig.Channel channel) {
+        return "payment-create-" + order.getId() + "-" + channel.getCode();
+    }
+
+    private String paymentRefreshIdempotencyKey(Order order, Payment payment, PaymentChannelConfig.Channel channel) {
+        return "payment-refresh-" + order.getId() + "-" + payment.getId() + "-" + channel.getCode();
     }
 
     private String readText(JsonNode root, String fieldName) {
@@ -888,20 +958,78 @@ public class PaymentService {
         return runtimeConfig.getString("stripe.webhook-secret", "");
     }
 
+    private String storefrontBaseUrl() {
+        String configured = trimToNull(runtimeConfig.getString("app.storefront-base-url", DEFAULT_STOREFRONT_BASE_URL));
+        return (configured == null ? DEFAULT_STOREFRONT_BASE_URL : configured).replaceAll("/+$", "");
+    }
+
     private String stripeSuccessUrl() {
-        return runtimeConfig.getString("stripe.checkout-success-url", "http://localhost:3000/profile?payment=success");
+        return firstNonBlank(
+                runtimeConfig.getString("stripe.checkout-success-url", ""),
+                storefrontBaseUrl() + "/profile?payment=success");
     }
 
     private String stripeCancelUrl() {
-        return runtimeConfig.getString("stripe.checkout-cancel-url", "http://localhost:3000/cart?payment=cancelled");
+        return firstNonBlank(
+                runtimeConfig.getString("stripe.checkout-cancel-url", ""),
+                storefrontBaseUrl() + "/cart?payment=cancelled");
     }
 
     private String paymentSuccessUrl() {
-        return runtimeConfig.getString("payment.success-url", "http://localhost:3000/profile?payment=success");
+        return firstNonBlank(
+                runtimeConfig.getString("payment.success-url", ""),
+                storefrontBaseUrl() + "/profile?payment=success");
     }
 
     private String paymentCancelUrl() {
-        return runtimeConfig.getString("payment.cancel-url", "http://localhost:3000/cart?payment=cancelled");
+        return firstNonBlank(
+                runtimeConfig.getString("payment.cancel-url", ""),
+                storefrontBaseUrl() + "/cart?payment=cancelled");
+    }
+
+    private String contextualStripeSuccessUrl(Order order) {
+        return contextualReturnUrl(stripeSuccessUrl(), order, "payment", "success");
+    }
+
+    private String contextualStripeCancelUrl(Order order) {
+        return contextualReturnUrl(stripeCancelUrl(), order, "payment", "cancelled");
+    }
+
+    private String contextualPaymentSuccessUrl(Order order) {
+        return contextualReturnUrl(paymentSuccessUrl(), order, "payment", "success");
+    }
+
+    private String contextualPaymentCancelUrl(Order order) {
+        return contextualReturnUrl(paymentCancelUrl(), order, "payment", "cancelled");
+    }
+
+    private String contextualReturnUrl(String configuredUrl, Order order, String statusKey, String statusValue) {
+        String guestEmail = guestEmailForOrder(order);
+        String baseUrl = trimToNull(configuredUrl);
+        if (guestEmail != null) {
+            baseUrl = storefrontBaseUrl() + "/track-order";
+        }
+        if (baseUrl == null) {
+            baseUrl = guestEmail == null
+                    ? storefrontBaseUrl() + "/profile"
+                    : storefrontBaseUrl() + "/track-order";
+        }
+        String url = appendQueryParam(baseUrl, "orderNo", order == null ? null : order.getOrderNo());
+        if (guestEmail != null) {
+            url = appendQueryParam(url, "guestEmail", guestEmail);
+        }
+        return appendQueryParam(url, statusKey, statusValue);
+    }
+
+    private String appendQueryParam(String url, String key, String value) {
+        String normalizedUrl = trimToNull(url);
+        String normalizedKey = trimToNull(key);
+        String normalizedValue = trimToNull(value);
+        if (normalizedUrl == null || normalizedKey == null || normalizedValue == null) {
+            return normalizedUrl == null ? "" : normalizedUrl;
+        }
+        String separator = normalizedUrl.contains("?") ? "&" : "?";
+        return normalizedUrl + separator + urlEncode(normalizedKey) + "=" + urlEncode(normalizedValue);
     }
 
     private long stripeCheckoutExpireMinutes() {

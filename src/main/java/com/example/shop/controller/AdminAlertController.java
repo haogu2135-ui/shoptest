@@ -50,9 +50,15 @@ public class AdminAlertController {
     @PostMapping("/self-check")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void runSelfCheck(Authentication authentication, HttpServletRequest request) {
-        systemAlertService.runSelfCheck();
-        auditLogService.record("ALERT_SELF_CHECK", "SUCCESS", authentication, "SYSTEM_ALERT", "self-check", request,
-                "System alert self-check executed", "");
+        try {
+            systemAlertService.runSelfCheck();
+            auditLogService.record("ALERT_SELF_CHECK", "SUCCESS", authentication, "SYSTEM_ALERT", "self-check", request,
+                    "System alert self-check executed", "");
+        } catch (RuntimeException e) {
+            auditLogService.record("ALERT_SELF_CHECK", "FAILURE", authentication, "SYSTEM_ALERT", "self-check", request,
+                    e.getMessage(), "");
+            throw e;
+        }
     }
 
     @PostMapping("/{id}/acknowledge")
@@ -60,11 +66,17 @@ public class AdminAlertController {
                                    @RequestBody(required = false) SystemAlertActionRequest body,
                                    Authentication authentication,
                                    HttpServletRequest request) {
-        SystemAlert alert = systemAlertService.acknowledge(id, actor(authentication))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found"));
-        auditLogService.record("ALERT_ACKNOWLEDGE", "SUCCESS", authentication, "SYSTEM_ALERT", id, request,
-                "System alert acknowledged", body == null ? "" : safe(body.getNote()));
-        return alert;
+        try {
+            SystemAlert alert = systemAlertService.acknowledge(id, actor(authentication))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found"));
+            auditLogService.record("ALERT_ACKNOWLEDGE", "SUCCESS", authentication, "SYSTEM_ALERT", id, request,
+                    "System alert acknowledged", body == null ? "" : safe(body.getNote()));
+            return alert;
+        } catch (RuntimeException e) {
+            auditLogService.record("ALERT_ACKNOWLEDGE", "FAILURE", authentication, "SYSTEM_ALERT", id, request,
+                    e.getMessage(), body == null ? "" : safe(body.getNote()));
+            throw e;
+        }
     }
 
     @PostMapping("/{id}/resolve")
@@ -72,47 +84,76 @@ public class AdminAlertController {
                                @RequestBody(required = false) SystemAlertActionRequest body,
                                Authentication authentication,
                                HttpServletRequest request) {
-        SystemAlert alert = systemAlertService.resolve(id, actor(authentication))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found"));
-        auditLogService.record("ALERT_RESOLVE", "SUCCESS", authentication, "SYSTEM_ALERT", id, request,
-                "System alert resolved", body == null ? "" : safe(body.getNote()));
-        return alert;
+        try {
+            SystemAlert alert = systemAlertService.resolve(id, actor(authentication))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found"));
+            auditLogService.record("ALERT_RESOLVE", "SUCCESS", authentication, "SYSTEM_ALERT", id, request,
+                    "System alert resolved", body == null ? "" : safe(body.getNote()));
+            return alert;
+        } catch (RuntimeException e) {
+            auditLogService.record("ALERT_RESOLVE", "FAILURE", authentication, "SYSTEM_ALERT", id, request,
+                    e.getMessage(), body == null ? "" : safe(body.getNote()));
+            throw e;
+        }
     }
 
     @PostMapping("/batch/acknowledge")
-    public SystemAlertBatchActionResponse acknowledgeBatch(@RequestBody SystemAlertBatchActionRequest body,
+    public SystemAlertBatchActionResponse acknowledgeBatch(@RequestBody(required = false) SystemAlertBatchActionRequest body,
                                                            Authentication authentication,
                                                            HttpServletRequest request) {
-        SystemAlertBatchActionResponse response = systemAlertService.acknowledgeBatch(body == null ? null : body.getIds(), actor(authentication));
-        auditLogService.record("ALERT_BATCH_ACKNOWLEDGE", "SUCCESS", authentication, "SYSTEM_ALERT", "batch", request,
-                "System alerts acknowledged in batch",
-                "requestedCount=" + response.getRequestedCount() + ", updatedCount=" + response.getUpdatedCount()
-                        + ", note=" + safe(body == null ? null : body.getNote()));
-        return response;
+        try {
+            SystemAlertBatchActionResponse response = systemAlertService.acknowledgeBatch(body == null ? null : body.getIds(), actor(authentication));
+            auditLogService.record("ALERT_BATCH_ACKNOWLEDGE", "SUCCESS", authentication, "SYSTEM_ALERT", "batch", request,
+                    "System alerts acknowledged in batch",
+                    "requestedCount=" + response.getRequestedCount() + ", updatedCount=" + response.getUpdatedCount()
+                            + ", note=" + safe(body == null ? null : body.getNote()));
+            return response;
+        } catch (RuntimeException e) {
+            auditLogService.record("ALERT_BATCH_ACKNOWLEDGE", "FAILURE", authentication, "SYSTEM_ALERT", "batch", request,
+                    e.getMessage(), alertBatchMetadata(body));
+            throw e;
+        }
     }
 
     @PostMapping("/batch/resolve")
-    public SystemAlertBatchActionResponse resolveBatch(@RequestBody SystemAlertBatchActionRequest body,
+    public SystemAlertBatchActionResponse resolveBatch(@RequestBody(required = false) SystemAlertBatchActionRequest body,
                                                        Authentication authentication,
                                                        HttpServletRequest request) {
-        SystemAlertBatchActionResponse response = systemAlertService.resolveBatch(body == null ? null : body.getIds(), actor(authentication));
-        auditLogService.record("ALERT_BATCH_RESOLVE", "SUCCESS", authentication, "SYSTEM_ALERT", "batch", request,
-                "System alerts resolved in batch",
-                "requestedCount=" + response.getRequestedCount() + ", updatedCount=" + response.getUpdatedCount()
-                        + ", note=" + safe(body == null ? null : body.getNote()));
-        return response;
+        try {
+            SystemAlertBatchActionResponse response = systemAlertService.resolveBatch(body == null ? null : body.getIds(), actor(authentication));
+            auditLogService.record("ALERT_BATCH_RESOLVE", "SUCCESS", authentication, "SYSTEM_ALERT", "batch", request,
+                    "System alerts resolved in batch",
+                    "requestedCount=" + response.getRequestedCount() + ", updatedCount=" + response.getUpdatedCount()
+                            + ", note=" + safe(body == null ? null : body.getNote()));
+            return response;
+        } catch (RuntimeException e) {
+            auditLogService.record("ALERT_BATCH_RESOLVE", "FAILURE", authentication, "SYSTEM_ALERT", "batch", request,
+                    e.getMessage(), alertBatchMetadata(body));
+            throw e;
+        }
     }
 
     @PostMapping("/purge-resolved")
     public SystemAlertPurgeResponse purgeResolved(@RequestParam(defaultValue = "30") int retentionDays,
                                                   Authentication authentication,
                                                   HttpServletRequest request) {
-        SystemAlertPurgeResponse response = systemAlertService.purgeResolved(retentionDays);
-        auditLogService.record("ALERT_PURGE_RESOLVED", "SUCCESS", authentication, "SYSTEM_ALERT", "resolved", request,
-                "Resolved system alerts purged",
-                "retentionDays=" + response.getRetentionDays() + ", deletedCount=" + response.getDeletedCount()
-                        + ", purgedBefore=" + response.getPurgedBefore());
-        return response;
+        try {
+            SystemAlertPurgeResponse response = systemAlertService.purgeResolved(retentionDays);
+            auditLogService.record("ALERT_PURGE_RESOLVED", "SUCCESS", authentication, "SYSTEM_ALERT", "resolved", request,
+                    "Resolved system alerts purged",
+                    "retentionDays=" + response.getRetentionDays() + ", deletedCount=" + response.getDeletedCount()
+                            + ", purgedBefore=" + response.getPurgedBefore());
+            return response;
+        } catch (RuntimeException e) {
+            auditLogService.record("ALERT_PURGE_RESOLVED", "FAILURE", authentication, "SYSTEM_ALERT", "resolved", request,
+                    e.getMessage(), "retentionDays=" + retentionDays);
+            throw e;
+        }
+    }
+
+    private String alertBatchMetadata(SystemAlertBatchActionRequest body) {
+        int requestedCount = body == null || body.getIds() == null ? 0 : body.getIds().size();
+        return "requestedCount=" + requestedCount + ", note=" + safe(body == null ? null : body.getNote());
     }
 
     private String actor(Authentication authentication) {

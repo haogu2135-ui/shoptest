@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -35,6 +37,15 @@ class ClientIpResolverTest {
         request.addHeader("X-Forwarded-For", "198.51.100.25, 10.0.0.1");
 
         assertEquals("198.51.100.25", resolver.resolve(request));
+        assertTrue(resolver.shouldTrustForwardedHeaders(request));
+    }
+
+    @Test
+    void doesNotTrustForwardedHeadersFromUntrustedRemoteAddress() {
+        trustProxies("10.0.0.1");
+        MockHttpServletRequest request = request("203.0.113.10");
+
+        assertFalse(resolver.shouldTrustForwardedHeaders(request));
     }
 
     @Test

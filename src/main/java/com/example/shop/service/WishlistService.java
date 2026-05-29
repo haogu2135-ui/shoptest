@@ -81,6 +81,11 @@ public class WishlistService {
             item.setRequiresSelection(false);
             return;
         }
+        item.setProductName(product.getName());
+        item.setImageUrl(resolveProductImageUrl(product));
+        item.setProductPrice(product.getPrice());
+        item.setStock(product.getStock());
+        item.setProductStatus(product.getStatus());
         Map<String, String> specs = product.getSpecificationsMap();
         boolean hasOptions = specs != null && specs.entrySet().stream()
                 .anyMatch(entry -> entry.getKey() != null
@@ -90,5 +95,20 @@ public class WishlistService {
         boolean hasVariants = product.getVariantsList() != null && !product.getVariantsList().isEmpty();
         boolean hasBundle = specs != null && "true".equalsIgnoreCase(specs.getOrDefault("bundle.enabled", "false"));
         item.setRequiresSelection(hasOptions || hasVariants || hasBundle);
+    }
+
+    private String resolveProductImageUrl(Product product) {
+        if (product == null) {
+            return null;
+        }
+        if (product.getImageUrl() != null && !product.getImageUrl().trim().isEmpty()) {
+            return product.getImageUrl().trim();
+        }
+        for (String image : product.getImagesList()) {
+            if (image != null && !image.trim().isEmpty()) {
+                return image.trim();
+            }
+        }
+        return null;
     }
 }

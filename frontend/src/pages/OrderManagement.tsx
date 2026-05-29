@@ -18,17 +18,44 @@ import {
 } from '../utils/orderOperationsConfig';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { paymentMethodLabel } from '../utils/paymentMethods';
+import { getApiErrorMessage } from '../utils/apiError';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderManagement.css';
 
 const { Title } = Typography;
 
+export const resolveOrderRouteFilters = (params: URLSearchParams) => {
+  const quick = params.get('quick') || undefined;
+  return {
+    status: quick ? undefined : params.get('status') || undefined,
+    quick,
+  };
+};
+
+export const buildOrderFilterSearchParams = (
+  params: URLSearchParams,
+  filters: { status?: string; quick?: string },
+) => {
+  const nextParams = new URLSearchParams(params);
+  if (filters.quick) {
+    nextParams.set('quick', filters.quick);
+    nextParams.delete('status');
+  } else if (filters.status) {
+    nextParams.set('status', filters.status);
+    nextParams.delete('quick');
+  } else {
+    nextParams.delete('status');
+    nextParams.delete('quick');
+  }
+  return nextParams;
+};
+
 const OrderManagement: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string | undefined>(() => searchParams.get('status') || undefined);
-  const [quickFilter, setQuickFilter] = useState<string | undefined>(() => searchParams.get('quick') || undefined);
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(() => resolveOrderRouteFilters(searchParams).status);
+  const [quickFilter, setQuickFilter] = useState<string | undefined>(() => resolveOrderRouteFilters(searchParams).quick);
   const [debouncedSearchText, setDebouncedSearchText] = useState('');
   const [orderPage, setOrderPage] = useState({ page: 1, size: 20, total: 0, totalPages: 0 });
   const [orderSummary, setOrderSummary] = useState<Record<string, number>>({});
@@ -46,6 +73,7 @@ const OrderManagement: React.FC = () => {
   const [batchTrackingPrefix, setBatchTrackingPrefix] = useState('BATCH');
   const [batchTrackingCarrierCode, setBatchTrackingCarrierCode] = useState<string | undefined>();
   const [batchShipping, setBatchShipping] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState('');
   const [selectedTrackingCarrierCode, setSelectedTrackingCarrierCode] = useState<string | undefined>();
@@ -65,6 +93,10 @@ const OrderManagement: React.FC = () => {
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const { formatMoney } = useMarket();
   const pageSizeRef = useRef(20);
+  const syncRouteFilters = useCallback((filters: { status?: string; quick?: string }) => {
+    const nextParams = buildOrderFilterSearchParams(searchParams, filters);
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const fetchOrders = useCallback(async (params: {
     status?: string;
@@ -91,12 +123,12 @@ const OrderManagement: React.FC = () => {
       });
       pageSizeRef.current = res.data.size || params.size || pageSizeRef.current;
       setOrderSummary(res.data.summary || {});
-    } catch {
-      message.error(t('pages.adminOrders.fetchFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.adminOrders.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -110,11 +142,14 @@ const OrderManagement: React.FC = () => {
   }, [debouncedSearchText, fetchOrders, filterStatus, quickFilter]);
 
   useEffect(() => {
-    const nextStatus = searchParams.get('status') || undefined;
-    const nextQuick = searchParams.get('quick') || undefined;
+    const { status: nextStatus, quick: nextQuick } = resolveOrderRouteFilters(searchParams);
+    const canonicalParams = buildOrderFilterSearchParams(searchParams, { status: nextStatus, quick: nextQuick });
+    if (canonicalParams.toString() !== searchParams.toString()) {
+      setSearchParams(canonicalParams, { replace: true });
+    }
     setFilterStatus((current) => current === nextStatus ? current : nextStatus);
     setQuickFilter((current) => current === nextQuick ? current : nextQuick);
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     setSelectedOrderIds([]);
@@ -141,7 +176,7 @@ const OrderManagement: React.FC = () => {
       message.success(t('pages.adminOrders.statusUpdated'));
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
-      const msg = err.response?.data?.error || t('messages.updateFailed');
+      const msg = getApiErrorMessage(err, t('messages.updateFailed'), language);
       message.error(msg);
     } finally {
       setStatusUpdatingIds((current) => current.filter((id) => id !== orderId));
@@ -319,11 +354,18 @@ const OrderManagement: React.FC = () => {
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
       printWindow?.close();
-      const msg = err.response?.data?.error || t('messages.updateFailed');
+      const msg = getApiErrorMessage(err, t('messages.updateFailed'), language);
       message.error(msg);
     } finally {
       setShipping(false);
     }
+  };
+
+  const closeShippingModal = () => {
+    if (shipping) return;
+    setShippingOrder(null);
+    setTrackingNumber('');
+    setTrackingCarrierCode(undefined);
   };
 
   const handleViewItems = async (order: Order) => {
@@ -337,10 +379,10 @@ const OrderManagement: React.FC = () => {
       ]);
       setOrderItems(itemsRes.data);
       setOrderPayments(paymentsRes.data || []);
-    } catch {
+    } catch (error: any) {
       setOrderItems([]);
       setOrderPayments([]);
-      message.error(t('messages.operationFailed'));
+      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
       setItemsLoading(false);
       setPaymentsLoading(false);
@@ -367,6 +409,16 @@ const OrderManagement: React.FC = () => {
     }
   };
 
+  const closeRefundModal = () => {
+    if (refunding) return;
+    setRefundOrder(null);
+    setRefundReason('');
+    setManualRefundReference('');
+    setRefundRestock(false);
+    setRefundPayments([]);
+    setRefundPaymentsLoading(false);
+  };
+
   const handleRefundOrder = async () => {
     if (!refundOrder) return;
     try {
@@ -384,7 +436,7 @@ const OrderManagement: React.FC = () => {
       setRefundPayments([]);
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.adminOrders.refundFailed'));
+      message.error(getApiErrorMessage(err, t('pages.adminOrders.refundFailed'), language));
     } finally {
       setRefunding(false);
     }
@@ -412,7 +464,7 @@ const OrderManagement: React.FC = () => {
       message.success(t('pages.adminOrders.paymentSynced'));
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.adminOrders.paymentSyncFailed'));
+      message.error(getApiErrorMessage(err, t('pages.adminOrders.paymentSyncFailed'), language));
     } finally {
       setSyncingPaymentIds((current) => current.filter((id) => id !== payment.id));
     }
@@ -428,16 +480,40 @@ const OrderManagement: React.FC = () => {
       const res = await adminApi.batchShipOrders(selectedVisibleShippableIds, batchTrackingPrefix.trim() || 'BATCH', batchTrackingCarrierCode);
       message.success(t('pages.adminOrders.batchShipResult', { success: res.data.success, failed: res.data.failed }));
       setBatchShipOpen(false);
+      setBatchTrackingPrefix('BATCH');
+      setBatchTrackingCarrierCode(undefined);
       setSelectedOrderIds([]);
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('messages.operationFailed'));
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setBatchShipping(false);
     }
   };
 
+  const closeBatchShipModal = () => {
+    if (batchShipping) return;
+    setBatchShipOpen(false);
+    setBatchTrackingPrefix('BATCH');
+    setBatchTrackingCarrierCode(undefined);
+  };
+
+  const closeTrackingModal = () => {
+    setTrackingOpen(false);
+    setSelectedTrackingNumber('');
+    setSelectedTrackingCarrierCode(undefined);
+  };
+
+  const closeDetailModal = () => {
+    setDetailOrder(null);
+    setOrderItems([]);
+    setOrderPayments([]);
+    setItemsLoading(false);
+    setPaymentsLoading(false);
+  };
+
   const handleExport = async () => {
+    setExporting(true);
     try {
       const res = await adminApi.exportOrders(filterStatus, debouncedSearchText, quickFilter);
       const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
@@ -454,8 +530,10 @@ const OrderManagement: React.FC = () => {
           total: res.headers?.['x-export-total'] || '',
         }));
       }
-    } catch {
-      message.error(t('pages.adminOrders.exportFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.adminOrders.exportFailed'), language));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -467,6 +545,18 @@ const OrderManagement: React.FC = () => {
     setSelectedTrackingNumber(trackingNo);
     setSelectedTrackingCarrierCode(carrierCode);
     setTrackingOpen(true);
+  };
+  const handleStatusFilterChange = (value?: string) => {
+    const nextStatus = value || undefined;
+    setFilterStatus(nextStatus);
+    setQuickFilter(undefined);
+    syncRouteFilters({ status: nextStatus });
+  };
+  const handleQuickFilterChange = (value?: string) => {
+    const nextQuick = value && quickFilter !== value ? value : undefined;
+    setQuickFilter(nextQuick);
+    setFilterStatus(undefined);
+    syncRouteFilters({ quick: nextQuick });
   };
 
   const carrierOptions = carriers.map((carrier) => ({
@@ -525,6 +615,13 @@ const OrderManagement: React.FC = () => {
       filter: 'SLA_DUE_SOON',
     },
     {
+      key: 'missingTracking',
+      label: t('pages.adminOrders.missingTrackingCard'),
+      value: orderSummary.MISSING_TRACKING ?? orders.filter((order) => order.status === 'SHIPPED' && !String(order.trackingNumber || '').trim()).length,
+      color: '#ad4e00',
+      filter: 'MISSING_TRACKING',
+    },
+    {
       key: 'pendingShipment',
       label: t('status.PENDING_SHIPMENT'),
       value: orderSummary.PENDING_SHIPMENT ?? orders.filter(isOrderShippable).length,
@@ -576,6 +673,7 @@ const OrderManagement: React.FC = () => {
         content: t('pages.adminOrders.confirmPaymentContent'),
         okText: t('pages.adminOrders.confirmPayment'),
         cancelText: t('common.cancel'),
+        className: 'profile-mobile-safe-modal order-management-page__statusConfirmModal',
         onOk: () => handleStatusChange(record.id, nextStatus),
       });
       return;
@@ -586,6 +684,7 @@ const OrderManagement: React.FC = () => {
         content: t('pages.adminOrders.confirmApproveReturnContent'),
         okText: t('pages.adminOrders.approveReturn'),
         cancelText: t('common.cancel'),
+        className: 'profile-mobile-safe-modal order-management-page__statusConfirmModal',
         onOk: () => handleStatusChange(record.id, nextStatus),
       });
       return;
@@ -597,6 +696,7 @@ const OrderManagement: React.FC = () => {
         okText: t('pages.adminOrders.rejectReturn'),
         okButtonProps: { danger: true },
         cancelText: t('common.cancel'),
+        className: 'profile-mobile-safe-modal order-management-page__statusConfirmModal',
         onOk: () => handleStatusChange(record.id, nextStatus),
       });
       return;
@@ -607,6 +707,7 @@ const OrderManagement: React.FC = () => {
         content: t('pages.adminOrders.confirmReturnRefundContent'),
         okText: t('pages.adminOrders.confirmReturnReceivedAndRefund'),
         cancelText: t('common.cancel'),
+        className: 'profile-mobile-safe-modal order-management-page__statusConfirmModal',
         onOk: () => handleStatusChange(record.id, nextStatus),
       });
       return;
@@ -638,7 +739,7 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'totalAmount',
       key: 'totalAmount',
       width: 100,
-      render: (v: number) => <span className="order-management-page__amount">{formatMoney(v)}</span>,
+      render: (v: number) => <span className="order-management-page__amount commerce-money">{formatMoney(v)}</span>,
     },
     {
       title: t('common.status'),
@@ -724,6 +825,8 @@ const OrderManagement: React.FC = () => {
               <Select
                 size="small"
                 className="order-management-page__transitionSelect"
+                popupClassName="shop-mobile-popup-layer"
+                getPopupContainer={() => document.body}
                 loading={statusUpdating}
                 disabled={statusUpdating}
                 placeholder={t('pages.adminOrders.changeStatus')}
@@ -764,7 +867,7 @@ const OrderManagement: React.FC = () => {
             type="button"
             className={quickFilter === item.filter ? 'order-management-page__summaryCard order-management-page__summaryCard--active' : 'order-management-page__summaryCard'}
             aria-pressed={quickFilter === item.filter}
-            onClick={() => setQuickFilter((current) => current === item.filter ? undefined : item.filter)}
+            onClick={() => handleQuickFilterChange(item.filter)}
           >
             <span>{item.label}</span>
             <strong style={{ color: item.color }}>{item.value}</strong>
@@ -778,8 +881,10 @@ const OrderManagement: React.FC = () => {
             allowClear
             placeholder={t('pages.adminOrders.allStatus')}
             className="order-management-page__statusFilter"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
             value={filterStatus}
-            onChange={(v) => setFilterStatus(v)}
+            onChange={handleStatusFilterChange}
             options={[
               { value: 'PENDING_PAYMENT', label: t('status.PENDING_PAYMENT') },
               { value: 'PENDING_SHIPMENT', label: t('status.PENDING_SHIPMENT') },
@@ -801,7 +906,7 @@ const OrderManagement: React.FC = () => {
             placeholder={t('pages.adminOrders.searchPlaceholder')}
             className="order-management-page__searchInput"
           />
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>
+          <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
             {quickFilter || normalizedSearchText ? t('pages.adminOrders.exportVisibleOrders') : t('pages.adminOrders.exportOrders')}
           </Button>
           <Button
@@ -817,7 +922,7 @@ const OrderManagement: React.FC = () => {
               color="orange"
               onClose={(event) => {
                 event.preventDefault();
-                setQuickFilter(undefined);
+                handleQuickFilterChange();
               }}
             >
               {t('pages.adminOrders.quickFilterActive', { filter: activeQuickFilterLabel })}
@@ -859,13 +964,11 @@ const OrderManagement: React.FC = () => {
       <Modal
         title={t('pages.adminOrders.enterTracking')}
         open={!!shippingOrder}
+        className="profile-mobile-safe-modal order-management-page__shippingModal"
         confirmLoading={shipping}
         onOk={handleShip}
-        onCancel={() => {
-          setShippingOrder(null);
-          setTrackingNumber('');
-          setTrackingCarrierCode(undefined);
-        }}
+        onCancel={closeShippingModal}
+        destroyOnHidden
       >
         <Space direction="vertical" className="order-management-page__modalStack">
           <Select
@@ -876,6 +979,8 @@ const OrderManagement: React.FC = () => {
             placeholder={t('pages.adminOrders.selectCarrier')}
             options={carrierOptions}
             optionFilterProp="label"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
           />
           <Input
             value={trackingNumber}
@@ -891,6 +996,7 @@ const OrderManagement: React.FC = () => {
       <Modal
         title={t('pages.adminOrders.refundNow')}
         open={!!refundOrder}
+        className="profile-mobile-safe-modal order-management-page__refundModal"
         confirmLoading={refunding}
         okText={t('pages.adminOrders.refundNow')}
         okButtonProps={{
@@ -898,13 +1004,8 @@ const OrderManagement: React.FC = () => {
           disabled: refundPaymentsLoading || (hasLoadedRefundPayments && !hasPaidRefundPayment),
         }}
         onOk={handleRefundOrder}
-        onCancel={() => {
-          setRefundOrder(null);
-          setRefundReason('');
-          setManualRefundReference('');
-          setRefundRestock(false);
-          setRefundPayments([]);
-        }}
+        onCancel={closeRefundModal}
+        destroyOnHidden
       >
         <Space direction="vertical" className="order-management-page__modalStack">
           <Typography.Text type="secondary">
@@ -965,7 +1066,7 @@ const OrderManagement: React.FC = () => {
                   dataIndex: 'amount',
                   key: 'amount',
                   width: 112,
-                  render: (value: number) => formatMoney(value),
+                  render: (value: number) => <span className="commerce-money">{formatMoney(value)}</span>,
                 },
                 {
                   title: t('pages.adminOrders.refundReference'),
@@ -997,9 +1098,11 @@ const OrderManagement: React.FC = () => {
       <Modal
         title={t('pages.adminOrders.batchShipOrders')}
         open={batchShipOpen}
+        className="profile-mobile-safe-modal order-management-page__batchShipModal"
         confirmLoading={batchShipping}
         onOk={handleBatchShip}
-        onCancel={() => setBatchShipOpen(false)}
+        onCancel={closeBatchShipModal}
+        destroyOnHidden
       >
         <p>{t('pages.adminOrders.batchShipHint')}</p>
         <Input
@@ -1017,27 +1120,29 @@ const OrderManagement: React.FC = () => {
           options={carrierOptions}
           optionFilterProp="label"
           className="order-management-page__batchCarrierSelect"
+          popupClassName="shop-mobile-popup-layer"
+          getPopupContainer={() => document.body}
         />
       </Modal>
       <Modal
         title={t('pages.adminOrders.logisticsTracking')}
         open={trackingOpen}
-        onCancel={() => setTrackingOpen(false)}
+        onCancel={closeTrackingModal}
         footer={null}
         width={720}
+        className="profile-mobile-safe-modal order-management-page__trackingModal"
+        destroyOnHidden
       >
         <SeventeenTrackWidget trackingNumber={selectedTrackingNumber} carrierCode={selectedTrackingCarrierCode} />
       </Modal>
       <Modal
         title={t('pages.adminOrders.orderItemsTitle', { id: detailOrder?.orderNo || detailOrder?.id || '' })}
         open={!!detailOrder}
-        onCancel={() => {
-          setDetailOrder(null);
-          setOrderItems([]);
-          setOrderPayments([]);
-        }}
+        onCancel={closeDetailModal}
         footer={null}
         width={720}
+        className="profile-mobile-safe-modal order-management-page__detailModal"
+        destroyOnHidden
       >
         <Space direction="vertical" className="order-management-page__detailStack" size="middle">
           <Table
@@ -1065,13 +1170,13 @@ const OrderManagement: React.FC = () => {
                 dataIndex: 'price',
                 key: 'price',
                 width: 120,
-                render: (v: number) => formatMoney(v),
+                render: (v: number) => <span className="commerce-money">{formatMoney(v)}</span>,
               },
               {
                 title: t('common.subtotal'),
                 key: 'subtotal',
                 width: 120,
-                render: (_: any, item: OrderItem) => formatMoney(item.price * item.quantity),
+                render: (_: any, item: OrderItem) => <span className="commerce-money">{formatMoney(item.price * item.quantity)}</span>,
               },
             ]}
           />
@@ -1097,7 +1202,7 @@ const OrderManagement: React.FC = () => {
                   dataIndex: 'amount',
                   key: 'amount',
                   width: 120,
-                  render: (value: number) => formatMoney(value),
+                  render: (value: number) => <span className="commerce-money">{formatMoney(value)}</span>,
                 },
                 {
                   title: t('pages.adminOrders.refundReference'),

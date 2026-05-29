@@ -3,8 +3,10 @@ package com.example.shop.controller;
 import com.example.shop.dto.PetGalleryQuota;
 import com.example.shop.entity.PetGalleryPhoto;
 import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.ClientIpResolver;
 import com.example.shop.service.PetGalleryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -12,19 +14,39 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/pet-gallery")
 @RequiredArgsConstructor
 public class PetGalleryController {
     private final PetGalleryService petGalleryService;
+    private final ClientIpResolver clientIpResolver;
 
     @GetMapping
-    public ResponseEntity<List<PetGalleryPhoto>> list(Authentication authentication, HttpServletRequest request) {
+    public ResponseEntity<?> list(
+            @RequestParam(required = false, defaultValue = "0") Integer page,
+            @RequestParam(required = false, defaultValue = "24") Integer size,
+            Authentication authentication,
+            HttpServletRequest request) {
         UserDetailsImpl userDetails = optionalUser(authentication);
         Long viewerId = userDetails == null ? null : userDetails.getId();
-        return ResponseEntity.ok(petGalleryService.findPublicPhotos(viewerId, resolveClientIp(request)));
+        String clientIp = resolveClientIp(request);
+
+        if (page != null && page > 0) {
+            Page<PetGalleryPhoto> result = petGalleryService.findPublicPhotos(viewerId, clientIp, page - 1, size);
+            Map<String, Object> response = new HashMap<>();
+            response.put("items", result.getContent());
+            response.put("page", result.getNumber() + 1);
+            response.put("size", result.getSize());
+            response.put("total", result.getTotalElements());
+            response.put("pages", result.getTotalPages());
+            return ResponseEntity.ok(response);
+        }
+        List<PetGalleryPhoto> photos = petGalleryService.findPublicPhotos(viewerId, clientIp);
+        return ResponseEntity.ok(photos);
     }
 
     @GetMapping("/quota")
@@ -81,17 +103,6 @@ public class PetGalleryController {
     }
 
     private String resolveClientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.trim().isEmpty()) {
-            String first = forwardedFor.split(",")[0].trim();
-            if (!first.isEmpty()) {
-                return first;
-            }
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.trim().isEmpty()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 }

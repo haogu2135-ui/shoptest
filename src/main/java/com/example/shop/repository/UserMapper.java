@@ -16,11 +16,13 @@ public interface UserMapper {
     User findByUsernameOrPhoneOrEmail(@Param("login") String login);
     List<User> findAll();
     long countAll();
+    long countAdminUsers();
     List<Long> findActiveCustomerIds();
     List<User> search(@Param("keyword") String keyword, @Param("role") String role, @Param("status") String status);
     Map<String, Object> adminSummary(@Param("keyword") String keyword, @Param("role") String role, @Param("status") String status);
     int insert(User user);
     int update(User user);
+    int updateProfileContact(@Param("id") Long id, @Param("email") String email, @Param("phone") String phone, @Param("updatedAt") LocalDateTime updatedAt);
     int updateRoleAccess(@Param("id") Long id, @Param("role") String role, @Param("roleCode") String roleCode, @Param("updatedAt") LocalDateTime updatedAt);
     int deleteById(Long id);
     int updatePassword(@Param("userId") Long userId, @Param("password") String password);

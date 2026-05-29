@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
-import { ApiOutlined, CloudServerOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Descriptions, Empty, Input, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { ApiOutlined, CloudServerOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminApi, apiBaseUrl } from '../api';
 import { apiGatewayEnabled, apiGatewayPrefix } from '../utils/apiDispatcher';
 import type { AdminRegistryInstance, AdminRegistryServiceSummary, AdminRegistryStatus } from '../types';
+import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 import './RegistryManagement.css';
 
 const { Title, Text } = Typography;
@@ -13,61 +15,74 @@ const boolTag = (value?: boolean) => (
 );
 
 const RegistryManagement: React.FC = () => {
+  const { t, language } = useLanguage();
   const [status, setStatus] = useState<AdminRegistryStatus | null>(null);
   const [loading, setLoading] = useState(false);
+  const [serviceKeyword, setServiceKeyword] = useState('');
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     setLoading(true);
     try {
       const response = await adminApi.getRegistryStatus();
       setStatus(response.data);
-    } catch {
-      message.error('服务注册状态加载失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.registryAdmin.loadFailed'), language));
     } finally {
       setLoading(false);
     }
-  };
+  }, [language, t]);
 
   useEffect(() => {
     loadStatus();
-  }, []);
+  }, [loadStatus]);
 
   const registryReady = Boolean(status?.healthy);
   const knownServices = useMemo(() => status?.knownServices || [], [status]);
   const serviceSummaries = useMemo(() => status?.serviceSummaries || [], [status]);
-  const frontendGatewayReady = apiGatewayEnabled && apiBaseUrl.includes(':8080');
+  const filteredServiceSummaries = useMemo(() => {
+    const text = serviceKeyword.trim().toLowerCase();
+    if (!text) return serviceSummaries;
+    return serviceSummaries.filter((service) => {
+      const haystack = [
+        service.serviceId,
+        ...(service.instances || []).flatMap((instance) => [instance.host, instance.port, instance.uri]),
+      ].join(' ').toLowerCase();
+      return haystack.includes(text);
+    });
+  }, [serviceKeyword, serviceSummaries]);
+  const frontendGatewayReady = apiGatewayEnabled || apiBaseUrl === '/api' || apiBaseUrl.endsWith('/api');
 
   return (
     <div className="registry-management">
       <div className="registry-management__hero">
         <div>
           <Text className="registry-management__eyebrow">Nacos Discovery</Text>
-          <Title level={2}>服务注册中心</Title>
-          <Text type="secondary">集中查看后端注册状态、Nacos 配置、已发现服务，以及前台是否正在走网关。</Text>
+          <Title level={2}>{t('pages.registryAdmin.title')}</Title>
+          <Text type="secondary">{t('pages.registryAdmin.description')}</Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={loadStatus} loading={loading}>
-          刷新
+          {t('common.refresh')}
         </Button>
       </div>
 
       <Spin spinning={loading && !status}>
         <div className="registry-management__stats">
           <Card>
-            <Statistic title="服务名" value={status?.applicationName || '-'} prefix={<ApiOutlined />} />
+            <Statistic title={t('pages.registryAdmin.serviceName')} value={status?.applicationName || '-'} prefix={<ApiOutlined />} />
           </Card>
           <Card>
             <Statistic
-              title="注册状态"
-              value={registryReady ? '已注册' : '未就绪'}
+              title={t('pages.registryAdmin.registrationStatus')}
+              value={registryReady ? t('pages.registryAdmin.registered') : t('pages.registryAdmin.notReady')}
               valueStyle={{ color: registryReady ? '#1f8a4c' : '#c46a14' }}
               prefix={<SafetyCertificateOutlined />}
             />
           </Card>
           <Card>
-            <Statistic title="发现服务数" value={knownServices.length} />
+            <Statistic title={t('pages.registryAdmin.discoveredServices')} value={knownServices.length} />
           </Card>
           <Card>
-            <Statistic title="当前实例数" value={status?.instanceCount || status?.instances?.length || 0} prefix={<CloudServerOutlined />} />
+            <Statistic title={t('pages.registryAdmin.currentInstances')} value={status?.instanceCount || status?.instances?.length || 0} prefix={<CloudServerOutlined />} />
           </Card>
         </div>
 
@@ -77,16 +92,16 @@ const RegistryManagement: React.FC = () => {
               className="registry-management__alert"
               type={registryReady ? 'success' : 'warning'}
               showIcon
-              message={registryReady ? '当前后端已被注册中心发现' : '当前后端注册状态未就绪'}
+              message={registryReady ? t('pages.registryAdmin.readyMessage') : t('pages.registryAdmin.notReadyMessage')}
               description={registryReady
-                ? '网关和后续拆分出的微服务可以通过服务名调用当前后端。'
-                : '请确认 Nacos Server 已启动，NACOS_SERVER_ADDR / namespace / group 与网关一致，并且 NACOS_REGISTER_ENABLED=true。'}
+                ? t('pages.registryAdmin.readyDescription')
+                : t('pages.registryAdmin.notReadyDescription')}
             />
 
             <div className="registry-management__grid">
-              <Card title="注册配置" className="registry-management__card">
+              <Card title={t('pages.registryAdmin.registryConfig')} className="registry-management__card">
                 <Descriptions column={1} bordered size="small">
-                  <Descriptions.Item label="Nacos 地址">{status.nacosServerAddr || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.nacosAddress')}>{status.nacosServerAddr || '-'}</Descriptions.Item>
                   <Descriptions.Item label="Namespace">{status.namespace || 'public'}</Descriptions.Item>
                   <Descriptions.Item label="Group">{status.group || 'DEFAULT_GROUP'}</Descriptions.Item>
                   <Descriptions.Item label="Discovery Enabled">{boolTag(status.discoveryEnabled)}</Descriptions.Item>
@@ -96,11 +111,11 @@ const RegistryManagement: React.FC = () => {
                 </Descriptions>
               </Card>
 
-              <Card title="当前实例参数" className="registry-management__card">
+              <Card title={t('pages.registryAdmin.currentInstanceConfig')} className="registry-management__card">
                 <Descriptions column={1} bordered size="small">
-                  <Descriptions.Item label="应用端口">{status.serverPort || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="注册 IP">{status.configuredIp || 'auto'}</Descriptions.Item>
-                  <Descriptions.Item label="注册端口">{status.configuredPort || status.serverPort || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.applicationPort')}>{status.serverPort || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.registryIp')}>{status.configuredIp || 'auto'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.registryPort')}>{status.configuredPort || status.serverPort || '-'}</Descriptions.Item>
                   <Descriptions.Item label="DiscoveryClient">{status.discoveryClientDescription || '-'}</Descriptions.Item>
                   <Descriptions.Item label="Profiles">
                     {(status.profiles || []).length
@@ -111,7 +126,7 @@ const RegistryManagement: React.FC = () => {
               </Card>
             </div>
 
-            <Card title="前台网关适配" className="registry-management__card">
+            <Card title={t('pages.registryAdmin.frontendGateway')} className="registry-management__card">
               <div className="registry-management__gateway">
                 <div>
                   <Text type="secondary">API Base URL</Text>
@@ -122,19 +137,31 @@ const RegistryManagement: React.FC = () => {
                   <Text copyable strong>{apiGatewayPrefix}</Text>
                 </div>
                 <Tag color={apiGatewayEnabled ? 'green' : 'red'}>
-                  {apiGatewayEnabled ? '前台请求会按服务域分发' : '前台网关分发已关闭'}
+                  {apiGatewayEnabled ? t('pages.registryAdmin.gatewayDispatchEnabled') : t('pages.registryAdmin.gatewayDispatchDisabled')}
                 </Tag>
                 <Tag color={frontendGatewayReady ? 'green' : 'orange'}>
-                  {frontendGatewayReady ? '默认指向网关 8080' : '请确认 API Base URL 是否指向网关'}
+                  {frontendGatewayReady ? t('pages.registryAdmin.frontendProxyReady') : t('pages.registryAdmin.frontendProxyWarning')}
                 </Tag>
               </div>
             </Card>
 
-            <Card title="已发现服务" className="registry-management__card">
-              {serviceSummaries.length ? (
+            <Card
+              title={t('pages.registryAdmin.discoveredServiceList')}
+              className="registry-management__card"
+              extra={(
+                <Input
+                  allowClear
+                  prefix={<SearchOutlined />}
+                  value={serviceKeyword}
+                  onChange={(event) => setServiceKeyword(event.target.value)}
+                  placeholder={t('common.search')}
+                />
+              )}
+            >
+              {filteredServiceSummaries.length ? (
                 <Table<AdminRegistryServiceSummary>
                   rowKey="serviceId"
-                  dataSource={serviceSummaries}
+                  dataSource={filteredServiceSummaries}
                   pagination={false}
                   scroll={{ x: 720 }}
                   columns={[
@@ -145,9 +172,9 @@ const RegistryManagement: React.FC = () => {
                         <Tag color={value === status.applicationName ? 'green' : 'blue'}>{value}</Tag>
                       ),
                     },
-                    { title: '实例数', dataIndex: 'instanceCount', width: 100 },
+                    { title: t('pages.registryAdmin.instanceCount'), dataIndex: 'instanceCount', width: 100 },
                     {
-                      title: '实例',
+                      title: t('pages.registryAdmin.instances'),
                       dataIndex: 'instances',
                       render: (instances: AdminRegistryInstance[]) => (
                         <Space wrap size={[6, 6]}>
@@ -162,11 +189,11 @@ const RegistryManagement: React.FC = () => {
                   ]}
                 />
               ) : (
-                <Empty description="暂无服务" />
+                <Empty description={t('pages.registryAdmin.noServices')} />
               )}
             </Card>
 
-            <Card title="当前服务实例详情" className="registry-management__card">
+            <Card title={t('pages.registryAdmin.currentInstanceDetails')} className="registry-management__card">
               <Table<AdminRegistryInstance>
                 rowKey={(record) => `${record.host}:${record.port}`}
                 dataSource={status.instances || []}
@@ -197,7 +224,7 @@ const RegistryManagement: React.FC = () => {
             </Card>
           </>
         ) : (
-          <Empty description="暂无注册中心状态" />
+          <Empty description={t('pages.registryAdmin.noStatus')} />
         )}
       </Spin>
     </div>

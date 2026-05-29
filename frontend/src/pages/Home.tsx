@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Col, Empty, Modal, Popconfirm, Row, Spin, Typography, message } from 'antd';
+import { Alert, Button, Col, Empty, Modal, Popconfirm, Row, Spin, Typography, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import {
   AppstoreOutlined,
@@ -36,10 +36,12 @@ import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } 
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
+import { loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import SocialProofToast from '../components/SocialProofToast';
 import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
@@ -70,6 +72,20 @@ const ugcImages = [
   { key: 'tailwag_home', image: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=700&q=80', label: '@tailwag_home', likeCount: 22 },
   { key: 'softnap_cat', image: 'https://images.unsplash.com/photo-1596854407944-bf87f6fdd49e?auto=format&fit=crop&w=700&q=80', label: '@softnap_cat', likeCount: 19 },
 ];
+
+const buildFallbackCategories = (products: Product[]): Category[] => {
+  const categories = new Map<number, Category>();
+  products.forEach((product) => {
+    const id = Number(product.categoryId);
+    if (!Number.isSafeInteger(id) || id <= 0 || categories.has(id)) return;
+    categories.set(id, {
+      id,
+      name: product.categoryName || `Category ${id}`,
+      level: 1,
+    });
+  });
+  return Array.from(categories.values()).sort((left, right) => left.name.localeCompare(right.name));
+};
 
 type PetGalleryItem = {
   key: string;
@@ -135,6 +151,8 @@ const Home: React.FC = () => {
   const [recentlyViewedDetails, setRecentlyViewedDetails] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [usingCatalogSnapshot, setUsingCatalogSnapshot] = useState(false);
   const [visibleCount, setVisibleCount] = useState(DISCOVERY_BATCH_SIZE);
   const [viewPreferences, setViewPreferences] = useState(() => loadProductViewPreferences());
   const [petGalleryPhotos, setPetGalleryPhotos] = useState<PetGalleryPhoto[]>([]);
@@ -154,7 +172,18 @@ const Home: React.FC = () => {
   const openDiscountProducts = () => navigate('/products?discount=true');
   const isAuthenticated = hasStoredValue('token');
   const homeLanguageClass = `shopee-home shopee-home--${language}`;
-  const openSupport = () => dispatchDomEvent('shop:open-support');
+  const openSupport = () => {
+    if (!isAuthenticated) {
+      const guestContext = loadGuestSupportContext();
+      if (guestContext) {
+        dispatchDomEvent('shop:open-support', guestContext);
+        return;
+      }
+      dispatchDomEvent('shop:open-support');
+      return;
+    }
+    dispatchDomEvent('shop:open-support');
+  };
   const prefetchProduct = useCallback((productId: number) => {
     void productApi.prefetchById(productId);
   }, []);
@@ -414,17 +443,32 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchHome = async () => {
       setLoading(true);
+      setLoadError(false);
+      setUsingCatalogSnapshot(false);
       try {
         const [productsRes, categoriesRes] = await Promise.all([
           productApi.getAll(),
           categoryApi.getAll(),
         ]);
+        saveProductCatalogSnapshot(productsRes.data);
         const localizedProducts = productsRes.data.map((product) => localizeProduct(product, language));
         setFeatured(localizedProducts.filter((product) => product.isFeatured).slice(0, 12));
         setProducts(localizedProducts);
         setCategories(categoriesRes.data);
         setVisibleCount(DISCOVERY_BATCH_SIZE);
       } catch {
+        const fallbackSourceProducts = loadProductCatalogSnapshot()?.products || loadFallbackProductCatalog();
+        const fallbackProducts = fallbackSourceProducts.map((product) => localizeProduct(product, language));
+        if (fallbackProducts.length > 0) {
+          setFeatured(fallbackProducts.filter((product) => product.isFeatured).slice(0, 12));
+          setProducts(fallbackProducts);
+          setCategories(buildFallbackCategories(fallbackSourceProducts));
+          setVisibleCount(DISCOVERY_BATCH_SIZE);
+          setLoadError(false);
+          setUsingCatalogSnapshot(true);
+          return;
+        }
+        setLoadError(true);
         setFeatured([]);
         setProducts([]);
         setCategories([]);
@@ -878,7 +922,7 @@ const Home: React.FC = () => {
           </span>
         ) : null}
         <span className="shopee-product__meta">
-          <span className="shopee-product__price">{formatPrice(getPrice(product))}</span>
+          <span className="shopee-product__price commerce-money">{formatPrice(getPrice(product))}</span>
           {!compact && !isSoldOut ? (
             <span className={product.stock !== undefined && product.stock <= 5 ? 'shopee-product__stockBadge shopee-product__stockBadge--low' : 'shopee-product__stockBadge shopee-product__stockBadge--ok'}>
               {stockBadgeText}
@@ -886,7 +930,7 @@ const Home: React.FC = () => {
           ) : null}
         </span>
         {product.originalPrice && product.originalPrice > getPrice(product) ? (
-          <span className="shopee-product__original">{formatPrice(product.originalPrice)}</span>
+          <span className="shopee-product__original commerce-money">{formatPrice(product.originalPrice)}</span>
         ) : null}
         {!isSoldOut ? (
           <span className="shopee-product__signalRow">
@@ -932,6 +976,27 @@ const Home: React.FC = () => {
           <div className="shopee-loading-products">
             <ProductCardSkeleton count={8} />
           </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <main className={homeLanguageClass}>
+        <div className="shopee-container" style={{ padding: '80px 24px', textAlign: 'center' }}>
+          <Alert
+            type="error"
+            showIcon
+            message={t('messages.loadFailed')}
+            description={t('messages.loadFailedRetry')}
+            style={{ maxWidth: 480, margin: '0 auto 24px' }}
+            action={
+              <Button type="primary" onClick={() => window.location.reload()}>
+                {t('messages.retry')}
+              </Button>
+            }
+          />
         </div>
       </main>
     );
@@ -1005,7 +1070,7 @@ const Home: React.FC = () => {
                 <strong>{heroFeaturedProduct.name}</strong>
                 <p>{heroFeaturedProduct.description || t('home.petRecommendationsHint')}</p>
                 <div className="shopee-hero__featuredMeta">
-                  <span>{formatPrice(getPrice(heroFeaturedProduct))}</span>
+                  <span className="commerce-money">{formatPrice(getPrice(heroFeaturedProduct))}</span>
                   {heroFeaturedTag ? <small>{heroFeaturedTag}</small> : null}
                 </div>
                 <div className="shopee-hero__featuredActions">
@@ -1059,6 +1124,15 @@ const Home: React.FC = () => {
         </section>
 
         <section className="shopee-home-actions" aria-label={t('home.couponsExtra')}>
+          {usingCatalogSnapshot ? (
+            <Alert
+              className="shopee-home__snapshotNotice"
+              type="warning"
+              showIcon
+              message={t('pages.productList.snapshotTitle')}
+              description={t('pages.productList.snapshotText')}
+            />
+          ) : null}
           {!isAuthenticated ? (
             <div className="shopee-conversion-band" aria-label={t('nav.account')}>
               {guestJourneyActions.map((item) => (
@@ -1163,7 +1237,7 @@ const Home: React.FC = () => {
                     <span className="shopee-editorial-band__miniIndex">0{index + 2}</span>
                     <span className="shopee-editorial-band__miniBody">
                       <strong>{product.name}</strong>
-                      <Text>{formatPrice(getPrice(product))}</Text>
+                      <Text className="commerce-money">{formatPrice(getPrice(product))}</Text>
                     </span>
                   </button>
                 ))}
@@ -1397,7 +1471,7 @@ const Home: React.FC = () => {
         footer={null}
         centered
         width={720}
-        className="pet-ugc-preview"
+        className="profile-mobile-safe-modal pet-ugc-preview"
         destroyOnHidden
         onCancel={() => setPetPreviewItem(null)}
       >

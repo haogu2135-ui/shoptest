@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input } from 'antd';
-import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input, Modal, Form } from 'antd';
+import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
 import { adminApi, userApi } from '../api';
 import type { AdminRole, User, UserAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { getEffectiveRole, isAdminRole, isSuperAdminRole, roleColor } from '../utils/roles';
 import { hasStoredValue } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import './UserManagement.css';
 
 const { Title, Text } = Typography;
@@ -15,11 +16,15 @@ const UserManagement: React.FC = () => {
   const [summary, setSummary] = useState<UserAdminSummary | null>(null);
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [currentUserId, setCurrentUserId] = useState(0);
   const [currentRole, setCurrentRole] = useState('');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [profileForm] = Form.useForm();
   const canManageRoles = isSuperAdminRole(currentRole);
   const { t, language } = useLanguage();
 
@@ -70,12 +75,12 @@ const UserManagement: React.FC = () => {
       ]);
       setUsers(usersResponse.data);
       setSummary(summaryResponse.data || null);
-    } catch {
-      message.error(t('pages.adminUsers.fetchFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.adminUsers.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [keyword, roleFilter, statusFilter, t]);
+  }, [keyword, language, roleFilter, statusFilter, t]);
 
   useEffect(() => {
     fetchUsers();
@@ -105,8 +110,8 @@ const UserManagement: React.FC = () => {
       await adminApi.updateUser(userId, { role: newRole });
       message.success(t('pages.adminUsers.roleUpdated'));
       fetchUsers();
-    } catch {
-      message.error(t('messages.updateFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
     }
   };
 
@@ -115,12 +120,13 @@ const UserManagement: React.FC = () => {
       await adminApi.assignUserRole(userId, roleCode);
       message.success(t('pages.adminUsers.roleUpdated'));
       fetchUsers();
-    } catch {
-      message.error(t('messages.updateFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
     }
   };
 
   const handleExport = async () => {
+    setExporting(true);
     try {
       const res = await adminApi.exportUsers({ keyword: keyword.trim() || undefined, role: roleFilter, status: statusFilter });
       const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
@@ -130,8 +136,10 @@ const UserManagement: React.FC = () => {
       link.download = 'admin-users.csv';
       link.click();
       URL.revokeObjectURL(url);
-    } catch {
-      message.error(t('pages.adminUsers.exportFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.adminUsers.exportFailed'), language));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -141,9 +149,46 @@ const UserManagement: React.FC = () => {
       await adminApi.updateUser(user.id, { status: newStatus });
       message.success(newStatus === 'BANNED' ? t('pages.adminUsers.banned') : t('pages.adminUsers.unbanned'));
       fetchUsers();
-    } catch {
-      message.error(t('messages.operationFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     }
+  };
+
+  const openProfileModal = (user: User) => {
+    setEditingUser(user);
+    profileForm.resetFields();
+    profileForm.setFieldsValue({
+      email: user.email || '',
+      phone: user.phone || '',
+      address: user.address || '',
+    });
+  };
+
+  const handleProfileSubmit = async () => {
+    if (!editingUser) return;
+    try {
+      const values = await profileForm.validateFields();
+      setProfileSubmitting(true);
+      await adminApi.updateUser(editingUser.id, {
+        email: values.email?.trim() || '',
+        phone: values.phone?.trim() || '',
+        address: values.address?.trim() || '',
+      });
+      message.success(t('pages.adminUsers.profileUpdated'));
+      setEditingUser(null);
+      fetchUsers();
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+
+  const closeProfileModal = () => {
+    if (profileSubmitting) return;
+    setEditingUser(null);
+    profileForm.resetFields();
   };
 
   const handleDelete = async (id: number) => {
@@ -151,8 +196,8 @@ const UserManagement: React.FC = () => {
       await adminApi.deleteUser(id);
       message.success(t('messages.deleteSuccess'));
       fetchUsers();
-    } catch {
-      message.error(t('messages.deleteFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('messages.deleteFailed'), language));
     }
   };
 
@@ -176,6 +221,8 @@ const UserManagement: React.FC = () => {
             size="small"
             value={getEffectiveRole(record.role, roleCode)}
             className="user-management-page__roleCodeSelect"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
             onChange={(val) => handleRoleCodeChange(record.id, val)}
             options={roles.map((role) => ({ value: role.code, label: role.name || role.code }))}
           />
@@ -197,6 +244,8 @@ const UserManagement: React.FC = () => {
             size="small"
             value={role}
             className="user-management-page__roleSelect"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
             onChange={(val) => handleRoleChange(record.id, val)}
             options={[
               { value: 'USER', label: 'USER' },
@@ -246,6 +295,9 @@ const UserManagement: React.FC = () => {
         const isSelf = record.id === currentUserId;
         return (
           <Space size="small">
+            <Button size="small" icon={<EditOutlined />} onClick={() => openProfileModal(record)}>
+              {t('common.edit')}
+            </Button>
             <Button
               size="small"
               icon={record.status === 'ACTIVE' ? <StopOutlined /> : <CheckCircleOutlined />}
@@ -291,6 +343,8 @@ const UserManagement: React.FC = () => {
             onChange={setRoleFilter}
             placeholder={t('pages.adminUsers.role')}
             className="user-management-page__roleFilter"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
             options={[
               { value: 'USER', label: 'USER' },
               ...roles.map((role) => ({ value: role.code, label: role.name || role.code })),
@@ -302,13 +356,15 @@ const UserManagement: React.FC = () => {
             onChange={setStatusFilter}
             placeholder={t('common.status')}
             className="user-management-page__statusFilter"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
             options={[
               { value: 'ACTIVE', label: t('status.ACTIVE') },
               { value: 'BANNED', label: t('status.BANNED') },
             ]}
           />
           <Button onClick={fetchUsers} type="primary" icon={<SearchOutlined />}>{t('common.search')}</Button>
-          <Button onClick={handleExport} icon={<DownloadOutlined />}>{t('pages.adminUsers.export')}</Button>
+          <Button onClick={handleExport} icon={<DownloadOutlined />} loading={exporting}>{t('pages.adminUsers.export')}</Button>
         </Space>
       </Card>
       <section className="user-management-page__health" aria-label={t('pages.adminUsers.healthTitle')}>
@@ -360,6 +416,45 @@ const UserManagement: React.FC = () => {
         size="middle"
         scroll={{ x: 1200 }}
       />
+      <Modal
+        className="profile-mobile-safe-modal user-management-page__profileModal"
+        title={t('pages.adminUsers.editProfile')}
+        open={Boolean(editingUser)}
+        onOk={handleProfileSubmit}
+        onCancel={closeProfileModal}
+        confirmLoading={profileSubmitting}
+        destroyOnHidden
+      >
+        <Form form={profileForm} layout="vertical">
+          <Form.Item label={t('pages.adminUsers.username')}>
+            <Input value={editingUser?.username || ''} disabled />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label={t('pages.adminUsers.email')}
+            rules={[
+              { type: 'email', message: t('pages.adminUsers.emailInvalid') },
+              { max: 120, message: t('pages.adminUsers.emailTooLong') },
+            ]}
+          >
+            <Input autoComplete="email" maxLength={120} />
+          </Form.Item>
+          <Form.Item
+            name="phone"
+            label={t('pages.adminUsers.phone')}
+            rules={[{ max: 40, message: t('pages.adminUsers.phoneTooLong') }]}
+          >
+            <Input autoComplete="tel" inputMode="tel" maxLength={40} />
+          </Form.Item>
+          <Form.Item
+            name="address"
+            label={t('pages.adminUsers.address')}
+            rules={[{ max: 260, message: t('pages.adminUsers.addressTooLong') }]}
+          >
+            <Input.TextArea rows={3} maxLength={260} showCount autoComplete="street-address" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

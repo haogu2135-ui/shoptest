@@ -22,6 +22,11 @@
   width: 100%;
 }
 
+.order-tracking-page__paymentReturn {
+  margin-bottom: 14px;
+  border-radius: 8px;
+}
+
 .order-tracking-page__journey {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.5fr);
@@ -1200,5 +1205,110 @@
   .order-tracking-page__lookupButton {
     min-height: 40px;
     font-size: 12px;
+  }
+}
+
+/* Final tracking atomic text pass */
+.order-tracking-page__amount,
+.order-tracking-page__itemTotal,
+.order-tracking-page__itemUnit,
+.order-tracking-page__itemMeta,
+.order-tracking-page__trackingNumber,
+.order-tracking-page__confidenceCard strong {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.order-tracking-page__amount,
+.order-tracking-page__itemTotal,
+.order-tracking-page__itemUnit,
+.order-tracking-page__confidenceCard strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.order-tracking-page__trackingNumber,
+.order-tracking-page__itemMeta {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.order-tracking-page__returnModal .ant-input,
+.order-tracking-page__returnModal textarea.ant-input {
+  scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px));
+  scroll-margin-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+}
+
+.order-tracking-page__returnModal .ant-modal-footer .ant-btn {
+  white-space: nowrap;
+}
+
+.order-tracking-page__lookupButton,
+.order-tracking-page__nextActionButtons .ant-btn,
+.order-tracking-page__assuranceActions .ant-btn,
+.order-tracking-page__emptyActions .ant-btn {
+  white-space: nowrap;
+}
+
+.order-tracking-page__lookupButton > span:not(.anticon):not(.ant-btn-icon),
+.order-tracking-page__nextActionButtons .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.order-tracking-page__assuranceActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.order-tracking-page__emptyActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .order-tracking-page__nextActionButtons .ant-btn,
+  .order-tracking-page__assuranceActions .ant-btn {
+    white-space: nowrap !important;
+  }
+
+  .order-tracking-page__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .order-tracking-page__item .ant-list-item-meta {
+    min-width: 0;
+  }
+
+  .order-tracking-page__itemTotal {
+    justify-self: end;
+    max-width: min(132px, 34vw);
+  }
+
+  .order-tracking-page__returnModal .ant-modal-body {
+    scroll-padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .order-tracking-page__returnModal .ant-modal-footer {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .order-tracking-page__returnModal .ant-modal-footer .ant-btn {
+    width: 100%;
+    min-height: 42px;
+    margin-inline-start: 0 !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .order-tracking-page__returnModal .ant-modal-footer {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

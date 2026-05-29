@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +35,7 @@ class SupportServiceTest {
         when(runtimeConfig.getInt("support.websocket.max-message-chars", 1000)).thenReturn(1000);
         when(runtimeConfig.getInt("support.message.max-chars", 1000)).thenReturn(80);
         when(runtimeConfig.getInt("support.admin.stale-minutes", 30)).thenReturn(45);
+        when(runtimeConfig.getBoolean("support.message.rate-limit-enabled", true)).thenReturn(false);
         service = new SupportService(supportSessionMapper, supportMessageMapper, runtimeConfig);
 
         SupportSession session = new SupportSession();
@@ -60,6 +62,19 @@ class SupportServiceTest {
     @Test
     void rejectsBlankSupportMessageAfterNormalization() {
         assertThrows(IllegalArgumentException.class, () -> service.sendMessage(12L, 5L, "USER", "\u0000 \t\n"));
+    }
+
+    @Test
+    void rateLimitsSupportMessagesBeforeSaving() {
+        when(runtimeConfig.getBoolean("support.message.rate-limit-enabled", true)).thenReturn(true);
+        when(runtimeConfig.getInt("support.message.max-per-minute", 20)).thenReturn(2);
+
+        service.sendMessage(12L, 5L, "USER", "First");
+        service.sendMessage(12L, 5L, "USER", "Second");
+
+        assertThrows(IllegalStateException.class, () -> service.sendMessage(12L, 5L, "USER", "Third"));
+        verify(supportMessageMapper, never()).insert(org.mockito.ArgumentMatchers.argThat(message ->
+                message instanceof SupportMessage && "Third".equals(((SupportMessage) message).getContent())));
     }
 
     @Test

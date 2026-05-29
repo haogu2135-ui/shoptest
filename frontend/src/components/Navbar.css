@@ -1817,7 +1817,7 @@
     left: max(8px, env(safe-area-inset-left));
     z-index: 1250;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 4px;
     min-height: 62px;
     padding: 7px;
@@ -1850,6 +1850,7 @@
     cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    inline-size: 100%;
   }
 
   .shop-nav__bottomItem .anticon,
@@ -1861,6 +1862,7 @@
 
   .shop-nav__bottomItem span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
     max-width: 100%;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2232,6 +2234,9 @@
 
   .shop-nav__bottomItem {
     min-height: 44px;
+    gap: 3px;
+    padding-inline: 2px;
+    font-size: 9px;
   }
 }
 
@@ -2268,12 +2273,21 @@
 
   .shop-nav__bottomBar {
     bottom: max(10px, env(safe-area-inset-bottom));
-    min-height: 58px;
+    min-height: 60px;
     z-index: 900;
   }
 
   .shop-nav__bottomItem {
-    min-height: 44px;
+    min-height: 46px;
+  }
+
+  .shop-nav__bottomItem span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -2286,4 +2300,22 @@
     height: 32px;
     min-height: 32px;
   }
+}
+
+/* Final nav amount phrase guard: shipping threshold amounts stay atomic in top bars. */
+.shop-nav__amountPhrase {
+  display: inline-flex !important;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+  white-space: nowrap !important;
+}
+
+.shop-nav__amountPhrase .commerce-money {
+  flex: 0 0 auto;
+  max-width: min(120px, 34vw);
 }

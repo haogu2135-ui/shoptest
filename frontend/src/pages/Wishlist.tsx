@@ -11,6 +11,7 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import { dispatchDomEvent } from '../utils/domEvents';
 import { hasStoredValue } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
+import { getApiErrorMessage } from '../utils/apiError';
 import './Wishlist.css';
 
 const { Text, Title } = Typography;
@@ -119,7 +120,7 @@ const Wishlist: React.FC = () => {
       dispatchDomEvent('shop:cart-updated');
       dispatchDomEvent('shop:open-cart');
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('messages.addFailed'));
+      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     }
   };
 
@@ -336,7 +337,7 @@ const Wishlist: React.FC = () => {
           <Text type="secondary">{wishlistNextAction.text}</Text>
         </div>
         <Space wrap className="wishlist-page__nextActionMeta">
-          <Tag color="green">{t('pages.wishlist.readyValue', { amount: formatMoney(wishlistStats.readyValue) })}</Tag>
+          <Tag color="green"><span className="commerce-atomic">{t('pages.wishlist.readyValue', { amount: formatMoney(wishlistStats.readyValue) })}</span></Tag>
           <Tag color={wishlistStats.lowStockCount > 0 ? 'orange' : 'default'}>
             {t('pages.wishlist.lowStockItems', { count: wishlistStats.lowStockCount })}
           </Tag>
@@ -384,7 +385,7 @@ const Wishlist: React.FC = () => {
             {renderReadiness(featuredWishlistItem)}
           </div>
           <div className="wishlist-page__bestPickAction">
-            <Text className="wishlist-page__price">{formatMoney(featuredWishlistItem.productPrice)}</Text>
+            <Text className="wishlist-page__price commerce-money">{formatMoney(featuredWishlistItem.productPrice)}</Text>
             {featuredWishlistItem.requiresSelection ? (
               <Button type="primary" icon={<SettingOutlined />} onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}>
                 {t('pages.wishlist.selectOptions')}
@@ -434,7 +435,7 @@ const Wishlist: React.FC = () => {
                 {item.productName}
               </button>
               <div className="wishlist-page__meta">
-                <Text className="wishlist-page__price">{formatMoney(item.productPrice)}</Text>
+                <Text className="wishlist-page__price commerce-money">{formatMoney(item.productPrice)}</Text>
                 <Space size={4} wrap>
                   {lowStockCount !== undefined ? (
                     <Tag color="orange">{t('pages.wishlist.lowStockLeft', { count: lowStockCount })}</Tag>

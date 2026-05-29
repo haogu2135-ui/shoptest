@@ -7,6 +7,7 @@ import { useLanguage } from '../i18n';
 import type { AdminRole } from '../types';
 import { ADMIN_PAGE_PERMISSIONS, isSuperAdminRole } from '../utils/roles';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import './PermissionManagement.css';
 
 const { Title, Text } = Typography;
@@ -14,25 +15,26 @@ const { Title, Text } = Typography;
 const PermissionManagement: React.FC = () => {
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [editingRole, setEditingRole] = useState<AdminRole | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
   const currentRole = getLocalStorageItem('role') || '';
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const loadRoles = useCallback(async () => {
     try {
       setLoading(true);
       const res = await adminApi.getRoles();
       setRoles(res.data || []);
-    } catch {
-      message.error(t('pages.permissions.fetchFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('pages.permissions.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   useEffect(() => {
     if (!isSuperAdminRole(currentRole)) {
@@ -51,20 +53,33 @@ const PermissionManagement: React.FC = () => {
 
   const openRoleModal = (role?: AdminRole) => {
     setEditingRole(role || null);
+    form.resetFields();
     form.setFieldsValue(role || { code: '', name: '', description: '', permissions: ['dashboard', 'support'] });
     setModalOpen(true);
+  };
+
+  const closeRoleModal = () => {
+    if (saving) return;
+    setModalOpen(false);
+    setEditingRole(null);
+    form.resetFields();
   };
 
   const saveRole = async () => {
     try {
       const values = await form.validateFields();
+      setSaving(true);
       await adminApi.saveRole({ ...editingRole, ...values });
       message.success(t('messages.updateSuccess'));
       setModalOpen(false);
+      setEditingRole(null);
+      form.resetFields();
       loadRoles();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err.response?.data?.error || t('messages.saveFailed'));
+      message.error(getApiErrorMessage(err, t('messages.saveFailed'), language));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -159,9 +174,11 @@ const PermissionManagement: React.FC = () => {
         title={editingRole ? t('pages.permissions.editRole') : t('pages.permissions.newRole')}
         open={modalOpen}
         onOk={saveRole}
-        onCancel={() => setModalOpen(false)}
+        onCancel={closeRoleModal}
+        confirmLoading={saving}
         width={720}
-        className="permission-management-page__modal"
+        className="profile-mobile-safe-modal permission-management-page__modal"
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="code" label={t('pages.permissions.roleCode')} rules={[{ required: true }]}>

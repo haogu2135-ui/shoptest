@@ -145,6 +145,22 @@
   width: 100%;
 }
 
+.coupon-management-page__toolbar {
+  margin-bottom: 16px;
+}
+
+.coupon-management-page__toolbar .ant-space {
+  width: 100%;
+}
+
+.coupon-management-page__keywordInput {
+  width: 280px;
+}
+
+.coupon-management-page__filterSelect {
+  width: 180px;
+}
+
 @media (max-width: 640px) {
   .coupon-management-page {
     padding: 16px 12px;
@@ -162,6 +178,13 @@
   .coupon-management-page__actions,
   .coupon-management-page__actions .ant-btn {
     width: 100%;
+  }
+
+  .coupon-management-page__toolbar,
+  .coupon-management-page__toolbar .ant-space-item,
+  .coupon-management-page__toolbar .ant-input-affix-wrapper,
+  .coupon-management-page__toolbar .ant-select {
+    width: 100% !important;
   }
 
   .coupon-management-insights,

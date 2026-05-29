@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Cascader, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Tabs, Tag, Typography } from 'antd';
-import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, PlusOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Tabs, Tag, Typography } from 'antd';
+import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
-import type { Order, OrderItem, Payment, PetProfile, User, UserAddress } from '../types';
+import type { Order, OrderItem, Payment, PaymentChannel, PetProfile, User, UserAddress } from '../types';
 import { findRegionPath, regionData } from '../regionData';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
-import { createPaymentMethodOptions, mexicoPaymentMethodDetails, paymentMethodLabel } from '../utils/paymentMethods';
+import { createPaymentMethodDetails, createPaymentMethodOptions, paymentMethodLabel } from '../utils/paymentMethods';
+import { useAppConfig } from '../hooks/useAppConfig';
 import { useMarket } from '../hooks/useMarket';
 import './Profile.css';
 import dayjs from 'dayjs';
@@ -18,11 +19,19 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import { dispatchDomEvent } from '../utils/domEvents';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 
 const { Title, Text } = Typography;
 const orderImageFallback = productImageFallback;
 const resolveOrderImage = resolveProductImage;
+
+const getPreferredPaymentChannel = (channels: PaymentChannel[], preferred?: string | null) => {
+  if (preferred && channels.some((channel) => channel.code === preferred)) {
+    return preferred;
+  }
+  return channels.find((channel) => channel.recommended)?.code || channels[0]?.code || '';
+};
 
 const useImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
   if (event.currentTarget.src !== orderImageFallback) {
@@ -59,6 +68,20 @@ const sortOrdersNewestFirst = (items: Order[]) =>
 const normalizeProfileTab = (value: string | null) =>
   value === 'info' || value === 'addresses' || value === 'orders' || value === 'pets' ? value : null;
 
+const normalizeProfileEmail = (value: unknown) => String(value || '').trim().toLowerCase();
+const normalizeProfilePhone = (value: unknown) => {
+  const raw = String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  return raw.startsWith('+') ? `+${raw.slice(1).replace(/\D+/g, '')}` : raw.replace(/\D+/g, '');
+};
+const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
+const scrollProfileAddressFieldIntoMobileView = (target: EventTarget | null) => {
+  if (typeof window === 'undefined' || window.innerWidth > 780 || !(target instanceof HTMLElement)) return;
+  const field = target.closest('.ant-form-item') || target;
+  window.setTimeout(() => {
+    field.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+  }, 80);
+};
+
 type OrderActionHintTone = 'pay' | 'wait' | 'ship' | 'return' | 'done' | 'neutral';
 
 type OrderActionHint = {
@@ -72,6 +95,7 @@ const Profile: React.FC = () => {
   const [searchParams] = useSearchParams();
   const requestedProfileTab = normalizeProfileTab(searchParams.get('tab'));
   const { t, language } = useLanguage();
+  const { config: appConfig } = useAppConfig();
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
@@ -90,7 +114,8 @@ const Profile: React.FC = () => {
   const [reordering, setReordering] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('STRIPE');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
   const [orderPayments, setOrderPayments] = useState<Payment[]>([]);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
   const [refreshingPayment, setRefreshingPayment] = useState(false);
@@ -101,6 +126,10 @@ const Profile: React.FC = () => {
   const [returnReason, setReturnReason] = useState('');
   const [requestingReturn, setRequestingReturn] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [profileEmailCodeSending, setProfileEmailCodeSending] = useState(false);
+  const [profileEmailCodeCountdown, setProfileEmailCodeCountdown] = useState(0);
+  const [profileEmailCodeTtlMinutes, setProfileEmailCodeTtlMinutes] = useState(0);
+  const [profileEmailCodeSentTo, setProfileEmailCodeSentTo] = useState('');
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [addressSubmitting, setAddressSubmitting] = useState(false);
   const [petSubmitting, setPetSubmitting] = useState(false);
@@ -114,6 +143,9 @@ const Profile: React.FC = () => {
   const [passwordForm] = Form.useForm();
   const [addressForm] = Form.useForm();
   const [petForm] = Form.useForm();
+  const watchedProfileEmail = Form.useWatch('email', editForm);
+  const emailCodeEnabled = appConfig.emailCodeEnabled === true;
+  const profileEmailChanged = normalizeProfileEmail(watchedProfileEmail) !== normalizeProfileEmail(user?.email);
 
   const fetchUserInfo = useCallback(async () => {
     try {
@@ -183,10 +215,26 @@ const Profile: React.FC = () => {
   }, [fetchAddresses, fetchOrders, fetchPetProfiles, fetchUserInfo, navigate, t]);
 
   useEffect(() => {
+    if (!addressModalVisible) return;
+    const timer = window.setTimeout(() => {
+      document.querySelector('.profile-address-modal .ant-modal-body')?.scrollTo({ top: 0, behavior: 'auto' });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [addressModalVisible, editingAddress?.id]);
+
+  useEffect(() => {
     if (requestedProfileTab) {
       setProfileActiveTab((current) => requestedProfileTab === current ? current : requestedProfileTab);
     }
   }, [requestedProfileTab]);
+
+  useEffect(() => {
+    if (profileEmailCodeCountdown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setProfileEmailCodeCountdown((value) => Math.max(value - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [profileEmailCodeCountdown]);
 
   const refreshPaymentState = async (orderId: number) => {
     const [orderRes, paymentListRes] = await Promise.all([
@@ -199,27 +247,91 @@ const Profile: React.FC = () => {
     setOrderPayments(paymentList);
     if (latestPayment) {
       setSelectedPayment(latestPayment);
-      setSelectedPaymentMethod(latestPayment.channel || 'STRIPE');
+      setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
     }
   };
 
   const handleEditProfile = async () => {
     try {
       const values = await editForm.validateFields();
+      const normalizedEmail = normalizeProfileEmail(values.email);
+      const emailChanged = normalizedEmail !== normalizeProfileEmail(user?.email);
+      if (emailChanged && !emailCodeEnabled) {
+        const msg = t('pages.auth.emailCodeUnavailable');
+        editForm.setFields([{ name: 'emailCode', errors: [msg] }]);
+        message.warning(msg);
+        return;
+      }
+      if (emailChanged && normalizeEmailCode(values.emailCode).length !== 6) {
+        editForm.setFields([{ name: 'emailCode', errors: [t('pages.auth.emailCodeLength')] }]);
+        return;
+      }
       setProfileSubmitting(true);
-      await userApi.updateProfile(values);
+      await userApi.updateProfile({
+        email: normalizedEmail,
+        phone: normalizeProfilePhone(values.phone),
+        emailCode: emailChanged ? values.emailCode : '',
+      });
       message.success(t('pages.profile.updated'));
       setEditModalVisible(false);
+      editForm.resetFields(['emailCode']);
+      setProfileEmailCodeSentTo('');
+      setProfileEmailCodeCountdown(0);
       fetchUserInfo();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(t('messages.updateFailed'));
+      const errorCode = err.response?.data?.code;
+      if (errorCode === 'INVALID_CODE' || errorCode === 'TOO_MANY_ATTEMPTS') {
+        const msg = errorCode === 'TOO_MANY_ATTEMPTS'
+          ? t('pages.auth.emailCodeTooManyAttempts')
+          : t('pages.auth.emailCodeInvalid');
+        editForm.setFields([{ name: 'emailCode', errors: [msg] }]);
+        message.error(msg);
+      } else {
+        message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
+      }
     } finally {
       setProfileSubmitting(false);
     }
   };
 
+  const handleSendProfileEmailCode = async () => {
+    if (!emailCodeEnabled) {
+      message.warning(t('pages.auth.emailCodeUnavailable'));
+      return;
+    }
+    try {
+      const { email } = await editForm.validateFields(['email']);
+      const normalizedEmail = normalizeProfileEmail(email);
+      editForm.setFieldValue('email', normalizedEmail);
+      if (normalizedEmail === normalizeProfileEmail(user?.email)) {
+        message.info(t('pages.profile.emailCodeUnchanged'));
+        return;
+      }
+      setProfileEmailCodeSending(true);
+      const response = await userApi.sendProfileEmailCode(normalizedEmail);
+      const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
+      const ttlMinutes = Number(response.data?.codeTtlMinutes);
+      setProfileEmailCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
+      setProfileEmailCodeTtlMinutes(Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 0);
+      setProfileEmailCodeSentTo(normalizedEmail);
+      editForm.setFieldValue('emailCode', '');
+      editForm.setFields([{ name: 'emailCode', errors: [] }]);
+      message.success(t('pages.auth.emailCodeSentTo', { email: normalizedEmail }));
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      const retryAfterSeconds = Number(err.response?.data?.retryAfterSeconds);
+      if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+        setProfileEmailCodeCountdown(Math.ceil(retryAfterSeconds));
+      }
+      message.error(getApiErrorMessage(err, t('pages.auth.emailCodeSendFailed'), language));
+    } finally {
+      setProfileEmailCodeSending(false);
+    }
+  };
+
   const handleChangePassword = async () => {
+    if (passwordSubmitting) return;
     try {
       const values = await passwordForm.validateFields();
       setPasswordSubmitting(true);
@@ -229,7 +341,7 @@ const Profile: React.FC = () => {
       passwordForm.resetFields();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err.response?.data?.error || t('pages.profile.passwordFailed'));
+      message.error(getApiErrorMessage(err, t('pages.profile.passwordFailed'), language));
     } finally {
       setPasswordSubmitting(false);
     }
@@ -286,7 +398,7 @@ const Profile: React.FC = () => {
       message.success(t('pages.profile.orderCancelled'));
       fetchOrders();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.profile.cancelFailed'));
+      message.error(getApiErrorMessage(err, t('pages.profile.cancelFailed'), language));
     }
   };
 
@@ -295,9 +407,12 @@ const Profile: React.FC = () => {
     try {
       const paymentListRes = await paymentApi.getByOrder(order.id);
       const paymentList = paymentListRes.data;
-      const preferredMethod = order.paymentMethod || paymentList[0]?.channel || 'STRIPE';
+      const preferredMethod = getPreferredPaymentChannel(paymentChannels, order.paymentMethod || paymentList[0]?.channel);
       const reusablePayment = paymentList.find((item) => item.status === 'PAID')
         || paymentList.find((item) => item.status === 'PENDING' && !getPaymentRecoveryState(item).isExpired);
+      if (!reusablePayment && !preferredMethod) {
+        throw new Error(t('pages.checkout.paymentUnavailable'));
+      }
       const latestPayment = reusablePayment || (await paymentApi.create(order.id, preferredMethod)).data;
       setSelectedOrder(order);
       setOrderPayments(paymentList.some((item) => item.id === latestPayment.id) ? paymentList : [latestPayment, ...paymentList]);
@@ -305,7 +420,7 @@ const Profile: React.FC = () => {
       setSelectedPaymentMethod(latestPayment.channel || preferredMethod);
       setPaymentModalVisible(true);
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.profile.continuePayFailed'));
+      message.error(err?.response ? getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language) : err.message || t('pages.profile.continuePayFailed'));
       fetchOrders();
     } finally {
       setPayingOrderId(null);
@@ -314,16 +429,21 @@ const Profile: React.FC = () => {
 
   const handleRefreshPayment = async () => {
     if (!selectedOrder) return;
+    const method = getPreferredPaymentChannel(paymentChannels, selectedPaymentMethod || selectedPayment?.channel || selectedOrder.paymentMethod);
+    if (!method) {
+      message.error(t('pages.checkout.paymentUnavailable'));
+      return;
+    }
     setRefreshingPayment(true);
     try {
-      const paymentRes = await paymentApi.create(selectedOrder.id, selectedPaymentMethod || selectedPayment?.channel || selectedOrder.paymentMethod || 'STRIPE');
+      const paymentRes = await paymentApi.create(selectedOrder.id, method);
       setSelectedPayment(paymentRes.data);
       setSelectedPaymentMethod(paymentRes.data.channel);
       setOrderPayments((items) => [paymentRes.data, ...items.filter((item) => item.id !== paymentRes.data.id)]);
       message.success(t('pages.profile.paymentRefreshed'));
       await fetchOrders();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.profile.continuePayFailed'));
+      message.error(err?.response ? getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language) : err.message || t('pages.profile.continuePayFailed'));
       await fetchOrders();
     } finally {
       setRefreshingPayment(false);
@@ -353,13 +473,23 @@ const Profile: React.FC = () => {
     };
   }, [paymentModalVisible, selectedOrder?.id]);
 
+  useEffect(() => {
+    paymentApi.getChannels()
+      .then((res) => {
+        setPaymentChannels(res.data || []);
+      })
+      .catch(() => {
+        setPaymentChannels([]);
+      });
+  }, []);
+
   const handleConfirmReceipt = async (orderId: number) => {
     try {
       await orderApi.confirm(orderId);
       message.success(t('pages.profile.receiptConfirmed'));
       fetchOrders();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.profile.confirmFailed'));
+      message.error(getApiErrorMessage(err, t('pages.profile.confirmFailed'), language));
     }
   };
 
@@ -378,7 +508,7 @@ const Profile: React.FC = () => {
       setReturnReason('');
       fetchOrders();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.profile.returnFailed'));
+      message.error(getApiErrorMessage(err, t('pages.profile.returnFailed'), language));
     } finally {
       setRequestingReturn(false);
     }
@@ -398,7 +528,7 @@ const Profile: React.FC = () => {
       setReturnTrackingNumber('');
       fetchOrders();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.profile.returnShipmentFailed'));
+      message.error(getApiErrorMessage(err, t('pages.profile.returnShipmentFailed'), language));
     } finally {
       setSubmittingReturnShipment(false);
     }
@@ -414,17 +544,23 @@ const Profile: React.FC = () => {
     setTrackingVisible(true);
   };
 
-  const openSupport = () => {
+  const openSupport = useCallback(() => {
+    if (!getLocalStorageItem('token')) {
+      message.warning(t('messages.loginRequired'));
+      navigate(buildLoginUrlFromWindow());
+      return;
+    }
     dispatchDomEvent('shop:open-support');
-  };
+  }, [navigate, t]);
 
   const handleSaveAddress = async () => {
+    if (addressSubmitting) return;
     try {
       const values = await addressForm.validateFields();
       setAddressSubmitting(true);
       const regionStr = values.region ? values.region.join(' ') : '';
       const fullAddress = `${regionStr} ${values.detail || ''}`.trim();
-      const payload = { recipientName: values.recipientName, phone: values.phone, address: fullAddress };
+      const payload = { recipientName: values.recipientName, phone: normalizeProfilePhone(values.phone), address: fullAddress, isDefault: Boolean(values.isDefault) };
       if (editingAddress) {
         await addressApi.update(editingAddress.id, payload);
         message.success(t('pages.profile.addressUpdated'));
@@ -438,7 +574,7 @@ const Profile: React.FC = () => {
       fetchAddresses();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(t('pages.profile.addressSaveFailed'));
+      message.error(getApiErrorMessage(err, t('pages.profile.addressSaveFailed'), language));
     } finally {
       setAddressSubmitting(false);
     }
@@ -449,8 +585,8 @@ const Profile: React.FC = () => {
       await addressApi.delete(id);
       message.success(t('pages.profile.addressDeleted'));
       fetchAddresses();
-    } catch {
-      message.error(t('messages.deleteFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };
 
@@ -459,12 +595,13 @@ const Profile: React.FC = () => {
       await addressApi.setDefault(id);
       message.success(t('pages.profile.defaultSet'));
       fetchAddresses();
-    } catch {
-      message.error(t('pages.profile.setFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('pages.profile.setFailed'), language));
     }
   };
 
   const openAddressModal = (address?: UserAddress) => {
+    addressForm.resetFields();
     if (address) {
       const { region, detail } = findRegionPath(address.address);
       setEditingAddress(address);
@@ -473,6 +610,7 @@ const Profile: React.FC = () => {
         phone: address.phone,
         region,
         detail,
+        isDefault: Boolean(address.isDefault),
       });
     } else {
       setEditingAddress(null);
@@ -481,12 +619,29 @@ const Profile: React.FC = () => {
     setAddressModalVisible(true);
   };
 
+  const closeAddressModal = () => {
+    if (addressSubmitting) return;
+    setAddressModalVisible(false);
+    addressForm.resetFields();
+    setEditingAddress(null);
+  };
+
+  const closePasswordModal = () => {
+    if (passwordSubmitting) return;
+    setPasswordModalVisible(false);
+    passwordForm.resetFields();
+  };
+
   const openEditModal = () => {
-    editForm.setFieldsValue({ email: user?.email, phone: user?.phone });
+    editForm.setFieldsValue({ email: user?.email, phone: user?.phone, emailCode: '' });
+    setProfileEmailCodeSentTo('');
+    setProfileEmailCodeCountdown(0);
+    setProfileEmailCodeTtlMinutes(0);
     setEditModalVisible(true);
   };
 
   const openPetModal = (pet?: PetProfile) => {
+    petForm.resetFields();
     setEditingPet(pet || null);
     if (pet) {
       petForm.setFieldsValue({
@@ -501,6 +656,7 @@ const Profile: React.FC = () => {
   };
 
   const handleSavePet = async () => {
+    if (petSubmitting) return;
     try {
       const values = await petForm.validateFields();
       setPetSubmitting(true);
@@ -517,13 +673,21 @@ const Profile: React.FC = () => {
       }
       setPetModalVisible(false);
       setEditingPet(null);
+      petForm.resetFields();
       fetchPetProfiles();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err.response?.data?.error || t('messages.operationFailed'));
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setPetSubmitting(false);
     }
+  };
+
+  const closePetModal = () => {
+    if (petSubmitting) return;
+    setPetModalVisible(false);
+    setEditingPet(null);
+    petForm.resetFields();
   };
 
   const handleDeletePet = async (id: number) => {
@@ -531,8 +695,8 @@ const Profile: React.FC = () => {
       await petProfileApi.delete(id);
       message.success(t('messages.deleteSuccess'));
       fetchPetProfiles();
-    } catch {
-      message.error(t('messages.deleteFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };
 
@@ -569,8 +733,9 @@ const Profile: React.FC = () => {
     });
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'en' ? 'en-US' : 'es-MX';
   const { formatMoney } = useMarket();
-  const paymentOptions = createPaymentMethodOptions(t);
-  const selectedPaymentMethodDetail = mexicoPaymentMethodDetails.find((method) => method.value === selectedPaymentMethod);
+  const paymentOptions = createPaymentMethodOptions(t, paymentChannels);
+  const paymentMethodDetails = createPaymentMethodDetails(paymentChannels);
+  const selectedPaymentMethodDetail = paymentMethodDetails.find((method) => method.value === selectedPaymentMethod);
   const selectedPaymentRecovery = getPaymentRecoveryState(selectedPayment);
   const pendingPaymentCount = orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
   const inTransitCount = orders.filter((order) => order.status === 'SHIPPED').length;
@@ -763,6 +928,10 @@ const Profile: React.FC = () => {
       setOrderStatusFilter('all');
     }
   };
+  const openAddressSetup = () => {
+    setProfileActiveTab('addresses');
+    openAddressModal();
+  };
   const openOrdersWithFilter = (filter: string) => {
     setProfileActiveTab('orders');
     setOrderStatusFilter(filter);
@@ -785,7 +954,7 @@ const Profile: React.FC = () => {
             <Button type="primary" onClick={() => openProfileTab('orders')}>
               {t('pages.profile.orders', { count: orders.length })}
             </Button>
-            <Button onClick={() => openProfileTab(defaultAddressReady ? 'pets' : 'addresses')}>
+            <Button onClick={() => (defaultAddressReady ? openProfileTab('pets') : openAddressSetup())}>
               {defaultAddressReady
                 ? (petProfiles.length > 0 ? t('pages.profile.completePetProfile') : t('pages.profile.addPet'))
                 : t('pages.profile.addAddress')}
@@ -842,7 +1011,7 @@ const Profile: React.FC = () => {
               <Text>{t('pages.profile.actionAfterSale')}</Text>
             </span>
           </button>
-          <button type="button" className="profile-action-center__card" onClick={() => setProfileActiveTab(defaultAddressReady ? 'pets' : 'addresses')}>
+          <button type="button" className="profile-action-center__card" onClick={() => (defaultAddressReady ? setProfileActiveTab('pets') : openAddressSetup())}>
             {defaultAddressReady ? <HeartOutlined /> : <EnvironmentOutlined />}
             <span>
               <strong>{defaultAddressReady ? `${petProfileProgress}%` : '!'}</strong>
@@ -1076,8 +1245,9 @@ const Profile: React.FC = () => {
                                   <button type="button" onClick={() => openProductDetail(primaryItem.productId)}>
                                     {primaryItem.productName || t('pages.profile.productFallback', { id: primaryItem.productId })}
                                   </button>
-                                  <Text type="secondary">
-                                    {formatMoney(primaryItem.price)} x {primaryItem.quantity}
+                                  <Text type="secondary" className="profile-order-item__unit commerce-atomic commerce-price-quantity">
+                                    <span className="commerce-money">{formatMoney(primaryItem.price)}</span>
+                                    <span className="commerce-quantity">x {primaryItem.quantity}</span>
                                   </Text>
                                   {primaryItem.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(primaryItem.selectedSpecs, t)}</Text> : null}
                                   {items.length > 1 ? <Text type="secondary">{t('pages.profile.moreItems', { count: items.length - 1 })}</Text> : null}
@@ -1090,14 +1260,17 @@ const Profile: React.FC = () => {
                           </div>
                           <div className="profile-order-card__amount">
                             <Text type="secondary" className="profile-order-card__mobileLabel">{t('pages.profile.goodsAmount')}</Text>
-                            <Text strong>{formatMoney(order.originalAmount || order.totalAmount)}</Text>
-                            {order.discountAmount && order.discountAmount > 0 ? <Text type="secondary">-{formatMoney(order.discountAmount)}</Text> : null}
-                            <Text type="secondary">x{items.reduce((sum, item) => sum + item.quantity, 0) || 1}</Text>
+                            <Text strong className="profile-price-text commerce-money">{formatMoney(order.originalAmount || order.totalAmount)}</Text>
+                            {order.discountAmount && order.discountAmount > 0 ? <Text type="secondary" className="profile-price-text commerce-money">-{formatMoney(order.discountAmount)}</Text> : null}
+                            <Text type="secondary" className="profile-quantity-text commerce-quantity">x{items.reduce((sum, item) => sum + item.quantity, 0) || 1}</Text>
                           </div>
                           <div className="profile-order-card__paid">
                             <Text type="secondary" className="profile-order-card__mobileLabel">{t('pages.profile.paidAmount')}</Text>
-                            <Text strong>{formatMoney(order.totalAmount)}</Text>
-                            <Text type="secondary">{t('pages.profile.includesShipping', { amount: formatMoney(order.shippingFee || 0) })}</Text>
+                            <Text strong className="profile-price-text commerce-money">{formatMoney(order.totalAmount)}</Text>
+                            <Text type="secondary" className="profile-order-card__shippingIncluded commerce-atomic">
+                              <span>{t('pages.profile.includesShipping', { amount: '' }).trim()}</span>
+                              <span className="commerce-money">{formatMoney(order.shippingFee || 0)}</span>
+                            </Text>
                             <Tag>{t('pages.profile.onlineOrder')}</Tag>
                           </div>
                           <div className="profile-order-card__actions">
@@ -1256,23 +1429,103 @@ const Profile: React.FC = () => {
         ]}
       />
 
-      <Modal title={t('pages.profile.editProfileTitle')} open={editModalVisible} onOk={handleEditProfile} onCancel={() => setEditModalVisible(false)} confirmLoading={profileSubmitting}>
+      <Modal
+        title={t('pages.profile.editProfileTitle')}
+        open={editModalVisible}
+        onOk={handleEditProfile}
+        onCancel={() => {
+          setEditModalVisible(false);
+          editForm.resetFields(['emailCode']);
+          setProfileEmailCodeSentTo('');
+          setProfileEmailCodeCountdown(0);
+        }}
+        confirmLoading={profileSubmitting}
+        className="profile-mobile-safe-modal"
+      >
         <Form form={editForm} layout="vertical">
-          <Form.Item name="email" label={t('pages.profile.email')} rules={[{ type: 'email', message: t('pages.profile.emailInvalid') }]}>
-            <Input />
+          <Form.Item
+            name="email"
+            label={t('pages.profile.email')}
+            rules={[
+              { required: true, message: t('pages.auth.emailRequired') },
+              { type: 'email', message: t('pages.profile.emailInvalid') },
+            ]}
+          >
+            <Input prefix={<MailOutlined />} />
+          </Form.Item>
+          {profileEmailChanged && !emailCodeEnabled && (
+            <div className="profile-email-code-warning" role="status">
+              <SafetyCertificateOutlined />
+              <span>{t('pages.auth.emailCodeUnavailable')}</span>
+            </div>
+          )}
+          {profileEmailCodeSentTo && (
+            <Text type="secondary">
+              {t('pages.profile.emailCodeSentHint', {
+                email: profileEmailCodeSentTo,
+                minutes: profileEmailCodeTtlMinutes || 0,
+              })}
+            </Text>
+          )}
+          <Form.Item
+            name="emailCode"
+            label={t('pages.profile.emailVerificationCode')}
+            rules={[
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  const normalizedEmail = normalizeProfileEmail(getFieldValue('email'));
+                  if (normalizedEmail === normalizeProfileEmail(user?.email)) return Promise.resolve();
+                  if (normalizeEmailCode(value).length === 6) return Promise.resolve();
+                  return Promise.reject(new Error(t('pages.auth.emailCodeLength')));
+                },
+              }),
+            ]}
+          >
+            <Input
+              prefix={<SafetyCertificateOutlined />}
+              maxLength={12}
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              disabled={profileSubmitting || (profileEmailChanged && !emailCodeEnabled)}
+              onChange={(event) => {
+                const normalized = normalizeEmailCode(event.target.value);
+                if (normalized !== event.target.value) {
+                  editForm.setFieldValue('emailCode', normalized);
+                }
+              }}
+              addonAfter={
+                <Button
+                  type="link"
+                  size="small"
+                  loading={profileEmailCodeSending}
+                  disabled={profileSubmitting || profileEmailCodeSending || profileEmailCodeCountdown > 0 || !emailCodeEnabled}
+                  onClick={handleSendProfileEmailCode}
+                >
+                  {profileEmailCodeSending
+                    ? t('pages.auth.emailCodeSending')
+                    : profileEmailCodeCountdown > 0
+                    ? t('pages.auth.resendIn', { seconds: profileEmailCodeCountdown })
+                    : t('pages.auth.sendCode')}
+                </Button>
+              }
+            />
           </Form.Item>
           <Form.Item name="phone" label={t('pages.profile.phone')}>
-            <Input />
+            <Input maxLength={20} />
           </Form.Item>
         </Form>
       </Modal>
 
-      <Modal title={t('pages.profile.changePassword')} open={passwordModalVisible} onOk={handleChangePassword} onCancel={() => { setPasswordModalVisible(false); passwordForm.resetFields(); }} confirmLoading={passwordSubmitting}>
+      <Modal title={t('pages.profile.changePassword')} open={passwordModalVisible} onOk={handleChangePassword} onCancel={closePasswordModal} confirmLoading={passwordSubmitting} className="profile-mobile-safe-modal" destroyOnHidden>
         <Form form={passwordForm} layout="vertical">
           <Form.Item name="oldPassword" label={t('pages.profile.oldPassword')} rules={[{ required: true, message: t('pages.profile.oldPasswordRequired') }]}>
             <Input.Password />
           </Form.Item>
-          <Form.Item name="newPassword" label={t('pages.profile.newPassword')} rules={[{ required: true, min: 6, message: t('pages.profile.newPasswordMin') }]}>
+          <Form.Item name="newPassword" label={t('pages.profile.newPassword')} rules={[
+            { required: true, min: 8, max: 128, message: t('pages.profile.newPasswordMin') },
+            { pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: t('pages.profile.newPasswordPattern') }
+          ]}>
             <Input.Password />
           </Form.Item>
           <Form.Item
@@ -1298,22 +1551,33 @@ const Profile: React.FC = () => {
         title={editingAddress ? t('pages.profile.editAddressTitle') : t('pages.profile.addAddressTitle')}
         open={addressModalVisible}
         onOk={handleSaveAddress}
-        onCancel={() => { setAddressModalVisible(false); addressForm.resetFields(); setEditingAddress(null); }}
+        onCancel={closeAddressModal}
         confirmLoading={addressSubmitting}
         width={560}
+        className="profile-mobile-safe-modal profile-address-modal"
+        destroyOnHidden
       >
-        <Form form={addressForm} layout="vertical">
+        <Form form={addressForm} layout="vertical" onFocusCapture={(event) => scrollProfileAddressFieldIntoMobileView(event.target)}>
           <Form.Item name="recipientName" label={t('pages.profile.recipient')} rules={[{ required: true, message: t('pages.profile.recipientRequired') }]}>
-            <Input placeholder={t('pages.profile.recipientRequired')} />
+            <Input placeholder={t('pages.profile.recipientRequired')} autoComplete="name" maxLength={80} />
           </Form.Item>
           <Form.Item name="phone" label={t('pages.profile.phone')} rules={[{ required: true, message: t('pages.profile.phoneRequired') }]}>
-            <Input placeholder={t('pages.profile.phoneRequired')} />
+            <Input placeholder={t('pages.profile.phoneRequired')} autoComplete="tel" inputMode="tel" maxLength={40} />
           </Form.Item>
           <Form.Item name="region" label={t('pages.profile.region')} rules={[{ required: true, message: t('pages.profile.regionRequired') }]}>
-            <Cascader options={regionData} placeholder={t('pages.profile.region')} showSearch />
+            <Cascader
+              options={regionData}
+              placeholder={t('pages.profile.region')}
+              showSearch
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
+            />
           </Form.Item>
           <Form.Item name="detail" label={t('pages.profile.detailAddress')} rules={[{ required: true, message: t('pages.profile.detailRequired') }]}>
-            <Input.TextArea rows={2} placeholder={t('pages.profile.detailRequired')} />
+            <Input.TextArea rows={3} placeholder={t('pages.profile.detailRequired')} autoComplete="street-address" maxLength={260} showCount />
+          </Form.Item>
+          <Form.Item name="isDefault" valuePropName="checked">
+            <Checkbox>{t('pages.profile.makeDefaultAddress')}</Checkbox>
           </Form.Item>
         </Form>
       </Modal>
@@ -1322,8 +1586,10 @@ const Profile: React.FC = () => {
         title={editingPet ? t('pages.profile.editPet') : t('pages.profile.addPet')}
         open={petModalVisible}
         onOk={handleSavePet}
-        onCancel={() => { setPetModalVisible(false); setEditingPet(null); petForm.resetFields(); }}
+        onCancel={closePetModal}
         confirmLoading={petSubmitting}
+        className="profile-mobile-safe-modal"
+        destroyOnHidden
       >
         <Form form={petForm} layout="vertical">
           <Form.Item name="name" label={t('pages.profile.petName')} rules={[{ required: true, message: t('pages.profile.petNameRequired') }]}>
@@ -1336,13 +1602,15 @@ const Profile: React.FC = () => {
                 { value: 'CAT', label: t('pages.profile.petCat') },
                 { value: 'SMALL_PET', label: t('pages.profile.petSmall') },
               ]}
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
             />
           </Form.Item>
           <Form.Item name="breed" label={t('pages.profile.petBreed')}>
             <Input placeholder="Golden Retriever" />
           </Form.Item>
           <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
-            <DatePicker className="profile-pet-modal__field" />
+            <DatePicker className="profile-pet-modal__field" popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} />
           </Form.Item>
           <Form.Item name="weight" label={t('pages.profile.petWeightKg')}>
             <InputNumber min={0} precision={2} className="profile-pet-modal__field" />
@@ -1355,20 +1623,22 @@ const Profile: React.FC = () => {
                 { value: 'MEDIUM', label: t('pages.profile.petSizeMedium') },
                 { value: 'LARGE', label: t('pages.profile.petSizeLarge') },
               ]}
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
             />
           </Form.Item>
         </Form>
       </Modal>
 
-      <Modal title={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })} open={orderDetailVisible} onCancel={() => setOrderDetailVisible(false)} footer={null} width={640}>
+      <Modal title={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })} open={orderDetailVisible} onCancel={() => setOrderDetailVisible(false)} footer={null} width={640} className="profile-mobile-safe-modal profile-order-detail-modal">
         {selectedOrder && (
           <div>
             <Descriptions column={1} bordered size="small" className="profile-order-detail__descriptions">
               <Descriptions.Item label={t('common.status')}><Tag color={statusColors[selectedOrder.status]}>{t(`status.${selectedOrder.status}`)}</Tag></Descriptions.Item>
-              <Descriptions.Item label={t('common.amount')}><Text strong className="profile-price-text">{formatMoney(selectedOrder.totalAmount)}</Text></Descriptions.Item>
-              {selectedOrder.originalAmount ? <Descriptions.Item label={t('common.subtotal')}>{formatMoney(selectedOrder.originalAmount)}</Descriptions.Item> : null}
+              <Descriptions.Item label={t('common.amount')}><Text strong className="profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</Text></Descriptions.Item>
+              {selectedOrder.originalAmount ? <Descriptions.Item label={t('common.subtotal')}><span className="commerce-money">{formatMoney(selectedOrder.originalAmount)}</span></Descriptions.Item> : null}
               {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 ? (
-                <Descriptions.Item label={t('pages.checkout.coupon')}>{selectedOrder.couponName || '-'} / -{formatMoney(selectedOrder.discountAmount)}</Descriptions.Item>
+                <Descriptions.Item label={t('pages.checkout.coupon')}>{selectedOrder.couponName || '-'} / <span className="commerce-money">-{formatMoney(selectedOrder.discountAmount)}</span></Descriptions.Item>
               ) : null}
               <Descriptions.Item label={t('pages.checkout.address')}>{selectedOrder.shippingAddress || '-'}</Descriptions.Item>
               <Descriptions.Item label={t('pages.checkout.paymentMethod')}>{selectedOrder.paymentMethod ? paymentMethodLabel(selectedOrder.paymentMethod, t) : '-'}</Descriptions.Item>
@@ -1448,11 +1718,14 @@ const Profile: React.FC = () => {
                       description={
                         <Space direction="vertical" size={0}>
                           {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
-                          <Text type="secondary">{formatMoney(item.price)} x {item.quantity}</Text>
+                          <Text type="secondary" className="profile-order-detail__unit commerce-atomic commerce-price-quantity">
+                            <span className="commerce-money">{formatMoney(item.price)}</span>
+                            <span className="commerce-quantity">x {item.quantity}</span>
+                          </Text>
                         </Space>
                       }
                     />
-                    <Text strong className="profile-price-text">{formatMoney(item.price * item.quantity)}</Text>
+                    <Text strong className="profile-price-text commerce-money">{formatMoney(item.price * item.quantity)}</Text>
                   </List.Item>
                 )}
               />
@@ -1469,11 +1742,14 @@ const Profile: React.FC = () => {
         confirmLoading={submittingReturnShipment}
         onOk={handleSubmitReturnShipment}
         onCancel={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
+        className="profile-mobile-safe-modal"
       >
         <Input
           value={returnTrackingNumber}
           onChange={(e) => setReturnTrackingNumber(e.target.value)}
           placeholder={t('pages.profile.returnTrackingPlaceholder')}
+          autoComplete="off"
+          inputMode="text"
           maxLength={100}
         />
       </Modal>
@@ -1486,6 +1762,7 @@ const Profile: React.FC = () => {
         cancelText={t('common.cancel')}
         onOk={handleReturnOrder}
         onCancel={() => { setReturnRequestOrder(null); setReturnReason(''); }}
+        className="profile-mobile-safe-modal"
       >
         <Space direction="vertical" className="profile-return-modal__content">
           <Text type="secondary">{t('pages.profile.returnReviewHint')}</Text>
@@ -1511,6 +1788,7 @@ const Profile: React.FC = () => {
         onCancel={() => setTrackingVisible(false)}
         footer={null}
         width={720}
+        className="profile-mobile-safe-modal profile-tracking-modal"
       >
         <SeventeenTrackWidget trackingNumber={selectedTrackingNumber} carrierCode={selectedTrackingCarrierCode} />
       </Modal>
@@ -1519,7 +1797,7 @@ const Profile: React.FC = () => {
         title={t('pages.profile.continuePay')}
         open={paymentModalVisible}
         onCancel={() => setPaymentModalVisible(false)}
-        className="profile-payment-modal"
+        className="profile-mobile-safe-modal profile-payment-modal"
         footer={[
           selectedPayment?.status === 'PENDING' && selectedPayment.paymentUrl && (
             <Button
@@ -1535,7 +1813,7 @@ const Profile: React.FC = () => {
             </Button>
           ),
           selectedPayment && selectedPayment.status !== 'PAID' && (
-            <Button key="refresh" loading={refreshingPayment} onClick={handleRefreshPayment}>
+            <Button key="refresh" loading={refreshingPayment} disabled={paymentOptions.length === 0} onClick={handleRefreshPayment}>
               {t('pages.profile.refreshPayment')}
             </Button>
           ),
@@ -1579,7 +1857,7 @@ const Profile: React.FC = () => {
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label={t('pages.profile.orderNo')}>{selectedOrder.orderNo || selectedOrder.id}</Descriptions.Item>
               <Descriptions.Item label={t('common.amount')}>
-                <Text strong className="profile-price-text">{formatMoney(selectedOrder.totalAmount)}</Text>
+                <Text strong className="profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</Text>
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
                 <Select
@@ -1587,8 +1865,13 @@ const Profile: React.FC = () => {
                   value={selectedPaymentMethod}
                   options={paymentOptions}
                   onChange={setSelectedPaymentMethod}
-                  disabled={selectedPayment.status === 'PAID'}
+                  popupClassName="shop-mobile-popup-layer"
+                  getPopupContainer={() => document.body}
+                  disabled={selectedPayment.status === 'PAID' || paymentOptions.length === 0}
                 />
+                {paymentOptions.length === 0 ? (
+                  <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
+                ) : null}
                 {selectedPaymentMethodDetail ? (
                   <div className="profile-payment-method-hint">
                     <Tag color={selectedPaymentMethodDetail.value === 'OXXO' ? 'orange' : selectedPaymentMethodDetail.value === 'SPEI' ? 'blue' : 'green'}>
@@ -1639,7 +1922,7 @@ const Profile: React.FC = () => {
                           {t(`status.${payment.status}`)}
                         </Tag>
                         <Text>{paymentMethodLabel(payment.channel, t)}</Text>
-                        {payment.amount ? <Text type="secondary">{formatMoney(payment.amount)}</Text> : null}
+                        {payment.amount ? <Text type="secondary" className="commerce-money">{formatMoney(payment.amount)}</Text> : null}
                       </Space>
                       <Text type="secondary" className="profile-payment-history__time">
                         {payment.createdAt ? new Date(payment.createdAt).toLocaleString(dateLocale) : ''}

@@ -176,7 +176,8 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<Product> findPublicProducts() {
         return getCachedProducts("public", () -> enrichReviewStats(productRepository.findAll().stream()
-                .filter(ProductStatusUtils::isPublicProduct)
+                .filter(this::isPublicCatalogProduct)
+                .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList())));
     }
 
@@ -215,7 +216,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Optional<Product> findPublicById(Long id) {
-        return findById(id).filter(ProductStatusUtils::isPublicProduct);
+        return findById(id).filter(this::isPublicCatalogProduct);
     }
 
     @Override
@@ -242,13 +243,14 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<Product> findPublicByIds(List<Long> ids) {
         return findByIds(ids).stream()
-                .filter(ProductStatusUtils::isPublicProduct)
+                .filter(this::isPublicCatalogProduct)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public Product save(Product product) {
+        validateDirectProduct(product);
         Product saved = productRepository.save(product);
         clearProductSearchCache();
         return saved;
@@ -269,7 +271,8 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<Product> findPublicFeaturedProducts() {
         return getCachedProducts("featured:public", () -> enrichReviewStats(productRepository.findByIsFeaturedTrueOrderByIdAsc().stream()
-                .filter(ProductStatusUtils::isPublicProduct)
+                .filter(this::isPublicCatalogProduct)
+                .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList())));
     }
 
@@ -277,6 +280,8 @@ public class ProductServiceImpl implements ProductService {
     public List<Product> findDiscountProducts() {
         return getCachedProducts("discount", () -> enrichReviewStats(productRepository.findAll().stream()
                 .filter(ProductStatusUtils::isPublicProduct)
+                .filter(this::isPublicCatalogProduct)
+                .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .filter(product -> {
                     if (product.getDiscount() != null && product.getDiscount() > 0) {
                         return true;
@@ -345,13 +350,14 @@ public class ProductServiceImpl implements ProductService {
         }
         if (normalizedKeyword.isEmpty()) {
             return enrichReviewStats(candidates.stream()
-                    .filter(ProductStatusUtils::isPublicProduct)
+                    .filter(this::isPublicCatalogProduct)
                     .collect(Collectors.toList()));
         }
         Map<Long, Category> categoryLookup = categoryRepository.findAll().stream()
                 .collect(Collectors.toMap(Category::getId, category -> category, (left, right) -> left));
         return enrichReviewStats(candidates.stream()
                 .filter(ProductStatusUtils::isPublicProduct)
+                .filter(this::isPublicCatalogProduct)
                 .filter(product -> matchesNormalizedKeyword(product, normalizedKeyword, categoryLookup))
                 .collect(Collectors.toList()));
     }
@@ -365,6 +371,7 @@ public class ProductServiceImpl implements ProductService {
                 .findActiveByCategoryId(categoryId, PageRequest.of(0, 14))
                 .stream()
                 .filter(product -> !productId.equals(product.getId()))
+                .filter(this::isPublicCatalogProduct)
                 .filter(this::hasSellableStock)
                 .limit(8)
                 .collect(Collectors.toList())));
@@ -394,7 +401,7 @@ public class ProductServiceImpl implements ProductService {
         Map<Long, Category> categories = categoryRepository.findAll().stream()
                 .collect(Collectors.toMap(Category::getId, category -> category));
         List<Product> products = productRepository.findAll().stream()
-                .filter(ProductStatusUtils::isPublicProduct)
+                .filter(this::isPublicCatalogProduct)
                 .filter(product -> product.getStock() == null || product.getStock() > 0)
                 .collect(Collectors.toList());
 
@@ -1114,6 +1121,58 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    private void validateDirectProduct(Product product) {
+        if (product == null) {
+            throw new IllegalArgumentException("Product payload is required");
+        }
+        product.setName(normalizeDirectText(product.getName(), "name", 180, true));
+        product.setDescription(normalizeDirectText(product.getDescription(), "description", 1000, false));
+        product.setBrand(normalizeDirectText(product.getBrand(), "brand", 120, false));
+        product.setTag(normalizeDirectText(product.getTag(), "tag", 80, false));
+        product.setWarranty(normalizeDirectText(product.getWarranty(), "warranty", 1000, false));
+        product.setShipping(normalizeDirectText(product.getShipping(), "shipping", 1000, false));
+        product.setStatus(normalizeImportedStatus(product.getStatus()));
+        requirePresent(product.getPrice(), "price");
+        requirePresent(product.getStock(), "stock");
+        requirePresent(product.getCategoryId(), "categoryId");
+        requirePositive(product.getCategoryId(), "categoryId");
+        requireNonNegative(product.getPrice(), "price");
+        validateImportMoneyAmount(product.getPrice(), "price");
+        validateImportMoneyAmount(product.getOriginalPrice(), "originalPrice");
+        validateImportMoneyAmount(product.getLimitedTimePrice(), "limitedTimePrice");
+        validateImportMoneyAmount(product.getFreeShippingThreshold(), "freeShippingThreshold");
+        if (product.getOriginalPrice() != null && product.getOriginalPrice().compareTo(product.getPrice()) < 0) {
+            throw new IllegalArgumentException("originalPrice must be greater than or equal to price");
+        }
+        validateLimitedTimePrice(product.getPrice(), product.getLimitedTimePrice());
+        if (product.getStock() < 0) {
+            throw new IllegalArgumentException("stock must be greater than or equal to 0");
+        }
+        if (product.getDiscount() != null && (product.getDiscount() < 0 || product.getDiscount() > 100)) {
+            throw new IllegalArgumentException("discount must be between 0 and 100");
+        }
+        validateImportImageUrl(product.getImageUrl(), "imageUrl");
+        validateImportImageList(product.getImages());
+        validateImportSpecifications(product.getSpecifications());
+        validateImportDetailContent(product.getDetailContent());
+        validateImportVariants(product.getVariants());
+    }
+
+    private String normalizeDirectText(String value, String field, int maxLength, boolean required) {
+        String normalized = value == null ? null : value
+                .replaceAll("\\p{Cntrl}", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized == null || normalized.isEmpty()) {
+            if (required) {
+                throw new IllegalArgumentException(field + " is required");
+            }
+            return null;
+        }
+        requireLength(normalized, maxLength, field);
+        return normalized;
+    }
+
     private void validateLimitedTimePrice(BigDecimal price, BigDecimal limitedTimePrice) {
         if (limitedTimePrice != null && price != null && limitedTimePrice.compareTo(price) > 0) {
             throw new IllegalArgumentException("limitedTimePrice must be less than or equal to price");
@@ -1792,6 +1851,10 @@ public class ProductServiceImpl implements ProductService {
         return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
 
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
     private String petSizeLabel(String size) {
         if ("SMALL".equals(size)) return "small";
         if ("MEDIUM".equals(size)) return "medium";
@@ -1817,6 +1880,19 @@ public class ProductServiceImpl implements ProductService {
 
     private int personalizedRecommendationPriority(Product product) {
         return isQuickAddReady(product) ? 0 : 1;
+    }
+
+    private boolean isPublicCatalogProduct(Product product) {
+        if (!ProductStatusUtils.isPublicProduct(product)) {
+            return false;
+        }
+        if (isBlank(product.getName()) || product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+            return false;
+        }
+        if (product.getCategoryId() == null || product.getCategoryId() <= 0) {
+            return false;
+        }
+        return true;
     }
 
     private boolean isQuickAddReady(Product product) {
@@ -2132,16 +2208,22 @@ public class ProductServiceImpl implements ProductService {
             products.forEach(product -> applyReviewStats(product, null));
             return products;
         }
-        Map<Long, ProductReviewStats> statsByProductId = reviewRepository.summarizeApprovedReviewsByProductIds(productIds).stream()
-                .collect(Collectors.toMap(
-                        row -> ((Number) row[0]).longValue(),
-                        row -> new ProductReviewStats(
-                                ((Number) row[1]).longValue(),
-                                row[2] == null ? 0L : ((Number) row[2]).longValue(),
-                                row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()
-                        )
-                ));
-        products.forEach(product -> applyReviewStats(product, statsByProductId.get(product.getId())));
+        Map<Long, ProductReviewStats> statsByProductId;
+        try {
+            statsByProductId = reviewRepository.summarizeApprovedReviewsByProductIds(productIds).stream()
+                    .collect(Collectors.toMap(
+                            row -> ((Number) row[0]).longValue(),
+                            row -> new ProductReviewStats(
+                                    ((Number) row[1]).longValue(),
+                                    row[2] == null ? 0L : ((Number) row[2]).longValue(),
+                                    row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()
+                            )
+                    ));
+        } catch (RuntimeException ex) {
+            statsByProductId = Map.of();
+        }
+        Map<Long, ProductReviewStats> resolvedStatsByProductId = statsByProductId;
+        products.forEach(product -> applyReviewStats(product, resolvedStatsByProductId.get(product.getId())));
         return products;
     }
 
@@ -2149,14 +2231,19 @@ public class ProductServiceImpl implements ProductService {
         if (product == null || product.getId() == null) {
             return product;
         }
-        ProductReviewStats stats = reviewRepository.summarizeApprovedReviewsByProductIds(List.of(product.getId())).stream()
-                .findFirst()
-                .map(row -> new ProductReviewStats(
-                        ((Number) row[1]).longValue(),
-                        row[2] == null ? 0L : ((Number) row[2]).longValue(),
-                        row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()
-                ))
-                .orElse(null);
+        ProductReviewStats stats;
+        try {
+            stats = reviewRepository.summarizeApprovedReviewsByProductIds(List.of(product.getId())).stream()
+                    .findFirst()
+                    .map(row -> new ProductReviewStats(
+                            ((Number) row[1]).longValue(),
+                            row[2] == null ? 0L : ((Number) row[2]).longValue(),
+                            row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()
+                    ))
+                    .orElse(null);
+        } catch (RuntimeException ex) {
+            stats = null;
+        }
         applyReviewStats(product, stats);
         return product;
     }

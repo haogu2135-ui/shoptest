@@ -635,3 +635,48 @@
     margin-inline: -2px;
   }
 }
+
+/* Final personalized assistant atomic-text pass */
+.pet-personalized-assistant__price,
+.pet-personalized-assistant__meta,
+.pet-personalized-assistant__stats > span,
+.pet-personalized-assistant__stats .ant-tag {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.pet-personalized-assistant__price,
+.pet-personalized-assistant__stats > span,
+.pet-personalized-assistant__stats .ant-tag {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pet-personalized-assistant__actions .ant-btn,
+.pet-personalized-assistant__foot .ant-btn {
+  white-space: nowrap;
+}
+
+.pet-personalized-assistant__actions .ant-btn > span:not(.ant-btn-icon):not(.anticon),
+.pet-personalized-assistant__foot .ant-btn > span:not(.ant-btn-icon):not(.anticon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .pet-personalized-assistant__price,
+  .pet-personalized-assistant__meta,
+  .pet-personalized-assistant__stats > span,
+  .pet-personalized-assistant__stats .ant-tag,
+  .pet-personalized-assistant__actions .ant-btn,
+  .pet-personalized-assistant__foot .ant-btn {
+    white-space: nowrap !important;
+  }
+}

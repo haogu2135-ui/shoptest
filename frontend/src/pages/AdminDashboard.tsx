@@ -10,6 +10,7 @@ import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import { paymentMethodLabel } from '../utils/paymentMethods';
+import { getApiErrorMessage } from '../utils/apiError';
 import './AdminDashboard.css';
 
 const { Title } = Typography;
@@ -280,13 +281,13 @@ const AdminDashboard: React.FC = () => {
         setStats(res.data);
         setLoadError('');
       } catch (error: any) {
-        setLoadError(error?.response?.data?.error || error?.response?.data?.message || error?.message || t('pages.adminDashboard.loadFailed'));
+        setLoadError(getApiErrorMessage(error, t('pages.adminDashboard.loadFailed'), language));
       } finally {
         setLoading(false);
       }
     };
     fetchStats();
-  }, [t]);
+  }, [language, t]);
 
   if (loading) {
     return <div className="admin-dashboard__loading"><Spin size="large" /></div>;
@@ -310,7 +311,7 @@ const AdminDashboard: React.FC = () => {
       title: t('common.amount'),
       dataIndex: 'totalAmount',
       key: 'totalAmount',
-      render: (v: number) => <span style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(v)}</span>,
+      render: (v: number) => <span className="commerce-money" style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(v)}</span>,
     },
     {
       title: t('common.status'),
@@ -465,7 +466,7 @@ const AdminDashboard: React.FC = () => {
       title: t('pages.adminDashboard.actionMissingTracking'),
       text: t('pages.adminDashboard.actionMissingTrackingText'),
       tone: missingTrackingOrders > 0 ? 'warning' : 'calm',
-      target: '/admin/orders?tracking=missing',
+      target: '/admin/orders?quick=MISSING_TRACKING',
     },
     {
       key: 'refunds',
@@ -477,6 +478,44 @@ const AdminDashboard: React.FC = () => {
     },
   ];
   const openActionCount = operationalActions.filter((item) => item.value > 0).length;
+  const commercialRiskTotal = openActionCount + paymentReturnRiskScore + operationsSlaRiskTotal;
+  const commercialReadinessScore = Math.max(0, Math.min(100, 100 - Math.min(100, commercialRiskTotal * 8)));
+  const commercialReadinessTone = commercialReadinessScore >= 85 ? 'ready' : commercialReadinessScore >= 65 ? 'watch' : 'risk';
+  const commercialReadinessLabel = t(`pages.adminDashboard.commercialReadiness.${commercialReadinessTone}`);
+  const commercialReadinessItems = [
+    {
+      key: 'payment',
+      icon: <DollarOutlined />,
+      label: t('pages.adminDashboard.commercialReadiness.payment'),
+      value: pendingPaymentOrders,
+      target: '/admin/orders?status=PENDING_PAYMENT',
+      tone: pendingPaymentOrders > 0 ? 'watch' : 'ready',
+    },
+    {
+      key: 'fulfillment',
+      icon: <TruckOutlined />,
+      label: t('pages.adminDashboard.commercialReadiness.fulfillment'),
+      value: pendingShipmentOrders + missingTrackingOrders,
+      target: pendingShipmentOrders > 0 ? '/admin/orders?status=PENDING_SHIPMENT' : '/admin/orders?quick=MISSING_TRACKING',
+      tone: pendingShipmentOrders + missingTrackingOrders > 0 ? 'risk' : 'ready',
+    },
+    {
+      key: 'stock',
+      icon: <ShopOutlined />,
+      label: t('pages.adminDashboard.commercialReadiness.stock'),
+      value: lowStockProducts,
+      target: '/admin/products?stock=low',
+      tone: lowStockProducts > 0 ? 'watch' : 'ready',
+    },
+    {
+      key: 'afterSales',
+      icon: <WarningOutlined />,
+      label: t('pages.adminDashboard.commercialReadiness.afterSales'),
+      value: returnRequestedOrders + returnApprovedOrders + returnShippedOrders + refundingPayments,
+      target: '/admin/orders?quick=RETURN_SHIPPED',
+      tone: returnRequestedOrders + returnApprovedOrders + returnShippedOrders + refundingPayments > 0 ? 'risk' : 'ready',
+    },
+  ];
   const statusChartData = [
     { label: t('status.PENDING_PAYMENT'), value: Number(stats.pendingPaymentOrders || 0), color: '#faad14' },
     { label: t('status.PENDING_SHIPMENT'), value: Number(stats.pendingShipmentOrders || 0), color: '#1677ff' },
@@ -499,7 +538,7 @@ const AdminDashboard: React.FC = () => {
       dataIndex: 'revenue',
       key: 'revenue',
       width: 140,
-      render: (value: number) => <span style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(value)}</span>,
+      render: (value: number) => <span className="commerce-money" style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(value)}</span>,
     },
   ];
 
@@ -521,6 +560,47 @@ const AdminDashboard: React.FC = () => {
           </span>
         </div>
       </div>
+
+      <section className={`admin-dashboard__readiness admin-dashboard__readiness--${commercialReadinessTone}`} aria-label={t('pages.adminDashboard.commercialReadiness.title')}>
+        <div className="admin-dashboard__readinessScore">
+          <span>{t('pages.adminDashboard.commercialReadiness.eyebrow')}</span>
+          <strong>{commercialReadinessScore}</strong>
+          <Tag color={commercialReadinessTone === 'ready' ? 'green' : commercialReadinessTone === 'watch' ? 'orange' : 'red'}>
+            {commercialReadinessLabel}
+          </Tag>
+        </div>
+        <div className="admin-dashboard__readinessCopy">
+          <Typography.Text strong>{t('pages.adminDashboard.commercialReadiness.title')}</Typography.Text>
+          <Typography.Text type="secondary">
+            {t('pages.adminDashboard.commercialReadiness.subtitle', {
+              actions: openActionCount,
+              sla: operationsSlaRiskTotal,
+            })}
+          </Typography.Text>
+          <Progress
+            percent={commercialReadinessScore}
+            showInfo={false}
+            strokeColor={commercialReadinessTone === 'ready' ? '#52c41a' : commercialReadinessTone === 'watch' ? '#faad14' : '#ee4d2d'}
+            trailColor="rgba(18, 71, 52, 0.08)"
+          />
+        </div>
+        <div className="admin-dashboard__readinessGrid">
+          {commercialReadinessItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`admin-dashboard__readinessItem admin-dashboard__readinessItem--${item.tone}`}
+              onClick={() => navigate(item.target)}
+            >
+              <span className="admin-dashboard__readinessIcon">{item.icon}</span>
+              <span>
+                <strong>{item.value}</strong>
+                <small>{item.label}</small>
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
 
       <div className={`admin-dashboard__actionBar admin-dashboard__actionBar--${openActionCount > 0 ? 'active' : 'calm'}`} aria-label={t('pages.adminDashboard.actionCenterTitle')}>
         <div className="admin-dashboard__actionIntro">
@@ -654,6 +734,11 @@ const AdminDashboard: React.FC = () => {
       </Row>
 
       <Row gutter={[16, 16]} className="admin-dashboard__statRow">
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="admin-dashboard__statCard admin-dashboard__statCard--money">
+            <Statistic title={t('pages.adminDashboard.averageOrderValue')} value={stats.averageOrderValue || 0} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} precision={2} />
+          </Card>
+        </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card className="admin-dashboard__statCard admin-dashboard__statCard--money">
             <Statistic title={t('pages.adminDashboard.netRevenue')} value={netRevenue} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />

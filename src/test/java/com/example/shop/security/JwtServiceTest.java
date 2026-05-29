@@ -7,7 +7,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import com.example.shop.service.RuntimeConfigService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +40,8 @@ class JwtServiceTest {
         String token = service.generateToken(userDetails);
 
         assertEquals("buyer@example.com", service.extractUsername(token));
+        assertFalse(service.extractJti(token).isBlank());
+        assertTrue(service.getExpirationMs(token) > 0);
     }
 
     @Test
@@ -53,7 +57,7 @@ class JwtServiceTest {
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn(runtimeMode);
         when(runtimeConfig.getString("app.jwtSecret", "")).thenReturn(secret);
-        when(runtimeConfig.getInt("app.jwtExpirationInMs", 86400000)).thenReturn(86400000);
+        when(runtimeConfig.getInt("app.jwtExpirationInMs", 7200000)).thenReturn(86400000);
         return new JwtService(runtimeConfig);
     }
 }

@@ -5,6 +5,7 @@ import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { getApiErrorMessage } from '../utils/apiError';
 import './NotificationManagement.css';
 
 const { Title, Text } = Typography;
@@ -55,7 +56,7 @@ const NotificationManagement: React.FC = () => {
       form.setFieldsValue({ type: 'PROMOTION', contentFormat: 'HTML' });
     } catch (error: any) {
       if (error?.errorFields) return;
-      message.error(error.response?.data?.error || t('pages.notificationAdmin.sendFailed'));
+      message.error(getApiErrorMessage(error, t('pages.notificationAdmin.sendFailed'), language));
     } finally {
       setSending(false);
     }
@@ -119,6 +120,8 @@ const NotificationManagement: React.FC = () => {
           >
             <Form.Item name="type" label={t('pages.notificationAdmin.type')} rules={[{ required: true }]}>
               <Select
+                popupClassName="shop-mobile-popup-layer"
+                getPopupContainer={() => document.body}
                 options={[
                   { value: 'PROMOTION', label: t('status.PROMOTION') },
                   { value: 'SYSTEM', label: t('status.SYSTEM') },
@@ -127,7 +130,14 @@ const NotificationManagement: React.FC = () => {
                 ]}
               />
             </Form.Item>
-            <Form.Item name="title" label={t('pages.notificationAdmin.notificationTitle')} rules={[{ required: true, message: t('pages.notificationAdmin.titleRequired') }]}>
+            <Form.Item
+              name="title"
+              label={t('pages.notificationAdmin.notificationTitle')}
+              rules={[
+                { required: true, message: t('pages.notificationAdmin.titleRequired') },
+                { max: 100, message: t('pages.notificationAdmin.titleRequired') },
+              ]}
+            >
               <Input maxLength={100} showCount placeholder={t('pages.notificationAdmin.titlePlaceholder')} />
             </Form.Item>
             <Form.Item name="contentFormat" label={t('pages.notificationAdmin.contentFormat')}>
@@ -136,14 +146,23 @@ const NotificationManagement: React.FC = () => {
                 <Radio.Button value="TEXT">{t('pages.notificationAdmin.plainText')}</Radio.Button>
               </Radio.Group>
             </Form.Item>
-            <Form.Item name="message" label={t('pages.notificationAdmin.content')} rules={[{ required: true, message: t('pages.notificationAdmin.contentRequired') }]}>
+            <Form.Item
+              name="message"
+              label={t('pages.notificationAdmin.content')}
+              rules={[
+                { required: true, message: t('pages.notificationAdmin.contentRequired') },
+                { max: 5000, message: t('pages.notificationAdmin.contentRequired') },
+              ]}
+            >
               <TextArea
                 rows={10}
+                maxLength={5000}
+                showCount
                 placeholder={contentFormat === 'HTML' ? t('pages.notificationAdmin.htmlPlaceholder') : t('pages.notificationAdmin.textPlaceholder')}
               />
             </Form.Item>
             <Space wrap>
-              <Button onClick={insertSample}>{t('pages.notificationAdmin.useSample')}</Button>
+              <Button onClick={insertSample} disabled={sending}>{t('pages.notificationAdmin.useSample')}</Button>
               <Button type="primary" icon={<SendOutlined />} loading={sending} onClick={handleSend}>
                 {t('pages.notificationAdmin.sendAll')}
               </Button>

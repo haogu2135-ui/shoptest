@@ -46,7 +46,7 @@ public class AdminConfigCenterController {
 
     @PostMapping("/publish")
     public ConfigCenterSnapshotResponse publish(
-            @RequestBody ConfigCenterPublishRequest request,
+            @RequestBody(required = false) ConfigCenterPublishRequest request,
             Authentication authentication,
             HttpServletRequest httpRequest
     ) {
@@ -71,7 +71,7 @@ public class AdminConfigCenterController {
 
     @PostMapping("/apply")
     public ConfigCenterSnapshotResponse apply(
-            @RequestBody ConfigCenterPublishRequest request,
+            @RequestBody(required = false) ConfigCenterPublishRequest request,
             Authentication authentication,
             HttpServletRequest httpRequest
     ) {

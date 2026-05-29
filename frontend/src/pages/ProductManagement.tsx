@@ -17,6 +17,7 @@ import ProductRichDetail, { isHttpMediaUrl } from '../components/ProductRichDeta
 import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { csvRow } from '../utils/csvExport';
+import { getApiErrorMessage } from '../utils/apiError';
 import './ProductManagement.css';
 
 const { Title, Text } = Typography;
@@ -38,6 +39,8 @@ const productStatusLabels: Record<string, string> = {
   INACTIVE: 'status.INACTIVE',
 };
 
+type ProductDetailContentBlock = { type: string; content?: string; url?: string; caption?: string };
+
 const emptyDetailBlock = { type: 'text', content: '', url: '', caption: '' };
 
 const parseJsonArray = (value: unknown) => {
@@ -49,6 +52,18 @@ const parseJsonArray = (value: unknown) => {
   } catch {
     return [];
   }
+};
+
+const normalizeProductImageList = (...values: unknown[]) => {
+  const flattened = values.flatMap((value) => {
+    if (Array.isArray(value)) return value;
+    return parseJsonArray(value).length > 0 ? parseJsonArray(value) : [value];
+  });
+  return Array.from(new Set(
+    flattened
+      .map((image) => String(image || '').trim())
+      .filter((image) => image && isHttpMediaUrl(image))
+  )).slice(0, 12);
 };
 
 const parseJsonObject = (value: unknown) => {
@@ -373,15 +388,12 @@ const productImportResultFromError = (error: any): ProductImportResult | null =>
   };
 };
 
-const importErrorMessageFromError = (error: any, fallback: string) => {
+const importErrorMessageFromError = (error: any, fallback: string, language: ReturnType<typeof useLanguage>['language']) => {
   const data = error?.response?.data;
   if (Array.isArray(data?.errors) && data.errors.length > 0) {
     return data.errors.join('\n');
   }
-  if (typeof data?.message === 'string' && data.message.trim()) {
-    return data.message;
-  }
-  return fallback;
+  return getApiErrorMessage(error, fallback, language);
 };
 
 const productCreateDefaults = () => ({
@@ -581,30 +593,30 @@ const ProductManagement: React.FC = () => {
       setLoading(true);
       const response = await adminApi.getProducts();
       setProducts(response.data);
-    } catch (error) {
-      message.error(t('pages.productAdmin.fetchProductsFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchProductsFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   const fetchCategories = useCallback(async () => {
     try {
       const response = await categoryApi.getAll();
       setCategories(response.data);
-    } catch (error) {
-      message.error(t('pages.productAdmin.fetchCategoriesFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchCategoriesFailed'), language));
     }
-  }, [t]);
+  }, [language, t]);
 
   const fetchBrands = useCallback(async () => {
     try {
       const response = await brandApi.getAll({ activeOnly: true });
       setBrands(response.data);
-    } catch (error) {
-      message.error(t('pages.productAdmin.fetchBrandsFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchBrandsFailed'), language));
     }
-  }, [t]);
+  }, [language, t]);
 
   const fetchImportHistory = useCallback(async () => {
     try {
@@ -688,18 +700,42 @@ const ProductManagement: React.FC = () => {
     setModalVisible(true);
   };
 
+  const closeProductModal = () => {
+    if (productSubmitting) return;
+    setModalVisible(false);
+    setEditingProduct(null);
+    setImagePreviewUrl('');
+    form.resetFields();
+  };
+
+  const closeUrlImportModal = () => {
+    if (urlImportSubmitting) return;
+    setUrlImportVisible(false);
+    setUrlImportPreview(null);
+    urlImportForm.resetFields();
+  };
+
   const applyUrlImportPreview = (preview: ProductUrlImportPreview) => {
-    const imageList = Array.isArray(preview.images) ? preview.images.filter(Boolean).slice(0, 8) : [];
-    const mainImage = preview.imageUrl || imageList[0] || '';
+    const uniqueImages = normalizeProductImageList(preview.imageUrl, preview.images);
+    const mainImage = uniqueImages[0] || '';
     const specs = [
       { key: 'source.url', value: preview.sourceUrl },
       { key: 'source.host', value: preview.sourceHost },
       { key: 'source.currency', value: preview.currency },
       { key: 'source.confidence', value: preview.confidenceScore == null ? undefined : String(preview.confidenceScore) },
-    ].filter((item) => item.value);
+    ].filter((item): item is { key: string; value: string } => typeof item.value === 'string' && item.value.trim().length > 0)
+      .map((item) => ({ key: item.key, value: item.value.trim() }));
 
     setEditingProduct(null);
     form.resetFields();
+    const importedDetailContent: ProductDetailContentBlock[] = [];
+    if (preview.description) {
+      importedDetailContent.push({ type: 'text', content: preview.description });
+    }
+    importedDetailContent.push(
+      ...uniqueImages.slice(0, 6).map((image) => ({ type: 'image', url: image, caption: preview.name || '' })),
+    );
+
     form.setFieldsValue({
       ...productCreateDefaults(),
       name: preview.name,
@@ -709,9 +745,9 @@ const ProductManagement: React.FC = () => {
       stock: 0,
       brand: preview.brand,
       imageUrl: mainImage,
-      images: imageList.filter((image) => image !== mainImage),
+      images: uniqueImages,
       specifications: specs.length > 0 ? specs : [{}],
-      detailContent: preview.description ? [{ type: 'text', content: preview.description }] : [emptyDetailBlock],
+      detailContent: importedDetailContent.length > 0 ? importedDetailContent : [emptyDetailBlock],
       status: 'PENDING_REVIEW',
     });
     setImagePreviewUrl(mainImage);
@@ -733,11 +769,21 @@ const ProductManagement: React.FC = () => {
       setUrlImportPreview(response.data || null);
     } catch (error: any) {
       if (error?.errorFields) return;
-      message.error(error.response?.data?.message || error.response?.data?.error || t('pages.productAdmin.urlImportFailed'));
+      message.error(getApiErrorMessage(error, t('pages.productAdmin.urlImportFailed'), language));
     } finally {
       setUrlImportSubmitting(false);
     }
   };
+
+  const urlImportPreviewImages = useMemo(() => {
+    if (!urlImportPreview) return [];
+    const ordered = [urlImportPreview.imageUrl, ...(Array.isArray(urlImportPreview.images) ? urlImportPreview.images : [])]
+      .filter((image): image is string => typeof image === 'string' && image.trim().length > 0)
+      .map((image) => image.trim());
+    return Array.from(new Set(ordered)).slice(0, 10);
+  }, [urlImportPreview]);
+
+  const urlImportPreviewMainImage = urlImportPreview?.imageUrl || urlImportPreviewImages[0] || '';
 
   const handleEdit = (record: Product) => {
     setEditingProduct(record);
@@ -805,8 +851,8 @@ const ProductManagement: React.FC = () => {
       await productApi.delete(id);
       message.success(t('pages.productAdmin.deleted'));
       fetchProducts();
-    } catch (error) {
-      message.error(t('messages.deleteFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('messages.deleteFailed'), language));
     }
   };
 
@@ -815,8 +861,8 @@ const ProductManagement: React.FC = () => {
       await productApi.update(record.id, { ...record, isFeatured: !record.isFeatured });
       message.success(record.isFeatured ? t('pages.productAdmin.unfeatured') : t('pages.productAdmin.featured'));
       fetchProducts();
-    } catch (err) {
-      message.error(t('messages.operationFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
 
@@ -826,7 +872,7 @@ const ProductManagement: React.FC = () => {
       message.success(t('messages.updateSuccess'));
       fetchProducts();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('messages.operationFailed'));
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
 
@@ -843,7 +889,7 @@ const ProductManagement: React.FC = () => {
       setSelectedProductIds([]);
       fetchProducts();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('messages.operationFailed'));
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setBatchStatusUpdating(null);
     }
@@ -914,7 +960,9 @@ const ProductManagement: React.FC = () => {
         });
       }
       // Filter out empty image URLs
-      const imageList = (values.images || []).filter((url: string) => url && url.trim());
+      const rawMainImage = String(values.imageUrl || '').trim();
+      const imageList = normalizeProductImageList(rawMainImage, values.images);
+      const mainImage = isHttpMediaUrl(rawMainImage) ? rawMainImage : imageList[0] || '';
       const detailContent = (values.detailContent || [])
         .map((block: any) => ({
           type: block.type || 'text',
@@ -986,6 +1034,7 @@ const ProductManagement: React.FC = () => {
       } = values;
       const payload: any = {
         ...rest,
+        imageUrl: mainImage,
         stock: variants.length > 0 ? variantStockTotal : rest.stock,
         specifications: Object.keys(specs).length > 0 ? specs : null,
         images: imageList.length > 0 ? imageList : null,
@@ -1002,10 +1051,13 @@ const ProductManagement: React.FC = () => {
         message.success(t('pages.productAdmin.created'));
       }
       setModalVisible(false);
+      setEditingProduct(null);
+      setImagePreviewUrl('');
+      form.resetFields();
       fetchProducts();
     } catch (error: any) {
       if (error?.errorFields) return;
-      message.error(t('messages.operationFailed'));
+      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
       setProductSubmitting(false);
     }
@@ -1245,6 +1297,7 @@ const ProductManagement: React.FC = () => {
       title,
       content: renderImportProblemContent(result, notice, duplicateImport),
       width: 720,
+      className: 'profile-mobile-safe-modal product-management-page__importProblemModal',
     });
   };
 
@@ -1290,6 +1343,7 @@ const ProductManagement: React.FC = () => {
         okText: t('pages.productAdmin.importConfirmApply'),
         cancelText: t('common.cancel'),
         width: 640,
+        className: 'profile-mobile-safe-modal product-management-page__importConfirmModal',
         onOk: async () => {
           setImportSubmitting(true);
           setLoading(true);
@@ -1313,6 +1367,7 @@ const ProductManagement: React.FC = () => {
                   </div>
                 ),
                 width: 640,
+                className: 'profile-mobile-safe-modal product-management-page__importSuccessModal',
               });
               fetchImportHistory();
             }
@@ -1326,7 +1381,7 @@ const ProductManagement: React.FC = () => {
                 t('pages.productAdmin.importRejectedNoWrite'),
               );
             } else {
-              message.error(importErrorMessageFromError(error, t('pages.productAdmin.importFailed')));
+              message.error(importErrorMessageFromError(error, t('pages.productAdmin.importFailed'), language));
             }
           } finally {
             setImportSubmitting(false);
@@ -1346,7 +1401,7 @@ const ProductManagement: React.FC = () => {
         );
         fetchImportHistory();
       } else {
-        message.error(importErrorMessageFromError(error, t('pages.productAdmin.importFailed')));
+        message.error(importErrorMessageFromError(error, t('pages.productAdmin.importFailed'), language));
       }
     } finally {
       setImportSubmitting(false);
@@ -1361,12 +1416,12 @@ const ProductManagement: React.FC = () => {
     const discountPercent = record.effectiveDiscountPercent || record.discount || (hasDiscount ? Math.round((1 - displayPrice / record.originalPrice!) * 100) : 0);
     return (
       <div>
-        <span style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(displayPrice)}</span>
+        <span className="commerce-money" style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(displayPrice)}</span>
         {record.activeLimitedTimeDiscount ? <Tag color="red" style={{ marginLeft: 4 }}>{t('pages.productAdmin.limitedTimeActive')}</Tag> : null}
         {hasDiscount && (
           <>
             <br />
-            <Text delete type="secondary" style={{ fontSize: 12 }}>{formatMoney(record.originalPrice!)}</Text>
+            <Text delete type="secondary" className="commerce-money" style={{ fontSize: 12 }}>{formatMoney(record.originalPrice!)}</Text>
             <Tag color="volcano" style={{ marginLeft: 4, fontSize: 11 }}>-{discountPercent}%</Tag>
           </>
         )}
@@ -1404,8 +1459,8 @@ const ProductManagement: React.FC = () => {
             </div>
             {previewBrand ? <Text type="secondary">{previewBrand}</Text> : null}
             <div className="product-live-preview__price">
-              <span>{price > 0 ? formatMoney(price) : formatMoney(0)}</span>
-              {hasOriginalPrice ? <Text delete type="secondary">{formatMoney(originalPrice)}</Text> : null}
+              <span className="commerce-money">{price > 0 ? formatMoney(price) : formatMoney(0)}</span>
+              {hasOriginalPrice ? <Text delete type="secondary" className="commerce-money">{formatMoney(originalPrice)}</Text> : null}
             </div>
             <div className="product-live-preview__meta">
               <Tag color={Number(previewStock || 0) > 0 ? 'green' : 'red'}>
@@ -1579,6 +1634,8 @@ const ProductManagement: React.FC = () => {
             value={filterCategory}
             onChange={v => setFilterCategory(v)}
             treeData={categoryOptions}
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
           />
           <Select
             placeholder={t('pages.productAdmin.reviewStatus')}
@@ -1586,6 +1643,8 @@ const ProductManagement: React.FC = () => {
             className="product-management-page__filterStatus"
             value={filterStatus}
             onChange={setFilterStatus}
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
             options={[
               { value: 'ACTIVE', label: t('pages.productAdmin.approved') },
               { value: 'PENDING_REVIEW', label: t('pages.productAdmin.pending') },
@@ -1621,7 +1680,7 @@ const ProductManagement: React.FC = () => {
               <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={importSubmitting}>{t('pages.productAdmin.importProducts')}</Button>
             </Tooltip>
           </Upload>
-          <Button icon={<LinkOutlined />} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
+          <Button icon={<LinkOutlined />} disabled={urlImportSubmitting} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
             {t('pages.productAdmin.importFromUrl')}
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
@@ -1798,10 +1857,10 @@ const ProductManagement: React.FC = () => {
         title={editingProduct ? t('pages.productAdmin.editTitle') : t('pages.productAdmin.addTitle')}
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
+        onCancel={closeProductModal}
         width="min(1280px, 96vw)"
         destroyOnHidden
-        className="shopify-product-modal"
+        className="profile-mobile-safe-modal shopify-product-modal"
         okText={editingProduct ? t('pages.productAdmin.saveProduct') : t('pages.productAdmin.addProduct')}
         confirmLoading={productSubmitting}
       >
@@ -1898,6 +1957,8 @@ const ProductManagement: React.FC = () => {
                     placeholder={t('pages.productAdmin.categoryPlaceholder')}
                     treeDefaultExpandAll
                     treeData={categoryOptions}
+                    popupClassName="shop-mobile-popup-layer"
+                    getPopupContainer={() => document.body}
                   />
                 </Form.Item>
                 <Text type="secondary">{t('pages.productAdmin.categoryHint')}</Text>
@@ -2004,7 +2065,7 @@ const ProductManagement: React.FC = () => {
                 <div className="shopify-variant-summary">
                   <span>{t('pages.productAdmin.variants')}: <b>{variantSummary.count}</b></span>
                   <span>{t('pages.productAdmin.stock')}: <b>{variantSummary.totalStock}</b></span>
-                  <span>{t('pages.productAdmin.price')}: <b>{variantSummary.minPrice && variantSummary.maxPrice ? `${formatMoney(variantSummary.minPrice)} - ${formatMoney(variantSummary.maxPrice)}` : formatMoney(0)}</b></span>
+                  <span>{t('pages.productAdmin.price')}: <b className="commerce-money">{variantSummary.minPrice && variantSummary.maxPrice ? `${formatMoney(variantSummary.minPrice)} - ${formatMoney(variantSummary.maxPrice)}` : formatMoney(0)}</b></span>
                 </div>
                 <div className="shopify-variant-actions">
                   <Button icon={<SyncOutlined />} onClick={syncStockFromVariants} disabled={variantSummary.count === 0}>
@@ -2105,7 +2166,7 @@ const ProductManagement: React.FC = () => {
                   <Text type="secondary">{t('pages.productAdmin.seoUrlPath')}</Text>
                   <h4>{descriptionPreview ? form.getFieldValue('name') : t('pages.productAdmin.productTitlePreview')}</h4>
                   <p>{descriptionPreview || t('pages.productAdmin.metaDescriptionPreview')}</p>
-                  <Text type="secondary">{formatMoney(form.getFieldValue('price'))}</Text>
+                  <Text type="secondary" className="commerce-money">{formatMoney(form.getFieldValue('price'))}</Text>
                 </div>
                 <Form.Item name="warranty" label={t('pages.productAdmin.warranty')}>
                   <Input className="shopify-input" placeholder={t('pages.productAdmin.warrantyPlaceholder')} />
@@ -2129,6 +2190,8 @@ const ProductManagement: React.FC = () => {
                 <Form.Item name="status" style={{ marginBottom: 0 }}>
                   <Select
                     className="shopify-input"
+                    popupClassName="shop-mobile-popup-layer"
+                    getPopupContainer={() => document.body}
                     options={[
                       { value: 'ACTIVE', label: t('status.ACTIVE') },
                       { value: 'PENDING_REVIEW', label: t('pages.productAdmin.draft') },
@@ -2157,6 +2220,8 @@ const ProductManagement: React.FC = () => {
                     className="shopify-input"
                     placeholder={t('pages.productAdmin.brandPlaceholder')}
                     optionFilterProp="label"
+                    popupClassName="shop-mobile-popup-layer"
+                    getPopupContainer={() => document.body}
                     options={brands.map((brand) => ({ value: brand.name, label: brand.name }))}
                   />
                 </Form.Item>
@@ -2165,6 +2230,8 @@ const ProductManagement: React.FC = () => {
                     mode="tags"
                     className="shopify-input"
                     placeholder={t('pages.productAdmin.selectTag')}
+                    popupClassName="shop-mobile-popup-layer"
+                    getPopupContainer={() => document.body}
                     options={tagOptions.map(option => ({ value: option.value, label: option.label }))}
                   />
                 </Form.Item>
@@ -2175,7 +2242,7 @@ const ProductManagement: React.FC = () => {
 
               <section className="shopify-card">
                 <h3>{t('pages.productAdmin.themeTemplate')}</h3>
-                <Select className="shopify-input" value="default-product" options={[{ value: 'default-product', label: t('pages.productAdmin.defaultProduct') }]} />
+                <Select className="shopify-input" value="default-product" popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} options={[{ value: 'default-product', label: t('pages.productAdmin.defaultProduct') }]} />
               </section>
 
               <section className="shopify-card shopify-card--muted">
@@ -2184,7 +2251,7 @@ const ProductManagement: React.FC = () => {
                   <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder={t('pages.productAdmin.limitedTimePricePlaceholder')} />
                 </Form.Item>
                 <Form.Item name="limitedTimeRange" label={t('pages.productAdmin.limitedTimeRange')}>
-                  <DatePicker.RangePicker showTime className="shopify-range-picker" />
+                  <DatePicker.RangePicker showTime className="shopify-range-picker" popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} />
                 </Form.Item>
               </section>
             </aside>
@@ -2196,11 +2263,12 @@ const ProductManagement: React.FC = () => {
         title={t('pages.productAdmin.urlImportTitle')}
         open={urlImportVisible}
         onOk={handleImportProductFromUrl}
-        onCancel={() => { setUrlImportVisible(false); setUrlImportPreview(null); }}
+        onCancel={closeUrlImportModal}
         okText={urlImportPreview ? t('pages.productAdmin.urlImportApply') : t('pages.productAdmin.urlImportAction')}
         confirmLoading={urlImportSubmitting}
         destroyOnHidden
         width={720}
+        className="profile-mobile-safe-modal product-management-page__urlImportModal"
       >
         <Form form={urlImportForm} layout="vertical" onValuesChange={() => setUrlImportPreview(null)}>
           <Form.Item
@@ -2214,14 +2282,35 @@ const ProductManagement: React.FC = () => {
             <Input placeholder={t('pages.productAdmin.urlImportPlaceholder')} allowClear />
           </Form.Item>
           <Text type="secondary">{t('pages.productAdmin.urlImportHint')}</Text>
+          <Alert
+            className="product-url-import-preview__alert"
+            type="info"
+            showIcon
+            message={t('pages.productAdmin.urlImportVisibilityNotice')}
+          />
         </Form>
         {urlImportPreview && (
           <div className="product-url-import-preview">
             <div className="product-url-import-preview__media">
-              {urlImportPreview.imageUrl ? (
-                <Image src={resolveProductAdminImage(urlImportPreview.imageUrl)} width={88} height={88} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
+              {urlImportPreviewMainImage ? (
+                <Image src={resolveProductAdminImage(urlImportPreviewMainImage)} width={88} height={88} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
               ) : (
                 <div className="product-url-import-preview__placeholder">{t('pages.productAdmin.urlImportNoImage')}</div>
+              )}
+              {urlImportPreviewImages.length > 1 && (
+                <div className="product-url-import-preview__thumbs" aria-label={t('pages.productAdmin.urlImportImageCount', { count: urlImportPreviewImages.length })}>
+                  {urlImportPreviewImages.map((image, index) => (
+                    <Image
+                      key={`${image}-${index}`}
+                      src={resolveProductAdminImage(image)}
+                      width={38}
+                      height={38}
+                      preview={false}
+                      fallback={productAdminImageFallback}
+                      className="product-url-import-preview__thumb"
+                    />
+                  ))}
+                </div>
               )}
             </div>
             <div className="product-url-import-preview__body">
@@ -2234,10 +2323,10 @@ const ProductManagement: React.FC = () => {
               <h4>{urlImportPreview.name || t('pages.productAdmin.urlImportMissingName')}</h4>
               <p>{urlImportPreview.description || t('pages.productAdmin.urlImportMissingDescription')}</p>
               <Space wrap>
-                <Tag>{urlImportPreview.price != null ? formatMoney(Number(urlImportPreview.price)) : t('pages.productAdmin.urlImportMissingPrice')}</Tag>
-                {urlImportPreview.originalPrice != null && <Tag color="volcano">{t('pages.productAdmin.urlImportOriginalPrice', { price: formatMoney(Number(urlImportPreview.originalPrice)) })}</Tag>}
+                <Tag><span className="commerce-money">{urlImportPreview.price != null ? formatMoney(Number(urlImportPreview.price)) : t('pages.productAdmin.urlImportMissingPrice')}</span></Tag>
+                {urlImportPreview.originalPrice != null && <Tag color="volcano"><span className="commerce-money">{t('pages.productAdmin.urlImportOriginalPrice', { price: formatMoney(Number(urlImportPreview.originalPrice)) })}</span></Tag>}
                 {urlImportPreview.brand && <Tag>{urlImportPreview.brand}</Tag>}
-                <Tag>{t('pages.productAdmin.urlImportImageCount', { count: urlImportPreview.images?.length || 0 })}</Tag>
+                <Tag>{t('pages.productAdmin.urlImportImageCount', { count: urlImportPreviewImages.length })}</Tag>
               </Space>
               {urlImportPreview.warnings && urlImportPreview.warnings.length > 0 && (
                 <div className="product-url-import-preview__warnings">

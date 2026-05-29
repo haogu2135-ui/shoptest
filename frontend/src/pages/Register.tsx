@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useLanguage } from '../i18n';
+import { setSessionStorageItem } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import './Register.css';
 
 const { Text, Title } = Typography;
@@ -16,29 +18,67 @@ interface RegisterForm {
   phone: string;
 }
 
-const phonePattern = /^(\+?\d[\d\s().-]{7,20})$/;
+const phonePattern = /^(?=(?:.*\d){8,20})(\+?[\d\s().-]{8,32})$/;
+const stripControlChars = (value: unknown) => String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ');
+const normalizeUsername = (value: unknown) => stripControlChars(value).replace(/\s+/g, '').trim();
+const normalizeEmail = (value: unknown) => stripControlChars(value).trim().toLowerCase();
+const normalizePhone = (value: unknown) => {
+  const normalized = stripControlChars(value).trim();
+  return normalized.startsWith('+') ? `+${normalized.slice(1).replace(/\D+/g, '')}` : normalized.replace(/\D+/g, '');
+};
+const uniqueLoginCandidates = (...values: unknown[]) => Array.from(new Set(
+  values
+    .map((value) => String(value || '').trim())
+    .filter(Boolean),
+));
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [form] = Form.useForm<RegisterForm>();
+  const [registering, setRegistering] = useState(false);
 
   const onFinish = async (values: RegisterForm) => {
+    if (registering) return;
+    setRegistering(true);
     try {
-      const username = values.username.trim();
-      const email = values.email.trim().toLowerCase();
-      const phone = values.phone.trim();
-      await userApi.register({
+      const username = normalizeUsername(values.username);
+      const email = normalizeEmail(values.email);
+      const phone = normalizePhone(values.phone);
+      form.setFieldsValue({ username, email, phone });
+      const response = await userApi.register({
         username,
         password: values.password,
         email,
         phone,
         role: 'USER'
       });
+      const responseUsername = normalizeUsername(response.data?.username);
+      const responseEmail = normalizeEmail(response.data?.email);
+      const responsePhone = normalizePhone(response.data?.phone);
+      const loginCandidates = uniqueLoginCandidates(responseUsername, username, responseEmail, email, responsePhone, phone);
+      const registeredLogin = loginCandidates[0] || username || email || phone;
+      setSessionStorageItem('loginPrefill', registeredLogin);
+      setSessionStorageItem('loginCandidates', JSON.stringify(loginCandidates));
       message.success(t('pages.auth.registerSuccess'));
       navigate('/login');
     } catch (error: any) {
-      const msg = error.response?.data?.error || t('pages.auth.registerFailed');
+      const rawMessage = String(error.response?.data?.error || '').trim();
+      const normalizedMessage = rawMessage.toLowerCase();
+      const fieldError = normalizedMessage.includes('phone number already registered')
+        ? { name: 'phone' as const, message: t('pages.auth.phoneAlreadyRegistered') }
+        : normalizedMessage.includes('email already registered')
+        ? { name: 'email' as const, message: t('pages.auth.emailAlreadyRegistered') }
+        : normalizedMessage.includes('username already registered')
+        ? { name: 'username' as const, message: t('pages.auth.usernameAlreadyRegistered') }
+        : null;
+      const msg = fieldError?.message || getApiErrorMessage(error, t('pages.auth.registerFailed'), language);
+      if (fieldError) {
+        form.setFields([{ name: fieldError.name, errors: [fieldError.message] }]);
+      }
       message.error(msg);
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -96,6 +136,7 @@ const Register: React.FC = () => {
           {t('pages.auth.registerTitle')}
         </Title>
         <Form
+          form={form}
           name="register"
           onFinish={onFinish}
           size="large"
@@ -110,6 +151,10 @@ const Register: React.FC = () => {
             <Input 
               prefix={<UserOutlined />} 
               placeholder={t('pages.auth.usernameShort')} 
+              autoComplete="username"
+              inputMode="text"
+              maxLength={50}
+              onBlur={(event) => form.setFieldValue('username', normalizeUsername(event.target.value))}
             />
           </Form.Item>
 
@@ -117,12 +162,15 @@ const Register: React.FC = () => {
             name="password"
             rules={[
               { required: true, message: t('pages.auth.passwordRequired') },
-              { min: 6, message: t('pages.auth.passwordMin') }
+              { min: 8, max: 128, message: t('pages.auth.passwordMin') },
+              { pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: t('pages.auth.passwordPattern') }
             ]}
           >
             <Input.Password
               prefix={<LockOutlined />}
               placeholder={t('pages.auth.password')}
+              autoComplete="new-password"
+              maxLength={128}
             />
           </Form.Item>
 
@@ -144,6 +192,8 @@ const Register: React.FC = () => {
             <Input.Password
               prefix={<LockOutlined />}
               placeholder={t('pages.auth.confirmPassword')}
+              autoComplete="new-password"
+              maxLength={128}
             />
           </Form.Item>
 
@@ -157,6 +207,10 @@ const Register: React.FC = () => {
             <Input 
               prefix={<MailOutlined />} 
               placeholder={t('pages.auth.email')} 
+              autoComplete="email"
+              inputMode="email"
+              maxLength={100}
+              onBlur={(event) => form.setFieldValue('email', normalizeEmail(event.target.value))}
             />
           </Form.Item>
 
@@ -170,11 +224,15 @@ const Register: React.FC = () => {
             <Input 
               prefix={<PhoneOutlined />} 
               placeholder={t('pages.auth.phonePlaceholder')} 
+              autoComplete="tel"
+              inputMode="tel"
+              maxLength={20}
+              onBlur={(event) => form.setFieldValue('phone', normalizePhone(event.target.value))}
             />
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block>
+            <Button type="primary" htmlType="submit" block loading={registering} disabled={registering}>
               {t('pages.auth.register')}
             </Button>
           </Form.Item>

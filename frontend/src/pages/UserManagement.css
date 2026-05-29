@@ -309,6 +309,11 @@
   width: 140px;
 }
 
+.user-management-page__profileModal .ant-modal-body {
+  max-height: min(620px, calc(100vh - 220px));
+  overflow-y: auto;
+}
+
 @media (max-width: 720px) {
   .user-management-page__toolbar {
     margin-bottom: 12px;
@@ -447,6 +452,11 @@
   .user-management-page__roleSelect {
     width: 100%;
     min-width: 0;
+  }
+
+  .user-management-page__profileModal .ant-modal-body {
+    max-height: calc(100dvh - 180px);
+    scroll-padding-top: 16px;
   }
 }
 

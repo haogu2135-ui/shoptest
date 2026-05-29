@@ -12,6 +12,7 @@ import java.util.stream.LongStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -57,5 +58,12 @@ class NotificationServiceTest {
         assertEquals(0, service.broadcastToCustomers("system", "Title", "Message", "text"));
 
         verify(notificationMapper, never()).insertBatch(anyList());
+    }
+
+    @Test
+    void tryCreateNotificationReturnsFalseWhenInsertFails() {
+        doThrow(new RuntimeException("db unavailable")).when(notificationMapper).insert(org.mockito.ArgumentMatchers.any(Notification.class));
+
+        assertEquals(false, service.tryCreateNotification(7L, "order", "Order paid", "Message"));
     }
 }

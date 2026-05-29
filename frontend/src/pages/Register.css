@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 430px;
   gap: 24px;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
   padding: 24px;
   background:
@@ -32,6 +32,24 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+@media (min-width: 861px) {
+  .register-page__panel,
+  .register-page__card {
+    height: 100%;
+  }
+
+  .register-page__card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .register-page__card .ant-card-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 .register-page__copy .ant-typography {
@@ -601,6 +619,46 @@
   }
 }
 
+/* Desktop registration parity mirrors login: the pet panel and form card share one visual height. */
+@media (min-width: 861px) {
+  .register-page {
+    min-height: 100dvh;
+    grid-template-columns: minmax(0, 1fr) minmax(410px, 430px);
+    grid-template-rows: minmax(0, min(720px, calc(100dvh - 48px)));
+    align-content: center;
+  }
+
+  .register-page__panel,
+  .register-page__card {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    align-self: stretch;
+  }
+
+  .register-page__card {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
+@media (max-width: 640px) {
+  .register-page {
+    min-height: 100svh;
+    padding-top: calc(max(8px, env(safe-area-inset-top, 0px)) + var(--mobile-nav-clearance, 0px));
+    padding-right: max(8px, env(safe-area-inset-right, 0px));
+    padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(8px, env(safe-area-inset-left, 0px));
+    overflow-x: clip;
+    overflow-y: auto;
+  }
+
+  .register-page__card {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 360px) {
   .register-page__actions {
     grid-template-columns: 1fr;
@@ -927,6 +985,57 @@
   }
 }
 
+/* Commercial consistency closure: preserve the current store card style on auth pages. */
+.register-page__panel,
+.register-page__card,
+.register-page__featureCard,
+.register-page__actions .ant-btn,
+.register-page__card .ant-btn,
+.register-page__trustGrid .ant-tag,
+.register-page__footer a {
+  border-radius: 8px !important;
+}
+
+.register-page__card .ant-input,
+.register-page__card .ant-input-affix-wrapper,
+.register-page__card .ant-select-selector {
+  border-radius: 8px !important;
+  background: #ffffff;
+}
+
+.register-page__actions .ant-btn-primary,
+.register-page__card .ant-btn-primary {
+  background: #ee4d2d !important;
+  border-color: #ee4d2d !important;
+}
+
+@media (min-width: 861px) {
+  .register-page {
+    min-height: calc(100vh - 64px);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .register-page__panel,
+  .register-page__card {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .register-page__card {
+    align-self: stretch;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .register-page__cardHeader {
+    position: static;
+    margin: 0 0 10px;
+    padding: 0;
+    border-radius: 0;
+  }
+}
+
 /* Mobile registration viewport stability pass */
 @media (max-width: 640px) {
   .register-page {
@@ -1015,5 +1124,72 @@
 
   .register-page__card .ant-input-group {
     grid-template-columns: minmax(0, 1fr) 68px;
+  }
+}
+
+/* Mobile UI audit closure: registration commands stay one-line with ellipsis. */
+@media (max-width: 640px) {
+  .register-page__actions .ant-btn,
+  .register-page__card .ant-btn,
+  .register-page__footer a,
+  .register-page__footer button {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .register-page__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .register-page__card .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .register-page__footer a > span:not(.anticon),
+  .register-page__footer button > span:not(.anticon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Final registration layout fix: align desktop image and form panels, and keep mobile forms clear of the top chrome. */
+@media (min-width: 861px) {
+  .register-page {
+    min-height: calc(100vh - 64px);
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .register-page__panel,
+  .register-page__card {
+    height: 100%;
+    min-height: 0;
+    align-self: stretch;
+  }
+
+  .register-page__card {
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .register-page {
+    min-height: 100svh;
+    padding-top: calc(max(12px, env(safe-area-inset-top)) + var(--mobile-nav-clearance, 0px));
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: max(10px, env(safe-area-inset-left));
+    align-content: start;
+    overflow-x: clip;
+    overflow-y: auto;
+  }
+
+  .register-page__card {
+    width: 100%;
+    max-width: 430px;
+    max-height: none;
+    margin: 0 auto;
+    overflow: visible;
   }
 }

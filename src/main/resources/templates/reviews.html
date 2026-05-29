@@ -202,7 +202,7 @@
                 }
             })
             .catch(() => {
-                showToast('网络错误，请稍后重试', 'error');
+                showToast('连接暂时不可用，请刷新后重试', 'error');
                 btn.disabled = false; btn.textContent = '提交评价';
             });
         });

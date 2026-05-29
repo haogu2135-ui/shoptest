@@ -25,6 +25,7 @@ import { canCartItemCheckout as canCheckout, cartImageFallback, getCartItemLowSt
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
+import { getApiErrorMessage } from '../utils/apiError';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Cart.css';
@@ -43,12 +44,18 @@ const getCartQuantityLimit = (stock?: number | null) => {
   return Math.max(1, stock);
 };
 
+const isAuthExpiredError = (error: any) => {
+  const status = Number(error?.response?.status);
+  return status === 401 || status === 403;
+};
+
 const Cart: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [savedItems, setSavedItems] = useState<SavedForLaterItem[]>(() => getSavedForLaterItems());
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [restoringSaved, setRestoringSaved] = useState(false);
   const [addingRecentId, setAddingRecentId] = useState<number | null>(null);
   const [updatingItemIds, setUpdatingItemIds] = useState<number[]>([]);
@@ -67,11 +74,20 @@ const Cart: React.FC = () => {
       return;
     }
     try {
+      setLoadError(false);
       const response = await cartApi.getItems(0);
       setCartItems(response.data);
       setSelectedIds(response.data.filter(canCheckout).map((item) => item.id));
-    } catch {
-      message.error(t('pages.cart.fetchFailed'));
+    } catch (error: any) {
+      if (isAuthExpiredError(error)) {
+        const guestItems = getGuestCartItems();
+        setCartItems(guestItems);
+        setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
+        setLoadError(false);
+      } else {
+        setLoadError(true);
+        message.error(getApiErrorMessage(error, t('pages.cart.fetchFailed'), language));
+      }
     } finally {
       setLoading(false);
     }
@@ -151,7 +167,7 @@ const Cart: React.FC = () => {
       }
       if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.cart.quantityFailed'));
+      message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
     } finally {
       setUpdatingItemIds((ids) => ids.filter((id) => id !== itemId));
     }
@@ -305,7 +321,7 @@ const Cart: React.FC = () => {
       message.success(successMessage);
       if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
-      message.error(err?.response?.data?.error || t('messages.deleteFailed'));
+      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     } finally {
       setRemovingItemIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
     }
@@ -364,6 +380,30 @@ const Cart: React.FC = () => {
     removeItems(unavailableItems.map((item) => item.id), t('pages.cart.clearedUnavailable', { count: unavailableItems.length }));
   };
 
+  const renderCartAmountText = (label: string, amount: string) => {
+    const parts = label.split(amount);
+    if (parts.length <= 1) return label;
+    return (
+      <span className="cart-page__amountPhrase commerce-atomic">
+        {parts.map((part, index) => (
+          <React.Fragment key={`${part}-${index}`}>
+            {part}
+            {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  };
+
+  const freeShippingRemainingText = (amount: number) => renderCartAmountText(
+    t('pages.cart.freeShippingRemaining', { amount: formatMoney(amount) }),
+    formatMoney(amount),
+  );
+  const savedValueText = renderCartAmountText(
+    t('pages.cart.savedValueText', { count: savedItems.length, amount: formatMoney(savedItemsTotal) }),
+    formatMoney(savedItemsTotal),
+  );
+
   const cartNextAction = (() => {
     if (unavailableItems.length > 0) {
       return {
@@ -393,8 +433,8 @@ const Cart: React.FC = () => {
           ? t('pages.cart.nextActionGiftTitle')
           : t('pages.cart.nextActionShippingTitle'),
         text: benefitTarget.reason === 'gift'
-          ? t('pages.cart.nextActionGiftText', { amount: formatMoney(benefitTarget.remainingAmount) })
-          : t('pages.cart.nextActionShippingText', { amount: formatMoney(benefitTarget.remainingAmount) }),
+          ? renderCartAmountText(t('pages.cart.nextActionGiftText', { amount: formatMoney(benefitTarget.remainingAmount) }), formatMoney(benefitTarget.remainingAmount))
+          : renderCartAmountText(t('pages.cart.nextActionShippingText', { amount: formatMoney(benefitTarget.remainingAmount) }), formatMoney(benefitTarget.remainingAmount)),
         label: t('pages.cart.nextActionFindAddOn'),
         action: () => {
           document.getElementById('cart-add-on-assistant')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -415,7 +455,7 @@ const Cart: React.FC = () => {
       key: 'checkout',
       tone: 'ready',
       title: t('pages.cart.nextActionCheckoutTitle'),
-      text: t('pages.cart.nextActionCheckoutText', { amount: formatMoney(selectedTotal) }),
+      text: renderCartAmountText(t('pages.cart.nextActionCheckoutText', { amount: formatMoney(selectedTotal) }), formatMoney(selectedTotal)),
       label: t('pages.cart.checkout'),
       action: goCheckout,
     };
@@ -430,13 +470,13 @@ const Cart: React.FC = () => {
       key: 'shipping',
       title: t('pages.cart.freeShippingUnlocked'),
       text: freeShippingRemaining > 0
-        ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingRemaining) })
+        ? freeShippingRemainingText(freeShippingRemaining)
         : t('pages.cart.freeShippingUnlocked'),
     },
     {
       key: 'saved',
       title: t('pages.cart.saveForLaterTitle'),
-      text: t('pages.cart.savedValueText', { count: savedItems.length, amount: formatMoney(savedItemsTotal) }),
+      text: savedValueText,
     },
   ];
   const cartSummaryCards = [
@@ -447,7 +487,9 @@ const Cart: React.FC = () => {
     },
     {
       key: 'shipping',
-      title: freeShippingRemaining > 0 ? t('pages.cart.readinessFreeShippingGap', { amount: formatMoney(freeShippingRemaining) }) : t('pages.cart.freeShippingUnlocked'),
+      title: freeShippingRemaining > 0
+        ? renderCartAmountText(t('pages.cart.readinessFreeShippingGap', { amount: formatMoney(freeShippingRemaining) }), formatMoney(freeShippingRemaining))
+        : t('pages.cart.freeShippingUnlocked'),
       text: `${freeShippingPercent}%`,
     },
     {
@@ -490,7 +532,7 @@ const Cart: React.FC = () => {
       await addSuggestedProduct(product);
       message.success(t('messages.addCartSuccess'));
     } catch (err: any) {
-      message.error(err?.response?.data?.error || t('messages.addFailed'));
+      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     } finally {
       setAddingRecentId(null);
     }
@@ -551,7 +593,7 @@ const Cart: React.FC = () => {
       dataIndex: 'price',
       key: 'price',
       width: 110,
-      render: (price: number) => <Text className="cart-page__priceText">{formatMoney(price)}</Text>,
+      render: (price: number) => <Text className="cart-page__priceText commerce-money">{formatMoney(price)}</Text>,
     },
     {
       title: t('common.quantity'),
@@ -573,7 +615,7 @@ const Cart: React.FC = () => {
       title: t('common.subtotal'),
       key: 'subtotal',
       width: 120,
-      render: (_: unknown, record: CartItem) => <Text strong className="cart-page__priceText">{formatMoney(record.price * record.quantity)}</Text>,
+      render: (_: unknown, record: CartItem) => <Text strong className="cart-page__priceText commerce-money">{formatMoney(record.price * record.quantity)}</Text>,
     },
     {
       title: t('common.actions'),
@@ -614,6 +656,27 @@ const Cart: React.FC = () => {
         </section>
         <div className="cart-page__loadingProducts">
           <ProductCardSkeleton count={6} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!loading && loadError && cartItems.length === 0) {
+    return (
+      <div className={`cart-page cart-page--empty cart-page--${language}`}>
+        <div style={{ padding: '80px 24px', textAlign: 'center' }}>
+          <Alert
+            type="error"
+            showIcon
+            message={t('messages.loadFailed')}
+            description={t('pages.cart.fetchFailed')}
+            style={{ maxWidth: 480, margin: '0 auto 24px' }}
+            action={
+              <Button type="primary" onClick={() => { setLoading(true); fetchCartItems(); }}>
+                {t('messages.retry')}
+              </Button>
+            }
+          />
         </div>
       </div>
     );
@@ -728,7 +791,7 @@ const Cart: React.FC = () => {
                   />
                   <span>
                     <Text strong>{product.name}</Text>
-                    <Text type="secondary">{formatMoney(product.effectivePrice ?? product.price)}</Text>
+                    <Text type="secondary" className="commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</Text>
                   </span>
                 </button>
                 <Button
@@ -857,25 +920,32 @@ const Cart: React.FC = () => {
                     </Text>
                   </div>
                 ) : null}
-                <Text type="secondary" className="cart-page__mobileItemUnitPrice">{formatMoney(item.price)}</Text>
+                <Text type="secondary" className="cart-page__mobileItemUnit commerce-atomic commerce-price-quantity">
+                  <span className="cart-page__mobileItemUnitPrice commerce-money">{formatMoney(item.price)}</span>
+                  <span className="commerce-quantity">x {item.quantity}</span>
+                </Text>
               </div>
             </div>
             <div className="cart-page__mobileItemBottom">
-              <InputNumber
-                min={1}
-                max={item.stock ?? undefined}
-                disabled={!isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id)}
-                value={item.quantity}
-                size="small"
-                onChange={(value) => updateQuantity(item.id, value || 1)}
-              />
-              <Text strong className="cart-page__priceText">{formatMoney(item.price * item.quantity)}</Text>
-              <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
-                {t('pages.cart.saveForLaterShort')}
-              </Button>
-              <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(item.id)}>
-                <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(item.id)} />
-              </Popconfirm>
+              <div className="cart-page__mobileItemCommerce">
+                <InputNumber
+                  min={1}
+                  max={item.stock ?? undefined}
+                  disabled={!isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id)}
+                  value={item.quantity}
+                  size="small"
+                  onChange={(value) => updateQuantity(item.id, value || 1)}
+                />
+                <Text strong className="cart-page__priceText commerce-money">{formatMoney(item.price * item.quantity)}</Text>
+              </div>
+              <div className="cart-page__mobileItemActions">
+                <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
+                  {t('pages.cart.saveForLaterShort')}
+                </Button>
+                <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(item.id)}>
+                  <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(item.id)} />
+                </Popconfirm>
+              </div>
             </div>
           </Card>
             ))}
@@ -884,7 +954,7 @@ const Cart: React.FC = () => {
             <div className="cart-page__summaryProgress">
               <Text strong>
                 {freeShippingRemaining > 0
-                  ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingRemaining) })
+                  ? freeShippingRemainingText(freeShippingRemaining)
                   : t('pages.cart.freeShippingUnlocked')}
               </Text>
               <Progress percent={freeShippingPercent} showInfo={false} strokeColor="#124734" />
@@ -893,7 +963,7 @@ const Cart: React.FC = () => {
               <div>
                 <Text>{t('pages.cart.selectedSummary', { count: selectedUnitCount })}</Text>
                 <Text className="cart-page__total">
-                  {t('common.total')}: <Text strong className="cart-page__totalAmount">{formatMoney(selectedTotal)}</Text>
+                  {t('common.total')}: <Text strong className="cart-page__totalAmount commerce-money">{formatMoney(selectedTotal)}</Text>
                 </Text>
               </div>
               <Button type="primary" size="large" onClick={goCheckout} disabled={checkoutBlocked}>
@@ -940,7 +1010,7 @@ const Cart: React.FC = () => {
             <ClockCircleOutlined />
             <span>
               <Text strong>{t('pages.cart.savedValueTitle')}</Text>
-              <Text type="secondary">{t('pages.cart.savedValueText', { count: savedItems.length, amount: formatMoney(savedItemsTotal) })}</Text>
+              <Text type="secondary" className="cart-page__amountPhrase">{savedValueText}</Text>
             </span>
           </div>
         ) : null}
@@ -980,11 +1050,11 @@ const Cart: React.FC = () => {
                 <div className="cart-page__savedInfo">
                   <Link to={`/products/${item.productId}`}><Text strong>{item.productName}</Text></Link>
                   {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
-                  <Text type="secondary">{t('common.quantity')}: {item.quantity}</Text>
+                  <Text type="secondary" className="cart-page__savedQuantity commerce-quantity">{t('common.quantity')}: {item.quantity}</Text>
                   <Tag className="cart-page__savedAge">
                     {t('pages.cart.savedDaysAgo', { count: getSavedAgeDays(item.savedAt) })}
                   </Tag>
-                  <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(item.price)}</Text>
+                  <Text strong className="cart-page__savedPrice commerce-money">{formatMoney(item.price)}</Text>
                 </div>
                 <Space className="cart-page__savedActions">
                   <Button icon={<ShoppingCartOutlined />} onClick={() => moveSavedItemToCart(item)}>
@@ -1004,4 +1074,3 @@ const Cart: React.FC = () => {
 };
 
 export default Cart;
-

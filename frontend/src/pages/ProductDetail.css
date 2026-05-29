@@ -106,6 +106,31 @@
   }
 }
 
+/* Final product detail amount phrase guard: embedded savings and variant prices stay atomic. */
+.product-detail__amountPhrase {
+  display: inline-flex !important;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+  white-space: nowrap !important;
+}
+
+.product-detail__amountPhrase .commerce-money {
+  flex: 0 0 auto;
+  max-width: min(124px, 34vw);
+}
+
+.product-compact-signals span,
+.product-purchase-readiness .ant-typography,
+.product-selection-summary .ant-tag {
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* Final Spanish product-detail pass */
 .product-detail-page--es .product-detail-hero__eyebrow,
 .product-detail-page--es .product-detail-hero__stats span,
@@ -3868,5 +3893,150 @@
 
   .product-mobile-buybar__cart {
     min-height: 42px;
+  }
+}
+
+/* Final mobile atomic-text pass: keep product money, quantities and buybar controls single-line. */
+.product-price-line,
+.product-price-line > *,
+.product-price-line .ant-typography,
+.product-price-line__current,
+.product-price-line__original,
+.product-price-line__discount,
+.product-purchase-summary__line .ant-typography:last-child,
+.product-purchase-summary__total .ant-typography:last-child,
+.product-mobile-buybar__meta strong,
+.product-mobile-buybar__meta span {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.product-price-line {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-price-line > *,
+.product-price-line__current,
+.product-purchase-summary__line .ant-typography:last-child,
+.product-purchase-summary__total .ant-typography:last-child,
+.product-mobile-buybar__meta strong,
+.product-mobile-buybar__meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-mobile-buybar__cart,
+.product-mobile-buybar__buy,
+.product-mobile-buybar__tool,
+.product-actions .ant-btn,
+.product-option-radio .ant-radio-button-wrapper {
+  white-space: nowrap;
+}
+
+.product-mobile-buybar__cart > span:not(.anticon):not(.ant-btn-icon),
+.product-mobile-buybar__buy > span:not(.anticon):not(.ant-btn-icon),
+.product-mobile-buybar__tool > span:not(.anticon):not(.ant-btn-icon),
+.product-actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+}
+
+/* Final product-detail viewport closure pass */
+.product-price-panel,
+.product-selected-summary,
+.product-purchase-mode,
+.product-purchase-mode__summary,
+.product-purchase-summary,
+.product-complete-set,
+.product-recommendations,
+.product-recommendations__meta,
+.product-mobile-buybar {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.product-price-line__current,
+.product-price-line__original,
+.product-price-line__discount,
+.product-quantity__value,
+.product-recommendations__price,
+.product-recommendations__proof,
+.product-delivery-promise .ant-typography,
+.product-trust-card .ant-typography {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.product-price-line__current,
+.product-price-line__original,
+.product-price-line__discount,
+.product-quantity__value,
+.product-recommendations__price,
+.product-recommendations__proof {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-complete-set__item .ant-btn,
+.product-recommendations__card .ant-btn,
+.product-qa-card .ant-btn,
+.product-tabs-card .ant-btn,
+.product-value-callout .ant-btn,
+.product-decision-card .ant-btn {
+  white-space: nowrap;
+}
+
+.product-complete-set__item .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-recommendations__card .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-qa-card .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-tabs-card .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-value-callout .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-decision-card .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .product-price-line,
+  .product-purchase-summary__line,
+  .product-purchase-summary__total,
+  .product-recommendations__meta,
+  .product-mobile-buybar__meta {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .product-price-line__current,
+  .product-price-line__original,
+  .product-price-line__discount,
+  .product-quantity__value,
+  .product-recommendations__price,
+  .product-recommendations__proof,
+  .product-mobile-buybar__meta strong,
+  .product-mobile-buybar__meta span,
+  .product-complete-set__item .ant-btn,
+  .product-recommendations__card .ant-btn,
+  .product-qa-card .ant-btn,
+  .product-tabs-card .ant-btn,
+  .product-value-callout .ant-btn,
+  .product-decision-card .ant-btn {
+    white-space: nowrap !important;
   }
 }

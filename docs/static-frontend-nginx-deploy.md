@@ -105,9 +105,12 @@ sudo cp deploy/nginx/shoptest-static.conf /etc/nginx/sites-available/shoptest
 sudo ln -sf /etc/nginx/sites-available/shoptest /etc/nginx/sites-enabled/shoptest
 sudo nginx -t
 sudo systemctl reload nginx
+curl -I http://127.0.0.1/healthz
 ```
 
 Replace `server_name _;` with your real domain when DNS is ready.
+
+The template exposes `GET/HEAD /healthz` as a lightweight Nginx-level health check and returns `204 No Content`. Use this for load balancers or uptime checks when you only need to confirm the public storefront edge is alive. Use `/api/actuator/health` when the check must include the Spring Boot backend.
 
 ## Run Backend With Low Memory
 
@@ -116,9 +119,18 @@ Run Spring Boot on localhost port `8081`:
 ```bash
 export SERVER_ADDRESS=127.0.0.1
 export JWT_SECRET='replace-with-at-least-32-random-characters'
-export DB_URL='jdbc:mysql://127.0.0.1:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true'
+export PAYMENT_SIMULATION_ENABLED='false'
+export PAYMENT_SIMULATION_ALLOW_PRODUCTION='false'
+export CONFIG_CENTER_APPLY_NACOS_ON_STARTUP='false'
+export DB_URL='jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true'
 export DB_USERNAME='shop'
-export DB_PASSWORD='replace-me'
+export DB_PASSWORD='shop_password'
+export REDIS_HOST='158.101.11.223'
+export REDIS_PORT='6379'
+export REDIS_PASSWORD='shop_redis_password'
+export NACOS_DISCOVERY_ENABLED='true'
+export NACOS_REGISTER_ENABLED='true'
+export NACOS_SERVER_ADDR='158.101.11.223:8848'
 
 java -Xms128m -Xmx512m -jar shop.jar
 ```
@@ -130,10 +142,11 @@ Use a systemd service for production so the backend restarts automatically.
 Nginx serves:
 
 - `/` from `/var/www/shoptest/index.html`
+- `/healthz` as an Nginx-level `204 No Content` health check
 - `/static/**` from hashed React assets with long cache
-- `/api/**` to `http://127.0.0.1:8081/**`
-- `/ws/**` to Spring Boot WebSocket endpoints
-- `/uploads/**` to Spring Boot uploaded media
+- `/api/**` to Spring Cloud Gateway, for example `http://158.101.11.223:8080/**`
+- `/ws/**` to Spring Cloud Gateway WebSocket routes
+- `/uploads/**` to Spring Cloud Gateway uploaded media routes
 
 The customer sees one storefront domain, while the server avoids running a Node frontend process.
 
@@ -145,8 +158,8 @@ Architecture:
 
 - Frontend machine: Nginx only, serving `artifacts/frontend-build`
 - Backend machine: Spring Boot on `:8081`, plus database or a private database connection
-- Browser URL: still one storefront domain, for example `https://shop.example.com`
-- Internal proxy: `/api/**`, `/ws/**`, and `/uploads/**` go from Nginx to the backend machine
+- Browser URL: still one storefront domain, for example `https://pet.686888666.xyz`
+- Internal proxy: `/api/**`, `/ws/**`, and `/uploads/**` go from Nginx to Spring Cloud Gateway
 
 ### Frontend Machine
 
@@ -160,8 +173,8 @@ rsync -av --delete artifacts/frontend-build/ user@frontend-server:/opt/shoptest/
 Create `/opt/shoptest/deploy/.env`:
 
 ```bash
-SERVER_NAME=shop.example.com
-BACKEND_ORIGIN=http://10.0.0.20:8081
+SERVER_NAME=pet.686888666.xyz
+BACKEND_ORIGIN=http://158.101.11.223:8080
 CLIENT_MAX_BODY_SIZE=6m
 ```
 
@@ -172,7 +185,7 @@ cd /opt/shoptest/deploy
 docker compose -f docker-compose.frontend-edge.yml up -d
 ```
 
-The template `deploy/nginx/shoptest-edge.conf.template` is rendered by the official Nginx container at startup. Change `BACKEND_ORIGIN` to your backend machine's private IP or private DNS name.
+The template `deploy/nginx/shoptest-edge.conf.template` is rendered by the official Nginx container at startup. Keep `BACKEND_ORIGIN` pointed at Spring Cloud Gateway when `runtime-config.js` has `apiGatewayEnabled: true`.
 
 ### Backend Machine
 

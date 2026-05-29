@@ -3,7 +3,9 @@ package com.example.shop.service;
 import com.example.shop.entity.Notification;
 import com.example.shop.repository.NotificationMapper;
 import com.example.shop.repository.UserMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
@@ -13,6 +15,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationService {
     private final NotificationMapper notificationMapper;
     private final UserMapper userMapper;
@@ -41,6 +44,17 @@ public class NotificationService {
         n.setIsRead(false);
         n.setCreatedAt(LocalDateTime.now());
         notificationMapper.insert(n);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean tryCreateNotification(Long userId, String type, String title, String message) {
+        try {
+            createNotification(userId, type, title, message);
+            return true;
+        } catch (RuntimeException e) {
+            log.warn("Customer notification creation failed: userId={}, type={}, title={}", userId, normalizeType(type), title, e);
+            return false;
+        }
     }
 
     @Transactional

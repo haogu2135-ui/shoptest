@@ -1,7 +1,10 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.ConfigCenterHealthResponse;
+import com.example.shop.config.MailAccountProperties;
+import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.service.ConfigCenterService;
+import com.example.shop.util.GatewayUrlValidator;
 import com.example.shop.util.SensitiveDataMasker;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
@@ -18,12 +21,16 @@ import javax.sql.DataSource;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -35,17 +42,23 @@ public class AdminSystemController {
     private final ObjectProvider<DataSource> dataSources;
     private final ObjectProvider<StringRedisTemplate> redisTemplates;
     private final ObjectProvider<ConfigCenterService> configCenterServices;
+    private final ObjectProvider<MailAccountProperties> mailAccountProperties;
+    private final ObjectProvider<PaymentChannelConfig> paymentChannelConfigs;
 
     public AdminSystemController(
             Environment environment,
             ObjectProvider<DataSource> dataSources,
             ObjectProvider<StringRedisTemplate> redisTemplates,
-            ObjectProvider<ConfigCenterService> configCenterServices
+            ObjectProvider<ConfigCenterService> configCenterServices,
+            ObjectProvider<MailAccountProperties> mailAccountProperties,
+            ObjectProvider<PaymentChannelConfig> paymentChannelConfigs
     ) {
         this.environment = environment;
         this.dataSources = dataSources;
         this.redisTemplates = redisTemplates;
         this.configCenterServices = configCenterServices;
+        this.mailAccountProperties = mailAccountProperties;
+        this.paymentChannelConfigs = paymentChannelConfigs;
     }
 
     @GetMapping("/status")
@@ -69,7 +82,10 @@ public class AdminSystemController {
         Map<String, Object> database = databasePayload();
         Map<String, Object> redis = redisPayload();
         Map<String, Object> nacos = nacosPayload();
-        boolean ready = Boolean.TRUE.equals(database.get("ready")) && Boolean.TRUE.equals(redis.get("ready"));
+        Map<String, Object> productionConfig = productionConfigPayload();
+        boolean ready = Boolean.TRUE.equals(database.get("ready"))
+                && Boolean.TRUE.equals(redis.get("ready"))
+                && Boolean.TRUE.equals(productionConfig.get("ready"));
         boolean optionalHealthy = Boolean.TRUE.equals(nacos.get("ready"));
         boolean healthy = ready && optionalHealthy;
 
@@ -85,6 +101,7 @@ public class AdminSystemController {
         payload.put("database", database);
         payload.put("redis", redis);
         payload.put("nacos", nacos);
+        payload.put("productionConfig", productionConfig);
         return payload;
     }
 
@@ -285,6 +302,383 @@ public class AdminSystemController {
         return payload;
     }
 
+    private Map<String, Object> productionConfigPayload() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        String runtimeMode = property("app.runtime-mode", "production");
+        boolean productionMode = isProductionMode(runtimeMode);
+        payload.put("runtimeMode", runtimeMode);
+        payload.put("required", productionMode);
+        payload.put("checkedAt", Instant.now().toString());
+
+        if (!productionMode) {
+            payload.put("status", "SKIPPED");
+            payload.put("healthy", true);
+            payload.put("ready", true);
+            payload.put("issues", Collections.emptyList());
+            payload.put("warnings", Collections.emptyList());
+            return payload;
+        }
+
+        List<String> issues = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        Map<String, Object> checks = new LinkedHashMap<>();
+
+        addSecretCheck(checks, issues, "jwtSecret", "app.jwtSecret",
+                property("app.jwtSecret", ""), List.of("your-secret-key", "your-secret-key-here"));
+        addSecretCheck(checks, issues, "paymentCallbackSecret", "payment.callback-secret",
+                property("payment.callback-secret", "dev-payment-secret"), List.of("dev-payment-secret"));
+        checks.put("mail", mailConfigCheck(issues));
+        checks.put("cors", corsConfigCheck(issues));
+        checks.put("adminBootstrap", adminBootstrapCheck(issues));
+        checks.put("paymentSimulation", paymentSimulationCheck(issues));
+        checks.put("paymentChannels", paymentChannelsCheck(issues, warnings));
+        checks.put("logistics", logisticsConfigCheck(issues, warnings));
+
+        boolean ready = issues.isEmpty();
+        payload.put("status", ready ? "UP" : "BLOCKED");
+        payload.put("healthy", ready);
+        payload.put("ready", ready);
+        payload.put("checks", checks);
+        payload.put("issues", issues);
+        payload.put("warnings", warnings);
+        return payload;
+    }
+
+    private void addSecretCheck(Map<String, Object> checks,
+                                List<String> issues,
+                                String checkName,
+                                String propertyName,
+                                String value,
+                                List<String> extraPlaceholders) {
+        boolean strong = isStrongProductionSecret(value, extraPlaceholders);
+        Map<String, Object> check = new LinkedHashMap<>();
+        check.put("status", strong ? "PASS" : "FAIL");
+        check.put("configured", hasText(value));
+        check.put("minLength", 32);
+        checks.put(checkName, check);
+        if (!strong) {
+            issues.add(propertyName + " must be set to a non-placeholder value with at least 32 characters");
+        }
+    }
+
+    private Map<String, Object> mailConfigCheck(List<String> issues) {
+        MailAccountProperties properties = mailAccountProperties.getIfAvailable();
+        int configuredAccounts = 0;
+        if (properties != null && properties.getAccounts() != null) {
+            configuredAccounts = (int) properties.getAccounts().stream()
+                    .filter(this::isConfiguredMailAccount)
+                    .count();
+        }
+        Map<String, Object> check = new LinkedHashMap<>();
+        check.put("status", configuredAccounts > 0 ? "PASS" : "FAIL");
+        check.put("configuredAccountCount", configuredAccounts);
+        if (configuredAccounts == 0) {
+            issues.add("app.mail.accounts must include at least one complete SMTP account");
+        }
+        return check;
+    }
+
+    private Map<String, Object> corsConfigCheck(List<String> issues) {
+        String corsRaw = property("app.cors.allowed-origin-patterns", "");
+        String websocketRaw = property("app.websocket.allowed-origin-patterns", "");
+        List<String> corsPatterns = splitPatterns(corsRaw);
+        List<String> websocketPatterns = splitPatterns(websocketRaw);
+        List<String> unsafeCors = unsafeProductionOrigins(corsPatterns);
+        List<String> unsafeWebsocket = unsafeProductionOrigins(websocketPatterns);
+
+        Map<String, Object> check = new LinkedHashMap<>();
+        check.put("status", unsafeCors.isEmpty() && unsafeWebsocket.isEmpty() && !corsPatterns.isEmpty() ? "PASS" : "FAIL");
+        check.put("corsOriginCount", corsPatterns.size());
+        check.put("websocketOriginCount", websocketPatterns.size());
+
+        if (corsPatterns.isEmpty()) {
+            issues.add("app.cors.allowed-origin-patterns must list deployed HTTPS storefront and admin origins");
+        }
+        if (!unsafeCors.isEmpty()) {
+            issues.add("app.cors.allowed-origin-patterns contains local, private, wildcard, or non-HTTPS origins");
+        }
+        if (!unsafeWebsocket.isEmpty()) {
+            issues.add("app.websocket.allowed-origin-patterns contains local, private, wildcard, or non-HTTPS origins");
+        }
+        return check;
+    }
+
+    private Map<String, Object> paymentSimulationCheck(List<String> issues) {
+        boolean simulationEnabled = environment.getProperty("payment.simulation-enabled", Boolean.class, false);
+        boolean simulationAllowProduction = environment.getProperty("payment.simulation-allow-production", Boolean.class, false);
+        boolean safe = !simulationEnabled && !simulationAllowProduction;
+
+        Map<String, Object> check = new LinkedHashMap<>();
+        check.put("status", safe ? "PASS" : "FAIL");
+        check.put("simulationEnabled", simulationEnabled);
+        check.put("simulationAllowProduction", simulationAllowProduction);
+
+        if (!safe) {
+            issues.add("payment simulation must be disabled in production");
+        }
+        return check;
+    }
+
+    private Map<String, Object> adminBootstrapCheck(List<String> issues) {
+        String bootstrapToken = property("admin.bootstrap-token", "");
+        boolean configured = hasText(bootstrapToken);
+
+        Map<String, Object> check = new LinkedHashMap<>();
+        check.put("status", configured ? "FAIL" : "PASS");
+        check.put("configured", configured);
+
+        if (configured) {
+            issues.add("admin.bootstrap-token must be blank in production after admin bootstrap");
+        }
+        return check;
+    }
+
+    private Map<String, Object> paymentChannelsCheck(List<String> issues, List<String> warnings) {
+        PaymentChannelConfig channelConfig = paymentChannelConfigs.getIfAvailable();
+        Map<String, Object> check = new LinkedHashMap<>();
+        if (channelConfig == null) {
+            check.put("status", "FAIL");
+            check.put("enabledChannelCount", 0);
+            check.put("availableCheckoutChannelCount", 0);
+            issues.add("payment channel configuration is unavailable");
+            return check;
+        }
+        if (channelConfig.getChannels() == null || channelConfig.getChannels().isEmpty()) {
+            check.put("status", "FAIL");
+            check.put("enabledChannelCount", 0);
+            check.put("availableCheckoutChannelCount", 0);
+            issues.add("at least one payment channel must be explicitly configured for production checkout");
+            return check;
+        }
+
+        List<PaymentChannelConfig.Channel> enabledChannels = channelConfig.enabledChannels();
+        int availableChannels = 0;
+        for (PaymentChannelConfig.Channel channel : enabledChannels) {
+            if (isProductionCheckoutChannelAvailable(channelConfig, channel, issues, warnings)) {
+                availableChannels++;
+            }
+        }
+
+        check.put("status", availableChannels > 0 ? "PASS" : "FAIL");
+        check.put("enabledChannelCount", enabledChannels.size());
+        check.put("availableCheckoutChannelCount", availableChannels);
+        if (availableChannels == 0) {
+            issues.add("at least one enabled payment channel must be configured for production checkout");
+        }
+        return check;
+    }
+
+    private Map<String, Object> logisticsConfigCheck(List<String> issues, List<String> warnings) {
+        String providerUrl = property("logistics.api-url", "");
+        boolean providerConfigured = isPublicHttpsUrl(providerUrl) && !isPlaceholderLogisticsValue(providerUrl);
+        boolean providerPresentButUnsafe = hasText(providerUrl) && !providerConfigured;
+        boolean kuaidi100Enabled = environment.getProperty("kuaidi100.enabled", Boolean.class, false);
+        String kuaidi100Customer = property("kuaidi100.customer", "");
+        String kuaidi100Key = property("kuaidi100.key", "");
+        boolean kuaidi100Configured = kuaidi100Enabled
+                && hasText(kuaidi100Customer)
+                && hasText(kuaidi100Key)
+                && !isPlaceholderLogisticsValue(kuaidi100Customer)
+                && !isPlaceholderLogisticsValue(kuaidi100Key);
+        boolean ready = providerConfigured || kuaidi100Configured;
+
+        Map<String, Object> check = new LinkedHashMap<>();
+        check.put("status", ready ? "PASS" : "FAIL");
+        check.put("providerConfigured", providerConfigured);
+        check.put("kuaidi100Enabled", kuaidi100Enabled);
+        check.put("kuaidi100Configured", kuaidi100Configured);
+
+        if (providerPresentButUnsafe) {
+            warnings.add("logistics.api-url is configured but is not a production public HTTPS URL");
+        }
+        if (!ready) {
+            issues.add("production logistics tracking must configure logistics.api-url or Kuaidi100 credentials");
+        }
+        return check;
+    }
+
+    private boolean isProductionCheckoutChannelAvailable(PaymentChannelConfig channelConfig,
+                                                         PaymentChannelConfig.Channel channel,
+                                                         List<String> issues,
+                                                         List<String> warnings) {
+        if (channel == null || !channel.isEnabled()) {
+            return false;
+        }
+        if (channel.isStripeProvider()) {
+            String secretKey = property("stripe.secret-key", "");
+            String webhookSecret = property("stripe.webhook-secret", "");
+            boolean configured = hasText(secretKey) && hasText(webhookSecret);
+            if (hasText(secretKey) && !secretKey.trim().startsWith("sk_live_")) {
+                warnings.add("stripe.secret-key is configured but does not look like a live key");
+            }
+            if (hasText(webhookSecret) && !webhookSecret.trim().startsWith("whsec_")) {
+                warnings.add("stripe.webhook-secret is configured but does not look like a Stripe webhook secret");
+            }
+            if (!configured) {
+                return false;
+            }
+            boolean safeSuccessUrl = isPublicHttpsUrl(property("stripe.checkout-success-url", ""));
+            boolean safeCancelUrl = isPublicHttpsUrl(property("stripe.checkout-cancel-url", ""));
+            if (!safeSuccessUrl || !safeCancelUrl) {
+                issues.add("Stripe checkout success and cancel URLs must use deployed HTTPS origins");
+                return false;
+            }
+            return true;
+        }
+        if (channel.isGenericApiProvider()) {
+            String createUrl = channel.getCreateUrl();
+            if (!isPublicHttpsUrl(createUrl)) {
+                return false;
+            }
+            if ("GENERIC_API".equals(channel.getRefundMode()) && !isPublicHttpsUrl(channel.getRefundUrl())) {
+                issues.add("generic API payment channels using API refunds must include a production HTTPS refund URL");
+                return false;
+            }
+            return true;
+        }
+        String checkoutUrl = firstNonBlank(channel.getCheckoutUrl(), channelConfig.getCheckoutBaseUrl());
+        return isPublicHttpsUrl(checkoutUrl) && !checkoutUrl.contains("pay.example.local");
+    }
+
+    private boolean isStrongProductionSecret(String value, List<String> extraPlaceholders) {
+        if (!hasText(value)) {
+            return false;
+        }
+        String normalized = value.trim();
+        if (normalized.length() < 32) {
+            return false;
+        }
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        List<String> placeholders = new ArrayList<>(List.of(
+                "secret",
+                "password",
+                "changeme",
+                "change-me",
+                "test-secret",
+                "jwt-secret",
+                "default-secret"
+        ));
+        placeholders.addAll(extraPlaceholders.stream()
+                .map((item) -> item == null ? "" : item.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toList()));
+        return placeholders.stream().noneMatch(lower::equals);
+    }
+
+    private boolean isConfiguredMailAccount(MailAccountProperties.Account account) {
+        return account != null
+                && hasText(account.getHost())
+                && account.getPort() != null
+                && account.getPort() > 0
+                && hasText(account.getUsername())
+                && hasText(account.getPassword())
+                && hasText(account.getFrom())
+                && !isPlaceholderMailValue(account.getHost())
+                && !isPlaceholderMailValue(account.getUsername())
+                && !isPlaceholderMailValue(account.getPassword())
+                && !isPlaceholderMailValue(account.getFrom());
+    }
+
+    private boolean isPlaceholderMailValue(String value) {
+        if (!hasText(value)) {
+            return true;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        return normalized.contains("example.com")
+                || normalized.startsWith("replace-")
+                || normalized.contains("replace-with")
+                || normalized.contains("your-")
+                || "mail-app-password".equals(normalized)
+                || "another-app-password".equals(normalized);
+    }
+
+    private boolean isPlaceholderLogisticsValue(String value) {
+        if (!hasText(value)) {
+            return true;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        return normalized.contains("example.com")
+                || normalized.contains("provider.example")
+                || normalized.startsWith("replace-")
+                || normalized.contains("replace-with")
+                || normalized.contains("your-")
+                || normalized.equals("test")
+                || normalized.equals("demo");
+    }
+
+    private List<String> splitPatterns(String raw) {
+        if (!hasText(raw)) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(this::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private List<String> unsafeProductionOrigins(List<String> origins) {
+        return origins.stream()
+                .filter(this::isUnsafeProductionOrigin)
+                .collect(Collectors.toList());
+    }
+
+    private boolean isUnsafeProductionOrigin(String origin) {
+        if (!hasText(origin)) {
+            return true;
+        }
+        String normalized = origin.trim().toLowerCase(Locale.ROOT);
+        if ("*".equals(normalized) || normalized.startsWith("http://") || !normalized.startsWith("https://")) {
+            return true;
+        }
+        return normalized.contains("localhost")
+                || normalized.contains("127.0.0.1")
+                || normalized.contains("0.0.0.0")
+                || normalized.contains("10.*")
+                || normalized.contains("10.")
+                || normalized.contains("172.*")
+                || normalized.matches(".*172\\.(1[6-9]|2[0-9]|3[0-1])\\..*")
+                || normalized.contains("192.168.")
+                || normalized.contains(".local");
+    }
+
+    private boolean isPublicHttpsUrl(String value) {
+        if (!hasText(value)) {
+            return false;
+        }
+        try {
+            URI uri = new URI(value.trim());
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+            if (!"https".equals(scheme) || host.isBlank() || uri.getUserInfo() != null) {
+                return false;
+            }
+            return !isLocalOrPrivateHost(host);
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
+
+    private boolean isLocalOrPrivateHost(String host) {
+        return GatewayUrlValidator.isLocalOrPrivateHost(host);
+    }
+
+    private boolean isProductionMode(String value) {
+        String mode = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        return "production".equals(mode) || "prod".equals(mode);
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return "";
+        }
+        for (String value : values) {
+            if (hasText(value)) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
     private long elapsedMillis(long startedAtNanos) {
         return Math.max(0L, (System.nanoTime() - startedAtNanos) / 1_000_000L);
     }
@@ -328,5 +722,9 @@ public class AdminSystemController {
             return normalized.substring(0, maxLength);
         }
         return normalized;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

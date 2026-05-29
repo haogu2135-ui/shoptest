@@ -4,6 +4,8 @@ import type { ColumnsType } from 'antd/es/table';
 import { AlertOutlined, CheckCircleOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, ToolOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { SystemAlert, SystemAlertSummary } from '../types';
+import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 import './AlertManagement.css';
 
 const { Text, Title } = Typography;
@@ -21,9 +23,9 @@ const statusColor = (status: string) => {
   return 'green';
 };
 
-const formatTime = (value?: string) => value ? new Date(value).toLocaleString() : '-';
-
 const AlertManagement: React.FC = () => {
+  const { t, language } = useLanguage();
+  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [summary, setSummary] = useState<SystemAlertSummary | null>(null);
   const [status, setStatus] = useState('OPEN');
@@ -33,6 +35,7 @@ const AlertManagement: React.FC = () => {
   const [retentionDays, setRetentionDays] = useState(30);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
+  const formatTime = useCallback((value?: string) => value ? new Date(value).toLocaleString(dateLocale) : '-', [dateLocale]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -49,25 +52,25 @@ const AlertManagement: React.FC = () => {
       setAlerts(alertResponse.data);
       setSummary(summaryResponse.data);
       setSelectedAlertIds((ids) => ids.filter((id) => alertResponse.data.some((alert) => alert.id === id)));
-    } catch {
-      message.error('告警数据加载失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.alertAdmin.loadFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [category, severity, status]);
+  }, [category, language, severity, status, t]);
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [language, loadData, t]);
 
   const runSelfCheck = async () => {
     setActing('self-check');
     try {
       await adminApi.runAlertSelfCheck();
-      message.success('自检已执行');
+      message.success(t('pages.alertAdmin.selfCheckDone'));
       await loadData();
-    } catch {
-      message.error('自检执行失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.alertAdmin.selfCheckFailed'), language));
     } finally {
       setActing(null);
     }
@@ -78,28 +81,28 @@ const AlertManagement: React.FC = () => {
     try {
       const response = await adminApi.acknowledgeAlert(alert.id);
       setAlerts((items) => items.map((item) => item.id === alert.id ? response.data : item));
-      message.success('告警已确认');
+      message.success(t('pages.alertAdmin.acknowledged'));
       loadData();
-    } catch {
-      message.error('确认失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.alertAdmin.ackFailed'), language));
     } finally {
       setActing(null);
     }
-  }, [loadData]);
+  }, [language, loadData, t]);
 
   const resolve = useCallback(async (alert: SystemAlert) => {
     setActing(`resolve-${alert.id}`);
     try {
       const response = await adminApi.resolveAlert(alert.id);
       setAlerts((items) => items.map((item) => item.id === alert.id ? response.data : item));
-      message.success('告警已解决');
+      message.success(t('pages.alertAdmin.resolved'));
       loadData();
-    } catch {
-      message.error('解决失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.alertAdmin.resolveFailed'), language));
     } finally {
       setActing(null);
     }
-  }, [loadData]);
+  }, [language, loadData, t]);
 
   const selectedAlerts = useMemo(
     () => alerts.filter((alert) => selectedAlertIds.includes(alert.id)),
@@ -116,17 +119,17 @@ const AlertManagement: React.FC = () => {
 
   const batchAcknowledge = async () => {
     if (!selectedOpenIds.length) {
-      message.warning('请选择未处理告警');
+      message.warning(t('pages.alertAdmin.selectOpenFirst'));
       return;
     }
     setActing('batch-ack');
     try {
       const response = await adminApi.acknowledgeAlerts(selectedOpenIds, 'Batch acknowledged from alert center');
-      message.success(`已确认 ${response.data.updatedCount} 条告警`);
+      message.success(t('pages.alertAdmin.batchAckDone', { count: response.data.updatedCount }));
       setSelectedAlertIds([]);
       await loadData();
-    } catch {
-      message.error('批量确认失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.alertAdmin.batchAckFailed'), language));
     } finally {
       setActing(null);
     }
@@ -134,17 +137,17 @@ const AlertManagement: React.FC = () => {
 
   const batchResolve = async () => {
     if (!selectedUnresolvedIds.length) {
-      message.warning('请选择未解决告警');
+      message.warning(t('pages.alertAdmin.selectUnresolvedFirst'));
       return;
     }
     setActing('batch-resolve');
     try {
       const response = await adminApi.resolveAlerts(selectedUnresolvedIds, 'Batch resolved from alert center');
-      message.success(`已解决 ${response.data.updatedCount} 条告警`);
+      message.success(t('pages.alertAdmin.batchResolveDone', { count: response.data.updatedCount }));
       setSelectedAlertIds([]);
       await loadData();
-    } catch {
-      message.error('批量解决失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.alertAdmin.batchResolveFailed'), language));
     } finally {
       setActing(null);
     }
@@ -154,10 +157,10 @@ const AlertManagement: React.FC = () => {
     setActing('purge-resolved');
     try {
       const response = await adminApi.purgeResolvedAlerts(retentionDays);
-      message.success(`已清理 ${response.data.deletedCount} 条已解决告警`);
+      message.success(t('pages.alertAdmin.purgeDone', { count: response.data.deletedCount }));
       await loadData();
-    } catch {
-      message.error('清理已解决告警失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.alertAdmin.purgeFailed'), language));
     } finally {
       setActing(null);
     }
@@ -165,7 +168,7 @@ const AlertManagement: React.FC = () => {
 
   const columns: ColumnsType<SystemAlert> = useMemo(() => [
     {
-      title: '告警',
+      title: t('pages.alertAdmin.alert'),
       dataIndex: 'title',
       key: 'title',
       render: (_, record) => (
@@ -176,74 +179,74 @@ const AlertManagement: React.FC = () => {
       ),
     },
     {
-      title: '级别',
+      title: t('pages.alertAdmin.severity'),
       dataIndex: 'severity',
       key: 'severity',
       width: 110,
       render: (value: string) => <Tag color={severityColor(value)}>{value}</Tag>,
     },
     {
-      title: '状态',
+      title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
       width: 130,
       render: (value: string) => <Tag color={statusColor(value)}>{value}</Tag>,
     },
     {
-      title: '分类',
+      title: t('pages.alertAdmin.category'),
       dataIndex: 'category',
       key: 'category',
       width: 150,
       render: (value: string) => <Tag>{value}</Tag>,
     },
     {
-      title: '次数',
+      title: t('pages.alertAdmin.count'),
       dataIndex: 'occurrenceCount',
       key: 'occurrenceCount',
       width: 80,
     },
     {
-      title: '最近出现',
+      title: t('pages.alertAdmin.lastSeen'),
       dataIndex: 'lastSeenAt',
       key: 'lastSeenAt',
       width: 190,
       render: formatTime,
     },
     {
-      title: '操作',
+      title: t('common.actions'),
       key: 'actions',
       width: 180,
       render: (_, record) => (
         <Space wrap>
           {record.status === 'OPEN' ? (
             <Button size="small" loading={acting === `ack-${record.id}`} onClick={() => acknowledge(record)}>
-              确认
+              {t('pages.alertAdmin.ack')}
             </Button>
           ) : null}
           {record.status !== 'RESOLVED' ? (
             <Button size="small" type="primary" loading={acting === `resolve-${record.id}`} onClick={() => resolve(record)}>
-              解决
+              {t('pages.alertAdmin.resolve')}
             </Button>
           ) : null}
         </Space>
       ),
     },
-  ], [acknowledge, acting, resolve]);
+  ], [acknowledge, acting, formatTime, resolve, t]);
 
   return (
     <div className="alert-management">
       <div className="alert-management__hero">
         <div>
           <Text className="alert-management__eyebrow">Alerts</Text>
-          <Title level={2}>告警中心</Title>
-          <Text type="secondary">自动检测常见异常、基础设施状态和流量风险，统一确认与处理。</Text>
+          <Title level={2}>{t('pages.alertAdmin.title')}</Title>
+          <Text type="secondary">{t('pages.alertAdmin.description')}</Text>
         </div>
         <Space className="alert-management__actions" wrap>
           <Button icon={<ReloadOutlined />} loading={loading} onClick={loadData}>
-            刷新
+            {t('common.refresh')}
           </Button>
           <Button type="primary" icon={<ToolOutlined />} loading={acting === 'self-check'} onClick={runSelfCheck}>
-            立即自检
+            {t('pages.alertAdmin.selfCheck')}
           </Button>
         </Space>
       </div>
@@ -251,16 +254,16 @@ const AlertManagement: React.FC = () => {
       <Spin spinning={loading && alerts.length === 0}>
         <div className="alert-management__stats">
           <Card>
-            <Statistic title="未处理" value={summary?.openCount || 0} prefix={<AlertOutlined />} valueStyle={{ color: (summary?.openCount || 0) > 0 ? '#c2410c' : '#1f8a4c' }} />
+            <Statistic title={t('pages.alertAdmin.open')} value={summary?.openCount || 0} prefix={<AlertOutlined />} valueStyle={{ color: (summary?.openCount || 0) > 0 ? '#c2410c' : '#1f8a4c' }} />
           </Card>
           <Card>
-            <Statistic title="已确认" value={summary?.acknowledgedCount || 0} />
+            <Statistic title={t('pages.alertAdmin.acknowledgedStat')} value={summary?.acknowledgedCount || 0} />
           </Card>
           <Card>
-            <Statistic title="已解决" value={summary?.resolvedCount || 0} prefix={<CheckCircleOutlined />} />
+            <Statistic title={t('pages.alertAdmin.resolvedStat')} value={summary?.resolvedCount || 0} prefix={<CheckCircleOutlined />} />
           </Card>
           <Card>
-            <Statistic title="严重/错误" value={(summary?.openBySeverity?.CRITICAL || 0) + (summary?.openBySeverity?.ERROR || 0)} />
+            <Statistic title={t('pages.alertAdmin.criticalErrors')} value={(summary?.openBySeverity?.CRITICAL || 0) + (summary?.openBySeverity?.ERROR || 0)} />
           </Card>
         </div>
 
@@ -268,7 +271,7 @@ const AlertManagement: React.FC = () => {
           className="alert-management__alert"
           type="info"
           showIcon
-          message="告警会按 fingerprint 自动合并重复事件；异常上报和自检阈值可通过 alerts.* 配置实时调整。"
+          message={t('pages.alertAdmin.info')}
         />
 
         <Card className="alert-management__card">
@@ -276,11 +279,15 @@ const AlertManagement: React.FC = () => {
             <Select
               value={status}
               onChange={setStatus}
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
               options={['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'ALL'].map((value) => ({ value, label: value }))}
             />
             <Select
               value={severity}
               onChange={setSeverity}
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
               options={['ALL', 'CRITICAL', 'ERROR', 'WARNING', 'INFO'].map((value) => ({ value, label: value }))}
             />
             <Input
@@ -289,22 +296,22 @@ const AlertManagement: React.FC = () => {
               value={category}
               onChange={(event) => setCategory(event.target.value)}
               onPressEnter={loadData}
-              placeholder="分类"
+              placeholder={t('pages.alertAdmin.category')}
             />
-            <Button onClick={loadData}>筛选</Button>
+            <Button onClick={loadData}>{t('pages.alertAdmin.filter')}</Button>
           </Space>
 
           <div className="alert-management__bulkBar">
             <Space wrap>
               <Text type="secondary">
-                已选 {selectedAlertIds.length} 条，未处理 {selectedOpenIds.length} 条，未解决 {selectedUnresolvedIds.length} 条
+                {t('pages.alertAdmin.selectedSummary', { selected: selectedAlertIds.length, open: selectedOpenIds.length, unresolved: selectedUnresolvedIds.length })}
               </Text>
               <Button
                 disabled={!selectedOpenIds.length}
                 loading={acting === 'batch-ack'}
                 onClick={batchAcknowledge}
               >
-                批量确认
+                {t('pages.alertAdmin.batchAck')}
               </Button>
               <Button
                 type="primary"
@@ -312,26 +319,26 @@ const AlertManagement: React.FC = () => {
                 loading={acting === 'batch-resolve'}
                 onClick={batchResolve}
               >
-                批量解决
+                {t('pages.alertAdmin.batchResolve')}
               </Button>
             </Space>
             <Space wrap className="alert-management__purge">
-              <Text type="secondary">清理已解决保留</Text>
+              <Text type="secondary">{t('pages.alertAdmin.purgeRetention')}</Text>
               <InputNumber
                 min={1}
                 max={3650}
                 precision={0}
                 value={retentionDays}
                 onChange={(value) => setRetentionDays(Number(value || 30))}
-                addonAfter="天"
+                addonAfter={t('pages.alertAdmin.days')}
               />
               <Popconfirm
-                title="清理过期已解决告警？"
-                description={`将删除 ${retentionDays} 天前已解决的告警。`}
+                title={t('pages.alertAdmin.purgeConfirm')}
+                description={t('pages.alertAdmin.purgeDescription', { days: retentionDays })}
                 onConfirm={purgeResolved}
               >
                 <Button icon={<DeleteOutlined />} loading={acting === 'purge-resolved'}>
-                  清理
+                  {t('pages.alertAdmin.purge')}
                 </Button>
               </Popconfirm>
             </Space>
@@ -352,18 +359,18 @@ const AlertManagement: React.FC = () => {
               expandable={{
                 expandedRowRender: (record) => (
                   <div className="alert-management__expanded">
-                    <span>来源：{record.source}</span>
-                    <span>首次出现：{formatTime(record.firstSeenAt)}</span>
-                    <span>确认人：{record.acknowledgedBy || '-'}</span>
-                    <span>解决人：{record.resolvedBy || '-'}</span>
-                    <span>指纹：{record.fingerprint}</span>
-                    <span>元数据：{record.metadata || '-'}</span>
+                    <span>{t('pages.alertAdmin.source')}: {record.source}</span>
+                    <span>{t('pages.alertAdmin.firstSeen')}: {formatTime(record.firstSeenAt)}</span>
+                    <span>{t('pages.alertAdmin.acknowledgedBy')}: {record.acknowledgedBy || '-'}</span>
+                    <span>{t('pages.alertAdmin.resolvedBy')}: {record.resolvedBy || '-'}</span>
+                    <span>{t('pages.alertAdmin.fingerprint')}: {record.fingerprint}</span>
+                    <span>{t('pages.alertAdmin.metadata')}: {record.metadata || '-'}</span>
                   </div>
                 ),
               }}
             />
           ) : (
-            <Empty description="暂无匹配告警" />
+            <Empty description={t('pages.alertAdmin.empty')} />
           )}
         </Card>
       </Spin>

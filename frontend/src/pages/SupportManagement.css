@@ -914,6 +914,23 @@
   font-weight: 600;
 }
 
+.support-management__orderPrice,
+.support-management__orderItemUnit,
+.support-management__orderItemTotal {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.support-management__orderItemTotal {
+  color: #ee4d2d;
+}
+
 .support-management__orderTags {
   margin-top: 4px;
 }
@@ -1715,4 +1732,42 @@
   .support-management__composer {
     padding: 9px;
   }
+}
+
+/* Final support admin commerce text pass. */
+.support-management :where(
+  .commerce-money,
+  .commerce-nowrap,
+  .support-management__orderPrice,
+  .support-management__orderItemUnit,
+  .support-management__orderItemTotal
+) {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  white-space: nowrap !important;
+}
+
+.support-management__composerActions .ant-btn,
+.support-management__orderLink.ant-btn,
+.support-management__quickReplyChip {
+  white-space: nowrap;
+}
+
+.support-management__composerActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.support-management__orderLink.ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.support-management__quickReplyChip > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
 }

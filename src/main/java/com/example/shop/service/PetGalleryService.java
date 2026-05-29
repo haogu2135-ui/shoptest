@@ -6,6 +6,9 @@ import com.example.shop.entity.PetGalleryPhotoLike;
 import com.example.shop.repository.PetGalleryPhotoLikeRepository;
 import com.example.shop.repository.PetGalleryPhotoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +60,15 @@ public class PetGalleryService {
         return photoRepository.findTop24ByStatusOrderByLikeCountDescCreatedAtDescIdDesc(ACTIVE_STATUS).stream()
             .peek((photo) -> decorateViewerState(photo, viewerId, ipAddress))
             .collect(Collectors.toList());
+    }
+
+    public Page<PetGalleryPhoto> findPublicPhotos(Long viewerId, String ipAddress, int page, int size) {
+        int safePage = Math.max(0, page);
+        int maxSize = Math.max(1, Math.min(size <= 0 ? 24 : size, 50));
+        Page<PetGalleryPhoto> result = photoRepository.findByStatusOrderByLikeCountDescCreatedAtDescIdDesc(
+                ACTIVE_STATUS, PageRequest.of(safePage, maxSize));
+        result.getContent().forEach(photo -> decorateViewerState(photo, viewerId, ipAddress));
+        return result;
     }
 
     public PetGalleryQuota getQuota(Long userId, String ipAddress) {
@@ -129,9 +141,13 @@ public class PetGalleryService {
             like.setPhotoId(photoId);
             like.setUserId(userId);
             like.setIpAddress(ipAddress);
-            likeRepository.save(like);
-            photo.setLikeCount(Math.max(0, photo.getLikeCount() == null ? 0 : photo.getLikeCount()) + 1);
-            photo = photoRepository.saveAndFlush(photo);
+            try {
+                likeRepository.saveAndFlush(like);
+                photoRepository.incrementLikeCount(photoId);
+            } catch (DataIntegrityViolationException e) {
+                // Duplicate like from concurrent request — safe to ignore
+            }
+            photo = photoRepository.findById(photoId).orElse(photo);
         }
         return decorateViewerState(photo, userId, ipAddress);
     }
@@ -152,6 +168,22 @@ public class PetGalleryService {
         photo.setStatus(DELETED_STATUS);
         photoRepository.save(photo);
         deleteUploadedFileIfLocal(photo);
+    }
+
+    @Transactional
+    public void adminDeletePhoto(Long photoId) {
+        PetGalleryPhoto photo = photoRepository.findById(photoId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Photo not found"));
+        if (DELETED_STATUS.equals(photo.getStatus())) {
+            return;
+        }
+        photo.setStatus(DELETED_STATUS);
+        photoRepository.save(photo);
+        deleteUploadedFileIfLocal(photo);
+    }
+
+    public List<PetGalleryPhoto> findAllForAdmin() {
+        return photoRepository.findAllByStatusOrderByCreatedAtDescIdDesc(ACTIVE_STATUS);
     }
 
     @Transactional
@@ -246,6 +278,7 @@ public class PetGalleryService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPG, PNG, WebP or GIF photos are supported");
         }
         validateImageSignature(file, contentType);
+        validateImageDimensions(file, contentType);
     }
 
     private void validateImageSignature(MultipartFile file, String contentType) {
@@ -304,6 +337,147 @@ public class PetGalleryService {
         if (!valid) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The uploaded file does not look like a valid image");
         }
+    }
+
+    private void validateImageDimensions(MultipartFile file, String contentType) {
+        byte[] bytes;
+        try (InputStream inputStream = file.getInputStream()) {
+            bytes = inputStream.readNBytes(65536);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded photo");
+        }
+        int[] dimensions = imageDimensions(bytes, contentType);
+        if (dimensions == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded photo dimensions");
+        }
+        int maxWidth = Math.max(1, runtimeConfig.getInt("pet-gallery.max-image-width", 8000));
+        int maxHeight = Math.max(1, runtimeConfig.getInt("pet-gallery.max-image-height", 8000));
+        if (dimensions[0] > maxWidth || dimensions[1] > maxHeight) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "Photo dimensions must be " + maxWidth + "x" + maxHeight + " pixels or smaller");
+        }
+    }
+
+    private int[] imageDimensions(byte[] bytes, String contentType) {
+        switch (contentType) {
+            case "image/png":
+                return pngDimensions(bytes);
+            case "image/gif":
+                return gifDimensions(bytes);
+            case "image/jpeg":
+                return jpegDimensions(bytes);
+            case "image/webp":
+                return webpDimensions(bytes);
+            default:
+                return null;
+        }
+    }
+
+    private int[] pngDimensions(byte[] bytes) {
+        if (bytes.length < 24) {
+            return null;
+        }
+        return new int[]{readIntBigEndian(bytes, 16), readIntBigEndian(bytes, 20)};
+    }
+
+    private int[] gifDimensions(byte[] bytes) {
+        if (bytes.length < 10) {
+            return null;
+        }
+        return new int[]{readUnsignedShortLittleEndian(bytes, 6), readUnsignedShortLittleEndian(bytes, 8)};
+    }
+
+    private int[] jpegDimensions(byte[] bytes) {
+        if (bytes.length < 4) {
+            return null;
+        }
+        int position = 2;
+        while (position + 3 < bytes.length) {
+            while (position < bytes.length && (bytes[position] & 0xff) != 0xff) {
+                position++;
+            }
+            while (position < bytes.length && (bytes[position] & 0xff) == 0xff) {
+                position++;
+            }
+            if (position >= bytes.length) {
+                return null;
+            }
+            int marker = bytes[position++] & 0xff;
+            if (marker == 0xd9 || marker == 0xda) {
+                return null;
+            }
+            if (marker == 0x01 || (marker >= 0xd0 && marker <= 0xd8)) {
+                continue;
+            }
+            if (position + 1 >= bytes.length) {
+                return null;
+            }
+            int length = readUnsignedShortBigEndian(bytes, position);
+            if (length < 2 || position + length > bytes.length) {
+                return null;
+            }
+            if (isJpegStartOfFrame(marker) && length >= 7) {
+                return new int[]{
+                        readUnsignedShortBigEndian(bytes, position + 5),
+                        readUnsignedShortBigEndian(bytes, position + 3)
+                };
+            }
+            position += length;
+        }
+        return null;
+    }
+
+    private boolean isJpegStartOfFrame(int marker) {
+        return (marker >= 0xc0 && marker <= 0xc3)
+                || (marker >= 0xc5 && marker <= 0xc7)
+                || (marker >= 0xc9 && marker <= 0xcb)
+                || (marker >= 0xcd && marker <= 0xcf);
+    }
+
+    private int[] webpDimensions(byte[] bytes) {
+        if (bytes.length < 30 || bytes[0] != 0x52 || bytes[1] != 0x49 || bytes[2] != 0x46 || bytes[3] != 0x46
+                || bytes[8] != 0x57 || bytes[9] != 0x45 || bytes[10] != 0x42 || bytes[11] != 0x50) {
+            return null;
+        }
+        String chunk = new String(bytes, 12, 4, java.nio.charset.StandardCharsets.US_ASCII);
+        if ("VP8X".equals(chunk)) {
+            return new int[]{1 + read24LittleEndian(bytes, 24), 1 + read24LittleEndian(bytes, 27)};
+        }
+        if ("VP8L".equals(chunk) && bytes.length >= 25 && (bytes[20] & 0xff) == 0x2f) {
+            int b1 = bytes[21] & 0xff;
+            int b2 = bytes[22] & 0xff;
+            int b3 = bytes[23] & 0xff;
+            int b4 = bytes[24] & 0xff;
+            int width = 1 + (b1 | ((b2 & 0x3f) << 8));
+            int height = 1 + (((b2 & 0xc0) >> 6) | (b3 << 2) | ((b4 & 0x0f) << 10));
+            return new int[]{width, height};
+        }
+        if ("VP8 ".equals(chunk) && bytes.length >= 30
+                && (bytes[23] & 0xff) == 0x9d && (bytes[24] & 0xff) == 0x01 && (bytes[25] & 0xff) == 0x2a) {
+            int width = readUnsignedShortLittleEndian(bytes, 26) & 0x3fff;
+            int height = readUnsignedShortLittleEndian(bytes, 28) & 0x3fff;
+            return new int[]{width, height};
+        }
+        return null;
+    }
+
+    private int readIntBigEndian(byte[] bytes, int offset) {
+        return ((bytes[offset] & 0xff) << 24)
+                | ((bytes[offset + 1] & 0xff) << 16)
+                | ((bytes[offset + 2] & 0xff) << 8)
+                | (bytes[offset + 3] & 0xff);
+    }
+
+    private int readUnsignedShortBigEndian(byte[] bytes, int offset) {
+        return ((bytes[offset] & 0xff) << 8) | (bytes[offset + 1] & 0xff);
+    }
+
+    private int readUnsignedShortLittleEndian(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8);
+    }
+
+    private int read24LittleEndian(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8) | ((bytes[offset + 2] & 0xff) << 16);
     }
 
     private String normalizeContentType(String contentType) {

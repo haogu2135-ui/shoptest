@@ -1,0 +1,179 @@
+.payment-instructions-page {
+  width: min(1040px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.payment-instructions-page,
+.payment-instructions-page .ant-card,
+.payment-instructions-page .ant-btn,
+.payment-instructions-page .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
+.payment-instructions-page__hero {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid #d8eadf;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 72%, #fff7f0 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+}
+
+.payment-instructions-page__hero .ant-typography {
+  margin: 0;
+}
+
+.payment-instructions-page__eyebrow {
+  color: #124734;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.payment-instructions-page__subtitle {
+  color: #627064;
+  line-height: 1.55;
+}
+
+.payment-instructions-page__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 16px;
+}
+
+.payment-instructions-page__card {
+  border-color: #dce9df;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+}
+
+.payment-instructions-page__stack {
+  width: 100%;
+}
+
+.payment-instructions-page__status {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #ffd8bf;
+  border-radius: 8px;
+  background: #fff7f0;
+}
+
+.payment-instructions-page__status > .anticon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ee4d2d;
+  color: #ffffff;
+}
+
+.payment-instructions-page__status span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.payment-instructions-page__status .ant-typography {
+  display: block;
+  line-height: 1.35;
+}
+
+.payment-instructions-page__notice {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fcf9;
+  color: #124734;
+}
+
+.payment-instructions-page__steps {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.payment-instructions-page__steps > span {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #124734;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.payment-instructions-page__steps .ant-typography {
+  line-height: 1.45;
+}
+
+.payment-instructions-page__amount {
+  display: inline-flex;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.payment-instructions-page__actions .ant-btn {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.payment-instructions-page__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .payment-instructions-page {
+    width: min(100% - 20px, 520px);
+    padding-top: 12px;
+  }
+
+  .payment-instructions-page__hero {
+    padding: 14px;
+  }
+
+  .payment-instructions-page__hero h1.ant-typography {
+    font-size: 24px;
+  }
+
+  .payment-instructions-page__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .payment-instructions-page__status {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .payment-instructions-page__status .ant-tag {
+    grid-column: 1 / -1;
+    width: fit-content;
+  }
+
+  .payment-instructions-page__actions,
+  .payment-instructions-page__actions .ant-space-item,
+  .payment-instructions-page__actions .ant-btn {
+    width: 100%;
+  }
+}

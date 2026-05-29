@@ -33,6 +33,7 @@ public class PaymentChannelRecommendationService {
 
     private final PaymentChannelConfig paymentChannelConfig;
     private final CircuitBreakerService circuitBreakerService;
+    private final ClientIpResolver clientIpResolver;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<PaymentChannelResponse> buildChannelResponses(List<PaymentChannelConfig.Channel> channels, HttpServletRequest request) {
@@ -87,7 +88,9 @@ public class PaymentChannelRecommendationService {
         if (geoConfig == null || !geoConfig.isEnabled()) {
             return null;
         }
-        String countryFromHeader = resolveCountryFromHeaders(request, geoConfig.getCountryHeaderNames());
+        String countryFromHeader = clientIpResolver.shouldTrustForwardedHeaders(request)
+                ? resolveCountryFromHeaders(request, geoConfig.getCountryHeaderNames())
+                : null;
         if (countryFromHeader != null) {
             return countryFromHeader;
         }
@@ -169,18 +172,7 @@ public class PaymentChannelRecommendationService {
     }
 
     private String resolveClientIp(HttpServletRequest request) {
-        if (request == null) {
-            return null;
-        }
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (!isBlank(forwarded)) {
-            return forwarded.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (!isBlank(realIp)) {
-            return realIp.trim();
-        }
-        return trimToNull(request.getRemoteAddr());
+        return trimToNull(clientIpResolver.resolve(request));
     }
 
     private boolean isLocalIp(String ip) {

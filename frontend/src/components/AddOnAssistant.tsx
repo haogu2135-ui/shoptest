@@ -10,6 +10,7 @@ import { conversionConfig } from '../utils/conversionConfig';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { getApiErrorMessage } from '../utils/apiError';
 import './AddOnAssistant.css';
 
 const { Text } = Typography;
@@ -86,7 +87,7 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
       setProducts((current) => current.filter((item) => item.id !== product.id));
       message.success(t('pages.addOnAssistant.added'));
     } catch (error: any) {
-      message.error(error?.response?.data?.error || t('messages.addFailed'));
+      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
     } finally {
       setAddingId(null);
     }
@@ -113,7 +114,7 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
               : t('pages.addOnAssistant.shippingHint', { amount: formatMoney(remainingAmount) })}
           </Text>
         </div>
-        <span className="add-on-assistant__target">{formatMoney(remainingAmount)}</span>
+        <span className="add-on-assistant__target commerce-money">{formatMoney(remainingAmount)}</span>
       </div>
       <div className="add-on-assistant__badges">
         {insightBadges.map((badge) => <span key={badge}>{badge}</span>)}
@@ -140,7 +141,7 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
             <div className="add-on-assistant__body">
               <Text className="add-on-assistant__name">{product.name}</Text>
               <div className="add-on-assistant__meta">
-                <Text strong className="add-on-assistant__price">{formatMoney(getAddOnPrice(product))}</Text>
+                <Text strong className="add-on-assistant__price commerce-money">{formatMoney(getAddOnPrice(product))}</Text>
                 {getAddOnPrice(product) >= remainingAmount ? (
                   <Text className="add-on-assistant__fit">{t('pages.addOnAssistant.coversGap')}</Text>
                 ) : null}

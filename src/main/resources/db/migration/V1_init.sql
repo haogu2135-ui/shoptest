@@ -7,6 +7,7 @@ CREATE TABLE users (
     phone VARCHAR(20),
     address TEXT,
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    role_code VARCHAR(50),
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'

@@ -15,24 +15,65 @@
         <result property="status" column="status"/>
     </resultMap>
 
+    <sql id="normalizedPhoneColumn">
+        REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', ''), CHAR(9), ''), CHAR(10), ''), CHAR(13), '')
+    </sql>
+
+    <sql id="normalizedPhoneParam">
+        REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(#{login}, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', ''), CHAR(9), ''), CHAR(10), ''), CHAR(13), '')
+    </sql>
+
+    <sql id="normalizedPhoneOnlyParam">
+        REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(#{phone}, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', ''), CHAR(9), ''), CHAR(10), ''), CHAR(13), '')
+    </sql>
+
+    <sql id="normalizedUsernameColumn">
+        REPLACE(REPLACE(REPLACE(REPLACE(username, ' ', ''), CHAR(9), ''), CHAR(10), ''), CHAR(13), '')
+    </sql>
+
+    <sql id="normalizedUsernameParam">
+        REPLACE(REPLACE(REPLACE(REPLACE(#{login}, ' ', ''), CHAR(9), ''), CHAR(10), ''), CHAR(13), '')
+    </sql>
+
+    <sql id="normalizedUsernameOnlyParam">
+        REPLACE(REPLACE(REPLACE(REPLACE(#{username}, ' ', ''), CHAR(9), ''), CHAR(10), ''), CHAR(13), '')
+    </sql>
+
     <select id="findById" resultMap="userMap">
         SELECT * FROM users WHERE id = #{id}
     </select>
 
     <select id="findByUsername" resultMap="userMap">
-        SELECT * FROM users WHERE username = #{username}
+        SELECT * FROM users
+        WHERE LOWER(TRIM(username)) = LOWER(TRIM(#{username}))
+           OR LOWER(<include refid="normalizedUsernameColumn"/>) = LOWER(<include refid="normalizedUsernameOnlyParam"/>)
+        LIMIT 1
     </select>
 
     <select id="findByPhone" resultMap="userMap">
-        SELECT * FROM users WHERE phone = #{phone}
+        SELECT * FROM users
+        WHERE phone = #{phone}
+           OR <include refid="normalizedPhoneColumn"/> = <include refid="normalizedPhoneOnlyParam"/>
+        LIMIT 1
     </select>
 
     <select id="findByUsernameOrPhone" resultMap="userMap">
-        SELECT * FROM users WHERE username = #{login} OR phone = #{login} LIMIT 1
+        SELECT * FROM users
+        WHERE LOWER(TRIM(username)) = LOWER(TRIM(#{login}))
+           OR LOWER(<include refid="normalizedUsernameColumn"/>) = LOWER(<include refid="normalizedUsernameParam"/>)
+           OR phone = #{login}
+           OR <include refid="normalizedPhoneColumn"/> = <include refid="normalizedPhoneParam"/>
+        LIMIT 1
     </select>
 
     <select id="findByUsernameOrPhoneOrEmail" resultMap="userMap">
-        SELECT * FROM users WHERE username = #{login} OR phone = #{login} OR email = #{login} LIMIT 1
+        SELECT * FROM users
+        WHERE LOWER(TRIM(username)) = LOWER(TRIM(#{login}))
+           OR LOWER(<include refid="normalizedUsernameColumn"/>) = LOWER(<include refid="normalizedUsernameParam"/>)
+           OR phone = #{login}
+           OR <include refid="normalizedPhoneColumn"/> = <include refid="normalizedPhoneParam"/>
+           OR LOWER(TRIM(email)) = LOWER(TRIM(#{login}))
+        LIMIT 1
     </select>
 
     <select id="findAll" resultMap="userMap">
@@ -41,6 +82,12 @@
 
     <select id="countAll" resultType="long">
         SELECT COUNT(*) FROM users
+    </select>
+
+    <select id="countAdminUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        WHERE UPPER(COALESCE(NULLIF(role_code, ''), role, 'USER')) != 'USER'
     </select>
 
     <select id="findActiveCustomerIds" resultType="long">
@@ -127,6 +174,12 @@
     <update id="updateRoleAccess">
         UPDATE users
         SET role = #{role}, role_code = #{roleCode}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateProfileContact">
+        UPDATE users
+        SET email = #{email}, phone = #{phone}, updated_at = #{updatedAt}
         WHERE id = #{id}
     </update>
 

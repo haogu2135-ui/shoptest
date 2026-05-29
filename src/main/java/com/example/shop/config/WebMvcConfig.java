@@ -20,6 +20,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 "/brands/**",
                 "/categories",
                 "/categories/**",
-                "/product-questions/**");
+                "/product-questions/*/answer");
     }
 }

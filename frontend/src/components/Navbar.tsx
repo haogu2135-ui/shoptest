@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Badge, Dropdown, Input, Select } from 'antd';
+import { Badge, Dropdown, Input, Select, message } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertOutlined,
   BellOutlined,
   BarChartOutlined,
   CheckOutlined,
+  CustomerServiceOutlined,
   EllipsisOutlined,
   GiftOutlined,
   GlobalOutlined,
@@ -31,6 +32,7 @@ import { getGuestCartItems } from '../utils/guestCart';
 import { readCompareProductIds } from '../utils/productCompare';
 import { getEffectiveRole, isAdminRole } from '../utils/roles';
 import { readStockAlerts } from '../utils/stockAlerts';
+import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
 import { normalizeAnnouncementLink } from '../utils/announcementLinks';
@@ -107,8 +109,30 @@ const Navbar: React.FC = () => {
   const safeAlertCount = normalizeBadgeCount(alertCount);
   const communitySignalCount = safeWishlistCount + safeUnreadCount + safeCouponCount + safeCompareCount + safeAlertCount;
   const utilityMenuCount = token ? communitySignalCount : safeCompareCount + safeAlertCount;
-  const navHighlights = [
+  const renderNavAmountText = (label: string, amount: string) => {
+    const parts = label.split(amount);
+    if (parts.length <= 1) return label;
+    return (
+      <span className="shop-nav__amountPhrase commerce-atomic">
+        {parts.map((part, index) => (
+          <React.Fragment key={`${part}-${index}`}>
+            {part}
+            {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  };
+  const freeShippingThresholdText = renderNavAmountText(
     t('nav.freeShippingOver', { amount: formatMoney(market.freeShippingThreshold) }),
+    formatMoney(market.freeShippingThreshold),
+  );
+  const trustFreeShippingText = renderNavAmountText(
+    t('home.trust.freeShipping', { amount: formatMoney(market.freeShippingThreshold) }),
+    formatMoney(market.freeShippingThreshold),
+  );
+  const navHighlights = [
+    freeShippingThresholdText,
     t('nav.followDeals'),
     t('nav.help'),
   ];
@@ -120,6 +144,15 @@ const Navbar: React.FC = () => {
   );
 
   const openSupport = () => {
+    if (!token) {
+      const guestContext = loadGuestSupportContext();
+      if (guestContext) {
+        dispatchDomEvent('shop:open-support', guestContext);
+        return;
+      }
+      dispatchDomEvent('shop:open-support');
+      return;
+    }
     dispatchDomEvent('shop:open-support');
   };
 
@@ -316,8 +349,10 @@ const Navbar: React.FC = () => {
   }, [token]);
 
   const handleLogout = () => {
-    userApi.logout().catch(() => undefined);
+    const refreshToken = getLocalStorageItem('refreshToken');
+    userApi.logout(refreshToken).catch(() => undefined);
     removeLocalStorageItem('token');
+    removeLocalStorageItem('refreshToken');
     removeLocalStorageItem('username');
     removeLocalStorageItem('role');
     removeLocalStorageItem('adminDefaultPath');
@@ -430,7 +465,7 @@ const Navbar: React.FC = () => {
             </React.Fragment>
           )) : (
             <>
-              <span>{t('nav.freeShippingOver', { amount: formatMoney(market.freeShippingThreshold) })}</span>
+              <span>{freeShippingThresholdText}</span>
               <span className="shop-nav__tickerAd">{t('nav.highlightDeal')}</span>
               <span>{t('nav.springSale')}</span>
               <span>{t('nav.easyReturns')}</span>
@@ -508,7 +543,14 @@ const Navbar: React.FC = () => {
             <div className="shop-nav__searchShell">
               <div className="shop-nav__searchIntro">
                 <strong>{t('home.heroTitle')}</strong>
-                <span>{navHighlights.join(' / ')}</span>
+                <span>
+                  {navHighlights.map((highlight, index) => (
+                    <React.Fragment key={index}>
+                      {index > 0 ? ' / ' : ''}
+                      {highlight}
+                    </React.Fragment>
+                  ))}
+                </span>
               </div>
               <div className="shop-nav__searchBar">
                 <Search
@@ -527,7 +569,7 @@ const Navbar: React.FC = () => {
               <button onClick={() => searchBySuggestion('nav.suggestions.leashes')}>{t('nav.suggestions.leashes')}</button>
             </div>
             <div className="shop-nav__searchSignals" aria-label={t('nav.help')}>
-              <span>{t('home.trust.freeShipping', { amount: formatMoney(market.freeShippingThreshold) })}</span>
+              <span>{trustFreeShippingText}</span>
               <span>{t('home.trust.easyReturns')}</span>
               <span>{t('home.trust.petSafe')}</span>
             </div>
@@ -678,6 +720,7 @@ const Navbar: React.FC = () => {
                   menu={{
                     items: [
                       { key: 'coupons', icon: <GiftOutlined />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
+                      { key: 'support', icon: <CustomerServiceOutlined />, label: t('nav.help'), onClick: openSupport },
                       { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
                       { key: 'history', icon: <HistoryOutlined />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
                       { key: 'alerts', icon: <AlertOutlined />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
@@ -718,6 +761,7 @@ const Navbar: React.FC = () => {
                       { key: 'login', icon: <UserOutlined />, label: t('nav.login'), onClick: () => navigate('/login') },
                       { key: 'register', icon: <UserOutlined />, label: t('nav.register'), onClick: () => navigate('/register') },
                       { key: 'guest-divider', type: 'divider' },
+                      { key: 'support', icon: <CustomerServiceOutlined />, label: t('nav.help'), onClick: openSupport },
                       { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
                       { key: 'history', icon: <HistoryOutlined />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
                       { key: 'alerts', icon: <AlertOutlined />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
@@ -759,6 +803,10 @@ const Navbar: React.FC = () => {
             <ShoppingCartOutlined />
           </Badge>
           <span>{t('pages.cart.title')}</span>
+        </button>
+        <button type="button" className="shop-nav__bottomItem" onClick={openSupport} aria-label={t('nav.help')}>
+          <CustomerServiceOutlined />
+          <span>{t('nav.support')}</span>
         </button>
         <Link
           to={token ? '/profile' : '/login'}

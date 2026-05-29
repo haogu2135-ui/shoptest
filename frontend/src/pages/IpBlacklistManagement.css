@@ -226,6 +226,15 @@
 
   .ip-blacklist .ant-modal-body {
     padding-bottom: 6px;
+    scroll-padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ip-blacklist__manualBlockModal .ant-input,
+  .ip-blacklist__manualBlockModal .ant-select,
+  .ip-blacklist__manualBlockModal .ant-picker {
+    scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
   }
 }
 

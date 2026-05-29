@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Divider, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, MessageOutlined, QuestionCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ClockCircleOutlined, MessageOutlined, QuestionCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { ProductQuestion, ProductQuestionAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 import './ProductQuestionManagement.css';
 
 const { Title, Paragraph } = Typography;
@@ -14,6 +15,7 @@ const ProductQuestionManagement: React.FC = () => {
   const [questions, setQuestions] = useState<ProductQuestion[]>([]);
   const [summary, setSummary] = useState<ProductQuestionAdminSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<QuestionStatus>('UNANSWERED');
+  const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(false);
   const [answerTarget, setAnswerTarget] = useState<ProductQuestion | null>(null);
   const [answerText, setAnswerText] = useState('');
@@ -35,18 +37,31 @@ const ProductQuestionManagement: React.FC = () => {
       const questionsRes = await adminApi.getQuestions({ status: normalizeStatus(statusFilter), limit });
       setSummary(summaryRes.data);
       setQuestions(questionsRes.data);
-    } catch {
-      message.error(t('pages.adminQuestions.fetchFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('pages.adminQuestions.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [normalizeStatus, statusFilter, t]);
+  }, [language, normalizeStatus, statusFilter, t]);
 
   useEffect(() => {
     loadQuestions();
   }, [loadQuestions]);
 
-  const visibleQuestions = useMemo(() => questions, [questions]);
+  const visibleQuestions = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    if (!text) return questions;
+    return questions.filter((item) => [
+      item.productName,
+      item.product?.name,
+      item.productId,
+      item.product?.id,
+      item.username,
+      item.userId,
+      item.question,
+      item.answer,
+    ].some((value) => String(value || '').toLowerCase().includes(text)));
+  }, [keyword, questions]);
 
   const answeredCount = summary?.answeredQuestions ?? visibleQuestions.filter((item) => String(item.answer || '').trim()).length;
   const unansweredCount = summary?.unansweredQuestions ?? visibleQuestions.filter((item) => !String(item.answer || '').trim()).length;
@@ -61,18 +76,28 @@ const ProductQuestionManagement: React.FC = () => {
 
   const handleAnswer = async () => {
     if (!answerTarget) return;
+    if (!answerText.trim()) {
+      message.warning(t('pages.adminQuestions.answerRequired'));
+      return;
+    }
     try {
       setAnswering(true);
-      await adminApi.answerQuestion(answerTarget.id, answerText);
+      await adminApi.answerQuestion(answerTarget.id, answerText.trim());
       message.success(t('pages.adminQuestions.answerSuccess'));
       setAnswerTarget(null);
       setAnswerText('');
       loadQuestions();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.adminQuestions.answerFailed'));
+      message.error(getApiErrorMessage(err, t('pages.adminQuestions.answerFailed'), language));
     } finally {
       setAnswering(false);
     }
+  };
+
+  const closeAnswerModal = () => {
+    if (answering) return;
+    setAnswerTarget(null);
+    setAnswerText('');
   };
 
   const formatTime = (value?: string) => (value ? new Date(value).toLocaleString(locale) : '-');
@@ -171,10 +196,20 @@ const ProductQuestionManagement: React.FC = () => {
         </div>
       </section>
       <Space className="product-question-management-page__toolbar" wrap>
+        <Input
+          allowClear
+          prefix={<SearchOutlined />}
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          placeholder={t('common.search')}
+          className="product-question-management-page__keywordInput"
+        />
         <Select
           className="product-question-management-page__statusFilter"
           value={statusFilter}
           onChange={setStatusFilter}
+          popupClassName="shop-mobile-popup-layer"
+          getPopupContainer={() => document.body}
           options={[
             { value: 'UNANSWERED', label: t('pages.adminQuestions.statusUnanswered') },
             { value: 'ANSWERED', label: t('pages.adminQuestions.statusAnswered') },
@@ -196,12 +231,13 @@ const ProductQuestionManagement: React.FC = () => {
         scroll={{ x: 1370 }}
       />
       <Modal
-        className="product-question-management-page__answerModal"
+        className="profile-mobile-safe-modal product-question-management-page__answerModal"
         open={!!answerTarget}
-        onCancel={() => setAnswerTarget(null)}
+        onCancel={closeAnswerModal}
         onOk={handleAnswer}
         confirmLoading={answering}
         title={t('pages.adminQuestions.answerAction')}
+        destroyOnHidden
       >
         <Input.TextArea
           rows={6}

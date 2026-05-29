@@ -3,6 +3,7 @@ package com.example.shop.controller;
 import com.example.shop.entity.Product;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.ProductService;
+import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.util.ProductStatusUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -21,6 +23,9 @@ public class ProductController {
 
     @Autowired
     private ProductService productService;
+
+    @Autowired
+    private SecurityAuditLogService auditLogService;
 
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts(
@@ -81,20 +86,57 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
-        product.setStatus(normalizeProductStatus(product.getStatus()));
-        return ResponseEntity.ok(productService.save(product));
+    public ResponseEntity<Product> createProduct(@RequestBody(required = false) Product product,
+                                                 Authentication authentication,
+                                                 HttpServletRequest request) {
+        if (product == null) {
+            auditLogService.record("PRODUCT_CREATE", "FAILURE", authentication, "PRODUCT", null, request,
+                    "Product payload is required", null);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product payload is required");
+        }
+        try {
+            product.setStatus(normalizeProductStatus(product.getStatus()));
+            Product savedProduct = productService.save(product);
+            auditLogService.record("PRODUCT_CREATE", "SUCCESS", authentication, "PRODUCT", savedProduct.getId(), request,
+                    "Product created", "name=" + savedProduct.getName() + ",status=" + savedProduct.getStatus());
+            return ResponseEntity.ok(savedProduct);
+        } catch (RuntimeException e) {
+            auditLogService.record("PRODUCT_CREATE", "FAILURE", authentication, "PRODUCT", null, request,
+                    e.getMessage(), productAuditMetadata(product));
+            throw e;
+        }
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product product) {
-        return productService.findById(id)
-                .map(existingProduct -> {
-                    mergeProduct(existingProduct, product);
-                    return ResponseEntity.ok(productService.save(existingProduct));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Product> updateProduct(@PathVariable Long id,
+                                                 @RequestBody(required = false) Product product,
+                                                 Authentication authentication,
+                                                 HttpServletRequest request) {
+        if (product == null) {
+            auditLogService.record("PRODUCT_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
+                    "Product payload is required", null);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product payload is required");
+        }
+        try {
+            return productService.findById(id)
+                    .map(existingProduct -> {
+                        mergeProduct(existingProduct, product);
+                        Product savedProduct = productService.save(existingProduct);
+                        auditLogService.record("PRODUCT_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
+                                "Product updated", "name=" + savedProduct.getName() + ",status=" + savedProduct.getStatus());
+                        return ResponseEntity.ok(savedProduct);
+                    })
+                    .orElseGet(() -> {
+                        auditLogService.record("PRODUCT_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
+                                "Product not found", productAuditMetadata(product));
+                        return ResponseEntity.notFound().build();
+                    });
+        } catch (RuntimeException e) {
+            auditLogService.record("PRODUCT_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
+                    e.getMessage(), productAuditMetadata(product));
+            throw e;
+        }
     }
 
     private void mergeProduct(Product existingProduct, Product product) {
@@ -105,9 +147,9 @@ public class ProductController {
         if (product.getStock() != null) existingProduct.setStock(product.getStock());
         if (product.getCategoryId() != null) existingProduct.setCategoryId(product.getCategoryId());
         if (product.getIsFeatured() != null) existingProduct.setIsFeatured(product.getIsFeatured());
-        existingProduct.setBrand(product.getBrand());
-        existingProduct.setOriginalPrice(product.getOriginalPrice());
-        existingProduct.setDiscount(product.getDiscount());
+        if (product.getBrand() != null) existingProduct.setBrand(product.getBrand());
+        if (product.getOriginalPrice() != null) existingProduct.setOriginalPrice(product.getOriginalPrice());
+        if (product.getDiscount() != null) existingProduct.setDiscount(product.getDiscount());
         existingProduct.setLimitedTimePrice(product.getLimitedTimePrice());
         existingProduct.setLimitedTimeStartAt(product.getLimitedTimeStartAt());
         existingProduct.setLimitedTimeEndAt(product.getLimitedTimeEndAt());
@@ -136,12 +178,35 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        return productService.findById(id)
-                .map(product -> {
-                    productService.deleteById(id);
-                    return ResponseEntity.ok().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id,
+                                              Authentication authentication,
+                                              HttpServletRequest request) {
+        try {
+            return productService.findById(id)
+                    .map(product -> {
+                        productService.deleteById(id);
+                        auditLogService.record("PRODUCT_DELETE", "SUCCESS", authentication, "PRODUCT", id, request,
+                                "Product deleted", "name=" + product.getName() + ",status=" + product.getStatus());
+                        return ResponseEntity.ok().<Void>build();
+                    })
+                    .orElseGet(() -> {
+                        auditLogService.record("PRODUCT_DELETE", "FAILURE", authentication, "PRODUCT", id, request,
+                                "Product not found", null);
+                        return ResponseEntity.notFound().build();
+                    });
+        } catch (RuntimeException e) {
+            auditLogService.record("PRODUCT_DELETE", "FAILURE", authentication, "PRODUCT", id, request,
+                    e.getMessage(), null);
+            throw e;
+        }
+    }
+
+    private String productAuditMetadata(Product product) {
+        if (product == null) {
+            return null;
+        }
+        return "name=" + product.getName()
+                + ",status=" + product.getStatus()
+                + ",categoryId=" + product.getCategoryId();
     }
 } 

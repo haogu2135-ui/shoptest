@@ -61,7 +61,7 @@ class OrderInputNormalizationServiceTest {
 
         service.submitReturnShipment(9L, 3L, "  RX\t123\n456  ");
 
-        verify(orderRepository).updateReturnTracking(9L, "RETURN_SHIPPED", "RX 123 456");
+        verify(orderRepository).updateReturnTrackingIfCurrent(9L, "RETURN_APPROVED", "RETURN_SHIPPED", "RX 123 456");
     }
 
     @Test

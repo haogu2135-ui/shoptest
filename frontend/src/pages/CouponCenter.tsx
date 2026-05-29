@@ -11,6 +11,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { getGuestCartItems } from '../utils/guestCart';
 import { getCouponUiText } from '../utils/couponUiText';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import {
   filterPublicCoupons,
   getCartItemCount,
@@ -210,7 +211,7 @@ const CouponCenter: React.FC = () => {
       dispatchDomEvent('shop:coupons-updated');
       await loadCoupons();
     } catch (error: any) {
-      message.error(error?.response?.data?.error || t('pages.coupons.claimFailed'));
+      message.error(getApiErrorMessage(error, t('pages.coupons.claimFailed'), language));
     } finally {
       setClaimingId(null);
     }
@@ -459,7 +460,7 @@ const CouponCenter: React.FC = () => {
           <div className="coupon-center-page__heroBadges" aria-label={t('pages.coupons.opportunitySummaryTitle')}>
             <span className={bestCouponValue > 0 ? 'coupon-center-page__heroBadge coupon-center-page__heroBadge--primary' : 'coupon-center-page__heroBadge coupon-center-page__heroBadge--primary coupon-center-page__heroBadge--muted'}>
               <GiftOutlined />
-              {bestCouponValue > 0 ? formatMoney(bestCouponValue) : t('pages.coupons.noBestClaim')}
+              {bestCouponValue > 0 ? <span className="commerce-money">{formatMoney(bestCouponValue)}</span> : t('pages.coupons.noBestClaim')}
             </span>
             <span className={couponInsights.expiringSoon > 0 ? 'coupon-center-page__heroBadge' : 'coupon-center-page__heroBadge coupon-center-page__heroBadge--muted'}>
               <ClockCircleOutlined />
@@ -485,7 +486,7 @@ const CouponCenter: React.FC = () => {
             </div>
             <div className="coupon-center-page__statCard coupon-center-page__statCard--cart">
               <span className="coupon-center-page__statIcon"><ShoppingOutlined /></span>
-              <strong>{formatMoney(cartSubtotal)}</strong>
+              <strong className="commerce-money">{formatMoney(cartSubtotal)}</strong>
               <span>{t('pages.coupons.currentCartValue')}</span>
             </div>
           </div>
@@ -518,9 +519,9 @@ const CouponCenter: React.FC = () => {
           <strong>
             {hasCouponTarget
               ? couponCartGap > 0
-                ? formatMoney(couponCartGap)
+                ? <span className="commerce-money">{formatMoney(couponCartGap)}</span>
                 : t('pages.coupons.useNext')
-              : formatMoney(cartSubtotal)}
+              : <span className="commerce-money">{formatMoney(cartSubtotal)}</span>}
           </strong>
         </div>
         <div
@@ -656,11 +657,11 @@ const CouponCenter: React.FC = () => {
           </div>
           <div className="coupon-next-action__meta">
             <span className="coupon-next-action__metaItem coupon-next-action__metaItem--cart">
-              <strong>{formatMoney(cartSubtotal)}</strong>
+              <strong className="commerce-money">{formatMoney(cartSubtotal)}</strong>
               <Text type="secondary">{t('pages.coupons.currentCartValue')}</Text>
             </span>
             <span className={hasCouponTarget ? 'coupon-next-action__metaItem' : 'coupon-next-action__metaItem coupon-next-action__metaItem--empty'}>
-              <strong>{couponCartGap > 0 ? formatMoney(couponCartGap) : formatMoney(0)}</strong>
+              <strong className="commerce-money">{couponCartGap > 0 ? formatMoney(couponCartGap) : formatMoney(0)}</strong>
               <Text type="secondary">{hasCouponTarget ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.noBestClaim')}</Text>
             </span>
           </div>
@@ -790,6 +791,8 @@ const CouponCenter: React.FC = () => {
                 value={couponSort}
                 suffixIcon={<SortAscendingOutlined />}
                 onChange={(value) => setCouponSort(value)}
+                popupClassName="shop-mobile-popup-layer"
+                getPopupContainer={() => document.body}
                 options={[
                   { value: 'recommended', label: couponUiText.sortRecommended },
                   { value: 'value', label: couponUiText.sortValue },
@@ -927,12 +930,12 @@ const CouponCenter: React.FC = () => {
                     <Space direction="vertical" className="coupon-center-page__couponBody">
                       <div className="coupon-center-page__couponValueRow">
                         <Text strong className="coupon-center-page__couponValue">{describeCoupon(coupon)}</Text>
-                      {estimatedValue > 0 ? <span className="coupon-center-page__couponEstimate">{formatMoney(estimatedValue)}</span> : null}
+                      {estimatedValue > 0 ? <span className="coupon-center-page__couponEstimate commerce-money">{formatMoney(estimatedValue)}</span> : null}
                       </div>
                       <div className="coupon-center-page__couponDetails" aria-label={coupon.name}>
                         <span>
                           <small>{t('pages.adminCoupons.minimumSpend')}</small>
-                          <strong>{thresholdAmount > 0 ? formatMoney(thresholdAmount) : formatMoney(0)}</strong>
+                          <strong className="commerce-money">{thresholdAmount > 0 ? formatMoney(thresholdAmount) : formatMoney(0)}</strong>
                         </span>
                         <span>
                           <small>{couponUiText.remainingLabel}</small>
@@ -952,7 +955,7 @@ const CouponCenter: React.FC = () => {
                       {!claimed && remaining !== 0 && thresholdAmount > 0 ? (
                         <div className={cartGap > 0 ? 'coupon-center-page__couponFit' : 'coupon-center-page__couponFit coupon-center-page__couponFit--ready'}>
                           <span>{cartGap > 0 ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.useNext')}</span>
-                          <strong>{cartGap > 0 ? formatMoney(cartGap) : formatMoney(0)}</strong>
+                          <strong className="commerce-money">{cartGap > 0 ? formatMoney(cartGap) : formatMoney(0)}</strong>
                           <i style={{ ['--coupon-card-progress' as string]: `${cartProgress}%` }} />
                         </div>
                       ) : null}
@@ -1092,7 +1095,7 @@ const CouponCenter: React.FC = () => {
                     </div>
                     <div className={coupon.status === 'UNUSED' ? 'coupon-wallet__valueRow' : 'coupon-wallet__valueRow coupon-wallet__valueRow--closed'}>
                       <Text className="coupon-wallet__value">{describeCoupon(coupon)}</Text>
-                      {walletCouponValue > 0 ? <span>{formatMoney(walletCouponValue)}</span> : null}
+                      {walletCouponValue > 0 ? <span className="commerce-money">{formatMoney(walletCouponValue)}</span> : null}
                     </div>
                     {expiryText ? (
                       <span className={`coupon-wallet__expiryPill coupon-wallet__expiryPill--${expiryTone}`}>
@@ -1102,12 +1105,12 @@ const CouponCenter: React.FC = () => {
                     ) : null}
                     <div className="coupon-wallet__quickFacts">
                       <span className={coupon.status === 'UNUSED' ? 'coupon-wallet__quickFact coupon-wallet__quickFact--time' : 'coupon-wallet__quickFact coupon-wallet__quickFact--closed'}>{coupon.status === 'UNUSED' ? formatDaysBadge(daysLeft) : statusLabel}</span>
-                      <span className={walletThreshold > 0 ? 'coupon-wallet__quickFact coupon-wallet__quickFact--threshold' : 'coupon-wallet__quickFact coupon-wallet__quickFact--empty'}>{couponUiText.walletThreshold}: {formatMoney(walletThreshold)}</span>
+                      <span className={walletThreshold > 0 ? 'coupon-wallet__quickFact coupon-wallet__quickFact--threshold' : 'coupon-wallet__quickFact coupon-wallet__quickFact--empty'}>{couponUiText.walletThreshold}: <span className="commerce-money">{formatMoney(walletThreshold)}</span></span>
                     </div>
                     {coupon.status === 'UNUSED' && walletThreshold > 0 ? (
                       <div className={walletGap > 0 ? 'coupon-wallet__fit' : 'coupon-wallet__fit coupon-wallet__fit--ready'}>
                         <span>{walletGap > 0 ? t('pages.coupons.couponThresholdGap') : couponUiText.cartReady}</span>
-                        <strong>{walletGap > 0 ? formatMoney(walletGap) : formatMoney(0)}</strong>
+                        <strong className="commerce-money">{walletGap > 0 ? formatMoney(walletGap) : formatMoney(0)}</strong>
                         <i style={{ ['--wallet-coupon-progress' as string]: `${walletProgress}%` }} />
                       </div>
                     ) : null}

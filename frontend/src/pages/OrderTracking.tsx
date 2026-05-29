@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Button, Card, Descriptions, Empty, Form, Input, List, Modal, Space, Tag, Typography, message } from 'antd';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Card, Descriptions, Empty, Form, Input, List, Modal, Space, Tag, Typography, message } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, CustomerServiceOutlined, RollbackOutlined, SearchOutlined, TruckOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cartApi, orderApi, paymentApi } from '../api';
 import type { Order, OrderItem, Payment } from '../types';
 import { useLanguage } from '../i18n';
@@ -14,12 +14,20 @@ import { getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { addGuestCartItem } from '../utils/guestCart';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { hasStoredValue } from '../utils/safeStorage';
+import { saveGuestSupportContext } from '../utils/guestSupportContext';
+import { getApiErrorMessage } from '../utils/apiError';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderTracking.css';
 
 const { Text, Title } = Typography;
 const orderTrackingImageFallback = productImageFallback;
 const resolveOrderTrackingImage = resolveProductImage;
+
+const cleanTrackingParam = (value: string | null, maxLength = 120) =>
+  Array.from(String(value || ''), (char) => {
+    const code = char.charCodeAt(0);
+    return code <= 31 || code === 127 ? ' ' : char;
+  }).join('').trim().slice(0, maxLength);
 
 const statusColor: Record<string, string> = {
   PENDING_PAYMENT: 'orange',
@@ -41,18 +49,40 @@ const getTrackingStep = (status?: string) => {
 };
 
 const OrderTracking: React.FC = () => {
+  const [form] = Form.useForm();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [confirmingReceipt, setConfirmingReceipt] = useState(false);
+  const [returning, setReturning] = useState(false);
+  const [returnShipping, setReturnShipping] = useState(false);
+  const [returnRequestOpen, setReturnRequestOpen] = useState(false);
+  const [returnShipmentOpen, setReturnShipmentOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
+  const [returnTrackingNumber, setReturnTrackingNumber] = useState('');
   const [trackedEmail, setTrackedEmail] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
+  const autoTrackKeyRef = useRef('');
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const trackingStep = getTrackingStep(order?.status);
-  const supportOpen = useCallback(() => dispatchDomEvent('shop:open-support'), []);
+  const paymentReturnStatus = cleanTrackingParam(searchParams.get('payment'), 40).toLowerCase();
+  const supportOpen = useCallback(() => {
+    if (order?.orderNo && trackedEmail) {
+      saveGuestSupportContext({ orderNo: order.orderNo, email: trackedEmail });
+      dispatchDomEvent('shop:open-support', { orderNo: order.orderNo, email: trackedEmail });
+      return;
+    }
+    if (!hasStoredValue('token')) {
+      dispatchDomEvent('shop:open-support');
+      return;
+    }
+    dispatchDomEvent('shop:open-support');
+  }, [order?.orderNo, trackedEmail]);
   const nextAction = useMemo(() => {
     if (!order) return null;
     if (order.status === 'PENDING_PAYMENT') {
@@ -107,7 +137,7 @@ const OrderTracking: React.FC = () => {
     };
   }, [items, navigate, order, supportOpen, t]);
 
-  const onFinish = async (values: { orderNo: string; email: string }) => {
+  const trackOrder = useCallback(async (values: { orderNo: string; email: string }, quiet = false) => {
     setLoading(true);
     const normalizedEmail = values.email.trim().toLowerCase();
     try {
@@ -115,25 +145,63 @@ const OrderTracking: React.FC = () => {
       setTrackedEmail(normalizedEmail);
       setOrder(res.data.order);
       setItems(res.data.items || []);
+      setReturnReason(res.data.order?.returnReason || '');
+      setReturnTrackingNumber(res.data.order?.returnTrackingNumber || '');
     } catch (error: any) {
       setTrackedEmail('');
       setOrder(null);
       setItems([]);
-      message.error(error?.response?.data?.error || t('pages.orderTracking.notFound'));
+      if (!quiet) {
+        message.error(getApiErrorMessage(error, t('pages.orderTracking.notFound'), language));
+      }
     } finally {
       setLoading(false);
     }
+  }, [language, t]);
+
+  const onFinish = (values: { orderNo: string; email: string }) => trackOrder(values);
+
+  useEffect(() => {
+    const orderNo = cleanTrackingParam(searchParams.get('orderNo') || searchParams.get('order'), 80);
+    const email = cleanTrackingParam(searchParams.get('email') || searchParams.get('guestEmail'), 120).toLowerCase();
+    if (!orderNo || !email) return;
+    form.setFieldsValue({ orderNo, email });
+    const key = `${orderNo}:${email}`;
+    if (autoTrackKeyRef.current === key) return;
+    autoTrackKeyRef.current = key;
+    void trackOrder({ orderNo, email }, true);
+  }, [form, searchParams, trackOrder]);
+
+  const refreshTrackedOrder = async () => {
+    if (!order?.orderNo || !trackedEmail) return;
+    const refreshed = await orderApi.track(order.orderNo, trackedEmail);
+    setOrder(refreshed.data.order);
+    setItems(refreshed.data.items || []);
+    setReturnReason(refreshed.data.order?.returnReason || '');
+    setReturnTrackingNumber(refreshed.data.order?.returnTrackingNumber || '');
   };
 
   const continuePayment = async () => {
     if (!order || order.status !== 'PENDING_PAYMENT') return;
     setPaying(true);
     try {
-      const paymentsRes = await paymentApi.getByOrder(order.id, trackedEmail);
+      const paymentsRes = await paymentApi.getByOrder(order.id, trackedEmail, order.orderNo);
       const payments = paymentsRes.data || [];
       const reusablePayment = payments.find((payment: Payment) => payment.status === 'PAID')
         || payments.find((payment: Payment) => payment.status === 'PENDING' && !getPaymentRecoveryState(payment).isExpired);
-      const payment = reusablePayment || (await paymentApi.create(order.id, order.paymentMethod || payments[0]?.channel || 'STRIPE', trackedEmail)).data;
+      let payment = reusablePayment;
+      if (!payment) {
+        const channelsRes = await paymentApi.getChannels();
+        const channels = channelsRes.data || [];
+        const channel = channels.find((item) => item.code === order.paymentMethod)?.code
+          || channels.find((item) => item.recommended)?.code
+          || channels[0]?.code;
+        if (!channel) {
+          message.error(t('pages.checkout.paymentUnavailable'));
+          return;
+        }
+        payment = (await paymentApi.create(order.id, channel, trackedEmail, order.orderNo)).data;
+      }
       if (payment.status === 'PAID') {
         message.success(t('pages.checkout.paidTitle'));
         const refreshed = await orderApi.track(order.orderNo || String(order.id), trackedEmail);
@@ -146,7 +214,7 @@ const OrderTracking: React.FC = () => {
         message.error(t('pages.payment.failed'));
       }
     } catch (error: any) {
-      message.error(error?.response?.data?.error || t('pages.profile.continuePayFailed'));
+      message.error(getApiErrorMessage(error, t('pages.profile.continuePayFailed'), language));
     } finally {
       setPaying(false);
     }
@@ -191,13 +259,13 @@ const OrderTracking: React.FC = () => {
       async onOk() {
         setCanceling(true);
         try {
-          await orderApi.cancel(order.id, trackedEmail);
+          await orderApi.cancel(order.id, trackedEmail, order.orderNo);
           await restoreTrackedItemsToCart();
           message.success(t('pages.checkout.rollbackPaymentSuccess'));
           setOrder({ ...order, status: 'CANCELLED' });
           navigate('/cart');
         } catch (error: any) {
-          message.error(error?.response?.data?.error || t('pages.checkout.rollbackPaymentFailed'));
+          message.error(getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language));
         } finally {
           setCanceling(false);
         }
@@ -205,9 +273,74 @@ const OrderTracking: React.FC = () => {
     });
   };
 
+  const confirmReceipt = async () => {
+    if (!order || order.status !== 'SHIPPED' || !trackedEmail) return;
+    setConfirmingReceipt(true);
+    try {
+      await orderApi.confirm(order.id, trackedEmail, order.orderNo);
+      await refreshTrackedOrder();
+      message.success(t('pages.profile.receiptConfirmed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.profile.confirmFailed'), language));
+    } finally {
+      setConfirmingReceipt(false);
+    }
+  };
+
+  const submitReturnRequest = async () => {
+    if (!order?.returnable) return;
+    setReturning(true);
+    try {
+      await orderApi.returnOrder(order.id, returnReason.trim(), trackedEmail, order.orderNo);
+      await refreshTrackedOrder();
+      setReturnRequestOpen(false);
+      message.success(t('pages.profile.returnRequested'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.profile.returnFailed'), language));
+    } finally {
+      setReturning(false);
+    }
+  };
+
+  const submitReturnTracking = async () => {
+    if (!order || order.status !== 'RETURN_APPROVED') return;
+    if (!returnTrackingNumber.trim()) {
+      message.error(t('pages.profile.returnTrackingRequired'));
+      return;
+    }
+    setReturnShipping(true);
+    try {
+      await orderApi.submitReturnShipment(order.id, returnTrackingNumber.trim(), trackedEmail, order.orderNo);
+      await refreshTrackedOrder();
+      setReturnShipmentOpen(false);
+      message.success(t('pages.profile.returnShipmentSubmitted'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.profile.returnShipmentFailed'), language));
+    } finally {
+      setReturnShipping(false);
+    }
+  };
+
   return (
     <div className={`order-tracking-page order-tracking-page--${language}`}>
       <Title level={2} className="order-tracking-page__title">{t('pages.orderTracking.title')}</Title>
+      {paymentReturnStatus === 'success' ? (
+        <Alert
+          className="order-tracking-page__paymentReturn"
+          type="success"
+          showIcon
+          message={t('pages.checkout.paidTitle')}
+          description={t('pages.checkout.paymentRecoveryNextPaid')}
+        />
+      ) : paymentReturnStatus === 'cancelled' ? (
+        <Alert
+          className="order-tracking-page__paymentReturn"
+          type="warning"
+          showIcon
+          message={t('pages.checkout.paymentRecoveryPending')}
+          description={t('pages.checkout.paymentRecoveryNextRetry')}
+        />
+      ) : null}
       <Card className="order-tracking-page__lookupCard">
         <div className="order-tracking-page__lookupHeader">
           <span className="order-tracking-page__lookupIcon"><SearchOutlined /></span>
@@ -216,12 +349,12 @@ const OrderTracking: React.FC = () => {
             <Text type="secondary">{t('pages.orderTracking.empty')}</Text>
           </span>
         </div>
-        <Form className="order-tracking-page__lookupForm" layout="vertical" onFinish={onFinish}>
+        <Form form={form} className="order-tracking-page__lookupForm" layout="vertical" onFinish={onFinish}>
           <Form.Item name="orderNo" label={t('pages.orderTracking.orderNo')} rules={[{ required: true, message: t('pages.orderTracking.orderNoRequired') }]}>
-            <Input placeholder="SO202605..." autoComplete="off" />
+            <Input placeholder="SO202605..." autoComplete="off" inputMode="text" maxLength={80} />
           </Form.Item>
           <Form.Item name="email" label={t('pages.orderTracking.email')} rules={[{ required: true, message: t('pages.orderTracking.emailRequired') }, { type: 'email', message: t('pages.auth.emailInvalid') }]}>
-            <Input placeholder="you@example.com" autoComplete="email" />
+            <Input placeholder="you@example.com" autoComplete="email" inputMode="email" maxLength={120} />
           </Form.Item>
           <Button className="order-tracking-page__lookupButton" type="primary" htmlType="submit" loading={loading} icon={<SearchOutlined />} block>
             {t('pages.orderTracking.search')}
@@ -311,9 +444,26 @@ const OrderTracking: React.FC = () => {
                   </Button>
                 </Space>
               ) : (
-                <Button icon={<CustomerServiceOutlined />} onClick={supportOpen}>
-                  {t('pages.profile.contactSupport')}
-                </Button>
+                <Space wrap className="order-tracking-page__nextActionButtons">
+                  {order.status === 'SHIPPED' ? (
+                    <Button type="primary" icon={<CheckCircleOutlined />} loading={confirmingReceipt} onClick={confirmReceipt}>
+                      {t('pages.profile.confirmReceipt')}
+                    </Button>
+                  ) : null}
+                  {order.returnable ? (
+                    <Button icon={<RollbackOutlined />} loading={returning} onClick={() => setReturnRequestOpen(true)}>
+                      {t('pages.profile.returnOrder')}
+                    </Button>
+                  ) : null}
+                  {order.status === 'RETURN_APPROVED' ? (
+                    <Button type="primary" icon={<TruckOutlined />} loading={returnShipping} onClick={() => setReturnShipmentOpen(true)}>
+                      {t('pages.orderTracking.submitReturnTracking')}
+                    </Button>
+                  ) : null}
+                  <Button icon={<CustomerServiceOutlined />} onClick={supportOpen}>
+                    {t('pages.profile.contactSupport')}
+                  </Button>
+                </Space>
               )}
             </section>
           ) : null}
@@ -348,7 +498,7 @@ const OrderTracking: React.FC = () => {
                 <Tag color={statusColor[order.status] || 'default'}>{t(`status.${order.status}`)}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('common.amount')}>
-                <Text strong className="order-tracking-page__amount">{formatMoney(order.totalAmount)}</Text>
+                <Text strong className="order-tracking-page__amount commerce-money">{formatMoney(order.totalAmount)}</Text>
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
                 {order.paymentMethod ? paymentMethodLabel(order.paymentMethod, t) : '-'}
@@ -364,6 +514,17 @@ const OrderTracking: React.FC = () => {
                 <Descriptions.Item label={t('pages.orderTracking.carrier')}>
                   {order.trackingCarrierName}
                 </Descriptions.Item>
+              ) : null}
+              {order.returnDeadline ? (
+                <Descriptions.Item label={t('pages.profile.returnDeadline')}>
+                  {new Date(order.returnDeadline).toLocaleString(dateLocale)}
+                </Descriptions.Item>
+              ) : null}
+              {order.returnReason ? (
+                <Descriptions.Item label={t('pages.profile.returnReason')}>{order.returnReason}</Descriptions.Item>
+              ) : null}
+              {order.returnTrackingNumber ? (
+                <Descriptions.Item label={t('pages.profile.returnTracking')}>{order.returnTrackingNumber}</Descriptions.Item>
               ) : null}
             </Descriptions>
           </Card>
@@ -391,11 +552,14 @@ const OrderTracking: React.FC = () => {
                     description={
                       <Space direction="vertical" size={0}>
                         {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
-                        <Text type="secondary">{formatMoney(item.price)} x {item.quantity}</Text>
+                        <Text type="secondary" className="order-tracking-page__itemUnit commerce-atomic commerce-price-quantity">
+                          <span className="commerce-money">{formatMoney(item.price)}</span>
+                          <span className="commerce-quantity">x {item.quantity}</span>
+                        </Text>
                       </Space>
                     }
                   />
-                  <Text strong className="order-tracking-page__itemTotal">{formatMoney(item.price * item.quantity)}</Text>
+                  <Text strong className="order-tracking-page__itemTotal commerce-money">{formatMoney(item.price * item.quantity)}</Text>
                 </List.Item>
               )}
             />
@@ -410,6 +574,50 @@ const OrderTracking: React.FC = () => {
           </Card>
         </Space>
       )}
+      <Modal
+        title={t('pages.profile.returnOrder')}
+        open={returnRequestOpen}
+        onOk={submitReturnRequest}
+        onCancel={() => setReturnRequestOpen(false)}
+        confirmLoading={returning}
+        okText={t('pages.profile.returnOrder')}
+        cancelText={t('common.cancel')}
+        className="profile-mobile-safe-modal order-tracking-page__returnModal"
+      >
+        <Space direction="vertical" className="order-tracking-page__resultStack">
+          <Text type="secondary">{t('pages.profile.returnReviewHint')}</Text>
+          {order?.returnDeadline ? (
+            <Text>{t('pages.profile.returnAvailableUntil', { time: new Date(order.returnDeadline).toLocaleString(dateLocale) })}</Text>
+          ) : null}
+          <Input.TextArea
+            rows={4}
+            value={returnReason}
+            onChange={(event) => setReturnReason(event.target.value)}
+            maxLength={500}
+            showCount
+            placeholder={t('pages.profile.returnReasonPlaceholder')}
+          />
+        </Space>
+      </Modal>
+      <Modal
+        title={t('pages.profile.returnTracking')}
+        open={returnShipmentOpen}
+        onOk={submitReturnTracking}
+        onCancel={() => setReturnShipmentOpen(false)}
+        confirmLoading={returnShipping}
+        okText={t('pages.profile.returnShipmentSubmitted')}
+        cancelText={t('common.cancel')}
+        className="profile-mobile-safe-modal order-tracking-page__returnModal"
+      >
+        <Input
+          value={returnTrackingNumber}
+          onChange={(event) => setReturnTrackingNumber(event.target.value)}
+          autoComplete="off"
+          inputMode="text"
+          maxLength={120}
+          placeholder={t('pages.profile.returnTrackingPlaceholder')}
+        />
+      </Modal>
     </div>
   );
 };

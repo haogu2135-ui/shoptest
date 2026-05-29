@@ -164,6 +164,7 @@
 
   .category-management-page__toolbar .ant-space,
   .category-management-page__toolbar .ant-space-item,
+  .category-management-page__toolbar .ant-input-affix-wrapper,
   .category-management-page__toolbar .ant-btn {
     width: 100%;
   }
@@ -224,6 +225,10 @@
 .category-management-page__preview {
   margin-bottom: 16px;
   text-align: center;
+}
+
+.category-management-page__keywordInput {
+  width: 280px;
 }
 
 .category-management-page .ant-table-wrapper {
@@ -381,6 +386,8 @@
   .category-management-page__editorModal .ant-modal-body {
     min-width: 0;
     overflow-y: auto;
+    scroll-padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -405,6 +412,8 @@
     width: 100%;
     min-width: 0;
     max-width: 100%;
+    scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
   }
 
   .category-management-page__editorModal .ant-modal-footer {
@@ -484,6 +493,7 @@
   }
 
   .category-management-page__toolbar .ant-space,
+  .category-management-page__toolbar .ant-input-affix-wrapper,
   .category-management-page__toolbar .ant-btn {
     width: 100%;
   }

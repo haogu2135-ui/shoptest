@@ -1269,3 +1269,56 @@
     min-height: 38px;
   }
 }
+
+/* Final wishlist atomic-text pass */
+.wishlist-page__price,
+.wishlist-page__readinessPill,
+.wishlist-page__insightStats .ant-tag,
+.wishlist-page__nextActionMeta .ant-tag {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.wishlist-page__price,
+.wishlist-page__readinessPill,
+.wishlist-page__insightStats .ant-tag,
+.wishlist-page__nextActionMeta .ant-tag {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wishlist-page__actions .ant-btn,
+.wishlist-page__bestPickAction .ant-btn,
+.wishlist-page__nextAction .ant-btn,
+.wishlist-page__recovery .ant-btn {
+  white-space: nowrap;
+}
+
+.wishlist-page__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.wishlist-page__bestPickAction .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.wishlist-page__nextAction .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.wishlist-page__recovery .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .wishlist-page__actions .ant-btn,
+  .wishlist-page__bestPickAction .ant-btn,
+  .wishlist-page__nextAction .ant-btn,
+  .wishlist-page__recovery .ant-btn {
+    white-space: nowrap !important;
+  }
+
+  .wishlist-page__price {
+    display: inline-block;
+    max-width: min(148px, 42vw);
+  }
+}

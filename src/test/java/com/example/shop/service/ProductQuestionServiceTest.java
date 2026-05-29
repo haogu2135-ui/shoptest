@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +41,7 @@ class ProductQuestionServiceTest {
         when(runtimeConfig.getInt("product-question.max-answer-chars", 1000)).thenReturn(120);
         when(runtimeConfig.getInt("product-question.admin.max-rows", 200)).thenReturn(50);
         when(runtimeConfig.getInt("product-question.admin.stale-hours", 24)).thenReturn(2);
+        when(runtimeConfig.getBoolean("product-question.rate-limit-enabled", true)).thenReturn(false);
         service = new ProductQuestionServiceImpl(questionRepository, productRepository, userRepository, runtimeConfig);
 
         Product product = new Product();
@@ -64,6 +66,19 @@ class ProductQuestionServiceTest {
     @Test
     void rejectsOverlongQuestionBeforeSaving() {
         assertThrows(IllegalArgumentException.class, () -> service.ask(7L, 3L, "x".repeat(81)));
+    }
+
+    @Test
+    void rateLimitsQuestionsBeforeSaving() {
+        when(runtimeConfig.getBoolean("product-question.rate-limit-enabled", true)).thenReturn(true);
+        when(runtimeConfig.getInt("product-question.max-asks-per-minute", 5)).thenReturn(2);
+
+        service.ask(7L, 3L, "Is it good for kittens?");
+        service.ask(7L, 3L, "Is it machine washable?");
+
+        assertThrows(IllegalStateException.class, () -> service.ask(7L, 3L, "Does it include a warranty?"));
+        verify(questionRepository, never()).save(org.mockito.ArgumentMatchers.argThat(question ->
+                question instanceof ProductQuestion && "Does it include a warranty?".equals(((ProductQuestion) question).getQuestion())));
     }
 
     @Test

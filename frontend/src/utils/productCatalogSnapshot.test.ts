@@ -1,4 +1,5 @@
 import {
+  loadFallbackProductCatalog,
   loadProductCatalogSnapshot,
   normalizeProductForCatalogSnapshot,
   PRODUCT_CATALOG_SNAPSHOT_KEY,
@@ -91,5 +92,13 @@ describe('productCatalogSnapshot', () => {
     expect(normalized?.variants).toHaveLength(1);
     expect(normalized?.variants?.[0].sku).toBe('sku-1');
     expect(normalized?.specifications).toEqual({ 'options.Size': 'Small, Medium' });
+  });
+
+  it('provides a bounded pet catalog fallback when no live snapshot is available', () => {
+    const fallbackProducts = loadFallbackProductCatalog();
+
+    expect(fallbackProducts.length).toBeGreaterThan(0);
+    expect(fallbackProducts.every((item) => item.status === 'ACTIVE')).toBe(true);
+    expect(fallbackProducts.every((item) => item.name && item.price >= 0 && item.imageUrl)).toBe(true);
   });
 });

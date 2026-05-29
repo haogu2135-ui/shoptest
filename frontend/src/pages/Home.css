@@ -541,6 +541,12 @@
   margin-top: 14px;
 }
 
+.shopee-home__snapshotNotice {
+  grid-column: 1 / -1;
+  width: 100%;
+  border-radius: 8px;
+}
+
 .shopee-conversion-strip {
   grid-column: 1 / -1;
   display: grid;
@@ -4325,5 +4331,141 @@
     min-width: 1em;
     height: 1em;
     flex: 0 0 1em;
+  }
+}
+
+/* Final mobile atomic-text pass: primary controls keep one-line labels. */
+@media (max-width: 600px) {
+  .shopee-home .ant-btn:not(.ant-btn-icon-only),
+  .shopee-hero__actions .ant-btn,
+  .shopee-hero__authActions .ant-btn,
+  .shopee-hero__featuredActions .ant-btn,
+  .shopee-hero__spotlight .ant-btn,
+  .shopee-section__header .ant-btn,
+  .shopee-editorial-band__actions .ant-btn,
+  .shopee-story-card .ant-btn,
+  .shopee-personalized-insight .ant-btn,
+  .shopee-mobile-quick-panel button {
+    white-space: nowrap;
+  }
+
+  .shopee-home .ant-btn:not(.ant-btn-icon-only) > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-hero__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-hero__authActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-hero__featuredActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-hero__spotlight .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-section__header .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-editorial-band__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-story-card .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-personalized-insight .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-mobile-quick-panel button > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: nowrap;
+  }
+
+  .shopee-section__header button,
+  .shopee-coupon-entry strong,
+  .shopee-coupon-entry .ant-typography,
+  .shopee-conversion-band__card strong,
+  .shopee-conversion-band__action,
+  .shopee-editorial-band__miniBody strong,
+  .shopee-editorial-band__miniBody .ant-typography {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .shopee-conversion-band__body {
+    min-width: 0;
+  }
+
+  .shopee-conversion-band__body .ant-typography {
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: normal;
+    word-break: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .shopee-coupon-entry {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .shopee-coupon-entry > span:not(.shopee-coupon-entry__icon),
+  .shopee-editorial-band__miniBody {
+    min-width: 0;
+    overflow: hidden;
+  }
+}
+
+/* Final home commerce atomic-text pass */
+.shopee-product__price,
+.shopee-product__priceRow,
+.shopee-product__meta,
+.shopee-coupon-entry strong,
+.shopee-conversion-band__card strong,
+.shopee-hero__featuredPrice,
+.shopee-hero__featuredMeta {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.shopee-product__price,
+.shopee-product__priceRow,
+.shopee-coupon-entry strong,
+.shopee-conversion-band__card strong,
+.shopee-hero__featuredPrice,
+.shopee-hero__featuredMeta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shopee-product__quickActions .ant-btn,
+.shopee-product .ant-btn,
+.shopee-mobile-quick-panel button,
+.shopee-coupon-entry,
+.shopee-conversion-band__action {
+  white-space: nowrap;
+}
+
+.shopee-product__quickActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.shopee-product .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.shopee-mobile-quick-panel button > span:not(.anticon):not(.ant-btn-icon),
+.shopee-coupon-entry > span:not(.shopee-coupon-entry__icon),
+.shopee-conversion-band__action > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .shopee-product__price,
+  .shopee-product__priceRow,
+  .shopee-product__meta,
+  .shopee-coupon-entry strong,
+  .shopee-conversion-band__card strong,
+  .shopee-hero__featuredPrice,
+  .shopee-hero__featuredMeta,
+  .shopee-product__quickActions .ant-btn,
+  .shopee-product .ant-btn,
+  .shopee-mobile-quick-panel button,
+  .shopee-coupon-entry,
+  .shopee-conversion-band__action {
+    white-space: nowrap !important;
   }
 }

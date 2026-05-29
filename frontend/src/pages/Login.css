@@ -12,12 +12,32 @@
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-rows: minmax(560px, 1fr);
   gap: 24px;
-  align-items: center;
+  align-items: stretch;
+}
+
+@media (min-width: 901px) {
+  .shopee-login-shell {
+    grid-template-rows: minmax(640px, 1fr);
+    height: min(820px, calc(100vh - 48px));
+    min-height: min(820px, calc(100vh - 48px));
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    align-self: stretch;
+  }
 }
 
 .shopee-login-panel {
-  min-height: 560px;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -159,12 +179,22 @@
 .shopee-login-card {
   width: 100%;
   max-width: 420px;
+  min-height: 560px;
   padding: 32px 28px 24px;
   border: 1px solid rgba(226, 234, 220, 0.9);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 18px 42px rgba(18, 71, 52, 0.12), 0 4px 12px rgba(18, 71, 52, 0.06);
   backdrop-filter: blur(10px);
+}
+
+.shopee-login-shell > .shopee-login-card {
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
 }
 
 .shopee-login-card__header {
@@ -278,6 +308,7 @@
 
 .shopee-login-tabs {
   margin-top: -2px;
+  flex: 1 0 auto;
 }
 
 .shopee-login-tabs .ant-tabs-nav {
@@ -354,6 +385,16 @@
 .shopee-login-emailHint .anticon {
   flex: 0 0 auto;
   color: #124734;
+}
+
+.shopee-login-emailHint--warning {
+  border-color: #f1d8a7;
+  background: linear-gradient(180deg, #fffdf7 0%, #fff7e6 100%);
+  color: #704b0b;
+}
+
+.shopee-login-emailHint--warning .anticon {
+  color: #b46411;
 }
 
 .shopee-login-emailSent {
@@ -642,16 +683,43 @@
   }
 }
 
+/* Desktop auth visual alignment: image panel and form panel share the same row height. */
+@media (min-width: 901px) {
+  .shopee-login-root {
+    align-items: center;
+  }
+
+  .shopee-login-panel,
+  .shopee-login-card {
+    max-height: 100%;
+  }
+
+  .shopee-login-card {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 @media (max-width: 900px) {
   .shopee-login-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
     min-height: auto;
+    align-items: center;
   }
 
   .shopee-login-panel {
     min-height: 340px;
+    height: auto;
     padding: 28px;
     border-radius: 8px;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    min-height: 0;
+    height: auto;
+    justify-self: center;
   }
 
   .shopee-login-panel h1.ant-typography {
@@ -746,6 +814,16 @@
   overflow: hidden;
   border-color: rgba(18, 71, 52, 0.08);
   box-shadow: 0 24px 56px rgba(18, 71, 52, 0.14);
+}
+
+@media (min-width: 901px) {
+  .shopee-login-shell > .shopee-login-card {
+    max-height: 100%;
+  }
+
+  .shopee-login-panel {
+    min-height: 0;
+  }
 }
 
 .shopee-login-card::before {
@@ -1934,5 +2012,382 @@
   .shopee-login-card .ant-input,
   .shopee-login-card .ant-btn {
     min-height: 40px;
+  }
+}
+
+/* Mobile UI audit closure: auth commands stay one-line with ellipsis. */
+@media (max-width: 640px) {
+  .shopee-login-card .ant-btn,
+  .shopee-login-panel__actions .ant-btn,
+  .shopee-login-quickLinks a,
+  .shopee-login-quickLinks button,
+  .shopee-login-links a,
+  .shopee-login-links button,
+  .shopee-login-tabs .ant-tabs-tab-btn {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .shopee-login-card .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-login-panel__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .shopee-login-quickLinks a > span:not(.anticon),
+  .shopee-login-quickLinks button > span:not(.anticon),
+  .shopee-login-links a > span:not(.anticon),
+  .shopee-login-links button > span:not(.anticon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Commercial consistency closure: keep auth panels aligned with the store's 8px system. */
+.shopee-login-panel,
+.shopee-login-card,
+.shopee-login-panel__feature,
+.shopee-login-panel__spotlightCard,
+.shopee-login-card__stat,
+.shopee-login-trust,
+.shopee-login-reset-guide,
+.shopee-login-emailHint,
+.shopee-login-emailSent,
+.shopee-login-emailMeta span,
+.shopee-login-quickLinks a,
+.shopee-login-quickLinks button,
+.shopee-login-tabs .ant-tabs-nav,
+.shopee-login-tabs .ant-tabs-tab,
+.shopee-login-card .ant-btn-primary,
+.shopee-login-panel__actions .ant-btn,
+.shopee-login-codeButton {
+  border-radius: 8px !important;
+}
+
+.shopee-login-card .ant-input,
+.shopee-login-card .ant-input-affix-wrapper,
+.shopee-login-card .ant-select-selector {
+  border-radius: 8px !important;
+  background: #ffffff;
+}
+
+.shopee-login-card .ant-input-group .ant-input-affix-wrapper {
+  border-radius: 8px 0 0 8px !important;
+}
+
+.shopee-login-card .ant-input-group-addon,
+.shopee-login-codeButton {
+  border-radius: 0 8px 8px 0 !important;
+}
+
+.shopee-login-card .ant-btn-primary,
+.shopee-login-panel__actions .ant-btn-primary {
+  background: #ee4d2d !important;
+  border-color: #ee4d2d !important;
+}
+
+@media (min-width: 901px) {
+  .shopee-login-root {
+    min-height: 100vh;
+    align-items: center;
+  }
+
+  .shopee-login-shell {
+    min-height: min(720px, calc(100vh - 48px));
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .shopee-login-card {
+    border-radius: 8px !important;
+  }
+
+  .shopee-login-card__header {
+    position: static;
+    margin: 0 0 12px;
+    padding: 0;
+    border-radius: 0;
+  }
+}
+
+/* Final auth layout fix: keep the desktop image panel and form panel equal height, and keep mobile entry forms below the safe top edge. */
+@media (min-width: 901px) {
+  .shopee-login-root {
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .shopee-login-shell {
+    height: min(720px, calc(100vh - 48px));
+    min-height: 620px;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    align-self: stretch;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    justify-self: stretch;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .shopee-login-root {
+    min-height: 100svh;
+    padding-top: calc(max(12px, env(safe-area-inset-top)) + var(--mobile-nav-clearance, 0px));
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: max(10px, env(safe-area-inset-left));
+    align-items: start;
+    overflow-x: clip;
+    overflow-y: auto;
+  }
+
+  .shopee-login-shell {
+    width: min(100%, 430px);
+    min-height: 0;
+    margin: 0 auto;
+    display: block;
+  }
+
+  .shopee-login-shell .shopee-login-card {
+    width: 100%;
+    max-width: 430px;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* Final desktop auth equal-height override. */
+@media (min-width: 901px) {
+  .shopee-login-root {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+  }
+
+  .shopee-login-shell {
+    height: clamp(620px, calc(100vh - 48px), 720px);
+    min-height: 620px;
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 420px);
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    align-self: stretch;
+  }
+}
+
+/* Final desktop auth card parity: image panel and login form keep the exact same visual height. */
+@media (min-width: 901px) {
+  .shopee-login-root {
+    min-height: 100dvh;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .shopee-login-shell {
+    height: clamp(620px, calc(100dvh - 48px), 720px) !important;
+    min-height: 620px !important;
+    max-height: calc(100dvh - 48px) !important;
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 420px) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    align-items: stretch !important;
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    align-self: stretch !important;
+  }
+
+  .shopee-login-panel {
+    justify-content: center;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    justify-self: stretch !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
+/* Final parity pass for desktop auth: both panels use the same grid row, while form overflow stays inside the card. */
+@media (min-width: 901px) {
+  .shopee-login-shell {
+    min-height: 0 !important;
+    height: min(720px, calc(100dvh - 48px)) !important;
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    block-size: 100% !important;
+    min-block-size: 0 !important;
+    max-block-size: 100% !important;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    inline-size: 100%;
+    max-inline-size: none;
+  }
+
+  .shopee-login-tabs,
+  .shopee-login-tabs .ant-tabs-content,
+  .shopee-login-tabs .ant-tabs-tabpane-active {
+    min-height: 0;
+  }
+}
+
+/* Auth layout closure: preserve visual parity even when copy, locale or browser chrome changes height. */
+@media (min-width: 901px) {
+  .shopee-login-shell {
+    display: grid !important;
+    align-items: stretch !important;
+    grid-auto-rows: minmax(0, 1fr) !important;
+    overflow: hidden;
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    block-size: 100% !important;
+    inline-size: 100%;
+    align-self: stretch !important;
+  }
+
+  .shopee-login-panel {
+    min-block-size: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    min-block-size: 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 640px) {
+  .shopee-login-root {
+    scroll-padding-top: calc(76px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shopee-login-shell,
+  .shopee-login-shell > .shopee-login-card,
+  .shopee-login-form,
+  .shopee-login-tabs {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* Last desktop auth parity pass: the pet image panel and login card share one row height. */
+@media (min-width: 901px) {
+  .shopee-login-root {
+    min-height: 100dvh !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 24px !important;
+  }
+
+  .shopee-login-shell {
+    width: min(1120px, 100%) !important;
+    height: clamp(620px, calc(100dvh - 48px), 720px) !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 48px) !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 420px) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    align-self: stretch !important;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
+/* Final desktop visual parity: lock the pet image panel and login form to the same row box. */
+@media (min-width: 901px) {
+  .shopee-login-root {
+    min-height: 100dvh !important;
+    padding: 24px !important;
+  }
+
+  .shopee-login-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 420px) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    height: clamp(640px, calc(100dvh - 48px), 740px) !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 48px) !important;
+    align-items: stretch !important;
+  }
+
+  .shopee-login-panel,
+  .shopee-login-shell > .shopee-login-card {
+    box-sizing: border-box !important;
+    block-size: 100% !important;
+    min-block-size: 0 !important;
+    max-block-size: 100% !important;
+    align-self: stretch !important;
+  }
+
+  .shopee-login-panel {
+    overflow: hidden !important;
+  }
+
+  .shopee-login-shell > .shopee-login-card {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .shopee-login-tabs {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 }

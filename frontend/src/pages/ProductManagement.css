@@ -1251,13 +1251,48 @@
 .product-url-import-preview__placeholder {
   display: grid;
   place-items: center;
+  flex: 0 0 88px;
   width: 88px;
   height: 88px;
+  min-width: 88px;
+  min-height: 88px;
   border-radius: 6px;
   background: #eef2f0;
   color: #66756f;
   font-size: 12px;
   text-align: center;
+}
+
+.product-url-import-preview__media {
+  min-width: 0;
+}
+
+.product-url-import-preview__thumbs {
+  display: flex;
+  gap: 6px;
+  width: 88px;
+  margin-top: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.product-url-import-preview__thumbs .ant-image {
+  flex: 0 0 auto;
+}
+
+.product-url-import-preview__media > .ant-image {
+  flex: 0 0 88px;
+  width: 88px !important;
+  height: 88px !important;
+}
+
+.product-url-import-preview__thumb {
+  display: block;
+  object-fit: cover;
+  border: 1px solid rgba(18, 71, 52, 0.12);
+  border-radius: 5px;
+  background: #eef2f0;
 }
 
 .product-url-import-preview__body {
@@ -1288,6 +1323,24 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+}
+
+.product-url-import-preview__score .ant-tag,
+.product-url-import-preview__warnings .ant-tag,
+.product-url-import-preview .commerce-money {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-management-page__urlImportModal .ant-input {
+  scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px));
+  scroll-margin-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+
+.product-management-page__urlImportModal .ant-modal-footer .ant-btn {
+  white-space: nowrap;
 }
 
 .product-url-import-preview__warnings {
@@ -1399,6 +1452,23 @@
 @media (max-width: 520px) {
   .product-url-import-preview {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-url-import-preview__media {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .product-management-page__urlImportModal .ant-modal-body {
+    scroll-padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .product-url-import-preview__thumbs {
+    width: 100%;
+    margin-top: 0;
   }
 
   .product-import-history__header {

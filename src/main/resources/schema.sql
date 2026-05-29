@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20) UNIQUE,
     address TEXT,
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    role_code VARCHAR(50),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -239,7 +241,8 @@ CREATE TABLE IF NOT EXISTS pet_gallery_photo_likes (
     FOREIGN KEY (user_id) REFERENCES users(id),
     INDEX idx_pet_gallery_like_photo (photo_id),
     INDEX idx_pet_gallery_like_user (user_id),
-    INDEX idx_pet_gallery_like_ip (ip_address)
+    INDEX idx_pet_gallery_like_ip (ip_address),
+    UNIQUE KEY uk_gallery_like_photo_user (photo_id, user_id)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS payments (
@@ -410,6 +413,8 @@ ALTER TABLE products ADD COLUMN detail_content TEXT;
 ALTER TABLE products ADD COLUMN variants TEXT;
 ALTER TABLE products MODIFY COLUMN description TEXT;
 ALTER TABLE users MODIFY COLUMN email VARCHAR(100) NULL;
+ALTER TABLE users ADD COLUMN role_code VARCHAR(50);
+ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE users ADD UNIQUE KEY uk_users_phone (phone);
 ALTER TABLE cart_items ADD COLUMN selected_specs TEXT;
 ALTER TABLE cart_items DROP INDEX uk_cart_user_product;
@@ -545,4 +550,3 @@ INSERT IGNORE INTO products (
 (6, 'PurePaws Oatmeal Sensitive Shampoo', 'Gentle oatmeal shampoo for sensitive skin, designed for dogs and cats with a light clean scent.', 15.90, 95, 6, 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'PurePaws', 19.90, 20, NULL, NULL, NULL, NULL, '["https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"All sizes","Volume":"500 ml","Formula":"Oatmeal, aloe","Coat Type":"Sensitive skin","i18n.es.name":"Champú PurePaws de avena para piel sensible","i18n.es.description":"Champú suave de avena para perros y gatos con piel sensible."}', '[{"type":"text","content":"A mild grooming essential for routine baths and coat care."}]', 'Quality guarantee', 'Standard shipping', FALSE, NULL, FALSE),
 (7, 'NutriTail Grain-Free Salmon Cat Food 2kg', 'Complete dry cat food with salmon protein, taurine and balanced minerals for adult cats.', 32.90, 88, 9, 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'NutriTail', 39.90, 18, NULL, NULL, NULL, 'hot', '["https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Cat","Weight":"2 kg","Flavor":"Salmon","Life Stage":"Adult","i18n.es.name":"Alimento NutriTail de salmón sin granos para gato, 2 kg","i18n.es.description":"Alimento seco completo con salmón, taurina y minerales balanceados para gatos adultos."}', '[{"type":"text","content":"Balanced daily nutrition for adult cats with a fish-first flavor profile."}]', 'Freshness guarantee', 'Food items ship separately when needed.', FALSE, NULL, TRUE),
 (8, 'CanineCore Puppy Training Treats', 'Soft bite-size chicken treats for puppy training, recall practice and positive reinforcement.', 12.90, 160, 8, 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'CanineCore', 16.90, 24, NULL, NULL, NULL, 'new', '["https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium","Weight":"300 g","Flavor":"Chicken","Texture":"Soft","i18n.es.name":"Premios CanineCore para entrenamiento de cachorro","i18n.es.description":"Premios suaves de pollo en bocados pequeños para entrenar cachorros."}', '[{"type":"text","content":"Small, soft rewards help keep training fast and focused."}]', 'Freshness guarantee', 'Standard shipping', FALSE, NULL, FALSE);
-

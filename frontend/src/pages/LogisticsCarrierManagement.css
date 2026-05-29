@@ -149,6 +149,8 @@
 
   .logistics-carrier-page__intro .ant-space,
   .logistics-carrier-page__intro .ant-space-item,
+  .logistics-carrier-page__intro .ant-input-affix-wrapper,
+  .logistics-carrier-page__intro .ant-select,
   .logistics-carrier-page__intro .ant-btn {
     width: 100%;
   }
@@ -184,6 +186,14 @@
 
 .logistics-carrier-page__sortInput {
   width: 100%;
+}
+
+.logistics-carrier-page__keywordInput {
+  width: 240px;
+}
+
+.logistics-carrier-page__statusFilter {
+  width: 160px;
 }
 
 .logistics-carrier-page .ant-table-wrapper {
@@ -433,6 +443,8 @@
   }
 
   .logistics-carrier-page__intro .ant-space,
+  .logistics-carrier-page__intro .ant-input-affix-wrapper,
+  .logistics-carrier-page__intro .ant-select,
   .logistics-carrier-page__intro .ant-btn {
     width: 100%;
   }

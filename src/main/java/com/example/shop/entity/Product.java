@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -91,11 +93,14 @@ public class Product {
 
     @JsonProperty("images")
     public List<String> getImagesList() {
-        if (images == null || images.isEmpty()) return null;
+        if (images == null || images.isEmpty()) return Collections.emptyList();
         try {
-            return mapper.readValue(images, new TypeReference<List<String>>() {});
+            List<String> parsed = mapper.readValue(images, new TypeReference<List<String>>() {});
+            List<String> normalized = normalizeImageList(parsed);
+            return normalized == null ? Collections.emptyList() : normalized;
         } catch (Exception e) {
-            return null;
+            List<String> fallback = parseLenientImageList(images);
+            return fallback == null ? Collections.emptyList() : fallback;
         }
     }
 
@@ -106,9 +111,11 @@ public class Product {
                 this.images = null;
             } else if (value instanceof String) {
                 String raw = ((String) value).trim();
-                this.images = raw.isEmpty() ? null : mapper.writeValueAsString(mapper.readValue(raw, new TypeReference<List<String>>() {}));
+                List<String> parsed = raw.isEmpty() ? null : parseImageInput(raw);
+                this.images = parsed == null || parsed.isEmpty() ? null : mapper.writeValueAsString(parsed);
             } else {
                 List<String> list = mapper.convertValue(value, new TypeReference<List<String>>() {});
+                list = normalizeImageList(list);
                 this.images = list == null || list.isEmpty() ? null : mapper.writeValueAsString(list);
             }
         } catch (Exception e) {
@@ -118,12 +125,77 @@ public class Product {
 
     @JsonProperty("specifications")
     public Map<String, String> getSpecificationsMap() {
-        if (specifications == null || specifications.isEmpty()) return null;
+        if (specifications == null || specifications.isEmpty()) return Collections.emptyMap();
         try {
-            return mapper.readValue(specifications, new TypeReference<Map<String, String>>() {});
+            Map<String, String> parsed = mapper.readValue(specifications, new TypeReference<Map<String, String>>() {});
+            return parsed == null ? Collections.emptyMap() : parsed;
         } catch (Exception e) {
+            return Collections.emptyMap();
+        }
+    }
+
+    private static List<String> parseImageInput(String raw) throws Exception {
+        try {
+            List<String> parsed = mapper.readValue(raw, new TypeReference<List<String>>() {});
+            return normalizeImageList(parsed);
+        } catch (Exception ex) {
+            List<String> fallback = parseLenientImageList(raw);
+            if (fallback != null) {
+                return fallback;
+            }
+            throw ex;
+        }
+    }
+
+    private static List<String> normalizeImageList(List<String> values) {
+        if (values == null || values.isEmpty()) {
             return null;
         }
+        List<String> normalized = new ArrayList<>();
+        for (String value : values) {
+            if (value == null) {
+                continue;
+            }
+            String item = value.trim();
+            if (!item.isEmpty() && !normalized.contains(item)) {
+                normalized.add(item);
+            }
+        }
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private static List<String> parseLenientImageList(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return null;
+        }
+        String text = raw.trim();
+        List<String> values = new ArrayList<>();
+        if (looksLikeImageUrl(text)) {
+            values.add(text);
+        } else {
+            String[] parts = text.split("[\\n,;]");
+            for (String part : parts) {
+                String value = part == null ? "" : part.trim();
+                if (looksLikeImageUrl(value)) {
+                    values.add(value);
+                }
+            }
+        }
+        return normalizeImageList(values);
+    }
+
+    private static boolean looksLikeImageUrl(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim().toLowerCase();
+        return (normalized.startsWith("http://") || normalized.startsWith("https://") || normalized.startsWith("/"))
+                && (normalized.contains(".jpg")
+                || normalized.contains(".jpeg")
+                || normalized.contains(".png")
+                || normalized.contains(".webp")
+                || normalized.contains(".gif")
+                || normalized.contains(".avif"));
     }
 
     @JsonProperty("specifications")
@@ -145,11 +217,12 @@ public class Product {
 
     @JsonProperty("detailContent")
     public List<Map<String, Object>> getDetailContentList() {
-        if (detailContent == null || detailContent.isEmpty()) return null;
+        if (detailContent == null || detailContent.isEmpty()) return Collections.emptyList();
         try {
-            return mapper.readValue(detailContent, new TypeReference<List<Map<String, Object>>>() {});
+            List<Map<String, Object>> parsed = mapper.readValue(detailContent, new TypeReference<List<Map<String, Object>>>() {});
+            return parsed == null ? Collections.emptyList() : parsed;
         } catch (Exception e) {
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -172,11 +245,12 @@ public class Product {
 
     @JsonProperty("variants")
     public List<Map<String, Object>> getVariantsList() {
-        if (variants == null || variants.isEmpty()) return null;
+        if (variants == null || variants.isEmpty()) return Collections.emptyList();
         try {
-            return mapper.readValue(variants, new TypeReference<List<Map<String, Object>>>() {});
+            List<Map<String, Object>> parsed = mapper.readValue(variants, new TypeReference<List<Map<String, Object>>>() {});
+            return parsed == null ? Collections.emptyList() : parsed;
         } catch (Exception e) {
-            return null;
+            return Collections.emptyList();
         }
     }
 

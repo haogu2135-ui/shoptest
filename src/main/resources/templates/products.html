@@ -254,7 +254,7 @@
                         showToast('添加失败：' + data.message, 'error');
                     }
                 })
-                .catch(() => showToast('网络错误，请稍后重试', 'error'))
+                .catch(() => showToast('连接暂时不可用，请刷新后重试', 'error'))
                 .finally(() => { this.disabled = false; this.textContent = orig; });
             });
         });

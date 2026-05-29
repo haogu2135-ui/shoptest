@@ -75,8 +75,11 @@ public class CouponController {
     }
 
     @PostMapping("/quote")
-    public ResponseEntity<?> quote(@Valid @RequestBody CouponQuoteRequest request, Authentication authentication) {
+    public ResponseEntity<?> quote(@Valid @RequestBody(required = false) CouponQuoteRequest request, Authentication authentication) {
         try {
+            if (request == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Coupon quote payload is required"));
+            }
             if (request.getUserId() == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "userId is required"));
             }
@@ -88,8 +91,11 @@ public class CouponController {
     }
 
     @PostMapping("/me/quote")
-    public ResponseEntity<?> quoteMine(@Valid @RequestBody CouponQuoteRequest request, Authentication authentication) {
+    public ResponseEntity<?> quoteMine(@Valid @RequestBody(required = false) CouponQuoteRequest request, Authentication authentication) {
         try {
+            if (request == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Coupon quote payload is required"));
+            }
             request.setUserId(SecurityUtils.requireUser(authentication).getId());
             return ResponseEntity.ok(orderService.quoteCheckout(request));
         } catch (IllegalArgumentException | IllegalStateException e) {

@@ -6,8 +6,8 @@ services:
     ports:
       - "80:80"
     environment:
-      SERVER_NAME: ${SERVER_NAME:-_}
-      BACKEND_ORIGIN: ${BACKEND_ORIGIN:?Set BACKEND_ORIGIN to the gateway origin, for example http://10.0.0.20:8080}
+      SERVER_NAME: ${SERVER_NAME:-pet.686888666.xyz}
+      BACKEND_ORIGIN: ${BACKEND_ORIGIN:-http://158.101.11.223:8081}
       CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-6m}
     volumes:
       - ../artifacts/frontend-build:/usr/share/nginx/html:ro

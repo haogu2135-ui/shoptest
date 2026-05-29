@@ -22,6 +22,8 @@ import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/media
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
 import { getLimitedTimeEndMs, getLimitedTimeRemainingMs, shouldRunLimitedTimeTicker } from '../utils/limitedTimeCountdown';
+import { getApiErrorMessage } from '../utils/apiError';
+import { loadFallbackProductCatalog, loadProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import './ProductDetail.css';
 
 const { Title, Text } = Typography;
@@ -67,6 +69,21 @@ const normalizeProductImages = (product: any) => {
   return uniqueImages.length > 0
     ? uniqueImages.concat(fallbackProductImage)
     : [fallbackProductImage, fallbackProductImage];
+};
+
+const resolveProductPrimaryImage = (product: Partial<Product> | null | undefined) => {
+  const images = product?.images;
+  const galleryImage = Array.isArray(images) ? images.find((image) => String(image || '').trim()) : '';
+  return String(product?.imageUrl || galleryImage || fallbackProductImage).trim();
+};
+
+const findFallbackProductById = (id: number) => {
+  const sources = [loadProductCatalogSnapshot()?.products || [], loadFallbackProductCatalog()];
+  for (const products of sources) {
+    const product = products.find((item) => Number(item.id) === id);
+    if (product) return product;
+  }
+  return null;
 };
 
 const handleGalleryZoomMove = (event: React.MouseEvent<HTMLImageElement>) => {
@@ -382,6 +399,13 @@ const ProductDetail: React.FC = () => {
         setActiveMobileImageIndex(0);
         recordProductView(res.data);
       } catch {
+        const fallbackProduct = findFallbackProductById(Number(id));
+        if (fallbackProduct) {
+          setProduct(localizeProduct(fallbackProduct, language));
+          setSelectedImage(normalizeProductImages(fallbackProduct)[0]);
+          setActiveMobileImageIndex(0);
+          return;
+        }
         setProduct(null);
       } finally {
         setLoading(false);
@@ -460,7 +484,7 @@ const ProductDetail: React.FC = () => {
       message.success(t('messages.addCartSuccess'));
       dispatchDomEvent('shop:open-cart');
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('messages.addFailed'));
+      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     } finally {
       purchaseRequestKeyRef.current = null;
       setPurchaseSubmitting(null);
@@ -505,7 +529,7 @@ const ProductDetail: React.FC = () => {
       removeSessionStorageItem('checkoutPaymentMethod');
       navigate('/checkout');
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('messages.operationFailed'));
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       purchaseRequestKeyRef.current = null;
       setPurchaseSubmitting(null);
@@ -524,8 +548,8 @@ const ProductDetail: React.FC = () => {
       setIsWishlisted(res.data.wishlisted);
       dispatchDomEvent('shop:wishlist-updated');
       message.success(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
-    } catch {
-      message.error(t('messages.operationFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
 
@@ -567,7 +591,7 @@ const ProductDetail: React.FC = () => {
       await fetchQuestions();
       message.success(t('pages.ask.askSuccess'));
     } catch (err: any) {
-      message.error(err?.response?.data?.error || t('pages.ask.askFailed'));
+      message.error(getApiErrorMessage(err, t('pages.ask.askFailed'), language));
     } finally {
       setQuestionSubmitting(false);
     }
@@ -591,7 +615,7 @@ const ProductDetail: React.FC = () => {
       await fetchQuestions();
       message.success(t('pages.ask.answerSuccess'));
     } catch (err: any) {
-      message.error(err?.response?.data?.error || t('pages.ask.answerFailed'));
+      message.error(getApiErrorMessage(err, t('pages.ask.answerFailed'), language));
     } finally {
       setAnswerSubmitting((prev) => ({ ...prev, [questionId]: false }));
     }
@@ -626,6 +650,20 @@ const ProductDetail: React.FC = () => {
   const purchaseSavings = purchaseMode === 'bundle'
     ? bundleSavings * quantity
     : 0;
+  const renderProductDetailAmountText = (label: string, amount: string) => {
+    const parts = label.split(amount);
+    if (parts.length <= 1) return label;
+    return (
+      <span className="product-detail__amountPhrase commerce-atomic">
+        {parts.map((part, index) => (
+          <React.Fragment key={`${part}-${index}`}>
+            {part}
+            {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  };
   const purchaseModeLabel = purchaseMode === 'bundle'
       ? t('bundle.bundleDeal')
       : t('pages.productDetail.oneTimePurchase');
@@ -724,7 +762,7 @@ const ProductDetail: React.FC = () => {
         ? t('pages.productDetail.decisionValueDealTitle')
         : t('pages.productDetail.decisionValueStableTitle'),
       text: purchaseSavings > 0
-        ? t('pages.productDetail.decisionValueSavingsText', { amount: formatMoney(purchaseSavings) })
+        ? renderProductDetailAmountText(t('pages.productDetail.decisionValueSavingsText', { amount: formatMoney(purchaseSavings) }), formatMoney(purchaseSavings))
         : discountPercent > 0
           ? t('pages.productDetail.decisionValueDiscountText', { percent: discountPercent })
           : t('pages.productDetail.decisionValueStableText'),
@@ -737,7 +775,7 @@ const ProductDetail: React.FC = () => {
     ? t('pages.productDetail.pathBundleTitle')
     : t('pages.productDetail.pathOnceTitle');
   const recommendedPathText = recommendedPurchaseMode === 'bundle' && bundleInfo
-    ? t('pages.productDetail.pathBundleText', { amount: formatMoney(bundleSavings * quantity) })
+    ? renderProductDetailAmountText(t('pages.productDetail.pathBundleText', { amount: formatMoney(bundleSavings * quantity) }), formatMoney(bundleSavings * quantity))
     : t('pages.productDetail.pathOnceText');
 
   const handleQuantityChange = (value: number) => {
@@ -752,7 +790,7 @@ const ProductDetail: React.FC = () => {
     stock: selectedStock,
     price: displayPrice,
     effectivePrice: displayPrice,
-    imageUrl: selectedVariant?.imageUrl || product.imageUrl,
+    imageUrl: selectedVariant?.imageUrl || resolveProductPrimaryImage(product),
   });
 
   const isRecommendationUnavailable = (item: Product | any) => {
@@ -790,7 +828,7 @@ const ProductDetail: React.FC = () => {
       message.success(t('messages.addCartSuccess'));
       dispatchDomEvent('shop:open-cart');
     } catch (err: any) {
-      message.error(err?.response?.data?.error || t('messages.addFailed'));
+      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     } finally {
       recommendationRequestIdsRef.current.delete(recommendationId);
       setRecommendationAddingId(null);
@@ -1102,9 +1140,9 @@ const ProductDetail: React.FC = () => {
                     <Text>{displayedRating.toFixed(1)} {t('pages.productDetail.rating')}</Text>
                   </div>
                   <div className="product-price-line">
-                    {formatMoney(displayPrice)}
+                    <span className="product-price-line__current commerce-money">{formatMoney(displayPrice)}</span>
                     {product.originalPrice && product.originalPrice > activePrice && (
-                      <Text delete className="product-price-line__original">
+                      <Text delete className="product-price-line__original commerce-money">
                         {formatMoney(product.originalPrice)}
                       </Text>
                     )}
@@ -1120,7 +1158,7 @@ const ProductDetail: React.FC = () => {
                   <div className="product-compact-signals">
                     <span>{t('pages.productDetail.stock')}: {stockLabel}</span>
                     {deliveryPromise.enabled ? <span>{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</span> : null}
-                    {purchaseSavings > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: {formatMoney(purchaseSavings)}</span> : null}
+                    {purchaseSavings > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: <span className="commerce-money">{formatMoney(purchaseSavings)}</span></span> : null}
                   </div>
                 </div>
 
@@ -1197,7 +1235,7 @@ const ProductDetail: React.FC = () => {
                       )}
                       {selectedVariant?.sku ? <Tag>{t('pages.productDetail.selectedVariantSku', { sku: selectedVariant.sku })}</Tag> : null}
                       {hasCompleteOptions && !hasUnavailableSelectedVariant ? (
-                        <Tag color="green">{t('pages.productDetail.selectedVariantPrice', { price: formatMoney(displayPrice) })}</Tag>
+                        <Tag color="green">{renderProductDetailAmountText(t('pages.productDetail.selectedVariantPrice', { price: formatMoney(displayPrice) }), formatMoney(displayPrice))}</Tag>
                       ) : null}
                     </Space>
                   </div>
@@ -1287,7 +1325,7 @@ const ProductDetail: React.FC = () => {
                           <Text strong>{t('bundle.includes')}</Text>
                           <Space wrap size={[6, 6]}>
                             {bundleInfo.items.map((item) => (
-                              <Tag key={item.name}>{item.name} x{item.quantity || 1}</Tag>
+                              <Tag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></Tag>
                             ))}
                           </Space>
                           <Text type="secondary">
@@ -1321,21 +1359,21 @@ const ProductDetail: React.FC = () => {
                   ) : null}
                   <div className="product-purchase-summary__line">
                     <Text type="secondary">{t('pages.productDetail.unitPrice')}</Text>
-                    <Text>{formatMoney(displayPrice)}</Text>
+                      <Text className="commerce-money">{formatMoney(displayPrice)}</Text>
                   </div>
                   <div className="product-purchase-summary__line">
                     <Text type="secondary">{t('pages.productDetail.purchaseQuantity')}</Text>
-                    <Text>{quantity}</Text>
+                      <Text className="commerce-quantity">{quantity}</Text>
                   </div>
                   {purchaseSavings > 0 ? (
                     <div className="product-purchase-summary__line product-purchase-summary__line--saving">
                       <Text>{t('pages.productDetail.purchaseSavings')}</Text>
-                      <Text strong>{formatMoney(purchaseSavings)}</Text>
+                      <Text strong className="commerce-money">{formatMoney(purchaseSavings)}</Text>
                     </div>
                   ) : null}
                   <div className="product-purchase-summary__total">
                     <Text strong>{t('pages.productDetail.purchaseSubtotal')}</Text>
-                    <Text strong>{formatMoney(purchaseSubtotal)}</Text>
+                    <Text strong className="commerce-money">{formatMoney(purchaseSubtotal)}</Text>
                   </div>
                 </div>
 
@@ -1363,8 +1401,8 @@ const ProductDetail: React.FC = () => {
                             }}
                           >
                             <img
-                              src={getOptimizedImageUrl(item.imageUrl || fallbackProductImage, 144)}
-                              srcSet={buildResponsiveImageSrcSet(item.imageUrl || fallbackProductImage, [96, 144, 192, 288])}
+                              src={getOptimizedImageUrl(resolveProductPrimaryImage(item), 144)}
+                              srcSet={buildResponsiveImageSrcSet(resolveProductPrimaryImage(item), [96, 144, 192, 288])}
                               sizes="48px"
                               alt={item.name}
                               width={96}
@@ -1377,7 +1415,7 @@ const ProductDetail: React.FC = () => {
                             />
                             <span className="product-complete-set__copy">
                               <strong>{item.name}</strong>
-                              <span>{formatMoney(item.effectivePrice ?? item.price)}</span>
+                              <span className="commerce-money">{formatMoney(item.effectivePrice ?? item.price)}</span>
                             </span>
                             <Button
                               size="small"
@@ -1652,8 +1690,8 @@ const ProductDetail: React.FC = () => {
                       cover={
                         <img
                           alt={rec.name}
-                          src={getOptimizedImageUrl(rec.imageUrl || fallbackProductImage, 520)}
-                          srcSet={buildResponsiveImageSrcSet(rec.imageUrl || fallbackProductImage, [240, 360, 520, 720])}
+                          src={getOptimizedImageUrl(resolveProductPrimaryImage(rec), 520)}
+                          srcSet={buildResponsiveImageSrcSet(resolveProductPrimaryImage(rec), [240, 360, 520, 720])}
                           sizes="(max-width: 520px) 90vw, (max-width: 768px) 45vw, 260px"
                           className="product-recommendations__image"
                           width={520}
@@ -1675,7 +1713,7 @@ const ProductDetail: React.FC = () => {
                       <div className="product-recommendations__content">
                         <Text strong className="product-recommendations__name">{rec.name}</Text>
                         <div className="product-recommendations__meta">
-                          <span className="product-recommendations__price">{formatMoney(rec.effectivePrice ?? rec.price)}</span>
+                          <span className="product-recommendations__price commerce-money">{formatMoney(rec.effectivePrice ?? rec.price)}</span>
                           {rec.reviewCount > 0 && (
                             <span className="product-recommendations__proof">
                               {rec.reviewCount} {t('adminLayout.reviews')}
@@ -1744,6 +1782,7 @@ const ProductDetail: React.FC = () => {
         onCancel={() => setIsModalVisible(false)}
         width={800}
         centered
+        className="profile-mobile-safe-modal product-detail__imageModal"
       >
         <img
           src={getOptimizedImageUrl(selectedImage, 1200)}
@@ -1765,6 +1804,7 @@ const ProductDetail: React.FC = () => {
         open={sizeGuideOpen}
         onCancel={() => setSizeGuideOpen(false)}
         footer={<Button type="primary" onClick={() => setSizeGuideOpen(false)}>{t('pages.productDetail.sizeGuideGotIt')}</Button>}
+        className="profile-mobile-safe-modal product-detail__sizeGuideModal"
       >
         <div className="pet-size-guide">
           <div>

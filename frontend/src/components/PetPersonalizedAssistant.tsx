@@ -11,6 +11,7 @@ import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/media
 import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { hasStoredValue } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import './PetPersonalizedAssistant.css';
 
 const { Text, Title } = Typography;
@@ -109,7 +110,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
       setProducts((current) => current.filter((item) => item.id !== product.id));
       message.success(t('messages.addCartSuccess'));
     } catch (error: any) {
-      message.error(error?.response?.data?.error || t('messages.addFailed'));
+      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
     } finally {
       setAddingId(null);
     }
@@ -218,7 +219,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                   {product.name}
                 </button>
                 <div className="pet-personalized-assistant__meta">
-                  <Text strong className="pet-personalized-assistant__price">{formatMoney(price)}</Text>
+                  <Text strong className="pet-personalized-assistant__price commerce-money">{formatMoney(price)}</Text>
                   {rating > 0 ? (
                     <Text type="secondary">{rating.toFixed(1)}</Text>
                   ) : null}

@@ -108,6 +108,24 @@ class ConfigCenterServiceTest {
         assertFalse(response.isRuntimeApplied());
     }
 
+    @Test
+    void startupApplyRejectsMaskedSensitivePlaceholder() {
+        service.applyNacosRuntimeContentOnStartup("payment.callback-secret=su****90\norder.default-shipping-fee=39.00\n");
+
+        assertEquals(null, environment.getProperty("payment.callback-secret"));
+        assertEquals(null, environment.getProperty("order.default-shipping-fee"));
+    }
+
+    @Test
+    void startupApplyRejectsOversizedConfigContent() {
+        environment.setProperty("admin.config-center.max-content-bytes", "1024");
+        String content = "order.default-shipping-fee=" + "x".repeat(1200);
+
+        service.applyNacosRuntimeContentOnStartup(content);
+
+        assertEquals(null, environment.getProperty("order.default-shipping-fee"));
+    }
+
     private ConfigCenterPublishRequest request(String content) {
         ConfigCenterPublishRequest request = new ConfigCenterPublishRequest();
         request.setDataId("shop-backend.properties");

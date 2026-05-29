@@ -118,6 +118,40 @@ svg {
   max-width: 100%;
 }
 
+.commerce-money,
+[class*="__price"],
+[class*="__Price"],
+[class*="__amount"],
+[class*="__Amount"],
+[class*="__total"],
+[class*="__Total"],
+[class*="__subtotal"],
+[class*="__Subtotal"],
+[class*="__quantity"],
+[class*="__Quantity"],
+[class*="__qty"],
+[class*="__Qty"] {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.commerce-money,
+.commerce-money *,
+[class*="__price"]:not(p):not(.ant-typography),
+[class*="__Price"]:not(p):not(.ant-typography),
+[class*="__amount"]:not(p):not(.ant-typography),
+[class*="__Amount"]:not(p):not(.ant-typography),
+[class*="__total"]:not(p):not(.ant-typography),
+[class*="__Total"]:not(p):not(.ant-typography),
+[class*="__subtotal"]:not(p):not(.ant-typography),
+[class*="__Subtotal"]:not(p):not(.ant-typography),
+[class*="__quantity"]:not(p):not(.ant-typography),
+[class*="__Quantity"]:not(p):not(.ant-typography),
+[class*="__qty"]:not(p):not(.ant-typography),
+[class*="__Qty"]:not(p):not(.ant-typography) {
+  white-space: nowrap;
+}
+
 .ant-layout,
 .ant-layout-content,
 .ant-card,
@@ -210,7 +244,8 @@ code {
 .ant-btn:not(.ant-btn-icon-only) {
   height: auto;
   min-width: 0;
-  white-space: normal;
+  overflow: hidden;
+  white-space: nowrap;
   align-items: center;
   justify-content: center;
 }
@@ -218,8 +253,11 @@ code {
 .ant-btn:not(.ant-btn-icon-only) > span {
   min-width: 0;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
   word-break: normal;
+  white-space: nowrap;
   line-height: 1.2;
 }
 
@@ -228,15 +266,17 @@ button {
 }
 
 button:not([aria-label]) {
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   word-break: normal;
 }
 
 button:not([aria-label]) > span:not(.anticon) {
   min-width: 0;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  white-space: nowrap;
   line-height: 1.2;
 }
 
@@ -352,6 +392,38 @@ button:not([aria-label]) > span:not(.anticon) {
 .ant-dropdown-menu {
   border-radius: 8px;
   box-shadow: 0 18px 44px rgba(18, 71, 52, 0.16);
+}
+
+.commerce-nowrap,
+.commerce-money,
+.commerce-quantity,
+.commerce-atomic {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.commerce-money,
+.commerce-quantity,
+.commerce-atomic {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commerce-atomic {
+  flex-wrap: nowrap !important;
+  width: fit-content;
+}
+
+.commerce-atomic > :where(.commerce-money, .commerce-quantity, .commerce-nowrap, .ant-typography) {
+  flex: 0 0 auto;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .ant-modal-header {
@@ -473,6 +545,361 @@ button:focus-visible {
 
   .ant-tag {
     max-width: 100%;
-    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Storewide atomic text pass: prices, quantities, counters and identifiers should not split. */
+:where(
+  [class*="price" i],
+  [class*="amount" i],
+  [class*="subtotal" i],
+  [class*="total" i],
+  [class*="quantity" i],
+  [class*="qty" i],
+  [class*="money" i],
+  [class*="currency" i],
+  [class*="saving" i],
+  [class*="discount" i],
+  [class*="count" i],
+  [class*="badge" i],
+  [class*="orderNo" i],
+  [class*="tracking" i],
+  .ant-statistic-content,
+  .ant-statistic-content-value,
+  .ant-badge-count,
+  .ant-input-number,
+  .ant-input-number-input
+) {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+:where(
+  [class*="price" i],
+  [class*="amount" i],
+  [class*="subtotal" i],
+  [class*="total" i],
+  [class*="quantity" i],
+  [class*="qty" i],
+  [class*="money" i],
+  [class*="currency" i],
+  [class*="saving" i],
+  [class*="discount" i],
+  .ant-statistic-content-value,
+  .ant-badge-count,
+  .ant-input-number-input
+) {
+  white-space: nowrap;
+}
+
+:where(
+  [class*="price" i],
+  [class*="amount" i],
+  [class*="subtotal" i],
+  [class*="total" i],
+  [class*="quantity" i],
+  [class*="qty" i],
+  [class*="money" i],
+  [class*="currency" i],
+  [class*="saving" i],
+  [class*="discount" i],
+  [class*="orderNo" i],
+  [class*="tracking" i],
+  .ant-statistic-content,
+  .ant-statistic-content-value
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 720px) {
+  :where(
+    [class*="price" i],
+    [class*="amount" i],
+    [class*="subtotal" i],
+    [class*="total" i],
+    [class*="quantity" i],
+    [class*="qty" i],
+    [class*="money" i],
+    [class*="currency" i],
+    [class*="saving" i],
+    [class*="discount" i],
+    .ant-statistic-content-value,
+    .ant-badge-count
+  ) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ant-table-cell :where(
+    [class*="price" i],
+    [class*="amount" i],
+    [class*="subtotal" i],
+    [class*="total" i],
+    [class*="quantity" i],
+    [class*="qty" i],
+    [class*="money" i],
+    [class*="currency" i],
+    [class*="saving" i],
+    [class*="discount" i]
+  ) {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .ant-modal-confirm .ant-modal-confirm-btns,
+  .ant-popconfirm-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .ant-modal-confirm .ant-modal-confirm-btns .ant-btn,
+  .ant-popconfirm-buttons .ant-btn {
+    width: 100%;
+    margin-inline-start: 0 !important;
+  }
+}
+
+/* Final mobile UI closure: overlays, form controls and action rows must fit viewport. */
+@media (max-width: 780px) {
+  .ant-modal-root .ant-modal-wrap,
+  .ant-drawer {
+    max-width: 100vw;
+  }
+
+  .ant-modal-root .ant-modal-wrap {
+    display: flex;
+    align-items: flex-start;
+    padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+
+  .ant-modal-root .ant-modal {
+    top: 0;
+    max-width: 100%;
+    margin: 0 auto;
+    padding-bottom: 0;
+  }
+
+  .ant-modal-root .ant-modal-content,
+  .ant-drawer-content {
+    max-width: 100%;
+  }
+
+  .ant-drawer-content-wrapper {
+    max-width: 100vw !important;
+  }
+
+  .ant-drawer-body {
+    max-height: calc(100dvh - env(safe-area-inset-top));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-cascader-dropdown,
+  .ant-dropdown {
+    max-width: calc(100vw - 16px);
+    max-height: min(62vh, 420px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ant-space:not(.ant-space-vertical),
+  .ant-card-head-wrapper,
+  .ant-list-item,
+  .ant-form-item-control-input-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ant-card-extra,
+  .ant-list-item-action,
+  .ant-form-item-control-input-content > .ant-space {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .ant-btn:not(.ant-btn-icon-only) {
+    min-width: 0;
+  }
+
+  .ant-btn:not(.ant-btn-icon-only) > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 430px) {
+  .ant-modal-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .ant-modal-footer .ant-btn {
+    width: 100%;
+    margin-inline-start: 0 !important;
+  }
+}
+
+/* Final mobile viewport guard: body-mounted overlays and dense commerce text must stay usable. */
+@media (max-width: 780px) {
+  html,
+  body,
+  #root {
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+
+  .ant-modal-root .ant-modal-wrap {
+    padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .ant-modal-root .ant-modal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .ant-modal-root .ant-modal-content {
+    max-height: calc(100dvh - 28px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .ant-modal-root .ant-modal-header,
+  .ant-modal-root .ant-modal-footer {
+    flex: 0 0 auto;
+  }
+
+  .ant-modal-root .ant-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-form-item,
+  .ant-form-item-control,
+  .ant-form-item-control-input,
+  .ant-form-item-control-input-content,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-input-number-affix-wrapper,
+  .ant-select,
+  .ant-select-selector,
+  .ant-cascader,
+  .ant-picker,
+  textarea.ant-input {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .commerce-money,
+  .commerce-nowrap,
+  .commerce-quantity,
+  .commerce-atomic {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    max-width: 100%;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .commerce-money,
+  .commerce-atomic {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ant-modal-footer .ant-btn,
+  .ant-drawer-footer .ant-btn,
+  .ant-card-actions .ant-btn,
+  .ant-list-item-action .ant-btn {
+    min-width: 0;
+    white-space: nowrap !important;
+  }
+
+  .ant-modal-footer .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .ant-drawer-footer .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .ant-card-actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .ant-list-item-action .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Commerce text final guard: money, quantities and compact commerce labels stay atomic in dense UI. */
+:where(.commerce-money, .commerce-quantity, .commerce-nowrap, .commerce-atomic, .commerce-price-quantity),
+:where(.commerce-money, .commerce-quantity, .commerce-nowrap, .commerce-atomic, .commerce-price-quantity) :where(span, strong, em, small),
+:where(.ant-tag, .ant-typography, .ant-descriptions-item-content, .ant-table-cell) :where(.commerce-money, .commerce-quantity, .commerce-nowrap, .commerce-atomic, .commerce-price-quantity) {
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  font-variant-numeric: tabular-nums;
+}
+
+:where(.commerce-atomic, .commerce-price-quantity) {
+  display: inline-flex !important;
+  align-items: baseline;
+  flex-wrap: nowrap !important;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: baseline;
+}
+
+:where(.commerce-atomic) > :where(.commerce-money, .commerce-quantity, .commerce-nowrap, span, strong, em, small) {
+  flex: 0 0 auto;
+  min-width: max-content;
+  max-width: none;
+}
+
+:where(.commerce-price-quantity) {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+}
+
+:where(.commerce-price-quantity) > :where(.commerce-money, .commerce-quantity, span, strong, em, small) {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+:where(.ant-tag, .ant-descriptions-item-content, .ant-table-cell) :where(.commerce-money, .commerce-quantity, .commerce-nowrap) {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: 100%;
+  vertical-align: baseline;
+}
+
+@media (max-width: 780px) {
+  :where(.ant-tag, .ant-descriptions-item-content, .ant-table-cell) :where(.commerce-money, .commerce-quantity, .commerce-nowrap, .commerce-atomic, .commerce-price-quantity) {
+    max-width: 100%;
+  }
+
+  :where(.ant-list-item, .ant-card, .ant-drawer, .ant-modal) :where(.commerce-atomic) {
+    width: fit-content;
   }
 }

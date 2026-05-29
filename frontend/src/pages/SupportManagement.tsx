@@ -30,6 +30,8 @@ const SupportManagement: React.FC = () => {
   const [filter, setFilter] = useState<string | undefined>('OPEN');
   const [content, setContent] = useState('');
   const [connected, setConnected] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [reissueLoading, setReissueLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [reopening, setReopening] = useState(false);
@@ -146,10 +148,10 @@ const SupportManagement: React.FC = () => {
         const fresh = sessionsRes.data.find((item) => item.id === currentSession.id);
         if (fresh) setSelectedSession(fresh);
       }
-    } catch {
-      message.error(t('pages.adminSupport.loadFailed'));
-    }
-  }, [filter, t]);
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
+    }
+  }, [filter, language, t]);
 
   const loadMessages = async (session: SupportSession) => {
     setSelectedSession(session);
@@ -157,10 +159,10 @@ const SupportManagement: React.FC = () => {
       const res = await adminSupportApi.getMessages(session.id);
       setMessages(res.data);
       await loadSessions();
-    } catch {
-      message.error(t('pages.adminSupport.loadFailed'));
-    }
-  };
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
+    }
+  };
 
   useEffect(() => {
     loadSessions();
@@ -252,9 +254,10 @@ const SupportManagement: React.FC = () => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, selectedSession]);
 
-  const send = async () => {
-    const text = content.trim();
-    if (!text || !selectedSession) return;
+  const send = async () => {
+    const text = content.trim();
+    if (sending) return;
+    if (!text || !selectedSession) return;
     if (text.length > supportChatConfig.maxMessageChars) {
       message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
       return;
@@ -262,32 +265,39 @@ const SupportManagement: React.FC = () => {
     if (selectedSession.status !== 'OPEN') {
       message.warning(t('pages.adminSupport.sessionClosed'));
       return;
-    }
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type: 'SEND', sessionId: selectedSession.id, content: text }));
-      setContent('');
-      return;
-    }
-    try {
+    }
+    setSending(true);
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: 'SEND', sessionId: selectedSession.id, content: text }));
+      setContent('');
+      setSending(false);
+      return;
+    }
+    try {
       const res = await adminSupportApi.sendMessage(selectedSession.id, text);
       setSelectedSession(res.data.session);
       setSessions((items) => [res.data.session, ...items.filter((item) => item.id !== res.data.session.id)]);
       setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
       setContent('');
-    } catch (err: any) {
+    } catch (err: any) {
       message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
-    }
-  };
-
+    } finally {
+      setSending(false);
+    }
+  };
+
   const closeSession = async () => {
-    if (!selectedSession) return;
-    try {
-      const res = await adminSupportApi.closeSession(selectedSession.id);
+    if (!selectedSession || closing) return;
+    setClosing(true);
+    try {
+      const res = await adminSupportApi.closeSession(selectedSession.id);
       setSelectedSession(res.data);
       setSessions((items) => items.map((item) => item.id === res.data.id ? res.data : item));
       message.success(t('pages.adminSupport.sessionClosed'));
-    } catch {
-      message.error(t('messages.operationFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -317,9 +327,9 @@ const SupportManagement: React.FC = () => {
       ]);
       setDetailOrder(orderRes.data);
       setDetailItems(itemsRes.data);
-    } catch {
-      message.error(t('pages.support.orderLoadFailed'));
-    } finally {
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('pages.support.orderLoadFailed'), language));
+    } finally {
       setDetailLoading(false);
     }
   };
@@ -389,11 +399,13 @@ const SupportManagement: React.FC = () => {
           <Title level={4} style={{ margin: 0 }}>{t('pages.adminSupport.title')}</Title>
           <Badge status={connected ? 'success' : 'default'} text={connected ? t('pages.support.online') : t('pages.support.offline')} />
         </Space>
-        <Select
-          value={filter || 'ALL'}
-          style={{ width: 150 }}
-          onChange={(value) => setFilter(value === 'ALL' ? undefined : value)}
-          options={[
+        <Select
+          value={filter || 'ALL'}
+          style={{ width: 150 }}
+          onChange={(value) => setFilter(value === 'ALL' ? undefined : value)}
+          popupClassName="shop-mobile-popup-layer"
+          getPopupContainer={() => document.body}
+          options={[
             { value: 'OPEN', label: t('status.OPEN') },
             { value: 'CLOSED', label: t('status.CLOSED') },
             { value: 'NEEDS_REPLY', label: t('pages.adminSupport.needsReply') },
@@ -494,7 +506,7 @@ const SupportManagement: React.FC = () => {
                   <Button icon={<GiftOutlined />} loading={reissueLoading} onClick={reissueBirthdayCoupons}>
                     {t('pages.adminSupport.reissueBirthdayCoupon')}
                   </Button>
-                  <Button disabled={selectedSession.status !== 'OPEN'} onClick={closeSession}>{t('pages.adminSupport.closeSession')}</Button>
+                  <Button loading={closing} disabled={selectedSession.status !== 'OPEN'} onClick={closeSession}>{t('pages.adminSupport.closeSession')}</Button>
                 </Space>
               </div>
               <div ref={listRef} className="support-management__messagesPane">
@@ -519,7 +531,7 @@ const SupportManagement: React.FC = () => {
                                   <ShoppingOutlined className="support-management__orderIcon" />
                                   <div>
                                     <div className="support-management__orderTitle">{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
-                                    <div className="support-management__orderPrice">{formatMoney(order.totalAmount)}</div>
+                                    <div className="support-management__orderPrice commerce-money">{formatMoney(order.totalAmount)}</div>
                                     <div className="support-management__orderTags">
                                       <Tag color="blue">{t(`status.${order.status}`)}</Tag>
                                       {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
@@ -586,7 +598,7 @@ const SupportManagement: React.FC = () => {
                 </div>
                 <Input.TextArea
                   value={content}
-                  disabled={selectedSession.status !== 'OPEN'}
+                  disabled={selectedSession.status !== 'OPEN' || sending}
                   maxLength={supportChatConfig.maxMessageChars}
                   showCount
                   onChange={(event) => setContent(event.target.value)}
@@ -603,22 +615,23 @@ const SupportManagement: React.FC = () => {
                   <span className={`support-management__sendReadiness ${replyReady ? 'is-ready' : 'is-pending'}`}>
                     {replyReady ? t('pages.adminSupport.replyReady') : replyReadinessText}
                   </span>
-                  <Button type="primary" icon={<SendOutlined />} onClick={send} disabled={!replyReady}>{t('common.send')}</Button>
+                  <Button type="primary" icon={<SendOutlined />} onClick={send} loading={sending} disabled={!replyReady}>{t('common.send')}</Button>
                 </div>
               </div>
             </>
           )}
         </div>
       </div>
-      <Modal
-        title={detailOrder ? `${t('pages.support.order')} ${detailOrder.orderNo || `#${detailOrder.id}`}` : t('pages.support.order')}
-        open={!!detailOrder || detailLoading}
+      <Modal
+        title={detailOrder ? `${t('pages.support.order')} ${detailOrder.orderNo || `#${detailOrder.id}`}` : t('pages.support.order')}
+        open={!!detailOrder || detailLoading}
         onCancel={() => {
           setDetailOrder(null);
           setDetailItems([]);
-        }}
-        footer={null}
-      >
+        }}
+        footer={null}
+        className="profile-mobile-safe-modal support-management__orderModal"
+      >
         {detailLoading ? (
           <div style={{ padding: 32, textAlign: 'center' }}><Spin /></div>
         ) : detailOrder ? (
@@ -626,7 +639,7 @@ const SupportManagement: React.FC = () => {
             <Space wrap>
               <Tag color="blue">{detailOrder.status}</Tag>
               {detailOrder.paymentMethod ? <Tag>{detailOrder.paymentMethod}</Tag> : null}
-              <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(detailOrder.totalAmount)}</Text>
+              <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(detailOrder.totalAmount)}</Text>
             </Space>
             {detailOrder.shippingAddress ? <Text type="secondary">{detailOrder.shippingAddress}</Text> : null}
             <List
@@ -648,9 +661,14 @@ const SupportManagement: React.FC = () => {
                       />
                     }
                     title={item.productName || `#${item.productId}`}
-                    description={`${formatMoney(item.price)} x ${item.quantity}`}
-                  />
-                  <Text strong>{formatMoney(item.price * item.quantity)}</Text>
+                    description={(
+                      <Text type="secondary" className="support-management__orderItemUnit commerce-atomic commerce-price-quantity">
+                        <span className="commerce-money">{formatMoney(item.price)}</span>
+                        <span className="commerce-quantity">x {item.quantity}</span>
+                      </Text>
+                    )}
+                  />
+                  <Text strong className="support-management__orderItemTotal commerce-money">{formatMoney(item.price * item.quantity)}</Text>
                 </List.Item>
               )}
             />

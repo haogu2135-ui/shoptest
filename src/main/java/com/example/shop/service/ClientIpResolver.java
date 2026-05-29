@@ -36,6 +36,13 @@ public class ClientIpResolver {
         return remoteAddress == null ? "" : remoteAddress;
     }
 
+    public boolean shouldTrustForwardedHeaders(HttpServletRequest request) {
+        if (request == null) {
+            return false;
+        }
+        return isTrustedProxy(normalizeIpAddress(request.getRemoteAddr()));
+    }
+
     public String normalizeIpAddress(String value) {
         String address = cleanAddress(value);
         return parseAddress(address) == null ? "" : address;

@@ -205,7 +205,7 @@
             .then(data => {
                 if (!data.success) showToast('更新失败：' + data.message, 'error');
             })
-            .catch(() => showToast('网络错误，请稍后重试', 'error'));
+            .catch(() => showToast('连接暂时不可用，请刷新后重试', 'error'));
         }
 
         function removeItem(itemId, row) {
@@ -237,7 +237,7 @@
             .catch(() => {
                 row.style.opacity = '';
                 row.style.pointerEvents = '';
-                showToast('网络错误，请稍后重试', 'error');
+                showToast('连接暂时不可用，请刷新后重试', 'error');
             });
         }
 
@@ -306,7 +306,7 @@
                 }
             })
             .catch(() => {
-                showToast('网络错误，请稍后重试', 'error');
+                showToast('连接暂时不可用，请刷新后重试', 'error');
                 this.disabled = false; this.textContent = '去结算';
             });
         });

@@ -15,6 +15,7 @@ import java.util.Locale;
 public class PetProfileService {
     private final PetProfileMapper petProfileMapper;
     private final ProductService productService;
+    private final RuntimeConfigService runtimeConfig;
 
     public List<PetProfile> findByUserId(Long userId) {
         return petProfileMapper.findByUserId(userId);
@@ -22,17 +23,23 @@ public class PetProfileService {
 
     @Transactional
     public PetProfile save(Long userId, PetProfile request, Long id) {
-        if (request.getName() == null || request.getName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Pet name is required");
+        if (request == null) {
+            throw new IllegalArgumentException("Pet profile is required");
+        }
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("User is required");
+        }
+        if (id == null && petProfileMapper.findByUserId(userId).size() >= maxProfilesPerUser()) {
+            throw new IllegalStateException("Pet profile limit reached");
         }
         PetProfile pet = new PetProfile();
         pet.setId(id);
         pet.setUserId(userId);
-        pet.setName(request.getName().trim());
+        pet.setName(normalizeRequiredText(request.getName(), "Pet name", maxNameChars()));
         pet.setPetType(normalizePetType(request.getPetType()));
-        pet.setBreed(trimToNull(request.getBreed()));
-        pet.setBirthday(request.getBirthday());
-        pet.setWeight(request.getWeight());
+        pet.setBreed(normalizeOptionalText(request.getBreed(), "Breed", maxBreedChars()));
+        pet.setBirthday(normalizeBirthday(request.getBirthday()));
+        pet.setWeight(normalizeWeight(request.getWeight()));
         pet.setSize(normalizeSize(request.getSize()));
         pet.setUpdatedAt(LocalDateTime.now());
         if (id == null) {
@@ -69,5 +76,69 @@ public class PetProfileService {
 
     private String trimToNull(String value) {
         return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private String normalizeRequiredText(String value, String field, int maxLength) {
+        String normalized = normalizeOptionalText(value, field, maxLength);
+        if (normalized == null) {
+            throw new IllegalArgumentException(field + " is required");
+        }
+        return normalized;
+    }
+
+    private String normalizeOptionalText(String value, String field, int maxLength) {
+        String normalized = trimToNull(value == null ? null : value.replaceAll("\\p{Cntrl}", " "));
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized.replaceAll("\\s+", " ");
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(field + " is too long");
+        }
+        return normalized;
+    }
+
+    private java.time.LocalDate normalizeBirthday(java.time.LocalDate birthday) {
+        if (birthday == null) {
+            return null;
+        }
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (birthday.isAfter(today)) {
+            throw new IllegalArgumentException("Pet birthday cannot be in the future");
+        }
+        int maxAgeYears = Math.max(1, Math.min(runtimeConfig.getInt("pet-profile.max-age-years", 40), 100));
+        if (birthday.isBefore(today.minusYears(maxAgeYears))) {
+            throw new IllegalArgumentException("Pet birthday is too old");
+        }
+        return birthday;
+    }
+
+    private java.math.BigDecimal normalizeWeight(java.math.BigDecimal weight) {
+        if (weight == null) {
+            return null;
+        }
+        if (weight.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Pet weight must be positive");
+        }
+        java.math.BigDecimal maxWeight = runtimeConfig.getBigDecimal("pet-profile.max-weight-kg", new java.math.BigDecimal("200"));
+        if (maxWeight == null || maxWeight.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            maxWeight = new java.math.BigDecimal("200");
+        }
+        if (weight.compareTo(maxWeight) > 0) {
+            throw new IllegalArgumentException("Pet weight is too high");
+        }
+        return weight.setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private int maxProfilesPerUser() {
+        return Math.max(1, Math.min(runtimeConfig.getInt("pet-profile.max-per-user", 10), 50));
+    }
+
+    private int maxNameChars() {
+        return Math.max(1, Math.min(runtimeConfig.getInt("pet-profile.name-max-chars", 60), 120));
+    }
+
+    private int maxBreedChars() {
+        return Math.max(1, Math.min(runtimeConfig.getInt("pet-profile.breed-max-chars", 80), 160));
     }
 }

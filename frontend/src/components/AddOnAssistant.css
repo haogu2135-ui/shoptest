@@ -452,3 +452,42 @@
     height: 40px;
   }
 }
+
+/* Final add-on atomic-text pass */
+.add-on-assistant__price,
+.add-on-assistant__meta .ant-typography,
+.add-on-assistant__badges span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.add-on-assistant__price,
+.add-on-assistant__badges span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.add-on-assistant__item .ant-btn {
+  white-space: nowrap;
+}
+
+.add-on-assistant__item .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .add-on-assistant__price,
+  .add-on-assistant__meta .ant-typography,
+  .add-on-assistant__badges span,
+  .add-on-assistant__item .ant-btn {
+    white-space: nowrap !important;
+  }
+}

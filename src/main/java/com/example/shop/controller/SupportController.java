@@ -1,11 +1,17 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.SupportAdminSummaryResponse;
+import com.example.shop.entity.Order;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
+import com.example.shop.entity.User;
+import com.example.shop.repository.UserRepository;
+import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.SupportService;
+import com.example.shop.service.OrderService;
 import com.example.shop.service.PetBirthdayCouponService;
+import com.example.shop.service.SecurityAuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +29,9 @@ import java.util.Map;
 public class SupportController {
     private final SupportService supportService;
     private final PetBirthdayCouponService petBirthdayCouponService;
+    private final OrderService orderService;
+    private final UserRepository userRepository;
+    private final SecurityAuditLogService auditLogService;
 
     @GetMapping("/support/session")
     public SupportSession getMySession() {
@@ -52,10 +62,10 @@ public class SupportController {
     }
 
     @PostMapping("/support/messages")
-    public ResponseEntity<?> sendMyMessage(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> sendMyMessage(@RequestBody(required = false) Map<String, Object> body) {
         try {
-            Long sessionId = toLong(body.get("sessionId"));
-            String content = body.get("content") == null ? "" : String.valueOf(body.get("content"));
+            Long sessionId = toLong(body == null ? null : body.get("sessionId"));
+            String content = body == null || body.get("content") == null ? "" : String.valueOf(body.get("content"));
             SupportMessage sent = supportService.sendUserMessage(currentUserId(), sessionId, content);
             return ResponseEntity.ok(Map.of(
                     "message", sent,
@@ -77,6 +87,50 @@ public class SupportController {
     @GetMapping("/support/unread-count")
     public Map<String, Integer> getMyUnreadCount() {
         return Map.of("count", supportService.countUnreadByUser(currentUserId()));
+    }
+
+    @GetMapping("/support/guest/session")
+    public SupportSession getGuestSession(@RequestParam String orderNo, @RequestParam String email) {
+        Order order = requireGuestOrder(orderNo, email);
+        return supportService.getOrCreateOpenSession(order.getUserId());
+    }
+
+    @GetMapping("/support/guest/sessions/{sessionId}/messages")
+    public ResponseEntity<?> getGuestMessages(@PathVariable Long sessionId,
+                                              @RequestParam String orderNo,
+                                              @RequestParam String email) {
+        Order order = requireGuestOrder(orderNo, email);
+        assertGuestSessionAccess(sessionId, order);
+        supportService.markRead(sessionId, "USER");
+        return ResponseEntity.ok(supportService.getMessages(sessionId));
+    }
+
+    @PostMapping("/support/guest/messages")
+    public ResponseEntity<?> sendGuestMessage(@RequestBody(required = false) Map<String, Object> body) {
+        String orderNo = body == null ? null : String.valueOf(body.get("orderNo"));
+        String email = body == null ? null : String.valueOf(body.get("email"));
+        Order order = requireGuestOrder(orderNo, email);
+        Long sessionId = toLong(body == null ? null : body.get("sessionId"));
+        if (sessionId != null) {
+            assertGuestSessionAccess(sessionId, order);
+        }
+        String content = body == null || body.get("content") == null ? "" : String.valueOf(body.get("content"));
+        SupportMessage sent = supportService.sendUserMessage(order.getUserId(), sessionId, content);
+        return ResponseEntity.ok(Map.of(
+                "message", sent,
+                "session", supportService.getSession(sent.getSessionId())
+        ));
+    }
+
+    @PutMapping("/support/guest/sessions/{sessionId}/read")
+    public ResponseEntity<?> markGuestMessagesRead(@PathVariable Long sessionId,
+                                                   @RequestBody(required = false) Map<String, Object> body) {
+        String orderNo = body == null ? null : String.valueOf(body.get("orderNo"));
+        String email = body == null ? null : String.valueOf(body.get("email"));
+        Order order = requireGuestOrder(orderNo, email);
+        assertGuestSessionAccess(sessionId, order);
+        supportService.markRead(sessionId, "USER");
+        return ResponseEntity.ok(Map.of("message", "OK"));
     }
 
     @GetMapping("/admin/support/sessions")
@@ -102,38 +156,70 @@ public class SupportController {
     }
 
     @PostMapping("/admin/support/sessions/{sessionId}/messages")
-    public ResponseEntity<?> sendSupportMessage(@PathVariable Long sessionId, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> sendSupportMessage(@PathVariable Long sessionId,
+                                                @RequestBody(required = false) Map<String, Object> body,
+                                                Authentication authentication,
+                                                HttpServletRequest request) {
         try {
-            String content = body.get("content") == null ? "" : String.valueOf(body.get("content"));
+            String content = body == null || body.get("content") == null ? "" : String.valueOf(body.get("content"));
             SupportMessage sent = supportService.sendAdminMessage(currentUserId(), sessionId, content);
+            auditLogService.record("SUPPORT_MESSAGE_SEND", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
+                    "Support message sent", supportMessageAuditMetadata(sent));
             return ResponseEntity.ok(Map.of(
                     "message", sent,
                     "session", supportService.getSession(sent.getSessionId())
             ));
         } catch (IllegalArgumentException | IllegalStateException ex) {
+            auditLogService.record("SUPPORT_MESSAGE_SEND", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
+                    ex.getMessage(), null);
             throw ex;
         }
     }
 
     @PutMapping("/admin/support/sessions/{sessionId}/close")
-    public SupportSession closeSupportSession(@PathVariable Long sessionId) {
-        return supportService.closeSession(sessionId);
+    public SupportSession closeSupportSession(@PathVariable Long sessionId,
+                                              Authentication authentication,
+                                              HttpServletRequest request) {
+        try {
+            SupportSession session = supportService.closeSession(sessionId);
+            auditLogService.record("SUPPORT_SESSION_CLOSE", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
+                    "Support session closed", supportSessionAuditMetadata(session));
+            return session;
+        } catch (RuntimeException ex) {
+            auditLogService.record("SUPPORT_SESSION_CLOSE", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
+                    ex.getMessage(), null);
+            throw ex;
+        }
     }
 
     @PutMapping("/admin/support/sessions/{sessionId}/assign")
-    public ResponseEntity<?> assignSupportSession(@PathVariable Long sessionId) {
+    public ResponseEntity<?> assignSupportSession(@PathVariable Long sessionId,
+                                                  Authentication authentication,
+                                                  HttpServletRequest request) {
         try {
-            return ResponseEntity.ok(supportService.assignSession(sessionId, currentUserId()));
+            SupportSession session = supportService.assignSession(sessionId, currentUserId());
+            auditLogService.record("SUPPORT_SESSION_ASSIGN", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
+                    "Support session assigned", supportSessionAuditMetadata(session));
+            return ResponseEntity.ok(session);
         } catch (IllegalArgumentException | IllegalStateException ex) {
+            auditLogService.record("SUPPORT_SESSION_ASSIGN", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
+                    ex.getMessage(), null);
             throw ex;
         }
     }
 
     @PutMapping("/admin/support/sessions/{sessionId}/reopen")
-    public ResponseEntity<?> reopenSupportSession(@PathVariable Long sessionId) {
+    public ResponseEntity<?> reopenSupportSession(@PathVariable Long sessionId,
+                                                  Authentication authentication,
+                                                  HttpServletRequest request) {
         try {
-            return ResponseEntity.ok(supportService.reopenSession(sessionId, currentUserId()));
+            SupportSession session = supportService.reopenSession(sessionId, currentUserId());
+            auditLogService.record("SUPPORT_SESSION_REOPEN", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
+                    "Support session reopened", supportSessionAuditMetadata(session));
+            return ResponseEntity.ok(session);
         } catch (IllegalArgumentException | IllegalStateException ex) {
+            auditLogService.record("SUPPORT_SESSION_REOPEN", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
+                    ex.getMessage(), null);
             throw ex;
         }
     }
@@ -144,25 +230,85 @@ public class SupportController {
     }
 
     @PostMapping("/admin/support/sessions/{sessionId}/birthday-coupons/reissue")
-    public ResponseEntity<?> reissueBirthdayCoupon(@PathVariable Long sessionId) {
+    public ResponseEntity<?> reissueBirthdayCoupon(@PathVariable Long sessionId,
+                                                   Authentication authentication,
+                                                   HttpServletRequest request) {
         SupportSession session = supportService.getSession(sessionId);
         if (session == null) {
+            auditLogService.record("SUPPORT_BIRTHDAY_COUPON_REISSUE", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
+                    "Support session not found", null);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Support session not found");
         }
         try {
             int granted = petBirthdayCouponService.reissueBirthdayCoupons(session.getUserId(), java.time.LocalDate.now());
+            auditLogService.record("SUPPORT_BIRTHDAY_COUPON_REISSUE", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
+                    "Support birthday coupon reissued", supportSessionAuditMetadata(session) + ",granted=" + granted);
             return ResponseEntity.ok(Map.of("granted", granted));
         } catch (IllegalArgumentException | IllegalStateException ex) {
+            auditLogService.record("SUPPORT_BIRTHDAY_COUPON_REISSUE", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
+                    ex.getMessage(), supportSessionAuditMetadata(session));
             throw ex;
         }
     }
 
+    private String supportSessionAuditMetadata(SupportSession session) {
+        if (session == null) {
+            return null;
+        }
+        return "userId=" + session.getUserId()
+                + ",assignedAdminId=" + session.getAssignedAdminId()
+                + ",status=" + session.getStatus();
+    }
+
+    private String supportMessageAuditMetadata(SupportMessage message) {
+        if (message == null) {
+            return null;
+        }
+        String content = message.getContent() == null ? "" : message.getContent().trim();
+        return "senderRole=" + message.getSenderRole()
+                + ",contentLength=" + content.length();
+    }
+
     private boolean canAccessSession(Long sessionId) {
-        if ("ADMIN".equals(currentRole())) {
+        UserDetailsImpl user = currentUser();
+        if ("ADMIN".equals(currentRole(user))) {
             return true;
         }
         SupportSession session = supportService.getSession(sessionId);
-        return session != null && currentUserId().equals(session.getUserId());
+        return session != null && user.getId().equals(session.getUserId());
+    }
+
+    private Order requireGuestOrder(String orderNo, String email) {
+        try {
+            Order order = orderService.trackOrder(orderNo, email).getOrder();
+            if (order == null || order.getUserId() == null || !isGuestSupportOrder(order)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support is not available for this order");
+            }
+            return order;
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support is not available for this order");
+        }
+    }
+
+    private boolean isGuestSupportOrder(Order order) {
+        if (order == null || order.getUserId() == null) {
+            return false;
+        }
+        String shippingAddress = order.getShippingAddress();
+        if (shippingAddress != null && shippingAddress.startsWith("[Guest] ")) {
+            return true;
+        }
+        return userRepository.findById(order.getUserId())
+                .map(User::getStatus)
+                .map(status -> "GUEST".equalsIgnoreCase(status))
+                .orElse(false);
+    }
+
+    private void assertGuestSessionAccess(Long sessionId, Order order) {
+        SupportSession session = supportService.getSession(sessionId);
+        if (session == null || order == null || order.getUserId() == null || !order.getUserId().equals(session.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
     }
 
     private Long currentUserId() {
@@ -170,13 +316,17 @@ public class SupportController {
     }
 
     private String currentRole() {
-        return currentUser().getAuthorities().stream()
+        return currentRole(currentUser());
+    }
+
+    private String currentRole(UserDetailsImpl user) {
+        return user.getAuthorities().stream()
                 .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())) ? "ADMIN" : "USER";
     }
 
     private UserDetailsImpl currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return (UserDetailsImpl) authentication.getPrincipal();
+        return SecurityUtils.requireUser(authentication);
     }
 
     private Long toLong(Object value) {

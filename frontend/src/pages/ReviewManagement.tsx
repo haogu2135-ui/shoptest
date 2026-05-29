@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Table, Button, Popconfirm, Rate, message, Typography, Divider, Input, Modal, Select, Space, Tag } from 'antd';
-import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, StarOutlined, WarningOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, SearchOutlined, StarOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { Review } from '../types';
 import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 import './ReviewManagement.css';
 
 const { Title, Paragraph } = Typography;
@@ -15,6 +16,7 @@ const ReviewManagement: React.FC = () => {
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [keyword, setKeyword] = useState('');
   const { t, language } = useLanguage();
 
   const statusColors: Record<string, string> = {
@@ -34,19 +36,36 @@ const ReviewManagement: React.FC = () => {
     return { pending, lowRating, needsReply, approved, averageRating };
   }, [reviews]);
 
-  const filteredReviews = statusFilter ? reviews.filter((review) => (review.status || 'PENDING') === statusFilter) : reviews;
+  const filteredReviews = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    return reviews.filter((review) => {
+      const matchesStatus = statusFilter ? (review.status || 'PENDING') === statusFilter : true;
+      if (!matchesStatus) return false;
+      if (!text) return true;
+      return [
+        review.id,
+        review.productId,
+        (review as any).product?.id,
+        (review as any).product?.name,
+        review.username,
+        (review as any).user?.username,
+        review.comment,
+        review.adminReply,
+      ].some((value) => String(value || '').toLowerCase().includes(text));
+    });
+  }, [keyword, reviews, statusFilter]);
 
   const fetchReviews = useCallback(async () => {
     try {
       setLoading(true);
       const res = await adminApi.getReviews();
       setReviews(res.data);
-    } catch {
-      message.error(t('pages.adminReviews.fetchFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('pages.adminReviews.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   useEffect(() => {
     fetchReviews();
@@ -57,8 +76,8 @@ const ReviewManagement: React.FC = () => {
       await adminApi.deleteReview(id);
       message.success(t('messages.deleteSuccess'));
       fetchReviews();
-    } catch {
-      message.error(t('messages.deleteFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };
 
@@ -69,18 +88,28 @@ const ReviewManagement: React.FC = () => {
 
   const handleReply = async () => {
     if (!replyTarget) return;
+    if (!replyText.trim()) {
+      message.warning(t('pages.adminReviews.replyRequired'));
+      return;
+    }
     try {
       setReplying(true);
-      await adminApi.replyReview(replyTarget.id, replyText);
+      await adminApi.replyReview(replyTarget.id, replyText.trim());
       message.success(t('messages.updateSuccess'));
       setReplyTarget(null);
       setReplyText('');
       fetchReviews();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('messages.updateFailed'));
+      message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
     } finally {
       setReplying(false);
     }
+  };
+
+  const closeReplyModal = () => {
+    if (replying) return;
+    setReplyTarget(null);
+    setReplyText('');
   };
 
   const handleStatus = async (review: Review, status: string) => {
@@ -89,7 +118,7 @@ const ReviewManagement: React.FC = () => {
       message.success(t('messages.updateSuccess'));
       fetchReviews();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('messages.updateFailed'));
+      message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
     }
   };
 
@@ -205,13 +234,23 @@ const ReviewManagement: React.FC = () => {
           </div>
         </div>
       </section>
-      <Space className="review-management-page__toolbar">
+      <Space className="review-management-page__toolbar" wrap>
+        <Input
+          allowClear
+          prefix={<SearchOutlined />}
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          placeholder={t('common.search')}
+          className="review-management-page__keywordInput"
+        />
         <Select
           allowClear
           placeholder={t('pages.adminReviews.statusFilter')}
           className="review-management-page__statusFilter"
           value={statusFilter}
           onChange={setStatusFilter}
+          popupClassName="shop-mobile-popup-layer"
+          getPopupContainer={() => document.body}
           options={[
             { value: 'PENDING', label: t('pages.adminReviews.status.PENDING') },
             { value: 'APPROVED', label: t('pages.adminReviews.status.APPROVED') },
@@ -230,12 +269,13 @@ const ReviewManagement: React.FC = () => {
         scroll={{ x: 1180 }}
       />
       <Modal
-        className="review-management-page__replyModal"
+        className="profile-mobile-safe-modal review-management-page__replyModal"
         open={!!replyTarget}
-        onCancel={() => setReplyTarget(null)}
+        onCancel={closeReplyModal}
         onOk={handleReply}
         confirmLoading={replying}
         title={t('pages.adminReviews.replyAction')}
+        destroyOnHidden
       >
         <Input.TextArea
           rows={5}

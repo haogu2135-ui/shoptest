@@ -21,9 +21,11 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { dispatchDomEvent } from '../utils/domEvents';
-import { loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
+import { loadGuestSupportContext } from '../utils/guestSupportContext';
+import { loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
+import { getApiErrorMessage } from '../utils/apiError';
 import './ProductList.css';
 
 const { Text } = Typography;
@@ -49,9 +51,14 @@ const VALID_SORT_VALUES = new Set([
 const VALID_PET_SIZES = new Set(['Small', 'Medium', 'Large']);
 const VALID_COLLECTIONS = new Set(['smart-devices']);
 const resolveProductListImage = resolveProductImage;
+const resolveProductPrimaryImage = (product: Product) => {
+  const galleryImage = Array.isArray(product.images) ? product.images.find((image) => String(image || '').trim()) : '';
+  return resolveProductListImage(product.imageUrl || galleryImage || '');
+};
 const productListImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 33vw, 25vw';
 const eagerImagePriorityProps = { fetchPriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
 const lazyImagePriorityProps = { fetchPriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
+const shouldShowCatalogFallbackToast = process.env.NODE_ENV !== 'production';
 
 const readSearchHistory = () => {
   try {
@@ -110,6 +117,31 @@ const filterSnapshotProducts = (products: Product[], keyword?: string, categoryI
   });
 };
 
+const pickBestProductFallback = (products: Product[], keyword?: string, categoryId?: number, discount?: boolean) => {
+  const filtered = filterSnapshotProducts(products, keyword, categoryId, discount);
+  return filtered.length > 0 ? filtered : products;
+};
+
+const buildFallbackCategories = (products: Product[]): Category[] => {
+  const categories = new Map<number, Category>();
+  products.forEach((product) => {
+    const id = Number(product.categoryId);
+    if (!Number.isSafeInteger(id) || id <= 0 || categories.has(id)) return;
+    categories.set(id, {
+      id,
+      name: product.categoryName || `Category ${id}`,
+      level: 1,
+    });
+  });
+  return Array.from(categories.values()).sort((left, right) => left.name.localeCompare(right.name));
+};
+
+const notifyCatalogFallback = (text: string) => {
+  if (shouldShowCatalogFallbackToast) {
+    message.warning(text);
+  }
+};
+
 let categoryCache: { expiresAt: number; items: Category[] } | null = null;
 let categoryCacheRequest: Promise<Category[]> | null = null;
 
@@ -156,11 +188,24 @@ const ProductList: React.FC = () => {
   );
   const priceRangeMaxRef = useRef(DEFAULT_PRICE_RANGE[1]);
   const productRequestSeqRef = useRef(0);
+  const previousProductsRef = useRef<Product[]>([]);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const collection = normalizeCollectionValue(searchParams.get('collection'));
   const pageSize = 12;
   const isAuthenticated = hasStoredValue('token');
+  const openSupport = useCallback(() => {
+    if (!hasStoredValue('token')) {
+      const guestContext = loadGuestSupportContext();
+      if (guestContext) {
+        dispatchDomEvent('shop:open-support', guestContext);
+        return;
+      }
+      dispatchDomEvent('shop:open-support');
+      return;
+    }
+    dispatchDomEvent('shop:open-support');
+  }, []);
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const getPositiveRate = (product: Product) => product.positiveRate ?? 0;
@@ -213,7 +258,12 @@ const ProductList: React.FC = () => {
       .then((items) => {
         if (active) setCategories(items);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!active) return;
+        const snapshot = loadProductCatalogSnapshot();
+        const fallbackCategories = buildFallbackCategories(snapshot?.products?.length ? snapshot.products : loadFallbackProductCatalog());
+        setCategories(fallbackCategories);
+      });
     return () => {
       active = false;
     };
@@ -249,14 +299,14 @@ const ProductList: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!hasStoredValue('token')) {
+    if (!isAuthenticated) {
       setPersonalizedProducts([]);
       return;
     }
     productApi.getPersonalizedRecommendations()
       .then((response) => setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language))))
       .catch(() => setPersonalizedProducts([]));
-  }, [language]);
+  }, [isAuthenticated, language]);
 
   const collectionProducts = useMemo(() => {
     let result = products;
@@ -483,7 +533,7 @@ const ProductList: React.FC = () => {
     stock: quickAddVariant?.stock ?? quickAddProduct.stock,
     price: quickAddPrice,
     effectivePrice: quickAddPrice,
-    imageUrl: quickAddVariant?.imageUrl || quickAddProduct.imageUrl,
+    imageUrl: quickAddVariant?.imageUrl || resolveProductPrimaryImage(quickAddProduct),
   }) : null;
 
   const fetchProducts = useCallback(async (kw?: string, cid?: number, disc?: boolean) => {
@@ -493,26 +543,110 @@ const ProductList: React.FC = () => {
       setLoading(true);
       const res = await productApi.getAll(kw || undefined, cid, disc);
       if (productRequestSeqRef.current !== requestSeq) return;
-      saveProductCatalogSnapshot(res.data);
-      setProducts(res.data.map((product) => localizeProduct(product, language)));
+      const localizedProducts = res.data.map((product) => localizeProduct(product, language));
+      if (localizedProducts.length === 0 && !kw && !cid && !disc) {
+        const snapshot = loadProductCatalogSnapshot();
+        const snapshotProducts = snapshot?.products?.length
+          ? snapshot.products.map((product) => localizeProduct(product, language))
+          : [];
+        const fallbackProducts = snapshotProducts.length > 0
+          ? snapshotProducts
+          : loadFallbackProductCatalog().map((product) => localizeProduct(product, language));
+        if (fallbackProducts.length > 0) {
+          previousProductsRef.current = fallbackProducts;
+          setProducts(fallbackProducts);
+          setLoadFailed(false);
+          setUsingCatalogSnapshot(true);
+          setCurrentPage(1);
+          notifyCatalogFallback(t('pages.productList.snapshotNotice'));
+          return;
+        }
+      }
+      if (localizedProducts.length > 0) {
+        saveProductCatalogSnapshot(res.data);
+      }
+      previousProductsRef.current = localizedProducts;
+      setProducts(localizedProducts);
       setLoadFailed(false);
       setUsingCatalogSnapshot(false);
       setCurrentPage(1);
-    } catch {
+    } catch (error) {
       if (productRequestSeqRef.current !== requestSeq) return;
+      const errorMessage = getApiErrorMessage(error, t('pages.productList.fetchFailed'), language);
+      if (kw || cid || disc) {
+        try {
+          const fallbackRes = await productApi.getAll();
+          if (productRequestSeqRef.current !== requestSeq) return;
+          const fallbackProducts = pickBestProductFallback(fallbackRes.data, kw, cid, disc).map((product) => localizeProduct(product, language));
+          if (fallbackProducts.length === 0) {
+            throw new Error('Empty fallback catalog');
+          }
+          saveProductCatalogSnapshot(fallbackRes.data);
+          previousProductsRef.current = fallbackProducts;
+          setProducts(fallbackProducts);
+          setLoadFailed(false);
+          setUsingCatalogSnapshot(false);
+          setCurrentPage(1);
+          return;
+        } catch {
+          // Continue to snapshot and bundled catalog fallbacks below.
+        }
+      }
       const snapshot = loadProductCatalogSnapshot();
       if (snapshot) {
-        setProducts(filterSnapshotProducts(snapshot.products, kw, cid, disc).map((product) => localizeProduct(product, language)));
+        const snapshotProducts = pickBestProductFallback(snapshot.products, kw, cid, disc).map((product) => localizeProduct(product, language));
+        if (snapshotProducts.length === 0) {
+          const broadSnapshotProducts = snapshot.products.map((product) => localizeProduct(product, language));
+          if (broadSnapshotProducts.length > 0) {
+            previousProductsRef.current = broadSnapshotProducts;
+            setProducts(broadSnapshotProducts);
+            setLoadFailed(false);
+            setUsingCatalogSnapshot(true);
+            setCurrentPage(1);
+            notifyCatalogFallback(t('pages.productList.snapshotNotice'));
+            return;
+          }
+        }
+        previousProductsRef.current = snapshotProducts;
+        setProducts(snapshotProducts);
         setLoadFailed(false);
         setUsingCatalogSnapshot(true);
         setCurrentPage(1);
-        message.warning(t('pages.productList.snapshotNotice'));
+        notifyCatalogFallback(t('pages.productList.snapshotNotice'));
         return;
       }
-      setProducts([]);
+      if (previousProductsRef.current.length > 0) {
+        const previousProducts = pickBestProductFallback(previousProductsRef.current, kw, cid, disc);
+        setProducts(previousProducts.length > 0 ? previousProducts : previousProductsRef.current);
+        setLoadFailed(false);
+        setUsingCatalogSnapshot(true);
+        notifyCatalogFallback(t('pages.productList.snapshotNotice'));
+        return;
+      }
+      const fallbackProducts = pickBestProductFallback(loadFallbackProductCatalog(), kw, cid, disc).map((product) => localizeProduct(product, language));
+      if (fallbackProducts.length > 0) {
+        previousProductsRef.current = fallbackProducts;
+        setProducts(fallbackProducts);
+        setLoadFailed(false);
+        setUsingCatalogSnapshot(true);
+        notifyCatalogFallback(t('pages.productList.snapshotNotice'));
+        return;
+      }
+      const broadFallbackProducts = loadFallbackProductCatalog().map((product) => localizeProduct(product, language));
+      if (broadFallbackProducts.length > 0) {
+        previousProductsRef.current = broadFallbackProducts;
+        setProducts(broadFallbackProducts);
+        setLoadFailed(false);
+        setUsingCatalogSnapshot(true);
+        notifyCatalogFallback(t('pages.productList.snapshotNotice'));
+        return;
+      }
       setLoadFailed(true);
       setUsingCatalogSnapshot(false);
-      message.error(t('pages.productList.fetchFailed'));
+      setProducts([]);
+      if (process.env.NODE_ENV !== 'production') {
+        message.error(errorMessage);
+      }
     } finally {
       if (productRequestSeqRef.current === requestSeq) {
         setLoading(false);
@@ -534,6 +668,12 @@ const ProductList: React.FC = () => {
     setPetSizes(requestedPetSizes);
     fetchProducts(activeCollection ? undefined : kw, cid, disc);
   }, [fetchProducts, searchParams, language]);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      previousProductsRef.current = products;
+    }
+  }, [products]);
 
   const handleSearch = (value: string) => {
     const trimmed = normalizeSearchValue(value);
@@ -581,8 +721,8 @@ const ProductList: React.FC = () => {
       });
       dispatchDomEvent('shop:wishlist-updated');
       message.success(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
-    } catch {
-      message.error(t('messages.operationFailed'));
+    } catch (error) {
+      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     }
   };
 
@@ -633,6 +773,8 @@ const ProductList: React.FC = () => {
         disabled: !optionValueIsCompatible(quickAddVariants, quickAddOptions, group.name, value),
       }))}
           className="product-list__quickAddSelect"
+          popupClassName="shop-mobile-popup-layer"
+          getPopupContainer={() => document.body}
         />
       ))}
       {Object.keys(quickAddOptions).length > 0 && (
@@ -697,8 +839,8 @@ const ProductList: React.FC = () => {
         message.success(t('messages.addCartSuccess'));
         setQuickAddProduct(null);
         await openCartDrawerWithSnapshot({ authenticated: Boolean(token) });
-      } catch {
-        message.error(t('messages.addFailed'));
+      } catch (error) {
+        message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
       } finally {
         setQuickAddSubmitting(false);
       }
@@ -724,8 +866,8 @@ const ProductList: React.FC = () => {
       message.success(t('messages.addCartSuccess'));
       setQuickAddProduct(null);
       await openCartDrawerWithSnapshot({ authenticated: Boolean(token) });
-    } catch {
-      message.error(t('messages.addFailed'));
+    } catch (error) {
+      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
     } finally {
       setQuickAddSubmitting(false);
     }
@@ -862,6 +1004,24 @@ const ProductList: React.FC = () => {
         : '',
     ].filter(Boolean).join(' / ')
     : t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount });
+  const renderProductAmountText = (label: string, amount: string) => {
+    const parts = label.split(amount);
+    if (parts.length <= 1) return label;
+    return (
+      <span className="product-list__amountPhrase commerce-atomic">
+        {parts.map((part, index) => (
+          <React.Fragment key={`${part}-${index}`}>
+            {part}
+            {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  };
+  const renderSavingsText = (amount: number) => renderProductAmountText(
+    t('pages.productList.bestValueSavings', { amount: formatMoney(amount) }),
+    formatMoney(amount),
+  );
   const productListGuideText = activeFilterCount > 0
     ? t('pages.productList.guideRefineResults')
     : productListInsights.bestValueCount > 0
@@ -942,7 +1102,7 @@ const ProductList: React.FC = () => {
       icon: <CustomerServiceOutlined />,
       label: t('footer.helpCenter'),
       active: false,
-      onClick: () => dispatchDomEvent('shop:open-support'),
+      onClick: openSupport,
     },
   ];
   const resetCatalogView = () => {
@@ -1201,7 +1361,7 @@ const ProductList: React.FC = () => {
             setCurrentPage(1);
           }}
         />
-        <Text type="secondary">{formatMoney(displayedPriceRange[0])} - {formatMoney(displayedPriceRange[1])}</Text>
+        <Text type="secondary" className="commerce-atomic">{formatMoney(displayedPriceRange[0])} - {formatMoney(displayedPriceRange[1])}</Text>
       </div>
       <div>
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterSize')}</Text>
@@ -1269,7 +1429,7 @@ const ProductList: React.FC = () => {
       icon: <CustomerServiceOutlined />,
       title: t('pages.productList.loadRecoverySupport'),
       text: t('pages.productList.loadRecoveryTipSupport'),
-      onClick: () => dispatchDomEvent('shop:open-support'),
+      onClick: openSupport,
     },
   ];
   const renderDiscoveryActions = () => (
@@ -1342,7 +1502,7 @@ const ProductList: React.FC = () => {
                 onClick={() => openProductDetail(heroProduct.id)}
               >
                 <strong>{heroProduct.name}</strong>
-                <Text>{formatMoney(getPrice(heroProduct))}</Text>
+                <Text className="commerce-money">{formatMoney(getPrice(heroProduct))}</Text>
                 <span>{renderBadges(heroProduct).slice(0, 2).map((badge) => badge.label).join(' / ') || t('pages.productList.viewPick')}</span>
                 {heroProductHighlights.length ? (
                   <div className="product-list__heroHighlights">
@@ -1368,7 +1528,14 @@ const ProductList: React.FC = () => {
                 />
               </Col>
               <Col xs={12} sm={5} md={6}>
-                <Select value={sortBy} onChange={applySort} className="product-list__sortSelect" options={sortOptions} />
+                <Select
+                  value={sortBy}
+                  onChange={applySort}
+                  className="product-list__sortSelect"
+                  options={sortOptions}
+                  popupClassName="shop-mobile-popup-layer"
+                  getPopupContainer={() => document.body}
+                />
               </Col>
               <Col xs={12} sm={7} md={4}>
                 <div className="product-list__toolbarMeta">
@@ -1591,7 +1758,7 @@ const ProductList: React.FC = () => {
                   <Text>{productListGuideText}</Text>
                 </div>
                 <div className="product-list__insightMetrics">
-                  <span>{t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) })}</span>
+                  <span>{renderProductAmountText(t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) }), formatMoney(productListInsights.averageSavings))}</span>
                   <span>{t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount })}</span>
                   {activeFilterCount > 0 ? (
                     <Button type="link" onClick={resetFilters}>{t('pages.productList.resetFilters')}</Button>
@@ -1636,9 +1803,9 @@ const ProductList: React.FC = () => {
                         >
                           <span>
                             <strong>{product.name}</strong>
-                            <small>
-                              {formatMoney(getPrice(product))}
-                              {savings > 0 ? ` - ${t('pages.productList.bestValueSavings', { amount: formatMoney(savings) })}` : ''}
+                            <small className="commerce-atomic">
+                              <span className="commerce-money">{formatMoney(getPrice(product))}</span>
+                              {savings > 0 ? <span> - {renderSavingsText(savings)}</span> : null}
                             </small>
                           </span>
                           <Tag color={tagColor}>{tagLabel}</Tag>
@@ -1676,7 +1843,7 @@ const ProductList: React.FC = () => {
                     <Button icon={<GiftOutlined />} onClick={() => navigate('/coupons')}>
                       {t('pages.productList.loadRecoveryCoupons')}
                     </Button>
-                    <Button icon={<CustomerServiceOutlined />} onClick={() => dispatchDomEvent('shop:open-support')}>
+                    <Button icon={<CustomerServiceOutlined />} onClick={openSupport}>
                       {t('pages.productList.loadRecoverySupport')}
                     </Button>
                   </div>
@@ -1709,7 +1876,7 @@ const ProductList: React.FC = () => {
             <>
               <Row gutter={[16, 16]} className="product-list__grid">
                 {paginatedProducts.map((product, index) => {
-                  const imageUrl = resolveProductListImage(product.imageUrl);
+                  const imageUrl = resolveProductPrimaryImage(product);
                   const priorityImage = currentPage === 1 && index < 4;
                   return (
                   <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
@@ -1805,16 +1972,16 @@ const ProductList: React.FC = () => {
                         description={
                           <div>
                             <div className="product-list__priceLine">
-                              {formatMoney(getPrice(product))}
+                              <span className="product-list__currentPrice commerce-money">{formatMoney(getPrice(product))}</span>
                               {product.originalPrice && product.originalPrice > getPrice(product) && (
-                                <Text delete type="secondary" className="product-list__originalPrice">{formatMoney(product.originalPrice)}</Text>
+                                <Text delete type="secondary" className="product-list__originalPrice commerce-money">{formatMoney(product.originalPrice)}</Text>
                               )}
-                              {product.activeLimitedTimeDiscount && <Tag color="red" className="product-list__priceTag">{t('pages.productList.limitedTime')}</Tag>}
+                              {product.activeLimitedTimeDiscount && <Tag color="red" className="product-list__priceTag">{t('pages.keywords.deal')}</Tag>}
                             </div>
                             {isBestValueProduct(product) && getSavingsAmount(product) > 0 ? (
                               <div className="product-list__valueLine">
                                 <Text type="success">
-                                  {t('pages.productList.bestValueSavings', { amount: formatMoney(getSavingsAmount(product)) })}
+                                  {renderSavingsText(getSavingsAmount(product))}
                                 </Text>
                               </div>
                             ) : null}
@@ -1858,7 +2025,7 @@ const ProductList: React.FC = () => {
         onClose={() => setFilterDrawerOpen(false)}
         placement="bottom"
         height="82vh"
-        className="product-list__mobileDrawer"
+        className="profile-mobile-safe-modal product-list__mobileDrawer"
         extra={
           <Button type="link" disabled={activeRefinementCount === 0} onClick={resetMobileRefinements}>
             {t('pages.productList.resetFilters')}
@@ -1904,7 +2071,7 @@ const ProductList: React.FC = () => {
         cancelText={t('common.cancel')}
         okButtonProps={{ disabled: quickAddSubmitDisabled || quickAddSubmitting, loading: quickAddSubmitting }}
         cancelButtonProps={{ disabled: quickAddSubmitting }}
-        className="product-list__quickAddModal"
+        className="profile-mobile-safe-modal product-list__quickAddModal"
       >
         <Space direction="vertical" className="product-list__quickAddContent">
           {quickAddBundleInfo ? (
@@ -1913,10 +2080,10 @@ const ProductList: React.FC = () => {
               <Text type="secondary">{t('bundle.includes')}</Text>
               <Space wrap size={[6, 6]}>
                 {quickAddBundleInfo.items.map((item) => (
-                  <Tag key={item.name}>{item.name} x{item.quantity || 1}</Tag>
+                  <Tag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></Tag>
                 ))}
               </Space>
-              <Text>{t('pages.productList.quickAddPrice')}: {formatMoney(quickAddBundleInfo.price)}</Text>
+                <Text>{t('pages.productList.quickAddPrice')}: <span className="commerce-money">{formatMoney(quickAddBundleInfo.price)}</span></Text>
             </>
           ) : quickAddOptionGroups.length > 0 ? (
             <>
@@ -1929,7 +2096,7 @@ const ProductList: React.FC = () => {
                 <Text type="success">{t('pages.productList.quickAddSelectionReady')}</Text>
               )}
               <Text>
-                {t('pages.productList.quickAddPrice')}: {formatMoney(quickAddPrice)}
+                {t('pages.productList.quickAddPrice')}: <span className="commerce-money">{formatMoney(quickAddPrice)}</span>
               </Text>
               {quickAddVariant?.stock !== undefined && (
                 <Text type="secondary">{t('pages.productDetail.stock')}: {quickAddVariant.stock}</Text>
@@ -1946,7 +2113,7 @@ const ProductList: React.FC = () => {
         footer={null}
         onCancel={() => setPreviewProduct(null)}
         width={860}
-        className="product-list__previewModal"
+        className="profile-mobile-safe-modal product-list__previewModal"
         destroyOnClose
       >
         {previewProduct ? (
@@ -1954,8 +2121,8 @@ const ProductList: React.FC = () => {
             <div className="product-list__previewMedia">
               <img
                 alt={previewProduct.name}
-                src={getOptimizedImageUrl(resolveProductListImage(previewProduct.imageUrl), 720)}
-                srcSet={buildResponsiveImageSrcSet(resolveProductListImage(previewProduct.imageUrl), [360, 520, 720, 960])}
+                src={getOptimizedImageUrl(resolveProductPrimaryImage(previewProduct), 720)}
+                srcSet={buildResponsiveImageSrcSet(resolveProductPrimaryImage(previewProduct), [360, 520, 720, 960])}
                 sizes="(max-width: 720px) 100vw, 420px"
                 onError={(event) => {
                   if (event.currentTarget.src !== productImageFallback) {
@@ -1984,9 +2151,9 @@ const ProductList: React.FC = () => {
                 {previewProduct.description || t('pages.productList.previewNoDescription')}
               </Text>
               <div className="product-list__previewPrice">
-                <strong>{formatMoney(getPrice(previewProduct))}</strong>
+                <strong className="commerce-money">{formatMoney(getPrice(previewProduct))}</strong>
                 {previewProduct.originalPrice && previewProduct.originalPrice > getPrice(previewProduct) ? (
-                  <Text delete>{formatMoney(previewProduct.originalPrice)}</Text>
+                  <Text delete className="commerce-money">{formatMoney(previewProduct.originalPrice)}</Text>
                 ) : null}
               </div>
               <div className="product-list__previewSignals">
@@ -2006,7 +2173,7 @@ const ProductList: React.FC = () => {
                     : t('pages.productList.noReviewsYet')}
                 </span>
                 {getSavingsAmount(previewProduct) > 0 ? (
-                  <span>{t('pages.productList.bestValueSavings', { amount: formatMoney(getSavingsAmount(previewProduct)) })}</span>
+                  <span>{renderSavingsText(getSavingsAmount(previewProduct))}</span>
                 ) : null}
               </div>
               <div className="product-list__previewActions">

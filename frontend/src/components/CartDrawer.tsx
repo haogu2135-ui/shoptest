@@ -17,6 +17,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import './CartDrawer.css';
 
 const { Text } = Typography;
@@ -45,6 +46,11 @@ const normalizeCartQuantity = (item: CartItem, quantity: number) => {
   return stock && Number.isFinite(stock) && stock > 0
     ? Math.min(normalizedQuantity, stock)
     : normalizedQuantity;
+};
+
+const isAuthExpiredError = (error: any) => {
+  const status = Number(error?.response?.status);
+  return status === 401 || status === 403;
 };
 
 const applyCartImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
@@ -102,9 +108,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       const res = await cartApi.getItems(0);
       if (!mountedRef.current || loadCartRequestRef.current !== requestId) return;
       setItems(res.data);
-    } catch {
+    } catch (error: any) {
       if (mountedRef.current && loadCartRequestRef.current === requestId) {
-        message.error(t('pages.cart.fetchFailed'));
+        if (isAuthExpiredError(error)) {
+          setItems(getGuestCartItems());
+        } else {
+          message.error(getApiErrorMessage(error, t('pages.cart.fetchFailed'), language));
+        }
       }
     } finally {
       if (mountedRef.current && loadCartRequestRef.current === requestId) {
@@ -194,6 +204,24 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const progress = freeShippingThreshold > 0
     ? Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100))
     : 100;
+  const renderDrawerAmountText = (label: string, amount: string) => {
+    const parts = label.split(amount);
+    if (parts.length <= 1) return label;
+    return (
+      <span className="cart-drawer__amountPhrase commerce-atomic">
+        {parts.map((part, index) => (
+          <React.Fragment key={`${part}-${index}`}>
+            {part}
+            {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  };
+  const freeShippingRemainingText = (amount: number) => renderDrawerAmountText(
+    t('pages.cart.freeShippingRemaining', { amount: formatMoney(amount) }),
+    formatMoney(amount),
+  );
   const drawerReady = checkoutItems.length > 0 && blockedCount === 0;
   const shippingStatusText = [
     drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle'),
@@ -206,8 +234,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       ? t('pages.cart.drawerExpressBlocked', { count: blockedCount })
       : benefitTarget
       ? benefitTarget.reason === 'gift'
-        ? t('pages.cart.drawerExpressGiftHint', { amount: formatMoney(benefitTarget.remainingAmount) })
-        : t('pages.cart.drawerExpressAddOnHint', { amount: formatMoney(benefitTarget.remainingAmount) })
+        ? renderDrawerAmountText(t('pages.cart.drawerExpressGiftHint', { amount: formatMoney(benefitTarget.remainingAmount) }), formatMoney(benefitTarget.remainingAmount))
+        : renderDrawerAmountText(t('pages.cart.drawerExpressAddOnHint', { amount: formatMoney(benefitTarget.remainingAmount) }), formatMoney(benefitTarget.remainingAmount))
       : t('pages.cart.drawerExpressReadyHint');
   const expressPaymentCodes = expressPaymentCodesByCurrency[currency] || expressPaymentCodesByCurrency.USD;
   const drawerHighlights = [
@@ -250,7 +278,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         })
         .catch((err: any) => {
           if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
-          message.error(err?.response?.data?.error || t('pages.cart.quantityFailed'));
+          message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
           loadCart();
           throw err;
         })
@@ -320,7 +348,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       }
       dispatchDomEvent('shop:cart-updated');
     } catch (err: any) {
-      message.error(err?.response?.data?.error || t('pages.cart.quantityFailed'));
+      message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
       await loadCart();
       throw err;
     } finally {
@@ -342,8 +370,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         setItems(removeGuestCartItem(item.id));
       }
       if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch {
-      message.error(t('messages.deleteFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };
 
@@ -363,8 +391,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       }
       message.success(t('pages.cart.savedForLater'));
       if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch {
-      message.error(t('messages.operationFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
 
@@ -415,7 +443,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             .map((item) => item.id),
         );
         if (removedIds.size === 0) {
-          message.error(t('messages.operationFailed'));
+          const firstFailed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
+          message.error(getApiErrorMessage(firstFailed?.reason, t('messages.operationFailed'), language));
           return;
         }
         setItems((current) => current.filter((item) => !removedIds.has(item.id)));
@@ -425,8 +454,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         setItems(removeGuestCartItems(blockedItems.map((item) => item.id)));
         message.success(t('pages.cart.drawerClearedBlocked', { count: blockedItems.length }));
       }
-    } catch {
-      message.error(t('messages.operationFailed'));
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
 
@@ -471,8 +500,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           ? t('pages.cart.nextActionGiftTitle')
           : t('pages.cart.nextActionShippingTitle'),
         text: benefitTarget.reason === 'gift'
-          ? t('pages.cart.nextActionGiftText', { amount: formatMoney(benefitTarget.remainingAmount) })
-          : t('pages.cart.nextActionShippingText', { amount: formatMoney(benefitTarget.remainingAmount) }),
+          ? renderDrawerAmountText(t('pages.cart.nextActionGiftText', { amount: formatMoney(benefitTarget.remainingAmount) }), formatMoney(benefitTarget.remainingAmount))
+          : renderDrawerAmountText(t('pages.cart.nextActionShippingText', { amount: formatMoney(benefitTarget.remainingAmount) }), formatMoney(benefitTarget.remainingAmount)),
         label: t('pages.cart.nextActionFindAddOn'),
         onClick: () => navigate('/products'),
       };
@@ -482,7 +511,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       tone: 'ready',
       icon: <CheckCircleOutlined />,
       title: t('pages.cart.nextActionCheckoutTitle'),
-      text: t('pages.cart.nextActionCheckoutText', { amount: formatMoney(subtotal) }),
+      text: renderDrawerAmountText(t('pages.cart.nextActionCheckoutText', { amount: formatMoney(subtotal) }), formatMoney(subtotal)),
       label: t('pages.cart.checkout'),
       onClick: () => goCheckout(),
     };
@@ -497,14 +526,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       onClose={() => setOpen(false)}
       className={`cart-drawer cart-drawer--${language}`}
       styles={{ body: { padding: 16 } }}
-      extra={<Text strong>{formatMoney(subtotal)}</Text>}
+      extra={<Text strong className="commerce-money">{formatMoney(subtotal)}</Text>}
     >
       <div className="cart-drawer__content">
         <section className="cart-drawer__hero">
           {drawerHighlights.map((item) => (
             <article key={item.key} className="cart-drawer__heroStat">
               <strong>{item.title}</strong>
-              <span>{item.text}</span>
+              <span className={item.key === 'subtotal' ? 'commerce-money' : 'commerce-atomic'}>{item.text}</span>
             </article>
           ))}
         </section>
@@ -513,7 +542,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           <div className="cart-drawer__shippingHeader">
             <CheckCircleOutlined className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
             <div className="cart-drawer__shippingText">
-              <Text strong>{remaining > 0 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(remaining) }) : t('pages.cart.freeShippingUnlocked')}</Text>
+              <Text strong>{remaining > 0 ? freeShippingRemainingText(remaining) : t('pages.cart.freeShippingUnlocked')}</Text>
               <Text type="secondary" className="cart-drawer__shippingStatus">
                 {shippingStatusText}
               </Text>
@@ -643,10 +672,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                         </Tag>
                       ) : null}
                       <div className="cart-drawer__itemCommerce">
-                        <span className="cart-drawer__itemPrice">
-                          <Text>{formatMoney(item.price)}</Text>
-                          <Text type="secondary">x {item.quantity}</Text>
-                        </span>
+                        <div className="cart-drawer__itemCommerceTop">
+                          <span className="cart-drawer__itemPrice commerce-atomic commerce-price-quantity">
+                            <Text className="cart-drawer__itemUnitPrice commerce-money">{formatMoney(item.price)}</Text>
+                            <span className="cart-drawer__itemQuantity commerce-quantity">x {item.quantity}</span>
+                          </span>
+                          <Text strong className="cart-drawer__lineTotal commerce-money">{formatMoney(item.price * item.quantity)}</Text>
+                        </div>
                         <InputNumber
                           min={1}
                           max={item.stock ?? undefined}
@@ -656,7 +688,6 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                           status={updatingQuantityIds[item.id] ? 'warning' : undefined}
                           onChange={(value) => updateQuantity(item, value || 1)}
                         />
-                        <Text strong className="cart-drawer__lineTotal">{formatMoney(item.price * item.quantity)}</Text>
                       </div>
                       {updatingQuantityIds[item.id] ? (
                         <Text type="secondary" className="cart-drawer__syncText">
@@ -686,7 +717,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         <Space direction="vertical" className="cart-drawer__footerStack">
           <div className="cart-drawer__subtotal">
             <Text>{t('common.subtotal')}</Text>
-            <Text strong>{formatMoney(subtotal)}</Text>
+            <Text strong className="commerce-money">{formatMoney(subtotal)}</Text>
           </div>
           <Button
             type="primary"

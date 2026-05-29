@@ -68,6 +68,30 @@ public class EmailLoginService {
         sendLoginCodeInMemory(normalizedEmail, clientKey);
     }
 
+    public void sendProfileEmailChangeCode(Long userId, String email, String clientKey) {
+        String normalizedEmail = normalizeEmail(email);
+        if (userId == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+        User existing = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        if (existing != null && !userId.equals(existing.getId())) {
+            throw new IllegalArgumentException("Email already registered");
+        }
+        ensureMailConfigured();
+        String purposeKey = profileEmailPurposeKey(userId, normalizedEmail);
+        if (shouldUseRedis()) {
+            try {
+                sendPurposeCodeWithRedis(purposeKey, normalizedEmail, clientKey);
+                return;
+            } catch (EmailLoginException | MailException | IllegalStateException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                log.warn("Redis profile email code store is unavailable. Falling back to in-memory code store.", e);
+            }
+        }
+        sendPurposeCodeInMemory(purposeKey, normalizedEmail, clientKey);
+    }
+
     private void sendLoginCodeInMemory(String normalizedEmail, String clientKey) {
         Instant now = Instant.now(clock);
         consumeRate(sendBuckets, rateKey("send-email", normalizedEmail), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
@@ -133,6 +157,55 @@ public class EmailLoginService {
         }
     }
 
+    private void sendPurposeCodeInMemory(String purposeKey, String normalizedEmail, String clientKey) {
+        Instant now = Instant.now(clock);
+        consumeRate(sendBuckets, rateKey("send-purpose", purposeKey), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
+        consumeRate(sendBuckets, rateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
+
+        Instant previousSend = sendCooldowns.get(purposeKey);
+        if (previousSend != null && Duration.between(previousSend, now).compareTo(resendInterval()) < 0) {
+            throw rateLimited("RATE_LIMITED", previousSend.plus(resendInterval()), now);
+        }
+
+        String code = String.format("%06d", random.nextInt(1_000_000));
+        VerificationCode pendingCode = new VerificationCode(hashCode(purposeKey, code), now.plus(codeTtl()), now);
+        codes.put(purposeKey, pendingCode);
+        try {
+            sendMail(normalizedEmail, code, "email change");
+            sendCooldowns.put(purposeKey, now);
+        } catch (RuntimeException e) {
+            codes.remove(purposeKey, pendingCode);
+            throw e;
+        }
+    }
+
+    private void sendPurposeCodeWithRedis(String purposeKey, String normalizedEmail, String clientKey) {
+        StringRedisTemplate redisTemplate = redisTemplate();
+        Instant now = Instant.now(clock);
+        consumeRedisRate(redisTemplate, redisRateKey("send-purpose", purposeKey), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
+        consumeRedisRate(redisTemplate, redisRateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
+
+        String cooldownKey = redisKey("cooldown", purposeKey);
+        Long cooldownTtl = redisTemplate.getExpire(cooldownKey);
+        if (cooldownTtl != null && cooldownTtl > 0) {
+            throw rateLimited("RATE_LIMITED", now.plusSeconds(cooldownTtl), now);
+        }
+
+        String code = String.format("%06d", random.nextInt(1_000_000));
+        String codeKey = redisKey("code", purposeKey);
+        redisTemplate.opsForHash().put(codeKey, "hash", hashCode(purposeKey, code));
+        redisTemplate.opsForHash().put(codeKey, "sentAt", Long.toString(now.toEpochMilli()));
+        redisTemplate.opsForHash().put(codeKey, "failedAttempts", "0");
+        redisTemplate.expire(codeKey, codeTtl());
+        try {
+            sendMail(normalizedEmail, code, "email change");
+            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+        } catch (RuntimeException e) {
+            redisTemplate.delete(codeKey);
+            throw e;
+        }
+    }
+
     public User verifyLoginCode(String email, String code) {
         return verifyLoginCode(email, code, "unknown");
     }
@@ -150,6 +223,26 @@ public class EmailLoginService {
             }
         }
         return verifyLoginCodeInMemory(normalizedEmail, normalizedCode, clientKey);
+    }
+
+    public void verifyProfileEmailChangeCode(Long userId, String email, String code, String clientKey) {
+        String normalizedEmail = normalizeEmail(email);
+        String normalizedCode = normalizeCode(code);
+        if (userId == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+        String purposeKey = profileEmailPurposeKey(userId, normalizedEmail);
+        if (shouldUseRedis()) {
+            try {
+                verifyPurposeCodeWithRedis(purposeKey, normalizedEmail, normalizedCode, clientKey);
+                return;
+            } catch (EmailLoginException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                log.warn("Redis profile email code store is unavailable. Falling back to in-memory code store.", e);
+            }
+        }
+        verifyPurposeCodeInMemory(purposeKey, normalizedEmail, normalizedCode, clientKey);
     }
 
     private User verifyLoginCodeInMemory(String normalizedEmail, String normalizedCode, String clientKey) {
@@ -221,6 +314,65 @@ public class EmailLoginService {
         return user;
     }
 
+    private void verifyPurposeCodeInMemory(String purposeKey, String normalizedEmail, String normalizedCode, String clientKey) {
+        Instant now = Instant.now(clock);
+        consumeRate(verifyBuckets, rateKey("verify-purpose", purposeKey), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
+        consumeRate(verifyBuckets, rateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
+        if (normalizedCode.length() != 6) {
+            throw invalidCode();
+        }
+        VerificationCode verificationCode = codes.get(purposeKey);
+        if (verificationCode == null || verificationCode.expiresAt.isBefore(now)) {
+            codes.remove(purposeKey);
+            throw invalidCode();
+        }
+        if (!MessageDigest.isEqual(
+                verificationCode.codeHash.getBytes(StandardCharsets.UTF_8),
+                hashCode(purposeKey, normalizedCode).getBytes(StandardCharsets.UTF_8))) {
+            verificationCode.failedAttempts++;
+            if (verificationCode.failedAttempts >= maxCodeAttempts()) {
+                codes.remove(purposeKey);
+                throw tooManyAttempts(now);
+            }
+            throw invalidCode();
+        }
+        codes.remove(purposeKey);
+        clearPurposeVerifyBuckets(purposeKey, clientKey);
+        assertProfileEmailStillAvailable(purposeKey, normalizedEmail);
+    }
+
+    private void verifyPurposeCodeWithRedis(String purposeKey, String normalizedEmail, String normalizedCode, String clientKey) {
+        StringRedisTemplate redisTemplate = redisTemplate();
+        Instant now = Instant.now(clock);
+        consumeRedisRate(redisTemplate, redisRateKey("verify-purpose", purposeKey), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
+        consumeRedisRate(redisTemplate, redisRateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
+        if (normalizedCode.length() != 6) {
+            throw invalidCode();
+        }
+
+        String codeKey = redisKey("code", purposeKey);
+        Object storedHash = redisTemplate.opsForHash().get(codeKey, "hash");
+        if (storedHash == null) {
+            redisTemplate.delete(codeKey);
+            throw invalidCode();
+        }
+        if (!MessageDigest.isEqual(
+                storedHash.toString().getBytes(StandardCharsets.UTF_8),
+                hashCode(purposeKey, normalizedCode).getBytes(StandardCharsets.UTF_8))) {
+            Long failedAttempts = redisTemplate.opsForHash().increment(codeKey, "failedAttempts", 1);
+            if (failedAttempts != null && failedAttempts >= maxCodeAttempts()) {
+                redisTemplate.delete(codeKey);
+                throw tooManyAttempts(now);
+            }
+            throw invalidCode();
+        }
+
+        redisTemplate.delete(codeKey);
+        redisTemplate.delete(redisRateKey("verify-purpose", purposeKey));
+        redisTemplate.delete(redisRateKey("verify-client", normalizeClientKey(clientKey)));
+        assertProfileEmailStillAvailable(purposeKey, normalizedEmail);
+    }
+
     public int codeTtlMinutes() {
         return (int) codeTtl().toMinutes();
     }
@@ -239,11 +391,15 @@ public class EmailLoginService {
     }
 
     private void sendMail(String to, String code) {
+        sendMail(to, code, "login");
+    }
+
+    private void sendMail(String to, String code, String purposeLabel) {
         List<MailAccountProperties.Account> accounts = randomizedConfiguredAccounts();
         MailException lastFailure = null;
         for (MailAccountProperties.Account account : accounts) {
             try {
-                sendMailWithAccount(account, to, code);
+                sendMailWithAccount(account, to, code, purposeLabel);
                 return;
             } catch (MailException e) {
                 lastFailure = e;
@@ -257,15 +413,20 @@ public class EmailLoginService {
     }
 
     private void sendMailWithAccount(MailAccountProperties.Account account, String to, String code) {
+        sendMailWithAccount(account, to, code, "login");
+    }
+
+    private void sendMailWithAccount(MailAccountProperties.Account account, String to, String code, String purposeLabel) {
         try {
             JavaMailSenderImpl sender = mailSenderFor(account);
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
             String brandName = mailAccountProperties.getBrandName();
+            String safePurpose = isBlank(purposeLabel) ? "login" : purposeLabel.trim();
             helper.setFrom(account.getFrom().trim(), isBlank(brandName) ? "ShopMX" : brandName.trim());
             helper.setTo(to);
-            helper.setSubject((isBlank(brandName) ? "ShopMX" : brandName.trim()) + " login verification code");
-            helper.setText(renderEmailText(code), renderEmailHtml(code));
+            helper.setSubject((isBlank(brandName) ? "ShopMX" : brandName.trim()) + " " + safePurpose + " verification code");
+            helper.setText(renderEmailText(code, safePurpose), renderEmailHtml(code, safePurpose));
             sender.send(message);
         } catch (MessagingException | UnsupportedEncodingException e) {
             throw new MailPreparationException("Unable to prepare login verification email", e);
@@ -461,6 +622,11 @@ public class EmailLoginService {
         verifyBuckets.remove(rateKey("verify-client", normalizeClientKey(clientKey)));
     }
 
+    private void clearPurposeVerifyBuckets(String purposeKey, String clientKey) {
+        verifyBuckets.remove(rateKey("verify-purpose", purposeKey));
+        verifyBuckets.remove(rateKey("verify-client", normalizeClientKey(clientKey)));
+    }
+
     private void cleanupBuckets(Map<String, RateBucket> buckets, Duration window, Instant now) {
         buckets.entrySet().removeIf(entry -> entry.getValue().windowStart.plus(window).isBefore(now));
     }
@@ -477,22 +643,60 @@ public class EmailLoginService {
         return normalized.charAt(0) + "***" + normalized.substring(atIndex);
     }
 
+    private String profileEmailPurposeKey(Long userId, String normalizedEmail) {
+        return "profile-email:" + userId + ":" + normalizedEmail;
+    }
+
+    private Long userIdFromProfileEmailPurposeKey(String purposeKey) {
+        if (purposeKey == null || !purposeKey.startsWith("profile-email:")) {
+            return null;
+        }
+        int start = "profile-email:".length();
+        int end = purposeKey.indexOf(':', start);
+        if (end <= start) {
+            return null;
+        }
+        try {
+            return Long.parseLong(purposeKey.substring(start, end));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private void assertProfileEmailStillAvailable(String purposeKey, String normalizedEmail) {
+        User existing = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        Long userId = userIdFromProfileEmailPurposeKey(purposeKey);
+        if (existing != null && (userId == null || !userId.equals(existing.getId()))) {
+            throw invalidCode();
+        }
+    }
+
     private String renderEmailText(String code) {
+        return renderEmailText(code, "login");
+    }
+
+    private String renderEmailText(String code, String purposeLabel) {
         String brandName = isBlank(mailAccountProperties.getBrandName()) ? "ShopMX" : mailAccountProperties.getBrandName().trim();
-        return "Your " + brandName + " login verification code is " + code
+        String safePurpose = isBlank(purposeLabel) ? "login" : purposeLabel.trim();
+        return "Your " + brandName + " " + safePurpose + " verification code is " + code
                 + ". It expires in " + codeTtl().toMinutes()
                 + " minutes. If you did not request this, you can ignore this email.";
     }
 
     private String renderEmailHtml(String code) {
+        return renderEmailHtml(code, "login");
+    }
+
+    private String renderEmailHtml(String code, String purposeLabel) {
         String brandName = isBlank(mailAccountProperties.getBrandName()) ? "ShopMX" : mailAccountProperties.getBrandName().trim();
+        String safePurpose = isBlank(purposeLabel) ? "Login" : purposeLabel.trim();
         long minutes = codeTtl().toMinutes();
         return "<!doctype html>"
                 + "<html><body style=\"margin:0;background:#f6f8f6;font-family:Arial,sans-serif;color:#173f2b;\">"
                 + "<div style=\"max-width:520px;margin:0 auto;padding:28px 18px;\">"
                 + "<div style=\"background:#ffffff;border:1px solid #e4ebe4;border-radius:8px;padding:26px;\">"
                 + "<div style=\"font-size:22px;font-weight:800;color:#ee4d2d;margin-bottom:14px;\">" + escapeHtml(brandName) + "</div>"
-                + "<div style=\"font-size:16px;font-weight:700;margin-bottom:10px;\">Login verification code</div>"
+                + "<div style=\"font-size:16px;font-weight:700;margin-bottom:10px;\">" + escapeHtml(safePurpose) + " verification code</div>"
                 + "<div style=\"font-size:34px;font-weight:800;letter-spacing:6px;background:#f8fcf9;border:1px solid #e4ebe4;border-radius:8px;padding:16px 18px;text-align:center;margin:16px 0;\">"
                 + escapeHtml(code)
                 + "</div>"

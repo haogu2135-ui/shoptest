@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
@@ -36,13 +37,25 @@ public class JwtService {
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         ensureJwtSecretConfigured();
+        Map<String, Object> claims = new HashMap<>(extraClaims);
+        String jti = UUID.randomUUID().toString();
         return Jwts.builder()
-                .setClaims(extraClaims)
+                .setClaims(claims)
+                .setId(jti)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + runtimeConfig.getInt("app.jwtExpirationInMs", 86400000)))
+                .setExpiration(new Date(System.currentTimeMillis() + runtimeConfig.getInt("app.jwtExpirationInMs", 7200000)))
                 .signWith(SignatureAlgorithm.HS256, jwtSecret())
                 .compact();
+    }
+
+    public String extractJti(String token) {
+        return extractClaim(token, Claims::getId);
+    }
+
+    public long getExpirationMs(String token) {
+        Date exp = extractExpiration(token);
+        return Math.max(0, exp.getTime() - System.currentTimeMillis());
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

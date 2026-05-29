@@ -62,6 +62,7 @@ public class ConfigCenterService {
             "app.mail.",
             "app.cors.",
             "app.websocket.",
+            "app.storefront.",
             "logging.level.");
     private static final Pattern SENSITIVE_KEY_PATTERN = Pattern.compile(
             ".*(password|passwd|pwd|secret|token|credential|private[-.]?key|access[-.]?key|auth[-.]?header).*",
@@ -167,13 +168,20 @@ public class ConfigCenterService {
             if (content == null || content.trim().isEmpty()) {
                 return;
             }
-            List<String> errors = new ArrayList<>();
-            Map<String, String> parsed = parseProperties(content, errors);
-            if (errors.isEmpty() && !parsed.isEmpty()) {
-                applyRuntime(runtimeApplicableProperties(parsed));
-            }
+            applyNacosRuntimeContentOnStartup(content);
         } catch (NacosException | RuntimeException ignored) {
             // Startup should not fail when Nacos config is unavailable; local properties remain in effect.
+        }
+    }
+
+    void applyNacosRuntimeContentOnStartup(String content) {
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        String normalizedContent = normalizeContent(content, errors);
+        Map<String, String> parsed = parseProperties(normalizedContent, errors);
+        validateParsedProperties(parsed, warnings, errors, true);
+        if (errors.isEmpty() && !parsed.isEmpty()) {
+            applyRuntime(runtimeApplicableProperties(parsed));
         }
     }
 

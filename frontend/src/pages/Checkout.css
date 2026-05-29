@@ -678,7 +678,7 @@
 
 .checkout-page__itemCommerce {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) max-content;
   gap: 8px;
   align-items: center;
   width: 100%;
@@ -692,6 +692,14 @@
 .checkout-page__itemCommerce strong.ant-typography {
   color: #ee4d2d;
   text-align: right;
+}
+
+.checkout-page__itemUnit,
+.checkout-page__itemTotal {
+  min-width: 0;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .checkout-page__urgency {
@@ -825,6 +833,11 @@
 
 #checkout-add-on-assistant {
   scroll-margin-top: 24px;
+}
+
+#checkout-address-card {
+  scroll-margin-top: calc(88px + env(safe-area-inset-top, 0px));
+  scroll-margin-bottom: calc(128px + env(safe-area-inset-bottom, 0px));
 }
 
 .checkout-page__addOnDock {
@@ -1349,10 +1362,11 @@
 
   .checkout-page__itemCommerce {
     grid-template-columns: 1fr;
-    gap: 4px;
+    gap: 6px;
   }
 
   .checkout-page__itemCommerce strong.ant-typography {
+    justify-content: flex-start;
     text-align: left;
   }
 
@@ -1824,6 +1838,11 @@
 
 /* Mobile checkout refinement pass */
 @media (max-width: 720px) {
+  #checkout-address-card {
+    scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+
   .checkout-page {
     width: min(100% - 16px, 920px);
     padding: 12px 0 calc(112px + env(safe-area-inset-bottom));
@@ -1940,7 +1959,7 @@
   }
 
   .checkout-page__itemTotal {
-    grid-column: 2;
+    grid-column: 1 / -1;
     max-width: none;
     justify-self: start;
     text-align: left;
@@ -2886,5 +2905,520 @@
 
   .checkout-page__submitMetric {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+}
+
+/* Final mobile atomic-text pass: checkout money, quantities and fixed actions stay single-line. */
+.checkout-page__itemCommerce .ant-typography,
+.checkout-page__itemCommerce strong.ant-typography,
+.checkout-page__summaryTotal,
+.checkout-page__summaryLine strong,
+.checkout-page__payableTotal,
+.checkout-page__payableTotal strong,
+.checkout-page__submitMetric strong.ant-typography,
+.checkout-page__mobilePayBar strong.ant-typography,
+.checkout-page__couponSummary .ant-typography {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.checkout-page__itemCommerce .ant-typography,
+.checkout-page__summaryTotal,
+.checkout-page__payableTotal,
+.checkout-page__submitMetric strong.ant-typography,
+.checkout-page__mobilePayBar strong.ant-typography {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.checkout-page__submitButton,
+.checkout-page__mobilePayBar .ant-btn,
+.checkout-page__nextAction .ant-btn,
+.checkout-page__coupon .ant-btn,
+.checkout-page__summaryAction .ant-btn,
+.checkout-page__addOnButton {
+  white-space: nowrap;
+}
+
+.checkout-page__submitButton > span:not(.anticon):not(.ant-btn-icon),
+.checkout-page__mobilePayBar .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.checkout-page__nextAction .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.checkout-page__coupon .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.checkout-page__summaryAction .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.checkout-page__addOnButton > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+#checkout-address-card,
+#checkout-coupon-card,
+#checkout-payment-card {
+  scroll-margin-top: calc(112px + env(safe-area-inset-top, 0px));
+}
+
+@media (max-width: 780px) {
+  #checkout-address-card,
+  #checkout-coupon-card,
+  #checkout-payment-card {
+    scroll-margin-top: calc(164px + env(safe-area-inset-top, 0px));
+  }
+
+  .checkout-page__submitReview .checkout-page__submitButton.ant-btn,
+  .checkout-page__submitReview .checkout-page__submitButton.ant-btn-primary,
+  .checkout-page__mobilePayBar .ant-btn,
+  .checkout-page__couponOpportunity .ant-btn,
+  .checkout-page__paymentRecoveryActions .ant-btn {
+    white-space: nowrap;
+  }
+
+  .checkout-page__submitReview .checkout-page__submitButton.ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .checkout-page__mobilePayBar .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .checkout-page__couponOpportunity .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .checkout-page__paymentRecoveryActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: nowrap;
+  }
+}
+
+/* Mobile UI audit closure: prevent local checkout rails/actions from overflowing or covering content. */
+@media (max-width: 780px) {
+  .checkout-page {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    overflow-x: clip;
+  }
+
+  .checkout-page__supportPanel,
+  .checkout-page__supportPanel > summary,
+  .checkout-page__supportPanel > summary > span,
+  .checkout-page__savingsCoach,
+  .checkout-page__savingsCoachGrid,
+  .checkout-page__savingsCoachItem,
+  .checkout-page__readinessGrid,
+  .checkout-page__readinessItem,
+  .checkout-page__trustBar,
+  .checkout-page__trustItem {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .checkout-page__supportPanel > summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+
+  .checkout-page__supportPanel > summary > span,
+  .checkout-page__savingsCoachItem > span:last-child,
+  .checkout-page__readinessItem > span,
+  .checkout-page__nextAction > span {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .checkout-page__supportPanel > summary .ant-typography,
+  .checkout-page__savingsCoachItem .ant-typography,
+  .checkout-page__readinessItem .ant-typography,
+  .checkout-page__nextAction .ant-typography,
+  .checkout-page__paymentConfidence .ant-typography {
+    max-width: 100%;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .checkout-page__savingsCoachGrid,
+  .checkout-page__readinessGrid,
+  .checkout-page__trustBar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: visible;
+    overflow-y: visible;
+  }
+
+  .checkout-page__savingsCoachItem,
+  .checkout-page__readinessItem,
+  .checkout-page__trustItem {
+    width: 100%;
+    flex: 1 1 auto;
+    scroll-snap-align: none;
+  }
+
+  .checkout-page__summaryTotal,
+  .checkout-page__summaryLine strong,
+  .checkout-page__payableTotal,
+  .checkout-page__payableTotal strong,
+  .checkout-page__mobilePayBar strong,
+  .checkout-page__mobilePayBar strong.ant-typography,
+  .checkout-page__submitMetric strong.ant-typography:first-of-type {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .checkout-page__submitReview {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 12px 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .checkout-page__submitReview > div {
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid #e4ebe4;
+    border-radius: 16px;
+    background: #f8fcf9;
+    box-shadow: none;
+  }
+
+  .checkout-page__submitMetric {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .checkout-page__submitMetric strong.ant-typography {
+    justify-self: start;
+    text-align: left;
+    color: #173f2b;
+  }
+
+  .checkout-page__submitMetric--method strong.ant-typography {
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+  }
+
+  .checkout-page__submitButton,
+  .checkout-page__mobilePayBar .ant-btn {
+    white-space: nowrap !important;
+  }
+
+  .checkout-page__submitButton > span:not(.anticon):not(.ant-btn-icon),
+  .checkout-page__mobilePayBar .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .checkout-page__mobilePayBar {
+    z-index: 940;
+    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  }
+
+  .checkout-page__mobilePayBar .ant-typography {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  .checkout-page__mobilePayBar strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+  }
+}
+
+/* Final checkout atomic layout pass */
+.checkout-page__itemCommerce,
+.checkout-page__summaryLine,
+.checkout-page__couponSummary,
+.checkout-page__submitReview,
+.checkout-page__mobilePayBar,
+.checkout-page__paymentMethodTop,
+.checkout-page__paymentBadges {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.checkout-page__itemCommerce :where(.ant-typography, span),
+.checkout-page__summaryTotal,
+.checkout-page__payableTotal,
+.checkout-page__paymentUrl,
+.checkout-page__submitMetric strong,
+.checkout-page__mobilePayBar strong,
+.checkout-page__paymentBadges .ant-tag {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.checkout-page__itemCommerce :where(.ant-typography, span),
+.checkout-page__summaryTotal,
+.checkout-page__payableTotal,
+.checkout-page__submitMetric strong,
+.checkout-page__mobilePayBar strong,
+.checkout-page__paymentBadges .ant-tag {
+  white-space: nowrap;
+}
+
+.checkout-page__itemCommerce :where(.ant-typography, span),
+.checkout-page__summaryTotal,
+.checkout-page__payableTotal,
+.checkout-page__submitMetric strong,
+.checkout-page__mobilePayBar strong,
+.checkout-page__paymentBadges .ant-tag {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.checkout-page__paymentUrl,
+.checkout-page__shippingPolicy,
+.checkout-page__addressText {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 780px) {
+  .checkout-page__itemCommerce {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(max-content, auto);
+    gap: 6px;
+    align-items: center;
+  }
+
+  .checkout-page__paymentGrid,
+  .checkout-page__paymentMethod,
+  .checkout-page__paymentMethodTop,
+  .checkout-page__paymentMethodDescription,
+  .checkout-page__paymentBadges,
+  .checkout-page__couponSummary,
+  .checkout-page__couponRules,
+  .checkout-page__paymentConfidence {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .checkout-page__paymentMethodTop {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .checkout-page__paymentBadges {
+    display: inline-flex;
+    justify-content: flex-end;
+    overflow: hidden;
+  }
+
+  .checkout-page__paymentBadges .ant-tag {
+    min-width: 0;
+    max-width: min(116px, 34vw);
+    margin-inline-end: 0;
+  }
+
+  .checkout-page__submitReview,
+  .checkout-page__mobilePayBar {
+    scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Final checkout mobile form closure: address fields and payment rail remain visible while editing. */
+@media (max-width: 780px) {
+  #checkout-address-card {
+    scroll-margin-top: calc(148px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: calc(152px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #checkout-address-card :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select) {
+    scroll-margin-top: calc(156px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #checkout-address-card :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input):focus-within,
+  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input):focus {
+    scroll-margin-top: calc(172px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: calc(196px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .checkout-page__sectionCard,
+  .checkout-page__sectionCard .ant-card-body,
+  .checkout-page__addressGroup,
+  .checkout-page__addressChoice,
+  .checkout-page__addressChoice .ant-radio + span,
+  .checkout-page__itemDescription,
+  .checkout-page__itemCommerce {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .checkout-page__addressChoice .ant-radio + span {
+    display: block;
+  }
+
+  .checkout-page__addressChoice .ant-space {
+    max-width: 100%;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .checkout-page__addressText,
+  .checkout-page__shippingPolicy {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .checkout-page .ant-input,
+  .checkout-page .ant-input-affix-wrapper,
+  .checkout-page .ant-select-selector,
+  .checkout-page .ant-cascader-picker,
+  .checkout-page textarea.ant-input {
+    font-size: 16px;
+  }
+
+  .checkout-page textarea.ant-input {
+    min-height: 92px;
+    resize: vertical;
+  }
+
+  #checkout-address-card .ant-card-body {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .checkout-page__mobilePayBar {
+    bottom: max(0px, env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Final checkout mobile closure: address editing and commerce totals stay within the viewport. */
+@media (max-width: 780px) {
+  .checkout-page {
+    overflow-x: clip;
+  }
+
+  .checkout-page__layout,
+  .checkout-page__sectionCard,
+  .checkout-page__sectionCard .ant-card-body,
+  .checkout-page__addressGroup,
+  .checkout-page__addressChoice,
+  .checkout-page__addressChoice :where(.ant-space, .ant-space-item),
+  .checkout-page__reviewItem,
+  .checkout-page__itemCommerce,
+  .checkout-page__summaryLine,
+  .checkout-page__mobilePayBar {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .checkout-page__addressChoice {
+    overflow: hidden;
+  }
+
+  .checkout-page__addressHeader,
+  .checkout-page__addressChoice .ant-space {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+  }
+
+  .checkout-page__addressHeader :where(.ant-typography, .ant-tag),
+  .checkout-page__itemUnit,
+  .checkout-page__itemTotal,
+  .checkout-page__summaryLine strong,
+  .checkout-page__summaryTotal,
+  .checkout-page__payableTotal,
+  .checkout-page__mobilePayBar strong,
+  .checkout-page__mobilePayBar strong.ant-typography {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .checkout-page__itemUnit,
+  .checkout-page__itemTotal,
+  .checkout-page__summaryLine strong {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .checkout-page__mobilePayBar {
+    left: max(8px, env(safe-area-inset-left, 0px));
+    right: max(8px, env(safe-area-inset-right, 0px));
+    width: auto;
+  }
+
+  .checkout-page__mobilePayBar .ant-btn {
+    min-width: 0;
+  }
+
+  .checkout-page__submitAmountLabel {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .checkout-page__submitAmountLabel .commerce-money {
+    flex: 0 0 auto;
+    max-width: min(104px, 34vw);
+  }
+}
+
+@media (max-width: 380px) {
+  .checkout-page__mobilePayBar {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+    gap: 6px;
+  }
+
+  .checkout-page__mobilePayBar strong,
+  .checkout-page__mobilePayBar strong.ant-typography {
+    font-size: 15px;
+  }
+}
+
+/* Last address-form viewport guard for mobile browser chrome and sticky pay bars. */
+@media (max-width: 780px) {
+  html,
+  body,
+  .shop-app-shell,
+  .shop-app-shell .ant-layout-content,
+  .checkout-page {
+    scroll-padding-top: calc(124px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(172px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #checkout-address-card,
+  #checkout-address-card .ant-card-body,
+  #checkout-address-card .ant-form-item,
+  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input) {
+    scroll-margin-top: calc(132px + env(safe-area-inset-top, 0px)) !important;
+    scroll-margin-bottom: calc(184px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input):focus,
+  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input):focus-within {
+    scroll-margin-top: calc(156px + env(safe-area-inset-top, 0px)) !important;
+    scroll-margin-bottom: calc(204px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }

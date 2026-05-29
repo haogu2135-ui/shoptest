@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.config.MailAccountProperties;
 import com.example.shop.dto.AppConfigResponse;
 import com.example.shop.service.PaymentService;
 import com.example.shop.service.RuntimeConfigService;
@@ -14,10 +15,12 @@ import java.math.BigDecimal;
 public class AppConfigController {
     private final PaymentService paymentService;
     private final RuntimeConfigService runtimeConfig;
+    private final MailAccountProperties mailAccountProperties;
 
-    public AppConfigController(PaymentService paymentService, RuntimeConfigService runtimeConfig) {
+    public AppConfigController(PaymentService paymentService, RuntimeConfigService runtimeConfig, MailAccountProperties mailAccountProperties) {
         this.paymentService = paymentService;
         this.runtimeConfig = runtimeConfig;
+        this.mailAccountProperties = mailAccountProperties;
     }
 
     @GetMapping("/config")
@@ -29,6 +32,7 @@ public class AppConfigController {
         return new AppConfigResponse(
                 mode,
                 paymentService.isPaymentSimulationEnabled(),
+                mailAccountProperties.hasConfiguredAccount(),
                 positiveMoney(runtimeConfig.getBigDecimal("order.default-shipping-fee", new BigDecimal("30.00"))),
                 positiveMoney(runtimeConfig.getBigDecimal("order.free-shipping-threshold", new BigDecimal("899.00")))
         );

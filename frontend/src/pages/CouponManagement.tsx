@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
-import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SearchOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api';
 import type { Coupon, CouponAdminSummary, PetBirthdayCouponConfig, User } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
+import { getApiErrorMessage } from '../utils/apiError';
 import './CouponManagement.css';
 
 const { Title } = Typography;
 
 const CouponManagement: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,9 @@ const CouponManagement: React.FC = () => {
   const [couponSummary, setCouponSummary] = useState<CouponAdminSummary | null>(null);
   const [couponSubmitting, setCouponSubmitting] = useState(false);
   const [grantSubmitting, setGrantSubmitting] = useState(false);
+  const [keyword, setKeyword] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [scopeFilter, setScopeFilter] = useState<string | undefined>();
   const [modalVisible, setModalVisible] = useState(false);
   const [grantVisible, setGrantVisible] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
@@ -68,17 +72,34 @@ const CouponManagement: React.FC = () => {
     return checkedAt.isValid() ? checkedAt.format('YYYY-MM-DD HH:mm') : couponSummary.checkedAt;
   }, [couponSummary]);
 
+  const filteredCoupons = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    return coupons.filter((coupon) => {
+      if (statusFilter && coupon.status !== statusFilter) return false;
+      if (scopeFilter && coupon.scope !== scopeFilter) return false;
+      if (!text) return true;
+      return [
+        coupon.name,
+        coupon.description,
+        coupon.couponType,
+        coupon.scope,
+        coupon.status,
+        coupon.id,
+      ].some((value) => String(value || '').toLowerCase().includes(text));
+    });
+  }, [coupons, keyword, scopeFilter, statusFilter]);
+
   const loadCoupons = useCallback(async () => {
     setLoading(true);
     try {
       const res = await adminApi.getCoupons();
       setCoupons(res.data);
-    } catch {
-      message.error(t('pages.adminCoupons.loadFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.adminCoupons.loadFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   const loadCouponSummary = useCallback(async () => {
     try {
@@ -104,12 +125,12 @@ const CouponManagement: React.FC = () => {
       const res = await adminApi.getPetBirthdayCouponConfig();
       setBirthdayConfig(res.data);
       birthdayConfigForm.setFieldsValue(res.data);
-    } catch {
-      message.error(t('pages.adminCoupons.birthdayConfigLoadFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.adminCoupons.birthdayConfigLoadFailed'), language));
     } finally {
       setBirthdayConfigLoading(false);
     }
-  }, [birthdayConfigForm, t]);
+  }, [birthdayConfigForm, language, t]);
 
   useEffect(() => {
     loadCoupons();
@@ -127,6 +148,7 @@ const CouponManagement: React.FC = () => {
 
   const openEdit = (coupon: Coupon) => {
     setEditingCoupon(coupon);
+    form.resetFields();
     form.setFieldsValue({
       ...coupon,
       validRange: coupon.startAt || coupon.endAt ? [coupon.startAt ? dayjs(coupon.startAt) : null, coupon.endAt ? dayjs(coupon.endAt) : null] : undefined,
@@ -158,14 +180,12 @@ const CouponManagement: React.FC = () => {
         message.success(t('pages.adminCoupons.created'));
       }
       setModalVisible(false);
+      setEditingCoupon(null);
+      form.resetFields();
       await Promise.all([loadCoupons(), loadCouponSummary()]);
     } catch (error: any) {
       if (error?.errorFields) return;
-      if (error?.response?.data?.error) {
-        message.error(error.response.data.error);
-      } else {
-        message.error(t('messages.operationFailed'));
-      }
+      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
       setCouponSubmitting(false);
     }
@@ -177,7 +197,7 @@ const CouponManagement: React.FC = () => {
       message.success(t('pages.adminCoupons.deleted'));
       await Promise.all([loadCoupons(), loadCouponSummary()]);
     } catch (error: any) {
-      message.error(error?.response?.data?.error || t('pages.adminCoupons.deleteFailed'));
+      message.error(getApiErrorMessage(error, t('pages.adminCoupons.deleteFailed'), language));
     }
   };
 
@@ -195,10 +215,12 @@ const CouponManagement: React.FC = () => {
       const res = await adminApi.grantCoupon(grantCoupon.id, values.userIds, grantMaxUsers);
       message.success(t('pages.adminCoupons.granted', { count: res.data.granted }));
       setGrantVisible(false);
+      setGrantCoupon(null);
+      grantForm.resetFields();
       await Promise.all([loadCoupons(), loadCouponSummary()]);
     } catch (error: any) {
       if (error?.errorFields) return;
-      message.error(error?.response?.data?.error || t('pages.adminCoupons.grantFailed'));
+      message.error(getApiErrorMessage(error, t('pages.adminCoupons.grantFailed'), language));
     } finally {
       setGrantSubmitting(false);
     }
@@ -211,10 +233,24 @@ const CouponManagement: React.FC = () => {
       message.success(t('pages.adminCoupons.petBirthdayGranted', { count: res.data.granted }));
       await Promise.all([loadCoupons(), loadCouponSummary()]);
     } catch (error: any) {
-      message.error(error?.response?.data?.error || t('pages.adminCoupons.petBirthdayFailed'));
+      message.error(getApiErrorMessage(error, t('pages.adminCoupons.petBirthdayFailed'), language));
     } finally {
       setBirthdayCouponLoading(false);
     }
+  };
+
+  const closeCouponModal = () => {
+    if (couponSubmitting) return;
+    setModalVisible(false);
+    setEditingCoupon(null);
+    form.resetFields();
+  };
+
+  const closeGrantModal = () => {
+    if (grantSubmitting) return;
+    setGrantVisible(false);
+    setGrantCoupon(null);
+    grantForm.resetFields();
   };
 
   const saveBirthdayConfig = async () => {
@@ -239,7 +275,7 @@ const CouponManagement: React.FC = () => {
       message.success(t('pages.adminCoupons.birthdayConfigSaved'));
     } catch (error: any) {
       if (error?.errorFields) return;
-      message.error(error?.response?.data?.error || t('pages.adminCoupons.birthdayConfigSaveFailed'));
+      message.error(getApiErrorMessage(error, t('pages.adminCoupons.birthdayConfigSaveFailed'), language));
     } finally {
       setBirthdayConfigSaving(false);
     }
@@ -256,9 +292,13 @@ const CouponManagement: React.FC = () => {
     {
       title: t('pages.adminCoupons.rule'),
       key: 'rule',
-      render: (_: any, record: Coupon) => record.couponType === 'FULL_REDUCTION'
-        ? `${formatMoney(record.thresholdAmount)} - ${formatMoney(record.reductionAmount)}`
-        : t('pages.coupons.discountPayable', { percent: record.discountPercent || 0 }) + (record.maxDiscountAmount ? `, ${t('pages.coupons.maxDiscount', { amount: formatMoney(record.maxDiscountAmount) })}` : ''),
+      render: (_: any, record: Coupon) => (
+        <span className="commerce-atomic">
+          {record.couponType === 'FULL_REDUCTION'
+            ? `${formatMoney(record.thresholdAmount)} - ${formatMoney(record.reductionAmount)}`
+            : t('pages.coupons.discountPayable', { percent: record.discountPercent || 0 }) + (record.maxDiscountAmount ? `, ${t('pages.coupons.maxDiscount', { amount: formatMoney(record.maxDiscountAmount) })}` : '')}
+        </span>
+      ),
     },
     { title: t('pages.adminCoupons.scope'), dataIndex: 'scope', key: 'scope', render: (scope: string) => <Tag>{scope === 'PUBLIC' ? t('pages.adminCoupons.publicClaim') : t('pages.adminCoupons.adminAssigned')}</Tag> },
     { title: t('pages.adminCoupons.status'), dataIndex: 'status', key: 'status', render: (status: string) => <Tag color={status === 'ACTIVE' ? 'green' : 'default'}>{t(`status.${status}`)}</Tag> },
@@ -372,6 +412,8 @@ const CouponManagement: React.FC = () => {
             <Form.Item name="couponType" label={t('pages.adminCoupons.type')} rules={[{ required: true }]}>
               <Select
                 onChange={() => birthdayConfigForm.validateFields(['reductionAmount', 'discountPercent', 'maxDiscountAmount']).catch(() => undefined)}
+                popupClassName="shop-mobile-popup-layer"
+                getPopupContainer={() => document.body}
                 options={[
                   { value: 'FULL_REDUCTION', label: t('pages.coupons.fullReduction') },
                   { value: 'DISCOUNT', label: t('pages.coupons.discount') },
@@ -436,9 +478,48 @@ const CouponManagement: React.FC = () => {
         </Form>
       </Card>
 
-      <Table columns={columns} dataSource={coupons} rowKey="id" loading={loading} bordered scroll={{ x: 980 }} pagination={{ pageSize: 10 }} />
+      <Card className="coupon-management-page__toolbar">
+        <Space wrap>
+          <Input
+            allowClear
+            prefix={<SearchOutlined />}
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={t('common.search')}
+            className="coupon-management-page__keywordInput"
+          />
+          <Select
+            allowClear
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder={t('pages.adminCoupons.status')}
+            className="coupon-management-page__filterSelect"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
+            options={[
+              { value: 'ACTIVE', label: t('status.ACTIVE') },
+              { value: 'INACTIVE', label: t('status.INACTIVE') },
+            ]}
+          />
+          <Select
+            allowClear
+            value={scopeFilter}
+            onChange={setScopeFilter}
+            placeholder={t('pages.adminCoupons.scope')}
+            className="coupon-management-page__filterSelect"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
+            options={[
+              { value: 'PUBLIC', label: t('pages.adminCoupons.publicClaim') },
+              { value: 'ASSIGNED', label: t('pages.adminCoupons.adminAssigned') },
+            ]}
+          />
+        </Space>
+      </Card>
 
-      <Modal className="coupon-management-page__editorModal" title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')} open={modalVisible} onOk={submitCoupon} onCancel={() => setModalVisible(false)} confirmLoading={couponSubmitting} width={720}>
+      <Table columns={columns} dataSource={filteredCoupons} rowKey="id" loading={loading} bordered scroll={{ x: 980 }} pagination={{ pageSize: 10 }} />
+
+      <Modal className="profile-mobile-safe-modal coupon-management-page__editorModal" title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')} open={modalVisible} onOk={submitCoupon} onCancel={closeCouponModal} confirmLoading={couponSubmitting} width={720} destroyOnHidden>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.adminCoupons.name')} rules={[{ required: true, message: t('pages.adminCoupons.nameRequired') }, { max: couponNameMaxChars, message: t('pages.adminCoupons.nameMaxLength', { count: couponNameMaxChars }) }]}>
             <Input maxLength={couponNameMaxChars} showCount />
@@ -446,6 +527,8 @@ const CouponManagement: React.FC = () => {
           <Form.Item name="couponType" label={t('pages.adminCoupons.type')} rules={[{ required: true }]}>
             <Select
               onChange={() => form.validateFields(['reductionAmount', 'discountPercent', 'maxDiscountAmount']).catch(() => undefined)}
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
               options={[
                 { value: 'FULL_REDUCTION', label: t('pages.coupons.fullReduction') },
                 { value: 'DISCOUNT', label: t('pages.coupons.discount') },
@@ -486,13 +569,13 @@ const CouponManagement: React.FC = () => {
             )}
           </div>
           <Form.Item name="scope" label={t('pages.adminCoupons.scope')}>
-            <Select options={[{ value: 'PUBLIC', label: t('pages.adminCoupons.publicClaim') }, { value: 'ASSIGNED', label: t('pages.adminCoupons.adminAssigned') }]} />
+            <Select popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} options={[{ value: 'PUBLIC', label: t('pages.adminCoupons.publicClaim') }, { value: 'ASSIGNED', label: t('pages.adminCoupons.adminAssigned') }]} />
           </Form.Item>
           <Form.Item name="status" label={t('pages.adminCoupons.status')}>
-            <Select options={[{ value: 'ACTIVE', label: t('status.ACTIVE') }, { value: 'INACTIVE', label: t('status.INACTIVE') }]} />
+            <Select popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} options={[{ value: 'ACTIVE', label: t('status.ACTIVE') }, { value: 'INACTIVE', label: t('status.INACTIVE') }]} />
           </Form.Item>
           <Form.Item name="validRange" label={t('pages.adminCoupons.validTime')}>
-            <DatePicker.RangePicker showTime className="coupon-management-page__rangePicker" />
+            <DatePicker.RangePicker showTime className="coupon-management-page__rangePicker" popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} />
           </Form.Item>
           <Form.Item name="description" label={t('pages.adminCoupons.description')} rules={[{ max: couponDescriptionMaxChars, message: t('pages.adminCoupons.descriptionMaxLength', { count: couponDescriptionMaxChars }) }]}>
             <Input.TextArea rows={3} maxLength={couponDescriptionMaxChars} showCount />
@@ -500,7 +583,7 @@ const CouponManagement: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal className="coupon-management-page__grantModal" title={grantCoupon ? t('pages.adminCoupons.grantCouponWithName', { name: grantCoupon.name }) : t('pages.adminCoupons.grantCoupon')} open={grantVisible} onOk={submitGrant} onCancel={() => setGrantVisible(false)} confirmLoading={grantSubmitting}>
+      <Modal className="profile-mobile-safe-modal coupon-management-page__grantModal" title={grantCoupon ? t('pages.adminCoupons.grantCouponWithName', { name: grantCoupon.name }) : t('pages.adminCoupons.grantCoupon')} open={grantVisible} onOk={submitGrant} onCancel={closeGrantModal} confirmLoading={grantSubmitting} destroyOnHidden>
         <Form form={grantForm} layout="vertical">
           <Alert
             type="info"
@@ -530,6 +613,8 @@ const CouponManagement: React.FC = () => {
             <Select
               mode="multiple"
               maxTagCount="responsive"
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
               options={users.map((user) => ({ value: user.id, label: `${user.username} (#${user.id})` }))}
               placeholder={t('pages.adminCoupons.selectTargetUsers')}
             />

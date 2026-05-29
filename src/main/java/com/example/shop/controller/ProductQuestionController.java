@@ -24,11 +24,11 @@ public class ProductQuestionController {
     @PostMapping("/product/{productId}")
     public ResponseEntity<?> askQuestion(
             @PathVariable Long productId,
-            @RequestBody Map<String, String> body,
+            @RequestBody(required = false) Map<String, String> body,
             Authentication authentication) {
         try {
             UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
-            return ResponseEntity.ok(questionService.ask(productId, userDetails.getId(), body.get("question")));
+            return ResponseEntity.ok(questionService.ask(productId, userDetails.getId(), body == null ? null : body.get("question")));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw e;
         }
@@ -37,12 +37,12 @@ public class ProductQuestionController {
     @PostMapping("/{questionId}/answer")
     public ResponseEntity<?> answerQuestion(
             @PathVariable Long questionId,
-            @RequestBody Map<String, String> body,
+            @RequestBody(required = false) Map<String, String> body,
             Authentication authentication) {
         try {
             UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
             SecurityUtils.assertAdmin(authentication);
-            return ResponseEntity.ok(questionService.answer(questionId, userDetails.getId(), body.get("answer")));
+            return ResponseEntity.ok(questionService.answer(questionId, userDetails.getId(), body == null ? null : body.get("answer")));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw e;
         }

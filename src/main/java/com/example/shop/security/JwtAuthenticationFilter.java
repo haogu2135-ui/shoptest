@@ -4,6 +4,7 @@ import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import com.example.shop.service.TokenBlacklistService;
 import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -23,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(
@@ -41,6 +43,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         jwt = authHeader.substring(7);
         try {
+            // Check if token is blacklisted (logged out)
+            String jti = jwtService.extractJti(jwt);
+            if (jti != null && tokenBlacklistService.isAccessTokenBlacklisted(jti)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             username = jwtService.extractUsername(jwt);
         } catch (RuntimeException e) {
             log.debug("Ignoring invalid JWT on {} {}", request.getMethod(), request.getRequestURI(), e);

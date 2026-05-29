@@ -3,6 +3,8 @@ import { Alert, Button, Card, Checkbox, Descriptions, Empty, Form, Input, Space,
 import { CheckCircleOutlined, CloudSyncOutlined, CodeOutlined, ReloadOutlined, SendOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { AdminConfigCenterSnapshot } from '../types';
+import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 import './ConfigCenter.css';
 
 const { Text, Title } = Typography;
@@ -20,6 +22,7 @@ const rowsFromRecord = (record?: Record<string, string>) =>
   Object.entries(record || {}).map(([key, value]) => ({ key, name: key, value }));
 
 const ConfigCenter: React.FC = () => {
+  const { t, language } = useLanguage();
   const [form] = Form.useForm<FormValues>();
   const [snapshot, setSnapshot] = useState<AdminConfigCenterSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,21 +45,21 @@ const ConfigCenter: React.FC = () => {
         content: response.data.content,
         applyRuntime: true,
       });
-    } catch {
-      message.error('配置中心加载失败，请检查 Nacos 是否可访问');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.configCenter.loadFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [form]);
+  }, [form, language, t]);
 
   useEffect(() => {
     loadSnapshot();
   }, [loadSnapshot]);
 
   const handlePublish = async () => {
-    const values = await form.validateFields();
-    setPublishing(true);
     try {
+      const values = await form.validateFields();
+      setPublishing(true);
       const response = await adminApi.publishConfigCenter({
         dataId: values.dataId,
         group: values.group,
@@ -72,21 +75,22 @@ const ConfigCenter: React.FC = () => {
         namespace: response.data.namespace || '',
       });
       if (response.data.errors?.length) {
-        message.warning('配置已提交但存在错误，请查看下方提示');
+        message.warning(t('pages.configCenter.publishedWithErrors'));
       } else {
-        message.success(response.data.runtimeApplied ? '已同步到 Nacos，并应用到当前后台' : '已同步到 Nacos');
+        message.success(response.data.runtimeApplied ? t('pages.configCenter.publishedAndApplied') : t('pages.configCenter.published'));
       }
-    } catch {
-      message.error('发布失败，请稍后重试');
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(getApiErrorMessage(error, t('pages.configCenter.publishFailed'), language));
     } finally {
       setPublishing(false);
     }
   };
 
   const handleApplyRuntime = async () => {
-    const values = await form.validateFields();
-    setApplying(true);
     try {
+      const values = await form.validateFields();
+      setApplying(true);
       const response = await adminApi.applyConfigCenter({
         dataId: values.dataId,
         group: values.group,
@@ -96,12 +100,13 @@ const ConfigCenter: React.FC = () => {
       });
       setSnapshot(response.data);
       if (response.data.errors?.length) {
-        message.warning('Runtime apply finished with errors');
+        message.warning(t('pages.configCenter.applyWithErrors'));
       } else {
-        message.success('Runtime config applied');
+        message.success(t('pages.configCenter.runtimeApplied'));
       }
-    } catch {
-      message.error('Runtime apply failed');
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(getApiErrorMessage(error, t('pages.configCenter.runtimeApplyFailed'), language));
     } finally {
       setApplying(false);
     }
@@ -115,18 +120,18 @@ const ConfigCenter: React.FC = () => {
       <div className="config-center__hero">
         <div>
           <Text className="config-center__eyebrow">Nacos Config</Text>
-          <Title level={2}>配置中心</Title>
-          <Text type="secondary">实时编辑后台 properties，发布到 Nacos，并注入当前运行环境。</Text>
+          <Title level={2}>{t('pages.configCenter.title')}</Title>
+          <Text type="secondary">{t('pages.configCenter.description')}</Text>
         </div>
         <Space className="config-center__actions" wrap>
           <Button icon={<CheckCircleOutlined />} onClick={handleApplyRuntime} loading={applying}>
-            Apply only
+            {t('pages.configCenter.applyOnly')}
           </Button>
           <Button icon={<ReloadOutlined />} onClick={() => loadSnapshot()} loading={loading}>
-            刷新
+            {t('common.refresh')}
           </Button>
           <Button type="primary" icon={<SendOutlined />} onClick={handlePublish} loading={publishing}>
-            发布同步
+            {t('pages.configCenter.publishSync')}
           </Button>
         </Space>
       </div>
@@ -137,21 +142,21 @@ const ConfigCenter: React.FC = () => {
             className="config-center__alert"
             type="info"
             showIcon
-            message={`Sensitive keys are masked: ${snapshot?.sensitiveKeys.join(', ')}`}
+            message={t('pages.configCenter.sensitiveKeysMasked', { keys: (snapshot?.sensitiveKeys || []).join(', ') })}
           />
         ) : null}
 
         <div className="config-center__stats">
           <Card>
-            <Statistic title="Nacos 地址" value={snapshot?.nacosServerAddr || '-'} prefix={<CloudSyncOutlined />} />
+            <Statistic title={t('pages.configCenter.nacosAddress')} value={snapshot?.nacosServerAddr || '-'} prefix={<CloudSyncOutlined />} />
           </Card>
           <Card>
             <Statistic title="Properties" value={snapshot?.propertyCount || 0} prefix={<CodeOutlined />} />
           </Card>
           <Card>
             <Statistic
-              title="运行时应用"
-              value={snapshot?.runtimeApplied ? '已应用' : '未应用'}
+              title={t('pages.configCenter.runtimeApply')}
+              value={snapshot?.runtimeApplied ? t('pages.configCenter.applied') : t('pages.configCenter.notApplied')}
               valueStyle={{ color: snapshot?.runtimeApplied ? '#1f8a4c' : '#8c6b20' }}
               prefix={<CheckCircleOutlined />}
             />
@@ -171,38 +176,38 @@ const ConfigCenter: React.FC = () => {
           initialValues={{ applyRuntime: true }}
           className="config-center__grid"
         >
-          <Card title="发布目标" className="config-center__card">
+          <Card title={t('pages.configCenter.publishTarget')} className="config-center__card">
             <div className="config-center__form">
-              <Form.Item name="dataId" label="Data ID" rules={[{ required: true, message: '请输入 Data ID' }]}>
+              <Form.Item name="dataId" label="Data ID" rules={[{ required: true, message: t('pages.configCenter.dataIdRequired') }]}>
                 <Input placeholder="shop-backend.properties" />
               </Form.Item>
-              <Form.Item name="group" label="Group" rules={[{ required: true, message: '请输入 Group' }]}>
+              <Form.Item name="group" label="Group" rules={[{ required: true, message: t('pages.configCenter.groupRequired') }]}>
                 <Input placeholder="DEFAULT_GROUP" />
               </Form.Item>
               <Form.Item name="namespace" label="Namespace">
-                <Input placeholder="public 留空即可" />
+                <Input placeholder={t('pages.configCenter.namespacePlaceholder')} />
               </Form.Item>
               <Form.Item name="applyRuntime" valuePropName="checked">
-                <Checkbox>发布后立即应用到当前后台进程</Checkbox>
+                <Checkbox>{t('pages.configCenter.applyAfterPublish')}</Checkbox>
               </Form.Item>
             </div>
             <Descriptions column={1} size="small" bordered className="config-center__meta">
-              <Descriptions.Item label="最后同步">{snapshot?.lastSyncedAt || '-'}</Descriptions.Item>
-              <Descriptions.Item label="发布状态">
+              <Descriptions.Item label={t('pages.configCenter.lastSynced')}>{snapshot?.lastSyncedAt || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('pages.configCenter.publishStatus')}>
                 <Tag color={snapshot?.nacosPublished ? 'green' : 'default'}>
-                  {snapshot?.nacosPublished ? '已发布' : '待读取或发布'}
+                  {snapshot?.nacosPublished ? t('pages.configCenter.publishedStatus') : t('pages.configCenter.pendingReadOrPublish')}
                 </Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="已应用键">
-                {(snapshot?.appliedKeys || []).length ? `${snapshot?.appliedKeys.length} 个` : '-'}
+              <Descriptions.Item label={t('pages.configCenter.appliedKeys')}>
+                {(snapshot?.appliedKeys || []).length ? t('pages.configCenter.keyCount', { count: snapshot?.appliedKeys.length || 0 }) : '-'}
               </Descriptions.Item>
             </Descriptions>
           </Card>
 
-          <Card title="Properties 内容" className="config-center__card config-center__editorCard">
+          <Card title={t('pages.configCenter.propertiesContent')} className="config-center__card config-center__editorCard">
             <Form.Item
               name="content"
-              rules={[{ required: true, message: '请输入 properties 内容' }]}
+              rules={[{ required: true, message: t('pages.configCenter.contentRequired') }]}
               className="config-center__contentItem"
             >
               <TextArea spellCheck={false} className="config-center__editor" />
@@ -210,7 +215,7 @@ const ConfigCenter: React.FC = () => {
           </Card>
         </Form>
 
-        <Card title="解析结果" className="config-center__card">
+        <Card title={t('pages.configCenter.parseResult')} className="config-center__card">
           {propertyRows.length ? (
             <Table
               rowKey="key"
@@ -223,11 +228,11 @@ const ConfigCenter: React.FC = () => {
               ]}
             />
           ) : (
-            <Empty description="暂无可解析配置" />
+            <Empty description={t('pages.configCenter.noParsedConfig')} />
           )}
         </Card>
 
-        <Card title="当前后台生效值" className="config-center__card">
+        <Card title={t('pages.configCenter.effectiveRuntimeValues')} className="config-center__card">
           {effectiveRows.length ? (
             <Table
               rowKey="key"
@@ -240,7 +245,7 @@ const ConfigCenter: React.FC = () => {
               ]}
             />
           ) : (
-            <Empty description="发布或刷新后显示生效值" />
+            <Empty description={t('pages.configCenter.noEffectiveValues')} />
           )}
         </Card>
       </Spin>

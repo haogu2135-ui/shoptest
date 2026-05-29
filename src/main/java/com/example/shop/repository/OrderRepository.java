@@ -40,7 +40,10 @@ public interface OrderRepository {
                        @Param("trackingNumber") String trackingNumber,
                        @Param("trackingCarrierCode") String trackingCarrierCode,
                        @Param("trackingCarrierName") String trackingCarrierName);
-    int updateReturnTracking(@Param("id") Long id, @Param("status") String status, @Param("returnTrackingNumber") String returnTrackingNumber);
+    int updateReturnTrackingIfCurrent(@Param("id") Long id,
+                                      @Param("currentStatus") String currentStatus,
+                                      @Param("status") String status,
+                                      @Param("returnTrackingNumber") String returnTrackingNumber);
     int markReturnRefundingIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus, @Param("status") String status);
     int completeReturnAndRefundIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus);
     int markRefunded(@Param("id") Long id, @Param("currentStatus") String currentStatus, @Param("reason") String reason);

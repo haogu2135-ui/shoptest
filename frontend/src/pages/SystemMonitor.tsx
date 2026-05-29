@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Progress, Space, Spin, Statistic, Tag, Typography, message } from 'antd';
-import { CloudServerOutlined, DatabaseOutlined, HddOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons';
+import { CloudServerOutlined, DatabaseOutlined, HddOutlined, ReloadOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons';
 import { adminApi, apiBaseUrl } from '../api';
 import type { AdminSystemStatus } from '../types';
+import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 import './SystemMonitor.css';
 
 const { Title, Text } = Typography;
@@ -15,14 +17,14 @@ const formatBytes = (value?: number) => {
   return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 };
 
-const formatDuration = (ms?: number) => {
+const formatDuration = (ms: number | undefined, labels: { day: string; hour: string; minute: string }) => {
   const totalSeconds = Math.floor(Number(ms || 0) / 1000);
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  if (days > 0) return `${days}天 ${hours}小时`;
-  if (hours > 0) return `${hours}小时 ${minutes}分钟`;
-  return `${minutes}分钟`;
+  if (days > 0) return `${days}${labels.day} ${hours}${labels.hour}`;
+  if (hours > 0) return `${hours}${labels.hour} ${minutes}${labels.minute}`;
+  return `${minutes}${labels.minute}`;
 };
 
 const formatLatency = (ms?: number) => {
@@ -69,29 +71,33 @@ const renderMessages = (messages?: string[], tone: 'warning' | 'error' = 'warnin
 };
 
 const SystemMonitor: React.FC = () => {
+  const { t, language } = useLanguage();
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     setLoading(true);
     try {
       const response = await adminApi.getSystemStatus();
       setStatus(response.data);
-    } catch {
-      message.error('系统监控状态加载失败');
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('pages.systemMonitor.loadFailed'), language));
     } finally {
       setLoading(false);
     }
-  };
+  }, [language, t]);
 
   useEffect(() => {
     loadStatus();
-  }, []);
+  }, [loadStatus]);
 
   const memoryRisk = Number(status?.memory.usedPercent || 0) >= 85;
   const diskRisk = Number(status?.disk.usedPercent || 0) >= 85;
   const dependencyRisk = status?.ready === false;
   const optionalHealthRisk = status?.healthy === false && !dependencyRisk;
+  const productionConfig = status?.productionConfig;
+  const productionConfigIssues = productionConfig?.issues || [];
+  const productionConfigWarnings = productionConfig?.warnings || [];
   const redisStatus = status?.redis || {
     host: '',
     port: '',
@@ -101,22 +107,27 @@ const SystemMonitor: React.FC = () => {
     required: false,
   };
   const healthText = useMemo(() => {
-    if (!status) return '未知';
-    if (dependencyRisk) return '关键依赖异常';
-    if (optionalHealthRisk || memoryRisk || diskRisk) return '需要关注';
-    return '运行正常';
-  }, [dependencyRisk, diskRisk, memoryRisk, optionalHealthRisk, status]);
+    if (!status) return t('pages.systemMonitor.unknown');
+    if (dependencyRisk) return t('pages.systemMonitor.dependencyDown');
+    if (optionalHealthRisk || memoryRisk || diskRisk) return t('pages.systemMonitor.needsAttention');
+    return t('pages.systemMonitor.healthy');
+  }, [dependencyRisk, diskRisk, memoryRisk, optionalHealthRisk, status, t]);
+  const durationLabels = useMemo(() => ({
+    day: t('pages.systemMonitor.day'),
+    hour: t('pages.systemMonitor.hour'),
+    minute: t('pages.systemMonitor.minute'),
+  }), [t]);
 
   return (
     <div className="system-monitor">
       <div className="system-monitor__hero">
         <div>
           <Text className="system-monitor__eyebrow">Operations Console</Text>
-          <Title level={2}>系统监控</Title>
-          <Text type="secondary">集中查看后台服务运行状态、资源占用、数据库连接摘要和 Nacos 配置。</Text>
+          <Title level={2}>{t('pages.systemMonitor.title')}</Title>
+          <Text type="secondary">{t('pages.systemMonitor.description')}</Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={loadStatus} loading={loading}>
-          刷新
+          {t('common.refresh')}
         </Button>
       </div>
 
@@ -125,16 +136,16 @@ const SystemMonitor: React.FC = () => {
           <>
             <div className="system-monitor__stats">
               <Card>
-                <Statistic title="整体状态" value={healthText} valueStyle={{ color: dependencyRisk ? '#cf1322' : (memoryRisk || diskRisk || optionalHealthRisk ? '#c46a14' : '#1f8a4c') }} prefix={<SettingOutlined />} />
+                <Statistic title={t('pages.systemMonitor.overallStatus')} value={healthText} valueStyle={{ color: dependencyRisk ? '#cf1322' : (memoryRisk || diskRisk || optionalHealthRisk ? '#c46a14' : '#1f8a4c') }} prefix={<SettingOutlined />} />
               </Card>
               <Card>
-                <Statistic title="应用名称" value={status.application.name} prefix={<CloudServerOutlined />} />
+                <Statistic title={t('pages.systemMonitor.applicationName')} value={status.application.name} prefix={<CloudServerOutlined />} />
               </Card>
               <Card>
-                <Statistic title="运行时间" value={formatDuration(status.runtime.uptimeMs)} />
+                <Statistic title={t('pages.systemMonitor.uptime')} value={formatDuration(status.runtime.uptimeMs, durationLabels)} />
               </Card>
               <Card>
-                <Statistic title="CPU 核心" value={status.runtime.processors} />
+                <Statistic title={t('pages.systemMonitor.cpuCores')} value={status.runtime.processors} />
               </Card>
             </div>
 
@@ -142,72 +153,103 @@ const SystemMonitor: React.FC = () => {
               className="system-monitor__alert"
               type={dependencyRisk ? 'error' : (memoryRisk || diskRisk || optionalHealthRisk ? 'warning' : 'success')}
               showIcon
-              message={dependencyRisk ? '关键依赖不可用' : (memoryRisk || diskRisk || optionalHealthRisk ? '后台服务需要关注' : '后台服务运行正常')}
+              message={dependencyRisk ? t('pages.systemMonitor.dependencyUnavailable') : (memoryRisk || diskRisk || optionalHealthRisk ? t('pages.systemMonitor.backendNeedsAttention') : t('pages.systemMonitor.backendHealthy'))}
               description={dependencyRisk
-                ? '数据库或 Redis 未就绪时，登录、验证码、下单和支付链路可能受影响，请优先处理。'
+                ? t('pages.systemMonitor.dependencyUnavailableDescription')
                 : (memoryRisk || diskRisk
-                  ? '建议检查 JVM 内存、磁盘空间或日志/上传文件占用，避免影响订单和支付流程。'
-                  : '当前关键依赖、内存和磁盘占用处于可接受范围。')}
+                  ? t('pages.systemMonitor.resourceRiskDescription')
+                  : t('pages.systemMonitor.healthyDescription'))}
             />
 
             <div className="system-monitor__resourceGrid">
-              <Card title="JVM 内存" className="system-monitor__card">
+              <Card title={t('pages.systemMonitor.jvmMemory')} className="system-monitor__card">
                 <Progress
                   type="dashboard"
                   percent={Math.round(Number(status.memory.usedPercent || 0))}
                   status={memoryRisk ? 'exception' : 'normal'}
                 />
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label="已用">{formatBytes(status.memory.usedBytes)}</Descriptions.Item>
-                  <Descriptions.Item label="可用上限">{formatBytes(status.memory.maxBytes)}</Descriptions.Item>
-                  <Descriptions.Item label="空闲">{formatBytes(status.memory.freeBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(status.memory.usedBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.max')}>{formatBytes(status.memory.maxBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.free')}>{formatBytes(status.memory.freeBytes)}</Descriptions.Item>
                 </Descriptions>
               </Card>
 
-              <Card title="磁盘空间" className="system-monitor__card">
+              <Card title={t('pages.systemMonitor.diskSpace')} className="system-monitor__card">
                 <Progress
                   type="dashboard"
                   percent={Math.round(Number(status.disk.usedPercent || 0))}
                   status={diskRisk ? 'exception' : 'normal'}
                 />
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label="路径">{status.disk.path}</Descriptions.Item>
-                  <Descriptions.Item label="已用">{formatBytes(status.disk.usedBytes)}</Descriptions.Item>
-                  <Descriptions.Item label="总量">{formatBytes(status.disk.totalBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.path')}>{status.disk.path}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(status.disk.usedBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.total')}>{formatBytes(status.disk.totalBytes)}</Descriptions.Item>
                 </Descriptions>
               </Card>
             </div>
 
-            <Card title="运行环境" className="system-monitor__card">
+            <Card title={t('pages.systemMonitor.runtimeEnvironment')} className="system-monitor__card">
               <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} bordered size="small">
-                <Descriptions.Item label="后端状态">
+                <Descriptions.Item label={t('pages.systemMonitor.backendStatus')}>
                   <Space size={6}>{statusTag(status.status, status.ready)}{readyTag(status.ready)}</Space>
                 </Descriptions.Item>
-                <Descriptions.Item label="API 地址">{apiBaseUrl}</Descriptions.Item>
-                <Descriptions.Item label="端口">{status.application.serverPort}</Descriptions.Item>
-                <Descriptions.Item label="模式">{status.application.runtimeMode}</Descriptions.Item>
+                <Descriptions.Item label={t('pages.systemMonitor.apiAddress')}>{apiBaseUrl}</Descriptions.Item>
+                <Descriptions.Item label={t('pages.systemMonitor.port')}>{status.application.serverPort}</Descriptions.Item>
+                <Descriptions.Item label={t('pages.systemMonitor.mode')}>{status.application.runtimeMode}</Descriptions.Item>
                 <Descriptions.Item label="Profile">
                   {status.application.profiles?.length ? status.application.profiles.map((profile) => <Tag key={profile}>{profile}</Tag>) : <Tag>default</Tag>}
                 </Descriptions.Item>
                 <Descriptions.Item label="Java">{status.runtime.javaVersion}</Descriptions.Item>
-                <Descriptions.Item label="系统">{status.runtime.osName} {status.runtime.osVersion}</Descriptions.Item>
+                <Descriptions.Item label={t('pages.systemMonitor.system')}>{status.runtime.osName} {status.runtime.osVersion}</Descriptions.Item>
               </Descriptions>
             </Card>
 
+            {productionConfig ? (
+              <Card
+                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.productionConfig')} {statusTag(productionConfig.status, productionConfig.ready)}</Space>}
+                className="system-monitor__card"
+              >
+                <div className="system-monitor__productionConfig">
+                  <SafetyCertificateOutlined className="system-monitor__largeIcon" />
+                  <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small">
+                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(productionConfig.ready)}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(productionConfig.required)}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.mode')}>{productionConfig.runtimeMode || status.application.runtimeMode}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.mailAccounts')}>
+                      {productionConfig.checks?.mail?.configuredAccountCount ?? '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.paymentChannels')}>
+                      {(productionConfig.checks?.paymentChannels?.availableCheckoutChannelCount ?? '-')}/{(productionConfig.checks?.paymentChannels?.enabledChannelCount ?? '-')}
+                    </Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.corsOrigins')}>
+                      {productionConfig.checks?.cors?.corsOriginCount ?? '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.blockers')} span={3}>
+                      {renderMessages(productionConfigIssues, 'error')}
+                    </Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.warnings')} span={3}>
+                      {renderMessages(productionConfigWarnings, 'warning')}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </div>
+              </Card>
+            ) : null}
+
             <div className="system-monitor__resourceGrid">
               <Card
-                title={<Space className="system-monitor__statusTitle">数据库 {statusTag(status.database.status, status.database.ready)}</Space>}
+                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.database')} {statusTag(status.database.status, status.database.ready)}</Space>}
                 className="system-monitor__card"
               >
                 <Space direction="vertical" className="system-monitor__databaseInfo">
                   <DatabaseOutlined className="system-monitor__largeIcon" />
                   <Descriptions column={1} size="small">
-                    <Descriptions.Item label="就绪">{readyTag(status.database.ready)}</Descriptions.Item>
-                    <Descriptions.Item label="延迟">{formatLatency(status.database.latencyMs)}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(status.database.ready)}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(status.database.latencyMs)}</Descriptions.Item>
                     <Descriptions.Item label="URL"><Text copyable>{status.database.url || '-'}</Text></Descriptions.Item>
-                    <Descriptions.Item label="驱动">{status.database.driver || '-'}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.driver')}>{status.database.driver || '-'}</Descriptions.Item>
                     {status.database.error ? (
-                      <Descriptions.Item label="错误">{status.database.error}</Descriptions.Item>
+                      <Descriptions.Item label={t('pages.systemMonitor.error')}>{status.database.error}</Descriptions.Item>
                     ) : null}
                   </Descriptions>
                 </Space>
@@ -218,25 +260,25 @@ const SystemMonitor: React.FC = () => {
                 className="system-monitor__card"
               >
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label="就绪">{readyTag(redisStatus.ready)}</Descriptions.Item>
-                  <Descriptions.Item label="必需">{booleanTag(redisStatus.required)}</Descriptions.Item>
-                  <Descriptions.Item label="地址">{redisStatus.host || '-'}:{redisStatus.port || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(redisStatus.ready)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(redisStatus.required)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.address')}>{redisStatus.host || '-'}:{redisStatus.port || '-'}</Descriptions.Item>
                   <Descriptions.Item label="DB">{redisStatus.database || '0'}</Descriptions.Item>
-                  <Descriptions.Item label="延迟">{formatLatency(redisStatus.latencyMs)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(redisStatus.latencyMs)}</Descriptions.Item>
                   <Descriptions.Item label="PING">{redisStatus.ping || '-'}</Descriptions.Item>
                   {redisStatus.error ? (
-                    <Descriptions.Item label="错误">{redisStatus.error}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.error')}>{redisStatus.error}</Descriptions.Item>
                   ) : null}
                 </Descriptions>
               </Card>
 
               <Card
-                title={<Space className="system-monitor__statusTitle">Nacos 注册发现 {statusTag(status.nacos.status, status.nacos.ready)}</Space>}
+                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.nacosDiscovery')} {statusTag(status.nacos.status, status.nacos.ready)}</Space>}
                 className="system-monitor__card"
               >
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label="就绪">{readyTag(status.nacos.ready)}</Descriptions.Item>
-                  <Descriptions.Item label="地址">{status.nacos.serverAddr || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(status.nacos.ready)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.address')}>{status.nacos.serverAddr || '-'}</Descriptions.Item>
                   <Descriptions.Item label="Namespace">{status.nacos.namespace || 'public'}</Descriptions.Item>
                   <Descriptions.Item label="Group">{status.nacos.group || 'DEFAULT_GROUP'}</Descriptions.Item>
                   <Descriptions.Item label="Config">{booleanTag(status.nacos.configEnabled)}</Descriptions.Item>
@@ -246,28 +288,28 @@ const SystemMonitor: React.FC = () => {
                   <Descriptions.Item label="Register">
                     {booleanTag(status.nacos.registerEnabled)}
                   </Descriptions.Item>
-                  <Descriptions.Item label="服务状态">{status.nacos.serverStatus || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.serviceStatus')}>{status.nacos.serverStatus || '-'}</Descriptions.Item>
                   <Descriptions.Item label="Data ID">{status.nacos.dataId || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="延迟">{formatLatency(status.nacos.latencyMs)}</Descriptions.Item>
-                  <Descriptions.Item label="警告">{renderMessages(status.nacos.warnings, 'warning')}</Descriptions.Item>
-                  <Descriptions.Item label="错误">
+                  <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(status.nacos.latencyMs)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.warnings')}>{renderMessages(status.nacos.warnings, 'warning')}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.error')}>
                     {status.nacos.error || renderMessages(status.nacos.errors, 'error')}
                   </Descriptions.Item>
                 </Descriptions>
               </Card>
             </div>
 
-            <Card title="运维提示" className="system-monitor__card">
+            <Card title={t('pages.systemMonitor.opsTips')} className="system-monitor__card">
               <Space direction="vertical">
-                <Text><HddOutlined /> 磁盘超过 85% 时，优先检查 `logs`、`uploads` 和历史导出文件。</Text>
-                <Text><CloudServerOutlined /> Nacos 注册异常时，确认 `NACOS_SERVER_ADDR`、namespace 和 group 与网关一致。</Text>
-                <Text><DatabaseOutlined /> 数据库 URL 已隐藏密码，但仍不建议把该页面开放给非管理员角色。</Text>
+                <Text><HddOutlined /> {t('pages.systemMonitor.diskTip')}</Text>
+                <Text><CloudServerOutlined /> {t('pages.systemMonitor.nacosTip')}</Text>
+                <Text><DatabaseOutlined /> {t('pages.systemMonitor.databaseTip')}</Text>
               </Space>
             </Card>
           </>
         ) : (
           <Card className="system-monitor__card">
-            <Text type="secondary">暂无系统状态。</Text>
+            <Text type="secondary">{t('pages.systemMonitor.noStatus')}</Text>
           </Card>
         )}
       </Spin>

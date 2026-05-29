@@ -13,6 +13,7 @@ import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { getApiErrorMessage } from '../utils/apiError';
 import {
   clearProductViewHistory,
   loadProductViewPreferences,
@@ -171,7 +172,7 @@ const BrowsingHistory: React.FC = () => {
       dispatchDomEvent('shop:cart-updated');
       dispatchDomEvent('shop:open-cart');
     } catch (err: any) {
-      message.error(err?.response?.data?.error || t('messages.addFailed'));
+      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     }
   };
 
@@ -411,8 +412,8 @@ const BrowsingHistory: React.FC = () => {
                   </div>
                   <div className="browsing-history__footer">
                     <span className="browsing-history__priceStack">
-                      <strong>{formatMoney(price)}</strong>
-                      {originalPrice > Number(price || 0) ? <span>{formatMoney(originalPrice)}</span> : null}
+                      <strong className="commerce-money">{formatMoney(price)}</strong>
+                      {originalPrice > Number(price || 0) ? <span className="commerce-money">{formatMoney(originalPrice)}</span> : null}
                     </span>
                     <div>
                       {productReadyToCart ? (

@@ -359,3 +359,60 @@
     font-size: 18px;
   }
 }
+
+/* Final payment atomic-text pass */
+.payment-modal__summary,
+.payment-modal__badges,
+.payment-modal__method,
+.payment-modal__channelNote,
+.payment-modal__confirm {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.payment-modal__badges .ant-tag,
+.payment-modal__method.ant-radio-button-wrapper,
+.payment-modal__confirm {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.payment-modal__badges .ant-tag,
+.payment-modal__method.ant-radio-button-wrapper,
+.payment-modal__confirm > span:not(.anticon):not(.ant-btn-icon) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.payment-modal__channelNote .ant-typography {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .payment-modal__badges {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .payment-modal__badges::-webkit-scrollbar {
+    display: none;
+  }
+
+  .payment-modal__badges .ant-tag {
+    flex: 0 0 auto;
+    max-width: min(156px, 54vw);
+  }
+
+  .payment-modal__method.ant-radio-button-wrapper,
+  .payment-modal__confirm {
+    white-space: nowrap !important;
+  }
+}

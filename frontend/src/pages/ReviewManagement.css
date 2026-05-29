@@ -276,6 +276,10 @@
   width: 180px;
 }
 
+.review-management-page__keywordInput {
+  width: 260px;
+}
+
 @media (max-width: 760px) {
   .review-management-page {
     padding-inline: 0;

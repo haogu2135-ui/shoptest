@@ -5541,7 +5541,7 @@
 /* Mobile catalog safe bottom and sticky controls polish */
 @media (max-width: 720px) {
   .product-list {
-    padding-bottom: calc(128px + env(safe-area-inset-bottom));
+    padding-bottom: calc(164px + env(safe-area-inset-bottom));
   }
 
   .product-list__toolbar {
@@ -5603,11 +5603,92 @@
   .product-list__mobileConversionActions {
     min-width: 0;
   }
+
+  .product-list__grid.ant-row {
+    row-gap: 12px !important;
+  }
+
+  .product-list__card.ant-card {
+    height: 100%;
+    border-radius: 18px;
+  }
+
+  .product-list__card:hover,
+  .product-list__card:focus-within {
+    transform: none;
+  }
+
+  .product-list__card .ant-card-meta-description {
+    min-height: 118px;
+  }
+
+  .product-list__priceLine {
+    min-height: 24px;
+  }
+
+  .product-list__ratingLine,
+  .product-list__valueLine,
+  .product-list__brand {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .product-list__confidenceStrip {
+    min-height: 28px;
+    max-height: 56px;
+    overflow: hidden;
+  }
+
+  .product-list__confidencePill {
+    max-width: 100%;
+    min-height: 24px;
+    padding-inline: 6px;
+    font-size: 10px;
+  }
+
+  .product-list__card .ant-card-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 38px 38px;
+    align-items: stretch;
+  }
+
+  .product-list__card .ant-card-actions > li {
+    display: flex;
+    align-items: stretch;
+    margin: 0;
+  }
+
+  .product-list__card .ant-card-actions > li > span {
+    width: 100%;
+    padding: 6px 5px;
+  }
+
+  .product-list__actionButton.ant-btn {
+    min-height: 38px;
+    height: 38px;
+    padding-inline: 6px;
+  }
+
+  .product-list__actionButton .product-list__actionLabel {
+    display: -webkit-box;
+    overflow: hidden;
+    text-align: center;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .product-list__actionButton--compact.ant-btn {
+    width: 34px;
+    min-width: 34px;
+    height: 38px;
+  }
 }
 
 @media (max-width: 380px) {
   .product-list {
-    padding-bottom: calc(118px + env(safe-area-inset-bottom));
+    padding-bottom: calc(152px + env(safe-area-inset-bottom));
   }
 
   .product-list__mobileContextBar,
@@ -5754,4 +5835,421 @@
   .product-list--empty .product-list__emptyDiscoveryCard small {
     display: none;
   }
+}
+
+/* Final mobile atomic-text pass: prices, badges and compact product actions stay single-line. */
+.product-list__priceLine,
+.product-list__priceLine .ant-typography,
+.product-list__currentPrice,
+.product-list__originalPrice,
+.product-list__priceTag.ant-tag,
+.product-list__heroCard .ant-typography,
+.product-list__mobileConversionStats strong,
+.product-list__mobileConversionStats span {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.product-list__priceLine {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-list__priceLine > *,
+.product-list__currentPrice,
+.product-list__priceTag.ant-tag {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-list__actionButton.ant-btn,
+.product-list__mobileConversionActions .ant-btn,
+.product-list__drawerFooter .ant-btn,
+.product-list__focusActions .ant-btn,
+.product-list__toolbar .ant-btn {
+  white-space: nowrap;
+}
+
+.product-list__actionButton.ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__actionButton .product-list__actionLabel,
+.product-list__mobileConversionActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__drawerFooter .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__focusActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__toolbar .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .product-list__priceLine {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) minmax(0, max-content) minmax(0, auto);
+    align-items: baseline;
+    gap: 4px;
+    height: 20px;
+    min-height: 20px;
+    line-height: 20px;
+  }
+
+  .product-list__priceLine,
+  .product-list__priceLine > *,
+  .product-list__priceLine .ant-typography,
+  .product-list__currentPrice,
+  .product-list__originalPrice,
+  .product-list__priceTag.ant-tag {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .product-list__priceTag.ant-tag {
+    min-width: 0;
+    padding-inline: 5px;
+    font-size: 10px;
+  }
+
+  .product-list .ant-btn:not(.ant-btn-icon-only),
+  .product-list__previewTrigger.ant-btn,
+  .product-list__filterButton.ant-btn,
+  .product-list__mobileDiscoveryButton,
+  .product-list__mobileNextStepActions .ant-btn {
+    white-space: nowrap;
+  }
+
+  .product-list .ant-btn:not(.ant-btn-icon-only) > span:not(.anticon):not(.ant-btn-icon),
+  .product-list__previewTrigger.ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .product-list__filterButton.ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .product-list__mobileDiscoveryButton > span:not(.product-list__mobileDiscoveryIcon),
+  .product-list__mobileNextStepActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .product-list__actionButton .product-list__actionLabel {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: nowrap;
+    -webkit-line-clamp: unset;
+  }
+}
+
+/* Final product-list viewport closure pass */
+.product-list__card,
+.product-list__card .ant-card-body,
+.product-list__card .ant-card-actions,
+.product-list__toolbar,
+.product-list__smartBar,
+.product-list__checkoutPath,
+.product-list__mobileNextStep,
+.product-list__mobileConversionActions,
+.product-list__preview,
+.product-list__previewBody,
+.product-list__quickAddContent {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.product-list__currentPrice,
+.product-list__originalPrice,
+.product-list__priceLine,
+.product-list__priceLine .ant-typography,
+.product-list__previewPrice,
+.product-list__previewDiscount,
+.product-list__smartStat,
+.product-list__confidencePill,
+.product-list__mobileContextChip {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.product-list__currentPrice,
+.product-list__originalPrice,
+.product-list__priceLine,
+.product-list__priceLine .ant-typography,
+.product-list__previewPrice,
+.product-list__previewDiscount,
+.product-list__smartStat,
+.product-list__confidencePill,
+.product-list__mobileContextChip {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-list__quickAddModal .ant-modal-footer .ant-btn,
+.product-list__previewActions .ant-btn,
+.product-list__smartActions .ant-btn,
+.product-list__emptyActions .ant-btn,
+.product-list__recentSearches .ant-btn {
+  white-space: nowrap;
+}
+
+.product-list__quickAddModal .ant-modal-footer .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__previewActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__smartActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__emptyActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__recentSearches .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .product-list__quickAddModal .ant-modal-content,
+  .product-list__previewModal .ant-modal-content {
+    max-width: 100%;
+  }
+
+  .product-list__quickAddModal .ant-modal-footer,
+  .product-list__previewActions,
+  .product-list__smartActions,
+  .product-list__emptyActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .product-list__quickAddModal .ant-modal-footer .ant-btn,
+  .product-list__previewActions .ant-btn,
+  .product-list__smartActions .ant-btn,
+  .product-list__emptyActions .ant-btn,
+  .product-list__recentSearches .ant-btn,
+  .product-list__smartStat,
+  .product-list__confidencePill,
+  .product-list__mobileContextChip {
+    white-space: nowrap !important;
+  }
+
+  .product-list__priceLine {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .product-list__priceTag {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 380px) {
+  .product-list__quickAddModal .ant-modal-footer,
+  .product-list__previewActions,
+  .product-list__smartActions,
+  .product-list__emptyActions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final mobile overlay pass: keep catalog controls inside safe, scrollable viewports. */
+@media (max-width: 780px) {
+  .product-list__mobileDrawer .ant-drawer-content-wrapper {
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top, 0px))) !important;
+  }
+
+  .product-list__mobileDrawer .ant-drawer-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top, 0px)));
+    border-radius: 16px 16px 0 0;
+    overflow: hidden;
+  }
+
+  .product-list__mobileDrawer .ant-drawer-header {
+    flex: 0 0 auto;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+
+  .product-list__mobileDrawer .ant-drawer-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .product-list__drawerContent {
+    min-height: 0;
+  }
+
+  .product-list__drawerPanels {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .product-list__drawerFooter {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    margin-bottom: calc(-74px - env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 -10px 24px rgba(18, 71, 52, 0.12);
+  }
+
+  .product-list__quickAddModal .ant-modal-content,
+  .product-list__previewModal .ant-modal-content {
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+
+  .product-list__quickAddModal .ant-modal-body,
+  .product-list__previewModal .ant-modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Final mobile drawer safety: keep filter actions inside the visible safe area. */
+@media (max-width: 780px) {
+  .product-list__mobileDrawer .ant-drawer-body {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0 !important;
+  }
+
+  .product-list__drawerContent {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .product-list__drawerPanels {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .product-list__drawerFooter {
+    position: sticky;
+    bottom: 0;
+    margin: 0 -12px !important;
+    padding: 9px 12px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Catalog mobile closure: prevent commerce values and drawer controls from wrapping or hiding. */
+@media (max-width: 780px) {
+  .product-list__mobileDrawer .ant-drawer-content-wrapper,
+  .product-list__mobileDrawer .ant-drawer-content {
+    height: auto !important;
+    max-height: calc(100dvh - 8px - env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .product-list__mobileDrawer .ant-drawer-body {
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .product-list__drawerPanels {
+    padding-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .product-list__drawerFooter {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    border-top: 1px solid rgba(18, 71, 52, 0.1);
+  }
+
+  .product-list :where(.commerce-money, .commerce-quantity, .commerce-atomic, .product-list__currentPrice, .product-list__originalPrice, .product-list__priceTag) {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Final catalog commerce text pass: prices, discounts and mobile bar metrics remain atomic. */
+.product-list :where(
+  .product-list__priceLine,
+  .product-list__priceLine > *,
+  .product-list__currentPrice,
+  .product-list__originalPrice,
+  .product-list__priceTag,
+  .product-list__previewPrice,
+  .product-list__previewPrice > *,
+  .product-list__mobileConversionStats,
+  .product-list__mobileConversionStats strong,
+  .product-list__mobileConversionStats span,
+  .commerce-money,
+  .commerce-quantity,
+  .commerce-atomic
+) {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.product-list__priceLine,
+.product-list__previewPrice,
+.product-list__mobileConversionStats {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.product-list__currentPrice,
+.product-list__originalPrice,
+.product-list__priceTag,
+.product-list__previewPrice > *,
+.product-list__mobileConversionStats strong,
+.product-list__mobileConversionStats span {
+  min-width: max-content;
+}
+
+@media (max-width: 420px) {
+  .product-list__priceLine,
+  .product-list__previewPrice {
+    flex-wrap: wrap !important;
+    row-gap: 2px;
+  }
+}
+
+/* Final product-list amount phrase guard: embedded savings amounts stay atomic. */
+.product-list__amountPhrase {
+  display: inline-flex !important;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+  white-space: nowrap !important;
+}
+
+.product-list__amountPhrase .commerce-money {
+  flex: 0 0 auto;
+  max-width: min(124px, 34vw);
+}
+
+.product-list__insightMetrics span,
+.product-list__valueLine .ant-typography,
+.product-list__previewSavings span {
+  min-width: 0;
+  max-width: 100%;
 }

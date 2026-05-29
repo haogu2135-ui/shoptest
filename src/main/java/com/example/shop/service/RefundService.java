@@ -63,7 +63,7 @@ public class RefundService {
             }
             Payment latest = paymentRepository.findLatestByOrderId(order.getId());
             if (latest != null && STATUS_REFUNDING.equals(latest.getStatus())) {
-                throw new IllegalStateException("Refund is already processing");
+                return completeRefundingPayment(order, latest, normalizedReason, normalizedManualReference, false);
             }
             throw new IllegalStateException("No paid payment found for refund");
         }
@@ -74,10 +74,15 @@ public class RefundService {
                 return paymentRepository.findById(payment.getId());
             }
             if (STATUS_REFUNDING.equals(latestStatus)) {
-                throw new IllegalStateException("Refund is already processing");
+                Payment latest = paymentRepository.findById(payment.getId());
+                return completeRefundingPayment(order, latest == null ? payment : latest, normalizedReason, normalizedManualReference, false);
             }
             throw new IllegalStateException("Refund state claim failed");
         }
+        return completeRefundingPayment(order, payment, normalizedReason, normalizedManualReference, true);
+    }
+
+    private Payment completeRefundingPayment(Order order, Payment payment, String normalizedReason, String normalizedManualReference, boolean newlyClaimed) {
         PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
         String refundReference = null;
         try {
@@ -89,7 +94,9 @@ public class RefundService {
                 refundReference = firstNonBlank(normalizedManualReference, "MANUAL-" + order.getId() + "-" + payment.getId());
             }
         } catch (RuntimeException e) {
-            paymentRepository.revertRefunding(payment.getId());
+            if (newlyClaimed) {
+                paymentRepository.revertRefunding(payment.getId());
+            }
             throw e;
         }
         int updated = paymentRepository.markRefunded(payment.getId(), refundReference);

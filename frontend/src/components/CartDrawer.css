@@ -392,7 +392,7 @@
 .cart-drawer__itemCommerce {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 84px auto;
+  grid-template-columns: minmax(0, 1fr) max-content;
   gap: 8px;
   align-items: center;
   padding: 8px;
@@ -401,10 +401,26 @@
   background: #f8fcf9;
 }
 
+.cart-drawer__itemCommerceTop {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .cart-drawer__itemPrice {
   min-width: 0;
-  display: grid;
-  gap: 2px;
+  max-width: 100%;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cart-drawer__itemPrice .ant-typography:first-child {
@@ -412,10 +428,47 @@
   font-weight: 800;
 }
 
+.cart-drawer__itemPrice .ant-typography,
+.cart-drawer__itemUnitPrice,
+.cart-drawer__itemQuantity {
+  flex: 0 0 auto;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.cart-drawer__itemPrice.commerce-atomic,
+.cart-drawer__itemPrice.commerce-atomic > .ant-typography,
+.cart-drawer__itemPrice.commerce-atomic > .commerce-money,
+.cart-drawer__itemPrice.commerce-atomic > .commerce-quantity {
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.cart-drawer__itemPrice.commerce-atomic {
+  flex-wrap: nowrap !important;
+  min-width: max-content;
+}
+
+.cart-drawer__itemUnitPrice {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .cart-drawer__lineTotal {
+  min-width: 0;
   color: #ee4d2d;
   text-align: right;
-  overflow-wrap: anywhere;
+  justify-content: flex-end;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cart-drawer__syncText {
@@ -590,11 +643,19 @@
   }
 
   .cart-drawer__itemCommerce {
-    grid-template-columns: minmax(0, 1fr) 92px;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .cart-drawer__itemCommerceTop {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
   }
 
   .cart-drawer__lineTotal {
-    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: flex-start;
     text-align: left;
   }
 
@@ -916,6 +977,107 @@
 
   .cart-drawer--es .cart-drawer__heroStat {
     scroll-snap-align: start;
+  }
+}
+
+/* Final mobile cart closure: money and quantity phrases stay atomic on narrow drawers. */
+@media (max-width: 520px) {
+  .cart-drawer,
+  .cart-drawer * {
+    box-sizing: border-box;
+  }
+
+  .cart-drawer .ant-drawer-body,
+  .cart-drawer__content,
+  .cart-drawer__list,
+  .cart-drawer__item,
+  .cart-drawer__item .ant-list-item-meta,
+  .cart-drawer__item .ant-list-item-meta-content,
+  .cart-drawer__item .ant-list-item-meta-description,
+  .cart-drawer__itemCommerce,
+  .cart-drawer__itemCommerceTop,
+  .cart-drawer__footer,
+  .cart-drawer__subtotal {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .cart-drawer__content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .cart-drawer__list {
+    overscroll-behavior: contain;
+  }
+
+  .cart-drawer__itemCommerceTop {
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    gap: 8px;
+  }
+
+  .cart-drawer__itemPrice,
+  .cart-drawer__itemUnitPrice,
+  .cart-drawer__itemQuantity,
+  .cart-drawer__lineTotal,
+  .cart-drawer__subtotal strong,
+  .cart-drawer__heroStat .commerce-money,
+  .cart-drawer__heroStat .commerce-atomic {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  .cart-drawer__itemPrice,
+  .cart-drawer__itemUnitPrice,
+  .cart-drawer__lineTotal {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .cart-drawer__lineTotal {
+    justify-self: end;
+    max-width: min(128px, 38vw);
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #fff7f0;
+    color: #c73719;
+    font-size: 13px;
+  }
+
+  .cart-drawer__itemUnitPrice {
+    max-width: min(168px, 50vw);
+  }
+
+  .cart-drawer__subtotal {
+    align-items: baseline;
+  }
+
+  .cart-drawer__subtotal strong {
+    max-width: min(168px, 52vw);
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 380px) {
+  .cart-drawer__itemCommerceTop {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cart-drawer__lineTotal {
+    justify-self: start;
+    max-width: 100%;
+  }
+
+  .cart-drawer__itemUnitPrice {
+    max-width: 100%;
   }
 }
 
@@ -1266,6 +1428,128 @@
   }
 }
 
+/* Checkout figures in the drawer must stay atomic on narrow screens. */
+.cart-drawer__itemCommerce,
+.cart-drawer__itemPrice,
+.cart-drawer__itemUnitPrice,
+.cart-drawer__itemQuantity,
+.cart-drawer__lineTotal,
+.cart-drawer__subtotal,
+.cart-drawer .ant-drawer-extra {
+  min-width: 0;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.cart-drawer__itemPrice,
+.cart-drawer__itemUnitPrice,
+.cart-drawer__itemQuantity,
+.cart-drawer__lineTotal,
+.cart-drawer__subtotal strong,
+.cart-drawer .ant-drawer-extra .commerce-money {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap !important;
+}
+
+.cart-drawer__itemCommerceTop {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cart-drawer__itemPrice {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cart-drawer__itemUnitPrice,
+.cart-drawer__itemQuantity,
+.cart-drawer__lineTotal {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cart-drawer__lineTotal {
+  flex: 0 0 auto;
+  max-width: min(132px, 38vw);
+}
+
+@media (max-width: 520px) {
+  .cart-drawer__itemCommerce {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cart-drawer__itemCommerceTop {
+    gap: 6px;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+  }
+
+  .cart-drawer__itemPrice {
+    flex: 1 1 auto;
+    display: inline-flex;
+    justify-content: start;
+    align-items: baseline;
+    max-width: 100%;
+  }
+
+  .cart-drawer__lineTotal {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    text-align: left;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .cart-drawer__itemPrice {
+    gap: 3px;
+  }
+
+  .cart-drawer__lineTotal {
+    max-width: 100%;
+  }
+}
+
+.cart-drawer__itemUnitPrice,
+.cart-drawer__itemQuantity,
+.cart-drawer__lineTotal,
+.cart-drawer__subtotal strong,
+.cart-drawer .ant-drawer-extra .commerce-money {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Final atomic commerce text closure: individual money and quantity tokens never split. */
+.cart-drawer :where(
+  .commerce-money,
+  .commerce-quantity,
+  .commerce-atomic,
+  .cart-drawer__itemPrice,
+  .cart-drawer__itemPrice .ant-typography,
+  .cart-drawer__itemUnitPrice,
+  .cart-drawer__itemQuantity,
+  .cart-drawer__lineTotal,
+  .cart-drawer__subtotal strong,
+  .cart-drawer .ant-drawer-extra .commerce-money
+) {
+  min-width: 0;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  white-space: nowrap !important;
+}
+
+.cart-drawer :where(.commerce-money, .commerce-quantity, .cart-drawer__itemUnitPrice, .cart-drawer__itemQuantity, .cart-drawer__lineTotal) {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Mobile cart drawer conversion polish */
 @media (max-width: 520px) {
   .cart-drawer .ant-drawer-header {
@@ -1313,6 +1597,66 @@
     background: rgba(255, 255, 255, 0.98);
     box-shadow: 0 -10px 28px rgba(18, 71, 52, 0.14);
     backdrop-filter: blur(12px);
+  }
+}
+
+/* Mobile cart drawer commerce closure: keep "$207.90 x 1" style groups atomic. */
+@media (max-width: 520px) {
+  .cart-drawer__itemCommerce {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px;
+  }
+
+  .cart-drawer__itemCommerceTop {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 8px;
+    align-items: baseline;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .cart-drawer__itemPrice {
+    display: inline-flex !important;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    gap: 5px;
+    overflow: hidden;
+  }
+
+  .cart-drawer__itemUnitPrice,
+  .cart-drawer__itemQuantity,
+  .cart-drawer__lineTotal,
+  .cart-drawer__subtotal strong,
+  .cart-drawer .ant-drawer-extra .commerce-money {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cart-drawer__lineTotal {
+    justify-self: end;
+    text-align: right;
+  }
+
+  .cart-drawer__itemCommerce .ant-input-number {
+    justify-self: start;
+    width: 104px;
+  }
+}
+
+@media (max-width: 380px) {
+  .cart-drawer__itemCommerceTop {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cart-drawer__lineTotal {
+    justify-self: start;
+    text-align: left;
   }
 }
 
@@ -1384,7 +1728,7 @@
 }
 
 .cart-drawer__itemCommerce {
-  grid-template-columns: minmax(0, 1fr) 88px minmax(72px, auto);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .cart-drawer__footer {
@@ -1575,7 +1919,7 @@
   }
 
   .cart-drawer__itemCommerce {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(84px, 96px);
   }
 
   .cart-drawer__item .ant-input-number {
@@ -1585,4 +1929,265 @@
   .cart-drawer__trustRow {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Final mobile atomic-text pass: prices, quantities and controls must stay on one line. */
+.cart-drawer__itemPrice,
+.cart-drawer__itemPrice .ant-typography,
+.cart-drawer__itemUnitPrice,
+.cart-drawer__itemQuantity,
+.cart-drawer__lineTotal,
+.cart-drawer__subtotal .ant-typography:last-child,
+.cart-drawer .ant-drawer-extra,
+.cart-drawer__heroStat span {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.cart-drawer__lineTotal,
+.cart-drawer__subtotal .ant-typography:last-child,
+.cart-drawer .ant-drawer-extra,
+.cart-drawer__heroStat span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cart-drawer__itemAction.ant-btn,
+.cart-drawer__express .ant-btn,
+.cart-drawer__footer .ant-btn,
+.cart-drawer__nextAction .ant-btn {
+  white-space: nowrap;
+}
+
+.cart-drawer__itemAction.ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.cart-drawer__express .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.cart-drawer__footer .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.cart-drawer__nextAction .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .cart-drawer__itemPrice,
+  .cart-drawer__itemPrice .ant-typography,
+  .cart-drawer__itemUnitPrice,
+  .cart-drawer__itemQuantity,
+  .cart-drawer__lineTotal,
+  .cart-drawer__subtotal .ant-typography:last-child {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .cart-drawer__itemPrice {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cart-drawer__item .ant-input-number {
+    justify-self: end;
+  }
+}
+
+/* Commerce row closure: let the row adapt, never split money or quantity tokens. */
+.cart-drawer .cart-drawer__itemCommerce {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.cart-drawer .cart-drawer__itemCommerceTop {
+  grid-column: 1 / 2;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: baseline !important;
+  gap: 6px !important;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cart-drawer .cart-drawer__itemCommerce > .ant-input-number {
+  grid-column: 2 / 3;
+  justify-self: end;
+  width: 88px;
+}
+
+.cart-drawer :where(
+  .commerce-money,
+  .commerce-nowrap,
+  .commerce-quantity,
+  .commerce-atomic,
+  .cart-drawer__itemPrice,
+  .cart-drawer__itemPrice .ant-typography,
+  .cart-drawer__itemUnitPrice,
+  .cart-drawer__itemQuantity,
+  .cart-drawer__lineTotal,
+  .cart-drawer__subtotal .ant-typography:last-child,
+  .cart-drawer__heroStat span,
+  .cart-drawer .ant-drawer-extra
+) {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-drawer .cart-drawer__itemPrice {
+  display: inline-flex !important;
+  align-items: baseline !important;
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cart-drawer .cart-drawer__itemPrice > *,
+.cart-drawer .cart-drawer__lineTotal,
+.cart-drawer .cart-drawer__subtotal :where(.commerce-money, .ant-typography),
+.cart-drawer .cart-drawer__heroStat :where(.commerce-money, .commerce-atomic, span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cart-drawer .cart-drawer__itemPrice > .cart-drawer__itemQuantity,
+.cart-drawer .cart-drawer__itemPrice > .commerce-quantity {
+  flex: 0 0 auto !important;
+}
+
+.cart-drawer .cart-drawer__lineTotal {
+  justify-self: end;
+  justify-content: flex-end !important;
+  max-width: min(118px, 32vw);
+  text-align: right !important;
+}
+
+@media (max-width: 520px) {
+  .cart-drawer .cart-drawer__itemCommerce {
+    grid-template-columns: minmax(0, 1fr) minmax(82px, 92px) !important;
+  }
+
+  .cart-drawer .cart-drawer__itemCommerce > .ant-input-number {
+    width: min(92px, 28vw);
+  }
+
+  .cart-drawer .cart-drawer__lineTotal {
+    max-width: min(104px, 29vw);
+  }
+}
+
+@media (max-width: 360px) {
+  .cart-drawer .cart-drawer__itemCommerceTop {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cart-drawer .cart-drawer__lineTotal {
+    justify-self: start;
+    justify-content: flex-start !important;
+    max-width: 100%;
+    text-align: left !important;
+  }
+}
+
+/* Final cart drawer commerce grouping: keep unit price and quantity together, then wrap the whole group if needed. */
+.cart-drawer .cart-drawer__itemCommerceTop {
+  grid-template-columns: minmax(max-content, 1fr) max-content !important;
+}
+
+.cart-drawer .cart-drawer__itemPrice {
+  min-width: max-content !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.cart-drawer .cart-drawer__itemPrice > .cart-drawer__itemUnitPrice,
+.cart-drawer .cart-drawer__itemPrice > .cart-drawer__itemQuantity,
+.cart-drawer .cart-drawer__itemPrice > .commerce-money,
+.cart-drawer .cart-drawer__itemPrice > .commerce-quantity {
+  min-width: max-content !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 420px) {
+  .cart-drawer .cart-drawer__itemCommerceTop {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .cart-drawer .cart-drawer__itemPrice,
+  .cart-drawer .cart-drawer__lineTotal {
+    justify-self: start;
+    max-width: 100% !important;
+  }
+}
+
+/* Last-mile mobile commerce text: keep price and quantity as one readable token. */
+.cart-drawer .cart-drawer__itemPrice.commerce-atomic {
+  display: inline-flex !important;
+  width: fit-content !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.cart-drawer .cart-drawer__itemPrice.commerce-atomic :where(.commerce-money, .commerce-quantity, .ant-typography) {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+@media (max-width: 420px) {
+  .cart-drawer .cart-drawer__itemCommerceTop {
+    align-items: start !important;
+    row-gap: 4px !important;
+  }
+
+  .cart-drawer .cart-drawer__itemPrice.commerce-atomic {
+    grid-row: 1;
+  }
+
+  .cart-drawer .cart-drawer__lineTotal {
+    grid-row: 2;
+  }
+}
+
+/* Final cart drawer amount phrase guard: embedded money stays atomic inside longer labels. */
+.cart-drawer .cart-drawer__amountPhrase {
+  display: inline-flex !important;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+  white-space: nowrap !important;
+}
+
+.cart-drawer .cart-drawer__amountPhrase .commerce-money {
+  flex: 0 0 auto;
+  max-width: min(124px, 34vw);
+}
+
+.cart-drawer .cart-drawer__shippingText .ant-typography,
+.cart-drawer .cart-drawer__nextActionCopy .ant-typography,
+.cart-drawer .cart-drawer__boostPanel summary .ant-typography,
+.cart-drawer .cart-drawer__heroStat > span {
+  min-width: 0;
+  max-width: 100%;
 }

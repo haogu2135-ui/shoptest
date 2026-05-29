@@ -181,6 +181,8 @@ const PetFinder: React.FC = () => {
                     value={petType}
                     onChange={setPetType}
                     className="pet-finder-page__fieldControl"
+                    popupClassName="shop-mobile-popup-layer"
+                    getPopupContainer={() => document.body}
                     options={(['all', 'dog', 'cat', 'small'] as PetType[]).map((value) => ({ value, label: t(`pages.petFinder.petTypes.${value}`) }))}
                   />
                 </Col>
@@ -190,6 +192,8 @@ const PetFinder: React.FC = () => {
                     value={need}
                     onChange={setNeed}
                     className="pet-finder-page__fieldControl"
+                    popupClassName="shop-mobile-popup-layer"
+                    getPopupContainer={() => document.body}
                     options={(['all', 'play', 'walk', 'sleep', 'smart', 'groom', 'food'] as NeedType[]).map((value) => ({ value, label: t(`pages.petFinder.needs.${value}`) }))}
                   />
                 </Col>
@@ -203,7 +207,7 @@ const PetFinder: React.FC = () => {
                     value={budget}
                     onChange={(value) => setBudget(normalizeBudget(value, maxBudget))}
                   />
-                  <Text type="secondary">{formatMoney(budget[0])} - {formatMoney(budget[1])}</Text>
+                  <Text type="secondary" className="commerce-atomic">{formatMoney(budget[0])} - {formatMoney(budget[1])}</Text>
                 </Col>
                 <Col xs={24} sm={12}>
                   <Text strong>{t('pages.petFinder.priority')}</Text>
@@ -211,6 +215,8 @@ const PetFinder: React.FC = () => {
                     value={priority}
                     onChange={setPriority}
                     className="pet-finder-page__fieldControl"
+                    popupClassName="shop-mobile-popup-layer"
+                    getPopupContainer={() => document.body}
                     options={(['best', 'rating', 'deal', 'budget'] as Priority[]).map((value) => ({ value, label: t(`pages.petFinder.priorities.${value}`) }))}
                   />
                 </Col>
@@ -270,7 +276,7 @@ const PetFinder: React.FC = () => {
               <div className="pet-finder-page__nextStepMeta">
                 <Tag color="blue">{t(`pages.petFinder.petTypes.${petType}`)}</Tag>
                 <Tag color="green">{t(`pages.petFinder.needs.${need}`)}</Tag>
-                <Tag color="orange">{formatMoney(budget[0])} - {formatMoney(budget[1])}</Tag>
+                <Tag color="orange"><span className="commerce-atomic"><span className="commerce-money">{formatMoney(budget[0])}</span> - <span className="commerce-money">{formatMoney(budget[1])}</span></span></Tag>
               </div>
               <Space wrap className="pet-finder-page__nextStepActions">
                 {finderInsights.bestMatch && finderInsights.nextAction === 'view' ? (
@@ -313,7 +319,7 @@ const PetFinder: React.FC = () => {
                   >
                     <Space direction="vertical" size={6} className="pet-finder-page__productBody">
                       <Text strong ellipsis={{ tooltip: product.name }}>{product.name}</Text>
-                      <Text strong style={{ color: '#ee4d2d' }}>{formatMoney(productPrice(product))}</Text>
+                      <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(productPrice(product))}</Text>
                       <Space wrap size={[4, 4]}>
                         {isInStock(product) ? <Tag color="green">{t('pages.productDetail.enough')}</Tag> : <Tag color="red">{t('pages.productList.soldOut')}</Tag>}
                         {(product.effectiveDiscountPercent || product.discount || 0) > 0 ? <Tag color="volcano">{t('pages.productList.sale')}</Tag> : null}

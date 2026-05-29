@@ -8,8 +8,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class UserDetailsImpl implements UserDetails {
     private static final long serialVersionUID = 1L;
@@ -35,16 +37,27 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     public static UserDetailsImpl build(User user) {
-        List<GrantedAuthority> authorities = new ArrayList<>();
+        Set<String> authorityNames = new LinkedHashSet<>();
         String role = user.getRole() == null ? "USER" : user.getRole().trim().toUpperCase();
-        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
         String roleCode = user.getRoleCode() == null ? "" : user.getRoleCode().trim().toUpperCase();
-        if ("SUPER_ADMIN".equals(roleCode) && !"SUPER_ADMIN".equals(role)) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"));
+        if (!role.isEmpty()) {
+            authorityNames.add("ROLE_" + role);
         }
-        if ("ADMIN".equals(role) || "SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(roleCode)) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        if (!roleCode.isEmpty() && !roleCode.equals(role)) {
+            authorityNames.add("ROLE_" + roleCode);
         }
+        if ("SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(roleCode)) {
+            authorityNames.add("ROLE_SUPER_ADMIN");
+        }
+        if ("ADMIN".equals(role)
+                || "SUPER_ADMIN".equals(role)
+                || "ADMIN".equals(roleCode)
+                || "SUPER_ADMIN".equals(roleCode)
+                || (!roleCode.isEmpty() && !"USER".equals(roleCode))) {
+            authorityNames.add("ROLE_ADMIN");
+        }
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorityNames.forEach(authority -> authorities.add(new SimpleGrantedAuthority(authority)));
 
         return new UserDetailsImpl(
                 user.getId(),

@@ -2,6 +2,9 @@ const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockPut = jest.fn();
 const mockDelete = jest.fn();
+const mockRequest = jest.fn();
+let mockRequestInterceptorFulfilled: ((config: any) => any) | undefined;
+let mockResponseInterceptorRejected: ((error: any) => Promise<any>) | undefined;
 
 export {};
 
@@ -16,10 +19,19 @@ jest.mock('axios', () => ({
       post: mockPost,
       put: mockPut,
       delete: mockDelete,
+      request: mockRequest,
       defaults: { baseURL: config?.baseURL || 'https://api.example.com' },
       interceptors: {
-        request: { use: jest.fn() },
-        response: { use: jest.fn() },
+        request: {
+          use: jest.fn((fulfilled: (config: any) => any) => {
+            mockRequestInterceptorFulfilled = fulfilled;
+          }),
+        },
+        response: {
+          use: jest.fn((_fulfilled: (response: any) => any, rejected: (error: any) => Promise<any>) => {
+            mockResponseInterceptorRejected = rejected;
+          }),
+        },
       },
     })),
   },
@@ -35,10 +47,14 @@ describe('api parameter normalization', () => {
     process.env.REACT_APP_API_BASE_URL = 'https://api.example.com';
     delete process.env.REACT_APP_SUPPORT_WEBSOCKET_URL;
     delete window.__SHOP_RUNTIME_CONFIG__;
+    window.localStorage.clear();
+    mockRequestInterceptorFulfilled = undefined;
+    mockResponseInterceptorRejected = undefined;
     mockGet.mockResolvedValue({ data: [] });
     mockPost.mockResolvedValue({ data: {} });
     mockPut.mockResolvedValue({ data: {} });
     mockDelete.mockResolvedValue({ data: {} });
+    mockRequest.mockResolvedValue({ data: {} });
   });
 
   afterAll(() => {
@@ -86,16 +102,138 @@ describe('api parameter normalization', () => {
   it('normalizes email login payloads before sending', async () => {
     const { userApi } = require('./index');
 
+    await userApi.login('  USER\u0000  Name  ', ' secret ');
     await userApi.sendEmailLoginCode('  USER@Example.COM  ');
     await userApi.emailLogin('  USER@Example.COM  ', ' 12a34 567 ');
+    await userApi.logout('  refresh-token\n ');
+    await userApi.forgotPassword({
+      login: '  USER\u0000  Name  ',
+      email: '  USER@Example.COM  ',
+      code: ' 12a34 567 ',
+      newPassword: ' new password ',
+    });
 
     expect(mockPost.mock.calls[0]).toEqual([
-      '/auth/email-code',
-      { email: 'user@example.com' },
+      '/auth/login',
+      { username: 'USERNAME', password: ' secret ' },
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
     ]);
     expect(mockPost.mock.calls[1]).toEqual([
+      '/auth/email-code',
+      { email: 'user@example.com' },
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+    expect(mockPost.mock.calls[2]).toEqual([
       '/auth/email-login',
       { email: 'user@example.com', code: '123456' },
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+    expect(mockPost.mock.calls[3]).toEqual([
+      '/auth/logout',
+      { refreshToken: 'refresh-token' },
+    ]);
+    expect(mockPost.mock.calls[4]).toEqual([
+      '/auth/forgot-password',
+      {
+        login: 'USERNAME',
+        email: 'user@example.com',
+        code: '123456',
+        newPassword: ' new password ',
+      },
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+  });
+
+  it('refreshes the auth session and retries the original request after a 401', async () => {
+    jest.resetModules();
+    window.localStorage.setItem('refreshToken', 'refresh-old');
+    mockPost.mockResolvedValueOnce({
+      data: {
+        token: 'access-new',
+        refreshToken: 'refresh-new',
+        id: 7,
+        username: 'mia',
+        role: 'ADMIN',
+        roleCode: 'SUPER_ADMIN',
+      },
+    });
+    mockRequest.mockResolvedValueOnce({ data: { ok: true } });
+
+    require('./index');
+
+    const originalRequest = { url: '/users/profile', headers: { Accept: 'application/json' } };
+    const response = await mockResponseInterceptorRejected!({
+      response: { status: 401 },
+      config: originalRequest,
+    });
+
+    expect(response).toEqual({ data: { ok: true } });
+    expect(mockPost).toHaveBeenCalledWith(
+      '/auth/refresh',
+      { refreshToken: 'refresh-old' },
+      expect.objectContaining({ skipAuthRefresh: true }),
+    );
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+      url: '/users/profile',
+      _authRetry: true,
+      headers: expect.objectContaining({
+        Accept: 'application/json',
+        Authorization: 'Bearer access-new',
+      }),
+    }));
+    expect(window.localStorage.getItem('token')).toBe('access-new');
+    expect(window.localStorage.getItem('refreshToken')).toBe('refresh-new');
+    expect(window.localStorage.getItem('userId')).toBe('7');
+    expect(window.localStorage.getItem('username')).toBe('mia');
+    expect(window.localStorage.getItem('role')).toBe('SUPER_ADMIN');
+  });
+
+  it('clears auth storage when a 401 cannot be refreshed', async () => {
+    jest.resetModules();
+    window.history.pushState({}, '', '/login');
+    window.localStorage.setItem('token', 'access-old');
+    window.localStorage.setItem('refreshToken', 'refresh-old');
+    window.localStorage.setItem('userId', '7');
+    mockPost.mockRejectedValueOnce(new Error('refresh expired'));
+
+    require('./index');
+
+    const error = {
+      response: { status: 401 },
+      config: { url: '/users/profile', headers: {} },
+    };
+
+    await expect(mockResponseInterceptorRejected!(error)).rejects.toBe(error);
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/auth/refresh',
+      { refreshToken: 'refresh-old' },
+      expect.objectContaining({ skipAuthRefresh: true }),
+    );
+    expect(mockRequest).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.localStorage.getItem('refreshToken')).toBeNull();
+    expect(window.localStorage.getItem('userId')).toBeNull();
+  });
+
+  it('sends only normalized contact fields when updating a profile', async () => {
+    const { userApi } = require('./index');
+
+    await userApi.updateProfile({
+      email: '  USER@Example.COM  ',
+      phone: '  555\t0100  ext-too-long  ',
+      emailCode: ' 12a34 567 ',
+      role: 'ADMIN',
+      status: 'BANNED',
+    });
+
+    expect(mockPut.mock.calls[0]).toEqual([
+      '/users/profile',
+      {
+        email: 'user@example.com',
+        phone: '5550100',
+        emailCode: '123456',
+      },
     ]);
   });
 
@@ -151,9 +289,11 @@ describe('api parameter normalization', () => {
     await productApi.getAll('  leash\u0000   kit  ', -2, true);
 
     expect(mockGet.mock.calls[0][0]).toBe('/products');
-    expect(mockGet.mock.calls[0][1]).toEqual({
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({
       params: { keyword: 'leash kit', discount: true },
-    });
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
   });
 
   it('reuses cached product id list responses for repeated normalized requests', async () => {
@@ -221,17 +361,39 @@ describe('api parameter normalization', () => {
       '/coupons/me/available',
       '/coupons/public',
     ]);
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
+    expect(mockGet.mock.calls[2][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
   });
 
   it('normalizes payment payloads and guest emails', async () => {
     const { paymentApi } = require('./index');
 
-    await paymentApi.create(7, ' stripe ', ' USER@Example.COM ');
-    await paymentApi.getByOrder(7.2, 'bad-email');
+    await paymentApi.create(7, ' stripe ', ' USER@Example.COM ', ' so202605260001 ');
+    await paymentApi.getByOrder(7.2, 'bad-email', ' so202605260001 ');
 
-    expect(mockPost.mock.calls[0][1]).toEqual({ orderId: 7, channel: 'STRIPE', guestEmail: 'user@example.com' });
+    expect(mockPost.mock.calls[0][1]).toEqual({ orderId: 7, channel: 'STRIPE', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockGet.mock.calls[0][0]).toBe('/payments/order/0');
     expect(mockGet.mock.calls[0][1]).toEqual({ params: undefined });
+  });
+
+  it('uses anonymous configs for public storefront bootstrap endpoints', async () => {
+    const { appConfigApi, announcementApi } = require('./index');
+
+    await appConfigApi.get();
+    await announcementApi.getActive(999);
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/app/config',
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/announcements/active',
+      expect.objectContaining({
+        params: { limit: 10 },
+        skipAuthHeader: true,
+        skipAuthRedirect: true,
+      }),
+    ]);
   });
 
   it('caches payment channels for repeated checkout renders', async () => {
@@ -242,6 +404,10 @@ describe('api parameter normalization', () => {
 
     expect(mockGet).toHaveBeenCalledTimes(1);
     expect(mockGet.mock.calls[0][0]).toBe('/payments/channels');
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
   });
 
   it('normalizes support session path params and optional session payloads', async () => {
@@ -285,8 +451,10 @@ describe('api parameter normalization', () => {
     const { orderApi } = require('./index');
 
     await orderApi.checkout({ cartItemIds: [1, 1, 2.8, -2], shippingAddress: 'addr', paymentMethod: 'card', userCouponId: 7.3 });
-    await orderApi.cancel('8' as unknown as number, ' USER@Example.COM ');
-    await orderApi.submitReturnShipment(Infinity, '  TRACK   123  ');
+    await orderApi.cancel('8' as unknown as number, ' USER@Example.COM ', ' so202605260001 ');
+    await orderApi.confirm(9, ' USER@Example.COM ', ' so202605260001 ');
+    await orderApi.returnOrder(9, '  Too\t small  ', ' USER@Example.COM ', ' so202605260001 ');
+    await orderApi.submitReturnShipment(Infinity, '  TRACK   123  ', ' USER@Example.COM ', ' so202605260001 ');
     await orderApi.getItems(10);
 
     expect(mockPost.mock.calls[0][0]).toBe('/orders/checkout/me');
@@ -297,9 +465,13 @@ describe('api parameter normalization', () => {
       userCouponId: null,
     });
     expect(mockPut.mock.calls[0][0]).toBe('/orders/8/cancel');
-    expect(mockPut.mock.calls[0][1]).toEqual({ guestEmail: 'user@example.com' });
-    expect(mockPut.mock.calls[1][0]).toBe('/orders/0/return-shipment');
-    expect(mockPut.mock.calls[1][1]).toEqual({ returnTrackingNumber: 'TRACK 123' });
+    expect(mockPut.mock.calls[0][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPut.mock.calls[1][0]).toBe('/orders/9/confirm');
+    expect(mockPut.mock.calls[1][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPut.mock.calls[2][0]).toBe('/orders/9/return');
+    expect(mockPut.mock.calls[2][1]).toEqual({ reason: 'Too small', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPut.mock.calls[3][0]).toBe('/orders/0/return-shipment');
+    expect(mockPut.mock.calls[3][1]).toEqual({ returnTrackingNumber: 'TRACK 123', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockGet.mock.calls[0][0]).toBe('/orders/10/items');
   });
 
@@ -342,7 +514,11 @@ describe('api parameter normalization', () => {
       items: [{ productId: 4, quantity: 2, selectedSpecs: undefined }],
     });
     expect(mockGet.mock.calls[0][0]).toBe('/orders/track');
-    expect(mockGet.mock.calls[0][1]).toEqual({ params: { orderNo: 'ORD123', email: 'user@example.com' } });
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({
+      params: { orderNo: 'ORD123', email: 'user@example.com' },
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
   });
 
   it('normalizes review and question params and text payloads', async () => {
@@ -378,6 +554,10 @@ describe('api parameter normalization', () => {
       '/reviews/product/777',
       '/product-questions/product/778',
     ]);
+    expect(mockGet.mock.calls[1][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
+    expect(mockGet.mock.calls[3][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
+    expect(mockGet.mock.calls[2][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
   });
 
   it('normalizes category, brand, address, and wishlist identifiers', async () => {
@@ -389,8 +569,10 @@ describe('api parameter normalization', () => {
     await addressApi.setDefault(12.1);
     await wishlistApi.toggle(0, '14' as unknown as number);
 
-    expect(mockGet.mock.calls[0][1]).toEqual({ params: { parentId: undefined, level: undefined } });
-    expect(mockGet.mock.calls[1][1]).toEqual({ params: { parentId: 6 } });
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ params: { parentId: undefined, level: undefined } }));
+    expect(mockGet.mock.calls[1][1]).toEqual(expect.objectContaining({ params: { parentId: 6 } }));
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
+    expect(mockGet.mock.calls[1][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
     expect(mockDelete.mock.calls[0][0]).toBe('/brands/0');
     expect(mockPut.mock.calls[0][0]).toBe('/addresses/0/default');
     expect(mockPost.mock.calls[0][2]).toEqual({ params: { productId: 14 } });
@@ -422,6 +604,9 @@ describe('api parameter normalization', () => {
       '/categories',
       '/brands',
     ]);
+    mockGet.mock.calls.forEach((call) => {
+      expect(call[1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
+    });
   });
 
   it('caches address lookups until an address mutation invalidates them', async () => {
@@ -457,6 +642,9 @@ describe('api parameter normalization', () => {
       '/coupons/public',
       '/coupons/public',
     ]);
+    mockGet.mock.calls.forEach((call) => {
+      expect(call[1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
+    });
   });
 
   it('normalizes admin mutation and batch payload ids', async () => {
@@ -778,7 +966,7 @@ describe('api parameter normalization', () => {
     expect(mockPut.mock.calls[1][0]).toBe('/pet-profiles/6');
     expect(mockPost.mock.calls[0][0]).toBe('/pet-gallery/0/like');
     expect(mockGet.mock.calls[0][0]).toBe('/logistics/track');
-    expect(mockGet.mock.calls[0][1]).toEqual({ params: { trackingNumber: '1Z 999', carrier: 'UPS', orderId: undefined } });
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ params: { trackingNumber: '1Z 999', carrier: 'UPS', orderId: undefined }, skipAuthHeader: true, skipAuthRedirect: true }));
   });
 
   it('caches logistics tracking and rejects empty tracking requests', async () => {
@@ -790,6 +978,7 @@ describe('api parameter normalization', () => {
 
     expect(mockGet).toHaveBeenCalledTimes(1);
     expect(mockGet.mock.calls[0][0]).toBe('/logistics/track');
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
   });
 
   it('caches logistics carriers until carrier mutations invalidate them', async () => {

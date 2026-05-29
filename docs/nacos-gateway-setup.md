@@ -130,18 +130,31 @@ NACOS_GROUP=DEFAULT_GROUP
 NACOS_DISCOVERY_IP=
 NACOS_DISCOVERY_PORT=8081
 NACOS_EPHEMERAL=true
-REDIS_HOST=127.0.0.1
+PAYMENT_SIMULATION_ENABLED=false
+PAYMENT_SIMULATION_ALLOW_PRODUCTION=false
+CONFIG_CENTER_APPLY_NACOS_ON_STARTUP=false
+REDIS_HOST=158.101.11.223
 REDIS_PORT=6379
-REDIS_PASSWORD=
+REDIS_PASSWORD=shop_redis_password
 REDIS_DATABASE=0
 MAIL_CODE_REDIS_ENABLED=true
 MAIL_CODE_REDIS_KEY_PREFIX=shop:mail-code
 MAIL_CODE_PEPPER=use-the-same-secret-on-every-backend-instance
+MAIL_BRAND_NAME=ShopMX
+APP_MAIL_ACCOUNTS_0_HOST=smtp.example.com
+APP_MAIL_ACCOUNTS_0_PORT=465
+APP_MAIL_ACCOUNTS_0_USERNAME=no-reply@example.com
+APP_MAIL_ACCOUNTS_0_PASSWORD=use-mail-app-password
+APP_MAIL_ACCOUNTS_0_FROM=no-reply@example.com
+APP_MAIL_ACCOUNTS_0_SSL=true
+APP_MAIL_ACCOUNTS_0_STARTTLS=false
 ```
 
 `MAIL_CODE_PEPPER` must be stable across all backend instances. If it is empty,
 the backend falls back to `JWT_SECRET`; if both are empty, a single local process
 still works, but verification may fail across multiple registered instances.
+The same SMTP account pool is also used for order status emails, and production
+readiness blocks startup validation when no complete SMTP account is configured.
 
 Gateway:
 
@@ -285,8 +298,13 @@ status for automation: `200` when the backend is registered and visible through
 discovery, `503` when Nacos discovery is disabled, registration is disabled, the
 current backend instance is not visible, or discovery checks fail.
 
+The backend deployment activation script also checks Nacos after restarting
+`shoptest-backend`. When registration is enabled, deployment fails and rolls back
+if `/nacos/v1/ns/instance/list` does not return a `shop-backend` instance on the
+configured port.
+
 The Admin UI page `管理后台 -> 服务注册` also checks whether the frontend is
-configured to call Gateway (`REACT_APP_API_BASE_URL=http://localhost:8080` and
+configured to call Gateway (`REACT_APP_API_BASE_URL=http://158.101.11.223:8080` and
 `REACT_APP_API_GATEWAY_ENABLED=true`). If this check is orange, the frontend may
 still be calling the backend directly and bypassing Nacos/Gateway.
 
@@ -340,7 +358,7 @@ the same JSON diagnostics as `/gateway/status`.
 Point the frontend edge proxy at Gateway, not the backend:
 
 ```text
-BACKEND_ORIGIN=http://10.0.0.20:8080
+BACKEND_ORIGIN=http://158.101.11.223:8080
 ```
 
 The existing Nginx template uses `BACKEND_ORIGIN` for `/api`, `/ws`, and

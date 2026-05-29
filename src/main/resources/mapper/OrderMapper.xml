@@ -91,6 +91,10 @@
                             OR (status = 'RETURN_SHIPPED' AND COALESCE(return_shipped_at, updated_at, created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
                         )
                     </when>
+                    <when test="quick == 'MISSING_TRACKING'">
+                        AND status = 'SHIPPED'
+                        AND (tracking_number IS NULL OR TRIM(tracking_number) = '')
+                    </when>
                     <when test="quick == 'REFUNDED'">
                         AND (status IN ('REFUNDED', 'RETURNED') OR refunded_at IS NOT NULL)
                     </when>
@@ -142,7 +146,13 @@
         FROM orders o
         INNER JOIN users u ON u.id = o.user_id
         WHERE o.order_no = #{orderNo}
-          AND LOWER(u.email) = LOWER(#{email})
+          AND (
+              LOWER(TRIM(u.email)) = LOWER(TRIM(#{email}))
+              OR (
+                  o.shipping_address LIKE '[Guest]%'
+                  AND LOWER(o.shipping_address) LIKE CONCAT('% / ', LOWER(TRIM(#{email})), ' /%')
+              )
+          )
         LIMIT 1
     </select>
 
@@ -257,13 +267,14 @@
         WHERE id = #{id}
     </update>
 
-    <update id="updateReturnTracking">
+    <update id="updateReturnTrackingIfCurrent">
         UPDATE orders
         SET status = #{status},
             return_tracking_number = #{returnTrackingNumber},
             return_shipped_at = NOW(),
             updated_at = NOW()
         WHERE id = #{id}
+          AND status = #{currentStatus}
     </update>
 
     <update id="markReturnRefundingIfCurrent">

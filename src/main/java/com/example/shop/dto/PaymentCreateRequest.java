@@ -13,5 +13,7 @@ public class PaymentCreateRequest {
     @NotBlank
     private String channel;
 
+    private String orderNo;
+
     private String guestEmail;
 }

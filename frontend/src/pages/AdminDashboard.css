@@ -90,6 +90,161 @@
   line-height: 1.25;
 }
 
+.admin-dashboard__readiness {
+  display: grid;
+  grid-template-columns: minmax(126px, 0.22fr) minmax(0, 0.78fr) minmax(360px, 1fr);
+  gap: 14px;
+  align-items: stretch;
+  padding: 16px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(18, 71, 52, 0.1) 0 5px, transparent 5px),
+    linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+}
+
+.admin-dashboard__readiness--watch {
+  border-color: #ffe0b8;
+  background:
+    linear-gradient(90deg, rgba(250, 173, 20, 0.18) 0 5px, transparent 5px),
+    linear-gradient(135deg, #ffffff 0%, #fff8ef 100%);
+}
+
+.admin-dashboard__readiness--risk {
+  border-color: #ffccc7;
+  background:
+    linear-gradient(90deg, rgba(238, 77, 45, 0.2) 0 5px, transparent 5px),
+    linear-gradient(135deg, #ffffff 0%, #fff5f3 100%);
+}
+
+.admin-dashboard__readinessScore,
+.admin-dashboard__readinessCopy {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+}
+
+.admin-dashboard__readinessScore {
+  justify-items: start;
+  gap: 5px;
+}
+
+.admin-dashboard__readinessScore span {
+  color: #124734;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-dashboard__readinessScore strong {
+  color: #173f2b;
+  font-size: 42px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-dashboard__readinessScore .ant-tag {
+  margin: 0;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.admin-dashboard__readinessCopy {
+  gap: 7px;
+}
+
+.admin-dashboard__readinessCopy .ant-typography {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.admin-dashboard__readinessGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-dashboard__readinessItem {
+  min-width: 0;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: #ffffff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.admin-dashboard__readinessItem:hover,
+.admin-dashboard__readinessItem:focus-visible {
+  outline: none;
+  border-color: #124734;
+  box-shadow: 0 10px 22px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
+}
+
+.admin-dashboard__readinessItem--watch {
+  border-color: #ffe0b8;
+  background: #fff8ef;
+}
+
+.admin-dashboard__readinessItem--risk {
+  border-color: #ffccc7;
+  background: #fff5f3;
+}
+
+.admin-dashboard__readinessIcon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eef7f1;
+  color: #124734;
+  font-size: 16px;
+}
+
+.admin-dashboard__readinessItem--watch .admin-dashboard__readinessIcon {
+  background: #fff1dc;
+  color: #ad6800;
+}
+
+.admin-dashboard__readinessItem--risk .admin-dashboard__readinessIcon {
+  background: #fff0ee;
+  color: #c73719;
+}
+
+.admin-dashboard__readinessItem span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.admin-dashboard__readinessItem strong {
+  color: #173f2b;
+  font-size: 24px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-dashboard__readinessItem small {
+  min-width: 0;
+  color: #627064;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .admin-dashboard__actionBar {
   display: grid;
   grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.8fr);
@@ -645,6 +800,7 @@
 
 @media (max-width: 900px) {
   .admin-dashboard__hero,
+  .admin-dashboard__readiness,
   .admin-dashboard__actionBar,
   .admin-dashboard__paymentOps,
   .admin-dashboard__sla,
@@ -676,6 +832,7 @@
   }
 
   .admin-dashboard__hero,
+  .admin-dashboard__readiness,
   .admin-dashboard__actionBar,
   .admin-dashboard__paymentOps,
   .admin-dashboard__sla {
@@ -683,6 +840,7 @@
   }
 
   .admin-dashboard__heroMeta,
+  .admin-dashboard__readinessGrid,
   .admin-dashboard__actionGrid,
   .admin-dashboard__paymentOpsGrid,
   .admin-dashboard__slaGrid {
@@ -705,6 +863,7 @@
 }
 
 .admin-dashboard--es .admin-dashboard__actionCard,
+.admin-dashboard--es .admin-dashboard__readinessItem,
 .admin-dashboard--es .admin-dashboard__paymentOpsCard,
 .admin-dashboard--es .admin-dashboard__slaCard {
   min-height: 116px;
@@ -712,6 +871,7 @@
 
 .admin-dashboard--es .admin-dashboard__paymentOpsActions .ant-btn,
 .admin-dashboard--es .admin-dashboard__actionCard span,
+.admin-dashboard--es .admin-dashboard__readinessItem small,
 .admin-dashboard--es .admin-dashboard__paymentOpsCard span,
 .admin-dashboard--es .admin-dashboard__slaCard span,
 .admin-dashboard--es .admin-dashboard__metricList span {
@@ -720,6 +880,7 @@
 
 /* Dashboard operations polish */
 .admin-dashboard__hero,
+.admin-dashboard__readiness,
 .admin-dashboard__actionBar,
 .admin-dashboard__paymentOps,
 .admin-dashboard__sla,
@@ -753,16 +914,19 @@
 }
 
 .admin-dashboard__actionCard,
+.admin-dashboard__readinessItem,
 .admin-dashboard__paymentOpsCard,
 .admin-dashboard__slaCard,
 .admin-dashboard__statCard.ant-card,
 .admin-dashboard__panel.ant-card {
-  border-radius: 20px;
+  border-radius: 8px;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .admin-dashboard__actionCard:hover,
 .admin-dashboard__actionCard:focus-visible,
+.admin-dashboard__readinessItem:hover,
+.admin-dashboard__readinessItem:focus-visible,
 .admin-dashboard__paymentOpsCard:hover,
 .admin-dashboard__paymentOpsCard:focus-visible,
 .admin-dashboard__slaCard:hover,
@@ -770,11 +934,12 @@
 .admin-dashboard__statCard.ant-card:hover,
 .admin-dashboard__panel.ant-card:hover {
   border-color: rgba(238, 77, 45, 0.24) !important;
-  box-shadow: 0 18px 36px rgba(18, 71, 52, 0.12);
-  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(18, 71, 52, 0.1);
+  transform: translateY(-1px);
 }
 
 .admin-dashboard__actionCard,
+.admin-dashboard__readinessItem,
 .admin-dashboard__paymentOpsCard,
 .admin-dashboard__slaCard,
 .admin-dashboard__metricList > .ant-space-item > div,
@@ -825,6 +990,7 @@
 
 .admin-dashboard,
 .admin-dashboard__hero,
+.admin-dashboard__readiness,
 .admin-dashboard__actionBar,
 .admin-dashboard__paymentOps,
 .admin-dashboard__sla,
@@ -832,6 +998,7 @@
 .admin-dashboard__paymentOpsIntro,
 .admin-dashboard__slaIntro,
 .admin-dashboard__actionGrid,
+.admin-dashboard__readinessGrid,
 .admin-dashboard__paymentOpsGrid,
 .admin-dashboard__slaGrid,
 .admin-dashboard__statRow,
@@ -849,6 +1016,7 @@
 }
 
 .admin-dashboard__actionCard,
+.admin-dashboard__readinessItem,
 .admin-dashboard__paymentOpsCard,
 .admin-dashboard__slaCard,
 .admin-dashboard__statCard,
@@ -946,12 +1114,13 @@
   }
 
   .admin-dashboard__hero,
+  .admin-dashboard__readiness,
   .admin-dashboard__actionBar,
   .admin-dashboard__paymentOps,
   .admin-dashboard__sla {
     gap: 10px;
     padding: 10px;
-    border-radius: 14px;
+    border-radius: 8px;
   }
 
   .admin-dashboard__heroMeta {
@@ -964,22 +1133,27 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .admin-dashboard__readinessGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .admin-dashboard__heroMeta span {
     min-width: 128px;
     scroll-snap-align: start;
   }
 
   .admin-dashboard__actionCard,
+  .admin-dashboard__readinessItem,
   .admin-dashboard__paymentOpsCard,
   .admin-dashboard__slaCard {
     min-height: 74px;
     padding: 10px;
-    border-radius: 14px;
+    border-radius: 8px;
   }
 
   .admin-dashboard__panel.ant-card,
   .admin-dashboard__statCard.ant-card {
-    border-radius: 14px;
+    border-radius: 8px;
   }
 
   .admin-dashboard__panel .ant-card-head {
@@ -1001,6 +1175,7 @@
 /* Final mobile admin dashboard action stability pass */
 @media (max-width: 640px) {
   .admin-dashboard__heroMeta,
+  .admin-dashboard__readinessGrid,
   .admin-dashboard__actionGrid,
   .admin-dashboard__paymentOpsGrid,
   .admin-dashboard__slaGrid {
@@ -1011,6 +1186,7 @@
   }
 
   .admin-dashboard__heroMeta::-webkit-scrollbar,
+  .admin-dashboard__readinessGrid::-webkit-scrollbar,
   .admin-dashboard__actionGrid::-webkit-scrollbar,
   .admin-dashboard__paymentOpsGrid::-webkit-scrollbar,
   .admin-dashboard__slaGrid::-webkit-scrollbar {
@@ -1031,6 +1207,7 @@
   }
 
   .admin-dashboard__actionCard,
+  .admin-dashboard__readinessItem,
   .admin-dashboard__paymentOpsCard,
   .admin-dashboard__slaCard {
     -webkit-tap-highlight-color: transparent;
@@ -1039,6 +1216,7 @@
 }
 
 @media (max-width: 430px) {
+  .admin-dashboard__readinessGrid,
   .admin-dashboard__actionGrid,
   .admin-dashboard__paymentOpsGrid,
   .admin-dashboard__slaGrid {
@@ -1051,9 +1229,11 @@
   }
 
   .admin-dashboard__actionCard,
+  .admin-dashboard__readinessItem,
   .admin-dashboard__paymentOpsCard,
   .admin-dashboard__slaCard,
   .admin-dashboard--es .admin-dashboard__actionCard,
+  .admin-dashboard--es .admin-dashboard__readinessItem,
   .admin-dashboard--es .admin-dashboard__paymentOpsCard,
   .admin-dashboard--es .admin-dashboard__slaCard {
     flex: 0 0 136px;
@@ -1080,6 +1260,7 @@
   }
 
   .admin-dashboard__actionCard,
+  .admin-dashboard__readinessItem,
   .admin-dashboard__paymentOpsCard,
   .admin-dashboard__slaCard {
     min-width: 0;
@@ -1102,6 +1283,7 @@
   }
 
   .admin-dashboard__heroMeta span,
+  .admin-dashboard__readinessItem,
   .admin-dashboard__actionCard,
   .admin-dashboard__paymentOpsCard,
   .admin-dashboard__slaCard {

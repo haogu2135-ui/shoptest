@@ -14,6 +14,7 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
+import { getApiErrorMessage } from '../utils/apiError';
 import './StockAlerts.css';
 
 const { Title, Text } = Typography;
@@ -53,8 +54,8 @@ const StockAlerts: React.FC = () => {
           return acc;
         }, {});
         setProducts(nextProducts);
-      } catch {
-        message.error(t('pages.stockAlerts.loadFailed'));
+      } catch (error: any) {
+        message.error(getApiErrorMessage(error, t('pages.stockAlerts.loadFailed'), language));
       } finally {
         setLoading(false);
       }
@@ -95,8 +96,8 @@ const StockAlerts: React.FC = () => {
         dispatchDomEvent('shop:open-cart');
       }
       return true;
-    } catch {
-      message.error(t('messages.addFailed'));
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
       return false;
     }
   };
@@ -367,7 +368,7 @@ const StockAlerts: React.FC = () => {
                         </Text>
                         {product ? (
                           <div className="stock-alerts__itemSignalRow">
-                            <Text strong className="stock-alerts__price">{formatMoney(product.effectivePrice ?? product.price)}</Text>
+                            <Text strong className="stock-alerts__price commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</Text>
                             <Tag color={ready ? 'green' : 'default'}>
                               {ready ? t('pages.productDetail.enough') : t('pages.productList.soldOut')}
                             </Tag>

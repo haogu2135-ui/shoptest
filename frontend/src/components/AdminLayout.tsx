@@ -11,7 +11,7 @@ import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { adminApi, adminSupportApi, userApi } from '../api';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
-import { isAdminRole, isSuperAdminRole } from '../utils/roles';
+import { getEffectiveRole, isAdminRole, isSuperAdminRole } from '../utils/roles';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './AdminLayout.css';
 
@@ -81,7 +81,7 @@ const AdminLayout: React.FC = () => {
       }
       try {
         const res = await userApi.getProfile();
-        const effectiveRole = res.data.roleCode || res.data.role;
+        const effectiveRole = getEffectiveRole(res.data.role, res.data.roleCode);
         if (!isAdminRole(effectiveRole)) {
           message.error(t('adminLayout.noPermission'));
           navigate('/');
@@ -138,8 +138,10 @@ const AdminLayout: React.FC = () => {
   }, [checking, canSeeSupport, location.pathname]);
 
   const handleLogout = () => {
-    userApi.logout().catch(() => undefined);
+    const refreshToken = getLocalStorageItem('refreshToken');
+    userApi.logout(refreshToken).catch(() => undefined);
     removeLocalStorageItem('token');
+    removeLocalStorageItem('refreshToken');
     removeLocalStorageItem('userId');
     removeLocalStorageItem('username');
     removeLocalStorageItem('role');

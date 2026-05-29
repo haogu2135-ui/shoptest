@@ -10,6 +10,7 @@ import com.example.shop.service.NotificationService;
 import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PetBirthdayCouponService;
+import com.example.shop.service.PetGalleryService;
 import com.example.shop.service.ProductQuestionService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.ProductUrlImportService;
@@ -51,6 +52,7 @@ class AdminControllerPetBirthdayCouponAuditTest {
             mock(CouponService.class),
             mock(NotificationService.class),
             petBirthdayCouponService,
+            mock(PetGalleryService.class),
             mock(LogisticsCarrierService.class),
             auditLogService,
             mock(AdminRoleService.class),

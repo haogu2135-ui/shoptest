@@ -15,9 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BackupAndApplyPetCatalog {
-    private static final String URL = "jdbc:mysql://localhost:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
-    private static final String USER = "root";
-    private static final String PASSWORD = "84813378";
+    private static final String DEFAULT_URL = "jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+    private static final String DEFAULT_USER = "root";
+    private static final String DEFAULT_PASSWORD = "84813378";
     private static final String APPLY_CONFIRMATION = "--apply-missing-pet-catalog";
 
     public static void main(String[] args) throws Exception {
@@ -32,12 +32,21 @@ public class BackupAndApplyPetCatalog {
         String stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(LocalDateTime.now());
         Path backupFile = backupDir.resolve("product_category_backup_" + stamp + ".sql");
 
-        try (Connection connection = DriverManager.getConnection(URL, USER, PASSWORD)) {
+        String url = envOrDefault("DB_URL", DEFAULT_URL);
+        String user = envOrDefault("DB_USERNAME", DEFAULT_USER);
+        String password = envOrDefault("DB_PASSWORD", DEFAULT_PASSWORD);
+
+        try (Connection connection = DriverManager.getConnection(url, user, password)) {
             backupTable(connection, "categories", backupFile, false);
             backupTable(connection, "products", backupFile, true);
             applySql(connection, Path.of("scripts", "pet_catalog_test_data.sql"));
             printCounts(connection, backupFile);
         }
+    }
+
+    private static String envOrDefault(String name, String defaultValue) {
+        String value = System.getenv(name);
+        return value == null || value.isBlank() ? defaultValue : value;
     }
 
     private static void backupTable(Connection connection, String table, Path backupFile, boolean append) throws Exception {

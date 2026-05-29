@@ -3,10 +3,13 @@ import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes, useLoca
 import { Layout, Spin } from 'antd';
 import { CustomerServiceOutlined, GiftOutlined, UserAddOutlined, FileSearchOutlined } from '@ant-design/icons';
 import Navbar from './components/Navbar';
+import ErrorBoundary from './components/ErrorBoundary';
+import CustomerSupportWidget from './components/CustomerSupportWidget';
 import { useLanguage } from './i18n';
 import type { CartItem } from './types';
 import { dispatchDomEvent } from './utils/domEvents';
 import { hasStoredValue } from './utils/safeStorage';
+import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from './utils/guestSupportContext';
 import './App.css';
 
 const { Content, Footer } = Layout;
@@ -33,6 +36,7 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const NotificationManagement = lazy(() => import('./pages/NotificationManagement'));
 const OrderManagement = lazy(() => import('./pages/OrderManagement'));
 const OrderTracking = lazy(() => import('./pages/OrderTracking'));
+const PaymentInstructions = lazy(() => import('./pages/PaymentInstructions'));
 const PetFinder = lazy(() => import('./pages/PetFinder'));
 const PetGallery = lazy(() => import('./pages/PetGallery'));
 const PermissionManagement = lazy(() => import('./pages/PermissionManagement'));
@@ -52,10 +56,9 @@ const SystemMonitor = lazy(() => import('./pages/SystemMonitor'));
 const TrafficControl = lazy(() => import('./pages/TrafficControl'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 const loadCartDrawer = () => import('./components/CartDrawer');
-const loadCustomerSupportWidget = () => import('./components/CustomerSupportWidget');
 const LazyCartDrawer = lazy(loadCartDrawer);
-const LazyCustomerSupportWidget = lazy(loadCustomerSupportWidget);
 
 type CartDrawerOpenRequest = {
   id: number;
@@ -64,7 +67,60 @@ type CartDrawerOpenRequest = {
 
 type SupportOpenRequest = {
   id: number;
+  guestOrderNo?: string;
+  guestEmail?: string;
 };
+
+type SupportOpenDetail = {
+  orderNo?: string;
+  email?: string;
+  guestOrderNo?: string;
+  guestEmail?: string;
+};
+
+type SupportWidgetBoundaryProps = {
+  fallback: React.ReactNode;
+  resetKey?: number;
+  children: React.ReactNode;
+};
+
+type SupportWidgetBoundaryState = {
+  hasError: boolean;
+};
+
+class SupportWidgetBoundary extends React.Component<SupportWidgetBoundaryProps, SupportWidgetBoundaryState> {
+  state: SupportWidgetBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): SupportWidgetBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidUpdate(previousProps: SupportWidgetBoundaryProps) {
+    if (this.state.hasError && previousProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('Support widget failed to load:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+const getSupportOpenDetail = (event?: Event): SupportOpenDetail | null => {
+  const detail = event && 'detail' in event ? (event as CustomEvent<SupportOpenDetail>).detail : null;
+  const normalized = normalizeGuestSupportContext(detail);
+  return normalized ? { guestOrderNo: normalized.orderNo, guestEmail: normalized.email } : null;
+};
+
+const toSupportOpenDetail = (context: ReturnType<typeof loadGuestSupportContext>): SupportOpenDetail | null =>
+  context ? { guestOrderNo: context.orderNo, guestEmail: context.email } : null;
 
 const LoadingFallback = () => (
   <div className="app-route-loading">
@@ -170,16 +226,17 @@ const LazySupportWidgetHost: React.FC = () => {
   const [openRequest, setOpenRequest] = useState<SupportOpenRequest | null>(null);
   const requestSeqRef = useRef(0);
 
-  const openSupport = useCallback(() => {
+  const openSupport = useCallback((event?: Event) => {
+    const guestDetail = getSupportOpenDetail(event) || toSupportOpenDetail(loadGuestSupportContext());
+    if (guestDetail) {
+      saveGuestSupportContext({ orderNo: guestDetail.guestOrderNo || '', email: guestDetail.guestEmail || '' });
+    }
     requestSeqRef.current += 1;
-    setOpenRequest({ id: requestSeqRef.current });
+    setOpenRequest({ id: requestSeqRef.current, ...(guestDetail || {}) });
     setLoaded(true);
   }, []);
 
-  const preloadSupport = useCallback(() => {
-    setLoaded(true);
-    void loadCustomerSupportWidget();
-  }, []);
+  const preloadSupport = useCallback(() => undefined, []);
 
   useEffect(() => {
     if (widgetReady) return undefined;
@@ -194,12 +251,18 @@ const LazySupportWidgetHost: React.FC = () => {
   }
 
   return (
-    <Suspense fallback={<SupportLauncherButton loading onOpen={openSupport} onPreload={preloadSupport} />}>
-      <LazyCustomerSupportWidget
-        initialOpenRequest={openRequest}
-        onReady={handleWidgetReady}
-      />
-    </Suspense>
+    <>
+      {!widgetReady ? <SupportLauncherButton loading onOpen={openSupport} onPreload={preloadSupport} /> : null}
+      <SupportWidgetBoundary
+        resetKey={openRequest?.id}
+        fallback={<SupportLauncherButton onOpen={openSupport} onPreload={preloadSupport} />}
+      >
+        <CustomerSupportWidget
+          initialOpenRequest={openRequest}
+          onReady={handleWidgetReady}
+        />
+      </SupportWidgetBoundary>
+    </>
   );
 };
 
@@ -207,6 +270,10 @@ const StorefrontLayout: React.FC = () => {
   const { t } = useLanguage();
   const location = useLocation();
   const isAuthenticated = hasStoredValue('token');
+  const openSupport = useCallback(() => {
+    const guestDetail = toSupportOpenDetail(loadGuestSupportContext());
+    dispatchDomEvent('shop:open-support', guestDetail || undefined);
+  }, []);
   const shellClassName = [
     'shop-app-shell',
     location.pathname === '/products' ? 'shop-app-shell--product-list' : '',
@@ -274,7 +341,7 @@ const StorefrontLayout: React.FC = () => {
               <h3>{t('footer.customerCare')}</h3>
               <Link to="/track-order">{t('footer.tracking')}</Link>
               <Link to="/products">{t('footer.howToBuy')}</Link>
-              <button type="button" onClick={() => dispatchDomEvent('shop:open-support')}>{t('footer.helpCenter')}</button>
+              <button type="button" onClick={openSupport}>{t('footer.helpCenter')}</button>
             </div>
             <div>
               <h3>{t('footer.about')}</h3>
@@ -302,59 +369,65 @@ const App: React.FC = () => {
   return (
     <Router>
       <RouteScrollReset />
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route path="/" element={<StorefrontLayout />}>
-            <Route index element={<Home />} />
-            <Route path="products" element={<ProductList />} />
-            <Route path="pet-finder" element={<PetFinder />} />
-            <Route path="pet-gallery" element={<PetGallery />} />
-            <Route path="compare" element={<ProductCompare />} />
-            <Route path="products/:id" element={<ProductDetail />} />
-            <Route path="cart" element={<Cart />} />
-            <Route path="checkout" element={<Checkout />} />
-            <Route path="coupons" element={<CouponCenter />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="wishlist" element={<Wishlist />} />
-            <Route path="history" element={<BrowsingHistory />} />
-            <Route path="stock-alerts" element={<StockAlerts />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="track-order" element={<OrderTracking />} />
-            <Route path="login" element={<Login />} />
-            <Route path="forgot-password" element={<ForgotPassword />} />
-            <Route path="register" element={<Register />} />
-          </Route>
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<StorefrontLayout />}>
+              <Route index element={<Home />} />
+              <Route path="products" element={<ProductList />} />
+              <Route path="pet-finder" element={<PetFinder />} />
+              <Route path="pet-gallery" element={<PetGallery />} />
+              <Route path="compare" element={<ProductCompare />} />
+              <Route path="products/:id" element={<ProductDetail />} />
+              <Route path="cart" element={<Cart />} />
+              <Route path="checkout" element={<Checkout />} />
+              <Route path="coupons" element={<CouponCenter />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="wishlist" element={<Wishlist />} />
+              <Route path="history" element={<BrowsingHistory />} />
+              <Route path="stock-alerts" element={<StockAlerts />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="track-order" element={<OrderTracking />} />
+              <Route path="payment/:orderNo" element={<PaymentInstructions />} />
+              <Route path="login" element={<Login />} />
+              <Route path="forgot-password" element={<ForgotPassword />} />
+              <Route path="register" element={<Register />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
 
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="products" element={<ProductManagement />} />
-            <Route path="brands" element={<BrandManagement />} />
-            <Route path="categories" element={<CategoryManagement />} />
-            <Route path="orders" element={<OrderManagement />} />
-            <Route path="logistics-carriers" element={<LogisticsCarrierManagement />} />
-            <Route path="coupons" element={<CouponManagement />} />
-            <Route path="users" element={<UserManagement />} />
-            <Route path="permissions" element={<PermissionManagement />} />
-            <Route path="reviews" element={<ReviewManagement />} />
-            <Route path="questions" element={<ProductQuestionManagement />} />
-            <Route path="notifications" element={<NotificationManagement />} />
-            <Route path="announcements" element={<AnnouncementManagement />} />
-            <Route path="support" element={<SupportManagement />} />
-            <Route path="audit-logs" element={<SecurityAuditLogManagement />} />
-            <Route path="alerts" element={<AlertManagement />} />
-            <Route path="ip-blacklist" element={<IpBlacklistManagement />} />
-            <Route path="logs" element={<LogManagement />} />
-            <Route path="registry" element={<RegistryManagement />} />
-            <Route path="config-center" element={<ConfigCenter />} />
-            <Route path="traffic-control" element={<TrafficControl />} />
-            <Route path="system" element={<SystemMonitor />} />
-          </Route>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="products" element={<ProductManagement />} />
+              <Route path="brands" element={<BrandManagement />} />
+              <Route path="categories" element={<CategoryManagement />} />
+              <Route path="orders" element={<OrderManagement />} />
+              <Route path="logistics-carriers" element={<LogisticsCarrierManagement />} />
+              <Route path="coupons" element={<CouponManagement />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="permissions" element={<PermissionManagement />} />
+              <Route path="reviews" element={<ReviewManagement />} />
+              <Route path="questions" element={<ProductQuestionManagement />} />
+              <Route path="notifications" element={<NotificationManagement />} />
+              <Route path="announcements" element={<AnnouncementManagement />} />
+              <Route path="support" element={<SupportManagement />} />
+              <Route path="audit-logs" element={<SecurityAuditLogManagement />} />
+              <Route path="alerts" element={<AlertManagement />} />
+              <Route path="ip-blacklist" element={<IpBlacklistManagement />} />
+              <Route path="logs" element={<LogManagement />} />
+              <Route path="registry" element={<RegistryManagement />} />
+              <Route path="config-center" element={<ConfigCenter />} />
+              <Route path="traffic-control" element={<TrafficControl />} />
+              <Route path="system" element={<SystemMonitor />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
 
-          <Route path="/product-management" element={<Navigate to="/admin/products" replace />} />
-          <Route path="/category-management" element={<Navigate to="/admin/categories" replace />} />
-        </Routes>
-      </Suspense>
+            <Route path="/product-management" element={<Navigate to="/admin/products" replace />} />
+            <Route path="/category-management" element={<Navigate to="/admin/categories" replace />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </Router>
   );
 };

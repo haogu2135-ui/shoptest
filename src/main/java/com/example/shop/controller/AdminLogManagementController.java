@@ -7,6 +7,7 @@ import com.example.shop.service.LogManagementService;
 import com.example.shop.service.SecurityAuditLogService;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
@@ -39,10 +41,13 @@ public class AdminLogManagementController {
 
     @PutMapping("/debug")
     public LogManagementStatusResponse setDebug(
-            @RequestBody LogDebugRequest request,
+            @RequestBody(required = false) LogDebugRequest request,
             Authentication authentication,
             HttpServletRequest httpRequest
     ) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Log debug payload is required");
+        }
         try {
             LogManagementStatusResponse response = logManagementService.setDebug(request.isEnabled(), request.getLoggerName());
             auditLogService.record("LOG_DEBUG_TOGGLE", "SUCCESS", authentication, "LOGGING", response.getLoggerName(), httpRequest,

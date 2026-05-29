@@ -18,6 +18,7 @@ public interface PaymentRepository {
     Payment findLatestPaidByOrderId(Long orderId);
     Payment findLatestRefundedByOrderId(Long orderId);
     long countByStatus(String status);
+    long countActivePendingByOrderId(Long orderId);
     List<Payment> findByOrderId(Long orderId);
     List<Payment> findExpiredPending();
     int insert(Payment payment);

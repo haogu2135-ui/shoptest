@@ -23,13 +23,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     const login = async (username: string, password: string) => {
         try {
             const response = await userApi.login(username, password);
-            const { token, id, username: name, role, roleCode } = response.data;
+            const { token, refreshToken, id, username: name, email, phone, role, roleCode } = response.data;
             const effectiveRole = getEffectiveRole(role, roleCode);
+            const displayName = String(name || email || phone || id || '');
             setLocalStorageItem('token', token);
+            if (refreshToken) setLocalStorageItem('refreshToken', refreshToken);
             setLocalStorageItem('userId', String(id));
-            setLocalStorageItem('username', name);
+            setLocalStorageItem('username', displayName);
             setLocalStorageItem('role', effectiveRole);
-            setUser({ id, username: name, role, roleCode, email: response.data.email || '' });
+            setUser({ id, username: displayName, role, roleCode, email: email || '', phone });
             message.success(t('pages.auth.loginSuccess'));
         } catch (error) {
             message.error(t('pages.auth.loginFailed'));
@@ -38,9 +40,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const logout = () => {
-        userApi.logout().catch(() => undefined);
+        const refreshToken = getLocalStorageItem('refreshToken');
+        userApi.logout(refreshToken).catch(() => undefined);
         setUser(null);
         removeLocalStorageItem('token');
+        removeLocalStorageItem('refreshToken');
         removeLocalStorageItem('userId');
         removeLocalStorageItem('username');
         removeLocalStorageItem('role');
@@ -55,11 +59,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const effectiveRole = getEffectiveRole(response.data.role, response.data.roleCode);
                     setUser(response.data);
                     setLocalStorageItem('userId', String(response.data.id));
-                    setLocalStorageItem('username', response.data.username);
+                    setLocalStorageItem('username', String(response.data.username || response.data.email || response.data.phone || response.data.id || ''));
                     setLocalStorageItem('role', effectiveRole);
                 })
                 .catch(() => {
                     removeLocalStorageItem('token');
+                    removeLocalStorageItem('refreshToken');
                     removeLocalStorageItem('userId');
                     removeLocalStorageItem('username');
                     removeLocalStorageItem('role');

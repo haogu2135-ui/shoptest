@@ -156,9 +156,12 @@ public class CartService {
         if (product == null) {
             item.setProductStatus("INACTIVE");
             item.setProductName("Unavailable product");
+            item.setImageUrl(null);
             item.setStock(0);
             return;
         }
+        item.setProductName(product.getName());
+        item.setImageUrl(resolveProductImageUrl(product));
         item.setProductStatus(product.getStatus());
         try {
             productVariantService.validateSelection(product, item.getSelectedSpecs());
@@ -168,6 +171,21 @@ public class CartService {
             item.setProductStatus("INACTIVE");
             item.setStock(0);
         }
+    }
+
+    private String resolveProductImageUrl(Product product) {
+        if (product == null) {
+            return null;
+        }
+        if (product.getImageUrl() != null && !product.getImageUrl().trim().isEmpty()) {
+            return product.getImageUrl().trim();
+        }
+        for (String image : product.getImagesList()) {
+            if (image != null && !image.trim().isEmpty()) {
+                return image.trim();
+            }
+        }
+        return null;
     }
 
     private Product requirePurchasableProductForUpdate(Long productId, Integer quantity) {

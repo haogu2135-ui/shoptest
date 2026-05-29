@@ -84,6 +84,11 @@ if [[ ! -f "$ACTIVATE_SCRIPT_SOURCE" ]]; then
   echo "Backend activation script not found: $ACTIVATE_SCRIPT_SOURCE" >&2
   exit 1
 fi
+ACTIVATE_SCRIPT_TEST_SOURCE="${PROJECT_DIR%/}/scripts/test-backend-remote-activate.sh"
+if [[ -f "$ACTIVATE_SCRIPT_TEST_SOURCE" ]]; then
+  bash -n "$ACTIVATE_SCRIPT_SOURCE" "$ACTIVATE_SCRIPT_TEST_SOURCE"
+  bash "$ACTIVATE_SCRIPT_TEST_SOURCE"
+fi
 
 REMOTE="${BACKEND_DEPLOY_USER}@${BACKEND_DEPLOY_HOST}"
 SSH_ARGS=(-p "$BACKEND_DEPLOY_PORT" "${SSH_EXTRA_ARG_ARRAY[@]}")

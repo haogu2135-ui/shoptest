@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, PlusOutlined, WarningOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, PlusOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import { logisticsCarrierApi } from '../api';
 import type { LogisticsCarrier } from '../types';
 import { useLanguage } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 import './LogisticsCarrierManagement.css';
 
 const { Title, Text } = Typography;
@@ -12,10 +13,12 @@ const LogisticsCarrierManagement: React.FC = () => {
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [keyword, setKeyword] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [editingCarrier, setEditingCarrier] = useState<LogisticsCarrier | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const carrierHealth = useMemo(() => {
     const active = carriers.filter((carrier) => carrier.status === 'ACTIVE').length;
@@ -58,17 +61,27 @@ const LogisticsCarrierManagement: React.FC = () => {
     return signals.filter(Boolean).length;
   };
 
+  const filteredCarriers = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    return carriers.filter((carrier) => {
+      if (statusFilter && carrier.status !== statusFilter) return false;
+      if (!text) return true;
+      return [carrier.name, carrier.trackingCode, carrier.status, carrier.sortOrder]
+        .some((value) => String(value || '').toLowerCase().includes(text));
+    });
+  }, [carriers, keyword, statusFilter]);
+
   const fetchCarriers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await logisticsCarrierApi.getAll(false);
       setCarriers(res.data || []);
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.logisticsCarriers.fetchFailed'));
+      message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   useEffect(() => {
     fetchCarriers();
@@ -76,8 +89,16 @@ const LogisticsCarrierManagement: React.FC = () => {
 
   const openModal = (carrier?: LogisticsCarrier) => {
     setEditingCarrier(carrier || null);
+    form.resetFields();
     form.setFieldsValue(carrier || { status: 'ACTIVE', sortOrder: 0 });
     setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setModalOpen(false);
+    setEditingCarrier(null);
+    form.resetFields();
   };
 
   const handleSave = async () => {
@@ -96,7 +117,7 @@ const LogisticsCarrierManagement: React.FC = () => {
       fetchCarriers();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err.response?.data?.error || t('pages.logisticsCarriers.saveFailed'));
+      message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.saveFailed'), language));
     } finally {
       setSaving(false);
     }
@@ -108,7 +129,7 @@ const LogisticsCarrierManagement: React.FC = () => {
       message.success(t('pages.logisticsCarriers.deleted'));
       fetchCarriers();
     } catch (err: any) {
-      message.error(err.response?.data?.error || t('pages.logisticsCarriers.deleteFailed'));
+      message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.deleteFailed'), language));
     }
   };
 
@@ -118,6 +139,27 @@ const LogisticsCarrierManagement: React.FC = () => {
       <Card className="logistics-carrier-page__intro">
         <Space wrap>
           <Text type="secondary">{t('pages.logisticsCarriers.description')}</Text>
+          <Input
+            allowClear
+            prefix={<SearchOutlined />}
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={t('common.search')}
+            className="logistics-carrier-page__keywordInput"
+          />
+          <Select
+            allowClear
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder={t('common.status')}
+            className="logistics-carrier-page__statusFilter"
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
+            options={[
+              { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
+              { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
+            ]}
+          />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
             {t('pages.logisticsCarriers.addCarrier')}
           </Button>
@@ -165,7 +207,7 @@ const LogisticsCarrierManagement: React.FC = () => {
       <Table
         rowKey="id"
         loading={loading}
-        dataSource={carriers}
+        dataSource={filteredCarriers}
         bordered
         scroll={{ x: 640 }}
         columns={[
@@ -213,16 +255,13 @@ const LogisticsCarrierManagement: React.FC = () => {
       />
 
       <Modal
-        className="logistics-carrier-page__editorModal"
+        className="profile-mobile-safe-modal logistics-carrier-page__editorModal"
         title={editingCarrier ? t('pages.logisticsCarriers.editTitle') : t('pages.logisticsCarriers.addTitle')}
         open={modalOpen}
         onOk={handleSave}
         confirmLoading={saving}
-        onCancel={() => {
-          setModalOpen(false);
-          setEditingCarrier(null);
-          form.resetFields();
-        }}
+        onCancel={closeModal}
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.logisticsCarriers.name')} rules={[{ required: true, message: t('pages.logisticsCarriers.nameRequired') }]}>
@@ -233,6 +272,8 @@ const LogisticsCarrierManagement: React.FC = () => {
           </Form.Item>
           <Form.Item name="status" label={t('common.status')} rules={[{ required: true }]}>
             <Select
+              popupClassName="shop-mobile-popup-layer"
+              getPopupContainer={() => document.body}
               options={[
                 { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
                 { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },

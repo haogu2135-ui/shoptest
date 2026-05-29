@@ -189,6 +189,27 @@
   margin-top: 16px;
 }
 
+.profile-email-code-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: -4px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #f1d8a7;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fffdf7 0%, #fff7e6 100%);
+  color: #704b0b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.profile-email-code-warning .anticon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #b46411;
+}
+
 .profile-section-action {
   margin-bottom: 16px;
 }
@@ -604,6 +625,18 @@
   color: #ee4d2d;
 }
 
+.profile-price-text,
+.profile-quantity-text,
+.profile-order-item__unit,
+.profile-order-detail__unit {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .profile-order-detail__descriptions {
   margin-bottom: 16px;
 }
@@ -1010,6 +1043,16 @@
 
 .profile-payment-modal__methodSelect {
   min-width: 220px;
+}
+
+.profile-mobile-safe-modal .ant-modal-body {
+  overscroll-behavior: contain;
+}
+
+.profile-address-modal .ant-cascader,
+.profile-address-modal .ant-input,
+.profile-address-modal textarea {
+  width: 100%;
 }
 
 .profile-pet-modal__field,
@@ -2092,7 +2135,7 @@
   }
 
   .profile-payment-modal {
-    top: max(8px, env(safe-area-inset-top));
+    top: auto;
     max-width: calc(100vw - 12px);
     padding-bottom: calc(8px + env(safe-area-inset-bottom));
   }
@@ -2711,4 +2754,543 @@
     padding-inline: 8px;
     font-size: 12px;
   }
+}
+
+/* Mobile profile modals: avoid top clipping under the sticky nav/safe area. */
+@media (max-width: 640px) {
+  .profile-mobile-safe-modal,
+  .profile-mobile-safe-modal * {
+    box-sizing: border-box;
+  }
+
+  .profile-mobile-safe-modal {
+    top: auto !important;
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px);
+    margin: 0 auto;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-mobile-safe-modal .ant-modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  @supports (height: 100dvh) {
+    .profile-mobile-safe-modal .ant-modal-content {
+      max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  .profile-mobile-safe-modal .ant-modal-header {
+    flex: 0 0 auto;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-top: 14px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-mobile-safe-modal .ant-modal-footer {
+    flex: 0 0 auto;
+  }
+
+  .profile-mobile-safe-modal .ant-form,
+  .profile-mobile-safe-modal .ant-form-item,
+  .profile-mobile-safe-modal .ant-form-item-control,
+  .profile-mobile-safe-modal .ant-form-item-control-input,
+  .profile-mobile-safe-modal .ant-form-item-control-input-content,
+  .profile-mobile-safe-modal .ant-input,
+  .profile-mobile-safe-modal .ant-input-affix-wrapper,
+  .profile-mobile-safe-modal .ant-select,
+  .profile-mobile-safe-modal .ant-select-selector,
+  .profile-mobile-safe-modal .ant-cascader,
+  .profile-mobile-safe-modal .ant-picker,
+  .profile-mobile-safe-modal .ant-input-number {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .profile-address-modal,
+  .profile-address-modal * {
+    box-sizing: border-box;
+  }
+
+  .profile-address-modal {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px);
+    margin: 0 auto;
+  }
+
+  .profile-address-modal .ant-modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  .profile-address-modal .ant-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-top: 14px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-address-modal .ant-form,
+  .profile-address-modal .ant-form-item,
+  .profile-address-modal .ant-form-item-control,
+  .profile-address-modal .ant-form-item-control-input,
+  .profile-address-modal .ant-form-item-control-input-content,
+  .profile-address-modal .ant-input,
+  .profile-address-modal .ant-input-affix-wrapper,
+  .profile-address-modal .ant-select,
+  .profile-address-modal .ant-select-selector,
+  .profile-address-modal .ant-cascader {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* Final profile atomic-text pass: order money, payment links and mobile actions stay stable. */
+.profile-price-text,
+.profile-quantity-text,
+.profile-order-item__unit,
+.profile-order-detail__unit,
+.profile-order-card__amount,
+.profile-order-card__amount strong,
+.profile-order-card__paid,
+.profile-order-card__paid strong,
+.profile-payment-recovery strong,
+.profile-flow-focus__value strong,
+.profile-payment-history__time {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.profile-price-text,
+.profile-quantity-text,
+.profile-order-item__unit,
+.profile-order-detail__unit,
+.profile-order-card__amount strong,
+.profile-order-card__paid strong,
+.profile-payment-recovery strong,
+.profile-flow-focus__value strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.profile-payment-link,
+.profile-payment-method-hint,
+.profile-order-detail__productButton,
+.profile-order-card__link {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.profile-payment-link,
+.profile-payment-method-hint {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.profile-order-card__actions .ant-btn,
+.profile-flow-actions__buttons .ant-btn,
+.profile-payment-actions .ant-btn,
+.profile-overview__actions .ant-btn,
+.profile-pet-shop-path__actions .ant-btn,
+.profile-mobile-entry__item {
+  white-space: nowrap;
+}
+
+.profile-order-card__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.profile-flow-actions__buttons .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.profile-payment-actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.profile-overview__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.profile-pet-shop-path__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.profile-mobile-entry__item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .profile-order-card__amount,
+  .profile-order-card__paid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-order-card__amount strong,
+  .profile-order-card__paid strong,
+  .profile-price-text {
+    max-width: 100%;
+  }
+
+  .profile-order-card__actions .ant-btn,
+  .profile-flow-actions__buttons .ant-btn,
+  .profile-payment-actions .ant-btn,
+  .profile-overview__actions .ant-btn,
+  .profile-pet-shop-path__actions .ant-btn {
+    white-space: nowrap !important;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-footer .ant-btn {
+    width: 100%;
+    margin-inline-start: 0 !important;
+  }
+
+  .profile-address-modal.ant-modal,
+  .profile-address-modal .ant-modal-content {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  .profile-address-modal .ant-modal-content {
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-address-modal .ant-modal-body {
+    padding-top: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .profile-mobile-safe-modal .ant-modal-footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final mobile modal placement: keep profile forms below fixed headers and inside the viewport. */
+@media (max-width: 640px) {
+  .profile-mobile-safe-modal.ant-modal {
+    top: auto !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 0 auto !important;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-content {
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .profile-address-modal.ant-modal {
+    top: auto !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-address-modal .ant-modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 28px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    overflow: hidden;
+  }
+
+  .profile-address-modal .ant-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    flex: 0 0 auto;
+    margin-bottom: 0;
+    background: #ffffff;
+  }
+
+  .profile-address-modal .ant-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-top: 14px !important;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-address-modal .ant-form-item,
+  .profile-address-modal .ant-input,
+  .profile-address-modal .ant-input-affix-wrapper,
+  .profile-address-modal .ant-cascader,
+  .profile-address-modal textarea {
+    scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-address-modal .ant-modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), #ffffff 34%);
+  }
+
+  .profile-address-modal .ant-modal-footer .ant-btn {
+    width: 100%;
+    min-width: 0;
+    margin-inline-start: 0 !important;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-header,
+  .profile-mobile-safe-modal .ant-modal-footer {
+    flex: 0 0 auto;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shop-mobile-popup-layer {
+    max-width: calc(100vw - 16px);
+    max-height: min(48dvh, 380px);
+    overflow: auto;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-title,
+  .profile-mobile-safe-modal .ant-form-item-label > label,
+  .profile-mobile-safe-modal .ant-checkbox-wrapper,
+  .profile-mobile-safe-modal .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Final address form closure: mobile add/edit address stays below browser chrome and above the keyboard. */
+@media (max-width: 640px) {
+  .profile-mobile-safe-modal.ant-modal {
+    top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+    transform: none;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-content {
+    min-height: 0;
+    max-height: calc(100dvh - 22px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-mobile-safe-modal .ant-modal-body {
+    scroll-padding-top: 16px;
+    scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-address-modal.ant-modal {
+    top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+    transform: none;
+  }
+
+  .profile-address-modal .ant-modal-content {
+    min-height: 0;
+    max-height: calc(100dvh - 22px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-address-modal .ant-modal-body {
+    scroll-padding-top: 16px;
+    scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-address-modal .ant-form-item {
+    margin-bottom: 14px;
+  }
+
+  .profile-address-modal .ant-input,
+  .profile-address-modal .ant-input-affix-wrapper,
+  .profile-address-modal .ant-select-selector,
+  .profile-address-modal .ant-cascader-picker,
+  .profile-address-modal textarea.ant-input {
+    font-size: 16px;
+  }
+
+  .profile-address-modal textarea.ant-input {
+    min-height: 92px;
+    resize: vertical;
+  }
+
+  .profile-address-modal .ant-checkbox-wrapper {
+    display: inline-flex;
+    align-items: flex-start;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .profile-address-modal .ant-checkbox + span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Address modal final viewport guard: phones with browser chrome keep the first field visible. */
+@media (max-width: 640px) {
+  .profile-address-modal.ant-modal {
+    top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px)) !important;
+    width: min(520px, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 0 auto !important;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-address-modal .ant-modal-content {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    max-height: calc(100dvh - 28px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    overflow: hidden !important;
+  }
+
+  .profile-address-modal .ant-modal-body {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-top: calc(22px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-address-modal :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, textarea.ant-input) {
+    scroll-margin-top: calc(92px + env(safe-area-inset-top, 0px)) !important;
+    scroll-margin-bottom: calc(146px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-address-modal .ant-modal-footer {
+    margin-top: 0;
+  }
+}
+
+/* Final mobile address modal guard: keep the form below fixed browser/app chrome. */
+@media (max-width: 640px) {
+  .profile-address-modal.ant-modal {
+    top: max(18px, calc(env(safe-area-inset-top, 0px) + 18px)) !important;
+    width: min(520px, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 0 auto !important;
+    padding: 0 0 max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-address-modal .ant-modal-content {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    max-height: calc(100svh - 44px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    overflow: hidden !important;
+  }
+
+  .profile-address-modal .ant-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin: 0 !important;
+    background: #ffffff;
+  }
+
+  .profile-address-modal .ant-modal-body {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-top: 16px !important;
+    scroll-padding-top: calc(28px + env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-address-modal .ant-form-item:first-child {
+    margin-top: 0 !important;
+  }
+
+  .profile-address-modal :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, textarea.ant-input) {
+    scroll-margin-top: calc(118px + env(safe-area-inset-top, 0px)) !important;
+    scroll-margin-bottom: calc(172px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .profile-address-modal .ant-modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    margin: 0 !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), #ffffff 38%);
+  }
+}
+
+/* Last-mile address editor viewport guard for mobile browsers with collapsing chrome. */
+@media (max-width: 640px) {
+  body .ant-modal-root .profile-address-modal.ant-modal:not(.ant-modal-confirm) {
+    top: max(16px, calc(env(safe-area-inset-top, 0px) + 16px)) !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body .ant-modal-root .profile-address-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+    max-height: calc(100svh - 34px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  @supports (height: 100dvh) {
+    body .ant-modal-root .profile-address-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+      max-height: calc(100dvh - 34px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+
+  body .ant-modal-root .profile-address-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-body {
+    scroll-padding-top: calc(18px + env(safe-area-inset-top, 0px)) !important;
+    scroll-padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body .ant-modal-root .profile-address-modal.ant-modal:not(.ant-modal-confirm) :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, textarea.ant-input):focus,
+  body .ant-modal-root .profile-address-modal.ant-modal:not(.ant-modal-confirm) :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, textarea.ant-input):focus-within {
+    scroll-margin-top: calc(128px + env(safe-area-inset-top, 0px)) !important;
+    scroll-margin-bottom: calc(178px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Final profile order commerce guard: embedded shipping amounts stay atomic in cards. */
+.profile-order-card__shippingIncluded {
+  display: inline-flex !important;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+}
+
+.profile-order-card__shippingIncluded .commerce-money {
+  flex: 0 0 auto;
+  max-width: min(124px, 34vw);
 }
