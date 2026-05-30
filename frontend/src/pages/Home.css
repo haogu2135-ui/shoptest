@@ -1172,6 +1172,7 @@
 
 .shopee-product__quickActions {
   position: absolute;
+  top: auto;
   right: 8px;
   bottom: 8px;
   display: inline-flex;
@@ -1971,6 +1972,7 @@
   }
 
   .shopee-product__quickActions {
+    top: auto;
     right: 6px;
     bottom: 6px;
     opacity: 1;
@@ -3328,8 +3330,9 @@
   }
 
   .shopee-product__quickActions {
-    top: 8px;
+    top: auto;
     right: 8px;
+    bottom: 8px;
     gap: 5px;
   }
 
@@ -4198,6 +4201,7 @@
   }
 
   .shopee-product__quickActions {
+    top: auto;
     right: 7px;
     bottom: 7px;
     gap: 5px;
