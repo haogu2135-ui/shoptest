@@ -1531,12 +1531,15 @@ const ProductList: React.FC = () => {
     const soldOut = product.stock !== undefined && product.stock <= 0;
     if (soldOut) {
       const alerted = alertedStockProductIds.has(product.id);
+      const stockAlertActionLabel = `${alerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}: ${product.name}`;
       return (
         <Button
           key="stock-alert"
           icon={<BellOutlined />}
           size="small"
           className="product-list__actionButton product-list__alertButton"
+          aria-label={stockAlertActionLabel}
+          title={stockAlertActionLabel}
           onClick={(e) => handleStockAlert(e, product)}
         >
           <span className="product-list__actionLabel">
@@ -1545,6 +1548,8 @@ const ProductList: React.FC = () => {
         </Button>
       );
     }
+    const quickAddLabel = isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.productList.chooseOptionsAction');
+    const quickAddActionLabel = `${quickAddLabel}: ${product.name}`;
     return (
       <Button
         key="quick-add"
@@ -1552,10 +1557,12 @@ const ProductList: React.FC = () => {
         icon={<ShoppingCartOutlined />}
         size="small"
         className="product-list__actionButton"
+        aria-label={quickAddActionLabel}
+        title={quickAddActionLabel}
         onClick={(e) => openQuickAdd(e, product)}
       >
         <span className="product-list__actionLabel">
-          {isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.productList.chooseOptionsAction')}
+          {quickAddLabel}
         </span>
       </Button>
     );
@@ -2143,6 +2150,9 @@ const ProductList: React.FC = () => {
                 {paginatedProducts.map((product, index) => {
                   const imageUrl = resolveProductPrimaryImage(product);
                   const priorityImage = currentPage === 1 && index < 4;
+                  const previewActionLabel = `${t('pages.productList.quickPreview')}: ${product.name}`;
+                  const wishlistActionLabel = `${wishlistedProductIds.has(product.id) ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${product.name}`;
+                  const compareActionLabel = `${isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}: ${product.name}`;
                   return (
                   <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
                     <Card
@@ -2193,6 +2203,8 @@ const ProductList: React.FC = () => {
                               size="small"
                               icon={<SearchOutlined />}
                               className="product-list__previewTrigger"
+                              aria-label={previewActionLabel}
+                              title={previewActionLabel}
                               onClick={(event) => openProductPreview(event, product)}
                             >
                               {t('pages.productList.quickPreview')}
@@ -2209,8 +2221,8 @@ const ProductList: React.FC = () => {
                           className={wishlistedProductIds.has(product.id)
                             ? 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton product-list__favoriteButton--active'
                             : 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton'}
-                          aria-label={wishlistedProductIds.has(product.id) ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
-                          title={wishlistedProductIds.has(product.id) ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
+                          aria-label={wishlistActionLabel}
+                          title={wishlistActionLabel}
                           onClick={(e) => handleWishlistToggle(e, product)}
                         >
                           <span className="product-list__actionLabel">
@@ -2222,8 +2234,8 @@ const ProductList: React.FC = () => {
                           icon={<BarChartOutlined />}
                           size="small"
                           className="product-list__actionButton product-list__actionButton--compact"
-                          aria-label={isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
-                          title={isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
+                          aria-label={compareActionLabel}
+                          title={compareActionLabel}
                           onClick={(e) => handleCompare(e, product)}
                         >
                           <span className="product-list__actionLabel">

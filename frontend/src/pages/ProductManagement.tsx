@@ -1739,69 +1739,80 @@ const ProductManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 340,
-      render: (_: any, record: Product) => (
-        <Space size="small" wrap className="product-action-space">
-          <Tooltip title={record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured')}>
-            {canWriteProducts ? (
-              <Button
-                className={record.isFeatured ? 'product-feature-button product-feature-button--active' : 'product-feature-button'}
-                icon={record.isFeatured ? <StarFilled /> : <StarOutlined />}
-                aria-label={record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured')}
-                title={record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured')}
-                onClick={() => handleToggleFeatured(record)}
-                size="small"
-              />
-            ) : <span />}
-          </Tooltip>
-          {canWriteProducts ? <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button> : null}
-          {canWriteProducts ? (
-            <Tooltip title={t('pages.productAdmin.duplicateProduct')}>
-              <Button
-                icon={<CopyOutlined />}
-                aria-label={t('pages.productAdmin.duplicateProduct')}
-                title={t('pages.productAdmin.duplicateProduct')}
-                onClick={() => handleDuplicate(record)}
-                size="small"
-              />
+      render: (_: any, record: Product) => {
+        const productName = record.name || `#${record.id}`;
+        const featureActionText = record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured');
+        const featureActionLabel = `${featureActionText}: ${productName}`;
+        const editActionLabel = `${t('common.edit')}: ${productName}`;
+        const duplicateActionLabel = `${t('pages.productAdmin.duplicateProduct')}: ${productName}`;
+        const approveActionLabel = `${t('pages.productAdmin.approve')}: ${productName}`;
+        const rejectActionLabel = `${t('pages.productAdmin.reject')}: ${productName}`;
+        const reviewActionLabel = `${t('pages.productAdmin.review')}: ${productName}`;
+        const deleteActionLabel = `${t('common.delete')}: ${productName}`;
+        return (
+          <Space size="small" wrap className="product-action-space">
+            <Tooltip title={featureActionLabel}>
+              {canWriteProducts ? (
+                <Button
+                  className={record.isFeatured ? 'product-feature-button product-feature-button--active' : 'product-feature-button'}
+                  icon={record.isFeatured ? <StarFilled /> : <StarOutlined />}
+                  aria-label={featureActionLabel}
+                  title={featureActionLabel}
+                  onClick={() => handleToggleFeatured(record)}
+                  size="small"
+                />
+              ) : <span />}
             </Tooltip>
-          ) : null}
-          {canChangeProductStatus && (record.status || 'ACTIVE') !== 'ACTIVE' && (
-            <Popconfirm
-              title={t('pages.productAdmin.approveConfirm', { name: record.name })}
-              onConfirm={() => handleProductStatus(record, 'ACTIVE')}
-              okText={t('common.confirm')}
-              cancelText={t('common.cancel')}
-            >
-              <Button size="small">{t('pages.productAdmin.approve')}</Button>
-            </Popconfirm>
-          )}
-          {canChangeProductStatus && (record.status || 'ACTIVE') !== 'REJECTED' && (
-            <Popconfirm
-              title={t('pages.productAdmin.rejectConfirm', { name: record.name })}
-              onConfirm={() => handleProductStatus(record, 'REJECTED')}
-              okText={t('common.confirm')}
-              cancelText={t('common.cancel')}
-            >
-              <Button size="small" danger>{t('pages.productAdmin.reject')}</Button>
-            </Popconfirm>
-          )}
-          {canChangeProductStatus && (record.status || 'ACTIVE') !== 'PENDING_REVIEW' && (
-            <Popconfirm
-              title={t('pages.productAdmin.reviewConfirm', { name: record.name })}
-              onConfirm={() => handleProductStatus(record, 'PENDING_REVIEW')}
-              okText={t('common.confirm')}
-              cancelText={t('common.cancel')}
-            >
-              <Button size="small">{t('pages.productAdmin.review')}</Button>
-            </Popconfirm>
-          )}
-          {canDeleteProducts ? (
-            <Popconfirm title={t('pages.productAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
-              <Button danger icon={<DeleteOutlined />} size="small">{t('common.delete')}</Button>
-            </Popconfirm>
-          ) : null}
-        </Space>
-      ),
+            {canWriteProducts ? <Button type="primary" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button> : null}
+            {canWriteProducts ? (
+              <Tooltip title={duplicateActionLabel}>
+                <Button
+                  icon={<CopyOutlined />}
+                  aria-label={duplicateActionLabel}
+                  title={duplicateActionLabel}
+                  onClick={() => handleDuplicate(record)}
+                  size="small"
+                />
+              </Tooltip>
+            ) : null}
+            {canChangeProductStatus && (record.status || 'ACTIVE') !== 'ACTIVE' && (
+              <Popconfirm
+                title={t('pages.productAdmin.approveConfirm', { name: productName })}
+                onConfirm={() => handleProductStatus(record, 'ACTIVE')}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+              >
+                <Button size="small" aria-label={approveActionLabel} title={approveActionLabel}>{t('pages.productAdmin.approve')}</Button>
+              </Popconfirm>
+            )}
+            {canChangeProductStatus && (record.status || 'ACTIVE') !== 'REJECTED' && (
+              <Popconfirm
+                title={t('pages.productAdmin.rejectConfirm', { name: productName })}
+                onConfirm={() => handleProductStatus(record, 'REJECTED')}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+              >
+                <Button size="small" danger aria-label={rejectActionLabel} title={rejectActionLabel}>{t('pages.productAdmin.reject')}</Button>
+              </Popconfirm>
+            )}
+            {canChangeProductStatus && (record.status || 'ACTIVE') !== 'PENDING_REVIEW' && (
+              <Popconfirm
+                title={t('pages.productAdmin.reviewConfirm', { name: productName })}
+                onConfirm={() => handleProductStatus(record, 'PENDING_REVIEW')}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+              >
+                <Button size="small" aria-label={reviewActionLabel} title={reviewActionLabel}>{t('pages.productAdmin.review')}</Button>
+              </Popconfirm>
+            )}
+            {canDeleteProducts ? (
+              <Popconfirm title={t('pages.productAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+                <Button danger icon={<DeleteOutlined />} size="small" aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+              </Popconfirm>
+            ) : null}
+          </Space>
+        );
+      },
     },
   ];
 

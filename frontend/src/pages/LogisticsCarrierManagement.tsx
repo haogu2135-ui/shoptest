@@ -285,16 +285,21 @@ const LogisticsCarrierManagement: React.FC = () => {
             title: t('common.actions'),
             key: 'actions',
             width: 180,
-            render: (_: unknown, carrier: LogisticsCarrier) => (
-              <Space>
-                {canWriteCarriers ? <Button size="small" onClick={() => openModal(carrier)}>{t('common.edit')}</Button> : null}
-                {canDeleteCarriers ? (
-                  <Popconfirm title={t('pages.logisticsCarriers.deleteConfirm')} onConfirm={() => handleDelete(carrier.id)}>
-                    <Button size="small" danger>{t('common.delete')}</Button>
-                  </Popconfirm>
-                ) : null}
-              </Space>
-            ),
+            render: (_: unknown, carrier: LogisticsCarrier) => {
+              const carrierName = carrier.name || `#${carrier.id}`;
+              const editActionLabel = `${t('common.edit')}: ${carrierName}`;
+              const deleteActionLabel = `${t('common.delete')}: ${carrierName}`;
+              return (
+                <Space>
+                  {canWriteCarriers ? <Button size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(carrier)}>{t('common.edit')}</Button> : null}
+                  {canDeleteCarriers ? (
+                    <Popconfirm title={t('pages.logisticsCarriers.deleteConfirm')} onConfirm={() => handleDelete(carrier.id)}>
+                      <Button size="small" danger aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                    </Popconfirm>
+                  ) : null}
+                </Space>
+              );
+            },
           },
         ]}
       />

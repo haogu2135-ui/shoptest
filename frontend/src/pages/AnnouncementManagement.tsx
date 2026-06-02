@@ -327,16 +327,22 @@ const AnnouncementManagement: React.FC = () => {
               title: t('common.status'),
               dataIndex: 'status',
               width: 110,
-              render: (status: string, record) => (
-                <Switch
-                  checked={status === 'ACTIVE'}
-                  checkedChildren={t('pages.announcementAdmin.enable')}
-                  unCheckedChildren={t('pages.announcementAdmin.disable')}
-                  loading={statusUpdatingId === record.id}
-                  disabled={!canWriteAnnouncements}
-                  onChange={(checked) => toggleStatus(record, checked)}
-                />
-              ),
+              render: (status: string, record) => {
+                const announcementTitle = record.title || `#${record.id || ''}`.trim();
+                const statusActionLabel = `${status === 'ACTIVE' ? t('pages.announcementAdmin.disable') : t('pages.announcementAdmin.enable')}: ${announcementTitle}`;
+                return (
+                  <Switch
+                    checked={status === 'ACTIVE'}
+                    checkedChildren={t('pages.announcementAdmin.enable')}
+                    unCheckedChildren={t('pages.announcementAdmin.disable')}
+                    aria-label={statusActionLabel}
+                    title={statusActionLabel}
+                    loading={statusUpdatingId === record.id}
+                    disabled={!canWriteAnnouncements}
+                    onChange={(checked) => toggleStatus(record, checked)}
+                  />
+                );
+              },
             },
             {
               title: t('pages.announcementAdmin.sortOrder'),
@@ -357,16 +363,21 @@ const AnnouncementManagement: React.FC = () => {
             {
               title: t('common.actions'),
               width: 160,
-              render: (_, record) => (
-                <Space>
-                  {canWriteAnnouncements ? <Button size="small" onClick={() => openEditor(record)}>{t('common.edit')}</Button> : null}
-                  {canDeleteAnnouncements ? (
-                    <Popconfirm title={t('pages.announcementAdmin.deleteConfirm')} onConfirm={() => deleteAnnouncement(record.id)}>
-                      <Button size="small" danger>{t('common.delete')}</Button>
-                    </Popconfirm>
-                  ) : null}
-                </Space>
-              ),
+              render: (_, record) => {
+                const announcementTitle = record.title || `#${record.id || ''}`.trim();
+                const editActionLabel = `${t('common.edit')}: ${announcementTitle}`;
+                const deleteActionLabel = `${t('common.delete')}: ${announcementTitle}`;
+                return (
+                  <Space>
+                    {canWriteAnnouncements ? <Button size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openEditor(record)}>{t('common.edit')}</Button> : null}
+                    {canDeleteAnnouncements ? (
+                      <Popconfirm title={t('pages.announcementAdmin.deleteConfirm')} onConfirm={() => deleteAnnouncement(record.id)}>
+                        <Button size="small" danger aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                      </Popconfirm>
+                    ) : null}
+                  </Space>
+                );
+              },
             },
           ]}
         />

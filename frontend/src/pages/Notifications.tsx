@@ -239,12 +239,16 @@ const Notifications: React.FC = () => {
         <List
           dataSource={filteredNotifications}
           locale={{ emptyText: t('pages.notifications.noFilterResults') }}
-          renderItem={item => (
+          renderItem={(item) => {
+            const notificationName = item.title || formatNotificationType(item.type) || `#${item.id}`;
+            const markReadActionLabel = `${t('pages.notifications.markRead')}: ${notificationName}`;
+            const deleteActionLabel = `${t('common.delete')}: ${notificationName}`;
+            return (
             <List.Item
               className={item.isRead ? 'notifications-page__item' : 'notifications-page__item notifications-page__item--unread'}
               actions={[
                 !item.isRead && (
-                  <Button key="mark-read" size="small" type="link" onClick={() => handleMarkAsRead(item.id)}>{t('pages.notifications.markRead')}</Button>
+                  <Button key="mark-read" size="small" type="link" aria-label={markReadActionLabel} title={markReadActionLabel} onClick={() => handleMarkAsRead(item.id)}>{t('pages.notifications.markRead')}</Button>
                 ),
                 <Popconfirm
                   key="delete"
@@ -252,7 +256,7 @@ const Notifications: React.FC = () => {
                   title={t('pages.notifications.deleteConfirm')}
                   onConfirm={() => handleDelete(item.id)}
                 >
-                  <Button size="small" type="link" danger icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')} />
+                  <Button size="small" type="link" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
                 </Popconfirm>,
               ].filter(Boolean)}
             >
@@ -276,7 +280,8 @@ const Notifications: React.FC = () => {
                 }
               />
             </List.Item>
-          )}
+            );
+          }}
         />
       )}
     </div>

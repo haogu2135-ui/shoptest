@@ -69,4 +69,17 @@ describe('localizeProduct', () => {
   it('keeps the original product name outside Spanish', () => {
     expect(localizeProduct(baseProduct, 'en').name).toBe('CanineCore Puppy Training Treats');
   });
+
+  it('uses localized non-empty product names when backend names are blank', () => {
+    const product = {
+      ...baseProduct,
+      id: 42,
+      name: '   ',
+      description: '',
+    };
+
+    expect(localizeProduct(product, 'en').name).toBe('Product #42');
+    expect(localizeProduct(product, 'es').name).toBe('Producto #42');
+    expect(localizeProduct(product, 'zh').name).toBe('商品 #42');
+  });
 });

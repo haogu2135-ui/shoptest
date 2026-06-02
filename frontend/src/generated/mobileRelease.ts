@@ -7,8 +7,8 @@ export const CURRENT_MOBILE_RELEASE = {
   "versionCode": 10023,
   "minSupportedVersionCode": 0,
   "mandatory": false,
-  "apkUrl": "/downloads/shoptest-1.0.23.apk",
-  "legacyApkUrl": "/downloads/shoptest.apk?v=1.0.23",
+  "apkUrl": "",
+  "legacyApkUrl": "",
   "releaseSigned": false,
   "certificateSha256": "",
   "fileName": "shoptest-1.0.23.apk",
@@ -17,7 +17,7 @@ export const CURRENT_MOBILE_RELEASE = {
   "releaseNotes": [
     "Performance and storefront stability improvements."
   ],
-  "generatedAt": "2026-06-02T13:32:03.721Z"
+  "generatedAt": "2026-06-02T14:25:05.697Z"
 } as const;
 
 export type CurrentMobileRelease = typeof CURRENT_MOBILE_RELEASE;

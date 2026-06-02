@@ -270,20 +270,25 @@ const BrandManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'actions',
       width: 180,
-      render: (_: unknown, record: Brand) => (
-        <Space size="small">
-          {canWriteBrands ? <Button icon={<EditOutlined />} size="small" onClick={() => openModal(record)}>
-            {t('common.edit')}
-          </Button> : null}
-          {canDeleteBrands ? (
-            <Popconfirm title={t('pages.brandAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
-              <Button icon={<DeleteOutlined />} danger size="small">
-                {t('common.delete')}
-              </Button>
-            </Popconfirm>
-          ) : null}
-        </Space>
-      ),
+      render: (_: unknown, record: Brand) => {
+        const brandName = record.name || `#${record.id}`;
+        const editActionLabel = `${t('common.edit')}: ${brandName}`;
+        const deleteActionLabel = `${t('common.delete')}: ${brandName}`;
+        return (
+          <Space size="small">
+            {canWriteBrands ? <Button icon={<EditOutlined />} size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
+              {t('common.edit')}
+            </Button> : null}
+            {canDeleteBrands ? (
+              <Popconfirm title={t('pages.brandAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+                <Button icon={<DeleteOutlined />} danger size="small" aria-label={deleteActionLabel} title={deleteActionLabel}>
+                  {t('common.delete')}
+                </Button>
+              </Popconfirm>
+            ) : null}
+          </Space>
+        );
+      },
     },
   ];
 

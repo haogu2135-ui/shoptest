@@ -234,6 +234,14 @@ const spanishProductTextPolish: Record<string, string> = {
 
 const polishSpanishProductText = (value: string) => spanishProductTextPolish[value] || value;
 
+const fallbackProductName = (product: ProductPublic, language: Language) => {
+  const productId = Number(product.id);
+  const productSuffix = Number.isFinite(productId) && productId > 0 ? ` #${productId}` : '';
+  if (language === 'zh') return `商品${productSuffix}`;
+  if (language === 'es') return `Producto${productSuffix}`;
+  return `Product${productSuffix}`;
+};
+
 const valueFromSpecs = (
   product: ProductPublic,
   language: Language,
@@ -259,8 +267,9 @@ export const getLocalizedProductValue = (
     || (language === 'zh' ? chineseProductFallbacks[product.name]?.[field] : undefined)
     || product[field]
     || ''
-  );
-  return language === 'es' ? polishSpanishProductText(value) : value;
+  ).trim();
+  const displayValue = field === 'name' && !value ? fallbackProductName(product, language) : value;
+  return language === 'es' ? polishSpanishProductText(displayValue) : displayValue;
 };
 
 export const localizeProduct = <T extends ProductPublic>(product: T, language: Language): T => ({

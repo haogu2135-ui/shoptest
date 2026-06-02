@@ -206,6 +206,8 @@ const generatedAt = new Date().toISOString();
 const releaseSigned = process.env.MOBILE_RELEASE_SIGNED === 'true';
 const certificateSha256 = normalizeCertificateFingerprint(process.env.MOBILE_RELEASE_CERTIFICATE_SHA256);
 const minSupportedVersionCode = Number(process.env.MOBILE_MIN_SUPPORTED_VERSION_CODE || 0);
+const apkUrl = releaseSigned ? `/downloads/${latestApk.fileName}` : '';
+const legacyApkUrl = releaseSigned ? `/downloads/shoptest.apk?v=${encodeURIComponent(versionName)}` : '';
 
 validateReleaseSigningMetadata(releaseSigned, certificateSha256);
 validateVersionMetadata(versionName, versionCode, latestApk);
@@ -219,8 +221,8 @@ const manifest = {
   versionCode,
   minSupportedVersionCode,
   mandatory: process.env.MOBILE_UPDATE_MANDATORY === 'true',
-  apkUrl: `/downloads/${latestApk.fileName}`,
-  legacyApkUrl: `/downloads/shoptest.apk?v=${encodeURIComponent(versionName)}`,
+  apkUrl,
+  legacyApkUrl,
   releaseSigned,
   certificateSha256,
   fileName: latestApk.fileName,

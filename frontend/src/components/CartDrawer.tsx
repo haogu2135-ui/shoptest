@@ -88,6 +88,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
+  const getCartItemName = useCallback((item: Pick<CartItem, 'productId' | 'productName'>) => (
+    item.productName || t('pages.profile.productFallback', { id: item.productId })
+  ), [t]);
   const closeDrawer = useCallback(() => setOpen(false), []);
 
   useNativeBackHandler(open, () => {
@@ -667,11 +670,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             loading={loading}
             dataSource={items}
             className="cart-drawer__list"
-            renderItem={(item) => (
+            renderItem={(item) => {
+              const itemName = getCartItemName(item);
+              const saveActionLabel = `${t('pages.cart.saveForLaterShort')}: ${itemName}`;
+              const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
+              return (
               <List.Item
                 className="cart-drawer__item"
                 actions={[
-                  <Button key="later" type="link" className="cart-drawer__itemAction cart-drawer__itemAction--save" icon={<ClockCircleOutlined />} onClick={() => saveForLater(item)}>
+                  <Button key="later" type="link" className="cart-drawer__itemAction cart-drawer__itemAction--save" icon={<ClockCircleOutlined />} aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)}>
                     {t('pages.cart.saveForLaterShort')}
                   </Button>,
                   <Popconfirm
@@ -680,7 +687,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     title={t('pages.cart.deleteConfirm')}
                     onConfirm={() => removeItem(item)}
                   >
-                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')}>
+                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>
                       {t('common.delete')}
                     </Button>
                   </Popconfirm>,
@@ -692,7 +699,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                       src={getOptimizedImageUrl(resolveCartImage(item.imageUrl), 144)}
                       srcSet={buildResponsiveImageSrcSet(resolveCartImage(item.imageUrl), [96, 144, 192, 288])}
                       sizes="72px"
-                      alt={item.productName}
+                      alt={itemName}
                       className="cart-drawer__image"
                       width={72}
                       height={72}
@@ -701,7 +708,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                       onError={applyCartImageFallback}
                     />
                   }
-                  title={<button type="button" className="cart-drawer__productLink" onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{item.productName}</button>}
+                  title={<button type="button" className="cart-drawer__productLink" onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{itemName}</button>}
                   description={
                     <Space direction="vertical" size={4}>
                       {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
@@ -738,7 +745,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                   }
                 />
               </List.Item>
-            )}
+              );
+            }}
           />
         )}
 

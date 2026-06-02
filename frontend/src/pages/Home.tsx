@@ -845,6 +845,9 @@ const Home: React.FC = () => {
         ? t('pages.cart.lowStockLeft', { count: product.stock })
         : t('home.stockAvailable', { count: product.stock })
       : t('home.inStock');
+    const viewActionLabel = `${t('pages.productList.viewDetails')}: ${product.name}`;
+    const cartActionLabel = `${t('pages.productList.addToCart')}: ${product.name}`;
+    const wishlistActionLabel = `${isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${product.name}`;
     return (
     <article
       className={[
@@ -891,7 +894,8 @@ const Home: React.FC = () => {
         <span className="shopee-product__quickActions">
           <button
             type="button"
-            aria-label={t('home.viewAll')}
+            aria-label={viewActionLabel}
+            title={viewActionLabel}
             onMouseEnter={() => prefetchProduct(product.id)}
             onFocus={() => prefetchProduct(product.id)}
             onClick={(event) => {
@@ -903,7 +907,8 @@ const Home: React.FC = () => {
           </button>
           <button
             type="button"
-            aria-label={t('pages.productList.addToCart')}
+            aria-label={cartActionLabel}
+            title={cartActionLabel}
             disabled={isSoldOut}
             onClick={(event) => handleQuickAddToCart(event, product)}
           >
@@ -911,7 +916,8 @@ const Home: React.FC = () => {
           </button>
           <button
             type="button"
-            aria-label={isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
+            aria-label={wishlistActionLabel}
+            title={wishlistActionLabel}
             className={isWishlisted ? 'shopee-product__quickAction--favorite shopee-product__quickAction--favoriteActive' : 'shopee-product__quickAction--favorite'}
             onClick={(event) => handleQuickWishlist(event, product)}
           >

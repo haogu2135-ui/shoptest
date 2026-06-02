@@ -383,6 +383,9 @@ const BrowsingHistory: React.FC = () => {
             const productLowStock = getLowStockCount(product.stock, 1) !== null;
             const productDeal = isDealProduct(product);
             const originalPrice = Number(product.originalPrice || 0);
+            const addActionLabel = `${t('pages.browsingHistory.addToCart')}: ${product.name}`;
+            const viewActionLabel = `${productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}: ${product.name}`;
+            const deleteActionLabel = `${t('common.delete')}: ${product.name}`;
             return (
               <article className={`browsing-history__item${productReadyToCart ? ' browsing-history__item--ready' : ''}${productLowStock ? ' browsing-history__item--urgent' : ''}`} key={product.id}>
                 <button type="button" className="browsing-history__image" onClick={() => navigate(`/products/${product.id}`)}>
@@ -419,14 +422,14 @@ const BrowsingHistory: React.FC = () => {
                     </span>
                     <div>
                       {productReadyToCart ? (
-                        <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => addHistoryProductToCart(product)}>
+                        <Button type="primary" icon={<ShoppingCartOutlined />} aria-label={addActionLabel} title={addActionLabel} onClick={() => addHistoryProductToCart(product)}>
                           {t('pages.browsingHistory.addToCart')}
                         </Button>
                       ) : null}
-                      <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShoppingOutlined />} onClick={() => navigate(`/products/${product.id}`)}>
+                      <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShoppingOutlined />} aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
                         {productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}
                       </Button>
-                      <Button type="text" danger icon={<DeleteOutlined />} aria-label={t('common.delete')} onClick={() => removeItem(product.id)} />
+                      <Button type="text" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} onClick={() => removeItem(product.id)} />
                     </div>
                   </div>
                 </div>

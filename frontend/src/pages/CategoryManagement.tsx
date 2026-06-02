@@ -320,25 +320,31 @@ const CategoryManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 280,
-      render: (_: unknown, record: Category) => (
-        <Space size="small">
-          {canWriteCategories && (record.level || 1) < 3 ? (
-            <Button icon={<PlusOutlined />} size="small" onClick={() => openModal(null, record)}>
-              {t('pages.categoryAdmin.child')}
-            </Button>
-          ) : null}
-          {canWriteCategories ? <Button icon={<EditOutlined />} size="small" onClick={() => openModal(record)}>
-            {t('common.edit')}
-          </Button> : null}
-          {canDeleteCategories ? (
-            <Popconfirm title={t('pages.categoryAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
-              <Button icon={<DeleteOutlined />} danger size="small">
-                {t('common.delete')}
+      render: (_: unknown, record: Category) => {
+        const categoryName = record.localizedContent?.[language]?.name || record.localizedContent?.en?.name || record.name || `#${record.id}`;
+        const childActionLabel = `${t('pages.categoryAdmin.child')}: ${categoryName}`;
+        const editActionLabel = `${t('common.edit')}: ${categoryName}`;
+        const deleteActionLabel = `${t('common.delete')}: ${categoryName}`;
+        return (
+          <Space size="small">
+            {canWriteCategories && (record.level || 1) < 3 ? (
+              <Button icon={<PlusOutlined />} size="small" aria-label={childActionLabel} title={childActionLabel} onClick={() => openModal(null, record)}>
+                {t('pages.categoryAdmin.child')}
               </Button>
-            </Popconfirm>
-          ) : null}
-        </Space>
-      ),
+            ) : null}
+            {canWriteCategories ? <Button icon={<EditOutlined />} size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
+              {t('common.edit')}
+            </Button> : null}
+            {canDeleteCategories ? (
+              <Popconfirm title={t('pages.categoryAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+                <Button icon={<DeleteOutlined />} danger size="small" aria-label={deleteActionLabel} title={deleteActionLabel}>
+                  {t('common.delete')}
+                </Button>
+              </Popconfirm>
+            ) : null}
+          </Space>
+        );
+      },
     },
   ];
 

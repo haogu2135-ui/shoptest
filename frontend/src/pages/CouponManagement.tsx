@@ -454,17 +454,23 @@ const CouponManagement: React.FC = () => {
     {
       title: t('common.actions'),
       key: 'actions',
-      render: (_: any, record: Coupon) => (
-        <Space>
-          {canGrantCoupons ? <Button size="small" icon={<SendOutlined />} onClick={() => openGrant(record)}>{t('pages.adminCoupons.grant')}</Button> : null}
-          {canWriteCoupons ? <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>{t('common.edit')}</Button> : null}
-          {canDeleteCoupons ? (
-            <Popconfirm title={t('pages.adminCoupons.deleteConfirm')} onConfirm={() => deleteCoupon(record.id)}>
-              <Button size="small" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
-            </Popconfirm>
-          ) : null}
-        </Space>
-      ),
+      render: (_: any, record: Coupon) => {
+        const couponName = record.name || `#${record.id}`;
+        const grantActionLabel = `${t('pages.adminCoupons.grant')}: ${couponName}`;
+        const editActionLabel = `${t('common.edit')}: ${couponName}`;
+        const deleteActionLabel = `${t('common.delete')}: ${couponName}`;
+        return (
+          <Space>
+            {canGrantCoupons ? <Button size="small" icon={<SendOutlined />} aria-label={grantActionLabel} title={grantActionLabel} onClick={() => openGrant(record)}>{t('pages.adminCoupons.grant')}</Button> : null}
+            {canWriteCoupons ? <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEdit(record)}>{t('common.edit')}</Button> : null}
+            {canDeleteCoupons ? (
+              <Popconfirm title={t('pages.adminCoupons.deleteConfirm')} onConfirm={() => deleteCoupon(record.id)}>
+                <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+              </Popconfirm>
+            ) : null}
+          </Space>
+        );
+      },
     },
   ];
 

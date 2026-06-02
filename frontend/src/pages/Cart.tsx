@@ -77,6 +77,9 @@ const Cart: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
+  const getCartItemName = useCallback((item: Pick<CartItem, 'productId' | 'productName'>) => (
+    item.productName || t('pages.profile.productFallback', { id: item.productId })
+  ), [t]);
 
   const fetchCartItems = useCallback(async () => {
     const authenticated = hasAuthenticatedCartSession();
@@ -573,34 +576,37 @@ const Cart: React.FC = () => {
       title: t('pages.cart.product'),
       dataIndex: 'productName',
       key: 'productName',
-      render: (name: string, record: CartItem) => (
-        <Space>
-          <img
-            src={resolveCartImage(record.imageUrl)}
-            alt={name || t('pages.profile.productFallback', { id: record.productId })}
-            className="cart-page__tableImage"
-            loading="lazy"
-            decoding="async"
-            onError={(event) => {
-              if (event.currentTarget.src !== cartImageFallback) {
-                event.currentTarget.src = cartImageFallback;
-              }
-            }}
-          />
-          <div>
-            <Link to={`/products/${record.productId}`}><Text>{name || t('pages.profile.productFallback', { id: record.productId })}</Text></Link>
-            {record.selectedSpecs ? <div><Text type="secondary">{formatSelectedSpecs(record.selectedSpecs, t, language)}</Text></div> : null}
-            {!canCheckout(record) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
-            {canCheckout(record) && getCartItemLowStockCount(record) !== null ? (
-              <div>
-                <Text type="warning" className="cart-page__urgency">
-                  {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(record) ?? 0 })}
-                </Text>
-              </div>
-            ) : null}
-          </div>
-        </Space>
-      ),
+      render: (_name: string, record: CartItem) => {
+        const itemName = getCartItemName(record);
+        return (
+          <Space>
+            <img
+              src={resolveCartImage(record.imageUrl)}
+              alt={itemName}
+              className="cart-page__tableImage"
+              loading="lazy"
+              decoding="async"
+              onError={(event) => {
+                if (event.currentTarget.src !== cartImageFallback) {
+                  event.currentTarget.src = cartImageFallback;
+                }
+              }}
+            />
+            <div>
+              <Link to={`/products/${record.productId}`}><Text>{itemName}</Text></Link>
+              {record.selectedSpecs ? <div><Text type="secondary">{formatSelectedSpecs(record.selectedSpecs, t, language)}</Text></div> : null}
+              {!canCheckout(record) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
+              {canCheckout(record) && getCartItemLowStockCount(record) !== null ? (
+                <div>
+                  <Text type="warning" className="cart-page__urgency">
+                    {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(record) ?? 0 })}
+                  </Text>
+                </div>
+              ) : null}
+            </div>
+          </Space>
+        );
+      },
     },
     {
       title: t('pages.cart.unitPrice'),
@@ -635,20 +641,25 @@ const Cart: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 150,
-      render: (_: unknown, record: CartItem) => (
-        <Space direction="vertical" size={2}>
-          <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(record)} disabled={removingItemIds.includes(record.id)}>
-            {t('pages.cart.saveForLater')}
-          </Button>
-          <Popconfirm
-            popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
-            title={t('pages.cart.deleteConfirm')}
-            onConfirm={() => removeItem(record.id)}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(record.id)}>{t('common.delete')}</Button>
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_: unknown, record: CartItem) => {
+        const itemName = getCartItemName(record);
+        const saveActionLabel = `${t('pages.cart.saveForLater')}: ${itemName}`;
+        const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
+        return (
+          <Space direction="vertical" size={2}>
+            <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={removingItemIds.includes(record.id)}>
+              {t('pages.cart.saveForLater')}
+            </Button>
+            <Popconfirm
+              popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+              title={t('pages.cart.deleteConfirm')}
+              onConfirm={() => removeItem(record.id)}
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(record.id)} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -939,19 +950,23 @@ const Cart: React.FC = () => {
             <Table columns={columns} dataSource={cartItems} rowKey="id" loading={loading} pagination={false} />
           </div>
           <div className="cart-page__mobileList" role="list" aria-label={t('pages.cart.title')}>
-            {cartItems.map((item) => (
+            {cartItems.map((item) => {
+              const itemName = getCartItemName(item);
+              const saveActionLabel = `${t('pages.cart.saveForLaterShort')}: ${itemName}`;
+              const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
+              return (
               <Card key={item.id} size="small" className="cart-page__mobileItem" role="listitem">
                 <div className="cart-page__mobileItemTop">
                   <Checkbox
                     disabled={!canCheckout(item)}
                     checked={selectedIds.includes(item.id)}
-                    aria-label={`${t('pages.cart.chooseItems')}: ${item.productName || t('pages.profile.productFallback', { id: item.productId })}`}
+                    aria-label={`${t('pages.cart.chooseItems')}: ${itemName}`}
                     onChange={(e) => toggleOne(item.id, e.target.checked)}
                   />
                   <img
                     className="cart-page__mobileItemImage"
                     src={resolveCartImage(item.imageUrl)}
-                    alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
+                    alt={itemName}
                     loading="lazy"
                     decoding="async"
                     onError={(event) => {
@@ -961,7 +976,7 @@ const Cart: React.FC = () => {
                     }}
                   />
                   <div className="cart-page__mobileItemInfo">
-                    <Link className="cart-page__mobileItemTitle" to={`/products/${item.productId}`}><Text strong>{item.productName || t('pages.profile.productFallback', { id: item.productId })}</Text></Link>
+                    <Link className="cart-page__mobileItemTitle" to={`/products/${item.productId}`}><Text strong>{itemName}</Text></Link>
                     {item.selectedSpecs ? <div className="cart-page__mobileItemMeta"><Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text></div> : null}
                     {!canCheckout(item) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
                     {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
@@ -990,7 +1005,7 @@ const Cart: React.FC = () => {
                     <Text strong className="cart-page__priceText commerce-money">{formatMoney(getLineTotal(item))}</Text>
                   </div>
                   <div className="cart-page__mobileItemActions">
-                    <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
+                    <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
                       {t('pages.cart.saveForLaterShort')}
                     </Button>
                     <Popconfirm
@@ -1004,14 +1019,15 @@ const Cart: React.FC = () => {
                         icon={<DeleteOutlined />}
                         size="small"
                         loading={removingItemIds.includes(item.id)}
-                        aria-label={t('common.delete')}
-                        title={t('common.delete')}
+                        aria-label={deleteActionLabel}
+                        title={deleteActionLabel}
                       />
                     </Popconfirm>
                   </div>
                 </div>
               </Card>
-            ))}
+              );
+            })}
           </div>
           <Card className="cart-page__summary">
             <div className="cart-page__summaryProgress">
@@ -1095,12 +1111,16 @@ const Cart: React.FC = () => {
           <Empty description={t('pages.cart.saveForLaterEmpty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
           <div className="cart-page__savedGrid">
-            {savedItems.map((item) => (
+            {savedItems.map((item) => {
+              const itemName = getCartItemName(item);
+              const moveActionLabel = `${t('pages.cart.moveToCart')}: ${itemName}`;
+              const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
+              return (
               <div className="cart-page__savedItem" key={item.id}>
                 <Link to={`/products/${item.productId}`}>
                   <img
                     src={resolveCartImage(item.imageUrl)}
-                    alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
+                    alt={itemName}
                     loading="lazy"
                     decoding="async"
                     onError={(event) => {
@@ -1111,7 +1131,7 @@ const Cart: React.FC = () => {
                   />
                 </Link>
                 <div className="cart-page__savedInfo">
-                  <Link to={`/products/${item.productId}`}><Text strong>{item.productName || t('pages.profile.productFallback', { id: item.productId })}</Text></Link>
+                  <Link to={`/products/${item.productId}`}><Text strong>{itemName}</Text></Link>
                   {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
                   <Text type="secondary" className="cart-page__savedQuantity commerce-quantity">{t('common.quantity')}: {item.quantity}</Text>
                   <Tag className="cart-page__savedAge">
@@ -1120,7 +1140,7 @@ const Cart: React.FC = () => {
                   <Text strong className="cart-page__savedPrice commerce-money">{formatMoney(item.price)}</Text>
                 </div>
                 <Space className="cart-page__savedActions">
-                  <Button icon={<ShoppingCartOutlined />} onClick={() => moveSavedItemToCart(item)}>
+                  <Button icon={<ShoppingCartOutlined />} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
                     {t('pages.cart.moveToCart')}
                   </Button>
                   <Popconfirm
@@ -1128,11 +1148,12 @@ const Cart: React.FC = () => {
                     title={t('pages.cart.deleteSavedConfirm')}
                     onConfirm={() => removeSavedItem(item.id)}
                   >
-                    <Button danger type="text" icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')} />
+                    <Button danger type="text" icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
                   </Popconfirm>
                 </Space>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>

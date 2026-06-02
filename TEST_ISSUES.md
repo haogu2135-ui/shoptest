@@ -1811,6 +1811,39 @@ This file is used by QA to record issues found during testing.
 
 ## Open Issues
 
+### F589: Admin table row actions lack item-specific accessible names
+
+- Status: FIXED
+- Area: Frontend / Admin product, coupon, announcement, brand, category, and logistics carrier management tables / Accessibility
+- Severity: LOW
+- Evidence: 2026-06-02 14:16 UTC static source review found repeated admin table row actions exposing generic names such as `Edit`, `Delete`, `Grant`, `Approve`, `Reject`, `Review`, and `Duplicate product` without the target product/coupon/announcement/category/brand/carrier context. In dense admin tables this made keyboard/screen-reader navigation and E2E selectors ambiguous across rows.
+- Expected: Repeated admin row actions should preserve concise visible labels while exposing a stable accessible name/tooltip that includes the row object name or id fallback.
+- Actual: Several admin row buttons reused generic accessible names across multiple rows, including icon-only featured/duplicate controls and announcement status switches.
+- Resolution: Fixed 2026-06-02 14:16 UTC. Added row-specific `aria-label`/`title` values to action buttons and relevant switches in `frontend/src/pages/ProductManagement.tsx`, `frontend/src/pages/CouponManagement.tsx`, `frontend/src/pages/AnnouncementManagement.tsx`, `frontend/src/pages/BrandManagement.tsx`, `frontend/src/pages/CategoryManagement.tsx`, and `frontend/src/pages/LogisticsCarrierManagement.tsx`.
+- Retest: 2026-06-02 14:28 UTC `git diff --check` passed for the touched admin UI files; frontend Jest passed 42/42 suites and 218/218 tests; `npm run build` completed successfully with only existing Browserslist age notices; no-screenshot Playwright smoke passed desktop/mobile storefront pages, guest cart/checkout entry, coupon center, auth pages, order tracking, unauthenticated admin protection, product-list action context labels, and horizontal-overflow checks. No screenshots, videos, or traces were produced; image/media/font requests were aborted during Playwright smoke.
+
+### F588: Repeated storefront action buttons lack item-specific accessible names
+
+- Status: FIXED
+- Area: Frontend / Home product cards, product-list cards, cart, cart drawer, browsing history, and notifications / Accessibility
+- Severity: LOW
+- Evidence: 2026-06-02 14:02 UTC static source review found repeated list/card actions using generic accessible names such as `Add to cart`, `Favorite`, `Compare`, `Quick preview`, `Delete`, and `Mark read` without the target product or notification title. On pages with multiple product cards, cart rows, saved-for-later rows, browsing-history items, or notification rows, screen-reader and keyboard users could not reliably distinguish which item a repeated action would affect.
+- Expected: Repeated item actions should preserve the visible label but expose an item-specific accessible name or tooltip that includes the product/notification context.
+- Actual: Several high-frequency storefront and account surfaces reused generic action names across many rows/cards.
+- Resolution: Fixed 2026-06-02 14:02 UTC. Added product/notification context to action `aria-label`/`title` values in `frontend/src/pages/Home.tsx`, `frontend/src/pages/ProductList.tsx`, `frontend/src/pages/Cart.tsx`, `frontend/src/components/CartDrawer.tsx`, `frontend/src/pages/BrowsingHistory.tsx`, and `frontend/src/pages/Notifications.tsx`. Also reused cart item display-name fallbacks so action names match the visible row name.
+- Retest: 2026-06-02 14:28 UTC static source review, targeted action-label scans, `git diff --check`, frontend Jest, production build, and no-screenshot Playwright smoke all passed. Playwright confirmed product-list repeated actions expose product context and produced no screenshots, videos, or traces.
+
+### F587: Storefront product localization can leave blank product names across cards
+
+- Status: FIXED
+- Area: Frontend / Storefront product cards, recommendation surfaces, image alt text, and action labels
+- Severity: LOW
+- Evidence: 2026-06-02 13:48 UTC static source review found `localizeProduct()` in `frontend/src/utils/localizedProduct.ts` could return an empty string for `name` when backend/localized product data was blank. Several storefront surfaces render localized `product.name` directly, including Home product cards, ProductList grid cards, checkout-path buttons, product detail recommendations, compare, browsing history, pet finder, stock alerts, and cart add-ons. A blank backend product name could therefore produce empty visible product titles, empty image `alt` values, and action labels such as `View pick:` with no product context.
+- Expected: Customer-facing product surfaces should always show a non-empty product display name and expose a meaningful accessible name, even when backend catalog data is incomplete.
+- Actual: The shared localization helper preserved blank product names, leaving each consuming card/action to handle the fallback individually.
+- Resolution: Fixed 2026-06-02 13:48 UTC. Added a shared localized name fallback in `localizeProduct()` for blank product names: `Product #id`, `Producto #id`, or `商品 #id` based on language. Added regression coverage in `frontend/src/utils/localizedProduct.test.ts` for English, Spanish, and Chinese blank-name behavior.
+- Retest: 2026-06-02 14:28 UTC `frontend/src/utils/localizedProduct.test.ts` passed as part of the full frontend Jest run; production build and no-screenshot Playwright storefront smoke passed with product cards/details using non-empty names. No screenshots, videos, or traces were produced.
+
 ### F586: Recommendation cards can render blank product names and unnamed controls
 
 - Status: FIXED
@@ -2360,6 +2393,8 @@ This file is used by QA to record issues found during testing.
 - Retest: 2026-06-01 09:17 UTC static source review confirmed the current release metadata remains unsigned (`releaseSigned: false`, empty `certificateSha256`), so F334 remains OPEN for the actual release signing workflow. The storefront/native App download surfaces are currently gated while unsigned: `defaultAndroidApkUrl()` resolves through `resolveMobileReleaseDownloadUrl(...)`, manifest fetches are passed through the same resolver, `Navbar.tsx` renders Android download links only when `androidApkUrl` is non-empty, and `NativeMobileUpdateGate` rejects releases that fail `isMobileReleaseDownloadAllowed(...)`. No artifact inspection, build, automated test, UI smoke, screenshot, or commit was run per instruction.
 - Retest: 2026-06-01 22:18 UTC Android App QA static round #1 confirmed F334 remains OPEN without adding a duplicate issue. `frontend/src/generated/mobileRelease.ts` still has `releaseSigned: false` and an empty `certificateSha256`, while `/home/guhao/shoptest-mobile/scripts/build-android-apk.js` still publishes from `android/app/build/outputs/apk/debug/app-debug.apk` via `assembleDebug`. No keytool/apksigner artifact inspection, build, automated test, screenshot, video, trace, or source change was run in this pass.
 - Retest: 2026-06-01 22:34 UTC static source review confirmed the build script no longer publishes unsigned/debug APKs to public download directories or native update manifests even when `SHOPTEST_MOBILE_ALLOW_DEBUG_APK_PUBLISH=true`; that flag now builds only a private local debug APK and exits. F334 remains OPEN because no managed release keystore was provided and no release-signed APK/certificate artifact was produced or inspected. No Gradle build, keytool/apksigner inspection, automated test, screenshot, video, trace, or commit was run per instruction.
+- Retest: 2026-06-02 13:45 UTC static source review found a remaining hardening gap: unsigned mobile release metadata could still carry `apkUrl` and `legacyApkUrl` even though storefront/native download code rejected it. Updated `frontend/scripts/generate-mobile-version.js` so generated manifests expose APK download URLs only when `MOBILE_RELEASE_SIGNED=true`, and synchronized `frontend/src/generated/mobileRelease.ts` plus `frontend/public/downloads/mobile-version.json` to empty download URLs while `releaseSigned:false`. F334 remains OPEN because no managed release keystore/certificate is available and no release-signed APK was built or inspected. No build, automated test, APK generation, screenshot, or commit was run per current instruction.
+- Retest: 2026-06-02 14:28 UTC built a private local Android debug APK with `SHOPTEST_MOBILE_ALLOW_DEBUG_APK_PUBLISH=true npm run build:apk` in `/home/guhao/shoptest-mobile`; Gradle `assembleDebug` completed successfully and produced `/home/guhao/shoptest-mobile/android/app/build/outputs/apk/debug/app-debug.apk` (6.8 MB, SHA256 `e54996cd8565b9a9e215ba47d814ba6e45ddd91b133f4b676f33314aa82b38e6`). `apksigner verify --print-certs` confirms the APK is signed by `C=US, O=Android, CN=Android Debug` with SHA-256 `a59c1df808784af870705ac1fb13b0a12e5099ab3d140a26052a885ad66687f1`; therefore F334 remains OPEN for a managed release keystore/certificate. The script skipped public APK publishing and release manifest updates. APK resource checks found 0 bundled source maps, 0 `assets/public/downloads/` entries, and packaged `runtime-config.js` uses HTTPS/WSS endpoints. No screenshots, videos, or traces were produced.
 
 ### F333: Production frontend build publishes source maps
 
