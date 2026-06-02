@@ -4,6 +4,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.persistence.*;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -18,27 +23,35 @@ public class Review {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @NotNull
     private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @NotNull
     private User user;
 
     @Column(nullable = false)
+    @Min(1)
+    @Max(5)
     private int rating;
 
     @Column(length = 1000)
+    @Size(max = 1000)
     private String comment;
 
     @Column(nullable = false)
+    @NotBlank
+    @Size(max = 20)
     private String status = "PENDING";
 
     @Column(name = "order_id")
     private Long orderId;
 
     @Column(name = "admin_reply", length = 1000)
+    @Size(max = 1000)
     private String adminReply;
 
     @Column(name = "replied_at")

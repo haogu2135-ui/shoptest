@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.PetGalleryQuota;
+import com.example.shop.dto.PetGalleryPhotoPublicResponse;
 import com.example.shop.entity.PetGalleryPhoto;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.ClientIpResolver;
@@ -17,6 +18,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/pet-gallery")
@@ -38,7 +40,7 @@ public class PetGalleryController {
         if (page != null && page > 0) {
             Page<PetGalleryPhoto> result = petGalleryService.findPublicPhotos(viewerId, clientIp, page - 1, size);
             Map<String, Object> response = new HashMap<>();
-            response.put("items", result.getContent());
+            response.put("items", publicPhotos(result.getContent()));
             response.put("page", result.getNumber() + 1);
             response.put("size", result.getSize());
             response.put("total", result.getTotalElements());
@@ -46,7 +48,7 @@ public class PetGalleryController {
             return ResponseEntity.ok(response);
         }
         List<PetGalleryPhoto> photos = petGalleryService.findPublicPhotos(viewerId, clientIp);
-        return ResponseEntity.ok(photos);
+        return ResponseEntity.ok(publicPhotos(photos));
     }
 
     @GetMapping("/quota")
@@ -56,7 +58,7 @@ public class PetGalleryController {
     }
 
     @PostMapping
-    public ResponseEntity<PetGalleryPhoto> upload(
+    public ResponseEntity<PetGalleryPhotoPublicResponse> upload(
             @RequestParam("file") MultipartFile file,
             Authentication authentication,
             HttpServletRequest request) {
@@ -67,17 +69,17 @@ public class PetGalleryController {
             resolveClientIp(request),
             file
         );
-        return ResponseEntity.ok(photo);
+        return ResponseEntity.ok(PetGalleryPhotoPublicResponse.from(photo));
     }
 
     @PostMapping("/{id}/like")
-    public ResponseEntity<PetGalleryPhoto> like(
+    public ResponseEntity<PetGalleryPhotoPublicResponse> like(
             @PathVariable Long id,
             Authentication authentication,
             HttpServletRequest request) {
         UserDetailsImpl userDetails = optionalUser(authentication);
         Long userId = userDetails == null ? null : userDetails.getId();
-        return ResponseEntity.ok(petGalleryService.like(id, userId, resolveClientIp(request)));
+        return ResponseEntity.ok(PetGalleryPhotoPublicResponse.from(petGalleryService.like(id, userId, resolveClientIp(request))));
     }
 
     @DeleteMapping("/{id}")
@@ -104,5 +106,11 @@ public class PetGalleryController {
 
     private String resolveClientIp(HttpServletRequest request) {
         return clientIpResolver.resolve(request);
+    }
+
+    private List<PetGalleryPhotoPublicResponse> publicPhotos(List<PetGalleryPhoto> photos) {
+        return photos.stream()
+                .map(PetGalleryPhotoPublicResponse::from)
+                .collect(Collectors.toList());
     }
 }

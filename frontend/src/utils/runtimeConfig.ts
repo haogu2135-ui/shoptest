@@ -3,6 +3,9 @@ export type ShopRuntimeConfig = {
   supportWebSocketUrl?: string;
   apiGatewayEnabled?: boolean | string | number;
   apiGatewayPrefix?: string;
+  mobileVersionManifestUrl?: string;
+  mobileCurrentVersionName?: string;
+  mobileCurrentVersionCode?: string | number;
 };
 
 declare global {
@@ -32,9 +35,17 @@ const cleanString = (value: unknown) => {
   return normalized || null;
 };
 
+const hasUnsafeUrlShape = (value: string) => {
+  const normalized = value.toLowerCase();
+  return value.includes('\\') || normalized.includes('%00') || normalized.includes('%5c');
+};
+
 export const normalizeApiBaseUrl = (value: unknown) => {
   const configured = cleanString(value);
   if (!configured) {
+    return null;
+  }
+  if (hasUnsafeUrlShape(configured)) {
     return null;
   }
 
@@ -60,6 +71,9 @@ export const normalizeApiBaseUrl = (value: unknown) => {
 export const normalizeSupportWebSocketUrl = (value: unknown) => {
   const configured = cleanString(value);
   if (!configured) {
+    return null;
+  }
+  if (hasUnsafeUrlShape(configured)) {
     return null;
   }
 

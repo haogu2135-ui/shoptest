@@ -1,10 +1,14 @@
 package com.example.shop.security;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import com.example.shop.service.RuntimeConfigService;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -45,12 +49,26 @@ class JwtServiceTest {
     }
 
     @Test
-    void allowsDevModeDefaultSecretForLocalTesting() {
+    void rejectsTokensIssuedBeforePasswordChange() {
+        JwtService service = jwtService("production", "0123456789abcdef0123456789abcdef");
+        String token = service.generateToken(userDetails);
+        UserDetailsImpl changedPasswordUser = new UserDetailsImpl(
+                7L,
+                "buyer@example.com",
+                "buyer@example.com",
+                "ACTIVE",
+                "encoded-password",
+                LocalDateTime.now().plusSeconds(1),
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+
+        assertFalse(service.isTokenValid(token, changedPasswordUser));
+    }
+
+    @Test
+    void rejectsDefaultSecretOutsideProduction() {
         JwtService service = jwtService("dev", "your-secret-key-here");
 
-        String token = service.generateToken(userDetails);
-
-        assertEquals("buyer@example.com", service.extractUsername(token));
+        assertThrows(IllegalStateException.class, () -> service.generateToken(userDetails));
     }
 
     private JwtService jwtService(String runtimeMode, String secret) {

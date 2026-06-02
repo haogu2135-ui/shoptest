@@ -2,10 +2,12 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.UpdateProfileRequest;
 import com.example.shop.dto.UpdatePasswordRequest;
+import com.example.shop.dto.UserProfileResponse;
 import com.example.shop.entity.User;
 import com.example.shop.service.ClientIpResolver;
 import com.example.shop.service.EmailLoginService;
 import com.example.shop.service.EmailLoginService.EmailLoginException;
+import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.UserService;
@@ -37,6 +39,7 @@ public class UserController {
     private final SecurityAuditLogService auditLogService;
     private final EmailLoginService emailLoginService;
     private final ClientIpResolver clientIpResolver;
+    private final IpBlacklistService ipBlacklistService;
 
     @PutMapping("/profile")
     public void updateProfile(@Valid @RequestBody(required = false) UpdateProfileRequest request, Authentication authentication, HttpServletRequest servletRequest) {
@@ -102,7 +105,7 @@ public class UserController {
             throw e;
         }
     }
-    
+
     @PutMapping("/password")
     public void updatePassword(@Valid @RequestBody(required = false) UpdatePasswordRequest request,
                                Authentication authentication,
@@ -123,11 +126,11 @@ public class UserController {
             throw e;
         }
     }
-    
+
     @GetMapping("/profile")
-    public User getProfile(Authentication authentication) {
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        return userService.findById(userDetails.getId());
+    public UserProfileResponse getProfile(Authentication authentication) {
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        return UserProfileResponse.from(userService.findById(userDetails.getId()));
     }
 
     @PostMapping("/create-admin")
@@ -137,6 +140,7 @@ public class UserController {
         if (request == null) {
             auditLogService.record("ADMIN_BOOTSTRAP", "FAILURE", null, null,
                     null, "USER", null, httpRequest, "Admin payload is required", null);
+            ipBlacklistService.recordLoginFailure(httpRequest, "admin-bootstrap payload missing");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Admin payload is required");
         }
         try {
@@ -151,10 +155,19 @@ public class UserController {
                     "ADMIN", "USER", null, httpRequest, "Admin account created",
                     "username=" + request.getUsername().trim());
         } catch (Exception e) {
-            auditLogService.record("ADMIN_BOOTSTRAP", "FAILURE", null, request.getUsername().trim(),
+            auditLogService.record("ADMIN_BOOTSTRAP", "FAILURE", null, safeBootstrapUsername(request),
                     null, "USER", null, httpRequest, "Admin bootstrap failed: " + e.getMessage(), null);
+            ipBlacklistService.recordLoginFailure(httpRequest, "admin-bootstrap failed");
             throw e;
         }
+    }
+
+    private String safeBootstrapUsername(AdminBootstrapRequest request) {
+        if (request == null || request.getUsername() == null) {
+            return null;
+        }
+        String username = request.getUsername().trim();
+        return username.isEmpty() ? null : username;
     }
 
     private void assertAdminBootstrapToken(String bootstrapToken) {
@@ -294,4 +307,4 @@ public class UserController {
             this.email = email;
         }
     }
-} 
+}

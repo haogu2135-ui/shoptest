@@ -3,13 +3,14 @@ import { Button, Result } from 'antd';
 import { HomeOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
+import './NotFound.css';
 
 const NotFound: React.FC = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
   return (
-    <div style={{ padding: '80px 24px', textAlign: 'center' }}>
+    <div className="not-found-page">
       <Result
         status="404"
         title={t('notFound.title')}

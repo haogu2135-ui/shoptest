@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>购物车 - MyShop</title>
+    <title>购物车 - ShopMX Pet</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">MyShop</div>
+        <div class="logo">ShopMX Pet</div>
         <div class="nav-links">
             <a href="/api/products">← 继续购物</a>
             <a th:href="@{/logout}">退出</a>
@@ -22,7 +22,7 @@
             <!-- 空购物车 -->
             <div th:if="${cartItems.empty}" class="empty-cart">
                 <div class="empty-icon">🛒</div>
-                <p>购物车还是空的，去挑选喜欢的商品吧</p>
+                <p>购物车还是空的，去挑选适合爱宠的用品吧</p>
                 <a href="/api/products" class="btn btn-primary">去购物</a>
             </div>
 
@@ -76,8 +76,8 @@
                 <!-- 优惠券 -->
                 <div class="coupon-row">
                     <label>🎟 优惠券</label>
-                    <input type="text" id="couponInput" placeholder="输入优惠码（试试 SAVE10）">
-                    <button class="btn btn-primary" id="applyCoupon" style="height:34px;padding:0 1rem;">使用</button>
+                    <input type="text" id="couponInput" placeholder="结算页会展示账户可用优惠券" readonly>
+                    <button class="btn btn-primary" id="applyCoupon" style="height:34px;padding:0 1rem;">查看</button>
                     <span class="applied-tag" id="couponTag" style="display:none;">已优惠 ¥<span id="couponDiscount">0</span></span>
                 </div>
 
@@ -112,14 +112,14 @@
             <div class="recommend-section" th:if="${!cartItems.empty}">
                 <div class="section-title">为你推荐</div>
                 <div style="background:white;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.88rem;">
-                    💡 浏览更多 <a href="/api/products">热门商品</a>
+                    💡 浏览更多 <a href="/api/products">热门宠物用品</a>
                 </div>
             </div>
         </div>
     </div>
 
     <footer class="site-footer">
-        © 2025 MyShop &nbsp;·&nbsp; <a href="#">关于我们</a> &nbsp;·&nbsp; <a href="#">联系客服</a>
+        © 2025 ShopMX Pet &nbsp;·&nbsp; <a href="#">关于我们</a> &nbsp;·&nbsp; <a href="#">联系客服</a>
     </footer>
 
     <button class="back-to-top" id="backToTop">↑</button>
@@ -263,29 +263,13 @@
 
         // 优惠券
         document.getElementById('applyCoupon')?.addEventListener('click', () => {
-            const code = document.getElementById('couponInput').value.trim().toUpperCase();
             const tag = document.getElementById('couponTag');
             const row = document.getElementById('discountRow');
-            if (code === 'SAVE10') {
-                couponDiscount = 10;
-            } else if (code === 'SAVE20') {
-                couponDiscount = 20;
-            } else if (!code) {
-                couponDiscount = 0;
-                tag.style.display = 'none';
-                row.style.display = 'none';
-                recompute();
-                return;
-            } else {
-                showToast('优惠码无效', 'error');
-                return;
-            }
-            document.getElementById('couponDiscount').textContent = couponDiscount;
-            document.getElementById('discountAmt').textContent = couponDiscount.toFixed(2);
-            tag.style.display = '';
-            row.style.display = '';
+            couponDiscount = 0;
+            tag.style.display = 'none';
+            row.style.display = 'none';
             recompute();
-            showToast('优惠码已应用 🎉', 'success');
+            showToast('请在结算页选择账户内可用优惠券', 'info');
         });
 
         // 结算

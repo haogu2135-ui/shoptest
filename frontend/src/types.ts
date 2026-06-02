@@ -11,6 +11,15 @@ export interface User {
     createdAt?: string;
 }
 
+export interface UserProfile {
+    id: number;
+    username: string;
+    email: string;
+    phone?: string;
+    role: string;
+    roleCode?: string;
+}
+
 export interface UserAdminSummary {
     totalUsers: number;
     activeUsers: number;
@@ -23,6 +32,14 @@ export interface UserAdminSummary {
     adminRatioPercent: number;
     healthScore: number;
     checkedAt?: string;
+}
+
+export interface AdminUserPage {
+    items: User[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
 }
 
 export interface AdminRole {
@@ -338,6 +355,7 @@ export interface IpBlacklistEntry {
     createdBy?: string;
     createdAt?: string;
     updatedAt?: string;
+    legacyOnly?: boolean;
 }
 
 export interface IpBlacklistBatchReleaseResponse {
@@ -356,6 +374,9 @@ export interface IpBlacklistStatus {
     blockMinutes: number;
     blockedCount: number;
     monitoringCount: number;
+    releasedCount?: number;
+    totalCount?: number;
+    legacyLoginFailureCount?: number;
 }
 
 export interface SiteAnnouncement {
@@ -369,6 +390,23 @@ export interface SiteAnnouncement {
     endsAt?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface SiteAnnouncementPublic {
+    id?: number;
+    title: string;
+    content: string;
+    linkUrl?: string;
+}
+
+export interface SiteAnnouncementAdminPage {
+    items: SiteAnnouncement[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
 }
 
 export interface SiteAnnouncementAdminSummary {
@@ -425,6 +463,63 @@ export interface Product {
     shipping?: string;
 }
 
+export interface AdminProductPage {
+    items: Product[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious?: boolean;
+}
+
+export interface ProductPublic {
+    id: number;
+    name: string;
+    description: string;
+    price: number;
+    stock: number;
+    categoryId: number;
+    imageUrl: string;
+    isFeatured?: boolean;
+    images?: string[];
+    brand?: string;
+    originalPrice?: number;
+    discount?: number;
+    limitedTimePrice?: number;
+    limitedTimeStartAt?: string;
+    limitedTimeEndAt?: string;
+    activeLimitedTimeDiscount?: boolean;
+    effectivePrice?: number;
+    effectiveDiscountPercent?: number;
+    freeShipping?: boolean;
+    freeShippingThreshold?: number;
+    tag?: string;
+    averageRating?: number;
+    positiveRate?: number;
+    reviewCount?: number;
+    specifications?: { [key: string]: string };
+    specificationItems?: { [key: string]: string };
+    i18n?: Record<string, Record<string, string>>;
+    detailContent?: ProductDetailBlock[];
+    variants?: ProductVariant[];
+    optionGroups?: ProductOptionGroup[];
+    bundle?: ProductBundleConfig | null;
+    localizedContent?: Record<string, unknown> | null;
+    warranty?: string;
+    shipping?: string;
+}
+
+export interface ProductPublicPage {
+    items: ProductPublic[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious?: boolean;
+}
+
 export interface ProductBundleConfig {
     enabled?: boolean;
     title?: string;
@@ -434,6 +529,7 @@ export interface ProductBundleConfig {
 
 export interface ProductOptionGroup {
     name: string;
+    values?: string[];
     options: string[];
 }
 
@@ -528,7 +624,19 @@ export interface Category {
     parentId?: number | null;
     level?: number;
     imageUrl?: string;
+    productCount?: number;
     children?: Category[];
+}
+
+export interface CategoryPublic {
+    id: number;
+    name: string;
+    description?: string;
+    parentId?: number | null;
+    level?: number;
+    imageUrl?: string;
+    productCount?: number;
+    localizedContent?: Record<string, { name?: string; description?: string }> | null;
 }
 
 export interface Brand {
@@ -543,9 +651,16 @@ export interface Brand {
     updatedAt?: string;
 }
 
+export interface BrandPublic {
+    id: number;
+    name: string;
+    description?: string;
+    logoUrl?: string;
+    websiteUrl?: string;
+}
+
 export interface CartItem {
     id: number;
-    userId: number;
     productId: number;
     quantity: number;
     productName: string;
@@ -559,7 +674,12 @@ export interface CartItem {
 export interface Order {
     id: number;
     orderNo?: string;
-    userId: number;
+    userId?: number;
+    customerUsername?: string;
+    customerEmail?: string;
+    customerPhone?: string;
+    customerDisplayName?: string;
+    customerType?: 'REGISTERED' | 'GUEST' | string;
     totalAmount: number;
     originalAmount?: number;
     discountAmount?: number;
@@ -569,6 +689,9 @@ export interface Order {
     couponName?: string;
     status: string;
     shippingAddress?: string;
+    recipientName?: string;
+    recipientPhone?: string;
+    contactEmail?: string;
     paymentMethod?: string;
     trackingNumber?: string;
     trackingCarrierCode?: string;
@@ -582,12 +705,54 @@ export interface Order {
     returnedAt?: string;
     returnable?: boolean;
     returnDeadline?: string;
+    guestOrder?: boolean;
     refundedAt?: string;
     shippedAt?: string;
     completedAt?: string;
     username?: string;
     orderItems?: OrderItem[];
     createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface OrderCustomer {
+    id: number;
+    orderNo?: string;
+    totalAmount: number;
+    originalAmount?: number;
+    discountAmount?: number;
+    shippingFee?: number;
+    couponName?: string;
+    status: string;
+    shippingAddress?: string;
+    recipientName?: string;
+    recipientPhone?: string;
+    contactEmail?: string;
+    paymentMethod?: string;
+    trackingNumber?: string;
+    trackingCarrierCode?: string;
+    trackingCarrierName?: string;
+    returnTrackingNumber?: string;
+    returnReason?: string;
+    returnRequestedAt?: string;
+    returnApprovedAt?: string;
+    returnRejectedAt?: string;
+    returnShippedAt?: string;
+    returnedAt?: string;
+    returnable?: boolean;
+    returnDeadline?: string;
+    guestOrder?: boolean;
+    refundedAt?: string;
+    shippedAt?: string;
+    completedAt?: string;
+    createdAt?: string;
+}
+
+export interface OrderTrackResult {
+    order: OrderCustomer;
+    items: OrderItemCustomer[];
+    detailsRestricted?: boolean;
+    restrictionReason?: string;
 }
 
 export interface AdminOrderPage {
@@ -605,6 +770,7 @@ export interface AdminReviewPage {
     page: number;
     size: number;
     totalPages: number;
+    summary?: Record<string, number>;
 }
 
 export interface AdminOrderBatchShipFailure {
@@ -635,7 +801,6 @@ export interface LogisticsTrackResponse {
     status: string;
     summary?: string;
     events: LogisticsTrackEvent[];
-    rawResponse?: Record<string, any>;
 }
 
 export interface LogisticsCarrier {
@@ -648,21 +813,34 @@ export interface LogisticsCarrier {
     updatedAt?: string;
 }
 
-export interface Coupon {
+export interface CouponPublic {
     id: number;
     name: string;
     couponType: 'FULL_REDUCTION' | 'DISCOUNT';
-    scope: 'PUBLIC' | 'ASSIGNED';
-    status: string;
     thresholdAmount?: number;
     reductionAmount?: number;
     discountPercent?: number;
     maxDiscountAmount?: number;
-    totalQuantity?: number;
-    claimedQuantity?: number;
+    remainingQuantity?: number | null;
     startAt?: string;
     endAt?: string;
     description?: string;
+}
+
+export interface Coupon extends CouponPublic {
+    scope?: 'PUBLIC' | 'ASSIGNED';
+    status?: string;
+    totalQuantity?: number;
+    claimedQuantity?: number;
+}
+
+export interface AdminCouponPage {
+    items: Coupon[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
+    summary?: CouponAdminSummary;
 }
 
 export interface CouponAdminSummary {
@@ -704,15 +882,12 @@ export interface PetBirthdayCouponConfig {
 
 export interface UserCoupon {
     id: number;
-    userId: number;
     couponId: number;
     status: string;
-    orderId?: number;
     claimedAt?: string;
     usedAt?: string;
     couponName: string;
     couponType: 'FULL_REDUCTION' | 'DISCOUNT';
-    couponScope?: string;
     thresholdAmount?: number;
     reductionAmount?: number;
     discountPercent?: number;
@@ -733,18 +908,29 @@ export interface CouponQuote {
 
 export interface OrderItem {
     id: number;
-    orderId: number;
+    orderId?: number;
     productId: number;
     quantity: number;
     price: number;
     productName: string;
     imageUrl: string;
     selectedSpecs?: string;
+    createdAt?: string;
+}
+
+export interface OrderItemCustomer {
+    id: number;
+    productId: number;
+    quantity: number;
+    price: number;
+    productName: string;
+    imageUrl: string;
+    selectedSpecs?: string;
+    createdAt?: string;
 }
 
 export interface UserAddress {
     id: number;
-    userId: number;
     recipientName: string;
     phone: string;
     address: string;
@@ -755,7 +941,6 @@ export interface UserAddress {
 
 export interface WishlistItem {
     id: number;
-    userId: number;
     productId: number;
     productName: string;
     imageUrl: string;
@@ -768,7 +953,6 @@ export interface WishlistItem {
 
 export interface AppNotification {
     id: number;
-    userId: number;
     type: string;
     title: string;
     message: string;
@@ -779,36 +963,45 @@ export interface AppNotification {
 
 export interface PetProfile {
     id: number;
-    userId: number;
     name: string;
     petType: 'DOG' | 'CAT' | 'SMALL_PET';
     breed?: string;
     birthday?: string;
     weight?: number;
     size?: 'SMALL' | 'MEDIUM' | 'LARGE';
-    createdAt?: string;
-    updatedAt?: string;
 }
 
-export interface PetGalleryPhoto {
+export interface PetGalleryPhotoPublic {
     id: number;
-    userId?: number;
     username: string;
     imageUrl: string;
-    originalFilename?: string;
-    contentType: string;
-    fileSize: number;
-    source?: 'USER_UPLOAD' | 'SEED';
     likeCount?: number;
     likedByMe?: boolean;
     canDelete?: boolean;
     createdAt?: string;
 }
 
+export interface AdminPetGalleryPhoto extends PetGalleryPhotoPublic {
+    userId?: number;
+    originalFilename?: string;
+    contentType?: string;
+    fileSize?: number;
+    ipAddress?: string;
+    status?: string;
+    source?: string;
+}
+
+export interface AdminPetGalleryPage {
+    items: AdminPetGalleryPhoto[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
+    summary?: Record<string, number>;
+}
+
 export interface PetGalleryQuota {
     limit: number;
-    userUploads: number;
-    ipUploads: number;
     remaining: number;
     canUpload: boolean;
 }
@@ -817,6 +1010,8 @@ export interface Review {
     id: number;
     userId: number;
     productId: number;
+    productName?: string;
+    productImageUrl?: string;
     rating: number;
     comment: string;
     status?: string;
@@ -829,18 +1024,46 @@ export interface Review {
     product?: Product;
 }
 
+export interface PublicReview {
+    id: number;
+    productId: number;
+    rating: number;
+    comment: string;
+    username: string;
+    createdAt: string;
+    adminReply?: string;
+    repliedAt?: string;
+    editableByCurrentUser?: boolean;
+}
+
+export interface ReviewableOrder {
+    id: number;
+    orderNo?: string;
+    createdAt?: string;
+    completedAt?: string;
+}
+
 export interface ProductQuestion {
     id: number;
     productId: number;
     productName?: string;
-    userId: number;
-    username: string;
+    userId?: number;
+    username?: string;
     question: string;
     answer?: string;
     answeredBy?: number;
     answeredAt?: string;
     createdAt: string;
     product?: Product;
+}
+
+export interface ProductQuestionPublic {
+    id: number;
+    productId: number;
+    question: string;
+    answer?: string;
+    answeredAt?: string;
+    createdAt: string;
 }
 
 export interface ProductQuestionAdminSummary {
@@ -854,7 +1077,7 @@ export interface ProductQuestionAdminSummary {
     checkedAt?: string;
 }
 
-export interface Payment {
+export interface PaymentCustomer {
     id: number;
     orderId: number;
     orderNo: string;
@@ -863,18 +1086,18 @@ export interface Payment {
     status: string;
     paymentUrl?: string;
     transactionId?: string;
-    providerReference?: string;
-    refundReference?: string;
     expiresAt?: string;
     paidAt?: string;
     refundedAt?: string;
-    callbackAt?: string;
     createdAt: string;
     updatedAt?: string;
 }
 
-/** Admin view of a payment — same fields as Payment. */
-export type AdminPayment = Payment;
+export interface AdminPayment extends PaymentCustomer {
+    providerReference?: string;
+    refundReference?: string;
+    callbackAt?: string;
+}
 
 export interface PaymentChannel {
     code: string;
@@ -883,8 +1106,6 @@ export interface PaymentChannel {
     descriptionKey?: string;
     market?: 'CN' | 'MX' | 'GLOBAL' | string;
     currency?: string;
-    provider?: string;
-    refundMode?: string;
     badgeKey?: string;
     sortOrder?: number;
     recommended?: boolean;
@@ -943,19 +1164,33 @@ export interface SecurityAuditPurgeResponse {
     purgedBefore: string;
 }
 
-export interface SupportSession {
+export interface SupportSessionCustomer {
     id: number;
-    userId: number;
-    assignedAdminId?: number;
     assignedAdminName?: string;
     status: string;
     lastMessage?: string;
     lastMessageAt?: string;
     createdAt?: string;
     updatedAt?: string;
-    username?: string;
     unreadByUser?: number;
+}
+
+export interface SupportSession extends SupportSessionCustomer {
+    userId?: number;
+    assignedAdminId?: number;
+    contextKey?: string;
+    username?: string;
     unreadByAdmin?: number;
+}
+
+export interface SupportAdminSessionPage {
+    items: SupportSession[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
 }
 
 export interface SupportAdminSummary {
@@ -972,34 +1207,16 @@ export interface SupportAdminSummary {
     checkedAt?: string;
 }
 
-export interface SupportMessage {
+export interface SupportMessageCustomer {
     id: number;
     sessionId: number;
-    senderId: number;
     senderRole: string;
     content: string;
     isReadByUser?: boolean;
-    isReadByAdmin?: boolean;
     createdAt?: string;
+}
+
+export interface SupportMessage extends SupportMessageCustomer {
+    isReadByAdmin?: boolean;
     senderName?: string;
-    messageType?: string;
-    payload?: string;
-}
-
-export interface MembershipPlan {
-    code: string;
-    name: string;
-    description?: string;
-    price: number;
-    durationDays: number;
-    discountPercent?: number;
-    enabled?: boolean;
-}
-
-export interface MembershipStatus {
-    active: boolean;
-    planCode?: string;
-    planName?: string;
-    expiresAt?: string;
-    discountPercent?: number;
 }

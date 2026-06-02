@@ -1480,3 +1480,29 @@
     font-size: 12px;
   }
 }
+
+/* Final mobile/App product-operations touch-target guard */
+@media (max-width: 720px) {
+  .product-management-page__toolbar .ant-btn,
+  .product-management-page__filters .ant-input-affix-wrapper,
+  .product-management-page__filters .ant-select-selector,
+  .product-management-page__filters .ant-tree-select-selector,
+  .product-management-page .ant-table-cell .ant-btn,
+  .product-listing-quality__metrics button,
+  .product-listing-quality__footer .ant-btn,
+  .product-import-history__header .ant-btn,
+  .shopify-product-modal .ant-modal-footer .ant-btn,
+  .product-management-page__urlImportModal .ant-modal-footer .ant-btn,
+  .product-management-page__importConfirmModal .ant-modal-confirm-btns .ant-btn,
+  .product-management-page__importSuccessModal .ant-modal-confirm-btns .ant-btn,
+  .product-management-page__importProblemModal .ant-modal-confirm-btns .ant-btn,
+  .shopify-product-modal .ant-input,
+  .shopify-product-modal .ant-input-number,
+  .shopify-product-modal .ant-picker,
+  .shopify-product-modal .ant-select-selector,
+  .shopify-product-modal .ant-tree-select-selector,
+  .shopify-media-add,
+  .shopify-link-button {
+    min-height: 44px;
+  }
+}

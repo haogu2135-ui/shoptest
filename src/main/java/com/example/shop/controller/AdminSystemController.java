@@ -326,7 +326,8 @@ public class AdminSystemController {
         addSecretCheck(checks, issues, "jwtSecret", "app.jwtSecret",
                 property("app.jwtSecret", ""), List.of("your-secret-key", "your-secret-key-here"));
         addSecretCheck(checks, issues, "paymentCallbackSecret", "payment.callback-secret",
-                property("payment.callback-secret", "dev-payment-secret"), List.of("dev-payment-secret"));
+                property("payment.callback-secret", ""), List.of("dev-payment-secret"));
+        checks.put("datastores", datastoreConfigCheck(issues, warnings));
         checks.put("mail", mailConfigCheck(issues));
         checks.put("cors", corsConfigCheck(issues));
         checks.put("adminBootstrap", adminBootstrapCheck(issues));
@@ -359,6 +360,52 @@ public class AdminSystemController {
         if (!strong) {
             issues.add(propertyName + " must be set to a non-placeholder value with at least 32 characters");
         }
+    }
+
+    private Map<String, Object> datastoreConfigCheck(List<String> issues, List<String> warnings) {
+        String dbUrl = property("spring.datasource.url", "");
+        String dbPassword = property("spring.datasource.password", "");
+        String redisHost = property("spring.redis.host", "");
+        String redisPassword = property("spring.redis.password", "");
+
+        boolean dbUrlConfigured = hasText(dbUrl);
+        boolean dbPasswordSafe = isStrongRuntimePassword(dbPassword, List.of("shop_password", "root", "password"));
+        boolean redisHostConfigured = hasText(redisHost);
+        boolean redisPasswordSafe = isStrongRuntimePassword(redisPassword, List.of("shop_redis_password", "redis", "password"));
+        boolean jdbcTlsSafe = isProductionJdbcTlsSafe(dbUrl);
+        boolean jdbcKeyRetrievalSafe = !containsJdbcFlag(dbUrl, "allowPublicKeyRetrieval", "true");
+
+        Map<String, Object> check = new LinkedHashMap<>();
+        check.put("status", dbUrlConfigured && dbPasswordSafe && redisHostConfigured && redisPasswordSafe && jdbcTlsSafe && jdbcKeyRetrievalSafe ? "PASS" : "FAIL");
+        check.put("dbUrlConfigured", dbUrlConfigured);
+        check.put("dbPasswordConfigured", hasText(dbPassword));
+        check.put("redisHostConfigured", redisHostConfigured);
+        check.put("redisPasswordConfigured", hasText(redisPassword));
+        check.put("jdbcTlsSafe", jdbcTlsSafe);
+        check.put("jdbcAllowPublicKeyRetrieval", containsJdbcFlag(dbUrl, "allowPublicKeyRetrieval", "true"));
+
+        if (!dbUrlConfigured) {
+            issues.add("spring.datasource.url must be configured for production");
+        }
+        if (!dbPasswordSafe) {
+            issues.add("spring.datasource.password must be a non-default production password");
+        }
+        if (!redisHostConfigured) {
+            issues.add("spring.redis.host must be configured for production");
+        }
+        if (!redisPasswordSafe) {
+            issues.add("spring.redis.password must be a non-default production password");
+        }
+        if (!jdbcTlsSafe) {
+            issues.add("spring.datasource.url must not disable TLS for production database connections");
+        }
+        if (!jdbcKeyRetrievalSafe) {
+            issues.add("spring.datasource.url must not enable allowPublicKeyRetrieval in production");
+        }
+        if (hasText(dbUrl) && dbUrl.toLowerCase(Locale.ROOT).contains("jdbc:mysql://")) {
+            warnings.add("Verify the production MySQL account uses least privilege and network access is restricted to backend hosts");
+        }
+        return check;
     }
 
     private Map<String, Object> mailConfigCheck(List<String> issues) {
@@ -562,6 +609,60 @@ public class AdminSystemController {
                 .map((item) -> item == null ? "" : item.toLowerCase(Locale.ROOT))
                 .collect(Collectors.toList()));
         return placeholders.stream().noneMatch(lower::equals);
+    }
+
+    private boolean isStrongRuntimePassword(String value, List<String> extraPlaceholders) {
+        if (!hasText(value)) {
+            return false;
+        }
+        String normalized = value.trim();
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        if (normalized.length() < 12) {
+            return false;
+        }
+        List<String> placeholders = new ArrayList<>(List.of(
+                "password",
+                "changeme",
+                "change-me",
+                "replace-me",
+                "secret"
+        ));
+        placeholders.addAll(extraPlaceholders.stream()
+                .map((item) -> item == null ? "" : item.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toList()));
+        return placeholders.stream().noneMatch(lower::equals)
+                && !lower.startsWith("replace-")
+                && !lower.contains("replace-with")
+                && !lower.contains("your-");
+    }
+
+    private boolean isProductionJdbcTlsSafe(String jdbcUrl) {
+        if (!hasText(jdbcUrl)) {
+            return false;
+        }
+        String normalized = jdbcUrl.toLowerCase(Locale.ROOT);
+        return !normalized.contains("usessl=false")
+                && !normalized.contains("sslmode=disabled")
+                && !normalized.contains("sslmode=disable");
+    }
+
+    private boolean containsJdbcFlag(String jdbcUrl, String key, String expectedValue) {
+        if (!hasText(jdbcUrl) || !hasText(key)) {
+            return false;
+        }
+        String[] parts = jdbcUrl.split("[?&]");
+        for (String part : parts) {
+            int equalsIndex = part.indexOf('=');
+            if (equalsIndex <= 0) {
+                continue;
+            }
+            String itemKey = part.substring(0, equalsIndex).trim();
+            String itemValue = part.substring(equalsIndex + 1).trim();
+            if (itemKey.equalsIgnoreCase(key) && itemValue.equalsIgnoreCase(expectedValue)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isConfiguredMailAccount(MailAccountProperties.Account account) {

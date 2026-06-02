@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
-import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.dto.ProductQuestionPublicResponse;
+import com.example.shop.entity.ProductQuestion;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.service.ProductQuestionService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ public class ProductQuestionController {
 
     @GetMapping("/product/{productId}")
     public ResponseEntity<?> getQuestions(@PathVariable Long productId) {
-        return ResponseEntity.ok(questionService.getByProductId(productId));
+        return ResponseEntity.ok(questionService.getPublicByProductId(productId));
     }
 
     @PostMapping("/product/{productId}")
@@ -27,22 +28,11 @@ public class ProductQuestionController {
             @RequestBody(required = false) Map<String, String> body,
             Authentication authentication) {
         try {
-            UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
-            return ResponseEntity.ok(questionService.ask(productId, userDetails.getId(), body == null ? null : body.get("question")));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw e;
-        }
-    }
-
-    @PostMapping("/{questionId}/answer")
-    public ResponseEntity<?> answerQuestion(
-            @PathVariable Long questionId,
-            @RequestBody(required = false) Map<String, String> body,
-            Authentication authentication) {
-        try {
-            UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
-            SecurityUtils.assertAdmin(authentication);
-            return ResponseEntity.ok(questionService.answer(questionId, userDetails.getId(), body == null ? null : body.get("answer")));
+            ProductQuestion question = questionService.ask(
+                    productId,
+                    SecurityUtils.requireUser(authentication).getId(),
+                    body == null ? null : body.get("question"));
+            return ResponseEntity.ok(ProductQuestionPublicResponse.from(question, productId));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw e;
         }

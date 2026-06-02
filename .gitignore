@@ -32,6 +32,8 @@ logs/
 *.tmp
 *.class
 *.png
+!frontend/public/logo192.png
+!frontend/public/logo512.png
 frontend/visual-checks/
 
 .DS_Store

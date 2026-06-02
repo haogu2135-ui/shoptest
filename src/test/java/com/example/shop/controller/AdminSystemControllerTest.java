@@ -129,7 +129,7 @@ class AdminSystemControllerTest {
         when(environment.getActiveProfiles()).thenReturn(new String[]{"prod"});
         when(environment.getProperty("app.runtime-mode", "production")).thenReturn("production");
         when(environment.getProperty("app.jwtSecret", "")).thenReturn("");
-        when(environment.getProperty("payment.callback-secret", "dev-payment-secret")).thenReturn("dev-payment-secret");
+        when(environment.getProperty("payment.callback-secret", "")).thenReturn("");
         when(environment.getProperty("app.cors.allowed-origin-patterns", "")).thenReturn("http://localhost:*");
         when(environment.getProperty("app.websocket.allowed-origin-patterns", "")).thenReturn("");
         AdminSystemController controller = controller(
@@ -164,7 +164,12 @@ class AdminSystemControllerTest {
         when(environment.getActiveProfiles()).thenReturn(new String[]{"prod"});
         when(environment.getProperty("app.runtime-mode", "production")).thenReturn("production");
         when(environment.getProperty("app.jwtSecret", "")).thenReturn("jwt-secret-1234567890-production-ready");
-        when(environment.getProperty("payment.callback-secret", "dev-payment-secret")).thenReturn("callback-secret-1234567890-production");
+        when(environment.getProperty("payment.callback-secret", "")).thenReturn("callback-secret-1234567890-production");
+        when(environment.getProperty("spring.datasource.url", ""))
+                .thenReturn("jdbc:mysql://db.internal:3306/shop?useSSL=true&requireSSL=true");
+        when(environment.getProperty("spring.datasource.password", "")).thenReturn("strong-db-password-1234567890");
+        when(environment.getProperty("spring.redis.host", "")).thenReturn("redis.internal");
+        when(environment.getProperty("spring.redis.password", "")).thenReturn("strong-redis-password-1234567890");
         when(environment.getProperty("app.cors.allowed-origin-patterns", "")).thenReturn("https://shop.example.com,https://admin.example.com");
         when(environment.getProperty("app.websocket.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("logistics.api-url", "")).thenReturn("https://logistics.shop.test/track");
@@ -201,7 +206,7 @@ class AdminSystemControllerTest {
         when(environment.getActiveProfiles()).thenReturn(new String[]{"prod"});
         when(environment.getProperty("app.runtime-mode", "production")).thenReturn("production");
         when(environment.getProperty("app.jwtSecret", "")).thenReturn("jwt-secret-1234567890-production-ready");
-        when(environment.getProperty("payment.callback-secret", "dev-payment-secret")).thenReturn("callback-secret-1234567890-production");
+        when(environment.getProperty("payment.callback-secret", "")).thenReturn("callback-secret-1234567890-production");
         when(environment.getProperty("app.cors.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("app.websocket.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("admin.bootstrap-token", "")).thenReturn("temporary-bootstrap-token");
@@ -232,7 +237,7 @@ class AdminSystemControllerTest {
         when(environment.getActiveProfiles()).thenReturn(new String[]{"prod"});
         when(environment.getProperty("app.runtime-mode", "production")).thenReturn("production");
         when(environment.getProperty("app.jwtSecret", "")).thenReturn("jwt-secret-1234567890-production-ready");
-        when(environment.getProperty("payment.callback-secret", "dev-payment-secret")).thenReturn("callback-secret-1234567890-production");
+        when(environment.getProperty("payment.callback-secret", "")).thenReturn("callback-secret-1234567890-production");
         when(environment.getProperty("app.cors.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("app.websocket.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("payment.simulation-enabled", Boolean.class, false)).thenReturn(true);
@@ -264,7 +269,7 @@ class AdminSystemControllerTest {
         when(environment.getActiveProfiles()).thenReturn(new String[]{"prod"});
         when(environment.getProperty("app.runtime-mode", "production")).thenReturn("production");
         when(environment.getProperty("app.jwtSecret", "")).thenReturn("jwt-secret-1234567890-production-ready");
-        when(environment.getProperty("payment.callback-secret", "dev-payment-secret")).thenReturn("callback-secret-1234567890-production");
+        when(environment.getProperty("payment.callback-secret", "")).thenReturn("callback-secret-1234567890-production");
         when(environment.getProperty("app.cors.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("app.websocket.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("logistics.api-url", "")).thenReturn("https://logistics.shop.test/track");
@@ -295,7 +300,7 @@ class AdminSystemControllerTest {
         when(environment.getActiveProfiles()).thenReturn(new String[]{"prod"});
         when(environment.getProperty("app.runtime-mode", "production")).thenReturn("production");
         when(environment.getProperty("app.jwtSecret", "")).thenReturn("jwt-secret-1234567890-production-ready");
-        when(environment.getProperty("payment.callback-secret", "dev-payment-secret")).thenReturn("callback-secret-1234567890-production");
+        when(environment.getProperty("payment.callback-secret", "")).thenReturn("callback-secret-1234567890-production");
         when(environment.getProperty("app.cors.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("app.websocket.allowed-origin-patterns", "")).thenReturn("https://shop.example.com");
         when(environment.getProperty("logistics.api-url", "")).thenReturn("https://provider.example/track");
@@ -361,7 +366,7 @@ class AdminSystemControllerTest {
         when(environment.getProperty("spring.cloud.nacos.discovery.namespace", "")).thenReturn("");
         when(environment.getProperty("spring.cloud.nacos.discovery.group", "DEFAULT_GROUP")).thenReturn("DEFAULT_GROUP");
         when(environment.getProperty("app.jwtSecret", "")).thenReturn("");
-        when(environment.getProperty("payment.callback-secret", "dev-payment-secret")).thenReturn("dev-payment-secret");
+        when(environment.getProperty("payment.callback-secret", "")).thenReturn("");
         when(environment.getProperty("admin.bootstrap-token", "")).thenReturn("");
         when(environment.getProperty("app.cors.allowed-origin-patterns", "")).thenReturn("http://localhost:*");
         when(environment.getProperty("app.websocket.allowed-origin-patterns", "")).thenReturn("");

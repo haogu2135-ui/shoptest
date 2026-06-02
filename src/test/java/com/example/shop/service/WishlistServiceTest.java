@@ -7,17 +7,22 @@ import com.example.shop.repository.WishlistMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -73,6 +78,52 @@ class WishlistServiceTest {
         assertFalse(result.get(0).getRequiresSelection());
         verify(productRepository, never()).findAllById(any());
         verify(productRepository, never()).findById(any());
+    }
+
+    @Test
+    void addRejectsMissingProductBeforeInsert() {
+        when(productRepository.findById(99L)).thenReturn(Optional.empty());
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.addToWishlist(7L, 99L));
+
+        assertEquals("Product not found", error.getMessage());
+        verify(wishlistMapper, never()).insert(any(Wishlist.class));
+    }
+
+    @Test
+    void addRejectsInactiveProductBeforeInsert() {
+        Product product = product(10L);
+        product.setStatus("INACTIVE");
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> service.addToWishlist(7L, 10L));
+
+        assertEquals("Product is not available for wishlist", error.getMessage());
+        verify(wishlistMapper, never()).insert(any(Wishlist.class));
+    }
+
+    @Test
+    void addTreatsConcurrentDuplicateInsertAsIdempotent() {
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product(10L)));
+        when(wishlistMapper.insert(any(Wishlist.class))).thenThrow(new DuplicateKeyException("duplicate"));
+
+        assertDoesNotThrow(() -> service.addToWishlist(7L, 10L));
+
+        verify(wishlistMapper).findByUserAndProduct(7L, 10L);
+        verify(productRepository).findById(10L);
+        verify(wishlistMapper).insert(any(Wishlist.class));
+    }
+
+    @Test
+    void addSkipsProductLookupWhenAlreadyWishlisted() {
+        when(wishlistMapper.findByUserAndProduct(7L, 10L)).thenReturn(wishlist(10L));
+
+        service.addToWishlist(7L, 10L);
+
+        verify(productRepository, never()).findById(eq(10L));
+        verify(wishlistMapper, never()).insert(any(Wishlist.class));
     }
 
     private Wishlist wishlist(Long productId) {

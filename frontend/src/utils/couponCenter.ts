@@ -1,4 +1,4 @@
-import type { CartItem, Coupon, UserCoupon } from '../types';
+import type { CartItem, CouponPublic, UserCoupon } from '../types';
 
 export type CouponFilter = 'all' | 'claimable' | 'ending';
 export type CouponSort = 'recommended' | 'value' | 'ending' | 'threshold';
@@ -18,7 +18,7 @@ const toSafeQuantity = (value: unknown) => {
 
 export const getCouponEstimatedValue = (
   coupon:
-    Pick<Coupon, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>
+    Pick<CouponPublic, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>
     | Pick<UserCoupon, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>,
 ) => {
   if (coupon.couponType === 'FULL_REDUCTION') {
@@ -39,15 +39,15 @@ export const getDaysUntilEnd = (endAt?: string) => {
   return Math.ceil((endTime - Date.now()) / (24 * 60 * 60 * 1000));
 };
 
-export const getCouponRemaining = (coupon: Pick<Coupon, 'totalQuantity' | 'claimedQuantity'>) =>
-  coupon.totalQuantity == null ? null : Math.max(0, toSafeQuantity(coupon.totalQuantity) - toSafeQuantity(coupon.claimedQuantity));
+export const getCouponRemaining = (coupon: Pick<CouponPublic, 'remainingQuantity'>) =>
+  coupon.remainingQuantity == null ? null : toSafeQuantity(coupon.remainingQuantity);
 
 export const isCouponEndingSoon = (endAt?: string) => {
   const days = getDaysUntilEnd(endAt);
   return days != null && days >= 0 && days <= 3;
 };
 
-export const isCouponInValidWindow = (coupon: Pick<Coupon, 'startAt' | 'endAt'> | Pick<UserCoupon, 'startAt' | 'endAt'>) => {
+export const isCouponInValidWindow = (coupon: Pick<CouponPublic, 'startAt' | 'endAt'> | Pick<UserCoupon, 'startAt' | 'endAt'>) => {
   const now = Date.now();
   if (coupon.startAt) {
     const startTime = new Date(coupon.startAt).getTime();
@@ -60,13 +60,55 @@ export const isCouponInValidWindow = (coupon: Pick<Coupon, 'startAt' | 'endAt'> 
   return true;
 };
 
-const isCouponClaimable = (coupon: Coupon, ownedCouponIds: Set<number>) => {
+export const getFallbackPublicCoupons = (now = Date.now()): CouponPublic[] => {
+  const startAt = new Date(now - 60 * 60 * 1000).toISOString();
+  const inDays = (days: number) => new Date(now + days * 24 * 60 * 60 * 1000).toISOString();
+
+  return [
+    {
+      id: -101,
+      name: 'New Pet Parent Starter Perk',
+      couponType: 'FULL_REDUCTION',
+      thresholdAmount: 79,
+      reductionAmount: 12,
+      remainingQuantity: 500,
+      startAt,
+      endAt: inDays(14),
+      description: 'Starter savings for food, walking and comfort essentials.',
+    },
+    {
+      id: -102,
+      name: 'Smart Care Upgrade Deal',
+      couponType: 'DISCOUNT',
+      thresholdAmount: 120,
+      discountPercent: 90,
+      maxDiscountAmount: 24,
+      remainingQuantity: 180,
+      startAt,
+      endAt: inDays(7),
+      description: 'A limited smart-care coupon for feeders, fountains and daily care devices.',
+    },
+    {
+      id: -103,
+      name: 'Weekend Walk & Play Bundle',
+      couponType: 'FULL_REDUCTION',
+      thresholdAmount: 45,
+      reductionAmount: 6,
+      remainingQuantity: 320,
+      startAt,
+      endAt: inDays(21),
+      description: 'Bundle savings for toys, leashes, collars and small accessories.',
+    },
+  ];
+};
+
+const isCouponClaimable = (coupon: CouponPublic, ownedCouponIds: Set<number>) => {
   const remaining = getCouponRemaining(coupon);
   return !ownedCouponIds.has(coupon.id) && remaining !== 0 && isCouponInValidWindow(coupon);
 };
 
 export const sortPublicCoupons = (
-  publicCoupons: Coupon[],
+  publicCoupons: CouponPublic[],
   ownedCouponIds: Set<number>,
   couponSearch: string,
   couponSort: CouponSort,
@@ -117,7 +159,7 @@ export const sortPublicCoupons = (
 };
 
 export const filterPublicCoupons = (
-  coupons: Coupon[],
+  coupons: CouponPublic[],
   ownedCouponIds: Set<number>,
   couponFilter: CouponFilter,
 ) => coupons.filter((coupon) => {

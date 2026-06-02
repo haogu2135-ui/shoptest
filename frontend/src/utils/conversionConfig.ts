@@ -1,3 +1,11 @@
+export type SocialProofEvent = {
+  verified?: boolean;
+  cityKey: string;
+  name: string;
+  productKey: string;
+  minutesAgo: number;
+};
+
 export const conversionConfig = {
   giftAtCheckout: {
     enabled: true,
@@ -73,14 +81,10 @@ export const conversionConfig = {
     minReviewCount: 3,
   },
   socialProof: {
-    enabled: true,
+    // Enable only after wiring verified live order or engagement events.
+    enabled: false,
     rotateMs: 5200,
-    events: [
-      { cityKey: 'home.socialProofCities.newYork', name: 'Lucy', productKey: 'home.socialProofProducts.feeder', minutesAgo: 4 },
-      { cityKey: 'home.socialProofCities.mexicoCity', name: 'Sofia', productKey: 'home.socialProofProducts.fountain', minutesAgo: 7 },
-      { cityKey: 'home.socialProofCities.toronto', name: 'Milo', productKey: 'home.socialProofProducts.bed', minutesAgo: 11 },
-      { cityKey: 'home.socialProofCities.shanghai', name: 'Nico', productKey: 'home.socialProofProducts.harness', minutesAgo: 15 },
-    ],
+    events: [] as SocialProofEvent[],
   },
   sizeCalculator: {
     breedDefaults: [

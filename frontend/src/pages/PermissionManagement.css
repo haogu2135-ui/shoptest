@@ -286,3 +286,15 @@
     padding: 7px;
   }
 }
+
+/* Final mobile/App permission-management operations touch-target guard */
+@media (max-width: 720px) {
+  .permission-management-page__toolbar .ant-input-affix-wrapper,
+  .permission-management-page__toolbar .ant-btn,
+  .permission-management-page__table .ant-table-cell .ant-btn,
+  .permission-management-page__modal .ant-modal-footer .ant-btn,
+  .permission-management-page__modal .ant-input,
+  .permission-management-page__permissionGrid .ant-checkbox-wrapper {
+    min-height: 44px;
+  }
+}

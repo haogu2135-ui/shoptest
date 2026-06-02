@@ -484,3 +484,17 @@
     flex-basis: 100%;
   }
 }
+
+/* Final mobile/App logistics-carrier operations touch-target guard */
+@media (max-width: 720px) {
+  .logistics-carrier-page__intro .ant-input-affix-wrapper,
+  .logistics-carrier-page__intro .ant-select-selector,
+  .logistics-carrier-page__intro .ant-btn,
+  .logistics-carrier-page .ant-table-cell .ant-btn,
+  .logistics-carrier-page__editorModal .ant-modal-footer .ant-btn,
+  .logistics-carrier-page__editorModal .ant-input,
+  .logistics-carrier-page__editorModal .ant-input-number,
+  .logistics-carrier-page__editorModal .ant-select-selector {
+    min-height: 44px;
+  }
+}

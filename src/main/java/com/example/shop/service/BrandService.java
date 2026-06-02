@@ -2,14 +2,20 @@ package com.example.shop.service;
 
 import com.example.shop.entity.Brand;
 import com.example.shop.repository.BrandRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class BrandService {
+    private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
+
     private final BrandRepository brandRepository;
 
     public BrandService(BrandRepository brandRepository) {
@@ -21,6 +27,14 @@ public class BrandService {
             return brandRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE");
         }
         return brandRepository.findAllByOrderBySortOrderAscNameAsc();
+    }
+
+    public List<Brand> findAll(boolean activeOnly, int maxRows) {
+        Pageable page = PageRequest.of(0, Math.max(1, maxRows));
+        if (activeOnly) {
+            return brandRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE", page);
+        }
+        return brandRepository.findAllByOrderBySortOrderAscNameAsc(page);
     }
 
     public Optional<Brand> findById(Long id) {
@@ -39,9 +53,7 @@ public class BrandService {
                     throw new IllegalArgumentException("Brand name already exists");
                 });
         brand.setName(name);
-        if (brand.getStatus() == null || brand.getStatus().isEmpty()) {
-            brand.setStatus("ACTIVE");
-        }
+        brand.setStatus(normalizeStatus(brand.getStatus()));
         if (brand.getSortOrder() == null) {
             brand.setSortOrder(0);
         }
@@ -51,5 +63,16 @@ public class BrandService {
     @Transactional
     public void deleteById(Long id) {
         brandRepository.deleteById(id);
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "ACTIVE";
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_STATUSES.contains(normalized)) {
+            throw new IllegalArgumentException("Brand status must be ACTIVE or INACTIVE");
+        }
+        return normalized;
     }
 }

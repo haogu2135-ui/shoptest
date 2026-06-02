@@ -389,3 +389,19 @@
     margin-bottom: 12px;
   }
 }
+
+/* Final mobile/App announcement-operations touch-target guard */
+@media (max-width: 720px) {
+  .announcement-management__hero .ant-btn,
+  .announcement-management__toolbar .ant-input-affix-wrapper,
+  .announcement-management__toolbar .ant-select-selector,
+  .announcement-management .ant-table-cell .ant-btn,
+  .announcement-management .ant-switch,
+  .announcement-management .ant-modal-footer .ant-btn,
+  .announcement-management .ant-modal .ant-input,
+  .announcement-management .ant-modal .ant-input-number,
+  .announcement-management .ant-modal .ant-picker,
+  .announcement-management .ant-modal .ant-select-selector {
+    min-height: 44px;
+  }
+}

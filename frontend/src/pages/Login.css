@@ -197,6 +197,11 @@
   flex-direction: column;
 }
 
+.shopee-login-appHeader,
+.shopee-login-appActions {
+  display: none;
+}
+
 .shopee-login-card__header {
   display: grid;
   gap: 12px;
@@ -2389,5 +2394,100 @@
     overflow-y: auto !important;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
+  }
+}
+
+/* UI issues pass: mobile auth copy wraps naturally instead of being clipped. */
+@media (max-width: 430px) {
+  .shopee-login-panel__eyebrow,
+  .shopee-login-panel__subtitle,
+  .shopee-login-subtitle,
+  .shopee-login-trust__item span,
+  .shopee-login-reset-guide__item span,
+  .shopee-login-emailHint span {
+    max-width: 100%;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .shopee-login-panel__subtitle {
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+
+  .shopee-login-card__intro,
+  .shopee-login-subtitle {
+    display: block;
+    max-width: 100%;
+    overflow: visible;
+    overflow-wrap: break-word;
+    text-overflow: clip;
+    white-space: normal;
+    -webkit-line-clamp: unset;
+  }
+
+  .shopee-login-panel__eyebrow {
+    width: fit-content;
+    max-width: 100%;
+    line-height: 1.25;
+  }
+}
+
+/* UI issues pass: forgot-password keeps comfortable spacing and desktop centering. */
+.shopee-login-root--reset {
+  min-height: calc(100dvh - 64px);
+  display: grid;
+  place-items: center;
+  padding-block: 32px;
+}
+
+.shopee-login-card--reset {
+  max-width: 460px;
+}
+
+.shopee-login-card--reset .shopee-login-emailHint,
+.shopee-login-card--reset .shopee-login-emailSent {
+  margin: 0 0 16px;
+}
+
+@media (max-width: 640px) {
+  .shopee-login-root--reset {
+    min-height: auto;
+    place-items: start center;
+    padding: 12px max(10px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+  }
+
+  .shopee-login-card--reset {
+    width: 100%;
+    max-width: 430px;
+  }
+
+  .shopee-login-card--reset .shopee-login-emailHint,
+  .shopee-login-card--reset .shopee-login-emailSent {
+    margin-bottom: 14px;
+  }
+}
+
+/* Final mobile/App auth touch-target guard */
+@media (max-width: 640px) {
+  .shopee-login-card .ant-input,
+  .shopee-login-card .ant-input-affix-wrapper,
+  .shopee-login-card .ant-btn,
+  .shopee-login-codeButton,
+  .shopee-login-emailSubmit,
+  .shopee-login-panel__actions .ant-btn,
+  .shopee-login-quickLinks a,
+  .shopee-login-quickLinks button,
+  .shopee-login-links a,
+  .shopee-login-links button,
+  .shopee-login-tabs .ant-tabs-tab,
+  .shopee-login-tabs .ant-tabs-tab-btn {
+    min-height: 44px;
+  }
+
+  .shopee-login-form__field--code .ant-input-group-addon .ant-btn {
+    min-height: 44px;
   }
 }

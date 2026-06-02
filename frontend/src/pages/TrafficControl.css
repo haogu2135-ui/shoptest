@@ -232,3 +232,12 @@
     flex-basis: 134px;
   }
 }
+
+/* Final mobile/App traffic-control operations touch-target guard */
+@media (max-width: 720px) {
+  .traffic-control__actions .ant-btn,
+  .traffic-control__card .ant-table .ant-btn,
+  .traffic-control .ant-empty .ant-btn {
+    min-height: 44px;
+  }
+}

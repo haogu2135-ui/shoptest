@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -117,11 +118,42 @@ public class SecurityAuditLogService {
         return rows;
     }
 
-    public SecurityAuditSummaryResponse summary(LocalDateTime startAt, LocalDateTime endAt, int topLimit) {
+    public long countExport(String action,
+                            String result,
+                            String actorUsername,
+                            String resourceType,
+                            LocalDateTime startAt,
+                            LocalDateTime endAt) {
+        TimeRange range = normalizeRange(startAt, endAt);
+        return count(
+                null,
+                exactFilter(action, 50),
+                exactFilter(result, 20),
+                likeFilter(actorUsername, 100),
+                exactFilter(resourceType, 50),
+                range.startAt,
+                range.endAt);
+    }
+
+    public int exportMaxRows() {
+        return maxExportRows();
+    }
+
+    public SecurityAuditSummaryResponse summary(String action,
+                                                String result,
+                                                String actorUsername,
+                                                String resourceType,
+                                                LocalDateTime startAt,
+                                                LocalDateTime endAt,
+                                                int topLimit) {
         int safeLimit = Math.max(1, Math.min(topLimit <= 0 ? 10 : topLimit, 50));
         TimeRange range = normalizeRange(startAt, endAt);
         LocalDateTime safeStart = range.startAt;
         LocalDateTime safeEnd = range.endAt;
+        String actionFilter = exactFilter(action, 50);
+        String resultFilter = exactFilter(result, 20);
+        String actorFilter = likeFilter(actorUsername, 100);
+        String resourceTypeFilter = exactFilter(resourceType, 50);
 
         SecurityAuditSummaryResponse response = new SecurityAuditSummaryResponse();
         response.setStartAt(safeStart.toString());
@@ -130,13 +162,13 @@ public class SecurityAuditLogService {
         response.setMaxRangeHours(maxRangeHours());
         response.setMaxSearchRows(maxSearchRows());
         response.setMaxExportRows(maxExportRows());
-        response.setTotalCount(count(null, safeStart, safeEnd));
-        response.setSuccessCount(count("SUCCESS", safeStart, safeEnd));
-        response.setFailureCount(count("FAILURE", safeStart, safeEnd));
-        response.setByResult(groupCount("result", safeStart, safeEnd, safeLimit));
-        response.setTopActions(groupCount("action", safeStart, safeEnd, safeLimit));
-        response.setTopActors(groupCount("actor_username", safeStart, safeEnd, safeLimit));
-        response.setTopIpAddresses(groupCount("ip_address", safeStart, safeEnd, safeLimit));
+        response.setTotalCount(count(null, actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd));
+        response.setSuccessCount(count(resultFilter == null ? "SUCCESS" : null, actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd));
+        response.setFailureCount(count(resultFilter == null ? "FAILURE" : null, actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd));
+        response.setByResult(groupCount("result", actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd, safeLimit));
+        response.setTopActions(groupCount("action", actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd, safeLimit));
+        response.setTopActors(groupCount("actor_username", actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd, safeLimit));
+        response.setTopIpAddresses(groupCount("ip_address", actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd, safeLimit));
         response.setCheckedAt(Instant.now().toString());
         return response;
     }
@@ -154,29 +186,81 @@ public class SecurityAuditLogService {
         return response;
     }
 
-    private long count(String result, LocalDateTime startAt, LocalDateTime endAt) {
-        String sql = "SELECT COUNT(*) FROM security_audit_logs WHERE created_at >= ? AND created_at <= ?"
-                + (result == null ? "" : " AND result = ?");
-        Long count = result == null
-                ? jdbcTemplate.queryForObject(sql, Long.class, startAt, endAt)
-                : jdbcTemplate.queryForObject(sql, Long.class, startAt, endAt, result);
+    private long count(String forcedResult,
+                       String action,
+                       String result,
+                       String actorUsername,
+                       String resourceType,
+                       LocalDateTime startAt,
+                       LocalDateTime endAt) {
+        String effectiveResult = effectiveResultFilter(forcedResult, result);
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM security_audit_logs");
+        List<Object> params = new ArrayList<>();
+        appendAuditLogFilters(sql, params, action, effectiveResult, actorUsername, resourceType, startAt, endAt);
+        Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, params.toArray());
         return count == null ? 0 : count;
     }
 
-    private List<SecurityAuditSummaryResponse.GroupCount> groupCount(String column, LocalDateTime startAt, LocalDateTime endAt, int limit) {
+    private List<SecurityAuditSummaryResponse.GroupCount> groupCount(String column,
+                                                                     String action,
+                                                                     String result,
+                                                                     String actorUsername,
+                                                                     String resourceType,
+                                                                     LocalDateTime startAt,
+                                                                     LocalDateTime endAt,
+                                                                     int limit) {
         if (!List.of("result", "action", "actor_username", "ip_address").contains(column)) {
             return List.of();
         }
         String sql = "SELECT COALESCE(NULLIF(" + column + ", ''), 'UNKNOWN') AS name, COUNT(*) AS total "
-                + "FROM security_audit_logs WHERE created_at >= ? AND created_at <= ? "
-                + "GROUP BY COALESCE(NULLIF(" + column + ", ''), 'UNKNOWN') "
-                + "ORDER BY total DESC, name ASC LIMIT ?";
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, startAt, endAt, limit);
+                + "FROM security_audit_logs";
+        StringBuilder builder = new StringBuilder(sql);
+        List<Object> params = new ArrayList<>();
+        appendAuditLogFilters(builder, params, action, result, actorUsername, resourceType, startAt, endAt);
+        builder.append(" GROUP BY COALESCE(NULLIF(")
+                .append(column)
+                .append(", ''), 'UNKNOWN') ORDER BY total DESC, name ASC LIMIT ?");
+        params.add(limit);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(builder.toString(), params.toArray());
         return rows.stream()
                 .map(row -> new SecurityAuditSummaryResponse.GroupCount(
                         String.valueOf(row.get("name")),
                         ((Number) row.get("total")).longValue()))
                 .collect(Collectors.toList());
+    }
+
+    private String effectiveResultFilter(String forcedResult, String requestedResult) {
+        return requestedResult == null ? forcedResult : requestedResult;
+    }
+
+    private void appendAuditLogFilters(StringBuilder sql,
+                                       List<Object> params,
+                                       String action,
+                                       String result,
+                                       String actorUsername,
+                                       String resourceType,
+                                       LocalDateTime startAt,
+                                       LocalDateTime endAt) {
+        sql.append(" WHERE 1 = 1");
+        if (action != null) {
+            sql.append(" AND action = ?");
+            params.add(action);
+        }
+        if (result != null) {
+            sql.append(" AND result = ?");
+            params.add(result);
+        }
+        if (actorUsername != null) {
+            sql.append(" AND actor_username LIKE ? ESCAPE '!'");
+            params.add("%" + actorUsername + "%");
+        }
+        if (resourceType != null) {
+            sql.append(" AND resource_type = ?");
+            params.add(resourceType);
+        }
+        sql.append(" AND created_at >= ? AND created_at <= ?");
+        params.add(startAt);
+        params.add(endAt);
     }
 
     private Actor actorFrom(Authentication authentication) {

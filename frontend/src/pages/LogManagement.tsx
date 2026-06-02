@@ -6,6 +6,7 @@ import { adminApi } from '../api';
 import type { AdminLogManagementStatus } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import { LOGS_DEBUG_PERMISSION, LOGS_DOWNLOAD_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './LogManagement.css';
 
 const { RangePicker } = DatePicker;
@@ -23,6 +24,10 @@ const LogManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const canToggleDebug = hasAdminPermission(adminPermissions, currentRole, LOGS_DEBUG_PERMISSION);
+  const canDownloadLogs = hasAdminPermission(adminPermissions, currentRole, LOGS_DOWNLOAD_PERMISSION);
 
   const loadStatus = useCallback(async (nextLogger: string) => {
     const requestedLogger = nextLogger.trim() || DEFAULT_LOGGER;
@@ -42,7 +47,29 @@ const LogManagement: React.FC = () => {
     loadStatus(DEFAULT_LOGGER);
   }, [loadStatus]);
 
+  useEffect(() => {
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((response) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
   const toggleDebug = async (enabled: boolean) => {
+    if (!canToggleDebug) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setSwitching(true);
     try {
       const response = await adminApi.setDebugLogging({ loggerName, enabled });
@@ -56,6 +83,10 @@ const LogManagement: React.FC = () => {
   };
 
   const downloadLogs = async () => {
+    if (!canDownloadLogs) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (!range[0] || !range[1]) {
       message.warning(t('pages.logAdmin.rangeRequired'));
       return;
@@ -89,7 +120,7 @@ const LogManagement: React.FC = () => {
     <div className="log-management">
       <div className="log-management__hero">
         <div>
-          <Text className="log-management__eyebrow">Runtime Logs</Text>
+          <Text className="log-management__eyebrow">{t('pages.logAdmin.eyebrow')}</Text>
           <Title level={2}>{t('pages.logAdmin.title')}</Title>
           <Text type="secondary">{t('pages.logAdmin.description')}</Text>
         </div>
@@ -97,16 +128,18 @@ const LogManagement: React.FC = () => {
           <Button icon={<ReloadOutlined />} loading={loading} onClick={() => loadStatus(loggerName)}>
             {t('common.refresh')}
           </Button>
-          <Button type="primary" icon={<DownloadOutlined />} loading={downloading} onClick={downloadLogs}>
-            {t('pages.logAdmin.downloadLogs')}
-          </Button>
+          {canDownloadLogs ? (
+            <Button type="primary" icon={<DownloadOutlined />} loading={downloading} onClick={downloadLogs}>
+              {t('pages.logAdmin.downloadLogs')}
+            </Button>
+          ) : null}
         </Space>
       </div>
 
       <Spin spinning={loading && !status}>
         <div className="log-management__stats">
           <Card>
-            <Statistic title="Logger" value={status?.loggerName || loggerName} prefix={<FileTextOutlined />} />
+            <Statistic title={t('pages.logAdmin.loggerMetric')} value={status?.loggerName || loggerName} prefix={<FileTextOutlined />} />
           </Card>
           <Card>
             <Statistic
@@ -140,19 +173,21 @@ const LogManagement: React.FC = () => {
                   placeholder={DEFAULT_LOGGER}
                 />
               </label>
-              <div className="log-management__switchRow">
-                <div>
-                  <Text strong>{t('pages.logAdmin.debugLogs')}</Text>
-                  <Text type="secondary">{t('pages.logAdmin.runtimeOnly')}</Text>
+              {canToggleDebug ? (
+                <div className="log-management__switchRow">
+                  <div>
+                    <Text strong>{t('pages.logAdmin.debugLogs')}</Text>
+                    <Text type="secondary">{t('pages.logAdmin.runtimeOnly')}</Text>
+                  </div>
+                  <Switch
+                    checked={Boolean(status?.debugEnabled)}
+                    loading={switching}
+                    onChange={toggleDebug}
+                    checkedChildren={t('pages.logAdmin.on')}
+                    unCheckedChildren={t('pages.logAdmin.off')}
+                  />
                 </div>
-                <Switch
-                  checked={Boolean(status?.debugEnabled)}
-                  loading={switching}
-                  onChange={toggleDebug}
-                  checkedChildren={t('pages.logAdmin.on')}
-                  unCheckedChildren={t('pages.logAdmin.off')}
-                />
-              </div>
+              ) : null}
               <Button onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />}>
                 {t('pages.logAdmin.loadLogger')}
               </Button>
@@ -185,12 +220,14 @@ const LogManagement: React.FC = () => {
                 <Input
                   value={keyword}
                   onChange={(event) => setKeyword(event.target.value)}
-                  placeholder="Keyword"
+                  placeholder={t('pages.logAdmin.keywordPlaceholder')}
                 />
               </Space.Compact>
-              <Button type="primary" icon={<DownloadOutlined />} loading={downloading} onClick={downloadLogs}>
-                {t('pages.logAdmin.downloadSelectedRange')}
-              </Button>
+              {canDownloadLogs ? (
+                <Button type="primary" icon={<DownloadOutlined />} loading={downloading} onClick={downloadLogs}>
+                  {t('pages.logAdmin.downloadSelectedRange')}
+                </Button>
+              ) : null}
             </div>
             <Descriptions column={1} size="small" bordered className="log-management__meta">
               <Descriptions.Item label={t('pages.logAdmin.logDirectory')}>{status?.logDirectory || '-'}</Descriptions.Item>

@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, HistoryOutlined, RollbackOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, ShoppingOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { addressApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
-import type { CartItem, CouponQuote, Order, Payment, PaymentChannel, Product, UserAddress, UserCoupon } from '../types';
+import { addressApi, cartApi, clearStoredAuthSession, couponApi, orderApi, paymentApi } from '../api';
+import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChannel, ProductPublic as Product, UserAddress, UserCoupon } from '../types';
 import { regionData } from '../regionData';
 import { useLanguage } from '../i18n';
 import { createPaymentMethodDetails, paymentMethodLabel } from '../utils/paymentMethods';
@@ -21,15 +21,29 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { saveGuestSupportContext } from '../utils/guestSupportContext';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { isAdminRole } from '../utils/roles';
-import { getLocalStorageItem, getSessionStorageItem, removeLocalStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
+import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
+import { useNativeBackHandler } from '../utils/nativeBack';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { useAppConfig } from '../hooks/useAppConfig';
 import './Checkout.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text, Title } = Typography;
 const checkoutImageFallback = productImageFallback;
 const resolveCheckoutImage = resolveProductImage;
 const mobileCheckoutQuery = '(max-width: 780px)';
+
+const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED']);
+const paymentStatusColors: Record<string, string> = {
+  PENDING: 'orange',
+  PAID: 'green',
+  FAILED: 'red',
+  EXPIRED: 'volcano',
+  REFUNDING: 'purple',
+  REFUNDED: 'purple',
+};
+
+const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
 
 const isPurchasable = (item: CartItem) =>
   (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock >= item.quantity);
@@ -74,9 +88,9 @@ const estimateCouponDiscount = (coupon: UserCoupon, cartTotal: number) => {
   if (coupon.couponType === 'FULL_REDUCTION') {
     return Math.min(toSafeMoney(coupon.reductionAmount), safeCartTotal);
   }
-  const rawPercent = Number(coupon.discountPercent ?? 0);
-  const percent = Math.max(0, Math.min(Number.isFinite(rawPercent) ? rawPercent : 0, 100));
-  const discount = safeCartTotal * percent / 100;
+  const rawPayablePercent = Number(coupon.discountPercent ?? 100);
+  const payablePercent = Math.max(0, Math.min(Number.isFinite(rawPayablePercent) ? rawPayablePercent : 100, 100));
+  const discount = safeCartTotal * (100 - payablePercent) / 100;
   const maxDiscount = toSafeMoney(coupon.maxDiscountAmount);
   return Math.min(maxDiscount > 0 ? Math.min(discount, maxDiscount) : discount, safeCartTotal);
 };
@@ -104,7 +118,7 @@ const isAuthExpiredError = (error: any) => {
 };
 
 const clearExpiredCheckoutSession = () => {
-  ['token', 'refreshToken', 'userId', 'username', 'role', 'adminDefaultPath'].forEach(removeLocalStorageItem);
+  clearStoredAuthSession();
 };
 
 const CHECKOUT_GUEST_DRAFT_KEY = 'checkoutGuestDraft';
@@ -144,8 +158,8 @@ const Checkout: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | 'new'>('new');
-  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
-  const [payment, setPayment] = useState<Payment | null>(null);
+  const [createdOrder, setCreatedOrder] = useState<OrderCustomer | null>(null);
+  const [payment, setPayment] = useState<PaymentCustomer | null>(null);
   const [guestPaymentEmail, setGuestPaymentEmail] = useState<string | undefined>();
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>('STRIPE');
   const [paymentCreateError, setPaymentCreateError] = useState<string | null>(null);
@@ -160,9 +174,22 @@ const Checkout: React.FC = () => {
   const [selectedUserCouponId, setSelectedUserCouponId] = useState<number | null>(null);
   const [couponManuallyChanged, setCouponManuallyChanged] = useState(false);
   const [supportPanelOpen, setSupportPanelOpen] = useState(false);
+  const supportPanelDismissedKeyRef = React.useRef<string | null>(null);
   const couponQuoteSeqRef = React.useRef(0);
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const formatPaymentStatusLabel = useCallback((status?: string) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = normalizeStatusCode(rawStatus);
+    if (!normalizedStatus) return t('common.unknown');
+    if (PAYMENT_STATUS_LABEL_KEYS.has(normalizedStatus)) return t(`status.${normalizedStatus}`);
+    return rawStatus;
+  }, [t]);
+  const getPaymentStatusColor = useCallback((status?: string) => {
+    const normalizedStatus = normalizeStatusCode(status);
+    if (!PAYMENT_STATUS_LABEL_KEYS.has(normalizedStatus)) return 'default';
+    return paymentStatusColors[normalizedStatus] || 'default';
+  }, []);
   const watchedPaymentMethod = Form.useWatch('paymentMethod', form);
   const watchedGuestEmail = Form.useWatch('guestEmail', form);
   const watchedRecipientName = Form.useWatch('recipientName', form);
@@ -441,7 +468,7 @@ const Checkout: React.FC = () => {
           ? Number(coupon.reductionAmount || 0)
           : Math.min(
             Number(coupon.maxDiscountAmount || 0) || threshold,
-            threshold * Math.max(0, Math.min(Number(coupon.discountPercent || 0), 100)) / 100,
+            threshold * (100 - Math.max(0, Math.min(Number(coupon.discountPercent ?? 100), 100))) / 100,
           );
         return { coupon, gap, estimatedValue };
       })
@@ -567,11 +594,49 @@ const Checkout: React.FC = () => {
   const checkoutReadinessScore = Math.round((checkoutReadinessItems.filter((item) => item.ready).length / checkoutReadinessItems.length) * 100);
   const checkoutNextAction = checkoutReadinessItems.find((item) => !item.ready) || null;
   const needsCheckoutSupport = Boolean(addOnTarget || couponOpportunity || checkoutNextAction);
+  const supportPanelAutoOpenKey = useMemo(() => {
+    if (!needsCheckoutSupport) return '';
+    return [
+      checkoutNextAction?.key || 'ready',
+      addOnTarget ? `${addOnTarget.reason}:${Math.round(addOnTarget.remainingAmount * 100)}` : 'no-addon',
+      couponOpportunity ? `${couponOpportunity.type}:${selectedCoupon?.id || nextCouponUnlock?.coupon?.id || 'coupon'}` : 'no-coupon',
+    ].join('|');
+  }, [
+    addOnTarget,
+    checkoutNextAction?.key,
+    couponOpportunity,
+    needsCheckoutSupport,
+    nextCouponUnlock?.coupon?.id,
+    selectedCoupon?.id,
+  ]);
   useEffect(() => {
+    if (!needsCheckoutSupport) {
+      supportPanelDismissedKeyRef.current = null;
+      return;
+    }
     if (needsCheckoutSupport) {
+      if (supportPanelDismissedKeyRef.current === supportPanelAutoOpenKey) {
+        return;
+      }
       setSupportPanelOpen(true);
     }
-  }, [needsCheckoutSupport]);
+  }, [needsCheckoutSupport, supportPanelAutoOpenKey]);
+  const handleSupportPanelToggle = useCallback((event: React.SyntheticEvent<HTMLDetailsElement>) => {
+    const nextOpen = event.currentTarget.open;
+    setSupportPanelOpen(nextOpen);
+    supportPanelDismissedKeyRef.current = nextOpen
+      ? null
+      : supportPanelAutoOpenKey || null;
+  }, [supportPanelAutoOpenKey]);
+  const closeSupportPanelForNativeBack = useCallback(() => {
+    if (giftCelebrationOpen || !supportPanelOpen) {
+      return false;
+    }
+    supportPanelDismissedKeyRef.current = supportPanelAutoOpenKey || null;
+    setSupportPanelOpen(false);
+    return true;
+  }, [giftCelebrationOpen, supportPanelAutoOpenKey, supportPanelOpen]);
+  useNativeBackHandler(supportPanelOpen, closeSupportPanelForNativeBack);
   const scrollToAddOns = useCallback(() => {
     scrollCheckoutElementIntoView('checkout-add-on-assistant');
   }, []);
@@ -690,9 +755,11 @@ const Checkout: React.FC = () => {
   };
 
   const describeCoupon = (coupon: UserCoupon) => {
+    const payablePercent = Math.max(0, Math.min(Number(coupon.discountPercent ?? 100), 100));
+    const discountPercent = Math.max(0, 100 - payablePercent);
     const rule = coupon.couponType === 'FULL_REDUCTION'
       ? `${formatMoney(coupon.thresholdAmount)} - ${formatMoney(coupon.reductionAmount)}`
-      : t('pages.checkout.discountPayable', { percent: coupon.discountPercent || 0 }) + (coupon.maxDiscountAmount ? `, ${t('pages.checkout.maxDiscount', { amount: formatMoney(coupon.maxDiscountAmount) })}` : '');
+      : t('pages.checkout.discountPayable', { percent: discountPercent }) + (coupon.maxDiscountAmount ? `, ${t('pages.checkout.maxDiscount', { amount: formatMoney(coupon.maxDiscountAmount) })}` : '');
     const threshold = Number(coupon.thresholdAmount || 0);
     if (cartTotal < threshold) {
       return `${coupon.couponName}: ${rule} (${t('pages.checkout.needMore', { amount: formatMoney(threshold - cartTotal) })})`;
@@ -758,6 +825,10 @@ const Checkout: React.FC = () => {
       message.error(t('pages.checkout.paymentRequired'));
       return;
     }
+    if (!token && !normalizedGuestEmail) {
+      message.error(t('pages.checkout.emailInvalid'));
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -766,11 +837,13 @@ const Checkout: React.FC = () => {
         ? await orderApi.checkout({
             cartItemIds: cartItems.map((item) => item.id),
             shippingAddress,
+            recipientName: normalizeCheckoutText(values.recipientName, 80),
+            recipientPhone: normalizeCheckoutText(values.phone, 40),
             paymentMethod: normalizedPaymentMethod,
             userCouponId: selectedUserCouponId,
           })
         : await orderApi.guestCheckout({
-            guestEmail: normalizedGuestEmail || '',
+            guestEmail: normalizedGuestEmail as string,
             guestName: normalizeCheckoutText(values.recipientName, 80),
             guestPhone: normalizeCheckoutText(values.phone, 40),
             shippingAddress,
@@ -869,7 +942,8 @@ const Checkout: React.FC = () => {
   const openTrackedOrder = () => {
     const orderNo = createdOrder?.orderNo || (createdOrder?.id ? String(createdOrder.id) : '');
     if (guestPaymentEmail && orderNo) {
-      navigate(`/track-order?orderNo=${encodeURIComponent(orderNo)}&email=${encodeURIComponent(guestPaymentEmail)}`);
+      saveGuestSupportContext({ orderNo, email: guestPaymentEmail });
+      navigate(`/track-order?orderNo=${encodeURIComponent(orderNo)}`);
       return;
     }
     navigate('/track-order');
@@ -1114,7 +1188,7 @@ const Checkout: React.FC = () => {
             {createdOrder.originalAmount ? <Text>{t('common.subtotal')}: <span className="commerce-money">{formatMoney(createdOrder.originalAmount)}</span></Text> : null}
             {createdOrder.discountAmount && createdOrder.discountAmount > 0 ? <Text>{t('pages.checkout.coupon')}: <span className="commerce-money">-{formatMoney(createdOrder.discountAmount)}</span> {createdOrder.couponName ? `(${createdOrder.couponName})` : ''}</Text> : null}
             <Text>{t('pages.checkout.shippingFee')}: <span className="commerce-money">{formatMoney(createdOrder.shippingFee)}</span></Text>
-            <Text>{t('pages.checkout.paymentStatus')}: <Tag color={paid ? 'green' : 'orange'}>{t(`status.${payment.status}`)}</Tag></Text>
+            <Text>{t('pages.checkout.paymentStatus')}: <Tag color={getPaymentStatusColor(payment.status)}>{formatPaymentStatusLabel(payment.status)}</Tag></Text>
             <Text className="checkout-page__paymentUrl">{t('pages.checkout.paymentLink')}: {formatPaymentUrlLabel(payment.paymentUrl)}</Text>
             {payment.expiresAt && <Text>{t('pages.checkout.paymentExpiresAt')}: {new Date(payment.expiresAt).toLocaleString(dateLocale)}</Text>}
             {payment.transactionId && <Text>{t('pages.checkout.transactionId')}: {payment.transactionId}</Text>}
@@ -1343,7 +1417,7 @@ const Checkout: React.FC = () => {
       <details
         className="checkout-page__supportPanel"
         open={supportPanelOpen}
-        onToggle={(event) => setSupportPanelOpen(event.currentTarget.open)}
+        onToggle={handleSupportPanelToggle}
       >
         <summary>
           <span>
@@ -1456,7 +1530,7 @@ const Checkout: React.FC = () => {
                 avatar={
                   <img
                     src={resolveCheckoutImage(item.imageUrl)}
-                    alt={item.productName}
+                    alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
                     className="checkout-page__itemImage"
                     loading="lazy"
                     decoding="async"
@@ -1467,10 +1541,10 @@ const Checkout: React.FC = () => {
                     }}
                   />
                 }
-                title={<button type="button" className="checkout-page__itemLink" onClick={() => navigate(`/products/${item.productId}`)}>{item.productName}</button>}
+                title={<button type="button" className="checkout-page__itemLink" onClick={() => navigate(`/products/${item.productId}`)}>{item.productName || t('pages.profile.productFallback', { id: item.productId })}</button>}
                 description={
                   <div className="checkout-page__itemDescription">
-                    {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
+                    {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
                     {getCartItemLowStockCount(item) !== null ? (
                       <Text type="warning" className="checkout-page__urgency">
                         {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
@@ -1500,7 +1574,7 @@ const Checkout: React.FC = () => {
         {isGuestCheckout ? (
           <Card title={t('pages.checkout.contact')} className="checkout-page__sectionCard">
             <Form.Item name="guestEmail" label={t('pages.checkout.email')} rules={[{ required: true, message: t('pages.checkout.emailRequired') }, { type: 'email', message: t('pages.checkout.emailInvalid') }]}>
-              <Input placeholder="you@example.com" autoComplete="email" inputMode="email" maxLength={120} />
+              <Input placeholder="customer@shopmx.pet" autoComplete="email" inputMode="email" maxLength={120} />
             </Form.Item>
             <Text type="secondary">{t('pages.checkout.guestHint')}</Text>
           </Card>

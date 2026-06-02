@@ -3,6 +3,7 @@ import { Empty, Typography } from 'antd';
 import type { ProductDetailBlock } from '../types';
 import { buildResponsiveImageSrcSet, resolveApiAssetUrl } from '../utils/mediaAssets';
 import './ProductRichDetail.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Paragraph, Text } = Typography;
 
@@ -16,13 +17,25 @@ type ProductRichDetailProps = {
   detailContent?: ProductDetailBlock[] | string | null;
   fallback?: string;
   emptyText?: string;
+  labels?: {
+    imageAlt: string;
+    videoTitle: (index: number) => string;
+    openVideo: string;
+    unsupported: string;
+  };
 };
 
 export const isHttpMediaUrl = (value?: string): value is string => {
   const trimmed = String(value || '').trim();
   if (!trimmed) return false;
   const normalized = trimmed.toLowerCase();
-  if (hasUnsafeUrlCharacter(trimmed) || trimmed.includes('\\') || normalized.includes('%00') || normalized.includes('%5c')) {
+  if (
+    trimmed.startsWith('//')
+    || hasUnsafeUrlCharacter(trimmed)
+    || trimmed.includes('\\')
+    || normalized.includes('%00')
+    || normalized.includes('%5c')
+  ) {
     return false;
   }
   try {
@@ -114,7 +127,17 @@ const handleRichImageError = (event: React.SyntheticEvent<HTMLImageElement>) => 
   event.currentTarget.removeAttribute('srcset');
 };
 
-const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fallback, emptyText = 'No details' }) => {
+const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
+  detailContent,
+  fallback,
+  emptyText = 'No details',
+  labels = {
+    imageAlt: 'Product detail',
+    videoTitle: (index) => `Product video ${index}`,
+    openVideo: 'Open product video',
+    unsupported: 'Unsupported detail content',
+  },
+}) => {
   const blocks = parseDetailContent(detailContent).filter((block) => {
     if (block.type === 'text') return !!block.content?.trim();
     return isHttpMediaUrl(block.url);
@@ -143,7 +166,7 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
                 src={mediaUrl}
                 srcSet={buildResponsiveImageSrcSet(mediaUrl, [480, 720, 960, 1200, 1600])}
                 sizes="min(860px, 100vw)"
-                alt={block.caption || 'Product detail'}
+                alt={block.caption || labels.imageAlt}
                 width={1200}
                 height={900}
                 loading="lazy"
@@ -164,14 +187,21 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
               {canEmbedVideoUrl(mediaUrl) ? (
                 <div className="product-rich-detail__video">
                   {isDirectVideo(videoUrl) ? (
-                    <video src={videoUrl} controls preload="metadata" />
+                    <video src={videoUrl} controls preload="metadata" aria-label={block.caption || labels.videoTitle(index + 1)} />
                   ) : (
-                    <iframe src={videoUrl} title={block.caption || `Product video ${index + 1}`} allowFullScreen />
+                    <iframe
+                      src={videoUrl}
+                      title={block.caption || labels.videoTitle(index + 1)}
+                      sandbox="allow-scripts allow-same-origin allow-presentation"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allow="fullscreen; picture-in-picture"
+                      allowFullScreen
+                    />
                   )}
                 </div>
               ) : (
                 <a className="product-rich-detail__video-link" href={mediaUrl} target="_blank" rel="noopener noreferrer">
-                  {block.caption || 'Open product video'}
+                  {block.caption || labels.openVideo}
                 </a>
               )}
               {block.caption ? <figcaption>{block.caption}</figcaption> : null}
@@ -181,7 +211,7 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({ detailContent, fa
 
         return (
           <Text key={index} type="secondary">
-            Unsupported detail content
+            {labels.unsupported}
           </Text>
         );
       })}

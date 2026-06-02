@@ -11,8 +11,13 @@ import java.util.Map;
 public interface OrderRepository {
     List<Order> findAll();
     long countAll();
+    LocalDateTime currentDatabaseTime();
     java.math.BigDecimal sumTotalAmount();
     List<Map<String, Object>> countByStatusGroup();
+    Map<String, Object> dashboardOrderStats(@Param("now") LocalDateTime now);
+    List<Map<String, Object>> dashboardSalesTrend(@Param("start") LocalDateTime start);
+    List<Map<String, Object>> dashboardPaymentMethodBreakdown();
+    List<Order> findRecentAdminOrders(@Param("limit") int limit);
     List<Order> searchAdminOrders(@Param("status") String status,
                                   @Param("search") String search,
                                   @Param("quick") String quick,
@@ -21,6 +26,7 @@ public interface OrderRepository {
     int countAdminOrders(@Param("status") String status,
                          @Param("search") String search,
                          @Param("quick") String quick);
+    Map<String, Object> countAdminOrderSummary(@Param("search") String search);
     Order findById(Long id);
     Order findByOrderNo(String orderNo);
     Order findByOrderNoAndEmail(@Param("orderNo") String orderNo, @Param("email") String email);

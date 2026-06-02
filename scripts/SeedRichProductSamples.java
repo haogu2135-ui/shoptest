@@ -11,14 +11,10 @@ import java.util.List;
 import java.util.Map;
 
 public class SeedRichProductSamples {
-    private static final String DEFAULT_URL = "jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
-    private static final String DEFAULT_USER = "root";
-    private static final String DEFAULT_PASSWORD = "84813378";
-
     public static void main(String[] args) throws Exception {
-        String url = envOrDefault("DB_URL", DEFAULT_URL);
-        String user = envOrDefault("DB_USERNAME", DEFAULT_USER);
-        String password = envOrDefault("DB_PASSWORD", DEFAULT_PASSWORD);
+        String url = requireEnv("DB_URL");
+        String user = requireEnv("DB_USERNAME");
+        String password = requireEnv("DB_PASSWORD");
 
         try (Connection connection = DriverManager.getConnection(url, user, password)) {
             Map<String, Long> categories = loadCategories(connection);
@@ -38,7 +34,7 @@ public class SeedRichProductSamples {
                     inserted++;
                 }
             }
-            System.out.println("Rich product samples upserted: " + inserted);
+            System.out.println("Rich catalog products upserted: " + inserted);
             System.out.println("Skipped because category was missing: " + skipped);
             System.out.println("Total products after seed: " + countProducts(connection));
         }
@@ -151,7 +147,7 @@ public class SeedRichProductSamples {
                 "A broad starter crate with bowls, wipes, toys and walking basics.", "199.90", "249.90", "20",
                 "https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=1000&q=80",
                 "https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=1000&q=80",
-                "Starter bundle", "A high-value bundle for testing cart totals, free shipping, discounts and rich details together.",
+                "Starter bundle", "A high-value starter set that brings everyday care essentials together in one box.",
                 "Cat, Dog", "8 items", "Mixed", "Giftable box"));
         return seeds;
     }
@@ -185,9 +181,9 @@ public class SeedRichProductSamples {
                 "i18n.es.description", spanishDescription(name)
         );
         seed.detailContentJson = detailJson(name, headline, detailText, heroImage, secondaryImage);
-        seed.variantsJson = variantsJson(seed.price);
-        seed.warranty = "Demo warranty: 30 days replacement for manufacturing defects.";
-        seed.shipping = "Ships from Mexico test warehouse. Free shipping follows the store threshold.";
+        seed.variantsJson = variantsJson(id, seed.price, heroImage, secondaryImage);
+        seed.warranty = "30 day replacement for manufacturing defects";
+        seed.shipping = "Ships from the Mexico fulfillment center. Free shipping follows the store threshold.";
         seed.featured = id % 3 == 0;
         seed.freeShipping = id % 4 == 0;
         seed.freeShippingThreshold = new BigDecimal("899.00");
@@ -276,21 +272,22 @@ public class SeedRichProductSamples {
         return "[" +
                 objectJson("type", "text", "content", headline + ". " + detailText) + "," +
                 objectJson("type", "image", "url", heroImage, "caption", name + " lifestyle view") + "," +
-                objectJson("type", "text", "content", "Designed for the Mexico storefront test flow: product list cards, detail page media, mobile scrolling and checkout summaries all have enough content to exercise layout.") + "," +
+                objectJson("type", "text", "content", "Detailed product information helps shoppers compare fit, care needs and daily use before checkout.") + "," +
                 objectJson("type", "image", "url", secondaryImage, "caption", "Material and daily-use detail") + "," +
-                objectJson("type", "text", "content", "Use this sample to test long descriptions, paragraph wrapping, rich media ordering, customer support references and admin live preview behavior.") + "," +
-                objectJson("type", "video", "url", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "caption", "Demo embedded video block") + "," +
-                objectJson("type", "text", "content", "Care tip: introduce new pet products slowly, supervise first use and check sizing before removing tags. This final paragraph intentionally adds more content for realistic product detail density.") +
+                objectJson("type", "text", "content", "Care tip: introduce new pet products slowly, supervise first use and check sizing before removing tags.") +
                 "]";
     }
 
-    private static String variantsJson(BigDecimal basePrice) {
+    private static String variantsJson(int productId, BigDecimal basePrice, String heroImage, String secondaryImage) {
         BigDecimal medium = basePrice.add(new BigDecimal("8.00"));
         BigDecimal large = basePrice.add(new BigDecimal("16.00"));
+        int smallStock = 18 + Math.floorMod(productId, 9);
+        int mediumStock = 14 + Math.floorMod(productId + 3, 11);
+        int largeStock = 10 + Math.floorMod(productId + 6, 13);
         return "[" +
-                objectJson("sku", "S-ORG", "options", objectJson("Size", "Small", "Color", "Orange"), "price", basePrice.toPlainString(), "stock", "24", "imageUrl", "") + "," +
-                objectJson("sku", "M-TEAL", "options", objectJson("Size", "Medium", "Color", "Teal"), "price", medium.toPlainString(), "stock", "18", "imageUrl", "") + "," +
-                objectJson("sku", "L-GPH", "options", objectJson("Size", "Large", "Color", "Graphite"), "price", large.toPlainString(), "stock", "12", "imageUrl", "") +
+                objectJson("sku", "P" + productId + "-S-ORG", "options", objectJson("Size", "Small", "Color", "Orange"), "price", basePrice.toPlainString(), "stock", String.valueOf(smallStock), "imageUrl", heroImage) + "," +
+                objectJson("sku", "P" + productId + "-M-TEAL", "options", objectJson("Size", "Medium", "Color", "Teal"), "price", medium.toPlainString(), "stock", String.valueOf(mediumStock), "imageUrl", secondaryImage) + "," +
+                objectJson("sku", "P" + productId + "-L-GPH", "options", objectJson("Size", "Large", "Color", "Graphite"), "price", large.toPlainString(), "stock", String.valueOf(largeStock), "imageUrl", heroImage) +
                 "]";
     }
 
@@ -342,9 +339,12 @@ public class SeedRichProductSamples {
         }
     }
 
-    private static String envOrDefault(String name, String defaultValue) {
+    private static String requireEnv(String name) {
         String value = System.getenv(name);
-        return value == null || value.isBlank() ? defaultValue : value;
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(name + " must be set explicitly before running catalog seed scripts");
+        }
+        return value.trim();
     }
 
     private static String jsonArray(String... values) {

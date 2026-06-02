@@ -4,12 +4,39 @@ import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOut
 import { adminApi, userApi } from '../api';
 import type { AdminRole, User, UserAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
-import { getEffectiveRole, isAdminRole, isSuperAdminRole, roleColor } from '../utils/roles';
+import {
+  USERS_DELETE_PERMISSION,
+  USERS_EXPORT_PERMISSION,
+  USERS_STATUS_PERMISSION,
+  USERS_WRITE_PERMISSION,
+  getEffectiveRole,
+  hasAdminPermission,
+  isAdminRole,
+  isSuperAdminRole,
+  roleColor,
+} from '../utils/roles';
 import { hasStoredValue } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import './UserManagement.css';
 
 const { Title, Text } = Typography;
+type UserAccountStatus = 'ACTIVE' | 'BANNED' | 'GUEST';
+const DEFAULT_USER_PAGE_SIZE = 20;
+const USER_MANAGEMENT_BUILT_IN_ROLE_LABEL_KEYS = new Set(['USER', 'ADMIN', 'SUPER_ADMIN']);
+
+const normalizeUserAccountStatus = (status?: string): UserAccountStatus => {
+  const normalized = (status || 'ACTIVE').trim().toUpperCase();
+  if (normalized === 'BANNED' || normalized === 'GUEST') {
+    return normalized;
+  }
+  return 'ACTIVE';
+};
+
+const userStatusColors: Record<UserAccountStatus, string> = {
+  ACTIVE: 'green',
+  BANNED: 'red',
+  GUEST: 'blue',
+};
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -22,16 +49,31 @@ const UserManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [currentUserId, setCurrentUserId] = useState(0);
   const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_USER_PAGE_SIZE, total: 0 });
   const [profileForm] = Form.useForm();
   const canManageRoles = isSuperAdminRole(currentRole);
+  const canWriteUsers = hasAdminPermission(adminPermissions, currentRole, USERS_WRITE_PERMISSION);
+  const canChangeUserStatus = hasAdminPermission(adminPermissions, currentRole, USERS_STATUS_PERMISSION);
+  const canDeleteUsers = hasAdminPermission(adminPermissions, currentRole, USERS_DELETE_PERMISSION);
+  const canExportUsers = hasAdminPermission(adminPermissions, currentRole, USERS_EXPORT_PERMISSION);
   const { t, language } = useLanguage();
+  const formatRoleLabel = useCallback((roleValue?: string | null, fallbackName?: string | null) => {
+    const rawValue = String(roleValue || '').trim();
+    if (!rawValue) return fallbackName?.trim() || '-';
+    const normalized = rawValue.toUpperCase();
+    if (USER_MANAGEMENT_BUILT_IN_ROLE_LABEL_KEYS.has(normalized)) {
+      return t(`pages.adminUsers.roleValues.${normalized}`);
+    }
+    return fallbackName?.trim() || rawValue;
+  }, [t]);
 
   const localUserHealth = useMemo(() => {
-    const activeUsers = users.filter((user) => (user.status || 'ACTIVE') === 'ACTIVE').length;
+    const activeUsers = users.filter((user) => normalizeUserAccountStatus(user.status) === 'ACTIVE').length;
     const admins = users.filter((user) => isAdminRole(getEffectiveRole(user.role, user.roleCode))).length;
-    const bannedUsers = users.filter((user) => user.status === 'BANNED').length;
+    const bannedUsers = users.filter((user) => normalizeUserAccountStatus(user.status) === 'BANNED').length;
     const missingEmail = users.filter((user) => !user.email?.trim()).length;
     const missingPhone = users.filter((user) => !user.phone?.trim()).length;
     const adminRatio = users.length ? admins / users.length : 0;
@@ -62,18 +104,23 @@ const UserManagement: React.FC = () => {
     user.username?.trim(),
     user.email?.trim(),
     user.phone?.trim(),
-    (user.status || 'ACTIVE') === 'ACTIVE',
+    normalizeUserAccountStatus(user.status) === 'ACTIVE',
   ].filter(Boolean).length;
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (page = 1, size = DEFAULT_USER_PAGE_SIZE) => {
     try {
       setLoading(true);
-      const params = { keyword: keyword.trim() || undefined, role: roleFilter, status: statusFilter };
+      const params = { keyword: keyword.trim() || undefined, role: roleFilter, status: statusFilter, page, size };
       const [usersResponse, summaryResponse] = await Promise.all([
-        adminApi.getUsers(params),
-        adminApi.getUserSummary(params),
+        adminApi.getUsersPage(params),
+        adminApi.getUserSummary({ keyword: params.keyword, role: params.role, status: params.status }),
       ]);
-      setUsers(usersResponse.data);
+      setUsers(usersResponse.data.items || []);
+      setPageState({
+        page: usersResponse.data.page || page,
+        size: usersResponse.data.size || size,
+        total: usersResponse.data.total || 0,
+      });
       setSummary(summaryResponse.data || null);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.adminUsers.fetchFailed'), language));
@@ -83,7 +130,7 @@ const UserManagement: React.FC = () => {
   }, [keyword, language, roleFilter, statusFilter, t]);
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(1, DEFAULT_USER_PAGE_SIZE);
   }, [fetchUsers]);
 
   useEffect(() => {
@@ -100,32 +147,41 @@ const UserManagement: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    adminApi.getMyPermissions()
+      .then((res) => {
+        setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
+        setAdminPermissions(res.data.permissions || []);
+      })
+      .catch(() => {
+        setAdminPermissions([]);
+      });
+  }, []);
+
+  useEffect(() => {
     adminApi.getRoles()
       .then((res) => setRoles(res.data || []))
       .catch(() => setRoles([]));
   }, []);
 
-  const handleRoleChange = async (userId: number, newRole: string) => {
-    try {
-      await adminApi.updateUser(userId, { role: newRole });
-      message.success(t('pages.adminUsers.roleUpdated'));
-      fetchUsers();
-    } catch (error: any) {
-      message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
-    }
-  };
-
   const handleRoleCodeChange = async (userId: number, roleCode: string) => {
     try {
-      await adminApi.assignUserRole(userId, roleCode);
+      if (roleCode === 'USER') {
+        await adminApi.updateUser(userId, { role: 'USER' });
+      } else {
+        await adminApi.assignUserRole(userId, roleCode);
+      }
       message.success(t('pages.adminUsers.roleUpdated'));
-      fetchUsers();
+      fetchUsers(pageState.page, pageState.size);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
     }
   };
 
   const handleExport = async () => {
+    if (!canExportUsers) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setExporting(true);
     try {
       const res = await adminApi.exportUsers({ keyword: keyword.trim() || undefined, role: roleFilter, status: statusFilter });
@@ -144,17 +200,30 @@ const UserManagement: React.FC = () => {
   };
 
   const handleToggleStatus = async (user: User) => {
-    const newStatus = user.status === 'ACTIVE' ? 'BANNED' : 'ACTIVE';
+    const currentStatus = normalizeUserAccountStatus(user.status);
+    if (currentStatus === 'GUEST') {
+      message.info(t('pages.adminUsers.guestStatusLocked'));
+      return;
+    }
+    if (!canChangeUserStatus) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    const newStatus = currentStatus === 'ACTIVE' ? 'BANNED' : 'ACTIVE';
     try {
       await adminApi.updateUser(user.id, { status: newStatus });
       message.success(newStatus === 'BANNED' ? t('pages.adminUsers.banned') : t('pages.adminUsers.unbanned'));
-      fetchUsers();
+      fetchUsers(pageState.page, pageState.size);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     }
   };
 
   const openProfileModal = (user: User) => {
+    if (!canWriteUsers) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setEditingUser(user);
     profileForm.resetFields();
     profileForm.setFieldsValue({
@@ -166,6 +235,10 @@ const UserManagement: React.FC = () => {
 
   const handleProfileSubmit = async () => {
     if (!editingUser) return;
+    if (!canWriteUsers) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await profileForm.validateFields();
       setProfileSubmitting(true);
@@ -176,7 +249,7 @@ const UserManagement: React.FC = () => {
       });
       message.success(t('pages.adminUsers.profileUpdated'));
       setEditingUser(null);
-      fetchUsers();
+      fetchUsers(pageState.page, pageState.size);
     } catch (error: any) {
       if (error?.errorFields) return;
       message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
@@ -192,10 +265,14 @@ const UserManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!canDeleteUsers) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       await adminApi.deleteUser(id);
       message.success(t('messages.deleteSuccess'));
-      fetchUsers();
+      fetchUsers(pageState.page, pageState.size);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('messages.deleteFailed'), language));
     }
@@ -213,18 +290,23 @@ const UserManagement: React.FC = () => {
       width: 180,
       render: (roleCode: string, record: User) => {
         const isSelf = record.id === currentUserId;
+        const effectiveRole = getEffectiveRole(record.role, roleCode);
+        const matchedRole = roles.find((role) => String(role.code || '').trim().toUpperCase() === effectiveRole);
         if (isSelf || !canManageRoles) {
-          return roleCode ? <Tag color="purple">{roleCode}</Tag> : <Tag>{record.role}</Tag>;
+          return <Tag color={roleColor(effectiveRole)}>{formatRoleLabel(effectiveRole, matchedRole?.name)}</Tag>;
         }
         return (
           <Select
             size="small"
-            value={getEffectiveRole(record.role, roleCode)}
+            value={effectiveRole}
             className="user-management-page__roleCodeSelect"
             popupClassName="shop-mobile-popup-layer"
             getPopupContainer={() => document.body}
             onChange={(val) => handleRoleCodeChange(record.id, val)}
-            options={roles.map((role) => ({ value: role.code, label: role.name || role.code }))}
+            options={[
+              { value: 'USER', label: formatRoleLabel('USER') },
+              ...roles.map((role) => ({ value: role.code, label: formatRoleLabel(role.code, role.name) })),
+            ]}
           />
         );
       },
@@ -234,38 +316,26 @@ const UserManagement: React.FC = () => {
       dataIndex: 'role',
       key: 'role',
       width: 120,
-      render: (role: string, record: User) => {
-        const isSelf = record.id === currentUserId;
-        if (isSelf || !canManageRoles) {
-          return <Tag color={roleColor(role)}>{role}</Tag>;
-        }
-        return (
-          <Select
-            size="small"
-            value={role}
-            className="user-management-page__roleSelect"
-            popupClassName="shop-mobile-popup-layer"
-            getPopupContainer={() => document.body}
-            onChange={(val) => handleRoleChange(record.id, val)}
-            options={[
-              { value: 'USER', label: 'USER' },
-              { value: 'ADMIN', label: 'ADMIN' },
-              { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN' },
-            ]}
-          />
-        );
-      },
+      render: (role: string) => <Tag color={roleColor(role)}>{formatRoleLabel(role)}</Tag>,
     },
     {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
       width: 80,
-      render: (status: string) => (
-        <Tag color={status === 'ACTIVE' ? 'green' : 'red'}>
-          {status === 'ACTIVE' ? t('pages.adminUsers.normal') : t('pages.adminUsers.bannedStatus')}
-        </Tag>
-      ),
+      render: (status: string) => {
+        const normalizedStatus = normalizeUserAccountStatus(status);
+        const statusLabel = normalizedStatus === 'ACTIVE'
+          ? t('pages.adminUsers.normal')
+          : normalizedStatus === 'BANNED'
+            ? t('pages.adminUsers.bannedStatus')
+            : t('status.GUEST');
+        return (
+          <Tag color={userStatusColors[normalizedStatus]}>
+            {statusLabel}
+          </Tag>
+        );
+      },
     },
     {
       title: t('pages.adminUsers.readiness'),
@@ -293,27 +363,47 @@ const UserManagement: React.FC = () => {
       width: 180,
       render: (_: any, record: User) => {
         const isSelf = record.id === currentUserId;
+        const targetRole = getEffectiveRole(record.role, record.roleCode);
+        const targetPrivileged = isAdminRole(targetRole);
+        const normalizedStatus = normalizeUserAccountStatus(record.status);
+        const isGuest = normalizedStatus === 'GUEST';
+        const profileEditDisabled = !canWriteUsers || (targetPrivileged && !canManageRoles && !isSelf);
+        const statusActionDisabled = !canChangeUserStatus || isSelf || isGuest || (targetPrivileged && !canManageRoles);
+        const deleteDisabled = !canDeleteUsers || isSelf || (targetPrivileged && !canManageRoles);
+        const statusActionLabel = isGuest
+          ? t('status.GUEST')
+          : normalizedStatus === 'ACTIVE'
+            ? t('pages.adminUsers.ban')
+            : t('pages.adminUsers.unban');
+        const statusConfirmTitle = normalizedStatus === 'ACTIVE'
+          ? t('pages.adminUsers.banConfirm', { user: record.username || record.email || `#${record.id}` })
+          : t('pages.adminUsers.unbanConfirm', { user: record.username || record.email || `#${record.id}` });
         return (
           <Space size="small">
-            <Button size="small" icon={<EditOutlined />} onClick={() => openProfileModal(record)}>
+            <Button size="small" icon={<EditOutlined />} disabled={profileEditDisabled} onClick={() => openProfileModal(record)}>
               {t('common.edit')}
             </Button>
-            <Button
-              size="small"
-              icon={record.status === 'ACTIVE' ? <StopOutlined /> : <CheckCircleOutlined />}
-              danger={record.status === 'ACTIVE'}
-              type={record.status === 'ACTIVE' ? 'default' : 'primary'}
-              disabled={isSelf}
-              onClick={() => handleToggleStatus(record)}
+            <Popconfirm
+              title={statusConfirmTitle}
+              onConfirm={() => handleToggleStatus(record)}
+              disabled={statusActionDisabled}
             >
-              {record.status === 'ACTIVE' ? t('pages.adminUsers.ban') : t('pages.adminUsers.unban')}
-            </Button>
+              <Button
+                size="small"
+                icon={normalizedStatus === 'ACTIVE' ? <StopOutlined /> : <CheckCircleOutlined />}
+                danger={normalizedStatus === 'ACTIVE'}
+                type={normalizedStatus === 'BANNED' ? 'primary' : 'default'}
+                disabled={statusActionDisabled}
+              >
+                {statusActionLabel}
+              </Button>
+            </Popconfirm>
             <Popconfirm
               title={t('pages.adminUsers.deleteConfirm')}
               onConfirm={() => handleDelete(record.id)}
-              disabled={isSelf}
+              disabled={deleteDisabled}
             >
-              <Button size="small" danger icon={<DeleteOutlined />} disabled={isSelf}>
+              <Button size="small" danger icon={<DeleteOutlined />} disabled={deleteDisabled}>
                 {t('common.delete')}
               </Button>
             </Popconfirm>
@@ -346,8 +436,8 @@ const UserManagement: React.FC = () => {
             popupClassName="shop-mobile-popup-layer"
             getPopupContainer={() => document.body}
             options={[
-              { value: 'USER', label: 'USER' },
-              ...roles.map((role) => ({ value: role.code, label: role.name || role.code })),
+              { value: 'USER', label: formatRoleLabel('USER') },
+              ...roles.map((role) => ({ value: role.code, label: formatRoleLabel(role.code, role.name) })),
             ]}
           />
           <Select
@@ -361,10 +451,13 @@ const UserManagement: React.FC = () => {
             options={[
               { value: 'ACTIVE', label: t('status.ACTIVE') },
               { value: 'BANNED', label: t('status.BANNED') },
+              { value: 'GUEST', label: t('status.GUEST') },
             ]}
           />
-          <Button onClick={fetchUsers} type="primary" icon={<SearchOutlined />}>{t('common.search')}</Button>
-          <Button onClick={handleExport} icon={<DownloadOutlined />} loading={exporting}>{t('pages.adminUsers.export')}</Button>
+          <Button onClick={() => fetchUsers(1, pageState.size)} type="primary" icon={<SearchOutlined />}>{t('common.search')}</Button>
+          {canExportUsers ? (
+            <Button onClick={handleExport} icon={<DownloadOutlined />} loading={exporting}>{t('pages.adminUsers.export')}</Button>
+          ) : null}
         </Space>
       </Card>
       <section className="user-management-page__health" aria-label={t('pages.adminUsers.healthTitle')}>
@@ -411,7 +504,15 @@ const UserManagement: React.FC = () => {
         dataSource={users}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 10, showTotal: (total) => t('pages.adminUsers.total', { count: total }) }}
+        pagination={{
+          current: pageState.page,
+          pageSize: pageState.size,
+          total: pageState.total,
+          pageSizeOptions: [10, 20, 50, 100],
+          showSizeChanger: true,
+          showTotal: (total) => t('pages.adminUsers.total', { count: total }),
+          onChange: (page, size) => fetchUsers(page, size),
+        }}
         bordered
         size="middle"
         scroll={{ x: 1200 }}
@@ -442,9 +543,9 @@ const UserManagement: React.FC = () => {
           <Form.Item
             name="phone"
             label={t('pages.adminUsers.phone')}
-            rules={[{ max: 40, message: t('pages.adminUsers.phoneTooLong') }]}
+            rules={[{ max: 20, message: t('pages.adminUsers.phoneTooLong') }]}
           >
-            <Input autoComplete="tel" inputMode="tel" maxLength={40} />
+            <Input autoComplete="tel" inputMode="tel" maxLength={20} />
           </Form.Item>
           <Form.Item
             name="address"

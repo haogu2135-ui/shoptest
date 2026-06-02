@@ -372,3 +372,22 @@
     top: 54px;
   }
 }
+
+/* Final mobile/App product review touch-target guard */
+@media (max-width: 520px) {
+  .product-review__orderSelect .ant-select-selector,
+  .product-review__textarea,
+  .product-review__rate,
+  .product-review__submit,
+  .product-review__composer--login .ant-btn {
+    min-height: 44px;
+  }
+
+  .product-review__rate .ant-rate-star {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

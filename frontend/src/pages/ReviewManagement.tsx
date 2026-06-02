@@ -1,13 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Table, Button, Popconfirm, Rate, message, Typography, Divider, Input, Modal, Select, Space, Tag } from 'antd';
 import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, SearchOutlined, StarOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { Review } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import {
+  getEffectiveRole,
+  hasAdminPermission,
+  REVIEWS_DELETE_PERMISSION,
+  REVIEWS_MODERATE_PERMISSION,
+  REVIEWS_REPLY_PERMISSION,
+} from '../utils/roles';
 import './ReviewManagement.css';
 
 const { Title, Paragraph } = Typography;
+const DEFAULT_PAGE_SIZE = 20;
+const REVIEW_STATUS_KEYS = new Set(['PENDING', 'APPROVED', 'HIDDEN']);
 
 const ReviewManagement: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -17,76 +27,126 @@ const ReviewManagement: React.FC = () => {
   const [replying, setReplying] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [keyword, setKeyword] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_PAGE_SIZE, total: 0, totalPages: 0 });
+  const [reviewSummary, setReviewSummary] = useState<Record<string, number>>({});
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
   const { t, language } = useLanguage();
+  const canModerateReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_MODERATE_PERMISSION);
+  const canReplyReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_REPLY_PERMISSION);
+  const canDeleteReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_DELETE_PERMISSION);
 
   const statusColors: Record<string, string> = {
     PENDING: 'orange',
     APPROVED: 'green',
     HIDDEN: 'default',
   };
-
+  const formatReviewStatus = useCallback((status?: string) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = (rawStatus || 'PENDING').toUpperCase();
+    if (REVIEW_STATUS_KEYS.has(normalizedStatus)) {
+      return t(`pages.adminReviews.status.${normalizedStatus}`);
+    }
+    return rawStatus || '-';
+  }, [t]);
   const reviewStats = useMemo(() => {
-    const pending = reviews.filter((review) => (review.status || 'PENDING') === 'PENDING').length;
-    const lowRating = reviews.filter((review) => Number(review.rating || 0) <= 3).length;
-    const needsReply = reviews.filter((review) => !String(review.adminReply || '').trim()).length;
-    const approved = reviews.filter((review) => (review.status || 'PENDING') === 'APPROVED').length;
-    const averageRating = reviews.length
-      ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length
-      : 0;
+    const summaryNumber = (key: string) => Number(reviewSummary[key] ?? 0);
+    const pending = summaryNumber('PENDING');
+    const lowRating = summaryNumber('LOW_RATING');
+    const needsReply = summaryNumber('NEEDS_REPLY');
+    const approved = summaryNumber('APPROVED');
+    const averageRating = summaryNumber('AVERAGE_RATING');
     return { pending, lowRating, needsReply, approved, averageRating };
-  }, [reviews]);
+  }, [reviewSummary]);
 
-  const filteredReviews = useMemo(() => {
-    const text = keyword.trim().toLowerCase();
-    return reviews.filter((review) => {
-      const matchesStatus = statusFilter ? (review.status || 'PENDING') === statusFilter : true;
-      if (!matchesStatus) return false;
-      if (!text) return true;
-      return [
-        review.id,
-        review.productId,
-        (review as any).product?.id,
-        (review as any).product?.name,
-        review.username,
-        (review as any).user?.username,
-        review.comment,
-        review.adminReply,
-      ].some((value) => String(value || '').toLowerCase().includes(text));
-    });
-  }, [keyword, reviews, statusFilter]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [keyword]);
 
-  const fetchReviews = useCallback(async () => {
+  useEffect(() => {
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((res) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
+        setAdminPermissions(res.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  const fetchReviews = useCallback(async (
+    nextPage: number,
+    nextSize: number,
+    nextStatus = statusFilter,
+    nextSearch = debouncedKeyword,
+  ) => {
     try {
       setLoading(true);
-      const res = await adminApi.getReviews();
-      setReviews(res.data.items ?? res.data);
+      const res = await adminApi.getReviews({
+        status: nextStatus,
+        search: nextSearch || undefined,
+        page: nextPage,
+        size: nextSize,
+      });
+      setReviews(res.data.items || []);
+      const resolvedSize = res.data.size || nextSize;
+      pageSizeRef.current = resolvedSize;
+      setPageState({
+        page: res.data.page || nextPage,
+        size: resolvedSize,
+        total: res.data.total || 0,
+        totalPages: res.data.totalPages || 0,
+      });
+      setReviewSummary(res.data.summary || {});
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('pages.adminReviews.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [language, t]);
+  }, [debouncedKeyword, language, statusFilter, t]);
 
   useEffect(() => {
-    fetchReviews();
-  }, [fetchReviews]);
+    fetchReviews(1, pageSizeRef.current, statusFilter, debouncedKeyword);
+  }, [debouncedKeyword, fetchReviews, statusFilter]);
 
   const handleDelete = async (id: number) => {
+    if (!canDeleteReviews) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       await adminApi.deleteReview(id);
       message.success(t('messages.deleteSuccess'));
-      fetchReviews();
+      fetchReviews(pageState.page, pageState.size);
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };
 
   const openReply = (review: Review) => {
+    if (!canReplyReviews) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setReplyTarget(review);
     setReplyText(review.adminReply || '');
   };
 
   const handleReply = async () => {
+    if (!canReplyReviews) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (!replyTarget) return;
     if (!replyText.trim()) {
       message.warning(t('pages.adminReviews.replyRequired'));
@@ -98,7 +158,7 @@ const ReviewManagement: React.FC = () => {
       message.success(t('messages.updateSuccess'));
       setReplyTarget(null);
       setReplyText('');
-      fetchReviews();
+      fetchReviews(pageState.page, pageState.size);
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
     } finally {
@@ -113,10 +173,14 @@ const ReviewManagement: React.FC = () => {
   };
 
   const handleStatus = async (review: Review, status: string) => {
+    if (!canModerateReviews) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       await adminApi.updateReviewStatus(review.id, status);
       message.success(t('messages.updateSuccess'));
-      fetchReviews();
+      fetchReviews(pageState.page, pageState.size);
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
     }
@@ -127,8 +191,33 @@ const ReviewManagement: React.FC = () => {
     {
       title: t('pages.adminReviews.productId'),
       key: 'productId',
-      width: 80,
-      render: (_: any, record: Review) => record.productId || (record as any).product?.id || '-',
+      width: 220,
+      render: (_: any, record: Review) => {
+        const productId = record.productId || (record as any).product?.id;
+        const productName = record.productName || (record as any).product?.name;
+        const rawProductImageUrl = record.productImageUrl || (record as any).product?.imageUrl;
+        const productImageUrl = rawProductImageUrl ? resolveProductImage(rawProductImageUrl) : '';
+        return (
+          <div className="review-management-page__productCell">
+            {productImageUrl ? (
+              <img
+                src={productImageUrl}
+                alt=""
+                loading="lazy"
+                onError={(event) => {
+                  if (event.currentTarget.src !== productImageFallback) {
+                    event.currentTarget.src = productImageFallback;
+                  }
+                }}
+              />
+            ) : null}
+            <div>
+              <strong>{productName || '-'}</strong>
+              <span>{productId ? `#${productId}` : '-'}</span>
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: t('pages.adminReviews.user'),
@@ -144,13 +233,13 @@ const ReviewManagement: React.FC = () => {
       render: (rating: number) => <Rate disabled defaultValue={rating} />,
     },
     {
-      title: 'Status',
+      title: t('pages.adminReviews.statusFilter'),
       dataIndex: 'status',
       key: 'status',
       width: 110,
       render: (status: string) => {
-        const value = status || 'PENDING';
-        return <Tag color={statusColors[value]}>{t(`pages.adminReviews.status.${value}`)}</Tag>;
+        const value = String(status || 'PENDING').trim().toUpperCase();
+        return <Tag color={statusColors[value] || 'default'}>{formatReviewStatus(status)}</Tag>;
       },
     },
     {
@@ -178,26 +267,36 @@ const ReviewManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 260,
-      render: (_: any, record: Review) => (
-        <Space size="small" wrap>
-          {(record.status || 'PENDING') !== 'APPROVED' && (
-            <Button size="small" icon={<CheckOutlined />} onClick={() => handleStatus(record, 'APPROVED')}>
-              {t('pages.adminReviews.approve')}
-            </Button>
-          )}
-          {(record.status || 'PENDING') !== 'HIDDEN' && (
-            <Button size="small" icon={<EyeInvisibleOutlined />} onClick={() => handleStatus(record, 'HIDDEN')}>
-              {t('pages.adminReviews.hide')}
-            </Button>
-          )}
-          <Button size="small" style={{ marginRight: 8 }} onClick={() => openReply(record)}>
+      render: (_: any, record: Review) => {
+        const reviewLabel = record.productName || record.username || `#${record.id}`;
+        const actions = [
+          canModerateReviews && (record.status || 'PENDING') !== 'APPROVED' ? (
+            <Popconfirm key="approve" title={t('pages.adminReviews.approveConfirm', { review: reviewLabel })} onConfirm={() => handleStatus(record, 'APPROVED')}>
+              <Button size="small" icon={<CheckOutlined />}>
+                {t('pages.adminReviews.approve')}
+              </Button>
+            </Popconfirm>
+          ) : null,
+          canModerateReviews && (record.status || 'PENDING') !== 'HIDDEN' ? (
+            <Popconfirm key="hide" title={t('pages.adminReviews.hideConfirm', { review: reviewLabel })} onConfirm={() => handleStatus(record, 'HIDDEN')}>
+              <Button size="small" icon={<EyeInvisibleOutlined />}>
+                {t('pages.adminReviews.hide')}
+              </Button>
+            </Popconfirm>
+          ) : null,
+          canReplyReviews ? (
+          <Button key="reply" size="small" style={{ marginRight: 8 }} onClick={() => openReply(record)}>
             {t('pages.adminReviews.replyAction')}
           </Button>
-          <Popconfirm title={t('pages.adminReviews.deleteConfirm')} onConfirm={() => handleDelete(record.id)}>
+          ) : null,
+          canDeleteReviews ? (
+          <Popconfirm key="delete" title={t('pages.adminReviews.deleteConfirm')} onConfirm={() => handleDelete(record.id)}>
             <Button size="small" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
           </Popconfirm>
-        </Space>
-      ),
+          ) : null,
+        ].filter(Boolean);
+        return actions.length ? <Space size="small" wrap>{actions}</Space> : '-';
+      },
     },
   ];
 
@@ -257,13 +356,23 @@ const ReviewManagement: React.FC = () => {
             { value: 'HIDDEN', label: t('pages.adminReviews.status.HIDDEN') },
           ]}
         />
+        <Button icon={<SearchOutlined />} onClick={() => fetchReviews(1, pageSizeRef.current)}>
+          {t('common.search')}
+        </Button>
       </Space>
       <Table
         columns={columns}
-        dataSource={filteredReviews}
+        dataSource={reviews}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 10, showTotal: (total) => t('pages.adminReviews.total', { count: total }) }}
+        pagination={{
+          current: pageState.page,
+          pageSize: pageState.size,
+          total: pageState.total,
+          showSizeChanger: true,
+          showTotal: (total) => `${t('pages.adminReviews.total', { count: total })} | ${pageState.totalPages ? `${pageState.page}/${pageState.totalPages}` : '0/0'}`,
+          onChange: (page, pageSize) => fetchReviews(page, pageSize),
+        }}
         bordered
         size="middle"
         scroll={{ x: 1180 }}
@@ -273,6 +382,7 @@ const ReviewManagement: React.FC = () => {
         open={!!replyTarget}
         onCancel={closeReplyModal}
         onOk={handleReply}
+        okButtonProps={{ disabled: !canReplyReviews }}
         confirmLoading={replying}
         title={t('pages.adminReviews.replyAction')}
         destroyOnHidden

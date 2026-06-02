@@ -122,15 +122,15 @@ export JWT_SECRET='replace-with-at-least-32-random-characters'
 export PAYMENT_SIMULATION_ENABLED='false'
 export PAYMENT_SIMULATION_ALLOW_PRODUCTION='false'
 export CONFIG_CENTER_APPLY_NACOS_ON_STARTUP='false'
-export DB_URL='jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true'
+export DB_URL='jdbc:mysql://db.internal.example:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&sslMode=VERIFY_IDENTITY&serverTimezone=UTC'
 export DB_USERNAME='shop'
-export DB_PASSWORD='shop_password'
-export REDIS_HOST='158.101.11.223'
+export DB_PASSWORD='replace-with-production-db-password'
+export REDIS_HOST='redis.internal.example'
 export REDIS_PORT='6379'
-export REDIS_PASSWORD='shop_redis_password'
+export REDIS_PASSWORD='replace-with-production-redis-password'
 export NACOS_DISCOVERY_ENABLED='true'
 export NACOS_REGISTER_ENABLED='true'
-export NACOS_SERVER_ADDR='158.101.11.223:8848'
+export NACOS_SERVER_ADDR='nacos.internal.example:8848'
 
 java -Xms128m -Xmx512m -jar shop.jar
 ```
@@ -144,7 +144,7 @@ Nginx serves:
 - `/` from `/var/www/shoptest/index.html`
 - `/healthz` as an Nginx-level `204 No Content` health check
 - `/static/**` from hashed React assets with long cache
-- `/api/**` to Spring Cloud Gateway, for example `http://158.101.11.223:8080/**`
+- `/api/**` to Spring Cloud Gateway, for example `http://gateway.internal.example:8080/**`
 - `/ws/**` to Spring Cloud Gateway WebSocket routes
 - `/uploads/**` to Spring Cloud Gateway uploaded media routes
 
@@ -174,7 +174,7 @@ Create `/opt/shoptest/deploy/.env`:
 
 ```bash
 SERVER_NAME=pet.686888666.xyz
-BACKEND_ORIGIN=http://158.101.11.223:8080
+BACKEND_ORIGIN=http://gateway.internal.example:8080
 CLIENT_MAX_BODY_SIZE=6m
 ```
 

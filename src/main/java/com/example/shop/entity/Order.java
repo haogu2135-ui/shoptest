@@ -4,28 +4,60 @@ import lombok.Data;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Data
 public class Order implements Serializable {
     private static final long serialVersionUID = 1L;
     
     private Long id;
+    @Size(max = 32)
     private String orderNo;
+    @NotNull
     private Long userId;
+    @NotNull
+    @DecimalMin("0.00")
     private BigDecimal totalAmount;
+    @DecimalMin("0.00")
     private BigDecimal originalAmount;
+    @DecimalMin("0.00")
     private BigDecimal discountAmount;
+    @DecimalMin("0.00")
     private BigDecimal shippingFee;
     private Long userCouponId;
     private Long couponId;
+    @Size(max = 100)
     private String couponName;
+    @NotBlank
+    @Size(max = 20)
     private String status;
+    @NotBlank
+    @Size(max = 2000)
     private String shippingAddress;
+    @Size(max = 120)
+    private String recipientName;
+    @Size(max = 60)
+    private String recipientPhone;
+    @Email
+    @Size(max = 160)
+    private String contactEmail;
+    @NotBlank
+    @Size(max = 50)
     private String paymentMethod;
+    @Size(max = 100)
     private String trackingNumber;
+    @Size(max = 80)
     private String trackingCarrierCode;
+    @Size(max = 100)
     private String trackingCarrierName;
+    @Size(max = 100)
     private String returnTrackingNumber;
+    @Size(max = 1000)
     private String returnReason;
     private LocalDateTime returnRequestedAt;
     private LocalDateTime returnApprovedAt;
@@ -34,6 +66,18 @@ public class Order implements Serializable {
     private LocalDateTime returnedAt;
     private Boolean returnable;
     private LocalDateTime returnDeadline;
+    private Boolean guestOrder;
+    @Size(max = 120)
+    private String customerUsername;
+    @Email
+    @Size(max = 160)
+    private String customerEmail;
+    @Size(max = 60)
+    private String customerPhone;
+    @Size(max = 160)
+    private String customerDisplayName;
+    @Size(max = 40)
+    private String customerType;
     private LocalDateTime refundedAt;
     private LocalDateTime shippedAt;
     private LocalDateTime completedAt;
@@ -239,6 +283,14 @@ public class Order implements Serializable {
 
     public void setReturnDeadline(LocalDateTime returnDeadline) {
         this.returnDeadline = returnDeadline;
+    }
+
+    public Boolean getGuestOrder() {
+        return guestOrder;
+    }
+
+    public void setGuestOrder(Boolean guestOrder) {
+        this.guestOrder = guestOrder;
     }
 
     public LocalDateTime getRefundedAt() {

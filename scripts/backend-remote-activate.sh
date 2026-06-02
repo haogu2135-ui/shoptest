@@ -185,12 +185,12 @@ STRIPE_WEBHOOK_SECRET=
 STRIPE_CHECKOUT_SUCCESS_URL=
 STRIPE_CHECKOUT_CANCEL_URL=
 CONFIG_CENTER_APPLY_NACOS_ON_STARTUP=false
-DB_URL=jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+DB_URL=jdbc:mysql://db.internal.shop:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&sslMode=VERIFY_IDENTITY&serverTimezone=UTC
 DB_USERNAME=shop
-DB_PASSWORD=shop_password
-REDIS_HOST=158.101.11.223
+DB_PASSWORD=replace-with-production-db-password
+REDIS_HOST=redis.internal.shop
 REDIS_PORT=6379
-REDIS_PASSWORD=shop_redis_password
+REDIS_PASSWORD=replace-with-production-redis-password
 REDIS_DATABASE=0
 MAIL_CODE_REDIS_ENABLED=true
 MAIL_CODE_REDIS_KEY_PREFIX=shop:mail-code
@@ -217,14 +217,14 @@ HIBERNATE_BINDER_LOG_LEVEL=WARN
 MYBATIS_MAPPER_LOG_LEVEL=WARN
 NACOS_DISCOVERY_ENABLED=true
 NACOS_REGISTER_ENABLED=true
-NACOS_SERVER_ADDR=158.101.11.223:8848
+NACOS_SERVER_ADDR=nacos.internal.shop:8848
 NACOS_NAMESPACE=
 NACOS_GROUP=DEFAULT_GROUP
 NACOS_CLUSTER_NAME=DEFAULT
 NACOS_SERVICE_NAME=shop-backend
-NACOS_DISCOVERY_IP=158.101.11.223
+NACOS_DISCOVERY_IP=replace-with-backend-private-ip
 NACOS_DISCOVERY_PORT=8081
-NACOS_IP=158.101.11.223
+NACOS_IP=replace-with-backend-private-ip
 NACOS_PORT=8081
 NACOS_USERNAME=
 NACOS_PASSWORD=
@@ -288,7 +288,7 @@ validate_runtime_env() {
   if [[ "$jwt_secret" == replace-* || ${#jwt_secret} -lt 32 ]]; then
     fail "JWT_SECRET must be a real value with at least 32 characters"
   fi
-  if [[ "$payment_secret" == replace-* || ${#payment_secret} -lt 32 ]]; then
+  if [[ "$payment_secret" == replace-* || "$payment_secret" == *replace-with* || "$payment_secret" == *your-* || ${#payment_secret} -lt 32 ]]; then
     fail "PAYMENT_CALLBACK_SECRET must be a real value with at least 32 characters"
   fi
   if is_enabled "$production_mode" && ( is_enabled "$payment_simulation_enabled" || is_enabled "$payment_simulation_allow_production" ); then
@@ -298,7 +298,10 @@ validate_runtime_env() {
     fail "ADMIN_BOOTSTRAP_TOKEN must be blank in production after admin bootstrap"
   fi
   if [[ "$db_url" != jdbc:mysql://* || "$db_url" == *"example"* || "$db_url" == *"localhost"* || "$db_url" == *"127.0.0.1"* ]]; then
-    fail "DB_URL must point to the real remote MySQL service, for example jdbc:mysql://158.101.11.223:3306/shop..."
+    fail "DB_URL must point to the real remote MySQL service, for example jdbc:mysql://db.internal.shop:3306/shop..."
+  fi
+  if is_enabled "$production_mode" && [[ "${db_url,,}" == *"usessl=false"* || "${db_url,,}" == *"sslmode=disabled"* || "${db_url,,}" == *"sslmode=disable"* || "${db_url,,}" == *"allowpublickeyretrieval=true"* ]]; then
+    fail "DB_URL must not disable TLS or enable allowPublicKeyRetrieval in production"
   fi
   if [[ -z "$db_username" || "$db_username" == "replace-me" ]]; then
     fail "DB_USERNAME must be configured"
@@ -306,7 +309,7 @@ validate_runtime_env() {
   if is_enabled "$production_mode" && [[ "${db_username,,}" == "root" ]]; then
     fail "DB_USERNAME must not be root in production; create a dedicated MySQL user such as shop"
   fi
-  if [[ "$db_password" == "replace-me" || -z "$db_password" ]]; then
+  if [[ "$db_password" == replace-* || "$db_password" == *replace-with* || "$db_password" == *your-* || "$db_password" == "shop_password" || -z "$db_password" ]]; then
     fail "DB_PASSWORD must be configured"
   fi
   if [[ -z "$redis_host" || "$redis_host" == *"example"* || "$redis_host" == "localhost" || "$redis_host" == "127.0.0.1" ]]; then
@@ -315,7 +318,7 @@ validate_runtime_env() {
   if [[ ! "$redis_port" =~ ^[0-9]+$ ]]; then
     fail "REDIS_PORT must be numeric"
   fi
-  if is_enabled "$production_mode" && [[ -z "$redis_password" || "$redis_password" == "replace-me" ]]; then
+  if is_enabled "$production_mode" && [[ -z "$redis_password" || "$redis_password" == replace-* || "$redis_password" == *replace-with* || "$redis_password" == *your-* || "$redis_password" == "shop_redis_password" ]]; then
     fail "REDIS_PASSWORD must be configured in production"
   fi
   if [[ "$cors_origin" == *"your-domain.example"* || "$ws_origin" == *"your-domain.example"* ]]; then

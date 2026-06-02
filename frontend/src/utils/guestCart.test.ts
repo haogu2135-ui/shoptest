@@ -21,6 +21,9 @@ describe('guestCart', () => {
 
   it('normalizes invalid quantity updates', () => {
     const item = addGuestCartItem({ id: 2, name: 'Treats', price: 8, stock: 10 }, 1);
+    if (!item) {
+      throw new Error('Expected guest cart item to be created');
+    }
 
     updateGuestCartQuantity(item.id, Number.NaN);
     expect(getGuestCartItems()[0].quantity).toBe(1);

@@ -124,7 +124,7 @@ SPRING_APPLICATION_NAME=shop-backend
 SERVER_PORT=8081
 NACOS_DISCOVERY_ENABLED=true
 NACOS_REGISTER_ENABLED=true
-NACOS_SERVER_ADDR=158.101.11.223:8848
+NACOS_SERVER_ADDR=nacos.internal.example:8848
 NACOS_NAMESPACE=
 NACOS_GROUP=DEFAULT_GROUP
 NACOS_DISCOVERY_IP=
@@ -133,9 +133,9 @@ NACOS_EPHEMERAL=true
 PAYMENT_SIMULATION_ENABLED=false
 PAYMENT_SIMULATION_ALLOW_PRODUCTION=false
 CONFIG_CENTER_APPLY_NACOS_ON_STARTUP=false
-REDIS_HOST=158.101.11.223
+REDIS_HOST=redis.internal.example
 REDIS_PORT=6379
-REDIS_PASSWORD=shop_redis_password
+REDIS_PASSWORD=replace-with-production-redis-password
 REDIS_DATABASE=0
 MAIL_CODE_REDIS_ENABLED=true
 MAIL_CODE_REDIS_KEY_PREFIX=shop:mail-code
@@ -163,7 +163,7 @@ SPRING_APPLICATION_NAME=shop-gateway
 GATEWAY_PORT=8080
 NACOS_DISCOVERY_ENABLED=true
 NACOS_REGISTER_ENABLED=true
-NACOS_SERVER_ADDR=158.101.11.223:8848
+NACOS_SERVER_ADDR=nacos.internal.example:8848
 NACOS_NAMESPACE=
 NACOS_GROUP=DEFAULT_GROUP
 GATEWAY_BACKEND_SERVICE_ID=shop-backend
@@ -181,7 +181,7 @@ REACT_APP_API_GATEWAY_PREFIX=/gateway
 To point the local frontend at the remote Nacos/Gateway environment:
 
 ```text
-REACT_APP_API_BASE_URL=http://158.101.11.223:8080
+REACT_APP_API_BASE_URL=http://gateway.internal.example:8080
 REACT_APP_API_GATEWAY_ENABLED=true
 REACT_APP_API_GATEWAY_PREFIX=/gateway
 ```
@@ -189,19 +189,19 @@ REACT_APP_API_GATEWAY_PREFIX=/gateway
 The remote Nacos server is available at:
 
 ```text
-Nacos:   http://158.101.11.223:8848/nacos
-Gateway: http://158.101.11.223:8080
+Nacos:   http://nacos.internal.example:8848/nacos
+Gateway: http://gateway.internal.example:8080
 ```
 
 Useful remote checks:
 
 ```powershell
-Invoke-RestMethod 'http://158.101.11.223:8848/nacos/v1/ns/service/list?pageNo=1&pageSize=100'
-Invoke-RestMethod 'http://158.101.11.223:8848/nacos/v1/ns/instance/list?serviceName=shop-gateway&groupName=DEFAULT_GROUP'
-Invoke-RestMethod 'http://158.101.11.223:8848/nacos/v1/ns/instance/list?serviceName=shop-backend&groupName=DEFAULT_GROUP'
-Invoke-RestMethod 'http://158.101.11.223:8080/actuator/health'
-Invoke-WebRequest 'http://158.101.11.223:8080/gateway/status/readiness'
-Invoke-RestMethod 'http://158.101.11.223:8080/gateway/catalog/products?discount=true'
+Invoke-RestMethod 'http://nacos.internal.example:8848/nacos/v1/ns/service/list?pageNo=1&pageSize=100'
+Invoke-RestMethod 'http://nacos.internal.example:8848/nacos/v1/ns/instance/list?serviceName=shop-gateway&groupName=DEFAULT_GROUP'
+Invoke-RestMethod 'http://nacos.internal.example:8848/nacos/v1/ns/instance/list?serviceName=shop-backend&groupName=DEFAULT_GROUP'
+Invoke-RestMethod 'http://gateway.internal.example:8080/actuator/health'
+Invoke-WebRequest 'http://gateway.internal.example:8080/gateway/status/readiness'
+Invoke-RestMethod 'http://gateway.internal.example:8080/gateway/catalog/products?discount=true'
 ```
 
 To run a local Gateway against the remote Nacos registry, keep the frontend on
@@ -218,7 +218,7 @@ instance back into the shared Nacos registry:
 
 ```powershell
 cd shop-gateway
-$env:NACOS_SERVER_ADDR="158.101.11.223:8848"
+$env:NACOS_SERVER_ADDR="nacos.internal.example:8848"
 $env:NACOS_REGISTER_ENABLED="false"
 ..\mvnw.cmd spring-boot:run
 ```
@@ -304,7 +304,7 @@ if `/nacos/v1/ns/instance/list` does not return a `shop-backend` instance on the
 configured port.
 
 The Admin UI page `管理后台 -> 服务注册` also checks whether the frontend is
-configured to call Gateway (`REACT_APP_API_BASE_URL=http://158.101.11.223:8080` and
+configured to call Gateway (`REACT_APP_API_BASE_URL=http://gateway.internal.example:8080` and
 `REACT_APP_API_GATEWAY_ENABLED=true`). If this check is orange, the frontend may
 still be calling the backend directly and bypassing Nacos/Gateway.
 
@@ -358,7 +358,7 @@ the same JSON diagnostics as `/gateway/status`.
 Point the frontend edge proxy at Gateway, not the backend:
 
 ```text
-BACKEND_ORIGIN=http://158.101.11.223:8080
+BACKEND_ORIGIN=http://gateway.internal.example:8080
 ```
 
 The existing Nginx template uses `BACKEND_ORIGIN` for `/api`, `/ws`, and

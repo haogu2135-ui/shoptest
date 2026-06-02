@@ -99,12 +99,12 @@ STRIPE_WEBHOOK_SECRET=
 STRIPE_CHECKOUT_SUCCESS_URL=
 STRIPE_CHECKOUT_CANCEL_URL=
 CONFIG_CENTER_APPLY_NACOS_ON_STARTUP=false
-DB_URL=jdbc:mysql://158.101.11.223:3306/shop?useSSL=false
+DB_URL=jdbc:mysql://db.internal.shop:3306/shop?sslMode=VERIFY_IDENTITY
 DB_USERNAME=shop
-DB_PASSWORD=shop_password
-REDIS_HOST=158.101.11.223
+DB_PASSWORD=production-db-password-123456
+REDIS_HOST=redis.internal.shop
 REDIS_PORT=6379
-REDIS_PASSWORD=shop_redis_password
+REDIS_PASSWORD=production-redis-password-123456
 MAIL_CODE_PEPPER=abcdefghijklmnopqrstuvwxyz-mail-pepper
 APP_MAIL_ACCOUNTS_0_HOST=smtp.mailhost.test
 APP_MAIL_ACCOUNTS_0_PORT=465
@@ -118,7 +118,7 @@ SPRING_APPLICATION_NAME=shop-backend
 SERVER_PORT=8081
 NACOS_DISCOVERY_ENABLED=true
 NACOS_REGISTER_ENABLED=true
-NACOS_SERVER_ADDR=158.101.11.223:8848
+NACOS_SERVER_ADDR=nacos.internal.shop:8848
 NACOS_GROUP=DEFAULT_GROUP
 NACOS_SERVICE_NAME=shop-backend
 NACOS_DISCOVERY_PORT=8081
@@ -151,7 +151,7 @@ FAKE_CURL
 }
 
 write_valid_env
-sed -i 's/DB_PASSWORD=shop_password/DB_PASSWORD=/' "$RUNTIME_ENV_FILE"
+sed -i 's/DB_PASSWORD=production-db-password-123456/DB_PASSWORD=/' "$RUNTIME_ENV_FILE"
 assert_fails_with "DB_PASSWORD must be configured" validate_runtime_env
 
 write_valid_env
@@ -159,7 +159,7 @@ sed -i 's/DB_USERNAME=shop/DB_USERNAME=root/' "$RUNTIME_ENV_FILE"
 assert_fails_with "DB_USERNAME must not be root in production" validate_runtime_env
 
 write_valid_env
-sed -i 's/REDIS_PASSWORD=shop_redis_password/REDIS_PASSWORD=/' "$RUNTIME_ENV_FILE"
+sed -i 's/REDIS_PASSWORD=production-redis-password-123456/REDIS_PASSWORD=/' "$RUNTIME_ENV_FILE"
 assert_fails_with "REDIS_PASSWORD must be configured in production" validate_runtime_env
 
 write_valid_env
@@ -171,7 +171,7 @@ sed -i 's/MAIL_CODE_PEPPER=abcdefghijklmnopqrstuvwxyz-mail-pepper/MAIL_CODE_PEPP
 assert_fails_with "MAIL_CODE_PEPPER must be a stable real value in production" validate_runtime_env
 
 write_valid_env
-sed -i 's#CORS_ALLOWED_ORIGIN_PATTERNS=https://shop.example.com#CORS_ALLOWED_ORIGIN_PATTERNS=http://158.101.11.223:*#' "$RUNTIME_ENV_FILE"
+sed -i 's#CORS_ALLOWED_ORIGIN_PATTERNS=https://shop.example.com#CORS_ALLOWED_ORIGIN_PATTERNS=http://shop.test:*#' "$RUNTIME_ENV_FILE"
 assert_fails_with "CORS_ALLOWED_ORIGIN_PATTERNS must contain only deployed HTTPS public origins in production" validate_runtime_env
 
 write_valid_env

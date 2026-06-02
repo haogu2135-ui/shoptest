@@ -5,7 +5,6 @@ import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Data
 public class LogisticsTrackResponse {
@@ -14,7 +13,6 @@ public class LogisticsTrackResponse {
     private String status;
     private String summary;
     private List<LogisticsTrackEvent> events = new ArrayList<>();
-    private Map<String, Object> rawResponse;
 
     @Data
     public static class LogisticsTrackEvent {

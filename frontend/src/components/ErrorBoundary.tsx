@@ -1,40 +1,32 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button, Result } from 'antd';
 import { HomeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useLanguage } from '../i18n';
 
 interface Props {
   children: ReactNode;
-  language?: string;
+  homePath?: string;
+  homeLabel?: string;
 }
+
+type ErrorBoundaryCopy = {
+  title: string;
+  subtitle: string;
+  retry: string;
+  backHome: string;
+};
+
+type InnerProps = Props & {
+  copy: ErrorBoundaryCopy;
+};
 
 interface State {
   hasError: boolean;
   error: Error | null;
 }
 
-const translations: Record<string, { title: string; subtitle: string; retry: string; home: string }> = {
-  en: {
-    title: 'Something Went Wrong',
-    subtitle: 'An unexpected error occurred. Please try again.',
-    retry: 'Try Again',
-    home: 'Back to Home',
-  },
-  zh: {
-    title: '出了点问题',
-    subtitle: '发生了意外错误，请重试。',
-    retry: '重试',
-    home: '返回首页',
-  },
-  es: {
-    title: 'Algo Salió Mal',
-    subtitle: 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
-    retry: 'Reintentar',
-    home: 'Volver al Inicio',
-  },
-};
-
-class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+class ErrorBoundaryInner extends Component<InnerProps, State> {
+  constructor(props: InnerProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -52,20 +44,19 @@ class ErrorBoundary extends Component<Props, State> {
   };
 
   handleGoHome = () => {
-    window.location.href = '/';
+    window.location.href = this.props.homePath || '/';
   };
 
   render() {
     if (this.state.hasError) {
-      const lang = this.props.language || 'en';
-      const t = translations[lang] || translations.en;
+      const { copy } = this.props;
 
       return (
         <div style={{ padding: '80px 24px', textAlign: 'center' }}>
           <Result
             status="error"
-            title={t.title}
-            subTitle={t.subtitle}
+            title={copy.title}
+            subTitle={copy.subtitle}
             extra={[
               <Button
                 key="retry"
@@ -73,14 +64,14 @@ class ErrorBoundary extends Component<Props, State> {
                 icon={<ReloadOutlined />}
                 onClick={this.handleRetry}
               >
-                {t.retry}
+                {copy.retry}
               </Button>,
               <Button
                 key="home"
                 icon={<HomeOutlined />}
                 onClick={this.handleGoHome}
               >
-                {t.home}
+                {this.props.homeLabel || copy.backHome}
               </Button>,
             ]}
           />
@@ -91,5 +82,16 @@ class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+const ErrorBoundary: React.FC<Props> = (props) => {
+  const { t } = useLanguage();
+  const copy = {
+    title: t('errorBoundary.title'),
+    subtitle: t('errorBoundary.subtitle'),
+    retry: t('errorBoundary.retry'),
+    backHome: t('errorBoundary.backHome'),
+  };
+  return <ErrorBoundaryInner {...props} copy={copy} />;
+};
 
 export default ErrorBoundary;

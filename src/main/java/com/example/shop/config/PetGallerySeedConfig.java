@@ -29,7 +29,12 @@ public class PetGallerySeedConfig {
         return args -> {
             try {
                 ensurePetGalleryColumns();
+                ensurePetGalleryLikeColumns();
                 backfillPetGalleryMetadata();
+                backfillPetGalleryLikeViewerKeys();
+                cleanupDuplicatePetGalleryLikes();
+                reconcilePetGalleryLikeCounts();
+                ensurePetGalleryLikeIndexes();
                 Long seedOwnerId = ensureSeedOwner();
                 relaxPetGalleryOwnerColumn();
                 petGalleryService.ensureSeedPhotos(seedOwnerId);
@@ -48,9 +53,51 @@ public class PetGallerySeedConfig {
         }
     }
 
+    private void ensurePetGalleryLikeColumns() {
+        if (!columnExists("pet_gallery_photo_likes", "viewer_key")) {
+            jdbcTemplate.execute("ALTER TABLE pet_gallery_photo_likes ADD COLUMN viewer_key VARCHAR(120) NULL");
+        }
+    }
+
     private void backfillPetGalleryMetadata() {
         jdbcTemplate.update("UPDATE pet_gallery_photos SET source = 'USER_UPLOAD' WHERE source IS NULL OR TRIM(source) = ''");
         jdbcTemplate.update("UPDATE pet_gallery_photos SET like_count = 0 WHERE like_count IS NULL");
+    }
+
+    private void backfillPetGalleryLikeViewerKeys() {
+        jdbcTemplate.update("UPDATE pet_gallery_photo_likes SET viewer_key = "
+                + "CASE WHEN user_id IS NOT NULL THEN CONCAT('user:', user_id) "
+                + "ELSE CONCAT('ip:', LOWER(COALESCE(NULLIF(TRIM(ip_address), ''), 'unknown'))) END "
+                + "WHERE viewer_key IS NULL OR TRIM(viewer_key) = ''");
+    }
+
+    private void cleanupDuplicatePetGalleryLikes() {
+        jdbcTemplate.execute("DELETE l1 FROM pet_gallery_photo_likes l1 "
+                + "JOIN pet_gallery_photo_likes l2 "
+                + "ON l1.photo_id = l2.photo_id "
+                + "AND l1.viewer_key = l2.viewer_key "
+                + "AND l1.id > l2.id");
+    }
+
+    private void reconcilePetGalleryLikeCounts() {
+        jdbcTemplate.update("UPDATE pet_gallery_photos p "
+                + "JOIN (SELECT photo_id, COUNT(*) AS actual_likes FROM pet_gallery_photo_likes GROUP BY photo_id) likes "
+                + "ON p.id = likes.photo_id "
+                + "SET p.like_count = likes.actual_likes");
+    }
+
+    private void ensurePetGalleryLikeIndexes() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE pet_gallery_photo_likes MODIFY COLUMN viewer_key VARCHAR(120) NOT NULL");
+        } catch (Exception e) {
+            log.debug("Pet gallery like viewer_key column already not null or not ready for alteration.", e);
+        }
+        if (!indexExists("pet_gallery_photo_likes", "idx_pet_gallery_like_viewer")) {
+            jdbcTemplate.execute("ALTER TABLE pet_gallery_photo_likes ADD INDEX idx_pet_gallery_like_viewer (viewer_key)");
+        }
+        if (!indexExists("pet_gallery_photo_likes", "uk_gallery_like_photo_viewer")) {
+            jdbcTemplate.execute("ALTER TABLE pet_gallery_photo_likes ADD UNIQUE KEY uk_gallery_like_photo_viewer (photo_id, viewer_key)");
+        }
     }
 
     private Long ensureSeedOwner() {
@@ -107,6 +154,16 @@ public class PetGallerySeedConfig {
             Integer.class,
             tableName,
             columnName
+        );
+        return count != null && count > 0;
+    }
+
+    private boolean indexExists(String tableName, String indexName) {
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
+            Integer.class,
+            tableName,
+            indexName
         );
         return count != null && count > 0;
     }

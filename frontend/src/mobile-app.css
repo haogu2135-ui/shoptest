@@ -1,0 +1,6144 @@
+/* Native app shell: active only inside Capacitor Android/iOS builds. */
+html.shop-mobile-app-root,
+body.shop-mobile-app,
+body.shop-mobile-app #root {
+  min-height: 100%;
+  background: #f4f7f5;
+  overscroll-behavior-y: none;
+}
+
+body.shop-mobile-app {
+  color: #173f2b;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.shop-mobile-app .shop-app-shell {
+  min-height: 100svh;
+  background: #f4f7f5;
+}
+
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+  background: #f4f7f5;
+}
+
+body.shop-mobile-app .shop-footer,
+body.shop-mobile-app .shop-nav__announcement,
+body.shop-mobile-app .shop-nav__top,
+body.shop-mobile-app .shop-nav__downloadLink,
+body.shop-mobile-app .shop-nav__guestCtas,
+body.shop-mobile-app .shop-nav__actionSummary,
+body.shop-mobile-app .shop-nav__searchIntro,
+body.shop-mobile-app .shop-nav__suggestions,
+body.shop-mobile-app .shop-nav__searchSignals {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1500;
+  padding-top: env(safe-area-inset-top, 0px);
+  border-bottom: 1px solid rgba(18, 71, 52, 0.1);
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #173f2b !important;
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+body.shop-mobile-app .shop-nav a,
+body.shop-mobile-app .shop-nav button {
+  color: #173f2b;
+}
+
+body.shop-mobile-app .shop-nav__main {
+  padding: 8px 0 10px;
+}
+
+body.shop-mobile-app .shop-nav__inner {
+  width: min(100% - 20px, 720px);
+}
+
+body.shop-mobile-app .shop-nav__inner--main {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "brand actions"
+    "search search"
+    "mega mega";
+  gap: 8px;
+  align-items: center;
+}
+
+body.shop-mobile-app .shop-nav__brand {
+  grid-area: brand;
+  gap: 9px;
+  min-width: 0;
+  color: #173f2b !important;
+  text-shadow: none;
+}
+
+body.shop-mobile-app .shop-nav__brandIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: #eaf4ef;
+  color: #124734;
+  box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.08);
+}
+
+body.shop-mobile-app .shop-nav__brand .anticon {
+  font-size: 21px;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy {
+  gap: 1px;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy strong {
+  color: #173f2b;
+  font-size: 18px;
+  line-height: 1.05;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy small {
+  display: block;
+  max-width: 46vw;
+  color: #6d7a71;
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+body.shop-mobile-app .shop-nav__actions {
+  grid-area: actions;
+  align-self: center;
+  gap: 6px;
+}
+
+body.shop-mobile-app .shop-nav__actions button,
+body.shop-mobile-app .shop-nav__actions a,
+body.shop-mobile-app .shop-nav__admin {
+  min-width: 38px !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  justify-content: center;
+  border: 1px solid #e2ebe5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #173f2b !important;
+  box-shadow: none;
+}
+
+body.shop-mobile-app .shop-nav__mobile-authText,
+body.shop-mobile-app .shop-nav__admin {
+  font-size: 0;
+}
+
+body.shop-mobile-app .shop-nav__actions .ant-badge-count {
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+body.shop-mobile-app .shop-nav__search {
+  grid-area: search;
+  width: 100%;
+  max-width: none;
+}
+
+body.shop-mobile-app .shop-nav__searchShell {
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.shop-mobile-app .shop-nav__searchBar,
+body.shop-mobile-app .shop-nav__search .ant-input-wrapper,
+body.shop-mobile-app .shop-nav__search .ant-input-group {
+  width: 100%;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group {
+  height: 42px;
+  padding: 2px;
+  border: 1px solid #dce8e0;
+  border-radius: 8px;
+  background: #f7faf8;
+  box-shadow: none;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group::before {
+  display: none;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
+  height: 38px;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input {
+  font-size: 15px;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group-addon,
+body.shop-mobile-app .shop-nav__search .ant-btn {
+  width: 44px;
+  min-width: 44px;
+  height: 38px;
+  border-radius: 7px !important;
+}
+
+body.shop-mobile-app .shop-nav__mega {
+  grid-area: mega;
+  width: calc(100% + 20px);
+  margin: 0 -10px;
+  padding: 2px 10px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  mask-image: none;
+  -webkit-mask-image: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+body.shop-mobile-app .shop-nav__mega::-webkit-scrollbar {
+  display: none;
+}
+
+body.shop-mobile-app .shop-nav__mega::after {
+  display: none;
+}
+
+body.shop-mobile-app .shop-nav__mega button,
+body.shop-mobile-app .shop-nav__megaButton,
+body.shop-mobile-app .shop-nav--es .shop-nav__mega button,
+body.shop-mobile-app .shop-nav--es .shop-nav__megaButton {
+  min-height: 34px;
+  min-width: max-content;
+  padding: 0 12px;
+  border: 1px solid #dce8e0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #53645a !important;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: none;
+  white-space: nowrap !important;
+}
+
+body.shop-mobile-app .shop-nav__megaButton--active {
+  border-color: #124734;
+  background: #124734;
+  color: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  min-height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  border-width: 1px 0 0;
+  border-color: rgba(18, 71, 52, 0.1);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 -10px 28px rgba(18, 71, 52, 0.1);
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  min-height: 50px;
+  border-radius: 8px;
+  color: #68776d !important;
+  font-size: 10px;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem .anticon,
+body.shop-mobile-app .shop-nav__bottomItem .ant-badge {
+  font-size: 20px;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active {
+  background: #eaf4ef;
+  color: #124734 !important;
+}
+
+body.shop-mobile-app .app-support-launcher,
+body.shop-mobile-app .customer-support-widget__button {
+  display: none !important;
+}
+
+body.shop-mobile-app .shopee-home {
+  background: #f4f7f5;
+}
+
+body.shop-mobile-app .shopee-container {
+  width: min(100% - 20px, 720px);
+}
+
+body.shop-mobile-app .shopee-hero {
+  padding: 10px 0 12px;
+  background: transparent;
+}
+
+body.shop-mobile-app .shopee-hero__grid {
+  display: block;
+}
+
+body.shop-mobile-app .shopee-hero__main {
+  min-height: 176px;
+  padding: 18px;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(18, 71, 52, 0.94), rgba(18, 71, 52, 0.45)),
+    url('https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80');
+  background-position: center right;
+  background-size: cover;
+  box-shadow: 0 12px 26px rgba(18, 71, 52, 0.14);
+}
+
+body.shop-mobile-app .shopee-hero h1 {
+  max-width: 82%;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+body.shop-mobile-app .shopee-hero p {
+  max-width: 86%;
+  margin: 8px 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+body.shop-mobile-app .shopee-hero__eyebrow {
+  margin-bottom: 8px;
+  font-size: 10px;
+}
+
+body.shop-mobile-app .shopee-hero__actions .ant-btn,
+body.shop-mobile-app .shopee-hero__authActions .ant-btn {
+  min-width: 0;
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+body.shop-mobile-app :where(.ant-card, .ant-list, .ant-table-wrapper) {
+  border-radius: 8px !important;
+  box-shadow: 0 6px 18px rgba(18, 71, 52, 0.06) !important;
+}
+
+body.shop-mobile-app :where(.ant-card-body) {
+  padding: 14px !important;
+}
+
+body.shop-mobile-app :where(.product-list-page, .cart-page, .checkout-page, .profile-page, .order-tracking-page, .coupon-center-page, .wishlist-page, .stock-alerts-page, .browsing-history-page, .notifications-page) {
+  width: min(100% - 20px, 720px) !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
+
+body.shop-mobile-app .ant-drawer-content,
+body.shop-mobile-app .ant-modal-content {
+  border-radius: 8px !important;
+}
+
+@media (max-width: 420px) {
+  body.shop-mobile-app .shop-nav__inner {
+    width: calc(100% - 16px);
+  }
+
+  body.shop-mobile-app .shop-nav__brandCopy small {
+    display: none;
+  }
+
+  body.shop-mobile-app .shop-nav__actions {
+    gap: 5px;
+  }
+
+  body.shop-mobile-app .shop-nav__actions button,
+  body.shop-mobile-app .shop-nav__actions a,
+  body.shop-mobile-app .shop-nav__admin {
+    min-width: 36px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+
+  body.shop-mobile-app .shopee-hero__main {
+    min-height: 164px;
+  }
+
+  body.shop-mobile-app .shopee-hero h1 {
+    max-width: 92%;
+    font-size: 22px;
+  }
+}
+
+/* App-specific refinements: keep ShopMX web branding, but use native-screen spacing and touch targets. */
+html.shop-mobile-app-root,
+html.shop-mobile-app-root body,
+body.shop-mobile-app #root,
+body.shop-mobile-app .shop-app-shell {
+  width: 100%;
+  min-height: 100svh;
+}
+
+body.shop-mobile-app {
+  --shop-mobile-bottom-nav-height: 76px;
+  margin: 0;
+  background: #f4f7f5;
+  touch-action: manipulation;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 76px));
+}
+
+body.shop-mobile-app .shopee-container,
+body.shop-mobile-app :where(.product-list-page, .cart-page, .checkout-page, .profile-page, .order-tracking-page, .coupon-center-page, .wishlist-page, .stock-alerts-page, .browsing-history-page, .notifications-page, .pet-finder-page, .pet-gallery-page, .product-detail-page) {
+  width: calc(100% - 20px) !important;
+  max-width: none !important;
+}
+
+body.shop-mobile-app :where(.ant-btn) {
+  min-height: 44px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+body.shop-mobile-app :where(.ant-btn-primary) {
+  border-color: #ee4d2d;
+  background: linear-gradient(180deg, #ff6848 0%, #ee4d2d 100%);
+  box-shadow: 0 10px 20px rgba(238, 77, 45, 0.22);
+}
+
+body.shop-mobile-app :where(.ant-btn-default:not(.ant-btn-dangerous)) {
+  border-color: #dce8e0;
+  background: #ffffff;
+  color: #173f2b;
+}
+
+body.shop-mobile-app :where(.ant-btn, button, a[role='button']) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.shop-mobile-app :where(.ant-btn, button, a[role='button']):active {
+  transform: scale(0.98);
+}
+
+body.shop-mobile-app :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-input-number) {
+  min-height: 44px;
+  border-radius: 8px !important;
+}
+
+body.shop-mobile-app .shop-nav {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  --shop-mobile-bottom-nav-height: 76px;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem:active {
+  transform: scale(0.96);
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .shop-nav,
+body.shop-mobile-app .shop-app-shell--auth-flow .shop-nav__bottomBar {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .ant-layout-content {
+  min-height: 100svh;
+  padding-bottom: 0 !important;
+  background:
+    linear-gradient(180deg, rgba(255, 247, 240, 0.96) 0%, rgba(244, 247, 245, 1) 34%, rgba(234, 244, 239, 1) 100%);
+}
+
+body.shop-mobile-app .shopee-login-root {
+  min-height: 100svh;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 12px calc(18px + env(safe-area-inset-bottom, 0px));
+  background:
+    radial-gradient(circle at top right, rgba(238, 77, 45, 0.14), transparent 34%),
+    linear-gradient(180deg, #fff7f0 0%, #f4f7f5 38%, #eaf4ef 100%);
+}
+
+body.shop-mobile-app .shopee-login-shell {
+  width: 100%;
+  min-height: calc(100svh - 36px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  display: block;
+  margin: 0;
+}
+
+body.shop-mobile-app .shopee-login-panel {
+  display: none;
+}
+
+body.shop-mobile-app .shopee-login-card {
+  width: 100%;
+  max-width: none;
+  min-height: calc(100svh - 36px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  padding: 18px 16px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+body.shop-mobile-app .shopee-login-appHeader {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+body.shop-mobile-app .shopee-login-appHeader__icon {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #124734;
+  color: #ffffff;
+  font-size: 22px;
+  box-shadow: 0 10px 22px rgba(18, 71, 52, 0.18);
+}
+
+body.shop-mobile-app .shopee-login-appHeader__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+body.shop-mobile-app .shopee-login-appHeader__copy strong {
+  color: #173f2b;
+  font-size: 20px;
+  line-height: 1.05;
+}
+
+body.shop-mobile-app .shopee-login-appHeader__copy span {
+  color: #647469;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+body.shop-mobile-app .shopee-login-appHeader__status {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #dce8e0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #124734;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+body.shop-mobile-app .shopee-login-appActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+body.shop-mobile-app .shopee-login-appActions button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #dce8e0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #173f2b;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+}
+
+body.shop-mobile-app .shopee-login-card__header {
+  margin-bottom: 12px;
+  padding: 16px;
+  border: 1px solid rgba(220, 232, 224, 0.9);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(18, 71, 52, 0.95), rgba(18, 71, 52, 0.72)),
+    url('https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=900&q=80');
+  background-position: center right;
+  background-size: cover;
+  color: #ffffff;
+}
+
+body.shop-mobile-app .shopee-login-mark,
+body.shop-mobile-app .shopee-login-subtitle,
+body.shop-mobile-app .shopee-login-card__intro {
+  color: #ffffff !important;
+}
+
+body.shop-mobile-app .shopee-login-mark {
+  font-size: 24px;
+}
+
+body.shop-mobile-app .shopee-login-root--reset .shopee-login-brand {
+  padding: 14px 16px;
+  border: 1px solid rgba(18, 71, 52, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #173f2b;
+  box-shadow: 0 10px 22px rgba(18, 71, 52, 0.08);
+}
+
+body.shop-mobile-app .shopee-login-root--reset .shopee-login-mark {
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app .shopee-login-root--reset .shopee-login-subtitle {
+  color: #3f5147 !important;
+}
+
+body.shop-mobile-app .shopee-login-card__intro {
+  max-width: 92%;
+  opacity: 0.9;
+}
+
+body.shop-mobile-app .shopee-login-card__stats {
+  display: none;
+}
+
+body.shop-mobile-app .shopee-login-trust {
+  margin-bottom: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+body.shop-mobile-app .shopee-login-tabs {
+  padding: 12px;
+  border: 1px solid rgba(220, 232, 224, 0.95);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(18, 71, 52, 0.08);
+}
+
+body.shop-mobile-app .shopee-login-tabs .ant-tabs-nav {
+  margin-bottom: 14px;
+  border-radius: 8px;
+}
+
+body.shop-mobile-app .shopee-login-tabs .ant-tabs-tab {
+  min-height: 42px;
+}
+
+body.shop-mobile-app .shopee-login-card .ant-input,
+body.shop-mobile-app .shopee-login-card .ant-input-affix-wrapper {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+body.shop-mobile-app .shopee-login-card .ant-btn-primary {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+body.shop-mobile-app .shopee-login-codeButton {
+  height: 48px;
+  line-height: 48px;
+}
+
+body.shop-mobile-app .shopee-login-quickLinks {
+  margin-top: 12px;
+}
+
+body.shop-mobile-app .shopee-login-quickLinks a,
+body.shop-mobile-app .shopee-login-quickLinks button {
+  min-height: 48px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+}
+
+body.shop-mobile-app .shopee-login-links {
+  margin-top: 14px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body.shop-mobile-app .shopee-mobile-priority {
+  display: block !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  margin: 8px calc(50% - 50vw) 0 !important;
+  padding: 0 !important;
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px max(10px, env(safe-area-inset-right, 0px)) 12px max(10px, env(safe-area-inset-left, 0px));
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel button {
+  min-height: 62px;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel__icon {
+  border-radius: 8px;
+}
+
+body.shop-mobile-app .shopee-home-actions {
+  width: 100vw;
+  max-width: 100vw;
+  margin: 14px calc(50% - 50vw) 0;
+  padding: 12px max(10px, env(safe-area-inset-right, 0px)) 12px max(10px, env(safe-area-inset-left, 0px));
+  border-top: 1px solid rgba(18, 71, 52, 0.08);
+  border-bottom: 1px solid rgba(18, 71, 52, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+body.shop-mobile-app .shopee-conversion-band,
+body.shop-mobile-app .shopee-conversion-strip {
+  gap: 8px;
+}
+
+body.shop-mobile-app .shopee-conversion-band {
+  grid-template-columns: 1fr;
+}
+
+body.shop-mobile-app .shopee-conversion-band__card {
+  min-height: 72px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+body.shop-mobile-app .shopee-conversion-band__action {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eaf4ef;
+  white-space: nowrap;
+}
+
+body.shop-mobile-app .shopee-conversion-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.shop-mobile-app .shopee-conversion-strip__item {
+  min-height: 72px;
+  padding: 12px 10px;
+  border-radius: 8px;
+}
+
+body.shop-mobile-app .shopee-conversion-strip__item strong {
+  font-size: 20px;
+}
+
+body.shop-mobile-app .shopee-coupon-entry {
+  min-height: 64px;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+body.shop-mobile-app .shopee-coupon-entry__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+@media (orientation: landscape) {
+  body.shop-mobile-app .shopee-mobile-quick-panel {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  body.shop-mobile-app .shopee-home-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  body.shop-mobile-app .shopee-conversion-band,
+  body.shop-mobile-app .shopee-conversion-strip {
+    grid-column: 1 / -1;
+  }
+
+  body.shop-mobile-app .shopee-conversion-band {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shopee-login-card {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  body.shop-mobile-app .shopee-login-appHeader {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  body.shop-mobile-app .shopee-login-appHeader__icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  body.shop-mobile-app .shopee-login-appHeader__status {
+    grid-column: 1 / -1;
+    width: fit-content;
+  }
+}
+
+/* Native app visual refresh: override the desktop storefront rhythm with app-first surfaces. */
+body.shop-mobile-app {
+  --app-bg: #f3f5f1;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f8faf6;
+  --app-ink: #15281e;
+  --app-muted: #637064;
+  --app-line: rgba(21, 40, 30, 0.1);
+  --app-primary: #176b4d;
+  --app-accent: #f05a3c;
+  --app-topbar-height: 122px;
+  background:
+    linear-gradient(180deg, #fbfaf4 0, var(--app-bg) 240px, #eef3ee 100%);
+  color: var(--app-ink);
+}
+
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  padding-top: 0 !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+  background: transparent;
+}
+
+body.shop-mobile-app .shop-nav {
+  position: sticky;
+  top: 0;
+  border-bottom: 0;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0.98), rgba(251, 250, 244, 0.9));
+  box-shadow: 0 8px 24px rgba(21, 40, 30, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+body.shop-mobile-app .shop-nav__main {
+  padding: 8px 0 9px;
+}
+
+body.shop-mobile-app .shop-nav__inner,
+body.shop-mobile-app .shop-nav__inner--main {
+  width: calc(100% - 24px) !important;
+}
+
+body.shop-mobile-app .shop-nav__inner--main {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "brand actions"
+    "search search";
+  gap: 9px;
+}
+
+body.shop-mobile-app .shop-nav__brand {
+  min-height: 42px;
+}
+
+body.shop-mobile-app .shop-nav__brandIcon {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--app-primary), #1d8a62);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(23, 107, 77, 0.2);
+}
+
+body.shop-mobile-app .shop-nav__brandCopy strong {
+  color: var(--app-ink);
+  font-size: 17px;
+  line-height: 1.1;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy small {
+  max-width: 54vw;
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+body.shop-mobile-app .shop-nav__actions {
+  gap: 5px;
+}
+
+body.shop-mobile-app .shop-nav__actions button,
+body.shop-mobile-app .shop-nav__actions a,
+body.shop-mobile-app .shop-nav__admin {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--app-ink) !important;
+  box-shadow: 0 6px 16px rgba(21, 40, 30, 0.08);
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group {
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(21, 40, 30, 0.08);
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
+  height: 40px;
+  padding-inline: 12px;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input {
+  color: var(--app-ink);
+  font-size: 15px;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-btn {
+  width: 42px;
+  min-width: 42px;
+  height: 40px;
+  border-radius: 8px !important;
+  background: var(--app-primary);
+  color: #ffffff;
+}
+
+body.shop-mobile-app .shop-nav__mega {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  --shop-mobile-bottom-nav-height: 74px;
+  min-height: calc(74px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+  padding: 7px 6px calc(7px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(21, 40, 30, 0.08);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 -12px 28px rgba(21, 40, 30, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  min-width: 0;
+  min-height: 58px;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #697469 !important;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem .anticon,
+body.shop-mobile-app .shop-nav__bottomItem .ant-badge {
+  font-size: 21px;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active {
+  background: #eaf4ee;
+  color: var(--app-primary) !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active .anticon {
+  color: var(--app-primary);
+}
+
+body.shop-mobile-app :where(.shopee-home, .product-list-page, .cart-page, .checkout-page, .profile-page, .order-tracking-page, .coupon-center-page, .wishlist-page, .stock-alerts-page, .browsing-history-page, .notifications-page, .pet-finder-page, .pet-gallery-page, .product-detail-page) {
+  background: transparent !important;
+}
+
+body.shop-mobile-app .shopee-container,
+body.shop-mobile-app :where(.product-list-page, .cart-page, .checkout-page, .profile-page, .order-tracking-page, .coupon-center-page, .wishlist-page, .stock-alerts-page, .browsing-history-page, .notifications-page, .pet-finder-page, .pet-gallery-page, .product-detail-page) {
+  width: calc(100% - 24px) !important;
+  margin-inline: auto !important;
+}
+
+body.shop-mobile-app .shopee-hero {
+  width: 100vw;
+  margin: 0 calc(50% - 50vw) 10px;
+  padding: 0 12px 12px;
+  background:
+    linear-gradient(180deg, rgba(251, 250, 244, 0) 0, rgba(243, 245, 241, 1) 100%);
+}
+
+body.shop-mobile-app .shopee-hero__main {
+  min-height: 154px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(21, 40, 30, 0.04), rgba(21, 40, 30, 0.68)),
+    url('https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=1000&q=82');
+  background-position: center 42%;
+  background-size: cover;
+  box-shadow: 0 14px 30px rgba(21, 40, 30, 0.14);
+}
+
+body.shop-mobile-app .shopee-hero__main::before,
+body.shop-mobile-app .shopee-hero__main::after {
+  display: none;
+}
+
+body.shop-mobile-app .shopee-hero__eyebrow {
+  width: fit-content;
+  margin: 0 0 7px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--app-primary);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+body.shop-mobile-app .shopee-hero h1 {
+  max-width: 94%;
+  margin: 0;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.24);
+}
+
+body.shop-mobile-app .shopee-hero p {
+  max-width: 96%;
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+}
+
+body.shop-mobile-app .shopee-hero__actions,
+body.shop-mobile-app .shopee-hero__authActions {
+  margin-top: 12px;
+}
+
+body.shop-mobile-app .shopee-hero__aside,
+body.shop-mobile-app .shopee-hero__signalRow {
+  display: none !important;
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel,
+body.shop-mobile-app .shopee-home-actions {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel {
+  gap: 9px;
+  padding: 4px 12px 8px;
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel button {
+  min-height: 68px;
+  border: 1px solid rgba(21, 40, 30, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(21, 40, 30, 0.06);
+}
+
+body.shop-mobile-app .shopee-section {
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.shop-mobile-app .shopee-section__header {
+  position: static;
+  min-height: 0;
+  margin-bottom: 9px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.shop-mobile-app .shopee-section__header h2 {
+  color: var(--app-ink);
+  font-size: 18px;
+  line-height: 1.18;
+}
+
+body.shop-mobile-app .shopee-section__header .ant-typography-secondary {
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+body.shop-mobile-app .shopee-categories {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.shop-mobile-app .shopee-categories button {
+  min-height: 76px;
+  padding: 8px 5px;
+  border: 1px solid rgba(21, 40, 30, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(21, 40, 30, 0.06);
+}
+
+body.shop-mobile-app .shopee-products,
+body.shop-mobile-app .product-grid,
+body.shop-mobile-app .products-grid {
+  gap: 10px !important;
+}
+
+body.shop-mobile-app .shopee-product {
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 22px rgba(21, 40, 30, 0.08);
+}
+
+body.shop-mobile-app .shopee-product:hover,
+body.shop-mobile-app .shopee-product:focus-visible {
+  transform: none;
+  box-shadow: 0 10px 22px rgba(21, 40, 30, 0.08);
+}
+
+body.shop-mobile-app .shopee-product__imageWrap {
+  min-height: 126px;
+  aspect-ratio: 1 / 0.9;
+  border-bottom: 0;
+  background: var(--app-surface-muted);
+}
+
+body.shop-mobile-app .shopee-product__image,
+body.shop-mobile-app .shopee-product__carousel img {
+  padding: 8px;
+  object-fit: contain;
+}
+
+body.shop-mobile-app .shopee-product__discount,
+body.shop-mobile-app .shopee-product__mall {
+  top: 8px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  box-shadow: 0 6px 14px rgba(21, 40, 30, 0.1);
+}
+
+body.shop-mobile-app .shopee-product__discount {
+  right: auto;
+  left: 8px;
+  background: #fff0e8;
+  color: #d84828;
+}
+
+body.shop-mobile-app .shopee-product__mall {
+  top: 32px;
+  left: 8px;
+  background: var(--app-primary);
+}
+
+body.shop-mobile-app .shopee-product__quickActions {
+  right: 6px;
+  bottom: 6px;
+  gap: 4px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+body.shop-mobile-app .shopee-product__quickActions button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--app-primary);
+  box-shadow: 0 6px 14px rgba(21, 40, 30, 0.12);
+  touch-action: manipulation;
+}
+
+body.shop-mobile-app .shopee-product__body {
+  min-height: 118px;
+  gap: 5px;
+  padding: 9px;
+}
+
+body.shop-mobile-app .shopee-product__name {
+  min-height: 36px;
+  color: var(--app-ink);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+body.shop-mobile-app .shopee-product__price {
+  color: var(--app-accent);
+  font-size: 17px;
+}
+
+body.shop-mobile-app .shopee-product__stockBadge,
+body.shop-mobile-app .shopee-product__signal,
+body.shop-mobile-app .shopee-product__reviewCount {
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+body.shop-mobile-app :where(.ant-card, .ant-list, .ant-table-wrapper, .ant-collapse, .ant-descriptions, .ant-tabs) {
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: 0 9px 22px rgba(21, 40, 30, 0.07) !important;
+}
+
+body.shop-mobile-app :where(.ant-card-body, .ant-list-item, .ant-collapse-content-box) {
+  padding: 12px !important;
+}
+
+body.shop-mobile-app :where(.ant-table-wrapper) {
+  overflow: hidden;
+}
+
+body.shop-mobile-app :where(.ant-table) {
+  background: #ffffff;
+  font-size: 12px;
+}
+
+body.shop-mobile-app :where(.ant-table-cell) {
+  padding: 10px 8px !important;
+}
+
+body.shop-mobile-app :where(.ant-tabs-nav) {
+  margin-bottom: 10px !important;
+}
+
+body.shop-mobile-app :where(.ant-tabs-tab) {
+  min-height: 38px;
+  padding: 8px 10px !important;
+}
+
+body.shop-mobile-app :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-input-number, .ant-picker) {
+  min-height: 46px;
+  border-color: rgba(21, 40, 30, 0.12) !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body.shop-mobile-app :where(.ant-form-item) {
+  margin-bottom: 12px;
+}
+
+body.shop-mobile-app :where(.ant-modal-mask) {
+  background: rgba(21, 40, 30, 0.42) !important;
+  backdrop-filter: blur(4px);
+}
+
+body.shop-mobile-app :where(.ant-modal) {
+  max-width: calc(100vw - 24px);
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+body.shop-mobile-app :where(.ant-modal-content, .ant-drawer-content) {
+  border-radius: 8px !important;
+  box-shadow: 0 18px 44px rgba(21, 40, 30, 0.22) !important;
+}
+
+body.shop-mobile-app :where(.ant-modal-header, .ant-modal-footer) {
+  border-color: rgba(21, 40, 30, 0.08) !important;
+}
+
+body.shop-mobile-app .ant-dropdown .ant-dropdown-menu,
+body.shop-mobile-app .shop-nav__dropdown-popup .ant-dropdown-menu {
+  border-radius: 8px;
+  box-shadow: 0 16px 38px rgba(21, 40, 30, 0.18);
+}
+
+body.shop-mobile-app .ant-dropdown .ant-dropdown-menu-item {
+  min-height: 42px;
+}
+
+body.shop-mobile-app .app-support-launcher,
+body.shop-mobile-app .customer-support-widget__button {
+  display: inline-flex !important;
+  right: 14px !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 999px !important;
+  box-shadow: 0 12px 28px rgba(21, 40, 30, 0.22) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .app-support-launcher,
+body.shop-mobile-app .shop-app-shell--auth-flow .customer-support-widget__button {
+  display: none !important;
+}
+
+/* Native app commerce pass: keep the app shell focused on browse, cart and account tasks. */
+body.shop-mobile-app .shop-nav__mobile-tools,
+body.shop-mobile-app .shop-nav__mobile-orders,
+body.shop-mobile-app .shop-nav__secondary-action:not(.shop-nav__more-trigger),
+body.shop-mobile-app .shop-nav__mobile-logout,
+body.shop-mobile-app .shop-nav__admin,
+body.shop-mobile-app .shop-nav__mobile-auth--primary {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-nav__actions {
+  max-width: 46vw;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+body.shop-mobile-app .shop-nav__actions :where(button, a) {
+  flex: 0 0 36px;
+}
+
+body.shop-mobile-app .shop-nav__mobile-auth {
+  overflow: hidden;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+body.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem--support {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  gap: 3px;
+  padding-inline: 2px;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
+  max-width: 100%;
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+body.shop-mobile-app .product-list {
+  width: 100% !important;
+  padding: 10px 0 calc(var(--shop-mobile-bottom-nav-height, 74px) + 28px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .product-list > .ant-row {
+  display: block;
+  margin: 0 !important;
+}
+
+body.shop-mobile-app .product-list > .ant-row > .ant-col {
+  max-width: 100%;
+  padding: 0 !important;
+}
+
+body.shop-mobile-app .product-list__sidebar,
+body.shop-mobile-app .product-list__heroStats,
+body.shop-mobile-app .product-list__heroCard,
+body.shop-mobile-app .product-list__smartBar,
+body.shop-mobile-app .product-list__insightPanel,
+body.shop-mobile-app .product-list__checkoutPath {
+  display: none !important;
+}
+
+body.shop-mobile-app .product-list__heroBand {
+  display: block !important;
+  min-height: 0 !important;
+  margin: 0 0 10px !important;
+  padding: 12px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(21, 40, 30, 0.07) !important;
+}
+
+body.shop-mobile-app .product-list__heroContent {
+  gap: 5px;
+}
+
+body.shop-mobile-app .product-list__heroEyebrow {
+  margin-bottom: 0;
+  color: var(--app-primary);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+body.shop-mobile-app .product-list__heroContent h1 {
+  margin: 0;
+  color: var(--app-ink);
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+body.shop-mobile-app .product-list__heroContent .ant-typography {
+  display: -webkit-box !important;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+body.shop-mobile-app .product-list__toolbar.ant-card {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 96px);
+  z-index: 50;
+  margin: 0 0 10px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 8px 22px rgba(21, 40, 30, 0.09) !important;
+  backdrop-filter: blur(16px);
+}
+
+body.shop-mobile-app .product-list__toolbar .ant-card-body {
+  padding: 8px !important;
+}
+
+body.shop-mobile-app .product-list__toolbar .ant-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(92px, 0.45fr);
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+body.shop-mobile-app .product-list__toolbar .ant-col {
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+body.shop-mobile-app .product-list__toolbar .ant-col:first-child {
+  grid-column: 1 / -1;
+}
+
+body.shop-mobile-app .product-list__toolbarMeta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+body.shop-mobile-app .product-list__toolbarMeta > .ant-typography {
+  display: none;
+}
+
+body.shop-mobile-app .product-list__search .ant-input-group,
+body.shop-mobile-app .product-list__sortSelect .ant-select-selector,
+body.shop-mobile-app .product-list__filterButton.ant-btn {
+  min-height: 40px !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+}
+
+body.shop-mobile-app .product-list__filterButton.ant-btn {
+  width: 100%;
+  justify-content: center;
+  border-color: rgba(21, 40, 30, 0.12) !important;
+  background: #f8faf6 !important;
+  color: var(--app-primary) !important;
+  box-shadow: none !important;
+}
+
+body.shop-mobile-app .product-list__refinementChips,
+body.shop-mobile-app .product-list__recentSearches {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin-top: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+body.shop-mobile-app .product-list__refinementChips::-webkit-scrollbar,
+body.shop-mobile-app .product-list__recentSearches::-webkit-scrollbar {
+  display: none;
+}
+
+body.shop-mobile-app .product-list__mobileContextBar,
+body.shop-mobile-app .product-list__mobileDiscovery {
+  margin: 0 -12px 10px !important;
+  padding: 0 12px !important;
+}
+
+body.shop-mobile-app .product-list__mobileDiscoveryButton,
+body.shop-mobile-app .product-list__mobileContextChip {
+  height: 34px !important;
+  min-height: 34px !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  box-shadow: 0 6px 14px rgba(21, 40, 30, 0.06) !important;
+}
+
+body.shop-mobile-app .product-list__mobileNextStep {
+  margin: 0 0 10px !important;
+  padding: 10px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(21, 40, 30, 0.07) !important;
+}
+
+body.shop-mobile-app .product-list__mobileNextStepCopy strong {
+  color: var(--app-ink);
+  font-size: 15px;
+}
+
+body.shop-mobile-app .product-list__mobileNextStepCopy .ant-typography {
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+body.shop-mobile-app .product-list__mobileConversionBar,
+body.shop-mobile-app .product-list--empty .product-list__mobileConversionBar {
+  position: static !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 0 10px !important;
+  padding: 10px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(21, 40, 30, 0.07) !important;
+  transform: none !important;
+}
+
+body.shop-mobile-app .product-list__mobileConversionStats {
+  display: grid !important;
+  gap: 2px;
+}
+
+body.shop-mobile-app .product-list__mobileConversionStats strong {
+  color: var(--app-ink);
+  font-size: 13px;
+}
+
+body.shop-mobile-app .product-list__mobileConversionStats span {
+  color: var(--app-muted);
+  font-size: 11px;
+}
+
+body.shop-mobile-app .product-list__mobileConversionActions {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+body.shop-mobile-app .product-list__mobileConversionActions .ant-btn {
+  width: 100%;
+  min-width: 0 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 8px !important;
+  font-size: 11px;
+}
+
+body.shop-mobile-app .product-list__grid.ant-row {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px !important;
+  margin: 0 !important;
+}
+
+body.shop-mobile-app .product-list__grid > .ant-col {
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+body.shop-mobile-app .product-list__card.ant-card {
+  height: 100%;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(21, 40, 30, 0.07) !important;
+  transform: none !important;
+}
+
+body.shop-mobile-app .product-list__card.ant-card::before,
+body.shop-mobile-app .product-list__card.ant-card::after {
+  display: none !important;
+}
+
+body.shop-mobile-app .product-list__imageWrap {
+  min-height: 122px !important;
+  aspect-ratio: 1 / 0.9 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--app-surface-muted) !important;
+}
+
+body.shop-mobile-app .product-list__image {
+  padding: 7px !important;
+  object-fit: contain;
+}
+
+body.shop-mobile-app .product-list__badges {
+  top: 6px;
+  left: 6px;
+  right: 54px;
+  max-height: 24px;
+  overflow: hidden;
+}
+
+body.shop-mobile-app .product-list__badges .ant-tag {
+  max-width: 82px;
+  min-height: 20px;
+  padding-inline: 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  line-height: 18px;
+}
+
+body.shop-mobile-app .product-list__imageOverlay {
+  top: auto !important;
+  right: 6px !important;
+  bottom: 6px !important;
+  left: auto !important;
+  width: auto !important;
+  height: auto !important;
+  display: block !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+body.shop-mobile-app .product-list__previewTrigger.ant-btn {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: var(--app-primary) !important;
+  box-shadow: 0 6px 14px rgba(21, 40, 30, 0.14) !important;
+}
+
+body.shop-mobile-app .product-list__previewTrigger.ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+body.shop-mobile-app .product-list__card .ant-card-body {
+  min-height: 112px !important;
+  padding: 8px !important;
+}
+
+body.shop-mobile-app .product-list__card .ant-card-meta-title {
+  min-height: 34px !important;
+  margin-bottom: 4px !important;
+  line-height: 16px !important;
+}
+
+body.shop-mobile-app .product-list__card .ant-card-meta-title .ant-typography {
+  color: var(--app-ink);
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+body.shop-mobile-app .product-list__priceLine {
+  height: 22px !important;
+  min-height: 22px !important;
+  display: flex !important;
+  gap: 4px !important;
+  align-items: baseline;
+  overflow: hidden;
+}
+
+body.shop-mobile-app .product-list__currentPrice {
+  color: var(--app-accent);
+  font-size: 15px !important;
+}
+
+body.shop-mobile-app .product-list__originalPrice,
+body.shop-mobile-app .product-list__ratingLine .ant-typography,
+body.shop-mobile-app .product-list__brand {
+  font-size: 10px !important;
+}
+
+body.shop-mobile-app .product-list__metaRow,
+body.shop-mobile-app .product-list__valueLine,
+body.shop-mobile-app .product-list__confidencePill:nth-child(n + 2) {
+  display: none !important;
+}
+
+body.shop-mobile-app .product-list__confidenceStrip {
+  min-height: 20px !important;
+  max-height: 20px !important;
+  margin-top: 5px !important;
+  overflow: hidden;
+}
+
+body.shop-mobile-app .product-list__confidencePill {
+  min-height: 20px !important;
+  padding: 2px 6px !important;
+  border-radius: 999px !important;
+  font-size: 9px !important;
+}
+
+body.shop-mobile-app .product-list__card .ant-card-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 44px 44px !important;
+  min-height: 52px !important;
+  border-top: 1px solid rgba(21, 40, 30, 0.06) !important;
+}
+
+body.shop-mobile-app .product-list__card .ant-card-actions > li {
+  min-width: 0;
+  margin: 0 !important;
+}
+
+body.shop-mobile-app .product-list__card .ant-card-actions > li > span {
+  width: 100%;
+  padding: 5px 4px !important;
+}
+
+body.shop-mobile-app .product-list__actionButton.ant-btn {
+  width: 100%;
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+  font-size: 10px !important;
+  touch-action: manipulation;
+}
+
+body.shop-mobile-app .product-list__actionButton--compact.ant-btn {
+  width: 44px !important;
+  min-width: 44px !important;
+  padding: 0 !important;
+}
+
+body.shop-mobile-app .product-list__actionButton--compact .product-list__actionLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+body.shop-mobile-app .product-list__pagination {
+  margin: 14px 0 0 !important;
+}
+
+body.shop-mobile-app .product-list__pagination .ant-pagination {
+  justify-content: center;
+}
+
+body.shop-mobile-app .product-list__mobileDrawer .ant-drawer-content,
+body.shop-mobile-app .product-list__quickAddModal .ant-modal-content,
+body.shop-mobile-app .product-list__previewModal .ant-modal-content {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+body.shop-mobile-app .product-list__drawerFooter .ant-btn,
+body.shop-mobile-app .product-list__previewActions .ant-btn,
+body.shop-mobile-app .product-list__quickAddModal .ant-modal-footer .ant-btn {
+  min-height: 42px !important;
+  border-radius: 8px !important;
+}
+
+body.shop-mobile-app .product-list__preview {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+
+body.shop-mobile-app .product-list__previewMedia,
+body.shop-mobile-app .product-list__previewMedia img {
+  min-height: 220px !important;
+  max-height: 42vh !important;
+  border-radius: 8px !important;
+}
+
+body.shop-mobile-app :where(
+  .cart-page__hero,
+  .cart-page__summaryStrip,
+  .cart-page__checkoutPath,
+  .coupon-center-page__hero,
+  .coupon-center-page__statGrid,
+  .coupon-center-page__claimGuide,
+  .order-tracking-page__journey,
+  .order-tracking-page__assurance,
+  .wishlist-page__header,
+  .wishlist-page__insightBar,
+  .wishlist-page__nextAction,
+  .notifications-page__assistant,
+  .notifications-page__actionPlan,
+  .pet-gallery-conversion,
+  .product-conversion-nudges
+) {
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(21, 40, 30, 0.07) !important;
+}
+
+body.shop-mobile-app :where(
+  .cart-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .order-tracking-page__assurance,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .notifications-page__actionPlan,
+  .pet-gallery-conversion
+) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 10px !important;
+  padding: 12px !important;
+}
+
+body.shop-mobile-app :where(
+  .cart-page__heroContent h2.ant-typography,
+  .coupon-center-page__heroCopy h2,
+  .order-tracking-page__journeyCopy h2,
+  .wishlist-page__header h3.ant-typography,
+  .notifications-page__title h3.ant-typography,
+  .pet-gallery-conversion h4.ant-typography
+) {
+  color: var(--app-ink) !important;
+  font-size: 20px !important;
+  line-height: 1.18 !important;
+}
+
+body.shop-mobile-app :where(
+  .cart-page__heroContent .ant-typography,
+  .coupon-center-page__heroText,
+  .order-tracking-page__journeyCopy .ant-typography,
+  .wishlist-page__header .ant-typography,
+  .notifications-page__assistantCopy .ant-typography,
+  .pet-gallery-conversion .ant-typography
+) {
+  color: var(--app-muted) !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app {
+    --shop-mobile-bottom-nav-height: 70px;
+  }
+
+  body.shop-mobile-app .shop-nav__inner,
+  body.shop-mobile-app .shop-nav__inner--main,
+  body.shop-mobile-app .shopee-container,
+  body.shop-mobile-app :where(.product-list-page, .cart-page, .checkout-page, .profile-page, .order-tracking-page, .coupon-center-page, .wishlist-page, .stock-alerts-page, .browsing-history-page, .notifications-page, .pet-finder-page, .pet-gallery-page, .product-detail-page) {
+    width: calc(100% - 18px) !important;
+  }
+
+  body.shop-mobile-app .shop-nav__brandCopy small {
+    display: none;
+  }
+
+  body.shop-mobile-app .shop-nav__bottomBar {
+    min-height: calc(70px + env(safe-area-inset-bottom, 0px));
+    padding-inline: 4px;
+  }
+
+  body.shop-mobile-app .shop-nav__bottomItem {
+    min-height: 54px;
+    font-size: 9px;
+  }
+
+  body.shop-mobile-app .shop-nav__bottomItem .anticon,
+  body.shop-mobile-app .shop-nav__bottomItem .ant-badge {
+    font-size: 19px;
+  }
+
+  body.shop-mobile-app .shopee-hero__main {
+    min-height: 144px;
+    padding: 14px;
+  }
+
+  body.shop-mobile-app .shopee-hero h1 {
+    font-size: 21px;
+  }
+
+  body.shop-mobile-app .shop-nav__actions {
+    max-width: 42vw;
+  }
+
+  body.shop-mobile-app .shop-nav__actions :where(button, a) {
+    flex-basis: 34px;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+  }
+
+  body.shop-mobile-app .product-list__toolbar.ant-card {
+    top: calc(env(safe-area-inset-top, 0px) + 90px);
+  }
+
+  body.shop-mobile-app .product-list__mobileConversionActions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.shop-mobile-app .product-list__imageWrap {
+    min-height: 108px !important;
+  }
+
+  body.shop-mobile-app .product-list__card .ant-card-body {
+    min-height: 106px !important;
+  }
+
+  body.shop-mobile-app .product-list__currentPrice {
+    font-size: 14px !important;
+  }
+
+  body.shop-mobile-app .product-list__card .ant-card-actions {
+    grid-template-columns: minmax(0, 1fr) 44px 44px !important;
+  }
+
+  body.shop-mobile-app .product-list__actionButton--compact.ant-btn {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+/* App color alignment pass: keep native layout, but use the storefront palette. */
+html.shop-mobile-app-root,
+body.shop-mobile-app,
+body.shop-mobile-app #root,
+body.shop-mobile-app .shop-app-shell {
+  background: linear-gradient(180deg, #ffffff 0, #f8fcf9 360px, #f4f8f5 100%);
+}
+
+body.shop-mobile-app {
+  --app-bg: #f4f8f5;
+  --app-surface: #fffdf8;
+  --app-surface-muted: #f8fcf9;
+  --app-ink: #173f2b;
+  --app-muted: #627064;
+  --app-line: rgba(18, 71, 52, 0.12);
+  --app-primary: #124734;
+  --app-accent: #ee4d2d;
+  background: linear-gradient(180deg, #ffffff 0, #f8fcf9 360px, #f4f8f5 100%);
+  color: var(--app-ink);
+}
+
+body.shop-mobile-app .shop-nav {
+  background: linear-gradient(180deg, rgba(18, 71, 52, 0.99), rgba(16, 61, 44, 0.99)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(18, 71, 52, 0.22);
+}
+
+body.shop-mobile-app .shop-nav a,
+body.shop-mobile-app .shop-nav button,
+body.shop-mobile-app .shop-nav__brandCopy strong,
+body.shop-mobile-app .shop-nav__brandCopy small {
+  color: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-nav__brandIcon {
+  background: linear-gradient(135deg, #ff6d46, #ee4d2d) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(238, 77, 45, 0.22);
+}
+
+body.shop-mobile-app .shop-nav__actions button,
+body.shop-mobile-app .shop-nav__actions a,
+body.shop-mobile-app .shop-nav__admin {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  box-shadow: none;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group {
+  background: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input,
+body.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-btn {
+  background: #ee4d2d !important;
+  color: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  z-index: 1400;
+  border-top-color: rgba(18, 71, 52, 0.12);
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 -12px 28px rgba(18, 71, 52, 0.14);
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  color: #627064 !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active {
+  background: #eaf4ef !important;
+  color: #124734 !important;
+}
+
+body.shop-mobile-app .shopee-hero__main {
+  background:
+    linear-gradient(90deg, rgba(18, 71, 52, 0.98) 0%, rgba(18, 71, 52, 0.9) 46%, rgba(18, 71, 52, 0.42) 74%, rgba(18, 71, 52, 0.16) 100%),
+    url('https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=1200&q=80') !important;
+  background-position: center right !important;
+  background-size: cover !important;
+}
+
+body.shop-mobile-app .shopee-hero__eyebrow {
+  border: 1px solid rgba(238, 77, 45, 0.56);
+  background: rgba(238, 77, 45, 0.16) !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app :where(.ant-card, .ant-list, .ant-table-wrapper, .ant-collapse, .ant-descriptions, .ant-tabs),
+body.shop-mobile-app .shopee-product,
+body.shop-mobile-app .product-list__card.ant-card {
+  border: 1px solid rgba(18, 71, 52, 0.08) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fffdf8 100%) !important;
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.07) !important;
+}
+
+body.shop-mobile-app .shopee-product__imageWrap,
+body.shop-mobile-app .product-list__imageWrap {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(238, 77, 45, 0.08), transparent 4rem),
+    #f8fcf9 !important;
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel button,
+body.shop-mobile-app .shopee-categories button,
+body.shop-mobile-app .product-list__toolbar.ant-card,
+body.shop-mobile-app .product-list__mobileNextStep,
+body.shop-mobile-app .product-list__mobileConversionBar,
+body.shop-mobile-app .product-list--empty .product-list__mobileConversionBar {
+  border: 1px solid rgba(18, 71, 52, 0.08) !important;
+  background: linear-gradient(135deg, #ffffff, #f8fcf9) !important;
+}
+
+body.shop-mobile-app .product-list__heroBand,
+body.shop-mobile-app :where(
+  .cart-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) {
+  border: 1px solid rgba(214, 234, 220, 0.42) !important;
+  background:
+    linear-gradient(135deg, rgba(18, 71, 52, 0.98), rgba(18, 71, 52, 0.9) 54%, rgba(32, 91, 108, 0.9)) !important;
+  color: #ffffff !important;
+}
+
+body.shop-mobile-app .product-list__heroEyebrow,
+body.shop-mobile-app .cart-page__heroEyebrow {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app :where(
+  .product-list__heroContent h1,
+  .cart-page__heroContent h2.ant-typography,
+  .coupon-center-page__heroCopy h2,
+  .order-tracking-page__journeyCopy h2,
+  .wishlist-page__header h3.ant-typography,
+  .notifications-page__title h3.ant-typography,
+  .pet-gallery-conversion h4.ant-typography
+) {
+  color: #ffffff !important;
+}
+
+body.shop-mobile-app :where(
+  .product-list__heroContent .ant-typography,
+  .cart-page__heroContent .ant-typography,
+  .coupon-center-page__heroText,
+  .order-tracking-page__journeyCopy .ant-typography,
+  .wishlist-page__header .ant-typography,
+  .notifications-page__assistantCopy .ant-typography,
+  .pet-gallery-conversion .ant-typography
+) {
+  color: rgba(255, 255, 255, 0.84) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 12px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 850;
+}
+
+/* Native app full-bleed pass: the WebView should use the whole screen; gutters live inside content. */
+html.shop-mobile-app-root,
+html.shop-mobile-app-root body,
+body.shop-mobile-app,
+body.shop-mobile-app #root,
+body.shop-mobile-app .shop-app-shell,
+body.shop-mobile-app .shop-app-shell.ant-layout,
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  overflow-x: hidden !important;
+}
+
+body.shop-mobile-app {
+  --app-screen-gutter: 12px;
+}
+
+body.shop-mobile-app .shop-nav,
+body.shop-mobile-app .shop-nav__main,
+body.shop-mobile-app .shop-nav__bottomBar {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+body.shop-mobile-app .shop-nav__inner,
+body.shop-mobile-app .shop-nav__inner--main {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding-right: var(--app-screen-gutter) !important;
+  padding-left: var(--app-screen-gutter) !important;
+}
+
+body.shop-mobile-app .shopee-container,
+body.shop-mobile-app :where(
+  .product-list-page,
+  .cart-page,
+  .checkout-page,
+  .profile-page,
+  .order-tracking-page,
+  .coupon-center-page,
+  .wishlist-page,
+  .stock-alerts-page,
+  .browsing-history-page,
+  .notifications-page,
+  .pet-finder-page,
+  .pet-gallery-page,
+  .product-detail-page
+) {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  padding-right: var(--app-screen-gutter) !important;
+  padding-left: var(--app-screen-gutter) !important;
+}
+
+body.shop-mobile-app .shopee-hero,
+body.shop-mobile-app .shopee-mobile-priority,
+body.shop-mobile-app .shopee-home-actions {
+  width: auto !important;
+  max-width: none !important;
+  margin-right: calc(var(--app-screen-gutter) * -1) !important;
+  margin-left: calc(var(--app-screen-gutter) * -1) !important;
+}
+
+body.shop-mobile-app .shopee-hero,
+body.shop-mobile-app .shopee-mobile-quick-panel,
+body.shop-mobile-app .shopee-home-actions {
+  padding-right: var(--app-screen-gutter) !important;
+  padding-left: var(--app-screen-gutter) !important;
+}
+
+body.shop-mobile-app .product-list,
+body.shop-mobile-app .product-list > .ant-row {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app {
+    --app-screen-gutter: 10px;
+  }
+}
+
+/* Native app UI optimization pass: denser, full-screen, touch-first storefront. */
+body.shop-mobile-app {
+  --app-screen-gutter: 12px;
+  --app-section-gap: 12px;
+  --app-radius: 8px;
+  --app-shadow-card: 0 8px 22px rgba(18, 71, 52, 0.08);
+  --app-shadow-float: 0 14px 34px rgba(18, 71, 52, 0.14);
+  background:
+    linear-gradient(180deg, #124734 0, #124734 112px, #f8fcf9 112px, #f4f8f5 100%) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  min-height: 100svh;
+  background:
+    linear-gradient(180deg, rgba(18, 71, 52, 0.08) 0, rgba(248, 252, 249, 0) 168px),
+    #f4f8f5 !important;
+}
+
+body.shop-mobile-app .shop-nav {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+body.shop-mobile-app .shop-nav__main {
+  padding: 8px 0 10px !important;
+}
+
+body.shop-mobile-app .shop-nav__inner--main {
+  row-gap: 8px !important;
+}
+
+body.shop-mobile-app .shop-nav__brand {
+  min-width: 0;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy strong {
+  font-size: 18px !important;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy small {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16) !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  min-height: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-top: 6px !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  min-height: 56px !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active {
+  box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.08);
+}
+
+body.shop-mobile-app :where(.shopee-section, .product-list__heroBand, .product-list__toolbar, .ant-card) {
+  scroll-margin-top: calc(106px + env(safe-area-inset-top, 0px));
+}
+
+body.shop-mobile-app .shopee-home,
+body.shop-mobile-app .product-list-page,
+body.shop-mobile-app .cart-page,
+body.shop-mobile-app .checkout-page,
+body.shop-mobile-app .profile-page,
+body.shop-mobile-app .order-tracking-page,
+body.shop-mobile-app .coupon-center-page,
+body.shop-mobile-app .wishlist-page,
+body.shop-mobile-app .notifications-page,
+body.shop-mobile-app .pet-finder-page,
+body.shop-mobile-app .pet-gallery-page,
+body.shop-mobile-app .product-detail-page {
+  min-height: 100svh;
+  padding-top: var(--app-section-gap) !important;
+  padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .shopee-hero {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+body.shop-mobile-app .shopee-hero__main {
+  min-height: clamp(168px, 36svw, 218px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: var(--app-shadow-float) !important;
+}
+
+body.shop-mobile-app .shopee-hero h1 {
+  max-width: 88% !important;
+  font-size: clamp(23px, 6vw, 30px) !important;
+}
+
+body.shop-mobile-app .shopee-hero p {
+  max-width: 88% !important;
+}
+
+body.shop-mobile-app .shopee-mobile-priority,
+body.shop-mobile-app .shopee-home-actions {
+  background: #ffffff !important;
+  box-shadow: var(--app-shadow-card) !important;
+}
+
+body.shop-mobile-app .shopee-mobile-priority {
+  margin-top: 2px !important;
+  margin-bottom: 10px !important;
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel {
+  gap: 8px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+body.shop-mobile-app .shopee-mobile-quick-panel button,
+body.shop-mobile-app .shopee-categories button {
+  min-height: 72px !important;
+  border-radius: var(--app-radius) !important;
+}
+
+body.shop-mobile-app .shopee-section {
+  margin-top: 14px !important;
+}
+
+body.shop-mobile-app .shopee-section__header {
+  margin-bottom: 10px !important;
+  padding-inline: 2px !important;
+}
+
+body.shop-mobile-app .shopee-section__header h2 {
+  font-size: 19px !important;
+}
+
+body.shop-mobile-app .shopee-products,
+body.shop-mobile-app .product-list__grid.ant-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+body.shop-mobile-app .shopee-product,
+body.shop-mobile-app .product-list__card.ant-card {
+  contain: layout paint;
+}
+
+body.shop-mobile-app .shopee-product__imageWrap,
+body.shop-mobile-app .product-list__imageWrap {
+  min-height: 132px !important;
+}
+
+body.shop-mobile-app .shopee-product__body,
+body.shop-mobile-app .product-list__card .ant-card-body {
+  padding: 9px !important;
+}
+
+body.shop-mobile-app .shopee-product__name,
+body.shop-mobile-app .product-list__card .ant-card-meta-title .ant-typography {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+body.shop-mobile-app .shopee-product__price,
+body.shop-mobile-app .product-list__currentPrice {
+  color: #ee4d2d !important;
+  font-weight: 900 !important;
+}
+
+body.shop-mobile-app .product-list {
+  padding-top: 0 !important;
+}
+
+body.shop-mobile-app .product-list__heroBand,
+body.shop-mobile-app .cart-page__hero,
+body.shop-mobile-app .checkout-page__hero,
+body.shop-mobile-app .coupon-center-page__hero,
+body.shop-mobile-app .order-tracking-page__journey,
+body.shop-mobile-app .wishlist-page__header,
+body.shop-mobile-app .notifications-page__assistant {
+  border-radius: var(--app-radius) !important;
+  box-shadow: var(--app-shadow-card) !important;
+}
+
+body.shop-mobile-app .product-list__toolbar.ant-card {
+  top: calc(108px + env(safe-area-inset-top, 0px)) !important;
+}
+
+body.shop-mobile-app .product-list__toolbar .ant-card-body {
+  padding: 9px !important;
+}
+
+body.shop-mobile-app .product-list__mobileContextBar,
+body.shop-mobile-app .product-list__mobileDiscovery,
+body.shop-mobile-app .product-list__refinementChips,
+body.shop-mobile-app .product-list__recentSearches {
+  margin-right: calc(var(--app-screen-gutter) * -1) !important;
+  margin-left: calc(var(--app-screen-gutter) * -1) !important;
+  padding-right: var(--app-screen-gutter) !important;
+  padding-left: var(--app-screen-gutter) !important;
+}
+
+body.shop-mobile-app .cart-page__mobileItem,
+body.shop-mobile-app .cart-page__summary,
+body.shop-mobile-app .checkout-page .ant-card,
+body.shop-mobile-app .profile-page .ant-card,
+body.shop-mobile-app .order-tracking-page .ant-card,
+body.shop-mobile-app .coupon-center-page .ant-card,
+body.shop-mobile-app .wishlist-page .ant-card,
+body.shop-mobile-app .notifications-page .ant-card {
+  border: 1px solid rgba(18, 71, 52, 0.08) !important;
+  border-radius: var(--app-radius) !important;
+  background: #fffdf8 !important;
+  box-shadow: var(--app-shadow-card) !important;
+}
+
+body.shop-mobile-app .cart-page__mobileItemImage,
+body.shop-mobile-app .cart-page__tableImage,
+body.shop-mobile-app .order-tracking-page__image {
+  border-radius: var(--app-radius) !important;
+  background: #f8fcf9 !important;
+}
+
+body.shop-mobile-app .cart-page__summary {
+  right: var(--app-screen-gutter) !important;
+  left: var(--app-screen-gutter) !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+body.shop-mobile-app .cart-page__summaryFooter {
+  gap: 8px !important;
+}
+
+body.shop-mobile-app .cart-page__summary .ant-btn-primary,
+body.shop-mobile-app .checkout-page .ant-btn-primary {
+  min-height: 48px !important;
+}
+
+body.shop-mobile-app :where(.ant-form, .ant-form-item, .ant-space, .ant-row, .ant-col) {
+  min-width: 0;
+}
+
+body.shop-mobile-app :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-input-number, .ant-picker, textarea.ant-input) {
+  font-size: 16px !important;
+}
+
+body.shop-mobile-app :where(.ant-modal, .ant-drawer-content-wrapper) {
+  max-width: 100vw !important;
+}
+
+body.shop-mobile-app :where(.ant-drawer-content) {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+body.shop-mobile-app .ant-drawer-body,
+body.shop-mobile-app .ant-modal-body {
+  padding: 14px !important;
+}
+
+body.shop-mobile-app .shopee-login-root,
+body.shop-mobile-app .register-page,
+body.shop-mobile-app .forgot-password-page {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  margin: 0 !important;
+  background:
+    linear-gradient(180deg, #124734 0, #124734 132px, #f8fcf9 132px, #f4f8f5 100%) !important;
+}
+
+body.shop-mobile-app .shopee-login-card,
+body.shop-mobile-app .register-card,
+body.shop-mobile-app .forgot-password-card {
+  border-radius: var(--app-radius) !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shopee-products,
+  body.shop-mobile-app .product-list__grid.ant-row {
+    gap: 8px !important;
+  }
+
+  body.shop-mobile-app .shopee-product__imageWrap,
+  body.shop-mobile-app .product-list__imageWrap {
+    min-height: 116px !important;
+  }
+
+  body.shop-mobile-app .product-list__toolbar.ant-card {
+    top: calc(102px + env(safe-area-inset-top, 0px)) !important;
+  }
+}
+
+/* Native WebView scroll safety: keep the app full-bleed without trapping vertical page pan. */
+html.shop-mobile-app-root,
+html.shop-mobile-app-root body,
+body.shop-mobile-app {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y pinch-zoom !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app #root,
+body.shop-mobile-app .shop-app-shell,
+body.shop-mobile-app .shop-app-shell.ant-layout,
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  height: auto !important;
+  min-height: 100svh !important;
+  overflow-y: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+body.shop-mobile-app :where(button, a, input, textarea, select, .ant-btn, .ant-input, .ant-select, .shop-nav__bottomItem) {
+  touch-action: manipulation;
+}
+
+/* Native app depth pass: bring back the storefront's layered, tactile feel. */
+body.shop-mobile-app {
+  --app-shadow-card: 0 16px 34px rgba(18, 71, 52, 0.12), 0 3px 10px rgba(18, 71, 52, 0.06);
+  --app-shadow-lift: 0 22px 46px rgba(18, 71, 52, 0.16), 0 8px 18px rgba(18, 71, 52, 0.08);
+  --app-shadow-float: 0 24px 54px rgba(10, 33, 24, 0.22), 0 8px 20px rgba(10, 33, 24, 0.12);
+  --app-shadow-accent: 0 14px 30px rgba(238, 77, 45, 0.28);
+  background:
+    radial-gradient(circle at 18% 0, rgba(238, 77, 45, 0.12), transparent 170px),
+    linear-gradient(180deg, #124734 0, #124734 116px, #fffaf6 116px, #f4f8f5 100%) !important;
+}
+
+body.shop-mobile-app .shop-nav {
+  box-shadow: 0 16px 34px rgba(10, 33, 24, 0.28) !important;
+}
+
+body.shop-mobile-app .shop-nav__brandIcon,
+body.shop-mobile-app .shop-nav__search .ant-btn,
+body.shop-mobile-app .shopee-mobile-quick-panel button:first-child,
+body.shop-mobile-app .product-list__mobileConversionActions .ant-btn-primary {
+  box-shadow: var(--app-shadow-accent) !important;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group {
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 18px 36px rgba(10, 33, 24, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
+}
+
+body.shop-mobile-app .shop-nav__actions button,
+body.shop-mobile-app .shop-nav__actions a,
+body.shop-mobile-app .shop-nav__admin {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 22px rgba(10, 33, 24, 0.18) !important;
+}
+
+body.shop-mobile-app :where(.ant-card, .ant-list, .ant-table-wrapper, .ant-collapse, .ant-descriptions, .ant-tabs),
+body.shop-mobile-app .shopee-product,
+body.shop-mobile-app .product-list__card.ant-card,
+body.shop-mobile-app .cart-page__mobileItem,
+body.shop-mobile-app .checkout-page .ant-card,
+body.shop-mobile-app .profile-page .ant-card,
+body.shop-mobile-app .order-tracking-page .ant-card,
+body.shop-mobile-app .coupon-center-page .ant-card,
+body.shop-mobile-app .wishlist-page .ant-card,
+body.shop-mobile-app .notifications-page .ant-card {
+  border-color: rgba(18, 71, 52, 0.1) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(255, 253, 248, 0.96)) !important;
+  box-shadow: var(--app-shadow-card) !important;
+}
+
+body.shop-mobile-app .shopee-product,
+body.shop-mobile-app .product-list__card.ant-card {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+body.shop-mobile-app .shopee-product:active,
+body.shop-mobile-app .product-list__card.ant-card:active,
+body.shop-mobile-app .shopee-mobile-quick-panel button:active,
+body.shop-mobile-app .shopee-categories button:active {
+  transform: translateY(1px) scale(0.995);
+  box-shadow: 0 10px 22px rgba(18, 71, 52, 0.1) !important;
+}
+
+body.shop-mobile-app .shopee-product__imageWrap,
+body.shop-mobile-app .product-list__imageWrap,
+body.shop-mobile-app .cart-page__mobileItemImage,
+body.shop-mobile-app .cart-page__tableImage,
+body.shop-mobile-app .order-tracking-page__image {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -18px 26px rgba(18, 71, 52, 0.06),
+    0 10px 20px rgba(18, 71, 52, 0.08) !important;
+}
+
+body.shop-mobile-app .product-list__heroBand,
+body.shop-mobile-app .cart-page__hero,
+body.shop-mobile-app .checkout-page__hero,
+body.shop-mobile-app .coupon-center-page__hero,
+body.shop-mobile-app .order-tracking-page__journey,
+body.shop-mobile-app .wishlist-page__header,
+body.shop-mobile-app .notifications-page__assistant,
+body.shop-mobile-app .pet-gallery-conversion,
+body.shop-mobile-app .shopee-hero__main {
+  box-shadow: var(--app-shadow-float) !important;
+}
+
+body.shop-mobile-app .product-list__toolbar.ant-card,
+body.shop-mobile-app .product-list__mobileNextStep,
+body.shop-mobile-app .product-list__mobileConversionBar,
+body.shop-mobile-app .shopee-mobile-priority,
+body.shop-mobile-app .shopee-home-actions,
+body.shop-mobile-app .shopee-categories button,
+body.shop-mobile-app .shopee-mobile-quick-panel button {
+  box-shadow: var(--app-shadow-card) !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  border-top-color: rgba(18, 71, 52, 0.14) !important;
+  box-shadow: 0 -18px 38px rgba(10, 33, 24, 0.18), 0 -1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 10px 22px rgba(18, 71, 52, 0.12) !important;
+}
+
+body.shop-mobile-app .cart-page__summary {
+  box-shadow: 0 22px 48px rgba(10, 33, 24, 0.22) !important;
+}
+
+/* Native app scroll host pass: Android WebView should scroll the app shell, not body. */
+html.shop-mobile-app-root,
+html.shop-mobile-app-root body,
+body.shop-mobile-app,
+body.shop-mobile-app #root {
+  width: 100vw !important;
+  height: 100% !important;
+  max-width: 100vw !important;
+  min-height: 100% !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell,
+body.shop-mobile-app .shop-app-shell.ant-layout {
+  width: 100vw !important;
+  height: 100dvh !important;
+  height: 100svh !important;
+  max-width: 100vw !important;
+  min-height: 100dvh !important;
+  min-height: 100svh !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  scroll-behavior: smooth;
+  touch-action: pan-y pinch-zoom !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  flex: 0 0 auto !important;
+  min-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 74px)) !important;
+  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 74px)) !important;
+  overflow: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+body.shop-mobile-app :where(
+  .shopee-home,
+  .product-list-page,
+  .cart-page,
+  .checkout-page,
+  .profile-page,
+  .order-tracking-page,
+  .coupon-center-page,
+  .wishlist-page,
+  .stock-alerts-page,
+  .browsing-history-page,
+  .notifications-page,
+  .pet-finder-page,
+  .pet-gallery-page,
+  .product-detail-page
+) {
+  min-height: auto !important;
+  overflow-y: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+body.shop-mobile-app :where(
+  .shopee-mobile-quick-panel,
+  .shopee-home-actions,
+  .product-list__mobileContextBar,
+  .product-list__mobileDiscovery,
+  .product-list__refinementChips,
+  .product-list__recentSearches,
+  .product-detail-tabs .ant-tabs-nav,
+  .product-detail-tabs .ant-tabs-nav-wrap,
+  .coupon-center-page__quickNav,
+  .wishlist-page__insightStats,
+  .order-tracking-page__steps,
+  .pet-gallery-toolbar
+) {
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+/* Native App final pass: prefer the WebView's native document scroll for smoother vertical pan. */
+html.shop-mobile-app-root,
+html.shop-mobile-app-root body,
+body.shop-mobile-app,
+body.shop-mobile-app #root {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: auto !important;
+  scroll-behavior: auto !important;
+  touch-action: pan-y pinch-zoom !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app .shop-app-shell,
+body.shop-mobile-app .shop-app-shell.ant-layout,
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  height: auto !important;
+  min-height: 100svh !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  overscroll-behavior-y: auto !important;
+  scroll-behavior: auto !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+body.shop-mobile-app :where(.shopee-product, .product-list__card.ant-card) {
+  contain: none !important;
+}
+
+body.shop-mobile-app :where(
+  .shopee-product:active,
+  .product-list__card.ant-card:active,
+  .shopee-mobile-quick-panel button:active,
+  .shopee-categories button:active
+) {
+  transform: none !important;
+}
+
+/* Native App readable surfaces: keep warm ShopMX surfaces without white-on-white controls. */
+body.shop-mobile-app :where(
+  .ant-card,
+  .ant-list,
+  .ant-alert,
+  .ant-collapse,
+  .ant-descriptions,
+  .ant-tabs,
+  .ant-table,
+  .ant-table-container,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown
+) {
+  border-color: rgba(18, 71, 52, 0.12) !important;
+  background: linear-gradient(180deg, #fffdf8 0%, #f8fcf9 100%) !important;
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-card-head-title,
+  .ant-form-item-label > label,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-select-selector,
+  .ant-select-selection-item,
+  .ant-select-item-option-content,
+  .ant-cascader-menu-item,
+  .ant-radio-wrapper,
+  .ant-checkbox-wrapper,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-list-item-meta-title,
+  .ant-list-item-meta-description,
+  .ant-empty-description,
+  .ant-typography,
+  .ant-table,
+  .ant-table-cell
+) {
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-typography-secondary,
+  .ant-card-meta-description,
+  .ant-list-item-meta-description,
+  .ant-form-item-extra,
+  .ant-input::placeholder,
+  .ant-select-selection-placeholder
+) {
+  color: #627064 !important;
+}
+
+body.shop-mobile-app :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select-selector, .ant-picker, textarea.ant-input) {
+  background: #ffffff !important;
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app :where(
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) :where(.ant-typography, h1, h2, h3, h4, p, span, strong, small) {
+  color: #ffffff !important;
+}
+
+/* Address cascader: keep linked region menus visible in body-mounted App popups. */
+body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
+  left: max(8px, env(safe-area-inset-left, 0px)) !important;
+  right: auto !important;
+  width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+  max-width: calc(100vw - 16px) !important;
+  max-height: min(66dvh, 520px) !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(18, 71, 52, 0.12) !important;
+  box-shadow: 0 18px 38px rgba(18, 71, 52, 0.18) !important;
+}
+
+body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menus {
+  display: flex !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  max-height: min(66dvh, 520px) !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  background: #fffdf8 !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu {
+  flex: 0 0 min(44vw, 188px) !important;
+  min-width: 144px !important;
+  max-width: 188px !important;
+  max-height: min(66dvh, 520px) !important;
+  overflow-y: auto !important;
+  background: #fffdf8 !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item {
+  min-height: 40px !important;
+  color: #173f2b !important;
+  font-weight: 700;
+}
+
+body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item-active,
+body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item:hover {
+  background: #eaf4ef !important;
+  color: #124734 !important;
+}
+
+body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item-expand-icon {
+  color: #627064 !important;
+}
+
+/* Coupon next action: do not truncate the savings instruction on App screens. */
+body.shop-mobile-app .coupon-center-page__heroPlan {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-content: start !important;
+  min-height: auto !important;
+  overflow: visible !important;
+}
+
+body.shop-mobile-app .coupon-center-page__heroPlan strong,
+body.shop-mobile-app .coupon-center-page__heroPlan > span:not(.ant-typography),
+body.shop-mobile-app .coupon-next-action h3,
+body.shop-mobile-app .coupon-next-action p,
+body.shop-mobile-app .coupon-center-page__mobileActionInsight span,
+body.shop-mobile-app .coupon-center-page__mobileActionInsight strong {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  -webkit-line-clamp: unset !important;
+}
+
+body.shop-mobile-app .coupon-center-page__heroPlan .ant-btn,
+body.shop-mobile-app .coupon-next-action > .ant-btn {
+  width: 100% !important;
+  min-height: 44px !important;
+}
+
+body.shop-mobile-app .coupon-next-action {
+  gap: 10px !important;
+  overflow: visible !important;
+}
+
+body.shop-mobile-app .coupon-center-page__mobileActionBar {
+  align-items: stretch !important;
+  height: auto !important;
+}
+
+body.shop-mobile-app .coupon-center-page__mobileActionInsight {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start !important;
+}
+
+body.shop-mobile-app .coupon-center-page__mobileActionBar .ant-btn,
+body.shop-mobile-app .coupon-center-page__mobileActionBar .ant-btn > span:not(.ant-btn-icon):not(.anticon) {
+  height: auto !important;
+  min-height: 42px !important;
+  white-space: normal !important;
+}
+
+/* Cart route: the checkout dock must never consume taps meant for the App bottom rail. */
+body.shop-mobile-app .shop-nav__bottomBar {
+  z-index: 3200 !important;
+  pointer-events: auto !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  pointer-events: auto !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page {
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 142px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
+  position: sticky !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 1800 !important;
+  margin-right: calc(var(--app-screen-gutter, 12px) * -1) !important;
+  margin-bottom: 0 !important;
+  margin-left: calc(var(--app-screen-gutter, 12px) * -1) !important;
+  pointer-events: auto !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary::before,
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary::after {
+  pointer-events: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .app-support-launcher,
+body.shop-mobile-app .shop-app-shell--cart .customer-support-widget__button {
+  z-index: 2500 !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shop-app-shell--cart .cart-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 130px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Native App chroma correction: remove the growing pure-white component layer. */
+body.shop-mobile-app {
+  --app-bg: #eef6f0;
+  --app-surface: #f5f0e3;
+  --app-surface-muted: #eaf4ec;
+  --app-surface-warm: #fff1df;
+  --app-control-bg: #fff4e8;
+  --app-ink: #173f2b;
+  --app-muted: #607063;
+  --app-line: rgba(18, 71, 52, 0.14);
+  background:
+    radial-gradient(circle at 16% 0, rgba(238, 77, 45, 0.16), transparent 168px),
+    linear-gradient(180deg, #124734 0, #124734 116px, #f5ead8 116px, #eef6f0 58%, #f5f8f1 100%) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell,
+body.shop-mobile-app .shop-app-shell.ant-layout,
+body.shop-mobile-app .shop-app-shell .ant-layout-content,
+html.shop-mobile-app-root,
+body.shop-mobile-app #root {
+  background: transparent !important;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group,
+body.shop-mobile-app .shop-nav__actions button,
+body.shop-mobile-app .shop-nav__actions a,
+body.shop-mobile-app .shop-nav__admin {
+  background: rgba(255, 241, 223, 0.18) !important;
+  border-color: rgba(255, 241, 223, 0.34) !important;
+}
+
+body.shop-mobile-app .shop-nav__search .ant-input-group {
+  background: #fff1df !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  background: linear-gradient(180deg, rgba(255, 241, 223, 0.98), rgba(229, 243, 233, 0.98)) !important;
+  border-top-color: rgba(18, 71, 52, 0.18) !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  color: #52685a !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active {
+  background: #124734 !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active .anticon,
+body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app :is(
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-input-number-input,
+  .ant-picker,
+  textarea.ant-input,
+  .ant-select-selector,
+  .ant-cascader-picker,
+  .ant-radio-button-wrapper,
+  .ant-segmented,
+  .ant-upload,
+  .ant-upload-drag
+) {
+  background: var(--app-control-bg) !important;
+  border-color: rgba(18, 71, 52, 0.18) !important;
+  color: var(--app-ink) !important;
+  box-shadow: none !important;
+}
+
+body.shop-mobile-app .ant-input::placeholder,
+body.shop-mobile-app textarea.ant-input::placeholder,
+body.shop-mobile-app .ant-select-selection-placeholder,
+body.shop-mobile-app .ant-picker-input > input::placeholder {
+  color: #6b796d !important;
+}
+
+body.shop-mobile-app :is(
+  .ant-btn-default:not(.ant-btn-dangerous),
+  .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-link):not(.ant-btn-text),
+  .ant-pagination-item,
+  .ant-pagination-prev .ant-pagination-item-link,
+  .ant-pagination-next .ant-pagination-item-link
+) {
+  background: linear-gradient(180deg, #fff1df, #eaf4ec) !important;
+  border-color: rgba(18, 71, 52, 0.18) !important;
+  color: #124734 !important;
+}
+
+body.shop-mobile-app :is(
+  .ant-tag,
+  .ant-badge-status-text,
+  .ant-statistic,
+  .ant-empty
+) {
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .ant-tag {
+  background: rgba(18, 71, 52, 0.08) !important;
+  border-color: rgba(18, 71, 52, 0.14) !important;
+}
+
+body.shop-mobile-app :is(.ant-tag-green, .ant-tag-success) {
+  background: #dcefe3 !important;
+  color: #124734 !important;
+}
+
+body.shop-mobile-app :is(.ant-tag-gold, .ant-tag-warning) {
+  background: #fff1df !important;
+  color: #7a3a18 !important;
+}
+
+body.shop-mobile-app :is(.ant-tag-red, .ant-tag-volcano, .ant-tag-error) {
+  background: #ffe5da !important;
+  color: #8f2d17 !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .ant-card,
+  .ant-list,
+  .ant-alert,
+  .ant-collapse,
+  .ant-descriptions,
+  .ant-tabs,
+  .ant-table-wrapper,
+  .ant-table,
+  .shopee-product,
+  .shopee-mobile-quick-panel,
+  .shopee-home-actions,
+  .shopee-mobile-priority,
+  .shopee-conversion-band,
+  .shopee-conversion-strip,
+  .shopee-categories button,
+  .product-list__card,
+  .product-list__toolbar,
+  .product-list__mobileContextBar,
+  .product-list__mobileDiscovery,
+  .product-list__refinementChips,
+  .product-list__recentSearches,
+  .product-list__mobileNextStep,
+  .product-list__mobileConversionBar,
+  .cart-page__mobileItem,
+  .cart-page__summary,
+  .cart-page__bulkActions,
+  .cart-page__readiness,
+  .cart-page__nextAction,
+  .cart-page__recentRecovery,
+  .cart-page__savedCard,
+  .checkout-page .ant-card,
+  .profile-page .ant-card,
+  .order-tracking-page .ant-card,
+  .coupon-center-page .ant-card,
+  .coupon-next-action,
+  .coupon-center-page__mobileActionBar,
+  .wishlist-page .ant-card,
+  .stock-alerts .ant-list,
+  .stock-alerts__assistant,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction,
+  .stock-alerts__mobileAction,
+  .browsing-history-page .ant-card,
+  .notifications-page .ant-card,
+  .pet-finder-page .ant-card,
+  .pet-gallery-page .ant-card
+) {
+  border-color: var(--app-line) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 241, 223, 0.98) 0%, rgba(235, 246, 237, 0.98) 100%) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .ant-card,
+  .ant-list,
+  .ant-alert,
+  .ant-collapse,
+  .ant-descriptions,
+  .ant-tabs,
+  .ant-table-wrapper,
+  .shopee-product,
+  .product-list__card,
+  .cart-page__mobileItem,
+  .cart-page__summary,
+  .checkout-page .ant-card,
+  .profile-page .ant-card,
+  .order-tracking-page .ant-card,
+  .coupon-center-page .ant-card,
+  .wishlist-page .ant-card,
+  .notifications-page .ant-card
+) {
+  box-shadow: 0 16px 34px rgba(18, 71, 52, 0.12), 0 4px 12px rgba(18, 71, 52, 0.06) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .ant-card,
+  .ant-list,
+  .ant-alert,
+  .ant-collapse,
+  .ant-descriptions,
+  .ant-tabs,
+  .ant-table,
+  .shopee-product,
+  .product-list__card,
+  .cart-page__mobileItem,
+  .cart-page__summary,
+  .cart-page__bulkActions,
+  .cart-page__readiness,
+  .cart-page__nextAction,
+  .cart-page__recentRecovery,
+  .cart-page__savedCard,
+  .coupon-next-action,
+  .coupon-center-page__mobileActionBar,
+  .stock-alerts__assistant,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction,
+  .stock-alerts__mobileAction
+) :is(
+  .ant-card-head-title,
+  .ant-form-item-label > label,
+  .ant-list-item-meta-title,
+  .ant-list-item-meta-description,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-typography,
+  .ant-table-cell,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  small
+) {
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .ant-card,
+  .ant-list,
+  .cart-page__mobileItem,
+  .cart-page__summary,
+  .coupon-next-action,
+  .stock-alerts__assistant,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction
+) :is(
+  .ant-typography-secondary,
+  .ant-card-meta-description,
+  .ant-list-item-meta-description,
+  .ant-form-item-extra
+) {
+  color: var(--app-muted) !important;
+}
+
+body.shop-mobile-app :is(
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-popover-inner,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown .ant-picker-panel-container,
+  .ant-message-notice-content,
+  .ant-notification-notice
+) {
+  border-color: var(--app-line) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 241, 223, 0.99) 0%, rgba(235, 246, 237, 0.99) 100%) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :is(
+  .ant-dropdown-menu-item,
+  .ant-select-item,
+  .ant-cascader-menu,
+  .ant-cascader-menu-item,
+  .ant-picker-panel,
+  .ant-picker-header,
+  .ant-picker-content th,
+  .ant-picker-cell
+) {
+  background: transparent !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :is(
+  .ant-dropdown-menu-item-active,
+  .ant-select-item-option-active,
+  .ant-select-item-option-selected,
+  .ant-cascader-menu-item-active,
+  .ant-cascader-menu-item:hover,
+  .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner
+) {
+  background: #dcefe3 !important;
+  color: #124734 !important;
+}
+
+body.shop-mobile-app :is(
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td,
+  .ant-list-item,
+  .ant-collapse-content,
+  .ant-collapse-content-box,
+  .ant-tabs-content-holder,
+  .ant-card-head
+) {
+  background: transparent !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :is(
+  .shopee-product__imageWrap,
+  .product-list__imageWrap,
+  .cart-page__mobileItemImage,
+  .cart-page__tableImage,
+  .order-tracking-page__image
+) {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(238, 77, 45, 0.12), transparent 4rem),
+    linear-gradient(135deg, #fff1df, #dfeee5) !important;
+}
+
+body.shop-mobile-app :is(
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) {
+  background:
+    linear-gradient(135deg, rgba(18, 71, 52, 0.98), rgba(18, 71, 52, 0.9) 54%, rgba(238, 77, 45, 0.74)) !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app :is(
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) :is(.ant-typography, h1, h2, h3, h4, p, span, strong, small) {
+  color: #fff7f0 !important;
+}
+
+/* Native App surface hardening: close remaining pure-white gaps after page CSS loads. */
+body.shop-mobile-app {
+  --app-bg: #eef6f0;
+  --app-surface: #f6efe2;
+  --app-surface-strong: #fff1df;
+  --app-surface-muted: #e8f3ea;
+  --app-panel-gradient: linear-gradient(145deg, #fff1df 0%, #e8f3ea 100%);
+  --app-panel-gradient-soft: linear-gradient(180deg, #fff4e8 0%, #edf6ef 100%);
+  --app-ink: #173f2b;
+  --app-muted: #586b5e;
+  --app-line: rgba(18, 71, 52, 0.16);
+  --app-primary: #124734;
+  --app-accent: #ee4d2d;
+  --shop-mobile-bottom-nav-height: 76px;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-card,
+  .ant-card-body,
+  .ant-card-head,
+  .ant-list,
+  .ant-list-item,
+  .ant-alert,
+  .ant-collapse,
+  .ant-collapse-item,
+  .ant-collapse-content,
+  .ant-collapse-content-box,
+  .ant-descriptions,
+  .ant-descriptions-view,
+  .ant-tabs,
+  .ant-tabs-nav,
+  .ant-tabs-content-holder,
+  .ant-result,
+  .ant-empty,
+  .ant-statistic,
+  .ant-table-wrapper,
+  .ant-table,
+  .ant-table-container,
+  .ant-table-content,
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td,
+  .ant-table-placeholder,
+  .ant-table-expanded-row-fixed,
+  .ant-table-cell-fix-left,
+  .ant-table-cell-fix-right
+) {
+  border-color: var(--app-line) !important;
+  background: var(--app-panel-gradient-soft) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-card-body,
+  .ant-list-item,
+  .ant-collapse-content-box,
+  .ant-tabs-tabpane,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td
+) {
+  background: transparent !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-typography,
+  .ant-card-meta-title,
+  .ant-card-head-title,
+  .ant-list-item-meta-title,
+  .ant-descriptions-title,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-form-item-label > label,
+  .ant-checkbox-wrapper,
+  .ant-radio-wrapper,
+  .ant-statistic-title,
+  .ant-statistic-content,
+  .ant-table-cell,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  strong,
+  small,
+  label
+) {
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-typography-secondary,
+  .ant-card-meta-description,
+  .ant-list-item-meta-description,
+  .ant-form-item-extra,
+  .ant-form-item-explain,
+  .ant-empty-description,
+  .ant-statistic-title,
+  .ant-table-column-sorter,
+  .ant-table-filter-trigger
+) {
+  color: var(--app-muted) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-input-number-input,
+  .ant-input-number-handler-wrap,
+  .ant-input-group-addon,
+  .ant-picker,
+  .ant-picker-input > input,
+  textarea.ant-input,
+  .ant-select-selector,
+  .ant-select-selection-item,
+  .ant-select-selection-search-input,
+  .ant-cascader-picker,
+  .ant-segmented,
+  .ant-segmented-item,
+  .ant-radio-button-wrapper,
+  .ant-upload,
+  .ant-upload-drag
+) {
+  border-color: var(--app-line) !important;
+  background: var(--app-surface-strong) !important;
+  color: var(--app-ink) !important;
+  box-shadow: none !important;
+}
+
+body.shop-mobile-app .ant-input::placeholder,
+body.shop-mobile-app textarea.ant-input::placeholder,
+body.shop-mobile-app .ant-picker-input > input::placeholder,
+body.shop-mobile-app .ant-select-selection-placeholder {
+  color: #68786b !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-btn-default:not(.ant-btn-dangerous),
+  .ant-btn:not(.ant-btn-primary):not(.ant-btn-dangerous):not(.ant-btn-link):not(.ant-btn-text),
+  .ant-pagination-item,
+  .ant-pagination-prev .ant-pagination-item-link,
+  .ant-pagination-next .ant-pagination-item-link,
+  .ant-select-clear,
+  .ant-picker-clear
+) {
+  border-color: var(--app-line) !important;
+  background: linear-gradient(180deg, #fff1df, #e6f2e8) !important;
+  color: var(--app-primary) !important;
+}
+
+body.shop-mobile-app :where(.ant-btn-text, .ant-btn-link) {
+  color: var(--app-primary) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-modal-content,
+  .ant-modal-header,
+  .ant-modal-footer,
+  .ant-drawer-content,
+  .ant-drawer-header,
+  .ant-drawer-body,
+  .ant-drawer-footer,
+  .ant-popover-inner,
+  .ant-popover-title,
+  .ant-dropdown-menu,
+  .ant-dropdown-menu-submenu,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown .ant-picker-panel-container,
+  .ant-message-notice-content,
+  .ant-notification-notice
+) {
+  border-color: var(--app-line) !important;
+  background: var(--app-panel-gradient) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-dropdown-menu-item,
+  .ant-dropdown-menu-submenu-title,
+  .ant-select-item,
+  .ant-cascader-menu,
+  .ant-cascader-menu-item,
+  .ant-picker-panel,
+  .ant-picker-header,
+  .ant-picker-content th,
+  .ant-picker-cell
+) {
+  background: transparent !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-dropdown-menu-item-active,
+  .ant-dropdown-menu-submenu-title-active,
+  .ant-select-item-option-active,
+  .ant-select-item-option-selected,
+  .ant-cascader-menu-item-active,
+  .ant-cascader-menu-item:hover,
+  .ant-segmented-item-selected
+) {
+  background: #dcefe3 !important;
+  color: var(--app-primary) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .shopee-mobile-priority,
+  .shopee-mobile-quick-panel,
+  .shopee-home-actions,
+  .shopee-conversion-band,
+  .shopee-conversion-band__card,
+  .shopee-conversion-strip,
+  .shopee-conversion-strip__item,
+  .shopee-coupon-entry,
+  .shopee-categories button,
+  .product-list__toolbar,
+  .product-list__mobileNextStep,
+  .product-list__mobileConversionBar,
+  .product-list__mobileContextChip,
+  .product-list__mobileDiscoveryButton,
+  .product-list__refinementChips .ant-tag,
+  .cart-page__summaryStripCard,
+  .cart-page__heroStat,
+  .cart-page__emptyHero,
+  .cart-page__emptyPanel,
+  .cart-page__emptySignals,
+  .cart-page__recentRecovery,
+  .cart-page__recentItem,
+  .cart-page__bulkActions,
+  .cart-page__readiness,
+  .cart-page__confidencePanel,
+  .cart-page__confidenceItem,
+  .cart-page__nextAction,
+  .cart-page__savedCard,
+  .cart-page__savedItem,
+  .cart-page__addOn,
+  .checkout-page__summaryStripCard,
+  .checkout-page__expressCard,
+  .checkout-page__paymentMethod,
+  .checkout-page__benefitStrip,
+  .checkout-page__benefitItem,
+  .checkout-page__savingsCoach,
+  .checkout-page__addOnDock,
+  .checkout-page__couponOpportunity,
+  .checkout-page__readiness,
+  .checkout-page__sectionCard,
+  .checkout-page__item,
+  .checkout-page__addressOption,
+  .checkout-page__couponRules,
+  .checkout-page__couponSummary,
+  .checkout-page__paymentConfidence,
+  .checkout-page__submitReview,
+  .checkout-page__mobilePayBar,
+  .coupon-center-page__quickNav,
+  .coupon-center-page__mobileActionBar,
+  .coupon-center-page__statCard,
+  .coupon-center-page__heroBadge,
+  .coupon-priority-card,
+  .coupon-savings-path,
+  .coupon-next-action,
+  .coupon-claim-section,
+  .coupon-claim-section__toolbar,
+  .coupon-claim-section__notice,
+  .coupon-claim-section__claimResult,
+  .coupon-claim-section__filterButtons,
+  .coupon-claim-section__activeContext,
+  .coupon-claim-section__resultSummary,
+  .coupon-center-page__couponCard,
+  .coupon-wallet,
+  .coupon-wallet__summary,
+  .coupon-wallet__guide,
+  .coupon-wallet__filters,
+  .coupon-wallet__item,
+  .wishlist-page__insightBar,
+  .wishlist-page__recovery,
+  .wishlist-page__readiness,
+  .wishlist-page__nextAction,
+  .wishlist-page__bestPick,
+  .wishlist-page__card,
+  .stock-alerts__assistant,
+  .stock-alerts__signal,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction,
+  .stock-alerts__mobileAction,
+  .browsing-history-page .ant-card,
+  .notifications-page__actionPlan,
+  .notifications-page__card,
+  .pet-finder-page .ant-card,
+  .pet-gallery-page .ant-card,
+  .payment-modal__summary,
+  .payment-modal__method,
+  .payment-modal__channelNote,
+  .payment-instructions-page__card,
+  .payment-instructions-page__status,
+  .payment-instructions-page__notice,
+  .customer-support-widget,
+  .customer-support-widget__panel,
+  .customer-support-widget__message,
+  .cart-drawer__item,
+  .cart-drawer__summary,
+  .cart-drawer__footer
+) {
+  border-color: var(--app-line) !important;
+  background: var(--app-panel-gradient) !important;
+  color: var(--app-ink) !important;
+  box-shadow: var(--app-shadow-card, 0 16px 34px rgba(18, 71, 52, 0.12), 0 4px 12px rgba(18, 71, 52, 0.06)) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .shopee-mobile-priority,
+  .shopee-mobile-quick-panel,
+  .shopee-home-actions,
+  .shopee-conversion-band,
+  .shopee-conversion-band__card,
+  .shopee-conversion-strip,
+  .shopee-conversion-strip__item,
+  .shopee-coupon-entry,
+  .cart-page__summaryStripCard,
+  .cart-page__heroStat,
+  .cart-page__emptyHero,
+  .cart-page__emptyPanel,
+  .cart-page__emptySignals,
+  .cart-page__recentRecovery,
+  .cart-page__recentItem,
+  .cart-page__bulkActions,
+  .cart-page__readiness,
+  .cart-page__confidencePanel,
+  .cart-page__confidenceItem,
+  .cart-page__nextAction,
+  .cart-page__savedCard,
+  .cart-page__savedItem,
+  .checkout-page__summaryStripCard,
+  .checkout-page__expressCard,
+  .checkout-page__paymentMethod,
+  .checkout-page__benefitStrip,
+  .checkout-page__benefitItem,
+  .checkout-page__savingsCoach,
+  .checkout-page__couponOpportunity,
+  .checkout-page__readiness,
+  .checkout-page__sectionCard,
+  .checkout-page__item,
+  .checkout-page__addressOption,
+  .coupon-center-page__quickNav,
+  .coupon-center-page__statCard,
+  .coupon-priority-card,
+  .coupon-savings-path,
+  .coupon-next-action,
+  .coupon-claim-section,
+  .coupon-wallet,
+  .coupon-wallet__item,
+  .wishlist-page__insightBar,
+  .wishlist-page__recovery,
+  .wishlist-page__readiness,
+  .wishlist-page__nextAction,
+  .wishlist-page__bestPick,
+  .wishlist-page__card,
+  .stock-alerts__assistant,
+  .stock-alerts__signal,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction,
+  .stock-alerts__mobileAction,
+  .notifications-page__actionPlan,
+  .notifications-page__card,
+  .payment-modal__summary,
+  .payment-modal__method,
+  .payment-instructions-page__card,
+  .customer-support-widget__panel,
+  .cart-drawer__item,
+  .cart-drawer__summary
+) :where(.ant-typography, h1, h2, h3, h4, h5, h6, p, span, strong, small, label, a) {
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .profile-overview,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) {
+  background:
+    linear-gradient(135deg, rgba(18, 71, 52, 0.99), rgba(18, 71, 52, 0.92) 56%, rgba(238, 77, 45, 0.78)) !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .profile-overview,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) :where(.ant-typography, h1, h2, h3, h4, p, span, strong, small, label, a) {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview :where(.ant-typography-secondary, .profile-overview__text, .profile-overview__eyebrow, .profile-overview__stat span) {
+  color: rgba(255, 247, 240, 0.88) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview :where(.profile-overview__stat strong, .profile-overview__copy h2.ant-typography) {
+  color: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview .ant-btn-default {
+  border-color: rgba(255, 247, 240, 0.34) !important;
+  background: rgba(255, 247, 240, 0.12) !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-action-center,
+  .profile-action-center__card,
+  .profile-mobile-entry__item,
+  .profile-section-card,
+  .profile-address-card,
+  .profile-order-card,
+  .profile-pet-next-step,
+  .profile-pet-shop-path,
+  .profile-address-readiness,
+  .profile-after-sale-panel,
+  .profile-order-card__summary,
+  .profile-order-card__item,
+  .profile-payment-card,
+  .profile-return-card
+) {
+  border-color: var(--app-line) !important;
+  background: var(--app-panel-gradient) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-action-center,
+  .profile-action-center__card,
+  .profile-mobile-entry__item,
+  .profile-section-card,
+  .profile-address-card,
+  .profile-order-card,
+  .profile-pet-next-step,
+  .profile-pet-shop-path,
+  .profile-address-readiness,
+  .profile-after-sale-panel,
+  .profile-order-card__summary,
+  .profile-order-card__item,
+  .profile-payment-card,
+  .profile-return-card
+) :where(.ant-typography, h1, h2, h3, h4, p, span, strong, small, label, a) {
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-action-center,
+  .profile-section-card,
+  .profile-address-card,
+  .profile-order-card,
+  .profile-pet-next-step,
+  .profile-pet-shop-path,
+  .profile-address-readiness,
+  .profile-after-sale-panel
+) :where(.ant-typography-secondary, .ant-card-meta-description, .ant-list-item-meta-description) {
+  color: var(--app-muted) !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  position: fixed !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  z-index: 5200 !important;
+  display: grid !important;
+  min-height: calc(var(--shop-mobile-bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  pointer-events: auto !important;
+  transform: translateZ(0);
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  pointer-events: auto !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page {
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 164px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
+  position: sticky !important;
+  right: var(--app-screen-gutter, 12px) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+  left: var(--app-screen-gutter, 12px) !important;
+  z-index: 2100 !important;
+  margin-bottom: 0 !important;
+  pointer-events: auto !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary .ant-card-body {
+  padding-bottom: 12px !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary::before,
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary::after {
+  pointer-events: none !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app {
+    --shop-mobile-bottom-nav-height: 72px;
+  }
+
+  body.shop-mobile-app .shop-app-shell--cart .cart-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 150px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Native App readability continuation: keep route-level fixes after page CSS overrides. */
+html.shop-mobile-app-root,
+html.shop-mobile-app-root body,
+body.shop-mobile-app,
+body.shop-mobile-app #root {
+  width: 100% !important;
+  max-width: 100vw !important;
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y pinch-zoom !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app .shop-app-shell,
+body.shop-mobile-app .shop-app-shell.ant-layout {
+  width: 100% !important;
+  min-height: 100dvh !important;
+  min-height: 100svh !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  overscroll-behavior-y: auto !important;
+}
+
+body.shop-mobile-app .shop-app-shell .ant-layout-content {
+  min-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 76px)) !important;
+  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 76px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px)) !important;
+  overflow: visible !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-card,
+  .ant-card-body,
+  .ant-list,
+  .ant-list-item,
+  .ant-alert,
+  .ant-collapse,
+  .ant-tabs,
+  .ant-tabs-nav,
+  .ant-table-wrapper,
+  .ant-table,
+  .ant-table-container,
+  .profile-mobile-entry__item,
+  .profile-health-panel,
+  .profile-pet-insights__card,
+  .profile-payment-recovery,
+  .profile-payment-method-hint,
+  .profile-payment-history__item,
+  .coupon-center-page__coupon,
+  .coupon-center-page__couponFit,
+  .coupon-wallet__coupon,
+  .coupon-wallet__quickFact,
+  .coupon-wallet__fit
+) {
+  border-color: var(--app-line) !important;
+  background: var(--app-panel-gradient-soft) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-card-body,
+  .ant-list-item,
+  .ant-tabs-content-holder,
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td
+) {
+  background: transparent !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview,
+body.shop-mobile-app .shop-app-shell .profile-overview :where(
+  .ant-typography,
+  .ant-typography-secondary,
+  .ant-statistic,
+  .ant-statistic-title,
+  .ant-statistic-content,
+  .anticon,
+  h1,
+  h2,
+  h3,
+  p,
+  span,
+  strong,
+  small,
+  label,
+  a
+) {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview :where(
+  .profile-overview__text,
+  .profile-overview__eyebrow,
+  .profile-overview__stat span,
+  .ant-typography-secondary
+) {
+  color: rgba(255, 247, 240, 0.88) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview :where(.ant-btn-default, .ant-btn:not(.ant-btn-primary)) {
+  border-color: rgba(255, 247, 240, 0.42) !important;
+  background: rgba(255, 247, 240, 0.14) !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview :where(.ant-btn-default, .ant-btn:not(.ant-btn-primary)) :where(span, .anticon) {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-mobile-entry__item--active,
+  .profile-orders__tab--active,
+  .profile-action-center__card--pay,
+  .profile-action-center__card--return
+) {
+  background: #124734 !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-mobile-entry__item--active,
+  .profile-orders__tab--active,
+  .profile-action-center__card--pay,
+  .profile-action-center__card--return
+) :where(.ant-typography, span, strong, small, .anticon) {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .coupon-center-page :where(
+  .coupon-center-page__heroPlan,
+  .coupon-center-page__mobileActionInsight,
+  .coupon-next-action,
+  .coupon-next-action__meta,
+  .coupon-next-action__metaItem,
+  .coupon-next-action__progressLabel,
+  .coupon-priority-card,
+  .coupon-savings-path,
+  .coupon-center-page__couponFit,
+  .coupon-wallet__fit
+) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+body.shop-mobile-app .coupon-center-page :where(
+  .coupon-center-page__heroPlan,
+  .coupon-center-page__heroPlan *,
+  .coupon-center-page__mobileActionInsight,
+  .coupon-center-page__mobileActionInsight *,
+  .coupon-next-action,
+  .coupon-next-action *,
+  .coupon-priority-card h3,
+  .coupon-priority-card p,
+  .coupon-savings-path *,
+  .coupon-center-page__couponFit span,
+  .coupon-wallet__fit span
+) {
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: unset !important;
+}
+
+body.shop-mobile-app .coupon-center-page :where(.coupon-center-page__mobileActionBar, .coupon-next-action) .ant-btn {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 44px !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  z-index: 9000 !important;
+  isolation: isolate;
+  pointer-events: auto !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page {
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 176px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 20px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 1600 !important;
+  max-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 76px) - 132px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summaryFooter {
+  gap: 10px !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary .ant-btn-primary {
+  min-height: 48px !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shop-app-shell--cart .cart-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 158px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Profile green contrast fix: prevent success-green text from sitting on green app panels. */
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .ant-tag-green,
+  .ant-tag-success,
+  .ant-tag[color='green']
+) {
+  border-color: rgba(18, 71, 52, 0.26) !important;
+  background: #fff4e8 !important;
+  color: #173f2b !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .ant-tag-green,
+  .ant-tag-success,
+  .ant-tag[color='green']
+) :where(span, .anticon) {
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview__stat {
+  border-color: rgba(255, 247, 240, 0.26) !important;
+  background: rgba(255, 247, 240, 0.12) !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-overview__stat :where(strong, span, .ant-typography, .anticon) {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-action-center__card--pay,
+  .profile-action-center__card--return,
+  .profile-mobile-entry__item--active,
+  .profile-orders__tab--active,
+  .profile-order-card__next--success,
+  .profile-address-readiness__stats span:first-child,
+  .profile-after-sale-panel__metrics button,
+  .profile-pet-shop-path__actions .ant-tag-green
+) {
+  border-color: rgba(255, 247, 240, 0.22) !important;
+  background: #124734 !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-action-center__card--pay,
+  .profile-action-center__card--return,
+  .profile-mobile-entry__item--active,
+  .profile-orders__tab--active,
+  .profile-order-card__next--success,
+  .profile-address-readiness__stats span:first-child,
+  .profile-after-sale-panel__metrics button,
+  .profile-pet-shop-path__actions .ant-tag-green
+) :where(.ant-typography, .ant-typography-secondary, span, strong, small, label, .anticon) {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-action-center__card:not(.profile-action-center__card--pay):not(.profile-action-center__card--return),
+  .profile-mobile-entry__item:not(.profile-mobile-entry__item--active),
+  .profile-orders__tab:not(.profile-orders__tab--active),
+  .profile-health-panel__chips .ant-tag-green,
+  .profile-pet-insights__card .ant-tag-green,
+  .profile-pet-shop-path .ant-tag-green,
+  .profile-section-card .ant-tag-green,
+  .profile-order-card .ant-tag-green,
+  .profile-mobile-safe-modal .ant-tag-green
+) {
+  background: #fff4e8 !important;
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app .shop-app-shell .profile-page :is(
+  .profile-action-center__card:not(.profile-action-center__card--pay):not(.profile-action-center__card--return),
+  .profile-mobile-entry__item:not(.profile-mobile-entry__item--active),
+  .profile-orders__tab:not(.profile-orders__tab--active),
+  .profile-health-panel__chips .ant-tag-green,
+  .profile-pet-insights__card .ant-tag-green,
+  .profile-pet-shop-path .ant-tag-green,
+  .profile-section-card .ant-tag-green,
+  .profile-order-card .ant-tag-green,
+  .profile-mobile-safe-modal .ant-tag-green
+) :where(.ant-typography, span, strong, small, .anticon) {
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app :is(
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :is(
+  .ant-tag-green,
+  .ant-tag-success,
+  .ant-tag[color='green']
+) {
+  border-color: rgba(18, 71, 52, 0.26) !important;
+  background: #fff4e8 !important;
+  color: #173f2b !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55) !important;
+}
+
+body.shop-mobile-app :is(
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :is(
+  .ant-tag-green,
+  .ant-tag-success,
+  .ant-tag[color='green']
+) :where(span, .anticon) {
+  color: #173f2b !important;
+}
+
+/* App route color closure: cover late-loaded page CSS and body-mounted Drawer/Modal portals. */
+body.shop-mobile-app .shop-app-shell :is(
+  .cart-page__mobileItem,
+  .cart-page__summary,
+  .cart-page__summaryStripCard,
+  .cart-page__bulkActions,
+  .cart-page__readiness,
+  .cart-page__confidencePanel,
+  .cart-page__confidenceItem,
+  .cart-page__nextAction,
+  .cart-page__recentRecovery,
+  .cart-page__recentItem,
+  .cart-page__savedCard,
+  .cart-page__savedItem,
+  .cart-page__addOn,
+  .coupon-center-page__quickNav,
+  .coupon-center-page__mobileActionBar,
+  .coupon-claim-section__controls,
+  .coupon-claim-section__toolbar,
+  .coupon-claim-section__notice,
+  .coupon-claim-section__claimResult,
+  .coupon-claim-section__activeContext,
+  .coupon-claim-section__resultSummary,
+  .coupon-center-page__couponCard,
+  .coupon-center-page__coupon,
+  .coupon-center-page__couponFit,
+  .coupon-wallet__coupon,
+  .coupon-wallet__summary,
+  .coupon-wallet__guide,
+  .coupon-wallet__filters,
+  .coupon-wallet__fit
+),
+body.shop-mobile-app :is(
+  .cart-drawer .ant-drawer-content,
+  .cart-drawer .ant-drawer-header,
+  .cart-drawer .ant-drawer-body,
+  .cart-drawer .ant-drawer-footer,
+  .cart-drawer__hero,
+  .cart-drawer__heroStat,
+  .cart-drawer__shipping,
+  .cart-drawer__nextAction,
+  .cart-drawer__express,
+  .cart-drawer__unavailable,
+  .cart-drawer__boostPanel,
+  .cart-drawer__boostPanel > summary,
+  .cart-drawer__item,
+  .cart-drawer__footer,
+  .cart-drawer__trustRow span,
+  .profile-mobile-safe-modal .ant-modal-content,
+  .profile-mobile-safe-modal .ant-modal-header,
+  .profile-mobile-safe-modal .ant-modal-body,
+  .profile-mobile-safe-modal .ant-modal-footer,
+  .profile-payment-recovery,
+  .profile-payment-recovery > div,
+  .profile-payment-method-hint,
+  .profile-payment-recommend,
+  .profile-payment-recommend__chip,
+  .profile-flow-actions__card,
+  .profile-order-flow,
+  .profile-flow-focus,
+  .profile-order-flow__step,
+  .profile-order-detail,
+  .profile-payment-history__item
+) {
+  border-color: var(--app-line) !important;
+  background: var(--app-panel-gradient-soft) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :is(
+  .profile-address-modal .ant-modal-header,
+  .profile-address-modal .ant-modal-footer,
+  .profile-payment-modal .ant-modal-footer,
+  .cart-drawer .ant-drawer-header,
+  .cart-drawer__footer,
+  .coupon-center-page__quickNav,
+  .coupon-center-page__mobileActionBar,
+  .coupon-claim-section__controls,
+  .cart-page__summary
+) {
+  background: linear-gradient(180deg, rgba(255, 244, 232, 0.98), rgba(232, 243, 234, 0.98)) !important;
+  color: var(--app-ink) !important;
+  backdrop-filter: blur(12px);
+}
+
+body.shop-mobile-app :is(
+  .cart-drawer,
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :where(
+  .ant-drawer-title,
+  .ant-modal-title,
+  .ant-typography,
+  .ant-form-item-label > label,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-list-item-meta-title,
+  .ant-list-item-meta-description,
+  p,
+  label
+) {
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :is(
+  .cart-drawer,
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :where(
+  .ant-typography-secondary,
+  .ant-card-meta-description,
+  .ant-list-item-meta-description,
+  .cart-drawer__shippingStatus,
+  .cart-drawer__shippingGift,
+  .cart-drawer__footerHint,
+  .profile-payment-history__time
+) {
+  color: var(--app-muted) !important;
+}
+
+body.shop-mobile-app :is(
+  .cart-page,
+  .cart-drawer,
+  .coupon-center-page,
+  .profile-page,
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :is(
+  .ant-tag-green,
+  .ant-tag-success,
+  .ant-tag[color='green']
+) {
+  border-color: rgba(18, 71, 52, 0.24) !important;
+  background: #fff4e8 !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :is(
+  .cart-page,
+  .cart-drawer,
+  .coupon-center-page,
+  .profile-page,
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :is(
+  .ant-tag-green,
+  .ant-tag-success,
+  .ant-tag[color='green']
+) :where(span, .anticon) {
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .coupon-claim-section__filterButton--active,
+  .coupon-wallet__filter--active,
+  .coupon-center-page__couponReady,
+  .profile-action-center__card--pay,
+  .profile-action-center__card--return,
+  .profile-mobile-entry__item--active,
+  .profile-orders__tab--active,
+  .profile-order-card__next--success,
+  .cart-page__nextAction--ready,
+  .cart-page__confidenceItem--ready > .anticon,
+  .cart-page__checkoutPathStep--ready > span:first-child
+),
+body.shop-mobile-app :is(
+  .cart-drawer__shippingIcon--ready,
+  .cart-drawer__nextAction--ready .cart-drawer__nextActionIcon
+) {
+  border-color: rgba(255, 247, 240, 0.26) !important;
+  background: var(--app-primary) !important;
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .coupon-claim-section__filterButton--active,
+  .coupon-wallet__filter--active,
+  .coupon-center-page__couponReady,
+  .profile-action-center__card--pay,
+  .profile-action-center__card--return,
+  .profile-mobile-entry__item--active,
+  .profile-orders__tab--active,
+  .profile-order-card__next--success,
+  .cart-page__nextAction--ready
+) :where(.ant-typography, span, strong, small, .anticon),
+body.shop-mobile-app :is(
+  .cart-drawer__shippingIcon--ready,
+  .cart-drawer__nextAction--ready .cart-drawer__nextActionIcon
+) :where(span, .anticon) {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .coupon-claim-section__filterButton--active,
+  .coupon-wallet__filter--active
+) strong {
+  background: #fff7f0 !important;
+  color: var(--app-primary) !important;
+}
+
+body.shop-mobile-app :is(
+  .cart-drawer,
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :where(
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-input-number-input,
+  .ant-select-selector,
+  .ant-picker,
+  textarea.ant-input
+) {
+  border-color: var(--app-line) !important;
+  background: var(--app-surface-strong) !important;
+  color: var(--app-ink) !important;
+}
+
+body.shop-mobile-app :where(.ant-btn-primary, .ant-btn-primary span, .ant-btn-primary .anticon) {
+  color: #ffffff !important;
+}
+
+/* App contrast closure: keep light panels dark-text and dark actions light-text. */
+body.shop-mobile-app {
+  --app-on-light: #173f2b;
+  --app-on-light-muted: #586b5e;
+  --app-on-dark: #fff7f0;
+  --app-chip-light: #fff4e8;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-card,
+  .ant-card-body,
+  .ant-card-head,
+  .ant-list,
+  .ant-list-item,
+  .ant-alert,
+  .ant-collapse,
+  .ant-collapse-content,
+  .ant-descriptions,
+  .ant-empty,
+  .ant-result,
+  .ant-statistic,
+  .ant-table,
+  .ant-table-wrapper,
+  .ant-tabs,
+  .ant-tabs-content-holder,
+  .ant-timeline-item-content,
+  .cart-page__mobileItem,
+  .cart-page__summary,
+  .cart-page__summaryStripCard,
+  .cart-page__bulkActions,
+  .cart-page__readiness,
+  .cart-page__confidencePanel,
+  .cart-page__confidenceItem,
+  .cart-page__nextAction,
+  .cart-page__recentRecovery,
+  .cart-page__recentItem,
+  .cart-page__savedCard,
+  .cart-page__savedItem,
+  .checkout-page__sectionCard,
+  .checkout-page__summaryStripCard,
+  .checkout-page__expressCard,
+  .checkout-page__paymentMethod,
+  .checkout-page__benefitStrip,
+  .checkout-page__benefitItem,
+  .checkout-page__savingsCoach,
+  .checkout-page__couponOpportunity,
+  .checkout-page__readiness,
+  .checkout-page__item,
+  .checkout-page__addressOption,
+  .coupon-center-page__quickNav,
+  .coupon-center-page__mobileActionBar,
+  .coupon-center-page__statCard,
+  .coupon-center-page__heroBadge,
+  .coupon-priority-card,
+  .coupon-savings-path,
+  .coupon-next-action,
+  .coupon-claim-section,
+  .coupon-claim-section__controls,
+  .coupon-claim-section__toolbar,
+  .coupon-claim-section__notice,
+  .coupon-claim-section__claimResult,
+  .coupon-claim-section__activeContext,
+  .coupon-claim-section__resultSummary,
+  .coupon-center-page__couponCard,
+  .coupon-center-page__coupon,
+  .coupon-center-page__couponFit,
+  .coupon-wallet,
+  .coupon-wallet__coupon,
+  .coupon-wallet__summary,
+  .coupon-wallet__guide,
+  .coupon-wallet__filters,
+  .coupon-wallet__fit,
+  .profile-action-center,
+  .profile-action-center__card,
+  .profile-mobile-entry__item,
+  .profile-section-card,
+  .profile-address-card,
+  .profile-order-card,
+  .profile-pet-next-step,
+  .profile-pet-shop-path,
+  .profile-address-readiness,
+  .profile-after-sale-panel,
+  .profile-order-card__summary,
+  .profile-order-card__item,
+  .profile-payment-card,
+  .profile-return-card,
+  .wishlist-page__insightBar,
+  .wishlist-page__recovery,
+  .wishlist-page__readiness,
+  .wishlist-page__nextAction,
+  .wishlist-page__bestPick,
+  .wishlist-page__card,
+  .stock-alerts__assistant,
+  .stock-alerts__signal,
+  .stock-alerts__recovery,
+  .stock-alerts__nextAction,
+  .stock-alerts__mobileAction,
+  .notifications-page__actionPlan,
+  .notifications-page__card,
+  .customer-support-widget__panel
+),
+body.shop-mobile-app :where(
+  .cart-drawer,
+  .cart-drawer .ant-drawer-content,
+  .cart-drawer .ant-drawer-header,
+  .cart-drawer .ant-drawer-body,
+  .cart-drawer .ant-drawer-footer,
+  .profile-mobile-safe-modal .ant-modal-content,
+  .profile-mobile-safe-modal .ant-modal-header,
+  .profile-mobile-safe-modal .ant-modal-body,
+  .profile-mobile-safe-modal .ant-modal-footer,
+  .profile-payment-modal .ant-modal-content,
+  .profile-payment-modal .ant-modal-header,
+  .profile-payment-modal .ant-modal-body,
+  .profile-payment-modal .ant-modal-footer,
+  .profile-order-detail-modal .ant-modal-content,
+  .profile-order-detail-modal .ant-modal-header,
+  .profile-order-detail-modal .ant-modal-body,
+  .profile-order-detail-modal .ant-modal-footer,
+  .profile-address-modal .ant-modal-content,
+  .profile-address-modal .ant-modal-header,
+  .profile-address-modal .ant-modal-body,
+  .profile-address-modal .ant-modal-footer
+) {
+  background: var(--app-panel-gradient-soft) !important;
+  color: var(--app-on-light) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-card,
+  .ant-card-body,
+  .ant-card-head,
+  .ant-list,
+  .ant-list-item,
+  .ant-alert,
+  .ant-collapse,
+  .ant-collapse-content,
+  .ant-descriptions,
+  .ant-empty,
+  .ant-result,
+  .ant-statistic,
+  .ant-table,
+  .ant-table-wrapper,
+  .ant-tabs,
+  .ant-tabs-content-holder,
+  .cart-page,
+  .checkout-page,
+  .coupon-center-page,
+  .profile-page,
+  .wishlist-page,
+  .stock-alerts-page,
+  .notifications-page,
+  .customer-support-widget__panel
+) :where(
+  .ant-typography,
+  .ant-card-meta-title,
+  .ant-card-head-title,
+  .ant-list-item-meta-title,
+  .ant-descriptions-title,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-empty-description,
+  .ant-form-item-label > label,
+  .ant-progress-text,
+  .ant-result-title,
+  .ant-result-subtitle,
+  .ant-statistic-title,
+  .ant-statistic-content,
+  .ant-statistic-content-prefix,
+  .ant-statistic-content-suffix,
+  .ant-statistic-content-value,
+  .ant-steps-item-title,
+  .ant-steps-item-description,
+  .ant-table-cell,
+  .ant-timeline-item-content,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  label,
+  small,
+  strong,
+  em,
+  b,
+  a,
+  span:not(.anticon):not(.ant-badge-count):not(.ant-scroll-number):not(.ant-progress-text)
+),
+body.shop-mobile-app :where(
+  .cart-drawer,
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :where(
+  .ant-drawer-title,
+  .ant-modal-title,
+  .ant-typography,
+  .ant-card-meta-title,
+  .ant-list-item-meta-title,
+  .ant-descriptions-title,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-form-item-label > label,
+  .ant-statistic-title,
+  .ant-statistic-content,
+  .ant-statistic-content-value,
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  label,
+  small,
+  strong,
+  em,
+  b,
+  a,
+  span:not(.anticon):not(.ant-badge-count):not(.ant-scroll-number)
+) {
+  color: var(--app-on-light) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  .ant-typography-secondary,
+  .ant-card-meta-description,
+  .ant-list-item-meta-description,
+  .ant-form-item-extra,
+  .ant-form-item-explain,
+  .ant-table-column-sorter,
+  .ant-table-filter-trigger,
+  .cart-drawer__shippingStatus,
+  .cart-drawer__shippingGift,
+  .cart-drawer__footerHint,
+  .profile-payment-history__time
+),
+body.shop-mobile-app :where(
+  .cart-drawer,
+  .profile-mobile-safe-modal,
+  .profile-payment-modal,
+  .profile-order-detail-modal,
+  .profile-address-modal
+) :where(
+  .ant-typography-secondary,
+  .ant-card-meta-description,
+  .ant-list-item-meta-description
+) {
+  color: var(--app-on-light-muted) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-tag,
+  .ant-tag-default,
+  .ant-tag-green,
+  .ant-tag-success,
+  .ant-tag-blue,
+  .ant-tag-cyan,
+  .ant-tag-purple,
+  .ant-tag-geekblue,
+  .ant-tag-gold,
+  .ant-tag-warning,
+  .ant-tag-orange,
+  .ant-tag-volcano,
+  .ant-tag-magenta,
+  .ant-tag-red,
+  .ant-tag-error
+) {
+  border-color: rgba(18, 71, 52, 0.22) !important;
+  background: var(--app-chip-light) !important;
+  color: var(--app-on-light) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-tag,
+  .ant-tag-default,
+  .ant-tag-green,
+  .ant-tag-success,
+  .ant-tag-blue,
+  .ant-tag-cyan,
+  .ant-tag-purple,
+  .ant-tag-geekblue,
+  .ant-tag-gold,
+  .ant-tag-warning,
+  .ant-tag-orange,
+  .ant-tag-volcano,
+  .ant-tag-magenta,
+  .ant-tag-red,
+  .ant-tag-error
+) :where(span, strong, small, .anticon) {
+  color: var(--app-on-light) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  [class*="--active"],
+  [class*="--ready"],
+  [class*="is-active"],
+  [class*="is-ready"],
+  .ant-tag-checkable-checked
+),
+body.shop-mobile-app :where(
+  .ant-btn-primary,
+  .ant-btn-primary:hover,
+  .ant-btn-primary:focus,
+  .ant-btn-primary:active,
+  .ant-badge-count,
+  .ant-switch-checked,
+  .cart-drawer__shippingIcon--ready,
+  .cart-drawer__nextAction--ready .cart-drawer__nextActionIcon
+) {
+  border-color: rgba(255, 247, 240, 0.28) !important;
+  background: var(--app-primary) !important;
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :where(
+  [class*="--active"],
+  [class*="--ready"],
+  [class*="is-active"],
+  [class*="is-ready"],
+  .ant-tag-checkable-checked
+) :where(
+  .ant-typography,
+  .ant-typography-secondary,
+  .ant-statistic-title,
+  .ant-statistic-content,
+  .ant-progress-text,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  label,
+  span,
+  strong,
+  small,
+  em,
+  b,
+  a,
+  .anticon
+),
+body.shop-mobile-app :where(
+  .ant-btn-primary,
+  .ant-btn-primary *,
+  .ant-badge-count,
+  .ant-switch-checked,
+  .cart-drawer__shippingIcon--ready,
+  .cart-drawer__nextAction--ready .cart-drawer__nextActionIcon
+) :where(span, strong, small, .anticon) {
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .coupon-claim-section__filterButton--active,
+  .coupon-wallet__filter--active
+) strong {
+  background: var(--app-on-dark) !important;
+  color: var(--app-primary) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-input-number-input,
+  .ant-input-group-addon,
+  .ant-picker,
+  .ant-picker-input > input,
+  .ant-select-selector,
+  .ant-select-selection-item,
+  .ant-select-selection-placeholder,
+  .ant-segmented,
+  .ant-segmented-item,
+  .ant-radio-button-wrapper,
+  textarea.ant-input
+) {
+  background: var(--app-surface-strong) !important;
+  color: var(--app-on-light) !important;
+}
+
+/* App contrast final guard: prevent dark-green panels from inheriting dark-green text. */
+body.shop-mobile-app {
+  --app-on-dark-muted: rgba(255, 247, 240, 0.86);
+  --app-warn-chip-bg: #fff4e8;
+  --app-danger-chip-bg: #ffe5da;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .shopee-hero__main,
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .profile-overview,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) {
+  background:
+    linear-gradient(135deg, rgba(18, 71, 52, 0.99), rgba(18, 71, 52, 0.92) 56%, rgba(238, 77, 45, 0.78)) !important;
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .shopee-hero__main,
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .profile-overview,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) :where(
+  .ant-typography,
+  .ant-typography-secondary,
+  .ant-statistic-title,
+  .ant-statistic-content,
+  .ant-card-meta-title,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  label,
+  small,
+  strong,
+  em,
+  b,
+  a,
+  .anticon,
+  span:not(.ant-badge-count):not(.ant-scroll-number)
+) {
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .shopee-hero__main,
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .order-tracking-page__journey,
+  .profile-overview,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .pet-gallery-conversion
+) :where(
+  .ant-typography-secondary,
+  .cart-page__heroContent .ant-typography,
+  .coupon-center-page__heroText,
+  .profile-overview__text,
+  .profile-overview__eyebrow,
+  .wishlist-page__header .ant-typography,
+  .notifications-page__assistantCopy .ant-typography
+) {
+  color: var(--app-on-dark-muted) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .coupon-center-page__hero :where(
+  .coupon-center-page__heroBadge,
+  .coupon-center-page__heroBadge *,
+  .coupon-center-page__statCard,
+  .coupon-center-page__statCard *
+) {
+  color: var(--app-on-light) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .coupon-center-page__hero .coupon-center-page__heroBadge--primary,
+body.shop-mobile-app .shop-app-shell .coupon-center-page__hero .coupon-center-page__heroBadge--primary * {
+  background: var(--app-warn-chip-bg) !important;
+  color: #8f2d17 !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .shop-nav__bottomItem--active,
+  .profile-action-center__card--pay,
+  .profile-action-center__card--return,
+  .profile-mobile-entry__item--active,
+  .profile-orders__tab--active,
+  .profile-payment-recommend__chip.is-active,
+  .profile-flow-focus.is-ready,
+  .profile-order-card__next--done,
+  .profile-address-readiness__stats span:first-child,
+  .profile-after-sale-panel__metrics button,
+  .coupon-claim-section__filterButton--active,
+  .coupon-wallet__filter--active,
+  .coupon-center-page__couponReady,
+  .coupon-center-page__couponFit--ready,
+  .coupon-wallet__fit--ready,
+  .cart-page__nextAction--ready,
+  .cart-page__confidenceItem--ready,
+  .cart-page__checkoutPathStep--ready > span:first-child
+) {
+  border-color: rgba(255, 247, 240, 0.26) !important;
+  background: var(--app-primary) !important;
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .shop-nav__bottomItem--active,
+  .profile-action-center__card--pay,
+  .profile-action-center__card--return,
+  .profile-mobile-entry__item--active,
+  .profile-orders__tab--active,
+  .profile-payment-recommend__chip.is-active,
+  .profile-flow-focus.is-ready,
+  .profile-order-card__next--done,
+  .profile-address-readiness__stats span:first-child,
+  .profile-after-sale-panel__metrics button,
+  .coupon-claim-section__filterButton--active,
+  .coupon-wallet__filter--active,
+  .coupon-center-page__couponReady,
+  .coupon-center-page__couponFit--ready,
+  .coupon-wallet__fit--ready,
+  .cart-page__nextAction--ready,
+  .cart-page__confidenceItem--ready,
+  .cart-page__checkoutPathStep--ready
+) :where(
+  .ant-typography,
+  .ant-typography-secondary,
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  label,
+  span,
+  strong,
+  small,
+  em,
+  b,
+  a,
+  .anticon
+) {
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app .shop-app-shell :is(
+  .coupon-claim-section__filterButton--active,
+  .coupon-wallet__filter--active
+) strong {
+  background: var(--app-on-dark) !important;
+  color: var(--app-primary) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-btn-primary,
+  .ant-btn-primary *,
+  .ant-badge-count,
+  .ant-switch-checked,
+  .ant-switch-checked *,
+  .cart-drawer__shippingIcon--ready,
+  .cart-drawer__nextActionIcon,
+  .coupon-wallet__emptyIcon,
+  .profile-return-helper > .anticon
+) {
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-dropdown-menu,
+  .ant-dropdown-menu-submenu,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown .ant-picker-panel-container,
+  .ant-popover-inner,
+  .ant-message-notice-content,
+  .ant-notification-notice,
+  .shop-mobile-popup-layer
+) {
+  background: var(--app-panel-gradient) !important;
+  color: var(--app-on-light) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-dropdown-menu-item,
+  .ant-dropdown-menu-submenu-title,
+  .ant-select-item,
+  .ant-select-item-option-content,
+  .ant-cascader-menu,
+  .ant-cascader-menu-item,
+  .ant-picker-panel,
+  .ant-picker-header,
+  .ant-picker-cell,
+  .ant-picker-content th,
+  .ant-segmented,
+  .ant-segmented-item,
+  .ant-radio-button-wrapper,
+  .ant-checkbox-wrapper
+) {
+  background-color: transparent !important;
+  color: var(--app-on-light) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-dropdown-menu-item-active,
+  .ant-dropdown-menu-item-selected,
+  .ant-dropdown-menu-submenu-title-active,
+  .ant-select-item-option-active,
+  .ant-select-item-option-selected,
+  .ant-cascader-menu-item-active,
+  .ant-cascader-menu-item:hover,
+  .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+  .ant-segmented-item-selected,
+  .ant-radio-button-wrapper-checked,
+  .ant-pagination-item-active
+) {
+  border-color: rgba(255, 247, 240, 0.26) !important;
+  background: var(--app-primary) !important;
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-dropdown-menu-item-active,
+  .ant-dropdown-menu-item-selected,
+  .ant-dropdown-menu-submenu-title-active,
+  .ant-select-item-option-active,
+  .ant-select-item-option-selected,
+  .ant-cascader-menu-item-active,
+  .ant-cascader-menu-item:hover,
+  .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+  .ant-segmented-item-selected,
+  .ant-radio-button-wrapper-checked,
+  .ant-pagination-item-active
+) :where(span, strong, small, .anticon) {
+  color: var(--app-on-dark) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-tabs-tab-active,
+  .ant-tabs-tab-active .ant-tabs-tab-btn,
+  .ant-steps-item-process .ant-steps-item-title,
+  .ant-steps-item-process .ant-steps-item-description,
+  .ant-steps-item-finish .ant-steps-item-title,
+  .ant-steps-item-finish .ant-steps-item-description
+) {
+  color: var(--app-primary) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-alert-success,
+  .ant-alert-info,
+  .ant-alert-warning,
+  .ant-alert-error,
+  .ant-result,
+  .ant-empty,
+  .ant-table-placeholder
+) :where(
+  .ant-alert-message,
+  .ant-alert-description,
+  .ant-result-title,
+  .ant-result-subtitle,
+  .ant-empty-description,
+  .ant-typography,
+  span,
+  strong,
+  small,
+  p
+) {
+  color: var(--app-on-light) !important;
+}
+
+/* App shell contrast closure for controls outside lazy page CSS. */
+body.shop-mobile-app .shop-nav__brandIcon,
+body.shop-mobile-app .shop-nav__search .ant-btn {
+  border-color: rgba(255, 247, 240, 0.28) !important;
+  background: #124734 !important;
+  color: #fff7f0 !important;
+  box-shadow: 0 12px 24px rgba(18, 71, 52, 0.26) !important;
+}
+
+body.shop-mobile-app .shop-nav__brandIcon :where(span, strong, small, .anticon),
+body.shop-mobile-app .shop-nav__search .ant-btn :where(span, strong, small, .anticon) {
+  color: #fff7f0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-product__discount {
+  border-color: rgba(255, 247, 240, 0.3) !important;
+  background: #8f2d17 !important;
+  color: #fff7f0 !important;
+  box-shadow: 0 12px 22px rgba(143, 45, 23, 0.2) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .checkout-page__addressChoice {
+  border-color: rgba(18, 71, 52, 0.14) !important;
+  background: linear-gradient(145deg, #fff4e8 0%, #e8f3ea 100%) !important;
+  color: #173f2b !important;
+  box-shadow: var(--app-shadow-card) !important;
+}
+
+/* Native App purchase and overlay guard: keep fixed actions and portals usable above WebView rails. */
+body.shop-mobile-app {
+  --shop-mobile-floating-action-gap: 10px;
+  --shop-mobile-overlay-z: 9800;
+}
+
+body.shop-mobile-app .shop-app-shell--product-detail .shop-nav__bottomBar,
+body.shop-mobile-app .shop-app-shell--checkout-flow .shop-nav__bottomBar {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell--product-detail .ant-layout-content,
+body.shop-mobile-app .shop-app-shell--checkout-flow .ant-layout-content {
+  padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--product-detail .product-detail-page,
+body.shop-mobile-app .shop-app-shell--checkout-flow .checkout-page {
+  padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
+  scroll-padding-bottom: calc(164px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar,
+body.shop-mobile-app .shop-app-shell--checkout-flow .checkout-page__mobilePayBar {
+  right: max(8px, env(safe-area-inset-right, 0px)) !important;
+  bottom: max(var(--shop-mobile-floating-action-gap), env(safe-area-inset-bottom, 0px)) !important;
+  left: max(8px, env(safe-area-inset-left, 0px)) !important;
+  z-index: 7600 !important;
+  width: auto !important;
+  max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+  border-radius: 14px !important;
+}
+
+body.shop-mobile-app .shop-app-shell--checkout-flow .checkout-page__submitReview {
+  position: static !important;
+  inset: auto !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-modal-root,
+  .ant-modal-mask,
+  .ant-modal-wrap,
+  .ant-drawer,
+  .ant-drawer-mask,
+  .ant-drawer-content-wrapper,
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover,
+  .ant-message,
+  .ant-notification,
+  .shop-mobile-popup-layer
+) {
+  z-index: var(--shop-mobile-overlay-z) !important;
+}
+
+body.shop-mobile-app :where(
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown,
+  .shop-mobile-popup-layer
+) {
+  max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+  max-height: min(70dvh, 520px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app .ant-modal-root .ant-modal:not(.ant-modal-confirm) {
+  top: max(8px, env(safe-area-inset-top, 0px)) !important;
+  max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+  margin: 0 auto !important;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .ant-modal-root .ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+  max-height: calc(100vh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+
+@supports (height: 100dvh) {
+  body.shop-mobile-app .ant-modal-root .ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+body.shop-mobile-app .ant-modal-root .ant-modal:not(.ant-modal-confirm) :where(.ant-modal-header, .ant-modal-footer) {
+  flex: 0 0 auto;
+}
+
+body.shop-mobile-app .ant-modal-root .ant-modal:not(.ant-modal-confirm) .ant-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.shop-mobile-app .customer-support-widget__button {
+  z-index: 8700 !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .customer-support-widget__backdrop {
+  z-index: 9798 !important;
+}
+
+body.shop-mobile-app .customer-support-widget__panel {
+  right: max(8px, env(safe-area-inset-right, 0px)) !important;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+  left: max(8px, env(safe-area-inset-left, 0px)) !important;
+  z-index: 9799 !important;
+  max-height: calc(100vh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.shop-mobile-app .customer-support-widget__button--open {
+  z-index: 9800 !important;
+}
+
+@supports (height: 100dvh) {
+  body.shop-mobile-app .customer-support-widget__panel {
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+body.shop-mobile-app :where(.shopee-login-card__intro, .shopee-login-subtitle) {
+  display: block !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+  -webkit-box-orient: initial !important;
+  -webkit-line-clamp: unset !important;
+}
+
+body.shop-mobile-app .pet-finder-page__nextStepCopy > span.ant-typography:not(.pet-finder-page__eyebrow),
+body.shop-mobile-app .coupon-next-action p,
+body.shop-mobile-app .coupon-center-page__mobileActionInsight span,
+body.shop-mobile-app .coupon-center-page__mobileActionInsight strong {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+  -webkit-line-clamp: unset !important;
+}
+
+/* Native App home hero viewport guard. Home.css loads after this file, so keep
+   these selectors scoped and important to override late mobile hero alignment. */
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero {
+  box-sizing: border-box !important;
+  width: min(100%, 720px) !important;
+  max-width: calc(100vw - (var(--app-screen-gutter, 12px) * 2)) !important;
+  margin: 10px auto 12px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__grid {
+  box-sizing: border-box !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__main {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  align-items: stretch !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__main > div {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero :where(h1, p) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-wrap: break-word;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__actions,
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__authActions {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  gap: 8px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__actions .ant-btn,
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__authActions .ant-btn {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 44px !important;
+  white-space: normal !important;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__authActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0 !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+/* Native App header hit-area guard: keep core icon actions at commercial tap size. */
+body.shop-mobile-app .shop-nav__actions {
+  max-width: 148px !important;
+  gap: 2px !important;
+  overflow: visible !important;
+}
+
+body.shop-mobile-app :where(
+  .shop-nav__mobile-locale,
+  .shop-nav__secondary-action,
+  .shop-nav__actions button[aria-label],
+  .shop-nav__actions a[aria-label],
+  .shop-nav__actions .shop-nav__admin
+) {
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding-inline: 0 !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shop-nav__actions {
+    max-width: 142px !important;
+    gap: 1px !important;
+  }
+}
+
+/* Native App bottom rail: the floating support button replaces the footer
+   support tab, so the remaining five buttons must occupy the full rail. */
+body.shop-mobile-app .shop-nav__bottomBar {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  grid-template-areas: "home products coupons cart account" !important;
+  grid-auto-columns: 0 !important;
+  grid-auto-flow: column !important;
+  align-items: stretch !important;
+  justify-items: stretch !important;
+  column-gap: 2px !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--support {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--home {
+  grid-area: home !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--products {
+  grid-area: products !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--coupons {
+  grid-area: coupons !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--cart {
+  grid-area: cart !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--account {
+  grid-area: account !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem:not(.shop-nav__bottomItem--support) {
+  inline-size: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  justify-self: stretch !important;
+}
+
+/* Native App top action hit-area closure: earlier App rules use higher
+   specificity with 36px !important heights, so this final selector must be
+   equally explicit instead of relying on :where(). */
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-locale,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__secondary-action,
+body.shop-mobile-app .shop-nav .shop-nav__actions > button[aria-label],
+body.shop-mobile-app .shop-nav .shop-nav__actions > a[aria-label],
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__admin {
+  box-sizing: border-box !important;
+  flex: 0 0 44px !important;
+  inline-size: 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  block-size: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > :where(.shop-nav__mobile-locale, .shop-nav__secondary-action, button[aria-label], a[aria-label], .shop-nav__admin) :where(.anticon, .ant-badge) {
+  flex: 0 0 auto !important;
+}
+
+/* App UI finishing pass: compact native controls without changing desktop/mobile web. */
+body.shop-mobile-app .shop-nav__actions {
+  max-width: min(188px, calc(100vw - 156px)) !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-auth {
+  box-sizing: border-box !important;
+  flex: 0 0 44px !important;
+  inline-size: 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  block-size: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  line-height: 1 !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-auth .shop-nav__mobile-authText {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-auth .anticon {
+  flex: 0 0 auto !important;
+  font-size: 18px !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shop-nav__actions {
+    max-width: 140px !important;
+    gap: 2px !important;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-auth {
+    display: none !important;
+  }
+}
+
+body.shop-mobile-app .shop-nav__bottomBar {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  padding-right: max(6px, env(safe-area-inset-right, 0px)) !important;
+  padding-left: max(6px, env(safe-area-inset-left, 0px)) !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  min-width: 0 !important;
+  min-height: 54px !important;
+  padding: 4px 2px !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem :where(.ant-badge, .anticon) {
+  flex: 0 0 auto !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem > span:not(.ant-badge):not(.anticon),
+body.shop-mobile-app .shop-nav__bottomItem .ant-badge + span {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.shop-mobile-app .coupon-center-page__mobileActionBar--single {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+body.shop-mobile-app .coupon-center-page__mobileActionBar--single .ant-btn:not(.coupon-center-page__secondaryAction--hidden) {
+  grid-column: 1 / -1 !important;
+}
+
+body.shop-mobile-app .coupon-center-page__mobileActionBar .coupon-center-page__secondaryAction--hidden {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar,
+body.shop-mobile-app .shop-app-shell--checkout-flow .checkout-page__mobilePayBar,
+body.shop-mobile-app .coupon-center-page__mobileActionBar {
+  box-sizing: border-box !important;
+  touch-action: manipulation !important;
+}
+
+body.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar :where(button, .ant-btn),
+body.shop-mobile-app .shop-app-shell--checkout-flow .checkout-page__mobilePayBar .ant-btn,
+body.shop-mobile-app .coupon-center-page__mobileActionBar .ant-btn,
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary .ant-btn {
+  min-width: 0 !important;
+  min-height: 44px !important;
+  overflow: hidden !important;
+}
+
+body.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar :where(button, .ant-btn) > span:not(.anticon):not(.ant-btn-icon),
+body.shop-mobile-app .shop-app-shell--checkout-flow .checkout-page__mobilePayBar .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+body.shop-mobile-app .coupon-center-page__mobileActionBar .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summary .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summaryFooter {
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) !important;
+  align-items: center !important;
+}
+
+body.shop-mobile-app .shop-app-shell--cart .cart-page__summaryFooter > div {
+  min-width: 0 !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shop-app-shell--cart .cart-page__summaryFooter {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Final native App product-list touch-target guard */
+body.shop-mobile-app .shop-app-shell--product-list .product-list__search .ant-input-group,
+body.shop-mobile-app .shop-app-shell--product-list .product-list__search .ant-input-affix-wrapper,
+body.shop-mobile-app .shop-app-shell--product-list .product-list__search .ant-btn,
+body.shop-mobile-app .shop-app-shell--product-list .product-list__sortSelect .ant-select-selector,
+body.shop-mobile-app .shop-app-shell--product-list .product-list__filterButton.ant-btn,
+body.shop-mobile-app .shop-app-shell--product-list .product-list__mobileContextChip,
+body.shop-mobile-app .shop-app-shell--product-list .product-list__mobileDiscoveryButton,
+body.shop-mobile-app .shop-app-shell--product-list .product-list__mobileConversionActions .ant-btn,
+body.shop-mobile-app .product-list__mobileDrawer .product-list__drawerFooter .ant-btn,
+body.shop-mobile-app .product-list__quickAddModal .ant-modal-footer .ant-btn,
+body.shop-mobile-app .product-list__quickAddModal .ant-select-selector,
+body.shop-mobile-app .product-list__previewModal .product-list__previewActions .ant-btn {
+  min-height: 44px !important;
+  height: auto !important;
+  touch-action: manipulation !important;
+}
+
+/* Final native App address cascader touch-target guard */
+body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item {
+  min-height: 44px !important;
+  touch-action: manipulation !important;
+}
+
+/* Final native App registration guard: auth-flow has no top/bottom nav, so the form must be self-contained. */
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page {
+  min-height: 100dvh !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-content: start !important;
+  justify-items: center !important;
+  gap: 0 !important;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)) !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  background:
+    radial-gradient(circle at 100% 0, rgba(238, 77, 45, 0.12), transparent 30%),
+    linear-gradient(180deg, #fffaf6 0%, #f8fcf9 54%, #eef5f0 100%) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__panel {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__card {
+  width: 100% !important;
+  max-width: 430px !important;
+  margin: 0 auto !important;
+  border: 1px solid rgba(18, 71, 52, 0.14) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  color: #173f2b !important;
+  box-shadow: 0 14px 32px rgba(18, 71, 52, 0.12) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__card .ant-card-body {
+  padding: 18px 14px 16px !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__brand {
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow :where(
+  .register-page__cardHint,
+  .register-page__footer,
+  .register-page__codeHint,
+  .register-page__title,
+  .register-page__card .ant-form-item-label > label,
+  .register-page__card .ant-form-item-explain
+) {
+  color: #3f5147 !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__card :where(
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-input-group-addon,
+  .ant-btn
+) {
+  min-height: 44px !important;
+  border-radius: 13px !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__card .ant-input-group {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(72px, auto) !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__card .ant-input-group-addon {
+  min-width: 0 !important;
+  padding: 0 4px !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__card .ant-input-group-addon .ant-btn {
+  max-width: 116px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.shop-mobile-app .shop-app-shell--auth-flow .register-page__footer a {
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #8f2d17 !important;
+  font-weight: 900 !important;
+}
+
+/* Native App contrast lock: page chunks can lazy-load pale text after the base App CSS. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app {
+  --shop-app-lock-surface: #fbfdfb;
+  --shop-app-lock-control: #ffffff;
+  --shop-app-lock-ink: #102f22;
+  --shop-app-lock-muted: #3f5147;
+  --shop-app-lock-primary: #124734;
+  --shop-app-lock-on-dark: #ffffff;
+  --shop-app-lock-line: rgba(18, 71, 52, 0.22);
+  --shop-app-lock-warn: #7a3a18;
+  --shop-app-lock-danger: #8f2d17;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .shop-app-shell,
+  .admin-layout,
+  .ant-modal-root,
+  .ant-drawer,
+  .ant-popover,
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown,
+  .ant-message,
+  .ant-notification,
+  .shop-mobile-popup-layer
+) :is(
+  .ant-card,
+  .ant-card-body,
+  .ant-card-head,
+  .ant-list,
+  .ant-list-item,
+  .ant-alert:not(.ant-alert-error):not(.ant-alert-warning):not(.ant-alert-success):not(.ant-alert-info),
+  .ant-collapse,
+  .ant-collapse-content,
+  .ant-collapse-content-box,
+  .ant-descriptions,
+  .ant-descriptions-view,
+  .ant-empty,
+  .ant-result,
+  .ant-statistic,
+  .ant-table,
+  .ant-table-container,
+  .ant-table-content,
+  .ant-table-wrapper,
+  .ant-tabs,
+  .ant-tabs-content-holder,
+  .ant-modal-content,
+  .ant-modal-header,
+  .ant-modal-body,
+  .ant-modal-footer,
+  .ant-drawer-content,
+  .ant-drawer-header,
+  .ant-drawer-body,
+  .ant-drawer-footer,
+  [class*="__card"]:not([class*="Hero"]):not([class*="hero"]):not([class*="Image"]):not([class*="image"]):not([class*="Media"]):not([class*="media"]):not([class*="Figure"]):not([class*="figure"]),
+  [class*="__panel"]:not([class*="Hero"]):not([class*="hero"]),
+  [class*="__sheet"],
+  [class*="__section"]:not([class*="Hero"]):not([class*="hero"]),
+  [class*="__tile"]:not([class*="Image"]):not([class*="image"]),
+  [class*="__entry"],
+  [class*="__notice"],
+  [class*="__toolbar"],
+  [class*="__summary"],
+  [class*="__details"],
+  [class*="__metric"],
+  [class*="__stat"]
+) {
+  border-color: var(--shop-app-lock-line) !important;
+  background: var(--shop-app-lock-surface) !important;
+  color: var(--shop-app-lock-ink) !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .shop-app-shell,
+  .admin-layout,
+  .ant-modal-root,
+  .ant-drawer,
+  .ant-popover,
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown,
+  .ant-message,
+  .ant-notification,
+  .shop-mobile-popup-layer
+) :is(
+  .ant-card,
+  .ant-card-body,
+  .ant-card-head,
+  .ant-list,
+  .ant-list-item,
+  .ant-alert,
+  .ant-collapse,
+  .ant-collapse-content,
+  .ant-descriptions,
+  .ant-empty,
+  .ant-result,
+  .ant-statistic,
+  .ant-table,
+  .ant-table-wrapper,
+  .ant-tabs,
+  .ant-tabs-content-holder,
+  .ant-modal-content,
+  .ant-drawer-content,
+  [class*="__card"],
+  [class*="__panel"],
+  [class*="__sheet"],
+  [class*="__section"],
+  [class*="__tile"],
+  [class*="__entry"],
+  [class*="__notice"],
+  [class*="__toolbar"],
+  [class*="__summary"],
+  [class*="__details"],
+  [class*="__metric"],
+  [class*="__stat"]
+) :is(
+  .ant-typography:not(.ant-typography-danger),
+  .ant-card-meta-title,
+  .ant-card-head-title,
+  .ant-list-item-meta-title,
+  .ant-descriptions-title,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-empty-description,
+  .ant-form-item-label > label,
+  .ant-form-item-extra,
+  .ant-form-item-explain:not(.ant-form-item-explain-error),
+  .ant-progress-text,
+  .ant-result-title,
+  .ant-result-subtitle,
+  .ant-statistic-title,
+  .ant-statistic-content,
+  .ant-steps-item-title,
+  .ant-steps-item-description,
+  .ant-table-cell,
+  .ant-tabs-tab-btn,
+  .ant-timeline-item-content,
+  .ant-menu-title-content,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  label,
+  small,
+  strong,
+  em,
+  b,
+  a:not(.ant-btn-primary),
+  button:not(.ant-btn-primary),
+  .ant-btn:not(.ant-btn-primary),
+  span:not(.anticon):not(.ant-badge-count):not(.ant-scroll-number)
+) {
+  color: var(--shop-app-lock-ink) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-ink) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .shop-app-shell,
+  .admin-layout,
+  .ant-modal-root,
+  .ant-drawer,
+  .ant-popover,
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown,
+  .ant-message,
+  .ant-notification,
+  .shop-mobile-popup-layer
+) :is(
+  .ant-typography-secondary,
+  .ant-card-meta-description,
+  .ant-list-item-meta-description,
+  .ant-empty-description,
+  .ant-form-item-extra,
+  .ant-form-item-explain:not(.ant-form-item-explain-error),
+  .ant-result-subtitle,
+  .ant-statistic-title,
+  .ant-steps-item-description,
+  [class*="__subtitle"],
+  [class*="__description"],
+  [class*="__desc"],
+  [class*="__caption"],
+  [class*="__helper"],
+  [class*="__hint"],
+  [class*="__meta"],
+  [class*="__muted"],
+  [class*="__note"],
+  [class*="__time"]
+) {
+  color: var(--shop-app-lock-muted) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-muted) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-input-number,
+  .ant-input-number-input,
+  .ant-input-group-addon,
+  .ant-picker,
+  .ant-picker-panel,
+  .ant-picker-header,
+  .ant-picker-cell,
+  .ant-picker-input > input,
+  .ant-select-selector,
+  .ant-select-selection-item,
+  .ant-select-item,
+  .ant-select-item-option-content,
+  .ant-cascader-menu,
+  .ant-cascader-menu-item,
+  .ant-cascader-menu-item-content,
+  .ant-segmented,
+  .ant-segmented-item,
+  .ant-radio-button-wrapper,
+  .ant-radio-wrapper,
+  .ant-checkbox-wrapper,
+  .ant-checkbox + span,
+  textarea.ant-input
+) {
+  border-color: var(--shop-app-lock-line) !important;
+  background: var(--shop-app-lock-control) !important;
+  color: var(--shop-app-lock-ink) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-ink) !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .ant-input::placeholder,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app textarea.ant-input::placeholder,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .ant-input-number-input::placeholder,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .ant-picker-input > input::placeholder,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .ant-select-selection-placeholder,
+  .ant-cascader-picker-label
+) {
+  color: var(--shop-app-lock-muted) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-muted) !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .ant-tag,
+  [class*="__badge"],
+  [class*="__Badge"],
+  [class*="__chip"],
+  [class*="__Chip"],
+  [class*="__pill"],
+  [class*="__Pill"],
+  [class*="__status"],
+  [class*="__Status"],
+  [class*="__label"],
+  [class*="__Label"]
+) {
+  border-color: var(--shop-app-lock-line) !important;
+  background: #eef4ef !important;
+  color: var(--shop-app-lock-ink) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-ink) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .ant-tag,
+  [class*="__badge"],
+  [class*="__Badge"],
+  [class*="__chip"],
+  [class*="__Chip"],
+  [class*="__pill"],
+  [class*="__Pill"],
+  [class*="__status"],
+  [class*="__Status"],
+  [class*="__label"],
+  [class*="__Label"]
+) :is(span, strong, small, em, b, .anticon) {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(.ant-tag-gold, .ant-tag-warning, .ant-tag-orange) {
+  border-color: rgba(122, 58, 24, 0.24) !important;
+  background: #fff1df !important;
+  color: var(--shop-app-lock-warn) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-warn) !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(.ant-tag-red, .ant-tag-error, .ant-tag-volcano, .ant-form-item-explain-error, .ant-typography-danger) {
+  color: var(--shop-app-lock-danger) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-danger) !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .shop-app-shell,
+  .admin-layout,
+  .ant-modal-root,
+  .ant-drawer,
+  .ant-popover,
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown,
+  .ant-message,
+  .ant-notification,
+  .shop-mobile-popup-layer
+) :is(
+  .shop-nav,
+  .shop-nav__brandIcon,
+  .shop-nav__search .ant-btn,
+  .shopee-hero__main,
+  .shopee-login-card__header,
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .profile-overview,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .browsing-history__hero,
+  .browsing-history-page__hero,
+  .pet-gallery-hero,
+  .pet-gallery-conversion,
+  .order-tracking-page__journey,
+  .admin-layout__sider,
+  .admin-layout__brand,
+  .ant-btn-primary:not(:disabled),
+  .ant-menu-dark .ant-menu-item-selected,
+  .ant-segmented-item-selected,
+  .ant-radio-button-wrapper-checked,
+  .ant-pagination-item-active,
+  .ant-switch-checked,
+  [class*="--active"],
+  [class*="--selected"],
+  [class*="--ready"],
+  [class*="--success"],
+  [class*="--done"],
+  [class*="--checked"],
+  [class*="is-active"],
+  [class*="is-ready"]
+) {
+  border-color: rgba(255, 247, 240, 0.28) !important;
+  background: var(--shop-app-lock-primary) !important;
+  color: var(--shop-app-lock-on-dark) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-on-dark) !important;
+  text-shadow: none !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .shop-app-shell,
+  .admin-layout,
+  .ant-modal-root,
+  .ant-drawer,
+  .ant-popover,
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-cascader-dropdown,
+  .ant-picker-dropdown,
+  .ant-message,
+  .ant-notification,
+  .shop-mobile-popup-layer
+) :is(
+  .shop-nav,
+  .shop-nav__brandIcon,
+  .shop-nav__search .ant-btn,
+  .shopee-hero__main,
+  .shopee-login-card__header,
+  .product-list__heroBand,
+  .cart-page__hero,
+  .checkout-page__hero,
+  .coupon-center-page__hero,
+  .profile-overview,
+  .wishlist-page__header,
+  .notifications-page__assistant,
+  .browsing-history__hero,
+  .browsing-history-page__hero,
+  .pet-gallery-hero,
+  .pet-gallery-conversion,
+  .order-tracking-page__journey,
+  .admin-layout__sider,
+  .admin-layout__brand,
+  .ant-btn-primary:not(:disabled),
+  .ant-menu-dark .ant-menu-item-selected,
+  .ant-segmented-item-selected,
+  .ant-radio-button-wrapper-checked,
+  .ant-pagination-item-active,
+  .ant-switch-checked,
+  [class*="--active"],
+  [class*="--selected"],
+  [class*="--ready"],
+  [class*="--success"],
+  [class*="--done"],
+  [class*="--checked"],
+  [class*="is-active"],
+  [class*="is-ready"]
+) :is(
+  .ant-typography,
+  .ant-typography-secondary,
+  .ant-card-meta-description,
+  .ant-list-item-meta-description,
+  .ant-statistic-title,
+  .ant-steps-item-description,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  label,
+  span,
+  strong,
+  small,
+  em,
+  b,
+  a,
+  button,
+  .anticon
+) {
+  color: var(--shop-app-lock-on-dark) !important;
+  -webkit-text-fill-color: var(--shop-app-lock-on-dark) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
+  .ant-btn:disabled,
+  .ant-btn.ant-btn-disabled,
+  .ant-input-disabled,
+  .ant-input-affix-wrapper-disabled,
+  .ant-select-disabled .ant-select-selector,
+  .ant-picker-disabled
+) {
+  border-color: rgba(18, 71, 52, 0.16) !important;
+  background: #eef4ef !important;
+  color: #506358 !important;
+  -webkit-text-fill-color: #506358 !important;
+  opacity: 1 !important;
+}

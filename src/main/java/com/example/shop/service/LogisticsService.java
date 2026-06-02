@@ -3,6 +3,8 @@ package com.example.shop.service;
 import com.example.shop.entity.Order;
 import com.example.shop.dto.LogisticsTrackResponse;
 import com.example.shop.repository.OrderRepository;
+import com.example.shop.security.SecurityUtils;
+import com.example.shop.security.UserDetailsImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,13 +12,16 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.nio.charset.StandardCharsets;
@@ -30,30 +35,48 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 @Service
 public class LogisticsService {
+    private static final Pattern TRACKING_NUMBER_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_-]*");
+
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     private OrderRepository orderRepository;
     @Autowired
+    private OrderService orderService;
+    @Autowired
     private RuntimeConfigService runtimeConfig;
     @Autowired
     private CircuitBreakerService circuitBreakerService;
+    @Autowired
+    private AdminRoleService adminRoleService;
 
     public LogisticsTrackResponse track(String trackingNumber, String carrier) {
         return track(trackingNumber, carrier, null);
     }
 
     public LogisticsTrackResponse track(String trackingNumber, String carrier, Long orderId) {
-        String normalizedTrackingNumber = normalizeRequiredText(trackingNumber, "Tracking number", runtimeConfig.getInt("logistics.tracking-number-max-chars", 120));
+        return trackInternal(trackingNumber, carrier, orderId, null);
+    }
+
+    public LogisticsTrackResponse track(String trackingNumber, String carrier, Long orderId,
+                                        String guestEmail, String orderNo, Authentication authentication) {
+        Order order = resolveVisibleOrder(orderId, guestEmail, orderNo, authentication);
+        return trackInternal(trackingNumber, carrier, orderId, order);
+    }
+
+    private LogisticsTrackResponse trackInternal(String trackingNumber, String carrier, Long orderId, Order visibleOrder) {
+        String normalizedTrackingNumber = normalizeTrackingNumber(trackingNumber, runtimeConfig.getInt("logistics.tracking-number-max-chars", 120));
         String normalizedCarrier = normalizeOptionalText(carrier, runtimeConfig.getInt("logistics.carrier-max-chars", 40));
         if (normalizedCarrier == null) {
             normalizedCarrier = "STANDARD";
         }
-        Order order = orderId == null ? null : orderRepository.findById(orderId);
+        Order order = visibleOrder != null ? visibleOrder : orderId == null ? null : orderRepository.findById(orderId);
 
         if (shouldUseKuaidi100(order)) {
             return trackWithKuaidi100(normalizedTrackingNumber, normalizedCarrier, order);
@@ -62,10 +85,61 @@ public class LogisticsService {
         if (!isBlank(runtimeConfig.getString("logistics.api-url", ""))) {
             return trackWithProvider(normalizedTrackingNumber, normalizedCarrier);
         }
+        if (runtimeConfig.getBoolean("logistics.mock-enabled", false)) {
+            return mockTrack(normalizedTrackingNumber, normalizedCarrier);
+        }
         if (isProductionMode()) {
             throw new IllegalStateException("Production logistics tracking provider is not configured");
         }
-        return mockTrack(normalizedTrackingNumber, normalizedCarrier);
+        return unavailableTrack(normalizedTrackingNumber, normalizedCarrier);
+    }
+
+    private Order resolveVisibleOrder(Long orderId, String guestEmail, String orderNo, Authentication authentication) {
+        if (orderId == null) {
+            requireOperationalTrackingPermission(authentication);
+            return null;
+        }
+        if (orderId <= 0) {
+            throw new IllegalArgumentException("Order id is invalid");
+        }
+        Order order = orderRepository.findById(orderId);
+        if (order == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        if (guestOrderAccessMatches(order, guestEmail, orderNo)) {
+            return order;
+        }
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+            UserDetailsImpl user = (UserDetailsImpl) authentication.getPrincipal();
+            if (Objects.equals(user.getId(), order.getUserId())) {
+                return order;
+            }
+            if (SecurityUtils.isAdmin(user)) {
+                requireOperationalTrackingPermission(authentication);
+                return order;
+            }
+        }
+        throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Tracking access denied");
+    }
+
+    private void requireOperationalTrackingPermission(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tracking access requires an order context");
+        }
+        UserDetailsImpl user = (UserDetailsImpl) authentication.getPrincipal();
+        if (!SecurityUtils.isAdmin(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tracking access requires an order context");
+        }
+        if (adminRoleService != null
+                && adminRoleService.canAccess(user.getId(), "/admin/orders")
+                && adminRoleService.hasPermission(user.getId(), AdminRoleService.ORDER_FULFILLMENT_PERMISSION)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
+    }
+
+    private boolean guestOrderAccessMatches(Order order, String email, String orderNo) {
+        return orderService != null && orderService.guestOrderAccessMatches(order, email, orderNo);
     }
 
     private boolean isProductionMode() {
@@ -149,7 +223,6 @@ public class LogisticsService {
     @SuppressWarnings("unchecked")
     private LogisticsTrackResponse parseKuaidi100Response(String trackingNumber, String carrier, Map<String, Object> body) {
         LogisticsTrackResponse result = baseResponse(trackingNumber, carrier);
-        result.setRawResponse(body);
         if (body == null) {
             result.setStatus("EXTERNAL_EMPTY");
             result.setSummary("Kuaidi100 returned an empty response");
@@ -265,39 +338,68 @@ public class LogisticsService {
 
     private LogisticsTrackResponse trackWithProvider(String trackingNumber, String carrier) {
         String logisticsApiKey = runtimeConfig.getString("logistics.api-key", "");
-        String url = runtimeConfig.getString("logistics.api-url", "")
-                .replace("{trackingNumber}", trackingNumber)
-                .replace("{carrier}", carrier)
-                .replace("{apiKey}", logisticsApiKey == null ? "" : logisticsApiKey);
-
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
-        if (!url.contains("trackingNumber=") && !url.contains("{trackingNumber}")) {
-            builder.queryParam("trackingNumber", trackingNumber);
+        String urlTemplate = runtimeConfig.getString("logistics.api-url", "");
+        Map<String, String> uriVariables = new HashMap<>();
+        uriVariables.put("trackingNumber", trackingNumber);
+        uriVariables.put("carrier", carrier);
+        uriVariables.put("apiKey", logisticsApiKey == null ? "" : logisticsApiKey);
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(urlTemplate);
+        if (!templateSuppliesValue(urlTemplate, "trackingNumber", "trackingNumber")) {
+            builder.queryParam("trackingNumber", "{trackingNumber}");
         }
-        if (!url.contains("carrier=") && !url.contains("{carrier}")) {
-            builder.queryParam("carrier", carrier);
+        if (!templateSuppliesValue(urlTemplate, "carrier", "carrier")) {
+            builder.queryParam("carrier", "{carrier}");
         }
         if (logisticsApiKey != null && !logisticsApiKey.isBlank()
-                && !url.contains("apiKey=") && !url.contains("key=") && !url.contains("{apiKey}")) {
-            builder.queryParam("apiKey", logisticsApiKey);
+                && !templateSuppliesValue(urlTemplate, "apiKey", "apiKey")
+                && !templateSuppliesValue(urlTemplate, "key", "apiKey")) {
+            builder.queryParam("apiKey", "{apiKey}");
         }
+        String requestUrl = builder.buildAndExpand(uriVariables)
+                .encode(StandardCharsets.UTF_8)
+                .toUriString();
 
         try {
             ResponseEntity<Map<String, Object>> response = circuitBreakerService.execute("logistics-provider", () -> restTemplate.exchange(
-                    builder.toUriString(),
+                    requestUrl,
                     HttpMethod.GET,
                     null,
                     new ParameterizedTypeReference<Map<String, Object>>() {
                     }
             ));
-            LogisticsTrackResponse result = baseResponse(trackingNumber, carrier);
-            result.setStatus("EXTERNAL");
-            result.setSummary("Provider response received");
-            result.setRawResponse(response.getBody());
-            return result;
+            return parseProviderResponse(trackingNumber, carrier, response.getBody());
         } catch (RestClientException e) {
             throw new IllegalStateException("Failed to query logistics provider: " + e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private LogisticsTrackResponse parseProviderResponse(String trackingNumber, String carrier, Map<String, Object> body) {
+        LogisticsTrackResponse result = baseResponse(trackingNumber, carrier);
+        if (body == null) {
+            result.setStatus("EXTERNAL_EMPTY");
+            result.setSummary("Provider returned an empty response");
+            return result;
+        }
+        result.setStatus(normalizeProviderStatus(firstString(body, "status", "state", "deliveryStatus", "code")));
+        String summary = firstString(body, "summary", "message", "description", "statusDescription", "reason");
+        result.setSummary(isBlank(summary) ? "Provider response received" : summary);
+
+        Object eventSource = firstValue(body, "events", "data", "traces", "trackingEvents");
+        if (eventSource instanceof List<?>) {
+            for (Object item : (List<?>) eventSource) {
+                if (!(item instanceof Map<?, ?>)) {
+                    continue;
+                }
+                Map<?, ?> event = (Map<?, ?>) item;
+                result.getEvents().add(new LogisticsTrackResponse.LogisticsTrackEvent(
+                        parseKuaidi100Time(firstString(event, "time", "ftime", "timestamp", "date", "createdAt")),
+                        firstString(event, "location", "areaName", "area", "checkpoint", "city"),
+                        firstString(event, "description", "context", "status", "message", "detail")
+                ));
+            }
+        }
+        return result;
     }
 
     private LogisticsTrackResponse mockTrack(String trackingNumber, String carrier) {
@@ -311,6 +413,13 @@ public class LogisticsService {
                 now.minusDays(1), "Sorting center", "Parcel departed regional sorting center"));
         result.getEvents().add(new LogisticsTrackResponse.LogisticsTrackEvent(
                 now.minusHours(4), "Local delivery station", "Parcel arrived near destination"));
+        return result;
+    }
+
+    private LogisticsTrackResponse unavailableTrack(String trackingNumber, String carrier) {
+        LogisticsTrackResponse result = baseResponse(trackingNumber, carrier);
+        result.setStatus("TRACKING_UNAVAILABLE");
+        result.setSummary("Real-time logistics tracking is not configured yet. Check the carrier site or contact support with this tracking number.");
         return result;
     }
 
@@ -337,6 +446,24 @@ public class LogisticsService {
 
     private String stringValue(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
+    }
+
+    private String normalizeTrackingNumber(String value, int maxChars) {
+        String cleaned = normalizeText(value);
+        if (cleaned == null || cleaned.isEmpty()) {
+            throw new IllegalArgumentException("Tracking number is required");
+        }
+        cleaned = cleaned.replaceAll("\\s+", "");
+        if (cleaned.isEmpty()) {
+            throw new IllegalArgumentException("Tracking number is required");
+        }
+        if (cleaned.length() > maxChars) {
+            throw new IllegalArgumentException("Tracking number must be at most " + maxChars + " characters");
+        }
+        if (!TRACKING_NUMBER_PATTERN.matcher(cleaned).matches()) {
+            throw new IllegalArgumentException("Tracking number may contain only letters, numbers, hyphens, and underscores");
+        }
+        return cleaned;
     }
 
     private String normalizeRequiredText(String value, String fieldName, int maxChars) {
@@ -368,6 +495,37 @@ public class LogisticsService {
         return value.replaceAll("\\p{Cntrl}", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
+    }
+
+    private boolean templateSuppliesValue(String template, String queryParam, String placeholder) {
+        String lowerTemplate = template == null ? "" : template.toLowerCase(Locale.ROOT);
+        return lowerTemplate.contains(queryParam.toLowerCase(Locale.ROOT) + "=")
+                || (template != null && template.contains("{" + placeholder + "}"));
+    }
+
+    private Object firstValue(Map<?, ?> values, String... keys) {
+        if (values == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (values.containsKey(key)) {
+                return values.get(key);
+            }
+        }
+        return null;
+    }
+
+    private String firstString(Map<?, ?> values, String... keys) {
+        Object value = firstValue(values, keys);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private String normalizeProviderStatus(String status) {
+        if (isBlank(status)) {
+            return "EXTERNAL";
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9_-]+", "_");
+        return normalized.isEmpty() ? "EXTERNAL" : normalized;
     }
 
     private boolean isBlank(String value) {

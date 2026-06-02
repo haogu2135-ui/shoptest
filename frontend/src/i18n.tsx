@@ -44,6 +44,26 @@ const LanguageContext = createContext<LanguageContextValue | undefined>(undefine
 const isLanguage = (value: string | null): value is Language =>
   value === 'es' || value === 'zh' || value === 'en';
 
+const detectBrowserLanguage = (): Language => {
+  const browserLanguages = typeof navigator === 'undefined'
+    ? []
+    : [...(navigator.languages || []), navigator.language || ''];
+  const locales = browserLanguages.map((value) => value.toLowerCase()).filter(Boolean);
+  if (locales.some((locale) => locale.startsWith('zh'))) {
+    return 'zh';
+  }
+  if (locales.some((locale) => locale.startsWith('es'))) {
+    return 'es';
+  }
+  const timezone = typeof Intl === 'undefined'
+    ? ''
+    : Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  if (/china|shanghai|hong_kong|hongkong|taipei|macau|chongqing|urumqi/i.test(timezone)) {
+    return 'zh';
+  }
+  return timezone.includes('Mexico') ? 'es' : 'en';
+};
+
 const getNestedValue = (source: TranslationMap, key: string) =>
   key.split('.').reduce<string | TranslationMap | undefined>((current, part) => {
     if (!current || typeof current === 'string') return undefined;
@@ -61,13 +81,17 @@ const humanizeKey = (key: string) => {
 const translate = (language: Language, key: string, params?: TranslationParams) => {
   const translated = getNestedValue(translations[language], key);
   const fallback = getNestedValue(translations.en, key);
+  const hasDefaultValue = Boolean(params && Object.prototype.hasOwnProperty.call(params, 'defaultValue'));
+  const defaultValue = hasDefaultValue ? params?.defaultValue : undefined;
   const template = typeof translated === 'string'
     ? translated
     : typeof fallback === 'string'
       ? fallback
-      : humanizeKey(key);
+      : hasDefaultValue
+        ? String(defaultValue)
+        : humanizeKey(key);
   if (!params) return template;
-  return Object.entries(params).reduce(
+  return Object.entries(params).filter(([paramKey]) => paramKey !== 'defaultValue').reduce(
     (result, [paramKey, value]) => result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value)),
     template,
   );
@@ -77,9 +101,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [language, setLanguageState] = useState<Language>(() => {
     const storedLanguage = getLocalStorageItem(STORAGE_KEY);
     if (isLanguage(storedLanguage)) return storedLanguage;
-    const locale = navigator.language || '';
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-    return locale.toLowerCase().includes('mx') || timezone.includes('Mexico') ? 'es' : 'en';
+    return detectBrowserLanguage();
   });
 
   const setLanguage = (nextLanguage: Language) => {

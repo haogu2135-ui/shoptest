@@ -1,29 +1,47 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Form, Input, message, Radio, Select, Space, Tag, Typography } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Divider, Form, Input, message, Popconfirm, Radio, Select, Space, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getApiErrorMessage } from '../utils/apiError';
+import { NOTIFICATIONS_BROADCAST_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './NotificationManagement.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
-
-const samplePromotionHtml = `<p><strong>Limited-time offer</strong>: free shipping on selected orders over $299.</p>
-<p>Use coupon <strong>SHOPMX20</strong> for an extra discount.</p>
-<p><a href="/coupons">Claim coupons now</a></p>`;
 
 const conversionHookPattern = /(coupon|discount|offer|shipping|birthday|limited|bundle|save|\u4f18\u60e0|\u6298\u6263|\u5238|\u5305\u90ae|\u751f\u65e5|\u9650\u65f6|\u5957\u88c5|ahorro|oferta|cup[o\u00f3]n|env[i\u00ed]o)/i;
 
 const NotificationManagement: React.FC = () => {
   const [form] = Form.useForm();
   const [sending, setSending] = useState(false);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const { t, language } = useLanguage();
   const contentFormat = Form.useWatch('contentFormat', form) || 'HTML';
   const notificationTitle = Form.useWatch('title', form) || '';
   const messageContent = Form.useWatch('message', form) || '';
+  const canBroadcastNotifications = hasAdminPermission(adminPermissions, currentRole, NOTIFICATIONS_BROADCAST_PERMISSION);
+
+  useEffect(() => {
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((response) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   const previewHtml = useMemo(() => stripUnsafeHtml(messageContent), [messageContent]);
   const safePreviewHtml = useMemo(
@@ -42,6 +60,10 @@ const NotificationManagement: React.FC = () => {
   }, [messageContent, notificationTitle, plainContent]);
 
   const handleSend = async () => {
+    if (!canBroadcastNotifications) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setSending(true);
@@ -62,12 +84,12 @@ const NotificationManagement: React.FC = () => {
     }
   };
 
-  const insertSample = () => {
+  const insertPromotionTemplate = () => {
     form.setFieldsValue({
       type: 'PROMOTION',
-      title: 'ShopMX limited-time offer',
+      title: t('pages.notificationAdmin.templateTitle'),
       contentFormat: 'HTML',
-      message: samplePromotionHtml,
+      message: t('pages.notificationAdmin.templateHtml'),
     });
   };
 
@@ -162,10 +184,20 @@ const NotificationManagement: React.FC = () => {
               />
             </Form.Item>
             <Space wrap>
-              <Button onClick={insertSample} disabled={sending}>{t('pages.notificationAdmin.useSample')}</Button>
-              <Button type="primary" icon={<SendOutlined />} loading={sending} onClick={handleSend}>
-                {t('pages.notificationAdmin.sendAll')}
-              </Button>
+              <Button onClick={insertPromotionTemplate} disabled={sending}>{t('pages.notificationAdmin.useTemplate')}</Button>
+              {canBroadcastNotifications ? (
+                <Popconfirm
+                  title={`${t('pages.notificationAdmin.sendAll')}?`}
+                  description={t('pages.notificationAdmin.sendAllConfirmDescription')}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
+                  onConfirm={handleSend}
+                >
+                  <Button type="primary" icon={<SendOutlined />} loading={sending}>
+                    {t('pages.notificationAdmin.sendAll')}
+                  </Button>
+                </Popconfirm>
+              ) : null}
             </Space>
           </Form>
         </Card>

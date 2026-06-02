@@ -6,6 +6,7 @@ import { adminApi } from '../api';
 import type { SecurityAuditLog, SecurityAuditSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import { AUDIT_LOGS_EXPORT_PERMISSION, AUDIT_LOGS_PURGE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './SecurityAuditLogManagement.css';
 
 const { Title, Text } = Typography;
@@ -915,20 +916,20 @@ export const auditOpsCopy: Record<string, {
     highRiskEvents: 'Acciones sensibles',
     accountFailures: 'Fallos de cuenta',
     passwordChanges: 'Cambios de clave',
-    emailCodeEvents: 'Codigos de email',
+    emailCodeEvents: 'Códigos de email',
     accountEvents: 'Eventos de cuenta',
     showPaymentFailures: 'Ver fallos',
     showRefunds: 'Ver reembolsos',
     showCallbacks: 'Ver callbacks',
     showAccountFailures: 'Ver fallos de cuenta',
     showPasswordChanges: 'Ver cambios de clave',
-    showEmailCodes: 'Ver codigos',
+    showEmailCodes: 'Ver códigos',
     showAccountEvents: 'Ver cuentas',
     clear: 'Limpiar filtros',
-    guideTitle: 'Orden de revision',
-    guideText: 'Primero pagos fallidos, luego callbacks y reembolsos, y despues vuelve al pedido relacionado.',
-    accountGuideTitle: 'Revision de cuenta',
-    accountGuideText: 'Revisa inicios fallidos, cambios de clave y codigos de email del perfil juntos.',
+    guideTitle: 'Orden de revisión',
+    guideText: 'Primero pagos fallidos, luego callbacks y reembolsos, y después vuelve al pedido relacionado.',
+    accountGuideTitle: 'Revisión de cuenta',
+    accountGuideText: 'Revisa inicios fallidos, cambios de clave y códigos de email del perfil juntos.',
   },
   zh: {
     title: '支付与退款异常队列',
@@ -1039,6 +1040,8 @@ const SecurityAuditLogManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [purging, setPurging] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [action, setAction] = useState<string | undefined>(searchParams.get('action') || undefined);
   const [result, setResult] = useState<string | undefined>(searchParams.get('result') || undefined);
   const [resourceType, setResourceType] = useState<string | undefined>(searchParams.get('resourceType') || undefined);
@@ -1046,6 +1049,8 @@ const SecurityAuditLogManagement: React.FC = () => {
   const [range, setRange] = useState<any>(null);
   const [retentionDays, setRetentionDays] = useState(180);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const canExportAuditLogs = hasAdminPermission(adminPermissions, currentRole, AUDIT_LOGS_EXPORT_PERMISSION);
+  const canPurgeAuditLogs = hasAdminPermission(adminPermissions, currentRole, AUDIT_LOGS_PURGE_PERMISSION);
 
   const localizedOpsCopy = auditOpsCopy[language] || auditOpsCopy.en;
   const localizedAdminCopy = auditAdminCopy[language] || auditAdminCopy.en;
@@ -1243,7 +1248,29 @@ const SecurityAuditLogManagement: React.FC = () => {
     return () => window.clearTimeout(handle);
   }, [fetchLogs]);
 
+  useEffect(() => {
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((res) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
+        setAdminPermissions(res.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
   const exportLogs = async () => {
+    if (!canExportAuditLogs) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setExporting(true);
     try {
       const res = await adminApi.exportAuditLogs(queryParams);
@@ -1254,6 +1281,12 @@ const SecurityAuditLogManagement: React.FC = () => {
       link.download = 'security-audit-logs.csv';
       link.click();
       URL.revokeObjectURL(url);
+      if (String(res.headers?.['x-export-truncated']) === 'true') {
+        message.warning(t('pages.auditLogs.exportTruncated', {
+          returned: res.headers?.['x-export-returned'] || '',
+          total: res.headers?.['x-export-total'] || '',
+        }));
+      }
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.auditLogs.exportFailed'), language));
     } finally {
@@ -1262,6 +1295,10 @@ const SecurityAuditLogManagement: React.FC = () => {
   };
 
   const purgeOldLogs = async () => {
+    if (!canPurgeAuditLogs) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setPurging(true);
     try {
       const response = await adminApi.purgeAuditLogs(retentionDays);
@@ -1355,30 +1392,32 @@ const SecurityAuditLogManagement: React.FC = () => {
             </div>
           ))}
         </div>
-        <div className="audit-log-page__retention">
-          <div>
-            <Text strong>{localizedAdminCopy.retentionTitle}</Text>
-            <Text type="secondary">{localizedAdminCopy.retentionHint}</Text>
+        {canPurgeAuditLogs ? (
+          <div className="audit-log-page__retention">
+            <div>
+              <Text strong>{localizedAdminCopy.retentionTitle}</Text>
+              <Text type="secondary">{localizedAdminCopy.retentionHint}</Text>
+            </div>
+            <Space wrap>
+              <InputNumber
+                min={7}
+                max={3650}
+                precision={0}
+                value={retentionDays}
+                onChange={(value) => setRetentionDays(Number(value || 180))}
+                addonAfter={localizedAdminCopy.days}
+              />
+              <Popconfirm
+                title={localizedAdminCopy.purgeConfirm}
+                onConfirm={purgeOldLogs}
+              >
+                <Button danger icon={<DeleteOutlined />} loading={purging}>
+                  {localizedAdminCopy.purge}
+                </Button>
+              </Popconfirm>
+            </Space>
           </div>
-          <Space wrap>
-            <InputNumber
-              min={7}
-              max={3650}
-              precision={0}
-              value={retentionDays}
-              onChange={(value) => setRetentionDays(Number(value || 180))}
-              addonAfter={localizedAdminCopy.days}
-            />
-            <Popconfirm
-              title={localizedAdminCopy.purgeConfirm}
-              onConfirm={purgeOldLogs}
-            >
-              <Button danger icon={<DeleteOutlined />} loading={purging}>
-                {localizedAdminCopy.purge}
-              </Button>
-            </Popconfirm>
-          </Space>
-        </div>
+        ) : null}
       </section>
       <section className="audit-log-page__opsPanel" aria-label={localizedOpsCopy.title}>
         <div className="audit-log-page__opsIntro">
@@ -1507,9 +1546,11 @@ const SecurityAuditLogManagement: React.FC = () => {
           <Button icon={<SearchOutlined />} type="primary" onClick={fetchLogs}>
             {t('common.search')}
           </Button>
-          <Button icon={<DownloadOutlined />} loading={exporting} onClick={exportLogs}>
-            {t('pages.auditLogs.export')}
-          </Button>
+          {canExportAuditLogs ? (
+            <Button icon={<DownloadOutlined />} loading={exporting} onClick={exportLogs}>
+              {t('pages.auditLogs.export')}
+            </Button>
+          ) : null}
         </Space>
       </Card>
       <Card>

@@ -1,5 +1,8 @@
 package com.example.shop.websocket;
 
+import com.example.shop.dto.SupportMessageAdminResponse;
+import com.example.shop.dto.SupportMessageCustomerResponse;
+import com.example.shop.dto.SupportSessionCustomerResponse;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
 import com.example.shop.entity.User;
@@ -8,30 +11,41 @@ import com.example.shop.security.JwtService;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.RuntimeConfigService;
+import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SupportService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.socket.SubProtocolCapable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @RequiredArgsConstructor
-public class SupportWebSocketHandler extends TextWebSocketHandler {
+public class SupportWebSocketHandler extends TextWebSocketHandler implements SubProtocolCapable {
+    private static final String SUPPORT_SUB_PROTOCOL = "support.v1";
+    private static final String AUTH_PROTOCOL_PREFIX = "auth.";
+    private static final String SEC_WEBSOCKET_PROTOCOL_HEADER = "Sec-WebSocket-Protocol";
+    private static final CloseStatus CONNECTION_LIMIT_EXCEEDED = new CloseStatus(1013, "Connection limit exceeded");
+
     private final JwtService jwtService;
     private final UserMapper userMapper;
     private final AdminRoleService adminRoleService;
     private final SupportService supportService;
+    private final SecurityAuditLogService auditLogService;
     private final ObjectMapper objectMapper;
     private final RuntimeConfigService runtimeConfig;
 
@@ -40,7 +54,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        User user = authenticate(session.getUri());
+        User user = authenticate(session);
         if (user == null) {
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
             return;
@@ -49,17 +63,40 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         String socketRole = supportAdminRole(user);
         session.getAttributes().put("role", socketRole);
         session.getAttributes().put("username", user.getUsername());
+        configureSessionLimits(session);
 
-        if (isAdminRole(socketRole)) {
-            adminSessions.add(session);
-        } else {
-            userSessions.computeIfAbsent(user.getId(), key -> ConcurrentHashMap.newKeySet()).add(session);
+        boolean adminSocket = isAdminRole(socketRole);
+        synchronized (this) {
+            pruneClosedSessions();
+            if (activeConnectionCount() >= maxGlobalConnections()
+                    || activeConnectionCountForUser(user.getId()) >= maxConnectionsPerUser()) {
+                session.close(CONNECTION_LIMIT_EXCEEDED);
+                return;
+            }
+            if (adminSocket) {
+                adminSessions.add(session);
+            } else {
+                userSessions.computeIfAbsent(user.getId(), key -> ConcurrentHashMap.newKeySet()).add(session);
+            }
         }
-        sendJson(session, Map.of(
-                "type", "CONNECTED",
-                "userId", user.getId(),
-                "role", socketRole
-        ));
+
+        if (adminSocket) {
+            sendJson(session, Map.of(
+                    "type", "CONNECTED",
+                    "userId", user.getId(),
+                    "role", socketRole
+            ));
+        } else {
+            sendJson(session, Map.of(
+                    "type", "CONNECTED",
+                    "role", socketRole
+            ));
+        }
+    }
+
+    private void configureSessionLimits(WebSocketSession session) {
+        session.setTextMessageSizeLimit(maxTextMessageBytes());
+        session.setBinaryMessageSizeLimit(maxBinaryMessageBytes());
     }
 
     @Override
@@ -85,6 +122,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         }
         if ("READ".equalsIgnoreCase(type)) {
             Long sessionId = toLong(payload.get("sessionId"));
+            requireAdminActionPermission(userId, role, AdminRoleService.SUPPORT_READ_STATE_PERMISSION);
             assertCanAccessSession(sessionId, userId, role);
             supportService.markRead(sessionId, role);
             broadcastSession(supportService.getSession(sessionId));
@@ -92,22 +130,44 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         }
         if ("CLOSE".equalsIgnoreCase(type)) {
             Long sessionId = toLong(payload.get("sessionId"));
-            assertCanAccessSession(sessionId, userId, role);
-            SupportSession closed = supportService.closeSession(sessionId);
-            broadcast(Map.of("type", "SESSION_CLOSED", "session", closed), closed.getUserId());
+            try {
+                requireAdminActionPermission(userId, role, AdminRoleService.SUPPORT_CLOSE_PERMISSION);
+                assertCanAccessSession(sessionId, userId, role);
+                SupportSession closed = supportService.closeSession(sessionId);
+                auditAdminSocketAction(socket, "SUPPORT_SESSION_CLOSE", "SUCCESS", sessionId,
+                        "Support session closed", supportSessionAuditMetadata(closed));
+                broadcast("SESSION_CLOSED", null, closed, closed.getUserId());
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                auditAdminSocketAction(socket, "SUPPORT_SESSION_CLOSE", "FAILURE", sessionId, e.getMessage(), null);
+                throw e;
+            }
             return;
         }
 
-        String content = payload.get("content") == null ? "" : String.valueOf(payload.get("content"));
-        content = normalizeContent(content);
         Long sessionId = toLong(payload.get("sessionId"));
+        String rawContent = payload.get("content") == null ? "" : String.valueOf(payload.get("content"));
+        String content;
         SupportSession session;
         if (isAdminRole(role)) {
-            session = supportService.getSession(sessionId);
-            if (session == null) {
-                throw new IllegalArgumentException("Support session not found");
+            try {
+                requireAdminActionPermission(userId, role, AdminRoleService.SUPPORT_REPLY_PERMISSION);
+                content = normalizeContent(rawContent);
+                session = supportService.getSession(sessionId);
+                if (session == null) {
+                    throw new IllegalArgumentException("Support session not found");
+                }
+                SupportMessage message = supportService.sendAdminMessage(userId, session.getId(), content);
+                SupportSession updatedSession = supportService.getSession(message.getSessionId());
+                auditAdminSocketAction(socket, "SUPPORT_MESSAGE_SEND", "SUCCESS", session.getId(),
+                        "Support message sent", supportMessageAuditMetadata(message));
+                broadcast("MESSAGE", message, updatedSession, updatedSession.getUserId());
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                auditAdminSocketAction(socket, "SUPPORT_MESSAGE_SEND", "FAILURE", sessionId, e.getMessage(), null);
+                throw e;
             }
+            return;
         } else {
+            content = normalizeContent(rawContent);
             session = sessionId == null ? null : supportService.getSession(sessionId);
             if (session == null || !"OPEN".equals(session.getStatus())) {
                 session = supportService.getOrCreateOpenSession(userId);
@@ -116,11 +176,9 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        SupportMessage message = isAdminRole(role)
-                ? supportService.sendAdminMessage(userId, session.getId(), content)
-                : supportService.sendUserMessage(userId, session == null ? null : session.getId(), content);
+        SupportMessage message = supportService.sendUserMessage(userId, session == null ? null : session.getId(), content);
         SupportSession updatedSession = supportService.getSession(message.getSessionId());
-        broadcast(Map.of("type", "MESSAGE", "message", message, "session", updatedSession), updatedSession.getUserId());
+        broadcast("MESSAGE", message, updatedSession, updatedSession.getUserId());
     }
 
     @Override
@@ -136,12 +194,54 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         removeSession(session);
     }
 
-    private User authenticate(URI uri) {
-        if (uri == null) {
+    @Override
+    public List<String> getSubProtocols() {
+        return List.of(SUPPORT_SUB_PROTOCOL);
+    }
+
+    private void auditAdminSocketAction(WebSocketSession socket,
+                                        String action,
+                                        String result,
+                                        Long sessionId,
+                                        String message,
+                                        String metadata) {
+        if (socket == null) {
+            return;
+        }
+        String role = String.valueOf(socket.getAttributes().get("role"));
+        if (!isAdminRole(role)) {
+            return;
+        }
+        Long actorUserId = toLong(socket.getAttributes().get("userId"));
+        String actorUsername = String.valueOf(socket.getAttributes().getOrDefault("username", ""));
+        auditLogService.record(action, result, actorUserId, actorUsername, role, "SUPPORT_SESSION", sessionId, null, message, metadata);
+    }
+
+    private String supportMessageAuditMetadata(SupportMessage message) {
+        if (message == null) {
+            return null;
+        }
+        return "messageId=" + message.getId()
+                + ",sessionId=" + message.getSessionId()
+                + ",senderRole=" + message.getSenderRole();
+    }
+
+    private String supportSessionAuditMetadata(SupportSession session) {
+        if (session == null) {
+            return null;
+        }
+        return "sessionId=" + session.getId()
+                + ",status=" + session.getStatus()
+                + ",userId=" + session.getUserId()
+                + ",assignedAdminId=" + session.getAssignedAdminId();
+    }
+
+    private User authenticate(WebSocketSession session) {
+        if (session == null) {
             return null;
         }
         try {
-            String token = UriComponentsBuilder.fromUri(uri).build().getQueryParams().getFirst("token");
+            String token = resolveToken(session);
             if (token == null || token.isBlank()) {
                 return null;
             }
@@ -159,6 +259,57 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private String resolveToken(WebSocketSession session) {
+        String token = tokenFromSubProtocols(session.getHandshakeHeaders());
+        if (token != null && !token.isBlank()) {
+            return token;
+        }
+        return null;
+    }
+
+    private String tokenFromSubProtocols(HttpHeaders headers) {
+        if (headers == null) {
+            return null;
+        }
+        List<String> protocols = headers.get(SEC_WEBSOCKET_PROTOCOL_HEADER);
+        if (protocols == null || protocols.isEmpty()) {
+            return null;
+        }
+        for (String header : protocols) {
+            if (header == null || header.isBlank()) {
+                continue;
+            }
+            for (String protocol : header.split(",")) {
+                String normalized = protocol.trim();
+                if (normalized.startsWith(AUTH_PROTOCOL_PREFIX)) {
+                    return decodeProtocolToken(normalized.substring(AUTH_PROTOCOL_PREFIX.length()));
+                }
+            }
+        }
+        return null;
+    }
+
+    private String decodeProtocolToken(String encodedToken) {
+        if (encodedToken == null || encodedToken.isBlank()) {
+            return null;
+        }
+        try {
+            return new String(Base64.getUrlDecoder().decode(encodedToken), StandardCharsets.UTF_8).trim();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private void requireAdminActionPermission(Long userId, String role, String permission) {
+        if (!isAdminRole(role)) {
+            return;
+        }
+        if (userId != null && adminRoleService.hasPermission(userId, permission)) {
+            return;
+        }
+        throw new IllegalStateException("Forbidden");
+    }
+
     private void assertCanAccessSession(Long sessionId, Long userId, String role) {
         if (sessionId == null) {
             throw new IllegalArgumentException("Support session is required");
@@ -167,25 +318,50 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
         if (session == null) {
             throw new IllegalArgumentException("Support session not found");
         }
-        if (!isAdminRole(role) && !userId.equals(session.getUserId())) {
-            throw new IllegalStateException("Forbidden");
+        if (!isAdminRole(role)) {
+            if (!userId.equals(session.getUserId()) || !supportService.isDefaultUserSession(session)) {
+                throw new IllegalStateException("Forbidden");
+            }
         }
     }
 
     private void broadcastSession(SupportSession session) {
-        broadcast(Map.of("type", "SESSION_UPDATED", "session", session), session.getUserId());
+        if (session == null) {
+            return;
+        }
+        broadcast("SESSION_UPDATED", null, session, session.getUserId());
     }
 
-    private void broadcast(Map<String, Object> payload, Long userId) {
+    private void broadcast(String type, SupportMessage message, SupportSession session, Long userId) {
         Set<WebSocketSession> sockets = userSessions.get(userId);
         if (sockets != null) {
+            Map<String, Object> customerPayload = customerPayload(type, message, session);
             for (WebSocketSession socket : sockets) {
-                sendJsonQuietly(socket, payload);
+                sendJsonQuietly(socket, customerPayload);
             }
         }
+        Map<String, Object> adminPayload = adminPayload(type, message, session);
         for (WebSocketSession adminSocket : adminSessions) {
-            sendJsonQuietly(adminSocket, payload);
+            sendJsonQuietly(adminSocket, adminPayload);
         }
+    }
+
+    private Map<String, Object> customerPayload(String type, SupportMessage message, SupportSession session) {
+        if (message == null) {
+            return Map.of("type", type, "session", SupportSessionCustomerResponse.from(session));
+        }
+        return Map.of(
+                "type", type,
+                "message", SupportMessageCustomerResponse.from(message),
+                "session", SupportSessionCustomerResponse.from(session)
+        );
+    }
+
+    private Map<String, Object> adminPayload(String type, SupportMessage message, SupportSession session) {
+        if (message == null) {
+            return Map.of("type", type, "session", session);
+        }
+        return Map.of("type", type, "message", SupportMessageAdminResponse.from(message), "session", session);
     }
 
     private String normalizeContent(String content) {
@@ -220,6 +396,9 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void removeSession(WebSocketSession session) {
+        if (session == null) {
+            return;
+        }
         Object userIdValue = session.getAttributes().get("userId");
         Object roleValue = session.getAttributes().get("role");
         if (roleValue != null && isAdminRole(String.valueOf(roleValue))) {
@@ -234,6 +413,68 @@ public class SupportWebSocketHandler extends TextWebSocketHandler {
                 }
             }
         }
+    }
+
+    private void pruneClosedSessions() {
+        adminSessions.removeIf(socket -> socket == null || !socket.isOpen());
+        userSessions.forEach((userId, sockets) -> {
+            sockets.removeIf(socket -> socket == null || !socket.isOpen());
+            if (sockets.isEmpty()) {
+                userSessions.remove(userId, sockets);
+            }
+        });
+    }
+
+    private int activeConnectionCount() {
+        int total = activeConnectionCount(adminSessions);
+        for (Set<WebSocketSession> sockets : userSessions.values()) {
+            total += activeConnectionCount(sockets);
+        }
+        return total;
+    }
+
+    private int activeConnectionCount(Set<WebSocketSession> sockets) {
+        if (sockets == null || sockets.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (WebSocketSession socket : sockets) {
+            if (socket != null && socket.isOpen()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int activeConnectionCountForUser(Long userId) {
+        if (userId == null) {
+            return 0;
+        }
+        int count = activeConnectionCount(userSessions.get(userId));
+        for (WebSocketSession adminSocket : adminSessions) {
+            if (adminSocket != null
+                    && adminSocket.isOpen()
+                    && Objects.equals(userId, adminSocket.getAttributes().get("userId"))) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int maxGlobalConnections() {
+        return Math.max(1, runtimeConfig.getInt("support.websocket.max-connections", 500));
+    }
+
+    private int maxConnectionsPerUser() {
+        return Math.max(1, runtimeConfig.getInt("support.websocket.max-connections-per-user", 5));
+    }
+
+    private int maxTextMessageBytes() {
+        return Math.max(1024, runtimeConfig.getInt("support.websocket.max-text-message-bytes", 16384));
+    }
+
+    private int maxBinaryMessageBytes() {
+        return Math.max(1024, runtimeConfig.getInt("support.websocket.max-binary-message-bytes", 8192));
     }
 
     private Long toLong(Object value) {

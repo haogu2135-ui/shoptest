@@ -3422,3 +3422,26 @@
     scroll-margin-bottom: calc(204px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* Final checkout mobile/App touch-target guard */
+@media (max-width: 780px) {
+  .checkout-page .ant-btn,
+  .checkout-page__addOnButton,
+  .checkout-page__confirmationButton,
+  .checkout-page__submitButton,
+  .checkout-page__mobilePayBar .ant-btn,
+  .checkout-page__emptyActions .ant-btn,
+  .checkout-page__coupon .ant-btn,
+  .checkout-page__summaryAction .ant-btn,
+  .checkout-page__paymentRecoveryActions .ant-btn,
+  .checkout-page__nextAction .ant-btn {
+    min-height: 44px;
+  }
+
+  .checkout-page__sectionCard .ant-input,
+  .checkout-page__sectionCard .ant-input-affix-wrapper,
+  .checkout-page__sectionCard .ant-select-selector,
+  .checkout-page__sectionCard .ant-cascader-picker {
+    min-height: 44px;
+  }
+}

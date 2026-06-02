@@ -1,10 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Descriptions, Empty, Form, Input, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Checkbox, Descriptions, Empty, Form, Input, Popconfirm, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { CheckCircleOutlined, CloudSyncOutlined, CodeOutlined, ReloadOutlined, SendOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { AdminConfigCenterSnapshot } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import {
+  CONFIG_CENTER_APPLY_PERMISSION,
+  CONFIG_CENTER_PUBLISH_PERMISSION,
+  getEffectiveRole,
+  hasAdminPermission,
+} from '../utils/roles';
 import './ConfigCenter.css';
 
 const { Text, Title } = Typography;
@@ -28,6 +34,10 @@ const ConfigCenter: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const canApplyConfig = hasAdminPermission(adminPermissions, currentRole, CONFIG_CENTER_APPLY_PERMISSION);
+  const canPublishConfig = hasAdminPermission(adminPermissions, currentRole, CONFIG_CENTER_PUBLISH_PERMISSION);
 
   const loadSnapshot = useCallback(async (params?: Partial<FormValues>) => {
     setLoading(true);
@@ -56,7 +66,29 @@ const ConfigCenter: React.FC = () => {
     loadSnapshot();
   }, [loadSnapshot]);
 
+  useEffect(() => {
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((response) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
   const handlePublish = async () => {
+    if (!canPublishConfig) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setPublishing(true);
@@ -65,7 +97,7 @@ const ConfigCenter: React.FC = () => {
         group: values.group,
         namespace: values.namespace || '',
         content: values.content,
-        applyRuntime: values.applyRuntime,
+        applyRuntime: canApplyConfig && values.applyRuntime,
       });
       setSnapshot(response.data);
       form.setFieldsValue({
@@ -88,6 +120,10 @@ const ConfigCenter: React.FC = () => {
   };
 
   const handleApplyRuntime = async () => {
+    if (!canApplyConfig) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setApplying(true);
@@ -119,20 +155,40 @@ const ConfigCenter: React.FC = () => {
     <div className="config-center">
       <div className="config-center__hero">
         <div>
-          <Text className="config-center__eyebrow">Nacos Config</Text>
+          <Text className="config-center__eyebrow">{t('pages.configCenter.eyebrow')}</Text>
           <Title level={2}>{t('pages.configCenter.title')}</Title>
           <Text type="secondary">{t('pages.configCenter.description')}</Text>
         </div>
         <Space className="config-center__actions" wrap>
-          <Button icon={<CheckCircleOutlined />} onClick={handleApplyRuntime} loading={applying}>
-            {t('pages.configCenter.applyOnly')}
-          </Button>
+          {canApplyConfig ? (
+            <Popconfirm
+              title={`${t('pages.configCenter.applyOnly')}?`}
+              description={t('pages.configCenter.applyOnlyConfirmDescription')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              onConfirm={handleApplyRuntime}
+            >
+              <Button icon={<CheckCircleOutlined />} loading={applying}>
+                {t('pages.configCenter.applyOnly')}
+              </Button>
+            </Popconfirm>
+          ) : null}
           <Button icon={<ReloadOutlined />} onClick={() => loadSnapshot()} loading={loading}>
             {t('common.refresh')}
           </Button>
-          <Button type="primary" icon={<SendOutlined />} onClick={handlePublish} loading={publishing}>
-            {t('pages.configCenter.publishSync')}
-          </Button>
+          {canPublishConfig ? (
+            <Popconfirm
+              title={`${t('pages.configCenter.publishSync')}?`}
+              description={t('pages.configCenter.publishSyncConfirmDescription')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              onConfirm={handlePublish}
+            >
+              <Button type="primary" icon={<SendOutlined />} loading={publishing}>
+                {t('pages.configCenter.publishSync')}
+              </Button>
+            </Popconfirm>
+          ) : null}
         </Space>
       </div>
 
@@ -151,7 +207,7 @@ const ConfigCenter: React.FC = () => {
             <Statistic title={t('pages.configCenter.nacosAddress')} value={snapshot?.nacosServerAddr || '-'} prefix={<CloudSyncOutlined />} />
           </Card>
           <Card>
-            <Statistic title="Properties" value={snapshot?.propertyCount || 0} prefix={<CodeOutlined />} />
+            <Statistic title={t('pages.configCenter.properties')} value={snapshot?.propertyCount || 0} prefix={<CodeOutlined />} />
           </Card>
           <Card>
             <Statistic
@@ -178,18 +234,20 @@ const ConfigCenter: React.FC = () => {
         >
           <Card title={t('pages.configCenter.publishTarget')} className="config-center__card">
             <div className="config-center__form">
-              <Form.Item name="dataId" label="Data ID" rules={[{ required: true, message: t('pages.configCenter.dataIdRequired') }]}>
+              <Form.Item name="dataId" label={t('pages.configCenter.dataId')} rules={[{ required: true, message: t('pages.configCenter.dataIdRequired') }]}>
                 <Input placeholder="shop-backend.properties" />
               </Form.Item>
-              <Form.Item name="group" label="Group" rules={[{ required: true, message: t('pages.configCenter.groupRequired') }]}>
+              <Form.Item name="group" label={t('pages.configCenter.group')} rules={[{ required: true, message: t('pages.configCenter.groupRequired') }]}>
                 <Input placeholder="DEFAULT_GROUP" />
               </Form.Item>
-              <Form.Item name="namespace" label="Namespace">
+              <Form.Item name="namespace" label={t('pages.configCenter.namespace')}>
                 <Input placeholder={t('pages.configCenter.namespacePlaceholder')} />
               </Form.Item>
-              <Form.Item name="applyRuntime" valuePropName="checked">
-                <Checkbox>{t('pages.configCenter.applyAfterPublish')}</Checkbox>
-              </Form.Item>
+              {canApplyConfig ? (
+                <Form.Item name="applyRuntime" valuePropName="checked">
+                  <Checkbox>{t('pages.configCenter.applyAfterPublish')}</Checkbox>
+                </Form.Item>
+              ) : null}
             </div>
             <Descriptions column={1} size="small" bordered className="config-center__meta">
               <Descriptions.Item label={t('pages.configCenter.lastSynced')}>{snapshot?.lastSyncedAt || '-'}</Descriptions.Item>
@@ -223,8 +281,8 @@ const ConfigCenter: React.FC = () => {
               pagination={{ pageSize: 8, hideOnSinglePage: true }}
               scroll={{ x: 620 }}
               columns={[
-                { title: 'Key', dataIndex: 'name', width: 260, render: (value: string) => <Text copyable>{value}</Text> },
-                { title: 'Value', dataIndex: 'value', render: (value: string) => <Text>{value}</Text> },
+                { title: t('pages.configCenter.key'), dataIndex: 'name', width: 260, render: (value: string) => <Text copyable>{value}</Text> },
+                { title: t('pages.configCenter.value'), dataIndex: 'value', render: (value: string) => <Text>{value}</Text> },
               ]}
             />
           ) : (
@@ -240,8 +298,8 @@ const ConfigCenter: React.FC = () => {
               pagination={false}
               scroll={{ x: 620 }}
               columns={[
-                { title: 'Key', dataIndex: 'name', width: 260, render: (value: string) => <Tag color="blue">{value}</Tag> },
-                { title: 'Effective Value', dataIndex: 'value', render: (value: string) => <Text>{value || '-'}</Text> },
+                { title: t('pages.configCenter.key'), dataIndex: 'name', width: 260, render: (value: string) => <Tag color="blue">{value}</Tag> },
+                { title: t('pages.configCenter.effectiveValue'), dataIndex: 'value', render: (value: string) => <Text>{value || '-'}</Text> },
               ]}
             />
           ) : (

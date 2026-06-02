@@ -61,6 +61,24 @@
   box-shadow: 0 10px 24px rgba(38, 67, 85, 0.06);
 }
 
+.alert-management__statCard {
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.alert-management__statCard:hover,
+.alert-management__statCard:focus-visible {
+  border-color: rgba(217, 75, 43, 0.42);
+  box-shadow: 0 12px 26px rgba(38, 67, 85, 0.1);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.alert-management__statCard.is-active {
+  border-color: rgba(217, 75, 43, 0.58);
+  box-shadow: 0 0 0 2px rgba(217, 75, 43, 0.12), 0 12px 26px rgba(38, 67, 85, 0.08);
+}
+
 .alert-management__alert {
   margin-bottom: 14px;
 }
@@ -340,5 +358,20 @@
 
   .alert-management .ant-table-cell {
     padding: 9px 8px;
+  }
+}
+
+/* Final mobile/App alert operations touch-target guard */
+@media (max-width: 720px) {
+  .alert-management .ant-btn,
+  .alert-management__actions .ant-btn,
+  .alert-management__filters .ant-btn,
+  .alert-management__bulkBar .ant-btn,
+  .alert-management__purge .ant-btn,
+  .alert-management__filters .ant-select-selector,
+  .alert-management__filters .ant-input-affix-wrapper,
+  .alert-management__purge .ant-input-number,
+  .alert-management__purge .ant-input-number-group-addon {
+    min-height: 44px;
   }
 }

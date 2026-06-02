@@ -5,8 +5,14 @@ const hasUnsafeUrlCharacter = (value: string) => Array.from(value).some((char) =
 
 export const normalizeAnnouncementLink = (value?: string | null) => {
   const link = String(value || '').trim();
+  const normalizedLink = link.toLowerCase();
   if (!link) return '';
-  if (link.includes('\\') || hasUnsafeUrlCharacter(link)) return '';
+  if (
+    link.includes('\\')
+    || hasUnsafeUrlCharacter(link)
+    || normalizedLink.includes('%00')
+    || normalizedLink.includes('%5c')
+  ) return '';
   if (link.startsWith('/')) return link.startsWith('//') ? '' : link;
   try {
     const url = new URL(link);

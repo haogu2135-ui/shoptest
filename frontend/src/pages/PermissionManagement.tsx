@@ -5,12 +5,15 @@ import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import type { AdminRole } from '../types';
-import { ADMIN_PAGE_PERMISSIONS, isSuperAdminRole } from '../utils/roles';
+import { ADMIN_PAGE_PERMISSIONS, adminPermissionLabelKey, isSuperAdminRole } from '../utils/roles';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import './PermissionManagement.css';
 
 const { Title, Text } = Typography;
+const RESERVED_ROLE_CODES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN']);
+
+const isReservedRole = (role?: AdminRole | null) => RESERVED_ROLE_CODES.has(String(role?.code || '').trim().toUpperCase());
 
 const PermissionManagement: React.FC = () => {
   const [roles, setRoles] = useState<AdminRole[]>([]);
@@ -52,6 +55,10 @@ const PermissionManagement: React.FC = () => {
   }, [keyword, roles]);
 
   const openRoleModal = (role?: AdminRole) => {
+    if (isReservedRole(role)) {
+      message.info(t('pages.permissions.reservedRoleReadonly'));
+      return;
+    }
     setEditingRole(role || null);
     form.resetFields();
     form.setFieldsValue(role || { code: '', name: '', description: '', permissions: ['dashboard', 'support'] });
@@ -154,18 +161,20 @@ const PermissionManagement: React.FC = () => {
             dataIndex: 'permissions',
             render: (permissions: string[]) => (
               <Space wrap size={[4, 4]}>
-                {(permissions || []).map((permission) => <Tag key={permission}>{t(`adminLayout.${permission.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`)}</Tag>)}
+                {(permissions || []).map((permission) => <Tag key={permission}>{t(adminPermissionLabelKey(permission))}</Tag>)}
               </Space>
             ),
           },
           {
             title: t('common.actions'),
             width: 120,
-            render: (_, role) => (
-              <Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => openRoleModal(role)}>
-                {t('common.edit')}
-              </Button>
-            ),
+            render: (_, role) => isReservedRole(role)
+              ? <Tag>{t('pages.permissions.systemRole')}</Tag>
+              : (
+                <Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => openRoleModal(role)}>
+                  {t('common.edit')}
+                </Button>
+              ),
           },
         ]}
       />
@@ -195,7 +204,7 @@ const PermissionManagement: React.FC = () => {
               <Space wrap className="permission-management-page__permissionGrid">
                 {ADMIN_PAGE_PERMISSIONS.map((permission) => (
                   <Checkbox key={permission} value={permission}>
-                    {t(`adminLayout.${permission.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`)}
+                    {t(adminPermissionLabelKey(permission))}
                   </Checkbox>
                 ))}
               </Space>

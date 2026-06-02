@@ -2766,7 +2766,9 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   body .ant-modal-root .ant-modal:not(.ant-modal-confirm) .ant-modal-footer .ant-btn {
     width: 100%;
     min-width: 0;
+    min-height: 44px;
     margin-inline-start: 0 !important;
+    touch-action: manipulation;
   }
 }
 
@@ -2920,4 +2922,44 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
+}
+
+/* UI issues pass: keep floating support above the mobile commerce nav and page CTAs. */
+@media (max-width: 780px) {
+  .app-support-launcher,
+  .customer-support-widget__button {
+    right: calc(12px + env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 22px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    z-index: 2600 !important;
+  }
+
+  .shop-app-shell--auth-flow .app-support-launcher,
+  .shop-app-shell--auth-flow .customer-support-widget__button {
+    bottom: calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .shop-app-shell--cart .app-support-launcher,
+  .shop-app-shell--cart .customer-support-widget__button,
+  .shop-app-shell--checkout .app-support-launcher,
+  .shop-app-shell--checkout .customer-support-widget__button,
+  .shop-app-shell--product-detail .app-support-launcher,
+  .shop-app-shell--product-detail .customer-support-widget__button {
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 50px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-support-launcher,
+  .customer-support-widget__button {
+    right: calc(8px + env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
 }

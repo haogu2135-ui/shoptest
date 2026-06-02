@@ -369,6 +369,14 @@
   margin-bottom: 14px;
 }
 
+.register-page__codeHint {
+  display: block;
+  margin: -4px 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .register-page__card .ant-input,
 .register-page__card .ant-input-affix-wrapper,
 .register-page__card .ant-select-selector {
@@ -386,6 +394,18 @@
   border-color: rgba(238, 77, 45, 0.42) !important;
   background: #ffffff;
   box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.1);
+}
+
+.register-page__card .ant-input-group-addon {
+  border-color: #dce9df;
+  background: #fbfefb;
+  padding: 0 4px;
+}
+
+.register-page__card .ant-input-group-addon .ant-btn {
+  min-height: 32px;
+  padding-inline: 8px;
+  box-shadow: none;
 }
 
 .register-page__trustGrid .ant-tag {
@@ -1191,5 +1211,50 @@
     max-height: none;
     margin: 0 auto;
     overflow: visible;
+  }
+}
+
+/* UI issues pass: desktop registration uses two stable columns without visual overlap. */
+@media (min-width: 861px) {
+  .register-page {
+    min-height: calc(100dvh - 64px);
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 460px);
+    gap: clamp(28px, 3vw, 44px);
+    padding: 32px clamp(28px, 4vw, 48px);
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .register-page__panel,
+  .register-page__card {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .register-page__panel {
+    padding: clamp(32px, 4vw, 52px);
+  }
+
+  .register-page__card {
+    justify-self: end;
+  }
+}
+
+/* Final mobile/App registration touch-target guard */
+@media (max-width: 640px) {
+  .register-page__actions .ant-btn,
+  .register-page__card .ant-input,
+  .register-page__card .ant-input-affix-wrapper,
+  .register-page__card .ant-select-selector,
+  .register-page__card .ant-btn,
+  .register-page__footer a,
+  .register-page__footer button {
+    min-height: 44px;
+  }
+
+  .register-page__card .ant-input-group-addon .ant-btn {
+    min-height: 44px;
   }
 }

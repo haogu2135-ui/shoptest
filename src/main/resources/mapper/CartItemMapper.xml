@@ -28,6 +28,12 @@
         WHERE ci.user_id = #{userId}
     </select>
 
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM cart_items
+        WHERE user_id = #{userId}
+    </select>
+
     <select id="findById" resultMap="cartItemMap">
         SELECT <include refid="cartItemColumns"/>
         FROM cart_items ci

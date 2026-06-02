@@ -18,7 +18,7 @@ import {
   Typography,
 } from 'antd';
 import { BranchesOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
-import { categoryApi } from '../api';
+import { adminApi } from '../api';
 import type { Category } from '../types';
 import {
   buildCategoryTree,
@@ -30,6 +30,7 @@ import {
 import { useLanguage } from '../i18n';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
+import { CATEGORIES_DELETE_PERMISSION, CATEGORIES_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './CategoryManagement.css';
 
 const { TextArea } = Input;
@@ -45,8 +46,12 @@ const CategoryManagement: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
+  const canWriteCategories = hasAdminPermission(adminPermissions, currentRole, CATEGORIES_WRITE_PERMISSION);
+  const canDeleteCategories = hasAdminPermission(adminPermissions, currentRole, CATEGORIES_DELETE_PERMISSION);
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
@@ -114,7 +119,7 @@ const CategoryManagement: React.FC = () => {
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await categoryApi.getAll();
+      const res = await adminApi.getCategories();
       setCategories(res.data);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.categoryAdmin.fetchFailed'), language));
@@ -127,7 +132,23 @@ const CategoryManagement: React.FC = () => {
     fetchCategories();
   }, [fetchCategories]);
 
+  useEffect(() => {
+    adminApi.getMyPermissions()
+      .then((response) => {
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+  }, []);
+
   const openModal = (category?: Category | null, parent?: Category | null) => {
+    if (!canWriteCategories) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setEditingCategory(category || null);
     setImagePreviewUrl(category?.imageUrl || '');
     form.resetFields();
@@ -155,8 +176,12 @@ const CategoryManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!canDeleteCategories) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
-      await categoryApi.delete(id);
+      await adminApi.deleteCategory(id);
       message.success(t('messages.deleteSuccess'));
       fetchCategories();
     } catch (error: any) {
@@ -165,6 +190,10 @@ const CategoryManagement: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!canWriteCategories) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setSaving(true);
@@ -189,10 +218,10 @@ const CategoryManagement: React.FC = () => {
       };
 
       if (editingCategory) {
-        await categoryApi.update(editingCategory.id, payload);
+        await adminApi.updateCategory(editingCategory.id, payload);
         message.success(t('pages.categoryAdmin.updated'));
       } else {
-        await categoryApi.create(payload);
+        await adminApi.createCategory(payload);
         message.success(t('pages.categoryAdmin.created'));
       }
       setModalVisible(false);
@@ -222,9 +251,16 @@ const CategoryManagement: React.FC = () => {
       dataIndex: 'imageUrl',
       key: 'imageUrl',
       width: 88,
-      render: (url?: string) =>
+      render: (url?: string, record?: Category) =>
         url ? (
-          <Image src={resolveCategoryImage(url)} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={categoryImageFallback} />
+          <Image
+            src={resolveCategoryImage(url)}
+            alt={record?.localizedContent?.[language]?.name || record?.localizedContent?.en?.name || record?.name || t('common.image')}
+            width={56}
+            height={56}
+            style={{ objectFit: 'cover', borderRadius: 6 }}
+            fallback={categoryImageFallback}
+          />
         ) : (
           <div className="category-management-page__imagePlaceholder" />
         ),
@@ -286,19 +322,21 @@ const CategoryManagement: React.FC = () => {
       width: 280,
       render: (_: unknown, record: Category) => (
         <Space size="small">
-          {(record.level || 1) < 3 ? (
+          {canWriteCategories && (record.level || 1) < 3 ? (
             <Button icon={<PlusOutlined />} size="small" onClick={() => openModal(null, record)}>
               {t('pages.categoryAdmin.child')}
             </Button>
           ) : null}
-          <Button icon={<EditOutlined />} size="small" onClick={() => openModal(record)}>
+          {canWriteCategories ? <Button icon={<EditOutlined />} size="small" onClick={() => openModal(record)}>
             {t('common.edit')}
-          </Button>
-          <Popconfirm title={t('pages.categoryAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
-            <Button icon={<DeleteOutlined />} danger size="small">
-              {t('common.delete')}
-            </Button>
-          </Popconfirm>
+          </Button> : null}
+          {canDeleteCategories ? (
+            <Popconfirm title={t('pages.categoryAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+              <Button icon={<DeleteOutlined />} danger size="small">
+                {t('common.delete')}
+              </Button>
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },
@@ -322,9 +360,11 @@ const CategoryManagement: React.FC = () => {
             placeholder={t('common.search')}
             className="category-management-page__keywordInput"
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-            {t('pages.categoryAdmin.addRoot')}
-          </Button>
+          {canWriteCategories ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+              {t('pages.categoryAdmin.addRoot')}
+            </Button>
+          ) : null}
         </Space>
       </Card>
 
@@ -457,7 +497,14 @@ const CategoryManagement: React.FC = () => {
 
           {imagePreviewUrl ? (
             <div className="category-management-page__preview">
-              <Image src={resolveCategoryImage(imagePreviewUrl)} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={categoryImageFallback} />
+              <Image
+                src={resolveCategoryImage(imagePreviewUrl)}
+                alt={editingCategory?.localizedContent?.[language]?.name || editingCategory?.localizedContent?.en?.name || editingCategory?.name || t('common.image')}
+                width={180}
+                height={120}
+                style={{ objectFit: 'cover', borderRadius: 8 }}
+                fallback={categoryImageFallback}
+              />
             </div>
           ) : null}
 

@@ -7,7 +7,6 @@ import com.example.shop.repository.PaymentRepository;
 import com.example.shop.util.GatewayUrlValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
@@ -131,13 +130,10 @@ public class RefundService {
             throw new IllegalStateException("Stripe payment intent is missing");
         }
         try {
-            Stripe.apiKey = secretKey;
             Refund refund = Refund.create(RefundCreateParams.builder()
                     .setPaymentIntent(paymentIntent)
                     .build(),
-                    RequestOptions.builder()
-                            .setIdempotencyKey("return-refund-" + order.getId() + "-" + payment.getId())
-                            .build());
+                    stripeRequestOptions(secretKey, "return-refund-" + order.getId() + "-" + payment.getId()));
             return refund.getId();
         } catch (StripeException e) {
             throw new IllegalStateException("Stripe refund failed: " + e.getMessage());
@@ -157,8 +153,7 @@ public class RefundService {
             return null;
         }
         try {
-            Stripe.apiKey = stripeSecretKey();
-            Session session = Session.retrieve(sessionId);
+            Session session = Session.retrieve(sessionId, stripeRequestOptions(stripeSecretKey()));
             return trimToNull(session.getPaymentIntent());
         } catch (StripeException e) {
             throw new IllegalStateException("Stripe payment lookup failed: " + e.getMessage());
@@ -197,7 +192,7 @@ public class RefundService {
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new IllegalStateException("Gateway refund request failed with status " + response.getStatusCodeValue());
         }
-        return parseRefundReference(response.getBody(), payment.getId());
+        return parseRefundReference(response.getBody(), payment, channel);
     }
 
     private HttpHeaders buildHeaders(PaymentChannelConfig.Channel channel, String idempotencyKey) {
@@ -212,7 +207,7 @@ public class RefundService {
         return headers;
     }
 
-    private String parseRefundReference(String responseBody, Long paymentId) {
+    private String parseRefundReference(String responseBody, Payment payment, PaymentChannelConfig.Channel channel) {
         if (isBlank(responseBody)) {
             throw new IllegalStateException("Gateway refund response is empty");
         }
@@ -225,6 +220,7 @@ public class RefundService {
                     throw new IllegalStateException("Gateway refund rejected with status " + status);
                 }
             }
+            validateGatewayRefundAmount(root, payment, channel);
             String reference = firstNonBlank(
                     readText(root, "refundReference"),
                     readText(root, "refundId"),
@@ -238,6 +234,38 @@ public class RefundService {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Gateway refund response is invalid");
+        }
+    }
+
+    private void validateGatewayRefundAmount(JsonNode root, Payment payment, PaymentChannelConfig.Channel channel) {
+        String amountText = firstNonBlank(
+                readText(root, "amount"),
+                readText(root, "refundAmount"),
+                readText(root, "refundedAmount"),
+                readText(root, "amountRefunded"));
+        if (amountText == null) {
+            throw new IllegalStateException("Gateway refund response is missing refunded amount");
+        }
+        BigDecimal refundedAmount;
+        try {
+            refundedAmount = new BigDecimal(amountText);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("Gateway refund response amount is invalid");
+        }
+        BigDecimal expectedAmount = payment.getAmount();
+        if (expectedAmount == null || refundedAmount.compareTo(expectedAmount) != 0) {
+            throw new IllegalStateException("Gateway refund response amount mismatch");
+        }
+        String expectedCurrency = resolveCurrency(channel);
+        String actualCurrency = firstNonBlank(
+                readText(root, "currency"),
+                readText(root, "refundCurrency"),
+                readText(root, "refundedCurrency"));
+        if (actualCurrency == null) {
+            throw new IllegalStateException("Gateway refund response is missing currency");
+        }
+        if (!expectedCurrency.equalsIgnoreCase(actualCurrency)) {
+            throw new IllegalStateException("Gateway refund response currency mismatch");
         }
     }
 
@@ -314,5 +342,16 @@ public class RefundService {
 
     private String stripeSecretKey() {
         return runtimeConfig.getString("stripe.secret-key", "");
+    }
+
+    private RequestOptions stripeRequestOptions(String apiKey) {
+        return RequestOptions.builder().setApiKey(apiKey).build();
+    }
+
+    private RequestOptions stripeRequestOptions(String apiKey, String idempotencyKey) {
+        return RequestOptions.builder()
+                .setApiKey(apiKey)
+                .setIdempotencyKey(idempotencyKey)
+                .build();
     }
 }

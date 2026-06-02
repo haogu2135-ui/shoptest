@@ -2,6 +2,10 @@ package com.example.shop.entity;
 
 import lombok.Data;
 import javax.persistence.*;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,18 +21,27 @@ public class Category {
     private Long id;
 
     @Column(nullable = false)
+    @NotBlank
+    @Size(max = 100)
     private String name;
 
     @Column(name = "parent_id")
     private Long parentId;
 
     @Column(name = "level", nullable = false)
+    @NotNull
+    @Min(1)
     private Integer level = 1;
 
     @Column(name = "image_url", columnDefinition = "TEXT")
+    @Size(max = 2000)
     private String imageUrl;
 
+    @Size(max = 1000)
     private String description;
+
+    @Transient
+    private Long productCount;
 
     @Column(name = "localized_content", columnDefinition = "TEXT")
     @JsonIgnore

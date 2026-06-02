@@ -31,6 +31,8 @@ export const saveGuestSupportContext = (context: GuestSupportContext | null) => 
   return setLocalStorageItem(GUEST_SUPPORT_CONTEXT_KEY, JSON.stringify({ ...context, savedAt: Date.now() }));
 };
 
+export const clearGuestSupportContext = () => removeLocalStorageItem(GUEST_SUPPORT_CONTEXT_KEY);
+
 export const loadGuestSupportContext = (): GuestSupportContext | null => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(GUEST_SUPPORT_CONTEXT_KEY) || 'null') as StoredGuestSupportContext | null;
@@ -45,4 +47,3 @@ export const loadGuestSupportContext = (): GuestSupportContext | null => {
     return null;
   }
 };
-

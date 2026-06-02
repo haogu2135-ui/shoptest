@@ -2,10 +2,14 @@ param(
     [string]$MysqlHome = 'C:\Program Files\MySQL\MySQL Server 8.0',
     [string]$DataDir = (Join-Path (Resolve-Path .) 'mysql-data-dev'),
     [int]$Port = 3306,
-    [string]$RootPassword = '84813378'
+    [string]$RootPassword = $env:SHOPTEST_LOCAL_MYSQL_ROOT_PASSWORD
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ([string]::IsNullOrWhiteSpace($RootPassword)) {
+    throw "RootPassword is required. Pass -RootPassword or set SHOPTEST_LOCAL_MYSQL_ROOT_PASSWORD for this local-only MySQL instance."
+}
 
 $mysqld = Join-Path $MysqlHome 'bin\mysqld.exe'
 $mysql = Join-Path $MysqlHome 'bin\mysql.exe'

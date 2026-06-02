@@ -2003,6 +2003,20 @@
     overflow: hidden;
   }
 
+  .product-detail-page .slick-arrow {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    z-index: 3;
+  }
+
+  .product-detail-page .slick-prev::before,
+  .product-detail-page .slick-next::before {
+    font-size: 20px;
+    line-height: 44px;
+  }
+
   .product-recommendations {
     margin-top: 8px !important;
     padding: 0 10px 10px;
@@ -3605,13 +3619,13 @@
 /* Final mobile buybar tool tap-target pass */
 @media (max-width: 768px) {
   .product-mobile-buybar {
-    grid-template-columns: 36px 36px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 44px 44px minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .product-mobile-buybar__tool {
-    width: 36px;
-    min-width: 36px;
-    min-height: 42px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
     padding-inline: 0;
   }
 
@@ -3622,12 +3636,12 @@
 
 @media (max-width: 380px) {
   .product-mobile-buybar {
-    grid-template-columns: 34px 34px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 44px 44px minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .product-mobile-buybar__tool {
-    width: 34px;
-    min-width: 34px;
+    width: 44px;
+    min-width: 44px;
   }
 }
 
@@ -4038,5 +4052,105 @@
   .product-value-callout .ant-btn,
   .product-decision-card .ant-btn {
     white-space: nowrap !important;
+  }
+}
+
+/* Product-detail contrast and discount safety. */
+.product-gallery-discount,
+.product-price-line__discount.ant-tag {
+  z-index: 4;
+  border-color: rgba(143, 45, 23, 0.18) !important;
+  background: #8f2d17 !important;
+  color: #fff7f0 !important;
+  box-shadow: 0 12px 24px rgba(143, 45, 23, 0.22);
+}
+
+.product-actions .ant-btn-primary,
+.product-mobile-buybar__buy {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #b84222, #7f2d16) !important;
+  color: #fff7f0 !important;
+  box-shadow: 0 14px 28px rgba(127, 45, 22, 0.28);
+}
+
+.product-actions .ant-btn-primary:hover,
+.product-actions .ant-btn-primary:focus-visible,
+.product-mobile-buybar__buy:hover,
+.product-mobile-buybar__buy:focus-visible {
+  background: linear-gradient(135deg, #c94a28, #7f2d16) !important;
+  color: #fff7f0 !important;
+}
+
+.product-actions .ant-btn-primary > span,
+.product-actions .ant-btn-primary .anticon,
+.product-mobile-buybar__buy > span,
+.product-mobile-buybar__buy .anticon {
+  color: inherit !important;
+}
+
+@media (max-width: 768px) {
+  .product-price-line {
+    flex-wrap: wrap !important;
+    overflow: visible;
+    row-gap: 4px;
+  }
+
+  .product-price-line__current,
+  .product-price-line__original,
+  .product-price-line__discount {
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
+
+/* Final mobile/App product-detail purchase touch-target guard */
+@media (max-width: 768px) {
+  .product-option-header .ant-btn,
+  .product-selected-summary__header .ant-btn,
+  .product-size-calculator__header .ant-btn,
+  .product-size-calculator .ant-alert-action .ant-btn,
+  .product-size-calculator__inputs .ant-input,
+  .product-option-radio .ant-radio-button-wrapper,
+  .product-purchase-mode .ant-segmented-item-label,
+  .product-purchase-mode__details .ant-radio-button-wrapper,
+  .product-quantity-row .ant-btn,
+  .product-complete-set__item .ant-btn,
+  .product-tabs-card .ant-tabs-tab,
+  .product-qa-card textarea.ant-input,
+  .product-qa-card .ant-btn,
+  .product-recommendations__card .ant-btn,
+  .product-mobile-buybar__tool,
+  .product-mobile-buybar__cart,
+  .product-mobile-buybar__buy {
+    min-height: 44px;
+  }
+
+  .product-quantity-row .ant-btn,
+  .product-complete-set__item .ant-btn,
+  .product-mobile-buybar__tool {
+    min-width: 44px;
+  }
+
+  .product-complete-set__item {
+    grid-template-columns: minmax(42px, 46px) minmax(0, 1fr) 44px;
+  }
+
+  .product-mobile-buybar {
+    grid-template-columns: 44px 44px minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .product-mobile-buybar__tool {
+    width: 44px;
+  }
+}
+
+@media (max-width: 380px) {
+  .product-mobile-buybar {
+    grid-template-columns: 44px 44px minmax(0, 1fr);
+  }
+
+  .product-mobile-buybar__buy {
+    grid-column: 1 / -1;
   }
 }

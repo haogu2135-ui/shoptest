@@ -10,17 +10,18 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -122,7 +123,7 @@ class SecurityAuditLogServiceTest {
 
     @Test
     void summaryClampsTimeRangeAndTopLimit() {
-        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        CapturingSummaryJdbcTemplate jdbcTemplate = new CapturingSummaryJdbcTemplate();
         SecurityAuditLogService service = new SecurityAuditLogService(
                 mock(SecurityAuditLogMapper.class),
                 jdbcTemplate,
@@ -132,16 +133,7 @@ class SecurityAuditLogServiceTest {
         LocalDateTime start = end.minusDays(2);
         LocalDateTime clampedStart = end.minusHours(2);
 
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(12L);
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any(LocalDateTime.class), any(LocalDateTime.class), eq("SUCCESS")))
-                .thenReturn(9L);
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any(LocalDateTime.class), any(LocalDateTime.class), eq("FAILURE")))
-                .thenReturn(3L);
-        when(jdbcTemplate.queryForList(anyString(), any(LocalDateTime.class), any(LocalDateTime.class), eq(50)))
-                .thenReturn(List.of(Map.of("name", "ORDER_EXPORT", "total", 7L)));
-
-        SecurityAuditSummaryResponse response = service.summary(start, end, 999);
+        SecurityAuditSummaryResponse response = service.summary(null, null, null, null, start, end, 999);
 
         assertEquals(clampedStart.toString(), response.getStartAt());
         assertEquals(end.toString(), response.getEndAt());
@@ -154,7 +146,49 @@ class SecurityAuditLogServiceTest {
         assertEquals(4, response.getMaxExportRows());
         assertEquals("ORDER_EXPORT", response.getTopActions().get(0).getName());
         assertEquals(7L, response.getTopActions().get(0).getCount());
-        verify(jdbcTemplate, times(4)).queryForList(anyString(), eq(clampedStart), eq(end), eq(50));
+        assertEquals(4, jdbcTemplate.groupParams.size());
+        jdbcTemplate.groupParams.forEach(params -> {
+            assertEquals(3, params.length);
+            assertEquals(clampedStart, params[0]);
+            assertEquals(end, params[1]);
+            assertEquals(50, params[2]);
+        });
+    }
+
+    @Test
+    void summaryAppliesActiveListFiltersToCountsAndGroups() {
+        CapturingSummaryJdbcTemplate jdbcTemplate = new CapturingSummaryJdbcTemplate();
+        SecurityAuditLogService service = new SecurityAuditLogService(
+                mock(SecurityAuditLogMapper.class),
+                jdbcTemplate,
+                mock(ClientIpResolver.class),
+                auditRuntimeConfig());
+        LocalDateTime end = LocalDateTime.of(2026, 5, 24, 15, 0);
+        LocalDateTime start = end.minusMinutes(30);
+
+        service.summary(" refund_complete ", " failure ", " admin ", " payment ", start, end, 6);
+
+        assertEquals(3, jdbcTemplate.countParams.size());
+        jdbcTemplate.countParams.forEach(params -> {
+            assertEquals(6, params.length);
+            assertEquals("REFUND_COMPLETE", params[0]);
+            assertEquals("FAILURE", params[1]);
+            assertEquals("%admin%", params[2]);
+            assertEquals("PAYMENT", params[3]);
+            assertEquals(start, params[4]);
+            assertEquals(end, params[5]);
+        });
+        assertEquals(4, jdbcTemplate.groupParams.size());
+        jdbcTemplate.groupParams.forEach(params -> {
+            assertEquals(7, params.length);
+            assertEquals("REFUND_COMPLETE", params[0]);
+            assertEquals("FAILURE", params[1]);
+            assertEquals("%admin%", params[2]);
+            assertEquals("PAYMENT", params[3]);
+            assertEquals(start, params[4]);
+            assertEquals(end, params[5]);
+            assertEquals(6, params[6]);
+        });
     }
 
     @Test
@@ -184,5 +218,23 @@ class SecurityAuditLogServiceTest {
         when(runtimeConfig.getInt("admin.audit-logs.search-max-rows", 1000)).thenReturn(3);
         when(runtimeConfig.getInt("admin.audit-logs.export-max-rows", 5000)).thenReturn(4);
         return runtimeConfig;
+    }
+
+    private static class CapturingSummaryJdbcTemplate extends JdbcTemplate {
+        private final Queue<Long> counts = new ArrayDeque<>(List.of(12L, 9L, 3L));
+        private final List<Object[]> countParams = new ArrayList<>();
+        private final List<Object[]> groupParams = new ArrayList<>();
+
+        @Override
+        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            countParams.add(args);
+            return requiredType.cast(counts.remove());
+        }
+
+        @Override
+        public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            groupParams.add(args);
+            return List.of(Map.of("name", "ORDER_EXPORT", "total", 7L));
+        }
     }
 }

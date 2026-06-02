@@ -34,7 +34,7 @@ const compactBlocks = (blocks: ProductDetailBlock[]) =>
     return !!block.url?.trim();
   });
 
-const RichVideoPreview: React.FC<{ block: ProductDetailBlock; index: number }> = ({ block, index }) => {
+const RichVideoPreview: React.FC<{ block: ProductDetailBlock; previewTitle: string }> = ({ block, previewTitle }) => {
   const mediaUrl = resolveRichMediaUrl(block.url);
   if (!mediaUrl) return null;
   const videoUrl = toEmbeddableVideoUrl(mediaUrl);
@@ -49,11 +49,11 @@ const RichVideoPreview: React.FC<{ block: ProductDetailBlock; index: number }> =
   return (
     <div className="product-rich-detail-editor__videoPreview">
       {isDirectVideo(videoUrl) ? (
-        <video src={videoUrl} controls className="product-rich-detail-editor__videoFrame" />
+        <video src={videoUrl} controls aria-label={block.caption || previewTitle} className="product-rich-detail-editor__videoFrame" />
       ) : (
         <iframe
           src={videoUrl}
-          title={block.caption || `Rich media preview ${index + 1}`}
+          title={block.caption || previewTitle}
           allowFullScreen
           className="product-rich-detail-editor__videoFrame"
         />
@@ -131,9 +131,27 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
               }
               extra={
                 <Space className="product-rich-detail-editor__blockActions">
-                  <Button icon={<ArrowUpOutlined />} disabled={index === 0} onClick={() => moveBlock(index, -1)} />
-                  <Button icon={<ArrowDownOutlined />} disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)} />
-                  <Button danger icon={<DeleteOutlined />} onClick={() => removeBlock(index)} />
+                  <Button
+                    icon={<ArrowUpOutlined />}
+                    disabled={index === 0}
+                    aria-label={t('pages.productAdmin.moveRichBlockUp')}
+                    title={t('pages.productAdmin.moveRichBlockUp')}
+                    onClick={() => moveBlock(index, -1)}
+                  />
+                  <Button
+                    icon={<ArrowDownOutlined />}
+                    disabled={index === blocks.length - 1}
+                    aria-label={t('pages.productAdmin.moveRichBlockDown')}
+                    title={t('pages.productAdmin.moveRichBlockDown')}
+                    onClick={() => moveBlock(index, 1)}
+                  />
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    aria-label={t('pages.productAdmin.deleteRichBlock')}
+                    title={t('pages.productAdmin.deleteRichBlock')}
+                    onClick={() => removeBlock(index)}
+                  />
                 </Space>
               }
             >
@@ -158,18 +176,20 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                     placeholder={t('pages.productAdmin.richCaptionPlaceholder')}
                     onChange={(event) => updateBlock(index, { caption: event.target.value })}
                   />
-                  {block.type === 'image' && block.url ? (
-                    isHttpMediaUrl(block.url) ? (
+                  {block.url && !isHttpMediaUrl(block.url) ? (
+                    <Text type="danger">{t('pages.productAdmin.richInvalidUrl')}</Text>
+                  ) : null}
+                  {block.type === 'image' && block.url && isHttpMediaUrl(block.url) ? (
                       <Image
                         className="product-rich-detail-editor__imagePreview"
                         src={resolveRichMediaUrl(block.url) || undefined}
+                        alt={block.caption || `${t('pages.productAdmin.mediaPreview')} #${index + 1}`}
                         fallback={imageFallbacks.media}
                       />
-                    ) : (
-                      <Text type="danger">{t('pages.productAdmin.richInvalidUrl')}</Text>
-                    )
                   ) : null}
-                  {block.type === 'video' && block.url ? <RichVideoPreview block={block} index={index} /> : null}
+                  {block.type === 'video' && block.url && isHttpMediaUrl(block.url) ? (
+                    <RichVideoPreview block={block} previewTitle={`${t('pages.productAdmin.richPreview')} #${index + 1}`} />
+                  ) : null}
                 </Space>
               )}
             </Card>

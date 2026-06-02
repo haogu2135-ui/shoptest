@@ -1,15 +1,19 @@
 package com.example.shop.service;
 
 import com.example.shop.dto.CouponAdminSummaryResponse;
+import com.example.shop.dto.CouponPublicResponse;
 import com.example.shop.dto.CouponQuoteResponse;
 import com.example.shop.dto.CouponUpsertRequest;
+import com.example.shop.dto.UserCouponResponse;
 import com.example.shop.entity.CartItem;
 import com.example.shop.entity.Coupon;
 import com.example.shop.entity.UserCoupon;
 import com.example.shop.repository.CouponRepository;
 import com.example.shop.repository.UserCouponMapper;
+import com.example.shop.repository.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -41,9 +45,11 @@ public class CouponService {
     private static final int HARD_MAX_TOTAL_QUANTITY = 1_000_000;
     private static final int HARD_MAX_SUMMARY_DAYS = 90;
     private static final int HARD_MAX_LOW_REMAINING = 1_000;
+    private static final int INVALID_GRANT_USER_ID_MESSAGE_LIMIT = 20;
 
     private final CouponRepository couponRepository;
     private final UserCouponMapper userCouponMapper;
+    private final UserMapper userMapper;
     private final PetBirthdayCouponService petBirthdayCouponService;
     private final RuntimeConfigService runtimeConfig;
 
@@ -52,23 +58,56 @@ public class CouponService {
         return couponRepository.findAll(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "id"))).getContent();
     }
 
+    public Page<Coupon> searchAdminCoupons(String keyword, String status, String scope, int page, int size) {
+        int maxSize = resolveLimit("admin.coupons.search-max-rows", 500, HARD_MAX_COUPON_ROWS);
+        int safeSize = Math.max(1, Math.min(size <= 0 ? 20 : size, maxSize));
+        int safePage = Math.max(0, page);
+        String safeKeyword = normalizeOptionalText(keyword, 120);
+        String safeStatus = normalizeAdminStatusFilter(status);
+        String safeScope = normalizeAdminScopeFilter(scope);
+        return couponRepository.searchAdminCoupons(
+                safeKeyword,
+                parseKeywordId(safeKeyword),
+                safeStatus,
+                safeScope,
+                PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "id")));
+    }
+
     public List<Coupon> findPublicActive() {
         int limit = resolveLimit("coupon.public-list-max-rows", 100, HARD_MAX_PUBLIC_COUPON_ROWS);
         return couponRepository.findClaimableByScopeAndStatus(PUBLIC, "ACTIVE", LocalDateTime.now(), PageRequest.of(0, limit));
     }
 
+    public List<CouponPublicResponse> findPublicActiveResponses() {
+        return findPublicActive().stream()
+                .map(CouponPublicResponse::from)
+                .collect(Collectors.toList());
+    }
+
     public CouponAdminSummaryResponse adminSummary() {
+        return adminSummary(null, null, null);
+    }
+
+    public CouponAdminSummaryResponse adminSummary(String keyword, String status, String scope) {
         LocalDateTime now = LocalDateTime.now();
         int expiringSoonDays = resolveLimit("admin.coupons.expiring-soon-days", 7, HARD_MAX_SUMMARY_DAYS);
         int lowRemainingThreshold = resolveLimit("admin.coupons.low-remaining-threshold", 10, HARD_MAX_LOW_REMAINING);
+        String safeKeyword = normalizeOptionalText(keyword, 120);
+        Long keywordId = parseKeywordId(safeKeyword);
+        String safeStatus = normalizeAdminStatusFilter(status);
+        String safeScope = normalizeAdminScopeFilter(scope);
 
         CouponAdminSummaryResponse response = new CouponAdminSummaryResponse();
-        response.setTotalCoupons(couponRepository.count());
-        response.setActiveCoupons(couponRepository.countByStatus("ACTIVE"));
-        response.setInactiveCoupons(couponRepository.countByStatus("INACTIVE"));
-        response.setPublicActiveCoupons(couponRepository.countByScopeAndStatus(PUBLIC, "ACTIVE"));
-        response.setExpiringSoonCoupons(couponRepository.countActiveExpiringBetween(now, now.plusDays(expiringSoonDays)));
-        response.setLowRemainingCoupons(couponRepository.countActiveLowRemaining(lowRemainingThreshold));
+        response.setTotalCoupons(couponRepository.countAdminCoupons(safeKeyword, keywordId, safeStatus, safeScope));
+        response.setActiveCoupons(couponRepository.countAdminCoupons(safeKeyword, keywordId, scopedStatus(safeStatus, "ACTIVE"), safeScope));
+        response.setInactiveCoupons(couponRepository.countAdminCoupons(safeKeyword, keywordId, scopedStatus(safeStatus, "INACTIVE"), safeScope));
+        response.setPublicActiveCoupons(ASSIGNED.equals(safeScope)
+                ? 0
+                : couponRepository.countAdminCoupons(safeKeyword, keywordId, scopedStatus(safeStatus, "ACTIVE"), PUBLIC));
+        response.setExpiringSoonCoupons(couponRepository.countAdminActiveExpiringBetween(
+                safeKeyword, keywordId, safeStatus, safeScope, now, now.plusDays(expiringSoonDays)));
+        response.setLowRemainingCoupons(couponRepository.countAdminActiveLowRemaining(
+                safeKeyword, keywordId, safeStatus, safeScope, lowRemainingThreshold));
         response.setMaxSearchRows(resolveLimit("admin.coupons.search-max-rows", 500, HARD_MAX_COUPON_ROWS));
         response.setMaxGrantUsers(resolveLimit("admin.coupons.grant-max-users", 200, HARD_MAX_GRANT_USERS));
         response.setMaxPublicRows(resolveLimit("coupon.public-list-max-rows", 100, HARD_MAX_PUBLIC_COUPON_ROWS));
@@ -89,10 +128,22 @@ public class CouponService {
         return userCouponMapper.findByUserIdLimited(userId, limit);
     }
 
+    public List<UserCouponResponse> findUserCouponResponses(Long userId) {
+        return findUserCoupons(userId).stream()
+                .map(UserCouponResponse::from)
+                .collect(Collectors.toList());
+    }
+
     public List<UserCoupon> findAvailableUserCoupons(Long userId) {
         requirePositiveId(userId, "User");
         int limit = resolveLimit("coupon.available-max-rows", 100, HARD_MAX_PUBLIC_COUPON_ROWS);
         return userCouponMapper.findUnusedByUserIdLimited(userId, limit);
+    }
+
+    public List<UserCouponResponse> findAvailableUserCouponResponses(Long userId) {
+        return findAvailableUserCoupons(userId).stream()
+                .map(UserCouponResponse::from)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -184,6 +235,7 @@ public class CouponService {
         Coupon coupon = couponRepository.findById(couponId)
                 .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
         ensureClaimable(coupon);
+        validateGrantRecipientsExist(normalizedUserIds);
         int granted = 0;
         for (Long userId : normalizedUserIds) {
             if (userCouponMapper.findByCouponIdAndUserId(couponId, userId) != null) {
@@ -236,7 +288,10 @@ public class CouponService {
                 discount = calculateDiscount(bestCoupon, subtotal);
             }
         }
-        return new CouponQuoteResponse(subtotal, discount, subtotal.subtract(discount).max(BigDecimal.ZERO), selectedUserCouponId, available);
+        List<UserCouponResponse> availableResponses = available.stream()
+                .map(UserCouponResponse::from)
+                .collect(Collectors.toList());
+        return new CouponQuoteResponse(subtotal, discount, subtotal.subtract(discount).max(BigDecimal.ZERO), selectedUserCouponId, availableResponses);
     }
 
     @Transactional
@@ -369,6 +424,26 @@ public class CouponService {
         return normalized;
     }
 
+    private String normalizeAdminStatusFilter(String value) {
+        String normalized = value == null ? null : value.trim().toUpperCase(Locale.ROOT);
+        return normalized != null && COUPON_STATUSES.contains(normalized) ? normalized : null;
+    }
+
+    private String normalizeAdminScopeFilter(String value) {
+        String normalized = value == null ? null : value.trim().toUpperCase(Locale.ROOT);
+        if (PUBLIC.equals(normalized) || ASSIGNED.equals(normalized)) {
+            return normalized;
+        }
+        return null;
+    }
+
+    private String scopedStatus(String requestedStatus, String targetStatus) {
+        if (requestedStatus == null) {
+            return targetStatus;
+        }
+        return targetStatus.equals(requestedStatus) ? targetStatus : "__NO_MATCH__";
+    }
+
     private String normalizeText(String value, String fieldName, int maxLength) {
         String normalized = normalizeOptionalText(value, maxLength);
         if (normalized == null) {
@@ -404,6 +479,18 @@ public class CouponService {
         return value;
     }
 
+    private Long parseKeywordId(String keyword) {
+        if (keyword == null || !keyword.matches("\\d+")) {
+            return null;
+        }
+        try {
+            long value = Long.parseLong(keyword);
+            return value > 0 ? value : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
     private List<Long> normalizeGrantUserIds(List<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             throw new IllegalArgumentException("User ids are required");
@@ -419,6 +506,24 @@ public class CouponService {
             throw new IllegalArgumentException("User ids are required");
         }
         return List.copyOf(uniqueIds);
+    }
+
+    private void validateGrantRecipientsExist(List<Long> userIds) {
+        Set<Long> existingIds = new LinkedHashSet<>(userMapper.findExistingIds(userIds));
+        List<Long> invalidUserIds = userIds.stream()
+                .filter(id -> !existingIds.contains(id))
+                .collect(Collectors.toList());
+        if (invalidUserIds.isEmpty()) {
+            return;
+        }
+        String invalidSummary = invalidUserIds.stream()
+                .limit(INVALID_GRANT_USER_ID_MESSAGE_LIMIT)
+                .map(String::valueOf)
+                .collect(Collectors.joining(", "));
+        if (invalidUserIds.size() > INVALID_GRANT_USER_ID_MESSAGE_LIMIT) {
+            invalidSummary += ", ...";
+        }
+        throw new IllegalArgumentException("Unknown coupon recipient user IDs: " + invalidSummary);
     }
 
     private void requirePositiveId(Long id, String name) {

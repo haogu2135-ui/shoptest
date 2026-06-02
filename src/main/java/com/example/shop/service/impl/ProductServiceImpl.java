@@ -1,6 +1,7 @@
 package com.example.shop.service.impl;
 
 import com.example.shop.dto.ProductImportResult;
+import com.example.shop.dto.ProductListQuery;
 import com.example.shop.entity.Category;
 import com.example.shop.entity.PetProfile;
 import com.example.shop.entity.Product;
@@ -16,13 +17,23 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.NoTransactionException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Expression;
+import javax.persistence.criteria.Order;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -61,6 +72,19 @@ public class ProductServiceImpl implements ProductService {
     private static final int MAX_IMPORT_IMAGE_URL_LENGTH = 2048;
     private static final int MAX_IMPORT_MONEY_SCALE = 2;
     private static final BigDecimal MAX_IMPORT_MONEY_AMOUNT = new BigDecimal("99999999.99");
+    private static final int DEFAULT_FEATURED_PRODUCT_LIMIT = 12;
+    private static final int MAX_FEATURED_PRODUCT_LIMIT = 36;
+    private static final int HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT = 100;
+    private static final int HARD_ADMIN_PRODUCT_PAGE_SIZE_LIMIT = 500;
+    private static final String SMART_DEVICES_COLLECTION = "smart-devices";
+    private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("(?is)<!--.*?-->");
+    private static final Pattern HTML_BLOCK_PATTERN = Pattern.compile("(?is)<(script|style|iframe|object|embed|svg|math)\\b[^>]*>.*?</\\1\\s*>");
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("(?is)<[^>]+>");
+    private static final Set<Long> SMART_DEVICE_COLLECTION_CATEGORY_IDS = Set.of(10L, 11L);
+    private static final List<String> SMART_DEVICE_COLLECTION_TERMS = List.of(
+            "smart", "automatic", "feeder", "feeders", "fountain", "waterer", "waterers",
+            "camera", "tracker", "sensor", "device", "connected"
+    );
     private static final int LEGACY_IMPORT_COLUMN_COUNT = 24;
     private static final Set<String> REQUIRED_IMPORT_HEADERS = Set.of("name", "price", "stock", "categoryid");
     private static final Set<String> SUPPORTED_IMPORT_HEADERS = Set.of(
@@ -182,6 +206,488 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<Product> findPublicProducts(ProductListQuery query) {
+        ProductListQuery normalizedQuery = query == null ? new ProductListQuery() : query;
+        String normalizedKeyword = normalizeSearchText(normalizedQuery.getKeyword());
+        String cacheKey = productListCacheKey(normalizedQuery, normalizedKeyword);
+        return getCachedProducts(cacheKey, () -> findPublicProductsUncached(normalizedQuery, normalizedKeyword));
+    }
+
+    private List<Product> findPublicProductsUncached(ProductListQuery query, String normalizedKeyword) {
+        if (query.getPage() != null || query.getSize() != null) {
+            return findPublicProductPageUncached(query, normalizedKeyword).getContent();
+        }
+        List<Product> products = findPublicProductsFilteredSorted(query, normalizedKeyword);
+        return applyProductPagination(products, query.getPage(), query.getSize(), true);
+    }
+
+    @Override
+    public Page<Product> findPublicProductPage(ProductListQuery query) {
+        ProductListQuery normalizedQuery = query == null ? new ProductListQuery() : query;
+        String normalizedKeyword = normalizeSearchText(normalizedQuery.getKeyword());
+        return findPublicProductPageUncached(normalizedQuery, normalizedKeyword);
+    }
+
+    private Page<Product> findPublicProductPageUncached(ProductListQuery normalizedQuery, String normalizedKeyword) {
+        int normalizedPage = normalizeProductPage(normalizedQuery.getPage());
+        int normalizedSize = normalizeProductPageSize(normalizedQuery.getSize());
+        BigDecimal minPrice = normalizeMinPrice(normalizedQuery.getMinPrice());
+        BigDecimal maxPrice = normalizeMaxPrice(normalizedQuery.getMaxPrice());
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            return new PageImpl<>(List.of(), PageRequest.of(normalizedPage, normalizedSize), 0);
+        }
+        Set<Long> categoryIds = normalizedQuery.getCategoryId() == null
+                ? Set.of()
+                : new LinkedHashSet<>(collectCategoryIds(normalizedQuery.getCategoryId()));
+        Set<Long> keywordCategoryIds = findKeywordCategoryIds(normalizedKeyword);
+        String normalizedStatus = normalizePublicStatusFilter(normalizedQuery.getStatus());
+        String normalizedCollection = normalizePublicCollection(normalizedQuery.getCollection());
+        Set<Long> collectionCategoryIds = smartDeviceCollectionCategoryIds(normalizedCollection);
+        PageRequest pageRequest = PageRequest.of(normalizedPage, normalizedSize, productPageSort(normalizedQuery.getSort()));
+        Page<Product> page = productRepository.findAll(publicProductSpecification(
+                normalizedQuery,
+                normalizedKeyword,
+                categoryIds,
+                keywordCategoryIds,
+                normalizedCollection,
+                collectionCategoryIds,
+                minPrice,
+                maxPrice,
+                normalizedStatus), pageRequest);
+        List<Product> pageItems = enrichReviewStats(page.getContent());
+        Map<Long, Category> categoryLookup = loadCategoryLookupForProducts(pageItems);
+        pageItems = pageItems.stream()
+                .filter(product -> matchesPublicListQuery(product, normalizedQuery, normalizedKeyword, categoryLookup,
+                        categoryIds, normalizedCollection, collectionCategoryIds, minPrice, maxPrice, normalizedStatus))
+                .collect(Collectors.toList());
+        return new PageImpl<>(pageItems, pageRequest, page.getTotalElements());
+    }
+
+    private Specification<Product> publicProductSpecification(ProductListQuery query,
+                                                              String normalizedKeyword,
+                                                              Set<Long> categoryIds,
+                                                              Set<Long> keywordCategoryIds,
+                                                              String normalizedCollection,
+                                                              Set<Long> collectionCategoryIds,
+                                                              BigDecimal minPrice,
+                                                              BigDecimal maxPrice,
+                                                              String normalizedStatus) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.or(
+                    criteriaBuilder.isNull(root.get("status")),
+                    criteriaBuilder.equal(criteriaBuilder.upper(root.get("status")), "ACTIVE")));
+            predicates.add(criteriaBuilder.isNotNull(root.get("name")));
+            predicates.add(criteriaBuilder.notEqual(root.get("name"), ""));
+            predicates.add(criteriaBuilder.isNotNull(root.get("price")));
+            predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("price"), BigDecimal.ZERO));
+            predicates.add(criteriaBuilder.isNotNull(root.get("categoryId")));
+            predicates.add(criteriaBuilder.greaterThan(root.get("categoryId"), 0L));
+            if (normalizedStatus != null && !"ACTIVE".equals(normalizedStatus)) {
+                predicates.add(criteriaBuilder.disjunction());
+            }
+            if (categoryIds != null && !categoryIds.isEmpty()) {
+                predicates.add(root.get("categoryId").in(categoryIds));
+            }
+            addCollectionPredicates(predicates, criteriaBuilder, root, normalizedCollection, collectionCategoryIds);
+            if (query.getFeatured() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("isFeatured"), query.getFeatured()));
+            }
+            if (Boolean.TRUE.equals(query.getDiscount())) {
+                LocalDateTime now = LocalDateTime.now();
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.greaterThan(root.get("discount"), 0),
+                        criteriaBuilder.and(
+                                criteriaBuilder.isNotNull(root.get("limitedTimePrice")),
+                                criteriaBuilder.greaterThan(root.get("limitedTimePrice"), BigDecimal.ZERO),
+                                criteriaBuilder.or(
+                                        criteriaBuilder.isNull(root.get("limitedTimeStartAt")),
+                                        criteriaBuilder.lessThanOrEqualTo(root.get("limitedTimeStartAt"), now)),
+                                criteriaBuilder.or(
+                                        criteriaBuilder.isNull(root.get("limitedTimeEndAt")),
+                                        criteriaBuilder.greaterThanOrEqualTo(root.get("limitedTimeEndAt"), now)))));
+            }
+            if (minPrice != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("price"), minPrice));
+            }
+            if (maxPrice != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
+            }
+            addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getPetSizes());
+            addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getMaterials());
+            addColorPredicates(predicates, criteriaBuilder, root.get("name"), root.get("specifications"), query.getColors());
+            if (normalizedKeyword != null && !normalizedKeyword.isEmpty()) {
+                List<Predicate> keywordPredicates = new ArrayList<>();
+                recommendationSearchTerms(List.of(normalizedKeyword)).forEach(term -> keywordPredicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("name"), "")), "%" + term + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("description"), "")), "%" + term + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("brand"), "")), "%" + term + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("tag"), "")), "%" + term + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("specifications"), "")), "%" + term + "%"))));
+                if (keywordCategoryIds != null && !keywordCategoryIds.isEmpty()) {
+                    keywordPredicates.add(root.get("categoryId").in(keywordCategoryIds));
+                }
+                predicates.add(keywordPredicates.isEmpty()
+                        ? criteriaBuilder.disjunction()
+                        : criteriaBuilder.or(keywordPredicates.toArray(new Predicate[0])));
+            }
+            applyProductPageRanking(criteriaQuery, criteriaBuilder, root, query.getSort());
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private void applyProductPageRanking(CriteriaQuery<?> criteriaQuery,
+                                         CriteriaBuilder criteriaBuilder,
+                                         Root<Product> root,
+                                         String sort) {
+        SortSpec sortSpec = parseProductSort(sort);
+        if (!sortSpec.requiresCriteriaRanking() || isCountQuery(criteriaQuery)) {
+            return;
+        }
+        List<Order> orders = new ArrayList<>();
+        Expression<Integer> sellableRank = sellableRank(criteriaBuilder, root);
+        Expression<Integer> quickAddRank = quickAddRank(criteriaBuilder, root);
+        Expression<Integer> featuredRank = booleanRank(criteriaBuilder, root, "isFeatured");
+        Expression<Integer> activeDiscountRank = activeDiscountRank(criteriaBuilder, root);
+        Expression<Integer> freeShippingRank = booleanRank(criteriaBuilder, root, "freeShipping");
+        Expression<Integer> lowStockRank = lowStockRank(criteriaBuilder, root);
+        Expression<Integer> discountValue = criteriaBuilder.coalesce(root.<Integer>get("discount"), 0);
+        Expression<BigDecimal> savingsValue = savingsValue(criteriaBuilder, root);
+
+        if ("quickadd".equals(sortSpec.field)) {
+            orders.add(criteriaBuilder.desc(quickAddRank));
+            addConversionRanking(orders, criteriaBuilder, root, sellableRank, featuredRank, activeDiscountRank,
+                    discountValue, freeShippingRank, savingsValue);
+        } else if ("bestvalue".equals(sortSpec.field)) {
+            orders.add(criteriaBuilder.desc(activeDiscountRank));
+            orders.add(criteriaBuilder.desc(savingsValue));
+            orders.add(criteriaBuilder.desc(discountValue));
+            addConversionRanking(orders, criteriaBuilder, root, sellableRank, featuredRank, activeDiscountRank,
+                    discountValue, freeShippingRank, savingsValue);
+        } else if ("lowstock".equals(sortSpec.field)) {
+            orders.add(criteriaBuilder.desc(lowStockRank));
+            orders.add(criteriaBuilder.asc(root.<Integer>get("stock")));
+            addConversionRanking(orders, criteriaBuilder, root, sellableRank, featuredRank, activeDiscountRank,
+                    discountValue, freeShippingRank, savingsValue);
+        } else {
+            addConversionRanking(orders, criteriaBuilder, root, sellableRank, featuredRank, activeDiscountRank,
+                    discountValue, freeShippingRank, savingsValue);
+        }
+        criteriaQuery.orderBy(orders);
+    }
+
+    private boolean isCountQuery(CriteriaQuery<?> criteriaQuery) {
+        if (criteriaQuery == null || criteriaQuery.getResultType() == null) {
+            return false;
+        }
+        Class<?> resultType = criteriaQuery.getResultType();
+        return Long.class.equals(resultType) || long.class.equals(resultType);
+    }
+
+    private void addConversionRanking(List<Order> orders,
+                                      CriteriaBuilder criteriaBuilder,
+                                      Root<Product> root,
+                                      Expression<Integer> sellableRank,
+                                      Expression<Integer> featuredRank,
+                                      Expression<Integer> activeDiscountRank,
+                                      Expression<Integer> discountValue,
+                                      Expression<Integer> freeShippingRank,
+                                      Expression<BigDecimal> savingsValue) {
+        orders.add(criteriaBuilder.desc(sellableRank));
+        orders.add(criteriaBuilder.desc(featuredRank));
+        orders.add(criteriaBuilder.desc(activeDiscountRank));
+        orders.add(criteriaBuilder.desc(discountValue));
+        orders.add(criteriaBuilder.desc(freeShippingRank));
+        orders.add(criteriaBuilder.desc(savingsValue));
+        orders.add(criteriaBuilder.asc(root.<Long>get("id")));
+    }
+
+    private Expression<Integer> sellableRank(CriteriaBuilder criteriaBuilder, Root<Product> root) {
+        return criteriaBuilder.<Integer>selectCase()
+                .when(criteriaBuilder.or(
+                        criteriaBuilder.isNull(root.get("stock")),
+                        criteriaBuilder.greaterThan(root.<Integer>get("stock"), 0)), 1)
+                .otherwise(0);
+    }
+
+    private Expression<Integer> quickAddRank(CriteriaBuilder criteriaBuilder, Root<Product> root) {
+        Predicate sellable = criteriaBuilder.or(
+                criteriaBuilder.isNull(root.get("stock")),
+                criteriaBuilder.greaterThan(root.<Integer>get("stock"), 0));
+        Predicate noVariants = criteriaBuilder.or(
+                criteriaBuilder.isNull(root.get("variants")),
+                criteriaBuilder.equal(criteriaBuilder.trim(root.<String>get("variants")), ""));
+        Predicate noOptions = criteriaBuilder.or(
+                criteriaBuilder.isNull(root.get("specifications")),
+                criteriaBuilder.notLike(criteriaBuilder.lower(root.<String>get("specifications")), "%options.%"));
+        return criteriaBuilder.<Integer>selectCase()
+                .when(criteriaBuilder.and(sellable, noVariants, noOptions), 1)
+                .otherwise(0);
+    }
+
+    private Expression<Integer> booleanRank(CriteriaBuilder criteriaBuilder, Root<Product> root, String field) {
+        return criteriaBuilder.<Integer>selectCase()
+                .when(criteriaBuilder.equal(root.get(field), true), 1)
+                .otherwise(0);
+    }
+
+    private Expression<Integer> activeDiscountRank(CriteriaBuilder criteriaBuilder, Root<Product> root) {
+        return criteriaBuilder.<Integer>selectCase()
+                .when(activeDiscountPredicate(criteriaBuilder, root), 1)
+                .otherwise(0);
+    }
+
+    private Predicate activeDiscountPredicate(CriteriaBuilder criteriaBuilder, Root<Product> root) {
+        LocalDateTime now = LocalDateTime.now();
+        return criteriaBuilder.or(
+                criteriaBuilder.greaterThan(root.<Integer>get("discount"), 0),
+                criteriaBuilder.and(
+                        criteriaBuilder.isNotNull(root.get("limitedTimePrice")),
+                        criteriaBuilder.greaterThan(root.<BigDecimal>get("limitedTimePrice"), BigDecimal.ZERO),
+                        criteriaBuilder.or(
+                                criteriaBuilder.isNull(root.get("limitedTimeStartAt")),
+                                criteriaBuilder.lessThanOrEqualTo(root.<LocalDateTime>get("limitedTimeStartAt"), now)),
+                        criteriaBuilder.or(
+                                criteriaBuilder.isNull(root.get("limitedTimeEndAt")),
+                                criteriaBuilder.greaterThanOrEqualTo(root.<LocalDateTime>get("limitedTimeEndAt"), now))));
+    }
+
+    private Expression<Integer> lowStockRank(CriteriaBuilder criteriaBuilder, Root<Product> root) {
+        return criteriaBuilder.<Integer>selectCase()
+                .when(criteriaBuilder.and(
+                        criteriaBuilder.isNotNull(root.get("stock")),
+                        criteriaBuilder.greaterThan(root.<Integer>get("stock"), 0),
+                        criteriaBuilder.lessThanOrEqualTo(root.<Integer>get("stock"), 5)), 1)
+                .otherwise(0);
+    }
+
+    private Expression<BigDecimal> savingsValue(CriteriaBuilder criteriaBuilder, Root<Product> root) {
+        Expression<BigDecimal> basePrice = criteriaBuilder.coalesce(root.<BigDecimal>get("originalPrice"), root.<BigDecimal>get("price"));
+        return criteriaBuilder.diff(basePrice, root.<BigDecimal>get("price"));
+    }
+
+    private void addCollectionPredicates(List<Predicate> predicates,
+                                         CriteriaBuilder criteriaBuilder,
+                                         Root<Product> root,
+                                         String normalizedCollection,
+                                         Set<Long> collectionCategoryIds) {
+        if (!SMART_DEVICES_COLLECTION.equals(normalizedCollection)) {
+            return;
+        }
+        List<Predicate> collectionPredicates = new ArrayList<>();
+        if (collectionCategoryIds != null && !collectionCategoryIds.isEmpty()) {
+            collectionPredicates.add(root.get("categoryId").in(collectionCategoryIds));
+        }
+        SMART_DEVICE_COLLECTION_TERMS.forEach(term -> collectionPredicates.add(criteriaBuilder.or(
+                criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("name"), "")), "%" + term + "%"),
+                criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("description"), "")), "%" + term + "%"),
+                criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("brand"), "")), "%" + term + "%"),
+                criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("tag"), "")), "%" + term + "%"),
+                criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("specifications"), "")), "%" + term + "%"))));
+        predicates.add(collectionPredicates.isEmpty()
+                ? criteriaBuilder.disjunction()
+                : criteriaBuilder.or(collectionPredicates.toArray(new Predicate[0])));
+    }
+
+    private void addSpecificationRefinementPredicates(List<Predicate> predicates,
+                                                      CriteriaBuilder criteriaBuilder,
+                                                      javax.persistence.criteria.Path<String> specificationsPath,
+                                                      List<String> values) {
+        List<String> normalizedValues = normalizeRefinementValues(values);
+        if (normalizedValues.isEmpty()) {
+            return;
+        }
+        predicates.add(criteriaBuilder.or(normalizedValues.stream()
+                .map(value -> criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(specificationsPath, "")), "%" + value + "%"))
+                .toArray(Predicate[]::new)));
+    }
+
+    private void addColorPredicates(List<Predicate> predicates,
+                                    CriteriaBuilder criteriaBuilder,
+                                    javax.persistence.criteria.Path<String> namePath,
+                                    javax.persistence.criteria.Path<String> specificationsPath,
+                                    List<String> values) {
+        List<String> normalizedValues = normalizeRefinementValues(values);
+        if (normalizedValues.isEmpty()) {
+            return;
+        }
+        predicates.add(criteriaBuilder.or(normalizedValues.stream()
+                .map(value -> criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(namePath, "")), "%" + value + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(specificationsPath, "")), "%" + value + "%")))
+                .toArray(Predicate[]::new)));
+    }
+
+    private Set<Long> findKeywordCategoryIds(String normalizedKeyword) {
+        if (normalizedKeyword == null || normalizedKeyword.isEmpty()) {
+            return Set.of();
+        }
+        Set<Long> ids = new LinkedHashSet<>();
+        recommendationSearchTerms(List.of(normalizedKeyword)).stream()
+                .limit(8)
+                .forEach(term -> categoryRepository.findIdsByKeyword(term, PageRequest.of(0, 40))
+                        .forEach(id -> {
+                            if (id == null || id <= 0 || ids.size() >= 120) {
+                                return;
+                            }
+                            ids.addAll(collectCategoryIds(id));
+                        }));
+        return ids;
+    }
+
+    private Sort productPageSort(String sort) {
+        SortSpec sortSpec = parseProductSort(sort);
+        if (sortSpec.requiresCriteriaRanking()) {
+            return Sort.unsorted();
+        }
+        String property;
+        switch (sortSpec.field) {
+            case "price":
+                property = "price";
+                break;
+            case "name":
+                property = "name";
+                break;
+            case "createdat":
+            case "created":
+                property = "createdAt";
+                break;
+            case "updatedat":
+            case "updated":
+                property = "updatedAt";
+                break;
+            case "discount":
+                property = "discount";
+                break;
+            case "stock":
+                property = "stock";
+                break;
+            case "featured":
+                property = "isFeatured";
+                break;
+            case "id":
+            case "rating":
+            case "averagerating":
+            case "reviews":
+            case "reviewcount":
+            default:
+                property = "id";
+                break;
+        }
+        Sort.Direction direction = sortSpec.descending ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort primary = Sort.by(direction, property);
+        return "id".equals(property) ? primary : primary.and(Sort.by(Sort.Direction.ASC, "id"));
+    }
+
+    private List<Product> findPublicProductsFilteredSorted(ProductListQuery query, String normalizedKeyword) {
+        BigDecimal minPrice = normalizeMinPrice(query.getMinPrice());
+        BigDecimal maxPrice = normalizeMaxPrice(query.getMaxPrice());
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            return List.of();
+        }
+
+        Map<Long, Category> categoryLookup = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getId, category -> category, (left, right) -> left));
+        Set<Long> categoryIds = query.getCategoryId() == null
+                ? Set.of()
+                : new LinkedHashSet<>(collectCategoryIds(query.getCategoryId()));
+        String normalizedStatus = normalizePublicStatusFilter(query.getStatus());
+        String normalizedCollection = normalizePublicCollection(query.getCollection());
+        Set<Long> collectionCategoryIds = smartDeviceCollectionCategoryIds(normalizedCollection);
+        List<Product> products = enrichReviewStats(productRepository.findAll().stream()
+                .filter(product -> matchesPublicListQuery(product, query, normalizedKeyword, categoryLookup,
+                        categoryIds, normalizedCollection, collectionCategoryIds, minPrice, maxPrice, normalizedStatus))
+                .collect(Collectors.toList()));
+
+        products.sort(productListComparator(query.getSort()));
+        return products;
+    }
+
+    @Override
+    public List<Product> findAdminProducts(ProductListQuery query) {
+        return findAdminProductPage(query).getContent();
+    }
+
+    @Override
+    public Page<Product> findAdminProductPage(ProductListQuery query) {
+        ProductListQuery normalizedQuery = query == null ? new ProductListQuery() : query;
+        String normalizedKeyword = normalizeSearchText(normalizedQuery.getKeyword());
+        int normalizedPage = normalizeProductPage(normalizedQuery.getPage());
+        int normalizedSize = normalizeAdminProductPageSize(normalizedQuery.getSize());
+        PageRequest pageRequest = PageRequest.of(normalizedPage, normalizedSize, productPageSort(normalizedQuery.getSort()));
+        BigDecimal minPrice = normalizeMinPrice(normalizedQuery.getMinPrice());
+        BigDecimal maxPrice = normalizeMaxPrice(normalizedQuery.getMaxPrice());
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            return new PageImpl<>(List.of(), pageRequest, 0);
+        }
+        Set<Long> categoryIds = normalizedQuery.getCategoryId() == null
+                ? Set.of()
+                : new LinkedHashSet<>(collectCategoryIds(normalizedQuery.getCategoryId()));
+        Set<Long> keywordCategoryIds = findKeywordCategoryIds(normalizedKeyword);
+        String normalizedStatus = normalizePublicStatusFilter(normalizedQuery.getStatus());
+        Page<Product> page = productRepository.findAll(adminProductSpecification(
+                normalizedQuery,
+                normalizedKeyword,
+                categoryIds,
+                keywordCategoryIds,
+                minPrice,
+                maxPrice,
+                normalizedStatus), pageRequest);
+        return new PageImpl<>(enrichReviewStats(page.getContent()), pageRequest, page.getTotalElements());
+    }
+
+    private Specification<Product> adminProductSpecification(ProductListQuery query,
+                                                             String normalizedKeyword,
+                                                             Set<Long> categoryIds,
+                                                             Set<Long> keywordCategoryIds,
+                                                             BigDecimal minPrice,
+                                                             BigDecimal maxPrice,
+                                                             String normalizedStatus) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (normalizedStatus != null) {
+                Expression<String> statusExpression = criteriaBuilder.upper(criteriaBuilder.coalesce(root.<String>get("status"), "ACTIVE"));
+                predicates.add(criteriaBuilder.equal(statusExpression, normalizedStatus));
+            }
+            if (categoryIds != null && !categoryIds.isEmpty()) {
+                predicates.add(root.get("categoryId").in(categoryIds));
+            }
+            if (query.getFeatured() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("isFeatured"), query.getFeatured()));
+            }
+            if (Boolean.TRUE.equals(query.getDiscount())) {
+                predicates.add(activeDiscountPredicate(criteriaBuilder, root));
+            }
+            if (minPrice != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("price"), minPrice));
+            }
+            if (maxPrice != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
+            }
+            addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getPetSizes());
+            addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getMaterials());
+            addColorPredicates(predicates, criteriaBuilder, root.get("name"), root.get("specifications"), query.getColors());
+            if (normalizedKeyword != null && !normalizedKeyword.isEmpty()) {
+                List<Predicate> keywordPredicates = new ArrayList<>();
+                recommendationSearchTerms(List.of(normalizedKeyword)).forEach(term -> keywordPredicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("name"), "")), "%" + term + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("description"), "")), "%" + term + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("brand"), "")), "%" + term + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("tag"), "")), "%" + term + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("specifications"), "")), "%" + term + "%"))));
+                if (keywordCategoryIds != null && !keywordCategoryIds.isEmpty()) {
+                    keywordPredicates.add(root.get("categoryId").in(keywordCategoryIds));
+                }
+                predicates.add(keywordPredicates.isEmpty()
+                        ? criteriaBuilder.disjunction()
+                        : criteriaBuilder.or(keywordPredicates.toArray(new Predicate[0])));
+            }
+            applyProductPageRanking(criteriaQuery, criteriaBuilder, root, query.getSort());
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    @Override
     public long countProducts() {
         return productRepository.count();
     }
@@ -270,9 +776,16 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> findPublicFeaturedProducts() {
-        return getCachedProducts("featured:public", () -> enrichReviewStats(productRepository.findByIsFeaturedTrueOrderByIdAsc().stream()
+        return findPublicFeaturedProducts(DEFAULT_FEATURED_PRODUCT_LIMIT);
+    }
+
+    @Override
+    public List<Product> findPublicFeaturedProducts(int limit) {
+        int normalizedLimit = normalizeFeaturedProductLimit(limit);
+        return getCachedProducts("featured:public:limit=" + normalizedLimit, () -> enrichReviewStats(productRepository.findPublicFeaturedProducts(PageRequest.of(0, normalizedLimit)).stream()
                 .filter(this::isPublicCatalogProduct)
                 .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .limit(normalizedLimit)
                 .collect(Collectors.toList())));
     }
 
@@ -289,6 +802,466 @@ public class ProductServiceImpl implements ProductService {
                     return product.isActiveLimitedTimeDiscount();
                 })
                 .collect(Collectors.toList())));
+    }
+
+    private boolean matchesPublicListQuery(Product product,
+                                           ProductListQuery query,
+                                           String normalizedKeyword,
+                                           Map<Long, Category> categoryLookup,
+                                           Set<Long> categoryIds,
+                                           String normalizedCollection,
+                                           Set<Long> collectionCategoryIds,
+                                           BigDecimal minPrice,
+                                           BigDecimal maxPrice,
+                                           String normalizedStatus) {
+        if (!isPublicCatalogProduct(product)) {
+            return false;
+        }
+        if (normalizedStatus != null && !ProductStatusUtils.isPublicProduct(product)) {
+            return false;
+        }
+        if (normalizedStatus != null && !"ACTIVE".equals(normalizedStatus)) {
+            return false;
+        }
+        if (!categoryIds.isEmpty() && !categoryIds.contains(product.getCategoryId())) {
+            return false;
+        }
+        if (!matchesPublicCollection(product, normalizedCollection, collectionCategoryIds)) {
+            return false;
+        }
+        if (query.getFeatured() != null && !query.getFeatured().equals(Boolean.TRUE.equals(product.getIsFeatured()))) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(query.getDiscount()) && !hasActiveDiscount(product)) {
+            return false;
+        }
+        if (!matchesCatalogRefinements(product, query)) {
+            return false;
+        }
+        BigDecimal price = effectivePrice(product);
+        if (minPrice != null && (price == null || price.compareTo(minPrice) < 0)) {
+            return false;
+        }
+        if (maxPrice != null && (price == null || price.compareTo(maxPrice) > 0)) {
+            return false;
+        }
+        return normalizedKeyword == null || normalizedKeyword.isEmpty()
+                || matchesNormalizedKeyword(product, normalizedKeyword, categoryLookup);
+    }
+
+    private boolean matchesAdminListQuery(Product product,
+                                          ProductListQuery query,
+                                          String normalizedKeyword,
+                                          Map<Long, Category> categoryLookup,
+                                          Set<Long> categoryIds,
+                                          BigDecimal minPrice,
+                                          BigDecimal maxPrice,
+                                          String normalizedStatus) {
+        if (product == null) {
+            return false;
+        }
+        if (normalizedStatus != null) {
+            String productStatus = product.getStatus() == null ? "ACTIVE" : product.getStatus().trim().toUpperCase(Locale.ROOT);
+            if (!normalizedStatus.equals(productStatus)) {
+                return false;
+            }
+        }
+        if (!categoryIds.isEmpty() && !categoryIds.contains(product.getCategoryId())) {
+            return false;
+        }
+        if (query.getFeatured() != null && !query.getFeatured().equals(Boolean.TRUE.equals(product.getIsFeatured()))) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(query.getDiscount()) && !hasActiveDiscount(product)) {
+            return false;
+        }
+        if (!matchesCatalogRefinements(product, query)) {
+            return false;
+        }
+        BigDecimal price = effectivePrice(product);
+        if (minPrice != null && (price == null || price.compareTo(minPrice) < 0)) {
+            return false;
+        }
+        if (maxPrice != null && (price == null || price.compareTo(maxPrice) > 0)) {
+            return false;
+        }
+        return normalizedKeyword == null || normalizedKeyword.isEmpty()
+                || matchesNormalizedKeyword(product, normalizedKeyword, categoryLookup);
+    }
+
+    private boolean hasActiveDiscount(Product product) {
+        Integer effectiveDiscount = product.getEffectiveDiscountPercent();
+        return effectiveDiscount != null && effectiveDiscount > 0
+                || product.getDiscount() != null && product.getDiscount() > 0
+                || product.isActiveLimitedTimeDiscount();
+    }
+
+    private boolean matchesCatalogRefinements(Product product, ProductListQuery query) {
+        String specText = productSpecificationText(product);
+        if (!matchesAnyRefinement(specText, query.getPetSizes())) {
+            return false;
+        }
+        if (!matchesAnyRefinement(specText, query.getMaterials())) {
+            return false;
+        }
+        String colorText = (safeLower(product == null ? null : product.getName()) + " " + specText).trim();
+        return matchesAnyRefinement(colorText, query.getColors());
+    }
+
+    private String normalizePublicCollection(String collection) {
+        if (collection == null || collection.isBlank()) {
+            return null;
+        }
+        String normalized = collection.trim().toLowerCase(Locale.ROOT);
+        return SMART_DEVICES_COLLECTION.equals(normalized) ? normalized : null;
+    }
+
+    private Set<Long> smartDeviceCollectionCategoryIds(String normalizedCollection) {
+        return SMART_DEVICES_COLLECTION.equals(normalizedCollection)
+                ? SMART_DEVICE_COLLECTION_CATEGORY_IDS
+                : Set.of();
+    }
+
+    private boolean matchesPublicCollection(Product product, String normalizedCollection, Set<Long> collectionCategoryIds) {
+        if (!SMART_DEVICES_COLLECTION.equals(normalizedCollection)) {
+            return true;
+        }
+        if (product == null) {
+            return false;
+        }
+        if (collectionCategoryIds != null && collectionCategoryIds.contains(product.getCategoryId())) {
+            return true;
+        }
+        String text = String.join(" ",
+                stringValue(safeLower(product.getName())),
+                stringValue(safeLower(product.getDescription())),
+                stringValue(safeLower(product.getBrand())),
+                stringValue(safeLower(product.getTag())),
+                productSpecificationText(product)).trim();
+        return SMART_DEVICE_COLLECTION_TERMS.stream().anyMatch(text::contains);
+    }
+
+    private boolean matchesAnyRefinement(String haystack, List<String> values) {
+        List<String> normalizedValues = normalizeRefinementValues(values);
+        if (normalizedValues.isEmpty()) {
+            return true;
+        }
+        String normalizedHaystack = haystack == null ? "" : haystack;
+        return normalizedValues.stream().anyMatch(normalizedHaystack::contains);
+    }
+
+    private List<String> normalizeRefinementValues(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return values.stream()
+                .map(this::safeLower)
+                .filter(value -> value != null && !value.isBlank())
+                .distinct()
+                .limit(12)
+                .collect(Collectors.toList());
+    }
+
+    private String productSpecificationText(Product product) {
+        if (product == null) {
+            return "";
+        }
+        return product.getPublicSpecificationsMap().entrySet().stream()
+                .flatMap(entry -> Arrays.asList(entry.getKey(), entry.getValue()).stream())
+                .map(this::safeLower)
+                .filter(value -> value != null && !value.isBlank())
+                .collect(Collectors.joining(" "));
+    }
+
+    private String safeLower(String value) {
+        return value == null ? null : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private Comparator<Product> productListComparator(String sort) {
+        SortSpec sortSpec = parseProductSort(sort);
+        Comparator<Product> comparator;
+        switch (sortSpec.field) {
+            case "conversion":
+            case "personalized":
+                comparator = Comparator.comparingInt(this::productConversionScore);
+                break;
+            case "quickadd":
+                comparator = Comparator
+                        .comparingInt((Product product) -> isQuickAddReady(product) ? 1 : 0)
+                        .thenComparingInt(this::productConversionScore);
+                break;
+            case "bestvalue":
+                comparator = Comparator
+                        .comparingInt(this::bestValueRank)
+                        .thenComparing(this::savingsAmount, Comparator.nullsLast(BigDecimal::compareTo))
+                        .thenComparingInt(this::productConversionScore);
+                break;
+            case "lowstock":
+                comparator = Comparator
+                        .comparingInt(this::lowStockUrgencyScore)
+                        .thenComparingInt(this::productConversionScore);
+                break;
+            case "price":
+                comparator = Comparator.comparing(this::effectivePrice, Comparator.nullsLast(BigDecimal::compareTo));
+                break;
+            case "name":
+                comparator = Comparator.comparing(product -> normalizeSortText(product.getName()), Comparator.nullsLast(String::compareTo));
+                break;
+            case "createdat":
+            case "created":
+                comparator = Comparator.comparing(Product::getCreatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
+                break;
+            case "updatedat":
+            case "updated":
+                comparator = Comparator.comparing(Product::getUpdatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
+                break;
+            case "discount":
+                comparator = Comparator.comparing(this::productDiscountPercent, Comparator.nullsLast(Integer::compareTo));
+                break;
+            case "rating":
+            case "averagerating":
+                comparator = Comparator.comparing(Product::getAverageRating, Comparator.nullsLast(Double::compareTo));
+                break;
+            case "reviews":
+            case "reviewcount":
+                comparator = Comparator.comparing(Product::getReviewCount, Comparator.nullsLast(Long::compareTo));
+                break;
+            case "stock":
+                comparator = Comparator.comparing(Product::getStock, Comparator.nullsLast(Integer::compareTo));
+                break;
+            case "featured":
+                comparator = Comparator.comparing(product -> Boolean.TRUE.equals(product.getIsFeatured()));
+                break;
+            case "id":
+            default:
+                comparator = Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder()));
+                break;
+        }
+        if (sortSpec.descending) {
+            comparator = comparator.reversed();
+        }
+        return comparator.thenComparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder()));
+    }
+
+    private int productConversionScore(Product product) {
+        if (product == null) {
+            return Integer.MIN_VALUE;
+        }
+        int score = hasSellableStock(product) ? 120 : -300;
+        if (Boolean.TRUE.equals(product.getIsFeatured())) score += 34;
+        if (hasActiveDiscount(product)) score += 28 + Math.min(40, productDiscountPercent(product));
+        if (Boolean.TRUE.equals(product.getFreeShipping())) score += 12;
+        if (isQuickAddReady(product)) score += 22;
+        BigDecimal savings = savingsAmount(product);
+        if (savings != null && savings.compareTo(BigDecimal.ZERO) > 0) {
+            score += Math.min(36, savings.divide(BigDecimal.valueOf(10), 0, RoundingMode.DOWN).intValue());
+        }
+        Double positiveRate = product.getPositiveRate();
+        if (positiveRate != null && positiveRate > 0) {
+            score += Math.min(24, (int) Math.round(positiveRate / 4));
+        }
+        Long reviewCount = product.getReviewCount();
+        if (reviewCount != null && reviewCount > 0) {
+            score += Math.min(18, reviewCount.intValue() / 3);
+        }
+        return score;
+    }
+
+    private int bestValueRank(Product product) {
+        if (product == null) {
+            return 0;
+        }
+        int discount = productDiscountPercent(product);
+        double positiveRate = product.getPositiveRate() == null ? 0 : product.getPositiveRate();
+        long reviewCount = product.getReviewCount() == null ? 0 : product.getReviewCount();
+        return discount >= 15 && positiveRate >= 88 && reviewCount >= 3 ? 1 : 0;
+    }
+
+    private int lowStockUrgencyScore(Product product) {
+        Integer stock = product == null ? null : product.getStock();
+        if (stock == null || stock <= 0 || stock > 5) {
+            return 0;
+        }
+        return 100 - stock;
+    }
+
+    private BigDecimal savingsAmount(Product product) {
+        if (product == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal price = effectivePrice(product);
+        BigDecimal originalPrice = product.getOriginalPrice();
+        if (price == null || originalPrice == null || originalPrice.compareTo(price) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return originalPrice.subtract(price);
+    }
+
+    private SortSpec parseProductSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return new SortSpec("conversion", true);
+        }
+        String normalized = sort.trim().toLowerCase(Locale.ROOT).replace('_', '-');
+        String field = normalized;
+        boolean descending = false;
+        int commaIndex = normalized.indexOf(',');
+        if (commaIndex >= 0) {
+            field = normalized.substring(0, commaIndex).trim();
+            String direction = normalized.substring(commaIndex + 1).trim();
+            descending = "desc".equals(direction) || "descending".equals(direction);
+        } else if (normalized.endsWith("-desc")) {
+            field = normalized.substring(0, normalized.length() - 5);
+            descending = true;
+        } else if (normalized.endsWith("-asc")) {
+            field = normalized.substring(0, normalized.length() - 4);
+        }
+        field = field.replace("-", "");
+        if (field.isEmpty() || "default".equals(field) || "recommended".equals(field)) {
+            return new SortSpec("conversion", true);
+        }
+        if ("newest".equals(field)) {
+            return new SortSpec("createdat", true);
+        }
+        if ("oldest".equals(field)) {
+            return new SortSpec("createdat", false);
+        }
+        if ("positiverate".equals(field)) {
+            return new SortSpec("rating", descending);
+        }
+        if ("lowstock".equals(field)) {
+            return new SortSpec("lowstock", true);
+        }
+        if ("quickadd".equals(field) || "bestvalue".equals(field) || "personalized".equals(field)) {
+            return new SortSpec(field, true);
+        }
+        return new SortSpec(field, descending);
+    }
+
+    private List<Product> applyProductPagination(List<Product> products, Integer page, Integer size, boolean defaultWhenMissing) {
+        if (!defaultWhenMissing && page == null && size == null) {
+            return products;
+        }
+        int normalizedPage = normalizeProductPage(page);
+        int normalizedSize = normalizeProductPageSize(size);
+        if (normalizedPage < 0 || normalizedSize <= 0) {
+            return List.of();
+        }
+        long fromIndex = (long) normalizedPage * normalizedSize;
+        if (fromIndex >= products.size()) {
+            return List.of();
+        }
+        int toIndex = (int) Math.min(products.size(), fromIndex + normalizedSize);
+        return new ArrayList<>(products.subList((int) fromIndex, toIndex));
+    }
+
+    private int normalizeProductPage(Integer page) {
+        return page == null ? 0 : Math.max(0, page);
+    }
+
+    private int normalizeProductPageSize(Integer size) {
+        int normalizedSize = size == null ? runtimeConfig.getInt("product.public-default-page-size", 20) : size;
+        int maxPageSize = Math.max(1, Math.min(
+                runtimeConfig.getInt("product.public-max-page-size", HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT),
+                HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT));
+        if (normalizedSize <= 0) {
+            normalizedSize = runtimeConfig.getInt("product.public-default-page-size", 20);
+        }
+        return Math.max(1, Math.min(normalizedSize, maxPageSize));
+    }
+
+    private int normalizeAdminProductPageSize(Integer size) {
+        int defaultSize = runtimeConfig.getInt("product.admin-default-page-size", 50);
+        int normalizedSize = size == null ? defaultSize : size;
+        int maxPageSize = Math.max(1, Math.min(
+                runtimeConfig.getInt("product.admin-max-page-size", HARD_ADMIN_PRODUCT_PAGE_SIZE_LIMIT),
+                HARD_ADMIN_PRODUCT_PAGE_SIZE_LIMIT));
+        if (normalizedSize <= 0) {
+            normalizedSize = defaultSize;
+        }
+        return Math.max(1, Math.min(normalizedSize, maxPageSize));
+    }
+
+    private int normalizeFeaturedProductLimit(int limit) {
+        int normalizedLimit = limit <= 0 ? DEFAULT_FEATURED_PRODUCT_LIMIT : limit;
+        int maxLimit = Math.max(1, runtimeConfig.getInt("product.featured-max-limit", MAX_FEATURED_PRODUCT_LIMIT));
+        return Math.max(1, Math.min(normalizedLimit, Math.min(maxLimit, MAX_FEATURED_PRODUCT_LIMIT)));
+    }
+
+    private BigDecimal normalizeMinPrice(BigDecimal minPrice) {
+        if (minPrice == null) {
+            return null;
+        }
+        if (minPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("minPrice must be greater than or equal to 0");
+        }
+        return minPrice;
+    }
+
+    private BigDecimal normalizeMaxPrice(BigDecimal maxPrice) {
+        if (maxPrice == null) {
+            return null;
+        }
+        if (maxPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("maxPrice must be greater than or equal to 0");
+        }
+        return maxPrice;
+    }
+
+    private String normalizePublicStatusFilter(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        String normalized = ProductStatusUtils.normalizeProductStatus(status);
+        if (normalized == null) {
+            throw new IllegalArgumentException("status must be one of " + ProductStatusUtils.PRODUCT_STATUSES);
+        }
+        return normalized;
+    }
+
+    private String productListCacheKey(ProductListQuery query, String normalizedKeyword) {
+        return "public:list:"
+                + "kw=" + normalizedKeyword
+                + ":category=" + stringValue(query.getCategoryId())
+                + ":discount=" + query.getDiscount()
+                + ":featured=" + query.getFeatured()
+                + ":min=" + moneyKey(query.getMinPrice())
+                + ":max=" + moneyKey(query.getMaxPrice())
+                + ":petSizes=" + listKey(query.getPetSizes())
+                + ":materials=" + listKey(query.getMaterials())
+                + ":colors=" + listKey(query.getColors())
+                + ":collection=" + normalizeCacheText(normalizePublicCollection(query.getCollection()))
+                + ":status=" + normalizeCacheText(query.getStatus())
+                + ":page=" + stringValue(query.getPage())
+                + ":size=" + stringValue(query.getSize())
+                + ":sort=" + normalizeCacheText(query.getSort());
+    }
+
+    private Integer productDiscountPercent(Product product) {
+        Integer effectiveDiscount = product.getEffectiveDiscountPercent();
+        if (effectiveDiscount != null && effectiveDiscount > 0) {
+            return effectiveDiscount;
+        }
+        return product.getDiscount() == null ? 0 : product.getDiscount();
+    }
+
+    private String normalizeSortText(String value) {
+        return value == null ? null : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeCacheText(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String moneyKey(BigDecimal value) {
+        return value == null ? "" : value.stripTrailingZeros().toPlainString();
+    }
+
+    private String listKey(List<String> values) {
+        return normalizeRefinementValues(values).stream().collect(Collectors.joining(","));
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
     }
 
     @Override
@@ -321,7 +1294,13 @@ public class ProductServiceImpl implements ProductService {
                         runtimeConfig.getBigDecimal("product.add-on-price-ceiling", BigDecimal.valueOf(260)),
                         BigDecimal.valueOf(260)));
 
-        return enrichReviewStats(productRepository.findAll().stream()
+        int candidateWindow = recommendationCandidateWindow(normalizedLimit, 80);
+        return enrichReviewStats(productRepository.findPublicAddOnCandidateWindow(
+                        floor,
+                        ceiling,
+                        normalizedTarget,
+                        PageRequest.of(0, candidateWindow))
+                .stream()
                 .filter(product -> !excludedIds.contains(product.getId()))
                 .filter(this::isReadyAddOnCandidate)
                 .map(product -> new ProductAddOnCandidate(product, scoreAddOnCandidate(product, normalizedTarget, floor, ceiling)))
@@ -362,6 +1341,146 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toList()));
     }
 
+    @Override
+    public List<Product> findFinderCandidates(List<String> keywords, int limit) {
+        List<String> normalizedKeywords = keywords == null
+                ? List.of()
+                : keywords.stream()
+                .map(this::normalizeSearchText)
+                .filter(keyword -> !keyword.isEmpty())
+                .distinct()
+                .limit(12)
+                .collect(Collectors.toList());
+        int normalizedLimit = Math.max(1, Math.min(limit <= 0 ? 36 : limit, 60));
+        String cacheKey = "finder:" + normalizedLimit + ":" + String.join(",", normalizedKeywords);
+        return getCachedProducts(cacheKey, () -> findFinderCandidatesUncached(normalizedKeywords, normalizedLimit));
+    }
+
+    private List<Product> findFinderCandidatesUncached(List<String> normalizedKeywords, int normalizedLimit) {
+        int candidateWindow = recommendationCandidateWindow(normalizedLimit, 180);
+        List<Product> candidates = boundedRecommendationCandidates(normalizedKeywords, candidateWindow);
+        Map<Long, Category> categories = loadCategoryLookupForProducts(candidates);
+        enrichReviewStats(candidates);
+        return candidates.stream()
+                .map(product -> new ProductScore(product, scoreFinderCandidate(product, normalizedKeywords, categories)))
+                .filter(entry -> normalizedKeywords.isEmpty() || entry.score > 0)
+                .sorted(Comparator
+                        .comparingInt((ProductScore entry) -> entry.score).reversed()
+                        .thenComparing(entry -> effectivePrice(entry.product))
+                        .thenComparing(entry -> entry.product.getId(), Comparator.nullsLast(Comparator.naturalOrder())))
+                .limit(normalizedLimit)
+                .map(entry -> entry.product)
+                .collect(Collectors.toList());
+    }
+
+    private List<Product> boundedRecommendationCandidates(List<String> normalizedKeywords, int candidateWindow) {
+        Map<Long, Product> byId = new LinkedHashMap<>();
+        List<String> terms = recommendationSearchTerms(normalizedKeywords);
+        for (String term : terms) {
+            productRepository.findPublicKeywordCandidateWindow(term, PageRequest.of(0, candidateWindow)).stream()
+                    .filter(product -> product.getId() != null)
+                    .forEach(product -> byId.putIfAbsent(product.getId(), product));
+            if (byId.size() >= candidateWindow) {
+                break;
+            }
+        }
+        if (byId.size() < candidateWindow) {
+            productRepository.findPublicSellableCandidateWindow(PageRequest.of(0, candidateWindow)).stream()
+                    .filter(product -> product.getId() != null)
+                    .forEach(product -> byId.putIfAbsent(product.getId(), product));
+        }
+        return byId.values().stream()
+                .filter(this::isPublicCatalogProduct)
+                .filter(this::hasSellableStock)
+                .limit(candidateWindow)
+                .collect(Collectors.toList());
+    }
+
+    private int recommendationCandidateWindow(int responseLimit, int defaultWindow) {
+        int configuredWindow = runtimeConfig.getInt("product.recommendation-candidate-window", defaultWindow);
+        int minimumWindow = Math.max(responseLimit, responseLimit * 4);
+        int boundedWindow = configuredWindow <= 0 ? defaultWindow : configuredWindow;
+        return Math.max(minimumWindow, Math.min(Math.max(boundedWindow, minimumWindow), 300));
+    }
+
+    private List<String> recommendationSearchTerms(List<String> normalizedKeywords) {
+        if (normalizedKeywords == null || normalizedKeywords.isEmpty()) {
+            return List.of();
+        }
+        Set<String> terms = new LinkedHashSet<>();
+        for (String keyword : normalizedKeywords) {
+            String normalized = normalizeSearchText(keyword);
+            if (normalized.isEmpty()) {
+                continue;
+            }
+            terms.add(normalized);
+            Arrays.stream(normalized.split("\\s+"))
+                    .filter(token -> token.length() > 1)
+                    .flatMap(token -> expandSearchToken(token).stream())
+                    .forEach(terms::add);
+            if (terms.size() >= 12) {
+                break;
+            }
+        }
+        return terms.stream()
+                .filter(term -> term != null && !term.isBlank())
+                .limit(12)
+                .collect(Collectors.toList());
+    }
+
+    private List<String> personalizedCandidateTerms(List<PetProfile> pets) {
+        Set<String> terms = new LinkedHashSet<>();
+        for (PetProfile pet : pets) {
+            String petType = normalize(pet.getPetType());
+            if ("DOG".equals(petType)) {
+                terms.addAll(List.of("dog", "puppy"));
+            } else if ("CAT".equals(petType)) {
+                terms.addAll(List.of("cat", "kitten"));
+            } else if ("SMALL_PET".equals(petType)) {
+                terms.addAll(List.of("small pet", "rabbit", "hamster"));
+            }
+            String size = normalizeSearchText(pet.getSize());
+            if (!size.isEmpty()) {
+                terms.add(size);
+            }
+            String breed = normalizeSearchText(pet.getBreed());
+            if (!breed.isEmpty()) {
+                terms.add(breed);
+            }
+            if (terms.size() >= 12) {
+                break;
+            }
+        }
+        return terms.stream().limit(12).collect(Collectors.toList());
+    }
+
+    private Map<Long, Category> loadCategoryLookupForProducts(List<Product> products) {
+        Map<Long, Category> lookup = new LinkedHashMap<>();
+        Set<Long> pendingIds = products == null
+                ? new LinkedHashSet<>()
+                : products.stream()
+                .map(Product::getCategoryId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        int depth = 0;
+        while (!pendingIds.isEmpty() && depth < 8) {
+            List<Long> ids = new ArrayList<>(pendingIds);
+            pendingIds.clear();
+            categoryRepository.findAllById(ids).forEach(category -> {
+                if (category == null || category.getId() == null || lookup.containsKey(category.getId())) {
+                    return;
+                }
+                lookup.put(category.getId(), category);
+                Long parentId = category.getParentId();
+                if (parentId != null && parentId > 0 && !lookup.containsKey(parentId)) {
+                    pendingIds.add(parentId);
+                }
+            });
+            depth++;
+        }
+        return lookup;
+    }
+
     public List<Product> findRelatedProducts(Long productId, Long categoryId) {
         if (productId == null || categoryId == null) {
             return List.of();
@@ -398,12 +1517,9 @@ public class ProductServiceImpl implements ProductService {
         if (pets == null || pets.isEmpty()) {
             return List.of();
         }
-        Map<Long, Category> categories = categoryRepository.findAll().stream()
-                .collect(Collectors.toMap(Category::getId, category -> category));
-        List<Product> products = productRepository.findAll().stream()
-                .filter(this::isPublicCatalogProduct)
-                .filter(product -> product.getStock() == null || product.getStock() > 0)
-                .collect(Collectors.toList());
+        int candidateWindow = recommendationCandidateWindow(12, 160);
+        List<Product> products = boundedRecommendationCandidates(personalizedCandidateTerms(pets), candidateWindow);
+        Map<Long, Category> categories = loadCategoryLookupForProducts(products);
 
         return enrichReviewStats(products.stream()
                 .map(product -> new ProductScore(product, scoreForPets(product, categories, pets)))
@@ -1159,7 +2275,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private String normalizeDirectText(String value, String field, int maxLength, boolean required) {
-        String normalized = value == null ? null : value
+        String normalized = value == null ? null : stripHtml(value)
                 .replaceAll("\\p{Cntrl}", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
@@ -1171,6 +2287,28 @@ public class ProductServiceImpl implements ProductService {
         }
         requireLength(normalized, maxLength, field);
         return normalized;
+    }
+
+    private String stripHtml(String value) {
+        String stripped = HTML_COMMENT_PATTERN.matcher(value == null ? "" : value).replaceAll(" ");
+        String previous;
+        do {
+            previous = stripped;
+            stripped = HTML_BLOCK_PATTERN.matcher(stripped).replaceAll(" ");
+        } while (!previous.equals(stripped));
+        stripped = HTML_TAG_PATTERN.matcher(stripped).replaceAll(" ");
+        return decodeCommonHtmlEntities(stripped);
+    }
+
+    private String decodeCommonHtmlEntities(String value) {
+        return value
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&apos;", "'");
     }
 
     private void validateLimitedTimePrice(BigDecimal price, BigDecimal limitedTimePrice) {
@@ -1882,6 +3020,64 @@ public class ProductServiceImpl implements ProductService {
         return isQuickAddReady(product) ? 0 : 1;
     }
 
+    private int scoreFinderCandidate(Product product, List<String> normalizedKeywords, Map<Long, Category> categories) {
+        String searchable = productSearchText(product, categories);
+        int score = 0;
+        if (normalizedKeywords == null || normalizedKeywords.isEmpty()) {
+            score += 20;
+        } else {
+            for (String keyword : normalizedKeywords) {
+                if (keyword == null || keyword.isBlank()) {
+                    continue;
+                }
+                if (searchable.contains(keyword)) {
+                    score += 36;
+                    continue;
+                }
+                List<String> tokens = Arrays.stream(keyword.split("\\s+"))
+                        .filter(token -> token.length() > 1)
+                        .collect(Collectors.toList());
+                if (tokens.isEmpty()) {
+                    continue;
+                }
+                long tokenHits = tokens.stream()
+                        .filter(token -> matchesSearchToken(searchable, token))
+                        .count();
+                if (tokenHits == tokens.size()) {
+                    score += 24;
+                } else if (tokenHits > 0) {
+                    score += (int) tokenHits * 10;
+                }
+            }
+        }
+        if (score <= 0 && normalizedKeywords != null && !normalizedKeywords.isEmpty()) {
+            return 0;
+        }
+
+        BigDecimal price = effectivePrice(product);
+        if (price != null && price.compareTo(BigDecimal.ZERO) > 0) {
+            score += price.compareTo(BigDecimal.valueOf(80)) <= 0 ? 8 : 4;
+        }
+        if (Boolean.TRUE.equals(product.getIsFeatured())) {
+            score += 12;
+        }
+        Integer discount = product.getEffectiveDiscountPercent();
+        if (discount != null && discount > 0) {
+            score += Math.min(18, discount / 2);
+        } else if (product.getDiscount() != null && product.getDiscount() > 0) {
+            score += Math.min(12, product.getDiscount() / 2);
+        }
+        Double averageRating = product.getAverageRating();
+        if (averageRating != null && averageRating > 0) {
+            score += Math.min(20, (int) Math.round(averageRating * 3));
+        }
+        Long reviewCount = product.getReviewCount();
+        if (reviewCount != null && reviewCount > 0) {
+            score += Math.min(10, reviewCount.intValue() / 20);
+        }
+        return score;
+    }
+
     private boolean isPublicCatalogProduct(Product product) {
         if (!ProductStatusUtils.isPublicProduct(product)) {
             return false;
@@ -1997,6 +3193,24 @@ public class ProductServiceImpl implements ProductService {
         private ProductAddOnCandidate(Product product, int score) {
             this.product = product;
             this.score = score;
+        }
+    }
+
+    private static class SortSpec {
+        private final String field;
+        private final boolean descending;
+
+        private SortSpec(String field, boolean descending) {
+            this.field = field;
+            this.descending = descending;
+        }
+
+        private boolean requiresCriteriaRanking() {
+            return "conversion".equals(field)
+                    || "quickadd".equals(field)
+                    || "bestvalue".equals(field)
+                    || "lowstock".equals(field)
+                    || "personalized".equals(field);
         }
     }
 

@@ -5,13 +5,17 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
 public class TokenBlacklistService {
     private final ObjectProvider<StringRedisTemplate> redisTemplateProvider;
+    private final RuntimeConfigService runtimeConfig;
     private final SecureRandom secureRandom = new SecureRandom();
 
     private static final String REFRESH_TOKEN_PREFIX = "refresh:";
@@ -24,8 +28,10 @@ public class TokenBlacklistService {
     private static final long IP_LOCKOUT_MINUTES = 15;
     private static final long ACCOUNT_LOCKOUT_MINUTES = 30;
 
-    public TokenBlacklistService(ObjectProvider<StringRedisTemplate> redisTemplateProvider) {
+    public TokenBlacklistService(ObjectProvider<StringRedisTemplate> redisTemplateProvider,
+                                 RuntimeConfigService runtimeConfig) {
         this.redisTemplateProvider = redisTemplateProvider;
+        this.runtimeConfig = runtimeConfig;
     }
 
     public String generateRefreshToken() {
@@ -86,7 +92,7 @@ public class TokenBlacklistService {
         String key = LOGIN_ATTEMPT_PREFIX + clientIp;
         String count = redis.opsForValue().get(key);
         if (count == null) return false;
-        return parseCounter(count) >= MAX_LOGIN_ATTEMPTS_PER_IP;
+        return parseCounter(count) >= maxLoginAttemptsPerIp();
     }
 
     public void recordLoginFailure(String clientIp, String username) {
@@ -97,7 +103,7 @@ public class TokenBlacklistService {
         String ipKey = LOGIN_ATTEMPT_PREFIX + clientIp;
         Long ipCount = redis.opsForValue().increment(ipKey);
         if (ipCount != null && ipCount == 1) {
-            redis.expire(ipKey, IP_LOCKOUT_MINUTES, TimeUnit.MINUTES);
+            redis.expire(ipKey, ipFailureWindowMinutes(), TimeUnit.MINUTES);
         }
 
         // Per-account lockout
@@ -106,7 +112,7 @@ public class TokenBlacklistService {
             String accountKey = ACCOUNT_LOCK_PREFIX + normalizedUsername;
             Long accountCount = redis.opsForValue().increment(accountKey);
             if (accountCount != null && accountCount == 1) {
-                redis.expire(accountKey, ACCOUNT_LOCKOUT_MINUTES, TimeUnit.MINUTES);
+                redis.expire(accountKey, accountLockoutMinutes(), TimeUnit.MINUTES);
             }
         }
     }
@@ -115,6 +121,61 @@ public class TokenBlacklistService {
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return;
         redis.delete(LOGIN_ATTEMPT_PREFIX + clientIp);
+    }
+
+    public List<LoginIpFailureSnapshot> findLoginIpFailures() {
+        StringRedisTemplate redis = redisTemplate();
+        if (redis == null) return List.of();
+        Set<String> keys = redis.keys(LOGIN_ATTEMPT_PREFIX + "*");
+        if (keys == null || keys.isEmpty()) return List.of();
+        List<LoginIpFailureSnapshot> snapshots = new ArrayList<>();
+        for (String key : keys) {
+            if (key == null || !key.startsWith(LOGIN_ATTEMPT_PREFIX)) {
+                continue;
+            }
+            String ipAddress = key.substring(LOGIN_ATTEMPT_PREFIX.length());
+            int failureCount = parseCounter(redis.opsForValue().get(key));
+            if (ipAddress.isBlank() || failureCount <= 0) {
+                continue;
+            }
+            Long ttlSeconds = redis.getExpire(key, TimeUnit.SECONDS);
+            snapshots.add(new LoginIpFailureSnapshot(
+                    ipAddress,
+                    failureCount,
+                    ttlSeconds == null ? -1 : ttlSeconds,
+                    failureCount >= maxLoginAttemptsPerIp()));
+        }
+        return snapshots;
+    }
+
+    public static class LoginIpFailureSnapshot {
+        private final String ipAddress;
+        private final int failureCount;
+        private final long ttlSeconds;
+        private final boolean locked;
+
+        public LoginIpFailureSnapshot(String ipAddress, int failureCount, long ttlSeconds, boolean locked) {
+            this.ipAddress = ipAddress;
+            this.failureCount = failureCount;
+            this.ttlSeconds = ttlSeconds;
+            this.locked = locked;
+        }
+
+        public String getIpAddress() {
+            return ipAddress;
+        }
+
+        public int getFailureCount() {
+            return failureCount;
+        }
+
+        public long getTtlSeconds() {
+            return ttlSeconds;
+        }
+
+        public boolean isLocked() {
+            return locked;
+        }
     }
 
     public void clearAccountFailures(String username) {
@@ -133,16 +194,17 @@ public class TokenBlacklistService {
         String key = ACCOUNT_LOCK_PREFIX + normalizedUsername;
         String count = redis.opsForValue().get(key);
         if (count == null) return false;
-        return parseCounter(count) >= MAX_LOGIN_ATTEMPTS_PER_ACCOUNT;
+        return parseCounter(count) >= maxLoginAttemptsPerAccount();
     }
 
     public long getLoginAttemptsRemaining(String clientIp) {
         StringRedisTemplate redis = redisTemplate();
-        if (redis == null) return MAX_LOGIN_ATTEMPTS_PER_IP;
+        int maxAttempts = maxLoginAttemptsPerIp();
+        if (redis == null) return maxAttempts;
         String key = LOGIN_ATTEMPT_PREFIX + clientIp;
         String count = redis.opsForValue().get(key);
-        if (count == null) return MAX_LOGIN_ATTEMPTS_PER_IP;
-        return Math.max(0, MAX_LOGIN_ATTEMPTS_PER_IP - parseCounter(count));
+        if (count == null) return maxAttempts;
+        return Math.max(0, maxAttempts - parseCounter(count));
     }
 
     private StringRedisTemplate redisTemplate() {
@@ -166,5 +228,21 @@ public class TokenBlacklistService {
         } catch (RuntimeException ignored) {
             return 0;
         }
+    }
+
+    private int maxLoginAttemptsPerIp() {
+        return Math.max(1, runtimeConfig.getInt("security.ip-blacklist.login-failure-threshold", MAX_LOGIN_ATTEMPTS_PER_IP));
+    }
+
+    private int maxLoginAttemptsPerAccount() {
+        return Math.max(1, runtimeConfig.getInt("security.login.account-failure-threshold", MAX_LOGIN_ATTEMPTS_PER_ACCOUNT));
+    }
+
+    private long ipFailureWindowMinutes() {
+        return Math.max(1L, runtimeConfig.getLong("security.ip-blacklist.window-minutes", IP_LOCKOUT_MINUTES));
+    }
+
+    private long accountLockoutMinutes() {
+        return Math.max(1L, runtimeConfig.getLong("security.login.account-lockout-minutes", ACCOUNT_LOCKOUT_MINUTES));
     }
 }

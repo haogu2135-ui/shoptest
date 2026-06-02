@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { ClockCircleOutlined, LinkOutlined, PlusOutlined, SearchOutlined, SoundOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -7,10 +7,12 @@ import type { SiteAnnouncement, SiteAnnouncementAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { isSafeAnnouncementLink } from '../utils/announcementLinks';
 import { getApiErrorMessage } from '../utils/apiError';
+import { ANNOUNCEMENTS_DELETE_PERMISSION, ANNOUNCEMENTS_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './AnnouncementManagement.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+const DEFAULT_PAGE_SIZE = 20;
 
 const normalizeDateValue = (value?: string | dayjs.Dayjs | null) => {
   if (!value) return undefined;
@@ -31,88 +33,119 @@ const AnnouncementManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
+  const [pageState, setPageState] = useState({
+    page: 1,
+    size: DEFAULT_PAGE_SIZE,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrevious: false,
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<SiteAnnouncement | null>(null);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const canWriteAnnouncements = hasAdminPermission(adminPermissions, currentRole, ANNOUNCEMENTS_WRITE_PERMISSION);
+  const canDeleteAnnouncements = hasAdminPermission(adminPermissions, currentRole, ANNOUNCEMENTS_DELETE_PERMISSION);
 
-  const loadAnnouncements = async () => {
+  const loadAnnouncements = useCallback(async (
+    nextPage: number,
+    nextSize: number,
+    nextStatus = statusFilter,
+    nextKeyword = debouncedKeyword,
+  ) => {
     setLoading(true);
     try {
-      const response = await adminApi.getAnnouncements();
-      setAnnouncements(response.data);
+      const response = await adminApi.getAnnouncements({
+        page: nextPage,
+        size: nextSize,
+        status: nextStatus,
+        keyword: nextKeyword || undefined,
+      });
+      setAnnouncements(response.data.items || []);
+      const resolvedSize = response.data.size || nextSize;
+      pageSizeRef.current = resolvedSize;
+      setPageState({
+        page: response.data.page || nextPage,
+        size: resolvedSize,
+        total: response.data.total || 0,
+        totalPages: response.data.totalPages || 0,
+        hasNext: Boolean(response.data.hasNext),
+        hasPrevious: Boolean(response.data.hasPrevious),
+      });
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.fetchFailed'), language));
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedKeyword, language, statusFilter, t]);
 
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async (
+    nextStatus = statusFilter,
+    nextKeyword = debouncedKeyword,
+  ) => {
     try {
-      const response = await adminApi.getAnnouncementSummary();
+      const response = await adminApi.getAnnouncementSummary({
+        status: nextStatus,
+        keyword: nextKeyword || undefined,
+      });
       setSummary(response.data);
     } catch {
       setSummary(null);
     }
-  };
+  }, [debouncedKeyword, statusFilter]);
 
   useEffect(() => {
-    loadAnnouncements();
-    loadSummary();
+    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [keyword]);
+
+  useEffect(() => {
+    loadAnnouncements(1, pageSizeRef.current, statusFilter, debouncedKeyword);
+    loadSummary(statusFilter, debouncedKeyword);
+  }, [debouncedKeyword, loadAnnouncements, loadSummary, statusFilter]);
+
+  useEffect(() => {
+    adminApi.getMyPermissions()
+      .then((response) => {
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
   }, []);
 
   const titleMaxChars = Math.max(1, summary?.titleMaxChars || 120);
   const contentMaxChars = Math.max(1, summary?.contentMaxChars || 500);
   const linkUrlMaxChars = Math.max(1, summary?.linkUrlMaxChars || 500);
   const maxActiveRows = Math.max(1, summary?.maxActiveRows || 10);
-  const localSummary = useMemo(() => {
-    const now = Date.now();
-    return announcements.reduce((stats, announcement) => {
-      const status = String(announcement.status || 'ACTIVE').toUpperCase();
-      const startsAt = announcement.startsAt ? new Date(announcement.startsAt).getTime() : null;
-      const endsAt = announcement.endsAt ? new Date(announcement.endsAt).getTime() : null;
-      if (status === 'INACTIVE') stats.inactive += 1;
-      if (status === 'ACTIVE' && startsAt && startsAt > now) stats.scheduled += 1;
-      if (status === 'ACTIVE' && endsAt && endsAt < now) stats.expired += 1;
-      if (status === 'ACTIVE' && (!startsAt || startsAt <= now) && (!endsAt || endsAt >= now)) stats.active += 1;
-      if (announcement.linkUrl) stats.linked += 1;
-      return stats;
-    }, { active: 0, scheduled: 0, expired: 0, inactive: 0, linked: 0 });
-  }, [announcements]);
-  const announcementStats = summary ? {
-    active: summary.activeAnnouncements,
-    scheduled: summary.scheduledAnnouncements,
-    expired: summary.expiredAnnouncements,
-    inactive: summary.inactiveAnnouncements,
-    linked: summary.linkedAnnouncements,
-  } : localSummary;
+  const announcementStats = {
+    active: summary?.activeAnnouncements || 0,
+    scheduled: summary?.scheduledAnnouncements || 0,
+    expired: summary?.expiredAnnouncements || 0,
+    inactive: summary?.inactiveAnnouncements || 0,
+    linked: summary?.linkedAnnouncements || 0,
+  };
   const summaryCheckedAt = useMemo(() => {
     if (!summary?.checkedAt) return '';
     const checkedAt = new Date(summary.checkedAt);
     return Number.isFinite(checkedAt.getTime()) ? checkedAt.toLocaleString() : summary.checkedAt;
   }, [summary]);
 
-  const filteredAnnouncements = useMemo(() => {
-    const text = keyword.trim().toLowerCase();
-    return announcements.filter((announcement) => {
-      const status = announcement.status || 'ACTIVE';
-      if (statusFilter && status !== statusFilter) return false;
-      if (!text) return true;
-      return [
-        announcement.title,
-        announcement.content,
-        announcement.linkUrl,
-        status,
-        announcement.sortOrder,
-      ].some((value) => String(value || '').toLowerCase().includes(text));
-    });
-  }, [announcements, keyword, statusFilter]);
-
   const openEditor = (announcement?: SiteAnnouncement) => {
+    if (!canWriteAnnouncements) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setEditing(announcement || null);
     form.resetFields();
     form.setFieldsValue({
@@ -128,6 +161,10 @@ const AnnouncementManagement: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!canWriteAnnouncements) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setSaving(true);
@@ -143,7 +180,7 @@ const AnnouncementManagement: React.FC = () => {
       }
       message.success(t('pages.announcementAdmin.saved'));
       setModalOpen(false);
-      await Promise.all([loadAnnouncements(), loadSummary()]);
+      await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
     } catch (error: any) {
       if (error?.errorFields) return;
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.saveFailed'), language));
@@ -154,6 +191,10 @@ const AnnouncementManagement: React.FC = () => {
 
   const toggleStatus = async (announcement: SiteAnnouncement, active: boolean) => {
     if (!announcement.id) return;
+    if (!canWriteAnnouncements) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setStatusUpdatingId(announcement.id);
     try {
       await adminApi.updateAnnouncement(announcement.id, {
@@ -161,7 +202,7 @@ const AnnouncementManagement: React.FC = () => {
         status: active ? 'ACTIVE' : 'INACTIVE',
       });
       message.success(active ? t('pages.announcementAdmin.enabled') : t('pages.announcementAdmin.disabled'));
-      await Promise.all([loadAnnouncements(), loadSummary()]);
+      await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.statusUpdateFailed'), language));
     } finally {
@@ -178,10 +219,14 @@ const AnnouncementManagement: React.FC = () => {
 
   const deleteAnnouncement = async (id?: number) => {
     if (!id) return;
+    if (!canDeleteAnnouncements) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       await adminApi.deleteAnnouncement(id);
       message.success(t('pages.announcementAdmin.deleted'));
-      await Promise.all([loadAnnouncements(), loadSummary()]);
+      await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.deleteFailed'), language));
     }
@@ -191,16 +236,18 @@ const AnnouncementManagement: React.FC = () => {
     <div className="announcement-management">
       <div className="announcement-management__hero">
         <div>
-          <Text className="announcement-management__eyebrow">CMS</Text>
+          <Text className="announcement-management__eyebrow">{t('pages.announcementAdmin.eyebrow')}</Text>
           <Title level={2}>{t('pages.announcementAdmin.title')}</Title>
           <Text type="secondary">{t('pages.announcementAdmin.description')}</Text>
           <Text type="secondary" className="announcement-management__limitHint">
             {t('pages.announcementAdmin.limitHint', { count: maxActiveRows })}{summaryCheckedAt ? t('pages.announcementAdmin.checkedAt', { time: summaryCheckedAt }) : ''}
           </Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
-          {t('pages.announcementAdmin.add')}
-        </Button>
+        {canWriteAnnouncements ? (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
+            {t('pages.announcementAdmin.add')}
+          </Button>
+        ) : null}
       </div>
 
       <section className="announcement-management__stats" aria-label={t('pages.announcementAdmin.statsLabel')}>
@@ -252,8 +299,17 @@ const AnnouncementManagement: React.FC = () => {
         </Space>
         <Table<SiteAnnouncement>
           rowKey={(record) => String(record.id)}
-          dataSource={filteredAnnouncements}
+          dataSource={announcements}
           loading={loading}
+          pagination={{
+            current: pageState.page,
+            pageSize: pageState.size,
+            total: pageState.total,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            showTotal: (total) => `${t('common.total')}: ${total}${pageState.totalPages ? ` | ${pageState.page}/${pageState.totalPages}` : ''}`,
+            onChange: (page, pageSize) => loadAnnouncements(page, pageSize),
+          }}
           scroll={{ x: 920 }}
           columns={[
             {
@@ -277,6 +333,7 @@ const AnnouncementManagement: React.FC = () => {
                   checkedChildren={t('pages.announcementAdmin.enable')}
                   unCheckedChildren={t('pages.announcementAdmin.disable')}
                   loading={statusUpdatingId === record.id}
+                  disabled={!canWriteAnnouncements}
                   onChange={(checked) => toggleStatus(record, checked)}
                 />
               ),
@@ -302,10 +359,12 @@ const AnnouncementManagement: React.FC = () => {
               width: 160,
               render: (_, record) => (
                 <Space>
-                  <Button size="small" onClick={() => openEditor(record)}>{t('common.edit')}</Button>
-                  <Popconfirm title={t('pages.announcementAdmin.deleteConfirm')} onConfirm={() => deleteAnnouncement(record.id)}>
-                    <Button size="small" danger>{t('common.delete')}</Button>
-                  </Popconfirm>
+                  {canWriteAnnouncements ? <Button size="small" onClick={() => openEditor(record)}>{t('common.edit')}</Button> : null}
+                  {canDeleteAnnouncements ? (
+                    <Popconfirm title={t('pages.announcementAdmin.deleteConfirm')} onConfirm={() => deleteAnnouncement(record.id)}>
+                      <Button size="small" danger>{t('common.delete')}</Button>
+                    </Popconfirm>
+                  ) : null}
                 </Space>
               ),
             },
@@ -365,7 +424,25 @@ const AnnouncementManagement: React.FC = () => {
             <Form.Item name="startsAt" label={t('pages.announcementAdmin.startsAt')} extra={t('pages.announcementAdmin.startsAtExtra')}>
               <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" className="announcement-management__datePicker" popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} />
             </Form.Item>
-            <Form.Item name="endsAt" label={t('pages.announcementAdmin.endsAt')} extra={t('pages.announcementAdmin.endsAtExtra')}>
+            <Form.Item
+              name="endsAt"
+              label={t('pages.announcementAdmin.endsAt')}
+              extra={t('pages.announcementAdmin.endsAtExtra')}
+              dependencies={['startsAt']}
+              rules={[
+                {
+                  validator: (_, value) => {
+                    const startsAt = form.getFieldValue('startsAt');
+                    if (!value || !startsAt || !dayjs.isDayjs(value) || !dayjs.isDayjs(startsAt)) {
+                      return Promise.resolve();
+                    }
+                    return value.isAfter(startsAt)
+                      ? Promise.resolve()
+                      : Promise.reject(new Error(t('pages.announcementAdmin.endsAfterStarts')));
+                  },
+                },
+              ]}
+            >
               <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" className="announcement-management__datePicker" popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} />
             </Form.Item>
           </Space>

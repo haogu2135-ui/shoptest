@@ -5,6 +5,7 @@ import com.example.shop.entity.User;
 import com.example.shop.service.ClientIpResolver;
 import com.example.shop.service.EmailLoginService;
 import com.example.shop.service.EmailLoginService.EmailLoginException;
+import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,10 +14,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -27,29 +35,96 @@ public class AuthController {
     private final UserService userService;
     private final EmailLoginService emailLoginService;
     private final ClientIpResolver clientIpResolver;
+    private final IpBlacklistService ipBlacklistService;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody(required = false) User user) {
+    public ResponseEntity<?> register(@Valid @RequestBody(required = false) RegisterRequest request,
+                                      HttpServletRequest servletRequest) {
+        User user = request == null ? null : request.toUser();
         if (user == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Registration payload is required"));
         }
+        List<String> missingFields = missingRegistrationFields(user);
+        if (!missingFields.isEmpty()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("error", registrationMissingFieldsMessage(missingFields));
+            response.put("missingFields", missingFields);
+            return ResponseEntity.badRequest().body(response);
+        }
         try {
-            User registeredUser = userService.register(user);
+            boolean claimingGuestEmail = userService.isGuestEmailOwner(user.getEmail());
+            boolean guestEmailVerified = false;
+            if (claimingGuestEmail) {
+                if (isBlank(request.getEmailCode())) {
+                    throw new IllegalArgumentException("Email verification is required to claim guest checkout history");
+                }
+                User verifiedUser = emailLoginService.verifyLoginCode(
+                        user.getEmail(),
+                        request.getEmailCode(),
+                        clientIpResolver.resolve(servletRequest));
+                ensureRegisterEmailMatchesVerifiedUser(user.getEmail(), verifiedUser);
+                guestEmailVerified = true;
+            }
+            User registeredUser = userService.register(user, guestEmailVerified);
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Registered successfully");
             response.put("id", registeredUser != null ? registeredUser.getId() : null);
             response.put("username", registeredUser != null ? registeredUser.getUsername() : null);
-            response.put("email", registeredUser != null ? registeredUser.getEmail() : null);
-            response.put("phone", registeredUser != null ? registeredUser.getPhone() : null);
             return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            Map<String, String> response = new HashMap<>();
+        } catch (EmailLoginException e) {
+            ipBlacklistService.recordLoginFailure(servletRequest, "register-email-claim:" + e.getCode());
+            Map<String, Object> response = new HashMap<>();
             response.put("error", e.getMessage());
+            response.put("code", e.getCode());
+            response.put("emailCodeRequired", true);
+            if (e.getRetryAfterSeconds() > 0) {
+                response.put("retryAfterSeconds", e.getRetryAfterSeconds());
+            }
+            HttpStatus status = "TOO_MANY_ATTEMPTS".equals(e.getCode())
+                    ? HttpStatus.TOO_MANY_REQUESTS
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("error", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().toLowerCase(Locale.ROOT).contains("email verification")) {
+                response.put("emailCodeRequired", true);
+            }
             return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
-            Map<String, String> response = new HashMap<>();
-            response.put("error", "Registration failed. Please try again.");
-            return ResponseEntity.badRequest().body(response);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Registration failed. Please try again.", e);
+        }
+    }
+
+    private List<String> missingRegistrationFields(User user) {
+        List<String> fields = new ArrayList<>();
+        if (isBlank(user.getUsername())) {
+            fields.add("username");
+        }
+        if (isBlank(user.getEmail())) {
+            fields.add("email");
+        }
+        if (isBlank(user.getPhone())) {
+            fields.add("phone");
+        }
+        if (isBlank(user.getPassword())) {
+            fields.add("password");
+        }
+        return fields;
+    }
+
+    private String registrationMissingFieldsMessage(List<String> fields) {
+        return String.join(", ", fields) + (fields.size() == 1 ? " is required" : " are required");
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private void ensureRegisterEmailMatchesVerifiedUser(String requestedEmail, User verifiedUser) {
+        String normalizedEmail = normalizeEmail(requestedEmail);
+        if (verifiedUser == null || normalizedEmail == null || !normalizedEmail.equalsIgnoreCase(normalize(verifiedUser.getEmail()))) {
+            throw new IllegalArgumentException("Account information does not match");
         }
     }
 
@@ -59,7 +134,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Password reset payload is required"));
         }
         try {
-            User verifiedUser = emailLoginService.verifyLoginCode(
+            User verifiedUser = emailLoginService.verifyPasswordResetCode(
                     request.getEmail(),
                     request.getCode(),
                     clientIpResolver.resolve(servletRequest));
@@ -69,6 +144,7 @@ public class AuthController {
             response.put("message", "Password reset successfully");
             return ResponseEntity.ok(response);
         } catch (EmailLoginException e) {
+            ipBlacklistService.recordLoginFailure(servletRequest, "forgot-password:" + e.getCode());
             Map<String, Object> response = new HashMap<>();
             response.put("error", e.getMessage());
             response.put("code", e.getCode());
@@ -79,9 +155,17 @@ public class AuthController {
                     ? HttpStatus.TOO_MANY_REQUESTS
                     : HttpStatus.BAD_REQUEST;
             return ResponseEntity.status(status).body(response);
-        } catch (Exception e) {
+        } catch (IllegalStateException e) {
+            ipBlacklistService.recordLoginFailure(servletRequest, "forgot-password service unavailable");
             Map<String, String> response = new HashMap<>();
-            response.put("error", e.getMessage());
+            response.put("error", "Password reset service is temporarily unavailable. Please try again later.");
+            response.put("code", "RESET_SERVICE_UNAVAILABLE");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+        } catch (Exception e) {
+            ipBlacklistService.recordLoginFailure(servletRequest, "forgot-password failed");
+            Map<String, String> response = new HashMap<>();
+            response.put("error", "Password reset failed. Please verify the account information and code.");
+            response.put("code", "RESET_FAILED");
             return ResponseEntity.badRequest().body(response);
         }
     }
@@ -113,5 +197,80 @@ public class AuthController {
     private String normalizeEmail(String value) {
         String normalized = normalize(value);
         return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+    }
+
+    public static class RegisterRequest {
+        @NotBlank(message = "Username is required")
+        @Size(max = 50, message = "Username is too long")
+        private String username;
+
+        @NotBlank(message = "Password is required")
+        @Size(min = 8, max = 128, message = "Password must be 8 to 128 characters")
+        @Pattern(regexp = ".*\\p{L}.*", message = "Password must include letters and numbers")
+        @Pattern(regexp = ".*\\d.*", message = "Password must include letters and numbers")
+        private String password;
+
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email format is invalid")
+        @Size(max = 100, message = "Email is too long")
+        private String email;
+
+        @NotBlank(message = "Phone number is required")
+        @Size(max = 40, message = "Phone number is too long")
+        @Pattern(regexp = "^\\+?[0-9().\\-\\s]+$", message = "Phone number format is invalid")
+        private String phone;
+
+        @Size(max = 32, message = "Email verification code is too long")
+        private String emailCode;
+
+        public User toUser() {
+            User user = new User();
+            user.setUsername(username);
+            user.setPassword(password);
+            user.setEmail(email);
+            user.setPhone(phone);
+            user.setRole("USER");
+            return user;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public String getEmailCode() {
+            return emailCode;
+        }
+
+        public void setEmailCode(String emailCode) {
+            this.emailCode = emailCode;
+        }
     }
 }

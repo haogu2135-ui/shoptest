@@ -4,6 +4,8 @@ import com.example.shop.dto.PetBirthdayCouponConfigRequest;
 import com.example.shop.entity.PetBirthdayCouponConfig;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.service.AdminRoleService;
+import com.example.shop.service.BrandService;
+import com.example.shop.service.CategoryService;
 import com.example.shop.service.CouponService;
 import com.example.shop.service.LogisticsCarrierService;
 import com.example.shop.service.NotificationService;
@@ -11,6 +13,7 @@ import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.PetGalleryService;
+import com.example.shop.service.PaymentService;
 import com.example.shop.service.ProductQuestionService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.ProductUrlImportService;
@@ -18,15 +21,19 @@ import com.example.shop.service.ReviewService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.UserService;
+import com.example.shop.security.UserDetailsImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,10 +48,13 @@ import static org.mockito.Mockito.when;
 class AdminControllerPetBirthdayCouponAuditTest {
     private final PetBirthdayCouponService petBirthdayCouponService = mock(PetBirthdayCouponService.class);
     private final SecurityAuditLogService auditLogService = mock(SecurityAuditLogService.class);
+    private final AdminRoleService adminRoleService = mock(AdminRoleService.class);
     private final AdminController controller = new AdminController(
             mock(UserService.class),
             mock(OrderService.class),
             mock(OrderItemService.class),
+            mock(BrandService.class),
+            mock(CategoryService.class),
             mock(ProductService.class),
             mock(ProductQuestionService.class),
             mock(ProductUrlImportService.class),
@@ -53,9 +63,10 @@ class AdminControllerPetBirthdayCouponAuditTest {
             mock(NotificationService.class),
             petBirthdayCouponService,
             mock(PetGalleryService.class),
+            mock(PaymentService.class),
             mock(LogisticsCarrierService.class),
             auditLogService,
-            mock(AdminRoleService.class),
+            adminRoleService,
             mock(PaymentRepository.class),
             mock(RuntimeConfigService.class)
     );
@@ -63,7 +74,8 @@ class AdminControllerPetBirthdayCouponAuditTest {
     @Test
     void manualBirthdayCouponRunWritesAuditLog() {
         when(petBirthdayCouponService.grantBirthdayCoupons(LocalDate.now())).thenReturn(3);
-        Authentication authentication = mock(Authentication.class);
+        when(adminRoleService.hasPermission(1L, AdminRoleService.COUPONS_BIRTHDAY_RUN_PERMISSION)).thenReturn(true);
+        Authentication authentication = adminAuthentication();
         MockHttpServletRequest request = new MockHttpServletRequest();
         ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
 
@@ -104,7 +116,8 @@ class AdminControllerPetBirthdayCouponAuditTest {
         config.setValidDays(30);
         config.setMaxBenefitsPerUser(2);
         when(petBirthdayCouponService.updateConfig(requestBody)).thenReturn(config);
-        Authentication authentication = mock(Authentication.class);
+        when(adminRoleService.hasPermission(1L, AdminRoleService.COUPONS_BIRTHDAY_CONFIG_PERMISSION)).thenReturn(true);
+        Authentication authentication = adminAuthentication();
         MockHttpServletRequest request = new MockHttpServletRequest();
         ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
 
@@ -134,7 +147,8 @@ class AdminControllerPetBirthdayCouponAuditTest {
         requestBody.setValidDays(0);
         when(petBirthdayCouponService.updateConfig(requestBody))
                 .thenThrow(new IllegalArgumentException("Valid days must be between 1 and 365"));
-        Authentication authentication = mock(Authentication.class);
+        when(adminRoleService.hasPermission(1L, AdminRoleService.COUPONS_BIRTHDAY_CONFIG_PERMISSION)).thenReturn(true);
+        Authentication authentication = adminAuthentication();
         MockHttpServletRequest request = new MockHttpServletRequest();
         ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
 
@@ -153,5 +167,17 @@ class AdminControllerPetBirthdayCouponAuditTest {
         );
         assertTrue(metadata.getValue().contains("couponType=DISCOUNT"));
         assertTrue(metadata.getValue().contains("validDays=0"));
+    }
+
+    private Authentication adminAuthentication() {
+        UserDetailsImpl principal = new UserDetailsImpl(
+                1L,
+                "admin",
+                "admin@example.com",
+                "ACTIVE",
+                "encoded-password",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+        );
+        return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
 }

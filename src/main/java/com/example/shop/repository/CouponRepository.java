@@ -1,10 +1,12 @@
 package com.example.shop.repository;
 
 import com.example.shop.entity.Coupon;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -18,6 +20,78 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     Optional<Coupon> findFirstByNameOrderByIdDesc(String name);
     long countByStatus(String status);
     long countByScopeAndStatus(String scope, String status);
+
+    @Query("select c from Coupon c " +
+            "where (:keyword is null " +
+            "or lower(c.name) like lower(concat('%', :keyword, '%')) " +
+            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.scope) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.status) like lower(concat('%', :keyword, '%')) " +
+            "or (:keywordId is not null and c.id = :keywordId)) " +
+            "and (:status is null or c.status = :status) " +
+            "and (:scope is null or c.scope = :scope)")
+    Page<Coupon> searchAdminCoupons(@Param("keyword") String keyword,
+                                    @Param("keywordId") Long keywordId,
+                                    @Param("status") String status,
+                                    @Param("scope") String scope,
+                                    Pageable pageable);
+
+    @Query("select count(c) from Coupon c " +
+            "where (:keyword is null " +
+            "or lower(c.name) like lower(concat('%', :keyword, '%')) " +
+            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.scope) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.status) like lower(concat('%', :keyword, '%')) " +
+            "or (:keywordId is not null and c.id = :keywordId)) " +
+            "and (:status is null or c.status = :status) " +
+            "and (:scope is null or c.scope = :scope)")
+    long countAdminCoupons(@Param("keyword") String keyword,
+                           @Param("keywordId") Long keywordId,
+                           @Param("status") String status,
+                           @Param("scope") String scope);
+
+    @Query("select count(c) from Coupon c " +
+            "where c.status = 'ACTIVE' " +
+            "and (:keyword is null " +
+            "or lower(c.name) like lower(concat('%', :keyword, '%')) " +
+            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.scope) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.status) like lower(concat('%', :keyword, '%')) " +
+            "or (:keywordId is not null and c.id = :keywordId)) " +
+            "and (:status is null or c.status = :status) " +
+            "and (:scope is null or c.scope = :scope) " +
+            "and c.endAt is not null " +
+            "and c.endAt >= :startAt " +
+            "and c.endAt <= :endAt")
+    long countAdminActiveExpiringBetween(@Param("keyword") String keyword,
+                                         @Param("keywordId") Long keywordId,
+                                         @Param("status") String status,
+                                         @Param("scope") String scope,
+                                         @Param("startAt") LocalDateTime startAt,
+                                         @Param("endAt") LocalDateTime endAt);
+
+    @Query("select count(c) from Coupon c " +
+            "where c.status = 'ACTIVE' " +
+            "and (:keyword is null " +
+            "or lower(c.name) like lower(concat('%', :keyword, '%')) " +
+            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.scope) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.status) like lower(concat('%', :keyword, '%')) " +
+            "or (:keywordId is not null and c.id = :keywordId)) " +
+            "and (:status is null or c.status = :status) " +
+            "and (:scope is null or c.scope = :scope) " +
+            "and c.totalQuantity is not null " +
+            "and c.totalQuantity > coalesce(c.claimedQuantity, 0) " +
+            "and c.totalQuantity <= coalesce(c.claimedQuantity, 0) + :threshold")
+    long countAdminActiveLowRemaining(@Param("keyword") String keyword,
+                                      @Param("keywordId") Long keywordId,
+                                      @Param("status") String status,
+                                      @Param("scope") String scope,
+                                      @Param("threshold") int threshold);
 
     @Query("select c from Coupon c " +
             "where c.scope = ?1 and c.status = ?2 " +

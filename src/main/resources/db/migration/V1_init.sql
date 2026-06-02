@@ -10,6 +10,7 @@ CREATE TABLE users (
     role_code VARCHAR(50),
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
+    password_changed_at DATETIME(3),
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -36,7 +37,12 @@ CREATE TABLE orders (
     status VARCHAR(20) NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_orders_status_created (status, created_at),
+    INDEX idx_orders_user_created (user_id, created_at),
+    INDEX idx_orders_user_status (user_id, status),
+    INDEX idx_orders_created_id (created_at, id),
+    INDEX idx_orders_status_updated (status, updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 创建订单详情表
@@ -76,14 +82,21 @@ CREATE TABLE categories (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 创建商品评论表
-CREATE TABLE product_reviews (
+CREATE TABLE reviews (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     product_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     rating INT NOT NULL,
-    comment TEXT,
+    comment VARCHAR(1000),
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    order_id BIGINT,
+    admin_reply VARCHAR(1000),
+    replied_at DATETIME,
     created_at DATETIME NOT NULL,
-    updated_at DATETIME,
+    INDEX idx_reviews_product_id (product_id),
+    INDEX idx_reviews_user_id (user_id),
+    INDEX idx_reviews_status_created (status, created_at),
     FOREIGN KEY (product_id) REFERENCES products(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (order_id) REFERENCES orders(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

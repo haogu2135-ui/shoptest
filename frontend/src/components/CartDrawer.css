@@ -2191,3 +2191,34 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* Final App cart drawer touch-target guard. */
+@media (max-width: 520px) {
+  .cart-drawer .ant-drawer-close,
+  .cart-drawer__nextAction .ant-btn,
+  .cart-drawer__unavailable .ant-btn,
+  .cart-drawer__boostPanel > summary,
+  .cart-drawer__express .ant-btn,
+  .cart-drawer .ant-empty .ant-btn,
+  .cart-drawer__productLink,
+  .cart-drawer__footer .ant-btn,
+  .cart-drawer__item .ant-input-number,
+  .cart-drawer__item .ant-btn,
+  .cart-drawer__itemAction.ant-btn,
+  .cart-drawer-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+  }
+
+  .cart-drawer .ant-drawer-close {
+    min-width: 44px;
+  }
+
+  .cart-drawer__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .cart-drawer__itemAction--delete.ant-btn {
+    width: 44px;
+    min-width: 44px;
+  }
+}

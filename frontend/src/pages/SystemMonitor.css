@@ -399,3 +399,10 @@
     color: #6f7f74;
   }
 }
+
+/* Final mobile/App system-monitor operations touch-target guard */
+@media (max-width: 720px) {
+  .system-monitor__hero .ant-btn {
+    min-height: 44px;
+  }
+}

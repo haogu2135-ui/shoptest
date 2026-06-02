@@ -11,10 +11,12 @@ import org.springframework.stereotype.Service;
 import javax.servlet.http.HttpServletRequest;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -30,11 +32,30 @@ public class IpBlacklistService {
     public static final String SOURCE_LOGIN = "LOGIN";
     public static final String SOURCE_PAYMENT = "PAYMENT";
     public static final String SOURCE_MANUAL = "MANUAL";
+    private static final long LEGACY_LOGIN_ENTRY_ID_BASE = 8_000_000_000_000_000L;
+    private static final long LEGACY_LOGIN_ENTRY_ID_RANGE = 900_000_000_000_000L;
+    private static final long LEGACY_LOGIN_ENTRY_ID_MAX = LEGACY_LOGIN_ENTRY_ID_BASE + LEGACY_LOGIN_ENTRY_ID_RANGE - 1;
+    private static final String DEFAULT_PROTECTED_PATH_PREFIXES = String.join(",",
+            "/auth/login",
+            "/auth/email-login",
+            "/auth/email-code",
+            "/auth/forgot-password",
+            "/auth/register",
+            "/auth/refresh",
+            "/users/create-admin",
+            "/payment",
+            "/payments",
+            "/orders/checkout/guest",
+            "/orders/track",
+            "/orders/guest",
+            "/support/guest",
+            "/ws/support");
 
     private final JdbcTemplate jdbcTemplate;
     private final RuntimeConfigService runtimeConfig;
     private final SystemAlertService systemAlertService;
     private final ClientIpResolver clientIpResolver;
+    private final TokenBlacklistService tokenBlacklistService;
 
     public void recordLoginFailure(HttpServletRequest request, String reason) {
         recordFailure(SOURCE_LOGIN, resolveClientIp(request), reason);
@@ -56,12 +77,18 @@ public class IpBlacklistService {
         LocalDateTime now = LocalDateTime.now();
         Optional<IpBlacklistEntry> existing = findActiveByIpAndSource(normalizedIp, normalizedSource);
         if (existing.isEmpty()) {
+            LocalDateTime blockedUntil = threshold <= 1 ? now.plusMinutes(blockMinutes) : null;
             jdbcTemplate.update(
-                    "INSERT INTO ip_blacklist_entries (ip_address, status, source, reason, failure_count, first_seen_at, last_seen_at, created_at, updated_at) "
-                            + "VALUES (?, ?, ?, ?, 1, NOW(), NOW(), NOW(), NOW())",
-                    normalizedIp, threshold <= 1 ? STATUS_BLOCKED : STATUS_MONITORING, normalizedSource, sanitize(reason));
+                    "INSERT INTO ip_blacklist_entries (ip_address, status, source, reason, failure_count, first_seen_at, last_seen_at, blocked_at, blocked_until, created_at, updated_at) "
+                            + "VALUES (?, ?, ?, ?, 1, NOW(), NOW(), ?, ?, NOW(), NOW())",
+                    normalizedIp,
+                    threshold <= 1 ? STATUS_BLOCKED : STATUS_MONITORING,
+                    normalizedSource,
+                    sanitize(reason),
+                    threshold <= 1 ? now : null,
+                    blockedUntil);
             if (threshold <= 1) {
-                block(normalizedIp, normalizedSource, blockMinutes, reason, null);
+                recordBlockedAlert(normalizedIp, normalizedSource, 1, blockMinutes, reason);
             }
             return;
         }
@@ -121,30 +148,41 @@ public class IpBlacklistService {
 
     public List<IpBlacklistEntry> search(String status, String source, String ipAddress, int limit) {
         releaseExpired();
+        syncLoginFailuresFromLegacyRateLimiter();
         int safeLimit = Math.max(1, Math.min(limit <= 0 ? 200 : limit, 1000));
-        return jdbcTemplate.query(
+        String normalizedStatus = normalizeStatusFilter(status);
+        String normalizedSource = blankToNull(normalizeSourceFilter(source));
+        String normalizedIp = blankToNull(ipAddress);
+        List<IpBlacklistEntry> rows = jdbcTemplate.query(
                 "SELECT * FROM ip_blacklist_entries "
                         + "WHERE (? IS NULL OR status = ?) "
                         + "AND (? IS NULL OR source = ?) "
                         + "AND (? IS NULL OR ip_address LIKE CONCAT('%', ?, '%')) "
                         + "ORDER BY updated_at DESC, id DESC LIMIT ?",
                 (rs, rowNum) -> mapEntry(rs),
-                blankToNull(normalizeStatus(status)), blankToNull(normalizeStatus(status)),
-                blankToNull(normalizeSource(source)), blankToNull(normalizeSource(source)),
-                blankToNull(ipAddress), blankToNull(ipAddress),
+                normalizedStatus, normalizedStatus,
+                normalizedSource, normalizedSource,
+                normalizedIp, normalizedIp,
                 safeLimit);
+        return mergeLegacyLoginFailures(rows, normalizedStatus, normalizedSource, normalizedIp, safeLimit);
     }
 
     public IpBlacklistStatusResponse status() {
         releaseExpired();
+        syncLoginFailuresFromLegacyRateLimiter();
+        List<TokenBlacklistService.LoginIpFailureSnapshot> legacySnapshots = findLegacyLoginFailuresSafely();
+        List<IpBlacklistEntry> missingLegacyRows = missingLegacyLoginFailureEntries(legacySnapshots);
         IpBlacklistStatusResponse response = new IpBlacklistStatusResponse();
         response.setEnabled(enabled());
         response.setLoginFailureThreshold(loginFailureThreshold());
         response.setPaymentFailureThreshold(paymentFailureThreshold());
         response.setWindowMinutes(windowMinutes());
         response.setBlockMinutes(blockMinutes());
-        response.setBlockedCount(countByStatus(STATUS_BLOCKED));
-        response.setMonitoringCount(countByStatus(STATUS_MONITORING));
+        response.setBlockedCount(countByStatus(STATUS_BLOCKED) + countStatus(missingLegacyRows, STATUS_BLOCKED));
+        response.setMonitoringCount(countByStatus(STATUS_MONITORING) + countStatus(missingLegacyRows, STATUS_MONITORING));
+        response.setReleasedCount(countByStatus(STATUS_RELEASED));
+        response.setTotalCount(countAll() + missingLegacyRows.size());
+        response.setLegacyLoginFailureCount(legacySnapshots.size());
         return response;
     }
 
@@ -188,9 +226,28 @@ public class IpBlacklistService {
         if (id == null) {
             return Optional.empty();
         }
+        Optional<IpBlacklistEntry> existing = findById(id);
+        if (existing.isEmpty() && isLegacyLoginEntryId(id)) {
+            Optional<String> ipAddress = legacyIdToIpAddress(id);
+            if (ipAddress.isEmpty()) {
+                return Optional.empty();
+            }
+            tokenBlacklistService.clearLoginFailures(ipAddress.get());
+            IpBlacklistEntry released = legacyLoginEntry(ipAddress.get(), null);
+            released.setStatus(STATUS_RELEASED);
+            released.setReason("Legacy login failures cleared");
+            released.setReleasedAt(LocalDateTime.now());
+            released.setReleasedBy(sanitize(actor));
+            return Optional.of(released);
+        }
         jdbcTemplate.update(
                 "UPDATE ip_blacklist_entries SET status = ?, released_at = NOW(), released_by = ?, updated_at = NOW() WHERE id = ?",
                 STATUS_RELEASED, sanitize(actor), id);
+        existing.ifPresent(entry -> {
+            if (SOURCE_LOGIN.equals(entry.getSource())) {
+                tokenBlacklistService.clearLoginFailures(entry.getIpAddress());
+            }
+        });
         return findById(id);
     }
 
@@ -215,27 +272,238 @@ public class IpBlacklistService {
         if (ids.isEmpty()) {
             return 0;
         }
-        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        int legacyReleased = releaseLegacyLoginFailures(ids);
+        List<Long> databaseIds = ids.stream()
+                .filter(id -> !isLegacyLoginEntryId(id))
+                .collect(Collectors.toList());
+        if (databaseIds.isEmpty()) {
+            return legacyReleased;
+        }
+        String placeholders = String.join(",", Collections.nCopies(databaseIds.size(), "?"));
+        clearLegacyLoginFailures(databaseIds, placeholders);
         List<Object> args = new ArrayList<>();
         args.add(STATUS_RELEASED);
         args.add(sanitize(actor));
-        args.addAll(ids);
+        args.addAll(databaseIds);
         args.add(STATUS_RELEASED);
-        return jdbcTemplate.update(
+        int databaseReleased = jdbcTemplate.update(
                 "UPDATE ip_blacklist_entries SET status = ?, released_at = NOW(), released_by = ?, updated_at = NOW() "
                         + "WHERE id IN (" + placeholders + ") AND status <> ?",
                 args.toArray());
+        return databaseReleased + legacyReleased;
+    }
+
+    private int releaseLegacyLoginFailures(List<Long> ids) {
+        Set<String> releasedIps = ids.stream()
+                .filter(this::isLegacyLoginEntryId)
+                .map(this::legacyIdToIpAddress)
+                .flatMap(Optional::stream)
+                .collect(Collectors.toSet());
+        releasedIps.forEach(tokenBlacklistService::clearLoginFailures);
+        return releasedIps.size();
+    }
+
+    private void clearLegacyLoginFailures(List<Long> ids, String placeholders) {
+        jdbcTemplate.queryForList(
+                "SELECT ip_address FROM ip_blacklist_entries WHERE source = ? AND id IN (" + placeholders + ")",
+                String.class,
+                buildLoginClearArgs(ids).toArray())
+                .forEach(tokenBlacklistService::clearLoginFailures);
+    }
+
+    private List<Object> buildLoginClearArgs(List<Long> ids) {
+        List<Object> args = new ArrayList<>();
+        args.add(SOURCE_LOGIN);
+        args.addAll(ids);
+        return args;
+    }
+
+    private void syncLoginFailuresFromLegacyRateLimiter() {
+        List<TokenBlacklistService.LoginIpFailureSnapshot> snapshots = findLegacyLoginFailuresSafely();
+        if (snapshots.isEmpty()) {
+            return;
+        }
+        Set<String> seen = new HashSet<>();
+        for (TokenBlacklistService.LoginIpFailureSnapshot snapshot : snapshots) {
+            String normalizedIp = clientIpResolver.normalizeIpAddress(snapshot.getIpAddress());
+            if (isBlank(normalizedIp) || !seen.add(normalizedIp) || isTrusted(normalizedIp)) {
+                continue;
+            }
+            try {
+                upsertLoginFailureSnapshot(normalizedIp, snapshot);
+            } catch (RuntimeException ignored) {
+                // Keep the admin list available even if an old table still needs schema hardening.
+            }
+        }
+    }
+
+    private List<IpBlacklistEntry> mergeLegacyLoginFailures(List<IpBlacklistEntry> rows,
+                                                            String status,
+                                                            String source,
+                                                            String ipAddress,
+                                                            int limit) {
+        if (limit <= 0 || (source != null && !SOURCE_LOGIN.equals(source))) {
+            return rows;
+        }
+        List<TokenBlacklistService.LoginIpFailureSnapshot> snapshots = findLegacyLoginFailuresSafely();
+        if (snapshots.isEmpty()) {
+            return rows;
+        }
+        List<IpBlacklistEntry> merged = new ArrayList<>(rows);
+        for (IpBlacklistEntry entry : missingLegacyLoginFailureEntries(snapshots)) {
+            if (merged.size() >= limit) {
+                break;
+            }
+            if (!matchesFilter(entry, status, ipAddress)) {
+                continue;
+            }
+            merged.add(entry);
+        }
+        return merged;
+    }
+
+    private List<IpBlacklistEntry> missingLegacyLoginFailureEntries(List<TokenBlacklistService.LoginIpFailureSnapshot> snapshots) {
+        if (snapshots.isEmpty()) {
+            return List.of();
+        }
+        Set<String> existingLoginIps = activeLoginIps();
+        List<IpBlacklistEntry> entries = new ArrayList<>();
+        Set<String> added = new HashSet<>();
+        for (TokenBlacklistService.LoginIpFailureSnapshot snapshot : snapshots) {
+            String normalizedIp = clientIpResolver.normalizeIpAddress(snapshot.getIpAddress());
+            if (isBlank(normalizedIp) || isTrusted(normalizedIp) || existingLoginIps.contains(normalizedIp) || !added.add(normalizedIp)) {
+                continue;
+            }
+            entries.add(legacyLoginEntry(normalizedIp, snapshot));
+        }
+        return entries;
+    }
+
+    private Set<String> activeLoginIps() {
+        try {
+            return jdbcTemplate.queryForList(
+                    "SELECT ip_address FROM ip_blacklist_entries WHERE source = ? AND status IN (?, ?)",
+                    String.class,
+                    SOURCE_LOGIN,
+                    STATUS_MONITORING,
+                    STATUS_BLOCKED)
+                    .stream()
+                    .filter(ip -> !isBlank(ip))
+                    .collect(Collectors.toSet());
+        } catch (RuntimeException ignored) {
+            return Set.of();
+        }
+    }
+
+    private long countStatus(List<IpBlacklistEntry> entries, String status) {
+        return entries.stream().filter(entry -> status.equals(entry.getStatus())).count();
+    }
+
+    private boolean matchesFilter(IpBlacklistEntry entry, String status, String ipAddress) {
+        if (status != null && !status.equals(entry.getStatus())) {
+            return false;
+        }
+        return ipAddress == null || Optional.ofNullable(entry.getIpAddress()).orElse("").contains(ipAddress);
+    }
+
+    private IpBlacklistEntry legacyLoginEntry(String ipAddress, TokenBlacklistService.LoginIpFailureSnapshot snapshot) {
+        boolean locked = snapshot != null && snapshot.isLocked();
+        LocalDateTime now = LocalDateTime.now();
+        IpBlacklistEntry entry = new IpBlacklistEntry();
+        entry.setId(legacyLoginEntryId(ipAddress));
+        entry.setIpAddress(ipAddress);
+        entry.setStatus(locked ? STATUS_BLOCKED : STATUS_MONITORING);
+        entry.setSource(SOURCE_LOGIN);
+        entry.setReason(locked ? "Legacy login rate limit reached" : "Legacy login failures under monitoring");
+        entry.setFailureCount(snapshot == null ? 0 : snapshot.getFailureCount());
+        entry.setFirstSeenAt(now);
+        entry.setLastSeenAt(now);
+        entry.setBlockedAt(locked ? now : null);
+        entry.setBlockedUntil(locked && snapshot.getTtlSeconds() > 0 ? now.plusSeconds(snapshot.getTtlSeconds()) : null);
+        entry.setCreatedBy("legacy-rate-limit");
+        entry.setCreatedAt(now);
+        entry.setUpdatedAt(now);
+        entry.setLegacyOnly(true);
+        return entry;
+    }
+
+    private Long legacyLoginEntryId(String ipAddress) {
+        long hash = 0xcbf29ce484222325L;
+        String normalized = Optional.ofNullable(ipAddress).orElse("");
+        for (int index = 0; index < normalized.length(); index++) {
+            hash ^= normalized.charAt(index);
+            hash *= 0x100000001b3L;
+        }
+        long safeHash = hash & Long.MAX_VALUE;
+        return LEGACY_LOGIN_ENTRY_ID_BASE + (safeHash % LEGACY_LOGIN_ENTRY_ID_RANGE);
+    }
+
+    private boolean isLegacyLoginEntryId(Long id) {
+        return id != null && id >= LEGACY_LOGIN_ENTRY_ID_BASE && id <= LEGACY_LOGIN_ENTRY_ID_MAX;
+    }
+
+    private Optional<String> legacyIdToIpAddress(Long id) {
+        return findLegacyLoginFailuresSafely().stream()
+                .map(TokenBlacklistService.LoginIpFailureSnapshot::getIpAddress)
+                .map(clientIpResolver::normalizeIpAddress)
+                .filter(ip -> !isBlank(ip))
+                .filter(ip -> legacyLoginEntryId(ip).equals(id))
+                .findFirst();
+    }
+
+    private List<TokenBlacklistService.LoginIpFailureSnapshot> findLegacyLoginFailuresSafely() {
+        try {
+            return tokenBlacklistService.findLoginIpFailures();
+        } catch (RuntimeException ignored) {
+            return List.of();
+        }
+    }
+
+    private void upsertLoginFailureSnapshot(String ipAddress, TokenBlacklistService.LoginIpFailureSnapshot snapshot) {
+        LocalDateTime blockedUntil = snapshot.getTtlSeconds() > 0
+                ? LocalDateTime.now().plusSeconds(snapshot.getTtlSeconds())
+                : null;
+        Optional<IpBlacklistEntry> existing = findActiveByIpAndSource(ipAddress, SOURCE_LOGIN);
+        String status = snapshot.isLocked() ? STATUS_BLOCKED : STATUS_MONITORING;
+        String reason = snapshot.isLocked() ? "Legacy login rate limit reached" : "Legacy login failures under monitoring";
+        if (existing.isPresent()) {
+            jdbcTemplate.update(
+                    "UPDATE ip_blacklist_entries SET status = ?, reason = ?, failure_count = GREATEST(failure_count, ?), "
+                            + "last_seen_at = NOW(), blocked_at = CASE WHEN ? THEN COALESCE(blocked_at, NOW()) ELSE blocked_at END, "
+                            + "blocked_until = CASE WHEN ? THEN ? ELSE blocked_until END, updated_at = NOW() WHERE id = ?",
+                    status,
+                    reason,
+                    snapshot.getFailureCount(),
+                    snapshot.isLocked(),
+                    snapshot.isLocked(),
+                    blockedUntil,
+                    existing.get().getId());
+            return;
+        }
+        jdbcTemplate.update(
+                "INSERT INTO ip_blacklist_entries (ip_address, status, source, reason, failure_count, first_seen_at, last_seen_at, blocked_at, blocked_until, created_by, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, 'legacy-rate-limit', NOW(), NOW())",
+                ipAddress,
+                status,
+                SOURCE_LOGIN,
+                reason,
+                snapshot.getFailureCount(),
+                snapshot.isLocked() ? LocalDateTime.now() : null,
+                snapshot.isLocked() ? blockedUntil : null);
     }
 
     private List<Long> normalizeIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
-        return ids.stream()
+        List<Long> normalizedIds = ids.stream()
                 .filter(id -> id != null && id > 0)
                 .distinct()
-                .limit(batchReleaseMaxSize())
                 .collect(Collectors.toList());
+        if (normalizedIds.size() > batchReleaseMaxSize()) {
+            throw new IllegalArgumentException("Too many IP blacklist records selected");
+        }
+        return normalizedIds;
     }
 
     private Optional<IpBlacklistEntry> findActiveByIpAndSource(String ipAddress, String source) {
@@ -255,39 +523,80 @@ public class IpBlacklistService {
     }
 
     private void releaseExpired() {
-        jdbcTemplate.update(
-                "UPDATE ip_blacklist_entries SET status = ?, released_at = COALESCE(released_at, NOW()), released_by = COALESCE(released_by, 'system'), updated_at = NOW() "
-                        + "WHERE status = ? AND blocked_until IS NOT NULL AND blocked_until <= NOW()",
-                STATUS_RELEASED,
-                STATUS_BLOCKED);
+        try {
+            jdbcTemplate.update(
+                    "UPDATE ip_blacklist_entries SET status = ?, released_at = COALESCE(released_at, NOW()), released_by = COALESCE(released_by, 'system'), updated_at = NOW() "
+                            + "WHERE status = ? AND blocked_until IS NOT NULL AND blocked_until <= NOW()",
+                    STATUS_RELEASED,
+                    STATUS_BLOCKED);
+        } catch (RuntimeException ignored) {
+            // Older deployments may need the startup schema hardening to add these columns first.
+        }
     }
 
     private IpBlacklistEntry mapEntry(ResultSet rs) throws SQLException {
         IpBlacklistEntry entry = new IpBlacklistEntry();
         entry.setId(rs.getLong("id"));
-        entry.setIpAddress(rs.getString("ip_address"));
-        entry.setStatus(rs.getString("status"));
-        entry.setSource(rs.getString("source"));
-        entry.setReason(rs.getString("reason"));
-        entry.setFailureCount(rs.getInt("failure_count"));
+        entry.setIpAddress(stringColumn(rs, "ip_address"));
+        entry.setStatus(Optional.ofNullable(stringColumn(rs, "status")).orElse(STATUS_MONITORING));
+        entry.setSource(Optional.ofNullable(stringColumn(rs, "source")).orElse(SOURCE_MANUAL));
+        entry.setReason(stringColumn(rs, "reason"));
+        entry.setFailureCount(intColumn(rs, "failure_count"));
         entry.setFirstSeenAt(toLocalDateTime(rs, "first_seen_at"));
         entry.setLastSeenAt(toLocalDateTime(rs, "last_seen_at"));
         entry.setBlockedAt(toLocalDateTime(rs, "blocked_at"));
         entry.setBlockedUntil(toLocalDateTime(rs, "blocked_until"));
         entry.setReleasedAt(toLocalDateTime(rs, "released_at"));
-        entry.setReleasedBy(rs.getString("released_by"));
-        entry.setCreatedBy(rs.getString("created_by"));
+        entry.setReleasedBy(stringColumn(rs, "released_by"));
+        entry.setCreatedBy(stringColumn(rs, "created_by"));
         entry.setCreatedAt(toLocalDateTime(rs, "created_at"));
         entry.setUpdatedAt(toLocalDateTime(rs, "updated_at"));
         return entry;
     }
 
     private LocalDateTime toLocalDateTime(ResultSet rs, String column) throws SQLException {
-        return rs.getTimestamp(column) == null ? null : rs.getTimestamp(column).toLocalDateTime();
+        Timestamp timestamp = timestampColumn(rs, column);
+        return timestamp == null ? null : timestamp.toLocalDateTime();
+    }
+
+    private String stringColumn(ResultSet rs, String column) throws SQLException {
+        if (!hasColumn(rs, column)) {
+            return null;
+        }
+        return rs.getString(column);
+    }
+
+    private int intColumn(ResultSet rs, String column) throws SQLException {
+        if (!hasColumn(rs, column)) {
+            return 0;
+        }
+        return rs.getInt(column);
+    }
+
+    private Timestamp timestampColumn(ResultSet rs, String column) throws SQLException {
+        if (!hasColumn(rs, column)) {
+            return null;
+        }
+        return rs.getTimestamp(column);
+    }
+
+    private boolean hasColumn(ResultSet rs, String column) throws SQLException {
+        int columnCount = rs.getMetaData().getColumnCount();
+        for (int i = 1; i <= columnCount; i++) {
+            if (column.equalsIgnoreCase(rs.getMetaData().getColumnLabel(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private long countByStatus(String status) {
         Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ip_blacklist_entries WHERE status = ?", Long.class, status);
+        return count == null ? 0 : count;
+    }
+
+    private long countAll() {
+        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ip_blacklist_entries", Long.class);
         return count == null ? 0 : count;
     }
 
@@ -320,8 +629,7 @@ public class IpBlacklistService {
     }
 
     private Set<String> pathPrefixes() {
-        String configured = runtimeConfig.getString("security.ip-blacklist.path-prefixes",
-                "/auth/login,/auth/email-login,/auth/email-code,/payments,/orders/checkout/guest");
+        String configured = runtimeConfig.getString("security.ip-blacklist.path-prefixes", DEFAULT_PROTECTED_PATH_PREFIXES);
         return Arrays.stream(configured.split(",")).map(String::trim).filter(value -> !value.isEmpty()).collect(Collectors.toSet());
     }
 
@@ -346,12 +654,26 @@ public class IpBlacklistService {
         return SOURCE_MANUAL;
     }
 
-    private String normalizeStatus(String status) {
+    private String normalizeSourceFilter(String source) {
+        String normalized = source == null ? "" : source.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || "ALL".equals(normalized)) {
+            return null;
+        }
+        if (SOURCE_LOGIN.equals(normalized) || SOURCE_PAYMENT.equals(normalized) || SOURCE_MANUAL.equals(normalized)) {
+            return normalized;
+        }
+        return null;
+    }
+
+    private String normalizeStatusFilter(String status) {
         String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || "ALL".equals(normalized)) {
+            return null;
+        }
         if (STATUS_MONITORING.equals(normalized) || STATUS_BLOCKED.equals(normalized) || STATUS_RELEASED.equals(normalized)) {
             return normalized;
         }
-        return normalized;
+        return null;
     }
 
     private String blankToNull(String value) {

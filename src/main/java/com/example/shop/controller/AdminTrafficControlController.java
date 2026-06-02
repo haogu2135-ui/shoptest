@@ -2,15 +2,20 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.TrafficCircuitResetRequest;
 import com.example.shop.dto.TrafficControlStatusResponse;
+import com.example.shop.security.SecurityUtils;
+import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.CircuitBreakerService;
 import com.example.shop.service.RateLimitService;
 import com.example.shop.service.SecurityAuditLogService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -20,13 +25,16 @@ public class AdminTrafficControlController {
     private final RateLimitService rateLimitService;
     private final CircuitBreakerService circuitBreakerService;
     private final SecurityAuditLogService auditLogService;
+    private final AdminRoleService adminRoleService;
 
     public AdminTrafficControlController(RateLimitService rateLimitService,
                                          CircuitBreakerService circuitBreakerService,
-                                         SecurityAuditLogService auditLogService) {
+                                         SecurityAuditLogService auditLogService,
+                                         AdminRoleService adminRoleService) {
         this.rateLimitService = rateLimitService;
         this.circuitBreakerService = circuitBreakerService;
         this.auditLogService = auditLogService;
+        this.adminRoleService = adminRoleService;
     }
 
     @GetMapping
@@ -41,6 +49,7 @@ public class AdminTrafficControlController {
     @PostMapping("/rate-limit/clear")
     public TrafficControlStatusResponse clearRateLimit(Authentication authentication, HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.TRAFFIC_CONTROL_RATE_LIMIT_CLEAR_PERMISSION);
             rateLimitService.clear();
             auditLogService.record("TRAFFIC_RATE_LIMIT_CLEAR", "SUCCESS", authentication, "TRAFFIC_CONTROL", "rate-limit", request,
                     "Rate limit counters cleared", "");
@@ -59,6 +68,7 @@ public class AdminTrafficControlController {
         String name = body == null ? null : body.getName();
         String auditName = name == null || name.isBlank() ? "all" : circuitBreakerService.normalizeName(name);
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION);
             circuitBreakerService.reset(name);
             auditLogService.record("TRAFFIC_CIRCUIT_RESET", "SUCCESS", authentication, "TRAFFIC_CONTROL", auditName, request,
                     "Circuit breaker reset", "name=" + auditName);
@@ -68,5 +78,13 @@ public class AdminTrafficControlController {
                     e.getMessage(), "name=" + auditName);
             throw e;
         }
+    }
+
+    private void requireAdminActionPermission(Authentication authentication, String permission) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (adminRoleService.hasPermission(user.getId(), permission)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
     }
 }

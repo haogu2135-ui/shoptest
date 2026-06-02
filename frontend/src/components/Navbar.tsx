@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Badge, Dropdown, Input, Select, message } from 'antd';
+import { Badge, Button, Dropdown, Input, message, Select } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertOutlined,
@@ -7,6 +7,7 @@ import {
   BarChartOutlined,
   CheckOutlined,
   CustomerServiceOutlined,
+  DownloadOutlined,
   EllipsisOutlined,
   GiftOutlined,
   GlobalOutlined,
@@ -22,9 +23,9 @@ import {
   UserAddOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { adminApi, announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
+import { adminApi, announcementApi, cartApi, clearStoredAuthSession, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { Language, useLanguage } from '../i18n';
-import type { SiteAnnouncement } from '../types';
+import type { SiteAnnouncementPublic } from '../types';
 import { CurrencyCode, markets } from '../utils/market';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { useMarket } from '../hooks/useMarket';
@@ -36,14 +37,54 @@ import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
 import { normalizeAnnouncementLink } from '../utils/announcementLinks';
+import {
+  currentMobileVersionCode,
+  fetchLatestMobileRelease,
+  isNativeMobileApp,
+  openMobileReleaseDownload,
+  resolveMobileReleaseDownloadUrl,
+  type MobileReleaseManifest,
+} from '../utils/mobileUpdate';
 import './Navbar.css';
 
 const { Search } = Input;
 const NAV_SEARCH_MAX_LENGTH = 80;
 const NAV_BADGE_REFRESH_DEBOUNCE_MS = 350;
 const NAV_POPUP_Z_INDEX = 2400;
+const ANNOUNCEMENT_PLACEHOLDER_PATTERN = /(^|\b)(test|testing|dummy|placeholder|lorem|asdf|qwer|sadsad|foobar)(\b|$)/i;
+const ANNOUNCEMENT_REPEATED_CHARACTER_PATTERN = /([a-z])\1{4,}/i;
+const ANNOUNCEMENT_LONG_TOKEN_PATTERN = /\b[a-z0-9]{18,}\b/gi;
 
 const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);
+const replaceAnnouncementControlCharacters = (value: string) => {
+  let normalized = '';
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    normalized += code <= 31 || code === 127 ? ' ' : char;
+  }
+  return normalized;
+};
+const normalizeAnnouncementCopy = (value?: string | null) => replaceAnnouncementControlCharacters(String(value || ''))
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLowerCase();
+const looksLikeAnnouncementGibberish = (token: string) => {
+  const letters = token.replace(/[^a-z]/gi, '');
+  const digits = token.replace(/\D/g, '');
+  if (digits.length >= 12) return true;
+  if (letters.length < 8) return false;
+  const vowels = letters.match(/[aeiou]/gi)?.length || 0;
+  return vowels / letters.length < 0.2;
+};
+const isCommercialAnnouncement = (announcement: SiteAnnouncementPublic) => {
+  const text = `${normalizeAnnouncementCopy(announcement.title)} ${normalizeAnnouncementCopy(announcement.content)}`.trim();
+  if (!text) return false;
+  if (ANNOUNCEMENT_PLACEHOLDER_PATTERN.test(text) || ANNOUNCEMENT_REPEATED_CHARACTER_PATTERN.test(text)) {
+    return false;
+  }
+  const tokens = text.match(ANNOUNCEMENT_LONG_TOKEN_PATTERN) || [];
+  return !tokens.some(looksLikeAnnouncementGibberish);
+};
 const normalizeBadgeCount = (value: unknown) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 0;
@@ -57,6 +98,7 @@ const Navbar: React.FC = () => {
     [location.pathname],
   );
   const isProductsActive = location.pathname === '/products' || location.pathname.startsWith('/products/');
+  const isCartActive = isPathActive(['/cart']);
   const isCouponsActive = isPathActive(['/coupons']);
   const isAccountActive = isPathActive(['/profile', '/login', '/register']);
   const navSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -78,7 +120,11 @@ const Navbar: React.FC = () => {
   const [couponCount, setCouponCount] = useState(0);
   const [compareCount, setCompareCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
-  const [announcements, setAnnouncements] = useState<SiteAnnouncement[]>([]);
+  const [announcements, setAnnouncements] = useState<SiteAnnouncementPublic[]>([]);
+  const [mobileRelease, setMobileRelease] = useState<MobileReleaseManifest | null>(null);
+  const [androidApkUrl, setAndroidApkUrl] = useState<string>('');
+  const [openingAndroidApk, setOpeningAndroidApk] = useState(false);
+  const [nativeBottomNav, setNativeBottomNav] = useState(() => isNativeMobileApp());
   const { language, setLanguage, t } = useLanguage();
   const { currency, setCurrency, market, formatMoney } = useMarket();
   const languageOptions = [
@@ -91,7 +137,7 @@ const Navbar: React.FC = () => {
     let disposed = false;
     announcementApi.getActive(4)
       .then((response) => {
-        if (!disposed) setAnnouncements(response.data);
+        if (!disposed) setAnnouncements((response.data || []).filter(isCommercialAnnouncement));
       })
       .catch(() => {
         if (!disposed) setAnnouncements([]);
@@ -100,6 +146,30 @@ const Navbar: React.FC = () => {
       disposed = true;
     };
   }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    fetchLatestMobileRelease().then((release) => {
+      if (!disposed) {
+        setMobileRelease(release);
+        setAndroidApkUrl(release ? resolveMobileReleaseDownloadUrl(release) : '');
+      }
+    });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshNativeBottomNav = () => {
+      setNativeBottomNav(isNativeMobileApp() || document.body.classList.contains('shop-mobile-app'));
+    };
+    refreshNativeBottomNav();
+    const refreshTimer = window.setTimeout(refreshNativeBottomNav, 0);
+    return () => window.clearTimeout(refreshTimer);
+  }, []);
+
+  const bottomBarClassName = `shop-nav__bottomBar shop-nav__bottomBar--${language}${nativeBottomNav ? ' shop-nav__bottomBar--native' : ''}`;
   const currencyOptions = Object.values(markets).map((item) => ({ value: item.currency, label: item.label }));
   const safeCartCount = normalizeBadgeCount(cartCount);
   const safeUnreadCount = normalizeBadgeCount(unreadCount);
@@ -109,6 +179,14 @@ const Navbar: React.FC = () => {
   const safeAlertCount = normalizeBadgeCount(alertCount);
   const communitySignalCount = safeWishlistCount + safeUnreadCount + safeCouponCount + safeCompareCount + safeAlertCount;
   const utilityMenuCount = token ? communitySignalCount : safeCompareCount + safeAlertCount;
+  const nativeAndroidReleaseAvailable = Boolean(
+    nativeBottomNav
+    && mobileRelease
+    && androidApkUrl
+    && (mobileRelease.versionCode || 0) > currentMobileVersionCode(),
+  );
+  const browserAndroidReleaseAvailable = Boolean(!nativeBottomNav && androidApkUrl);
+  const showAndroidDownloadLink = nativeAndroidReleaseAvailable || browserAndroidReleaseAvailable;
   const renderNavAmountText = (label: string, amount: string) => {
     const parts = label.split(amount);
     if (parts.length <= 1) return label;
@@ -155,6 +233,39 @@ const Navbar: React.FC = () => {
     }
     dispatchDomEvent('shop:open-support');
   };
+
+  const openNativeAndroidDownload = async () => {
+    if (!mobileRelease || openingAndroidApk) return;
+    setOpeningAndroidApk(true);
+    try {
+      const opened = await openMobileReleaseDownload(mobileRelease);
+      if (!opened) {
+        message.error(t('appUpdate.downloadFailed'));
+      }
+    } catch {
+      message.error(t('appUpdate.downloadFailed'));
+    } finally {
+      setOpeningAndroidApk(false);
+    }
+  };
+
+  const androidDownloadMenuItem = showAndroidDownloadLink
+    ? nativeBottomNav
+      ? {
+        key: 'android-app',
+        icon: <DownloadOutlined />,
+        label: t('nav.downloadAndroid'),
+        disabled: openingAndroidApk,
+        onClick: () => {
+          void openNativeAndroidDownload();
+        },
+      }
+      : {
+        key: 'android-app',
+        icon: <DownloadOutlined />,
+        label: <a href={androidApkUrl} download>{t('nav.downloadAndroid')}</a>,
+      }
+    : null;
 
   useEffect(() => {
     if (!token) {
@@ -351,12 +462,7 @@ const Navbar: React.FC = () => {
   const handleLogout = () => {
     const refreshToken = getLocalStorageItem('refreshToken');
     userApi.logout(refreshToken).catch(() => undefined);
-    removeLocalStorageItem('token');
-    removeLocalStorageItem('refreshToken');
-    removeLocalStorageItem('username');
-    removeLocalStorageItem('role');
-    removeLocalStorageItem('adminDefaultPath');
-    removeLocalStorageItem('userId');
+    clearStoredAuthSession();
     setCartCount(0);
     navigate('/login');
   };
@@ -431,7 +537,7 @@ const Navbar: React.FC = () => {
     </button>
   );
 
-  const renderAnnouncement = (announcement: SiteAnnouncement) => {
+  const renderAnnouncement = (announcement: SiteAnnouncementPublic) => {
     const text = announcement.content || announcement.title;
     const linkUrl = normalizeAnnouncementLink(announcement.linkUrl);
     if (!linkUrl) {
@@ -480,6 +586,17 @@ const Navbar: React.FC = () => {
             <Link className={isPathActive(['/pet-finder']) ? 'shop-nav__linkActive' : undefined} to="/pet-finder">{t('nav.petFinder')}</Link>
             <Link className={isPathActive(['/pet-gallery']) ? 'shop-nav__linkActive' : undefined} to="/pet-gallery">{t('nav.petGallery')}</Link>
             <Link className={isPathActive(['/coupons']) ? 'shop-nav__linkActive' : undefined} to="/coupons">{t('nav.download')}</Link>
+            {showAndroidDownloadLink ? (
+              nativeBottomNav ? (
+                <button type="button" className="shop-nav__downloadLink" onClick={openNativeAndroidDownload} disabled={openingAndroidApk}>
+                  <DownloadOutlined /> {t('nav.mobileApp')}
+                </button>
+              ) : (
+                <a href={androidApkUrl} download className="shop-nav__downloadLink">
+                  <DownloadOutlined /> {t('nav.mobileApp')}
+                </a>
+              )
+            ) : null}
             <Link className={isDealsActive ? 'shop-nav__linkActive' : undefined} to="/products?discount=true">{t('nav.followDeals')}</Link>
           </div>
           <div className="shop-nav__links shop-nav__links--right">
@@ -556,7 +673,14 @@ const Navbar: React.FC = () => {
                 <Search
                   placeholder={t('nav.searchPlaceholder')}
                   onSearch={handleSearch}
-                  enterButton={<SearchOutlined aria-label={t('common.search')} title={t('common.search')} />}
+                  enterButton={(
+                    <Button
+                      type="primary"
+                      aria-label={t('common.search')}
+                      title={t('common.search')}
+                      icon={<SearchOutlined />}
+                    />
+                  )}
                   size="large"
                   allowClear
                 />
@@ -719,6 +843,7 @@ const Navbar: React.FC = () => {
                   trigger={['click']}
                   menu={{
                     items: [
+                      ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
                       { key: 'coupons', icon: <GiftOutlined />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
                       { key: 'support', icon: <CustomerServiceOutlined />, label: t('nav.help'), onClick: openSupport },
                       { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
@@ -761,6 +886,7 @@ const Navbar: React.FC = () => {
                       { key: 'login', icon: <UserOutlined />, label: t('nav.login'), onClick: () => navigate('/login') },
                       { key: 'register', icon: <UserOutlined />, label: t('nav.register'), onClick: () => navigate('/register') },
                       { key: 'guest-divider', type: 'divider' },
+                      ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
                       { key: 'support', icon: <CustomerServiceOutlined />, label: t('nav.help'), onClick: openSupport },
                       { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
                       { key: 'history', icon: <HistoryOutlined />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
@@ -785,32 +911,34 @@ const Navbar: React.FC = () => {
         </div>
       </div>
       </header>
-      <nav className={`shop-nav__bottomBar shop-nav__bottomBar--${language}`} aria-label={t('home.categories')}>
-        <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}>
+      <nav className={bottomBarClassName} aria-label={t('home.categories')}>
+        <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--home shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--home'}>
           <HomeOutlined />
           <span>{t('nav.ariaHome')}</span>
         </Link>
-        <Link to="/products" className={isProductsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}>
+        <Link to="/products" className={isProductsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--products'}>
           <ShoppingOutlined />
           <span>{t('nav.products')}</span>
         </Link>
-        <Link to="/coupons" className={isCouponsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}>
+        <Link to="/coupons" className={isCouponsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--coupons'}>
           <GiftOutlined />
           <span>{t('nav.coupons')}</span>
         </Link>
-        <button type="button" className="shop-nav__bottomItem" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
+        <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={t('nav.ariaCart')}>
           <Badge count={safeCartCount} size="small" overflowCount={99}>
             <ShoppingCartOutlined />
           </Badge>
           <span>{t('pages.cart.title')}</span>
-        </button>
-        <button type="button" className="shop-nav__bottomItem" onClick={openSupport} aria-label={t('nav.help')}>
-          <CustomerServiceOutlined />
-          <span>{t('nav.support')}</span>
-        </button>
+        </Link>
+        {!nativeBottomNav && (
+          <button type="button" className="shop-nav__bottomItem shop-nav__bottomItem--support" onClick={openSupport} aria-label={t('nav.help')}>
+            <CustomerServiceOutlined />
+            <span>{t('nav.support')}</span>
+          </button>
+        )}
         <Link
           to={token ? '/profile' : '/login'}
-          className={isAccountActive ? 'shop-nav__bottomItem shop-nav__bottomItem--active' : 'shop-nav__bottomItem'}
+          className={isAccountActive ? 'shop-nav__bottomItem shop-nav__bottomItem--account shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--account'}
         >
           <UserOutlined />
           <span>{t('nav.account')}</span>

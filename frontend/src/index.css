@@ -660,7 +660,9 @@ button:focus-visible {
   .ant-modal-confirm .ant-modal-confirm-btns .ant-btn,
   .ant-popconfirm-buttons .ant-btn {
     width: 100%;
+    min-height: 44px;
     margin-inline-start: 0 !important;
+    touch-action: manipulation;
   }
 }
 

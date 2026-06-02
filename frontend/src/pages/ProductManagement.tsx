@@ -3,13 +3,14 @@ import {
   Table, Button, Modal, Form, Input, InputNumber, message, Space, Select, Tag, Switch, DatePicker,
   Tooltip, Typography, Divider, Image, Popconfirm, TreeSelect, Upload, Tabs, Alert,
 } from 'antd';
+import { useSearchParams } from 'react-router-dom';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
   SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined, LinkOutlined,
 } from '@ant-design/icons';
-import { productApi, categoryApi, adminApi, brandApi } from '../api';
-import type { Product, Category, Brand, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview } from '../types';
-import { buildCategoryTree, descendantIdSet, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
+import { adminApi, brandApi } from '../api';
+import type { Product, CategoryPublic, BrandPublic, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview } from '../types';
+import { buildCategoryTree, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import dayjs from 'dayjs';
 import ProductRichDetailEditor from '../components/ProductRichDetailEditor';
@@ -18,6 +19,14 @@ import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { csvRow } from '../utils/csvExport';
 import { getApiErrorMessage } from '../utils/apiError';
+import {
+  PRODUCTS_DELETE_PERMISSION,
+  PRODUCTS_IMPORT_PERMISSION,
+  PRODUCTS_STATUS_PERMISSION,
+  PRODUCTS_WRITE_PERMISSION,
+  getEffectiveRole,
+  hasAdminPermission,
+} from '../utils/roles';
 import './ProductManagement.css';
 
 const { Title, Text } = Typography;
@@ -38,6 +47,9 @@ const productStatusLabels: Record<string, string> = {
   REJECTED: 'pages.productAdmin.rejected',
   INACTIVE: 'status.INACTIVE',
 };
+const DEFAULT_ADMIN_PRODUCT_PAGE_SIZE = 50;
+const PRODUCT_SEARCH_DEBOUNCE_MS = 300;
+const ADMIN_PRODUCT_DEFAULT_SORT = 'updatedAt,desc';
 
 type ProductDetailContentBlock = { type: string; content?: string; url?: string; caption?: string };
 
@@ -75,6 +87,34 @@ const parseJsonObject = (value: unknown) => {
   } catch {
     return {};
   }
+};
+
+const getProductAdminSpecs = (product: Product) => {
+  const specs = { ...parseJsonObject(product.specifications) };
+  const localizedContent = product.localizedContent && typeof product.localizedContent === 'object'
+    ? product.localizedContent as Record<string, Record<string, unknown> | undefined>
+    : {};
+  Object.entries(localizedContent).forEach(([locale, fields]) => {
+    if (!fields || typeof fields !== 'object') return;
+    Object.entries(fields).forEach(([field, value]) => {
+      const text = String(value || '').trim();
+      if (locale && field && text) specs[`i18n.${locale}.${field}`] = text;
+    });
+  });
+  (Array.isArray(product.optionGroups) ? product.optionGroups : []).forEach((group: any) => {
+    const name = String(group?.name || '').trim();
+    const values = Array.isArray(group?.values) ? group.values : (Array.isArray(group?.options) ? group.options : []);
+    const normalizedValues = Array.from(new Set(values.map((value: unknown) => String(value || '').trim()).filter(Boolean)));
+    if (name && normalizedValues.length > 0) specs[`options.${name}`] = normalizedValues.join(',');
+  });
+  const bundle = product.bundle && typeof product.bundle === 'object' ? product.bundle : null;
+  if (bundle?.enabled) {
+    specs['bundle.enabled'] = 'true';
+    if (bundle.title) specs['bundle.title'] = String(bundle.title);
+    if (bundle.price) specs['bundle.price'] = String(bundle.price);
+    if (Array.isArray(bundle.items) && bundle.items.length > 0) specs['bundle.items'] = JSON.stringify(bundle.items);
+  }
+  return specs;
 };
 
 const specOptionsToFormRows = (specs: Record<string, string>) =>
@@ -435,7 +475,7 @@ const hasRichProductContent = (product: Product) => {
 };
 
 const hasLocalizedContent = (product: Product) => {
-  const specs = parseJsonObject(product.specifications);
+  const specs = getProductAdminSpecs(product);
   return ['es', 'zh'].every((locale) =>
     hasMeaningfulText(specs[`i18n.${locale}.name`], 4) && hasMeaningfulText(specs[`i18n.${locale}.description`], 16)
   );
@@ -474,9 +514,10 @@ const formatImportUpdateFields = (fields?: string[], labels: Record<string, stri
 };
 
 const ProductManagement: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [categories, setCategories] = useState<CategoryPublic[]>([]);
+  const [brands, setBrands] = useState<BrandPublic[]>([]);
   const [loading, setLoading] = useState(false);
   const [productSubmitting, setProductSubmitting] = useState(false);
   const [importSubmitting, setImportSubmitting] = useState(false);
@@ -493,10 +534,18 @@ const ProductManagement: React.FC = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filterCategory, setFilterCategory] = useState<number | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
-  const [listingQualityFilter, setListingQualityFilter] = useState<ListingQualityFilter | undefined>();
+  const [listingQualityFilter, setListingQualityFilter] = useState<ListingQualityFilter | undefined>(
+    () => searchParams.get('stock') === 'low' ? 'stock' : undefined,
+  );
   const [selectedProductIds, setSelectedProductIds] = useState<React.Key[]>([]);
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const { t, language } = useLanguage();
+  const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState('');
+  const [productPage, setProductPage] = useState(1);
+  const [productPageSize, setProductPageSize] = useState(DEFAULT_ADMIN_PRODUCT_PAGE_SIZE);
+  const [productTotal, setProductTotal] = useState(0);
   const detailContentPreview = Form.useWatch('detailContent', form);
   const descriptionPreview = Form.useWatch('description', form);
   const spanishNamePreview = Form.useWatch(['localizedContent', 'es', 'name'], form);
@@ -512,6 +561,16 @@ const ProductManagement: React.FC = () => {
   const previewFreeShipping = Form.useWatch('freeShipping', form);
   const previewVariants = Form.useWatch('variants', form);
   const { formatMoney } = useMarket();
+  const canWriteProducts = hasAdminPermission(adminPermissions, currentRole, PRODUCTS_WRITE_PERMISSION);
+  const canDeleteProducts = hasAdminPermission(adminPermissions, currentRole, PRODUCTS_DELETE_PERMISSION);
+  const canChangeProductStatus = hasAdminPermission(adminPermissions, currentRole, PRODUCTS_STATUS_PERMISSION);
+  const canImportProducts = hasAdminPermission(adminPermissions, currentRole, PRODUCTS_IMPORT_PERMISSION);
+  const formatListingIssue = useCallback((issue: string) => (
+    t(`pages.productAdmin.listingIssue.${issue}`, { defaultValue: issue })
+  ), [t]);
+  const formatUrlImportWarning = useCallback((warning: string) => (
+    t(`pages.productAdmin.urlImportWarning.${warning}`, { defaultValue: warning })
+  ), [t]);
 
   const tagOptions = [
     { value: 'hot', label: t('pages.productAdmin.hot'), color: 'red' },
@@ -580,29 +639,49 @@ const ProductManagement: React.FC = () => {
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
-  const categoryLookup = useMemo(() => new Map(flatCategories.map((category) => [category.id, category])), [flatCategories]);
   const categoryOptions = useMemo(() => toTreeOptions(categoryTree, undefined, language), [categoryTree, language]);
-  const selectedCategoryIds = useMemo(() => {
-    if (!filterCategory) return null;
-    const category = categoryLookup.get(filterCategory);
-    return category ? descendantIdSet(category) : new Set<number>([filterCategory]);
-  }, [filterCategory, categoryLookup]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setProductPage(1);
+      setDebouncedSearchKeyword(searchKeyword.trim());
+    }, PRODUCT_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchKeyword]);
 
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await adminApi.getProducts();
-      setProducts(response.data);
+      const response = await adminApi.getProducts({
+        keyword: debouncedSearchKeyword || undefined,
+        categoryId: filterCategory,
+        status: filterStatus,
+        page: Math.max(0, productPage - 1),
+        size: productPageSize,
+        sort: listingQualityFilter === 'stock' ? 'lowstock' : ADMIN_PRODUCT_DEFAULT_SORT,
+      });
+      const productPageData = response.data;
+      setProducts(productPageData.items);
+      setProductTotal(productPageData.total);
+      const nextPage = productPageData.totalPages > 0
+        ? Math.min(productPageData.page + 1, productPageData.totalPages)
+        : 1;
+      if (nextPage !== productPage) {
+        setProductPage(nextPage);
+      }
+      if (productPageData.size !== productPageSize) {
+        setProductPageSize(productPageData.size);
+      }
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchProductsFailed'), language));
     } finally {
       setLoading(false);
     }
-  }, [language, t]);
+  }, [debouncedSearchKeyword, filterCategory, filterStatus, language, listingQualityFilter, productPage, productPageSize, t]);
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await categoryApi.getAll();
+      const response = await adminApi.getCategories();
       setCategories(response.data);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchCategoriesFailed'), language));
@@ -611,7 +690,7 @@ const ProductManagement: React.FC = () => {
 
   const fetchBrands = useCallback(async () => {
     try {
-      const response = await brandApi.getAll({ activeOnly: true });
+      const response = await brandApi.getAll();
       setBrands(response.data);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchBrandsFailed'), language));
@@ -632,33 +711,37 @@ const ProductManagement: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
     fetchCategories();
     fetchBrands();
     fetchImportHistory();
-  }, [fetchProducts, fetchCategories, fetchBrands, fetchImportHistory]);
+  }, [fetchCategories, fetchBrands, fetchImportHistory]);
+
+  useEffect(() => {
+    const stockRiskRoute = searchParams.get('stock') === 'low';
+    setListingQualityFilter((current) => {
+      if (stockRiskRoute) return current === 'stock' ? current : 'stock';
+      return current === 'stock' ? undefined : current;
+    });
+  }, [searchParams]);
+
+  useEffect(() => {
+    adminApi.getMyPermissions()
+      .then((response) => {
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+  }, []);
 
   const baseFilteredProducts = useMemo(() => {
-    const normalizedKeyword = searchKeyword.trim().toLowerCase();
-    return products.filter(p => {
-      const specs = normalizedKeyword ? parseJsonObject(p.specifications) : {};
-      const categoryName = p.categoryName || categoryLookup.get(p.categoryId)?.name || '';
-      const keywordTarget = [
-        p.name,
-        p.description,
-        p.brand,
-        p.tag,
-        categoryName,
-        specs['i18n.es.name'],
-        specs['i18n.es.brand'],
-        specs['i18n.zh.name'],
-        specs['i18n.zh.brand'],
-      ].join(' ').toLowerCase();
-      const matchKeyword = !normalizedKeyword || keywordTarget.includes(normalizedKeyword);
-      const matchCategory = !selectedCategoryIds || selectedCategoryIds.has(p.categoryId);
-      const matchStatus = !filterStatus || (p.status || 'ACTIVE') === filterStatus;
-      return matchKeyword && matchCategory && matchStatus;
-    });
-  }, [products, searchKeyword, categoryLookup, selectedCategoryIds, filterStatus]);
+    return products;
+  }, [products]);
 
   const listingQualityStats = useMemo(() => {
     const initial = {
@@ -692,7 +775,49 @@ const ProductManagement: React.FC = () => {
     });
   }, [baseFilteredProducts, listingQualityFilter]);
 
+  const applyListingQualityFilter = (nextFilter?: ListingQualityFilter) => {
+    setListingQualityFilter(nextFilter);
+    setProductPage(1);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextFilter === 'stock') {
+      nextParams.set('stock', 'low');
+    } else {
+      nextParams.delete('stock');
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const visibleProductIdSet = useMemo(() => new Set(
+    filteredProducts
+      .map((product) => Number(product.id))
+      .filter((id) => Number.isFinite(id))
+  ), [filteredProducts]);
+
+  const selectedVisibleProductKeys = useMemo(() => (
+    selectedProductIds.filter((id) => visibleProductIdSet.has(Number(id)))
+  ), [selectedProductIds, visibleProductIdSet]);
+
+  const selectedVisibleProductIds = useMemo(() => (
+    selectedVisibleProductKeys
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id))
+  ), [selectedVisibleProductKeys]);
+
+  useEffect(() => {
+    setSelectedProductIds((currentSelectedProductIds) => {
+      if (currentSelectedProductIds.length === 0) return currentSelectedProductIds;
+      const visibleSelectedProductIds = currentSelectedProductIds.filter((id) => visibleProductIdSet.has(Number(id)));
+      return visibleSelectedProductIds.length === currentSelectedProductIds.length
+        ? currentSelectedProductIds
+        : visibleSelectedProductIds;
+    });
+  }, [visibleProductIdSet]);
+
   const handleAdd = () => {
+    if (!canWriteProducts) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setEditingProduct(null);
     form.resetFields();
     form.setFieldsValue(productCreateDefaults());
@@ -758,6 +883,10 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleImportProductFromUrl = async () => {
+    if (!canImportProducts) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (urlImportPreview) {
       applyUrlImportPreview(urlImportPreview);
       return;
@@ -786,9 +915,13 @@ const ProductManagement: React.FC = () => {
   const urlImportPreviewMainImage = urlImportPreview?.imageUrl || urlImportPreviewImages[0] || '';
 
   const handleEdit = (record: Product) => {
+    if (!canWriteProducts) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setEditingProduct(record);
     const images = parseJsonArray(record.images).filter((image): image is string => typeof image === 'string');
-    const specsObj = parseJsonObject(record.specifications);
+    const specsObj = getProductAdminSpecs(record);
     const localizedContent = {
       es: {
         name: specsObj['i18n.es.name'],
@@ -847,8 +980,12 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!canDeleteProducts) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
-      await productApi.delete(id);
+      await adminApi.deleteProduct(id);
       message.success(t('pages.productAdmin.deleted'));
       fetchProducts();
     } catch (error: any) {
@@ -857,8 +994,12 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleToggleFeatured = async (record: Product) => {
+    if (!canWriteProducts) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
-      await productApi.update(record.id, { ...record, isFeatured: !record.isFeatured });
+      await adminApi.updateProduct(record.id, { ...record, isFeatured: !record.isFeatured });
       message.success(record.isFeatured ? t('pages.productAdmin.unfeatured') : t('pages.productAdmin.featured'));
       fetchProducts();
     } catch (err: any) {
@@ -867,6 +1008,10 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleProductStatus = async (record: Product, status: string) => {
+    if (!canChangeProductStatus) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       await adminApi.updateProductStatus(record.id, status);
       message.success(t('messages.updateSuccess'));
@@ -877,14 +1022,17 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleBatchProductStatus = async (status: string) => {
-    if (selectedProductIds.length === 0) {
+    if (!canChangeProductStatus) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (selectedVisibleProductIds.length === 0) {
       message.error(t('pages.productAdmin.selectProductsFirst'));
       return;
     }
     try {
       setBatchStatusUpdating(status);
-      const ids = selectedProductIds.map((id) => Number(id));
-      const res = await adminApi.batchUpdateProductStatus(ids, status);
+      const res = await adminApi.batchUpdateProductStatus(selectedVisibleProductIds, status);
       message.success(t('pages.productAdmin.batchUpdateResult', res.data));
       setSelectedProductIds([]);
       fetchProducts();
@@ -896,6 +1044,10 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleDuplicate = (record: Product) => {
+    if (!canWriteProducts) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     handleEdit(record);
     setEditingProduct(null);
     form.setFieldsValue({
@@ -949,6 +1101,10 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!canWriteProducts) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setProductSubmitting(true);
@@ -1044,10 +1200,10 @@ const ProductManagement: React.FC = () => {
         limitedTimeEndAt: limitedTimeRange?.[1] ? limitedTimeRange[1].format('YYYY-MM-DDTHH:mm:ss') : null,
       };
       if (editingProduct) {
-        await productApi.update(editingProduct.id, payload);
+        await adminApi.updateProduct(editingProduct.id, payload);
         message.success(t('pages.productAdmin.updated'));
       } else {
-        await productApi.create(payload);
+        await adminApi.createProduct(payload);
         message.success(t('pages.productAdmin.created'));
       }
       setModalVisible(false);
@@ -1064,24 +1220,27 @@ const ProductManagement: React.FC = () => {
   };
 
   const downloadImportTemplate = () => {
-    const sampleCategory = flatCategories[0];
-    const sampleCategoryName = sampleCategory
-      ? getCategoryPath(flatCategories, sampleCategory.id).replace(/\s*\/\s*/g, ' > ')
+    const templateCategory = flatCategories[0];
+    const templateCategoryName = templateCategory
+      ? getCategoryPath(flatCategories, templateCategory.id).replace(/\s*\/\s*/g, ' > ')
       : 'Dog > Harnesses';
     const headers = [
       'id', 'name', 'description', 'price', 'stock', 'categoryId', 'categoryName', 'imageUrl', 'isFeatured',
       'brand', 'originalPrice', 'discount', 'limitedTimePrice', 'limitedTimeStartAt',
       'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping', 'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
-    const sample = [
-      '', 'Sample product', 'Product description', '99.90', '100', '', sampleCategoryName,
-      'https://example.com/image.jpg', 'false', 'Brand', '129.90', '20', '', '', '',
-      'new', '["https://example.com/extra.jpg"]', '{"material":"cotton"}',
-      '[{"type":"text","content":"Detailed product story"},{"type":"image","url":"https://example.com/detail.jpg","caption":"Detail image"}]',
-      '1 year', 'Free shipping', 'ACTIVE', 'false', '',
-      '[{"sku":"SKU-S-BLK","options":{"Size":"S","Color":"Black"},"price":99.90,"stock":50,"imageUrl":"https://example.com/variant.jpg"}]',
+    const primaryImage = 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80';
+    const galleryImage = 'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80';
+    const detailImage = 'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80';
+    const templateRow = [
+      '', 'Smart pet feeder with stainless bowl', 'Programmable feeder for cats and small dogs with sealed dry-food storage.', '99.90', '100', '', templateCategoryName,
+      primaryImage, 'false', 'PawPilot', '129.90', '20', '', '', '',
+      'new', `["${galleryImage}"]`, '{"material":"BPA-free ABS","capacity":"4 L"}',
+      `[{"type":"text","content":"Keeps feeding routines consistent while the sealed hopper protects dry food."},{"type":"image","url":"${detailImage}","caption":"Portion control and removable bowl"}]`,
+      '1 year limited warranty', 'Free shipping over the store threshold', 'ACTIVE', 'false', '',
+      `[{"sku":"FEEDER-S-WHT","options":{"Size":"Small","Color":"White"},"price":99.90,"stock":50,"imageUrl":"${primaryImage}"}]`,
     ];
-    const csv = `${csvRow(headers)}\r\n${csvRow(sample)}\r\n`;
+    const csv = `${csvRow(headers)}\r\n${csvRow(templateRow)}\r\n`;
     const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1093,11 +1252,7 @@ const ProductManagement: React.FC = () => {
   };
 
   const downloadPriceStockUpdateTemplate = () => {
-    const selectedIdSet = new Set(
-      selectedProductIds
-        .map((id) => Number(id))
-        .filter((id) => Number.isFinite(id))
-    );
+    const selectedIdSet = new Set(selectedVisibleProductIds);
     const sourceProducts = selectedIdSet.size > 0
       ? products.filter((product) => selectedIdSet.has(Number(product.id)))
       : filteredProducts;
@@ -1302,6 +1457,10 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleImportProducts = async (file: File) => {
+    if (!canImportProducts) {
+      message.error(t('adminLayout.noPermission'));
+      return false;
+    }
     if (importSubmitting) {
       return false;
     }
@@ -1486,8 +1645,8 @@ const ProductManagement: React.FC = () => {
       dataIndex: 'imageUrl',
       key: 'imageUrl',
       width: 80,
-      render: (url: string) => (
-        <Image src={resolveProductAdminImage(url)} width={50} height={50} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
+      render: (url: string, record: Product) => (
+        <Image src={resolveProductAdminImage(url)} alt={record.name || t('pages.productAdmin.productTitlePreview')} width={50} height={50} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
       ),
     },
     {
@@ -1569,7 +1728,7 @@ const ProductManagement: React.FC = () => {
         return (
           <Space size={[0, 4]} wrap>
             {issues.slice(0, 2).map((issue) => (
-              <Tag key={issue} color="orange">{t(`pages.productAdmin.listingIssue.${issue}`)}</Tag>
+              <Tag key={issue} color="orange">{formatListingIssue(issue)}</Tag>
             ))}
             {issues.length > 2 ? <Tag>{t('pages.productAdmin.moreIssues', { count: issues.length - 2 })}</Tag> : null}
           </Space>
@@ -1583,29 +1742,64 @@ const ProductManagement: React.FC = () => {
       render: (_: any, record: Product) => (
         <Space size="small" wrap className="product-action-space">
           <Tooltip title={record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured')}>
-            <Button
-              className={record.isFeatured ? 'product-feature-button product-feature-button--active' : 'product-feature-button'}
-              icon={record.isFeatured ? <StarFilled /> : <StarOutlined />}
-              onClick={() => handleToggleFeatured(record)}
-              size="small"
-            />
+            {canWriteProducts ? (
+              <Button
+                className={record.isFeatured ? 'product-feature-button product-feature-button--active' : 'product-feature-button'}
+                icon={record.isFeatured ? <StarFilled /> : <StarOutlined />}
+                aria-label={record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured')}
+                title={record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured')}
+                onClick={() => handleToggleFeatured(record)}
+                size="small"
+              />
+            ) : <span />}
           </Tooltip>
-          <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button>
-          <Tooltip title={t('pages.productAdmin.duplicateProduct')}>
-            <Button icon={<CopyOutlined />} onClick={() => handleDuplicate(record)} size="small" />
-          </Tooltip>
-          {(record.status || 'ACTIVE') !== 'ACTIVE' && (
-            <Button size="small" onClick={() => handleProductStatus(record, 'ACTIVE')}>{t('pages.productAdmin.approve')}</Button>
+          {canWriteProducts ? <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button> : null}
+          {canWriteProducts ? (
+            <Tooltip title={t('pages.productAdmin.duplicateProduct')}>
+              <Button
+                icon={<CopyOutlined />}
+                aria-label={t('pages.productAdmin.duplicateProduct')}
+                title={t('pages.productAdmin.duplicateProduct')}
+                onClick={() => handleDuplicate(record)}
+                size="small"
+              />
+            </Tooltip>
+          ) : null}
+          {canChangeProductStatus && (record.status || 'ACTIVE') !== 'ACTIVE' && (
+            <Popconfirm
+              title={t('pages.productAdmin.approveConfirm', { name: record.name })}
+              onConfirm={() => handleProductStatus(record, 'ACTIVE')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+            >
+              <Button size="small">{t('pages.productAdmin.approve')}</Button>
+            </Popconfirm>
           )}
-          {(record.status || 'ACTIVE') !== 'REJECTED' && (
-            <Button size="small" danger onClick={() => handleProductStatus(record, 'REJECTED')}>{t('pages.productAdmin.reject')}</Button>
+          {canChangeProductStatus && (record.status || 'ACTIVE') !== 'REJECTED' && (
+            <Popconfirm
+              title={t('pages.productAdmin.rejectConfirm', { name: record.name })}
+              onConfirm={() => handleProductStatus(record, 'REJECTED')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+            >
+              <Button size="small" danger>{t('pages.productAdmin.reject')}</Button>
+            </Popconfirm>
           )}
-          {(record.status || 'ACTIVE') !== 'PENDING_REVIEW' && (
-            <Button size="small" onClick={() => handleProductStatus(record, 'PENDING_REVIEW')}>{t('pages.productAdmin.review')}</Button>
+          {canChangeProductStatus && (record.status || 'ACTIVE') !== 'PENDING_REVIEW' && (
+            <Popconfirm
+              title={t('pages.productAdmin.reviewConfirm', { name: record.name })}
+              onConfirm={() => handleProductStatus(record, 'PENDING_REVIEW')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+            >
+              <Button size="small">{t('pages.productAdmin.review')}</Button>
+            </Popconfirm>
           )}
-          <Popconfirm title={t('pages.productAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
-            <Button danger icon={<DeleteOutlined />} size="small">{t('common.delete')}</Button>
-          </Popconfirm>
+          {canDeleteProducts ? (
+            <Popconfirm title={t('pages.productAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+              <Button danger icon={<DeleteOutlined />} size="small">{t('common.delete')}</Button>
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },
@@ -1632,7 +1826,10 @@ const ProductManagement: React.FC = () => {
             treeDefaultExpandAll
             className="product-management-page__filterCategory"
             value={filterCategory}
-            onChange={v => setFilterCategory(v)}
+            onChange={(v) => {
+              setFilterCategory(v);
+              setProductPage(1);
+            }}
             treeData={categoryOptions}
             popupClassName="shop-mobile-popup-layer"
             getPopupContainer={() => document.body}
@@ -1642,7 +1839,10 @@ const ProductManagement: React.FC = () => {
             allowClear
             className="product-management-page__filterStatus"
             value={filterStatus}
-            onChange={setFilterStatus}
+            onChange={(value) => {
+              setFilterStatus(value);
+              setProductPage(1);
+            }}
             popupClassName="shop-mobile-popup-layer"
             getPopupContainer={() => document.body}
             options={[
@@ -1654,12 +1854,32 @@ const ProductManagement: React.FC = () => {
           />
         </Space>
         <Space wrap>
-          <Button disabled={selectedProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'ACTIVE'} onClick={() => handleBatchProductStatus('ACTIVE')}>
-            {t('pages.productAdmin.batchApprove')}
-          </Button>
-          <Button disabled={selectedProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'REJECTED'} danger onClick={() => handleBatchProductStatus('REJECTED')}>
-            {t('pages.productAdmin.batchReject')}
-          </Button>
+          {canChangeProductStatus ? (
+            <Popconfirm
+              title={t('pages.productAdmin.batchApproveConfirm', { count: selectedVisibleProductIds.length })}
+              onConfirm={() => handleBatchProductStatus('ACTIVE')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              disabled={selectedVisibleProductIds.length === 0 || !!batchStatusUpdating}
+            >
+              <Button disabled={selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'ACTIVE'}>
+                {t('pages.productAdmin.batchApprove')}
+              </Button>
+            </Popconfirm>
+          ) : null}
+          {canChangeProductStatus ? (
+            <Popconfirm
+              title={t('pages.productAdmin.batchRejectConfirm', { count: selectedVisibleProductIds.length })}
+              onConfirm={() => handleBatchProductStatus('REJECTED')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              disabled={selectedVisibleProductIds.length === 0 || !!batchStatusUpdating}
+            >
+              <Button disabled={selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'REJECTED'} danger>
+                {t('pages.productAdmin.batchReject')}
+              </Button>
+            </Popconfirm>
+          ) : null}
           <Button icon={<DownloadOutlined />} onClick={downloadImportTemplate}>
             {t('pages.productAdmin.downloadTemplate')}
           </Button>
@@ -1667,7 +1887,7 @@ const ProductManagement: React.FC = () => {
             <Button
               icon={<DownloadOutlined />}
               onClick={downloadPriceStockUpdateTemplate}
-              disabled={selectedProductIds.length === 0 && filteredProducts.length === 0}
+              disabled={selectedVisibleProductIds.length === 0 && filteredProducts.length === 0}
             >
               {t('pages.productAdmin.downloadUpdateTemplate')}
             </Button>
@@ -1675,17 +1895,23 @@ const ProductManagement: React.FC = () => {
           <Button icon={<DownloadOutlined />} onClick={exportFilteredProducts} disabled={filteredProducts.length === 0}>
             {t('pages.productAdmin.exportProducts')}
           </Button>
-          <Upload accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts}>
-            <Tooltip title={t('pages.productAdmin.importCsvHint')}>
-              <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={importSubmitting}>{t('pages.productAdmin.importProducts')}</Button>
-            </Tooltip>
-          </Upload>
-          <Button icon={<LinkOutlined />} disabled={urlImportSubmitting} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
-            {t('pages.productAdmin.importFromUrl')}
-          </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            {t('pages.productAdmin.addProduct')}
-          </Button>
+          {canImportProducts ? (
+            <Upload accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts}>
+              <Tooltip title={t('pages.productAdmin.importCsvHint')}>
+                <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={importSubmitting}>{t('pages.productAdmin.importProducts')}</Button>
+              </Tooltip>
+            </Upload>
+          ) : null}
+          {canImportProducts ? (
+            <Button icon={<LinkOutlined />} disabled={urlImportSubmitting} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
+              {t('pages.productAdmin.importFromUrl')}
+            </Button>
+          ) : null}
+          {canWriteProducts ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+              {t('pages.productAdmin.addProduct')}
+            </Button>
+          ) : null}
         </Space>
       </div>
 
@@ -1773,7 +1999,7 @@ const ProductManagement: React.FC = () => {
           <button
             type="button"
             className={!listingQualityFilter ? 'is-active' : ''}
-            onClick={() => setListingQualityFilter(undefined)}
+            onClick={() => applyListingQualityFilter(undefined)}
           >
             <span>{listingQualityStats.total}</span>
             {t('pages.productAdmin.allListings')}
@@ -1781,7 +2007,7 @@ const ProductManagement: React.FC = () => {
           <button
             type="button"
             className={listingQualityFilter === 'ready' ? 'is-active' : ''}
-            onClick={() => setListingQualityFilter('ready')}
+            onClick={() => applyListingQualityFilter('ready')}
           >
             <span>{listingQualityStats.ready}</span>
             {t('pages.productAdmin.listingReady')}
@@ -1789,7 +2015,7 @@ const ProductManagement: React.FC = () => {
           <button
             type="button"
             className={listingQualityFilter === 'image' ? 'is-active' : ''}
-            onClick={() => setListingQualityFilter('image')}
+            onClick={() => applyListingQualityFilter('image')}
           >
             <span>{listingQualityStats.image}</span>
             {t('pages.productAdmin.missingImages')}
@@ -1797,7 +2023,7 @@ const ProductManagement: React.FC = () => {
           <button
             type="button"
             className={listingQualityFilter === 'content' ? 'is-active' : ''}
-            onClick={() => setListingQualityFilter('content')}
+            onClick={() => applyListingQualityFilter('content')}
           >
             <span>{listingQualityStats.content}</span>
             {t('pages.productAdmin.weakContent')}
@@ -1805,7 +2031,7 @@ const ProductManagement: React.FC = () => {
           <button
             type="button"
             className={listingQualityFilter === 'stock' ? 'is-active' : ''}
-            onClick={() => setListingQualityFilter('stock')}
+            onClick={() => applyListingQualityFilter('stock')}
           >
             <span>{listingQualityStats.stock}</span>
             {t('pages.productAdmin.stockRisk')}
@@ -1813,7 +2039,7 @@ const ProductManagement: React.FC = () => {
           <button
             type="button"
             className={listingQualityFilter === 'localized' ? 'is-active' : ''}
-            onClick={() => setListingQualityFilter('localized')}
+            onClick={() => applyListingQualityFilter('localized')}
           >
             <span>{listingQualityStats.localized}</span>
             {t('pages.productAdmin.localizationGaps')}
@@ -1821,7 +2047,7 @@ const ProductManagement: React.FC = () => {
           <button
             type="button"
             className={listingQualityFilter === 'commercialHook' ? 'is-active' : ''}
-            onClick={() => setListingQualityFilter('commercialHook')}
+            onClick={() => applyListingQualityFilter('commercialHook')}
           >
             <span>{listingQualityStats.commercialHook}</span>
             {t('pages.productAdmin.missingCommercialHook')}
@@ -1831,7 +2057,7 @@ const ProductManagement: React.FC = () => {
           <span>{t('pages.productAdmin.activeListings', { count: listingQualityStats.active })}</span>
           <span>{t('pages.productAdmin.featuredListings', { count: listingQualityStats.featured })}</span>
           {listingQualityFilter ? (
-            <Button size="small" onClick={() => setListingQualityFilter(undefined)}>
+            <Button size="small" onClick={() => applyListingQualityFilter(undefined)}>
               {t('pages.productAdmin.clearQualityFilter')}
             </Button>
           ) : null}
@@ -1843,11 +2069,25 @@ const ProductManagement: React.FC = () => {
         dataSource={filteredProducts}
         rowKey="id"
         rowSelection={{
-          selectedRowKeys: selectedProductIds,
+          selectedRowKeys: selectedVisibleProductKeys,
           onChange: setSelectedProductIds,
         }}
         loading={loading}
-        pagination={{ pageSize: 10, showTotal: (total) => t('pages.productAdmin.tableTotal', { count: total }) }}
+        pagination={{
+          current: listingQualityFilter ? 1 : productPage,
+          pageSize: productPageSize,
+          total: listingQualityFilter ? filteredProducts.length : productTotal,
+          showSizeChanger: !listingQualityFilter,
+          pageSizeOptions: ['10', '20', '50', '100', '200'],
+          showTotal: (total) => t('pages.productAdmin.tableTotal', { count: total }),
+        }}
+        onChange={(pagination) => {
+          if (listingQualityFilter) return;
+          const nextPage = Number(pagination.current || 1);
+          const nextSize = Number(pagination.pageSize || productPageSize);
+          setProductPage(Number.isFinite(nextPage) && nextPage > 0 ? nextPage : 1);
+          setProductPageSize(Number.isFinite(nextSize) && nextSize > 0 ? nextSize : DEFAULT_ADMIN_PRODUCT_PAGE_SIZE);
+        }}
         bordered
         size="middle"
         scroll={{ x: 1240 }}
@@ -1869,7 +2109,7 @@ const ProductManagement: React.FC = () => {
             <div className="shopify-product-editor__main">
               <section className="shopify-card">
                 <Form.Item name="name" label={t('pages.productAdmin.titleField')} rules={[{ required: true, message: t('pages.productAdmin.nameRequired') }]}>
-                  <Input className="shopify-input" placeholder={t('pages.productAdmin.sampleNamePlaceholder')} />
+                  <Input className="shopify-input" placeholder={t('pages.productAdmin.namePlaceholder')} />
                 </Form.Item>
 
                 <Form.Item name="description" label={t('pages.productAdmin.description')} rules={[{ required: true, message: t('pages.productAdmin.descriptionRequired') }]}>
@@ -1927,7 +2167,7 @@ const ProductManagement: React.FC = () => {
                 <div className="shopify-media-grid">
                   <div className="shopify-media-tile">
                     {imagePreviewUrl ? (
-                      <Image src={resolveProductAdminImage(imagePreviewUrl)} width="100%" height="100%" style={{ objectFit: 'cover' }} fallback={productAdminImageFallback} />
+                      <Image src={resolveProductAdminImage(imagePreviewUrl)} alt={previewName || t('pages.productAdmin.mediaPreview')} width="100%" height="100%" style={{ objectFit: 'cover' }} fallback={productAdminImageFallback} />
                     ) : (
                       <span>{t('pages.productAdmin.mediaPreview')}</span>
                     )}
@@ -1940,7 +2180,14 @@ const ProductManagement: React.FC = () => {
                             <Form.Item {...restField} name={name} style={{ marginBottom: 0 }}>
                               <Input placeholder={t('pages.productAdmin.imageUrl', { index: index + 1 })} />
                             </Form.Item>
-                            <Button type="text" danger icon={<MinusCircleOutlined />} onClick={() => remove(name)} />
+                            <Button
+                              type="text"
+                              danger
+                              icon={<MinusCircleOutlined />}
+                              aria-label={t('pages.productAdmin.removeImage')}
+                              title={t('pages.productAdmin.removeImage')}
+                              onClick={() => remove(name)}
+                            />
                           </div>
                         ))}
                         <button type="button" className="shopify-media-add" onClick={() => add()}>
@@ -2007,7 +2254,14 @@ const ProductManagement: React.FC = () => {
                           <Form.Item {...restField} name={[name, 'quantity']} style={{ marginBottom: 0 }}>
                             <InputNumber min={1} placeholder={t('common.quantity')} />
                           </Form.Item>
-                          <Button type="text" danger icon={<MinusCircleOutlined />} onClick={() => remove(name)} />
+                          <Button
+                            type="text"
+                            danger
+                            icon={<MinusCircleOutlined />}
+                            aria-label={t('bundle.removeBundleItem')}
+                            title={t('bundle.removeBundleItem')}
+                            onClick={() => remove(name)}
+                          />
                         </div>
                       ))}
                       <button type="button" className="shopify-link-button" onClick={() => add({ quantity: 1 })}>
@@ -2084,7 +2338,14 @@ const ProductManagement: React.FC = () => {
                           <Form.Item {...restField} name={[name, 'values']} style={{ marginBottom: 0 }}>
                             <Input placeholder={t('pages.productAdmin.optionValues')} />
                           </Form.Item>
-                          <Button type="text" danger icon={<MinusCircleOutlined />} onClick={() => remove(name)} />
+                          <Button
+                            type="text"
+                            danger
+                            icon={<MinusCircleOutlined />}
+                            aria-label={t('pages.productAdmin.removeOptionGroup')}
+                            title={t('pages.productAdmin.removeOptionGroup')}
+                            onClick={() => remove(name)}
+                          />
                         </div>
                       ))}
                       <button type="button" className="shopify-link-button" onClick={() => add()}>
@@ -2117,7 +2378,14 @@ const ProductManagement: React.FC = () => {
                           <Form.Item {...restField} name={[name, 'imageUrl']} style={{ marginBottom: 0 }}>
                             <Input placeholder={t('pages.productAdmin.variantImage')} />
                           </Form.Item>
-                          <Button type="text" danger icon={<MinusCircleOutlined />} onClick={() => remove(name)} />
+                          <Button
+                            type="text"
+                            danger
+                            icon={<MinusCircleOutlined />}
+                            aria-label={t('pages.productAdmin.removeVariant')}
+                            title={t('pages.productAdmin.removeVariant')}
+                            onClick={() => remove(name)}
+                          />
                         </div>
                       ))}
                       <button type="button" className="shopify-link-button" onClick={() => add({ price: form.getFieldValue('price') || 0, stock: form.getFieldValue('stock') || 0 })}>
@@ -2145,7 +2413,14 @@ const ProductManagement: React.FC = () => {
                             <Form.Item {...restField} name={[name, 'value']} style={{ marginBottom: 0 }}>
                               <Input placeholder={t('pages.productAdmin.specValue')} />
                             </Form.Item>
-                            <Button type="text" danger icon={<MinusCircleOutlined />} onClick={() => remove(name)} />
+                            <Button
+                              type="text"
+                              danger
+                              icon={<MinusCircleOutlined />}
+                              aria-label={t('pages.productAdmin.removeSpec')}
+                              title={t('pages.productAdmin.removeSpec')}
+                              onClick={() => remove(name)}
+                            />
                           </div>
                         ))}
                         <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
@@ -2177,7 +2452,17 @@ const ProductManagement: React.FC = () => {
                 </Form.Item>
                 <Divider>{t('pages.productAdmin.richPreview')}</Divider>
                 <div className="shopify-rich-preview">
-                  <ProductRichDetail detailContent={detailContentPreview} fallback={descriptionPreview} emptyText={t('pages.productAdmin.richPreviewEmpty')} />
+                  <ProductRichDetail
+                    detailContent={detailContentPreview}
+                    fallback={descriptionPreview}
+                    emptyText={t('pages.productAdmin.richPreviewEmpty')}
+                    labels={{
+                      imageAlt: t('pages.productDetail.richImageAlt'),
+                      videoTitle: (index) => t('pages.productDetail.richVideoTitle', { index }),
+                      openVideo: t('pages.productDetail.openRichVideo'),
+                      unsupported: t('pages.productDetail.unsupportedRichContent'),
+                    }}
+                  />
                 </div>
               </section>
             </div>
@@ -2206,7 +2491,7 @@ const ProductManagement: React.FC = () => {
                 <h3>{t('pages.productAdmin.publishing')}</h3>
                 <div className="shopify-channel-list">
                   <span>{t('pages.productAdmin.onlineStore')}</span>
-                  <span>Shop</span>
+                  <span>{t('pages.productAdmin.shopChannel')}</span>
                   <span>{t('pages.productAdmin.pointOfSale')}</span>
                 </div>
               </section>
@@ -2293,7 +2578,7 @@ const ProductManagement: React.FC = () => {
           <div className="product-url-import-preview">
             <div className="product-url-import-preview__media">
               {urlImportPreviewMainImage ? (
-                <Image src={resolveProductAdminImage(urlImportPreviewMainImage)} width={88} height={88} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
+                <Image src={resolveProductAdminImage(urlImportPreviewMainImage)} alt={urlImportPreview.name || t('pages.productAdmin.mediaPreview')} width={88} height={88} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
               ) : (
                 <div className="product-url-import-preview__placeholder">{t('pages.productAdmin.urlImportNoImage')}</div>
               )}
@@ -2305,6 +2590,7 @@ const ProductManagement: React.FC = () => {
                       src={resolveProductAdminImage(image)}
                       width={38}
                       height={38}
+                      alt={urlImportPreview.name ? `${urlImportPreview.name} #${index + 1}` : `${t('pages.productAdmin.mediaPreview')} #${index + 1}`}
                       preview={false}
                       fallback={productAdminImageFallback}
                       className="product-url-import-preview__thumb"
@@ -2331,7 +2617,7 @@ const ProductManagement: React.FC = () => {
               {urlImportPreview.warnings && urlImportPreview.warnings.length > 0 && (
                 <div className="product-url-import-preview__warnings">
                   {urlImportPreview.warnings.map((warning) => (
-                    <Tag color="gold" key={warning}>{t(`pages.productAdmin.urlImportWarning.${warning}`)}</Tag>
+                    <Tag color="gold" key={warning}>{formatUrlImportWarning(warning)}</Tag>
                   ))}
                 </div>
               )}

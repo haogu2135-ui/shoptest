@@ -533,3 +533,16 @@
     flex-basis: 100%;
   }
 }
+
+/* Final mobile/App category-operations touch-target guard */
+@media (max-width: 720px) {
+  .category-management-page__toolbar .ant-btn,
+  .category-management-page__toolbar .ant-input-affix-wrapper,
+  .category-management-page .ant-table-cell .ant-btn,
+  .category-management-page__editorModal .ant-modal-footer .ant-btn,
+  .category-management-page__editorModal .ant-input,
+  .category-management-page__editorModal .ant-select-selector,
+  .category-management-page__editorModal .ant-tree-select-selector {
+    min-height: 44px;
+  }
+}

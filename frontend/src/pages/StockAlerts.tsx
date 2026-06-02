@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
-import type { Product } from '../types';
+import type { ProductPublic as Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
 import { clearStockAlerts, readStockAlerts, removeStockAlert, type StockAlertItem } from '../utils/stockAlerts';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -16,6 +16,7 @@ import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage } from '../utils/apiError';
 import './StockAlerts.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Title, Text } = Typography;
 const stockAlertImageFallback = productImageFallback;
@@ -192,7 +193,13 @@ const StockAlerts: React.FC = () => {
           </div>
           <Space wrap>
             <Button onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
-            <Button danger disabled={alerts.length === 0} onClick={clearAll}>{t('pages.stockAlerts.clear')}</Button>
+            <Popconfirm
+              popupClassName="shop-mobile-popup-layer stock-alerts-popconfirm"
+              title={t('pages.stockAlerts.clearConfirm')}
+              onConfirm={clearAll}
+            >
+              <Button danger disabled={alerts.length === 0}>{t('pages.stockAlerts.clear')}</Button>
+            </Popconfirm>
           </Space>
         </div>
 
@@ -340,6 +347,7 @@ const StockAlerts: React.FC = () => {
                     </Button>,
                     <Popconfirm
                       key="remove"
+                      popupClassName="shop-mobile-popup-layer stock-alerts-popconfirm"
                       title={t('pages.stockAlerts.removeConfirm')}
                       onConfirm={() => removeAlert(item.productId)}
                     >
@@ -352,6 +360,7 @@ const StockAlerts: React.FC = () => {
                       <Link to={`/products/${item.productId}`}>
                         <Image
                           src={resolveStockAlertImage(product?.imageUrl || item.imageUrl)}
+                          alt={product?.name || item.productName}
                           fallback={stockAlertImageFallback}
                           width={72}
                           height={72}

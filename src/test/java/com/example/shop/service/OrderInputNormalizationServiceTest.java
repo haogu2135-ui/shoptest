@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -70,6 +71,15 @@ class OrderInputNormalizationServiceTest {
         when(orderRepository.findById(9L)).thenReturn(order);
 
         assertThrows(IllegalArgumentException.class, () -> service.submitReturnShipment(9L, 3L, "T".repeat(33)));
+    }
+
+    @Test
+    void directOrderCreationIsDisabledBeforePersistingClientSuppliedAmounts() {
+        Order order = order(null, 3L, null);
+
+        assertThrows(IllegalStateException.class, () -> service.createOrder(order));
+
+        verify(orderRepository, never()).insert(order);
     }
 
     private Order order(Long id, Long userId, String status) {

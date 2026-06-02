@@ -32,7 +32,8 @@ class IpBlacklistServiceTest {
                 jdbcTemplate,
                 runtimeConfig,
                 mock(SystemAlertService.class),
-                clientIpResolver);
+                clientIpResolver,
+                mock(TokenBlacklistService.class));
         when(runtimeConfig.getBoolean("security.ip-blacklist.enabled", true)).thenReturn(true);
     }
 
@@ -81,7 +82,7 @@ class IpBlacklistServiceTest {
     }
 
     @Test
-    void batchReleaseClampsIdsAndMasksActorBeforeWriting() {
+    void batchReleaseNormalizesIdsAndMasksActorBeforeWriting() {
         when(runtimeConfig.getInt("security.ip-blacklist.admin.batch-release-max-size", 100)).thenReturn(3);
         when(jdbcTemplate.update(
                 startsWith("UPDATE ip_blacklist_entries SET status = ?"),
@@ -93,11 +94,11 @@ class IpBlacklistServiceTest {
                 any())).thenReturn(2);
 
         IpBlacklistBatchReleaseResponse response =
-                service.releaseBatch(List.of(3L, 2L, 2L, -1L, 1L, 4L), "admin password=secret");
+                service.releaseBatch(List.of(3L, 2L, 2L, -1L, 1L), "admin password=secret");
 
-        assertEquals(6, response.getRequestedCount());
+        assertEquals(5, response.getRequestedCount());
         assertEquals(2, response.getReleasedCount());
-        assertEquals(3, response.getIgnoredCount());
+        assertEquals(2, response.getIgnoredCount());
         assertEquals(3, response.getMaxBatchSize());
         assertEquals(List.of(3L, 2L, 1L), response.getIds());
         verify(jdbcTemplate).update(
@@ -108,5 +109,15 @@ class IpBlacklistServiceTest {
                 eq(2L),
                 eq(1L),
                 eq(IpBlacklistService.STATUS_RELEASED));
+    }
+
+    @Test
+    void batchReleaseRejectsOversizedIdSetsBeforeWriting() {
+        when(runtimeConfig.getInt("security.ip-blacklist.admin.batch-release-max-size", 100)).thenReturn(3);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.releaseBatch(List.of(3L, 2L, 2L, -1L, 1L, 4L), "admin"));
+
+        verifyNoInteractions(jdbcTemplate);
     }
 }

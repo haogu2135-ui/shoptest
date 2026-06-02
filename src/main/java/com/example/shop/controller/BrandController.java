@@ -1,32 +1,44 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.BrandPublicResponse;
 import com.example.shop.entity.Brand;
+import com.example.shop.security.SecurityUtils;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.BrandService;
 import com.example.shop.service.SecurityAuditLogService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/brands")
 public class BrandController {
     private final BrandService brandService;
     private final SecurityAuditLogService auditLogService;
+    private final AdminRoleService adminRoleService;
 
-    public BrandController(BrandService brandService, SecurityAuditLogService auditLogService) {
+    public BrandController(BrandService brandService,
+                           SecurityAuditLogService auditLogService,
+                           AdminRoleService adminRoleService) {
         this.brandService = brandService;
         this.auditLogService = auditLogService;
+        this.adminRoleService = adminRoleService;
     }
 
     @GetMapping
-    public ResponseEntity<List<Brand>> getAll(@RequestParam(required = false, defaultValue = "false") boolean activeOnly) {
-        return ResponseEntity.ok(brandService.findAll(activeOnly));
+    public ResponseEntity<List<BrandPublicResponse>> getAll() {
+        return ResponseEntity.ok(brandService.findAll(true).stream()
+                .map(BrandPublicResponse::from)
+                .collect(Collectors.toList()));
     }
 
     @PostMapping
@@ -34,6 +46,8 @@ public class BrandController {
     public ResponseEntity<?> create(@RequestBody(required = false) Brand brand,
                                     Authentication authentication,
                                     HttpServletRequest request) {
+        requireAdminActionPermission(authentication, AdminRoleService.BRANDS_WRITE_PERMISSION,
+                "BRAND_CREATE", "BRAND", null, request, brandAuditMetadata(brand));
         if (brand == null) {
             auditLogService.record("BRAND_CREATE", "FAILURE", authentication, "BRAND", null, request,
                     "Brand payload is required", null);
@@ -57,6 +71,8 @@ public class BrandController {
                                     @RequestBody(required = false) Brand brand,
                                     Authentication authentication,
                                     HttpServletRequest request) {
+        requireAdminActionPermission(authentication, AdminRoleService.BRANDS_WRITE_PERMISSION,
+                "BRAND_UPDATE", "BRAND", id, request, brandAuditMetadata(brand));
         if (brand == null) {
             auditLogService.record("BRAND_UPDATE", "FAILURE", authentication, "BRAND", id, request,
                     "Brand payload is required", null);
@@ -88,6 +104,8 @@ public class BrandController {
     public ResponseEntity<Void> delete(@PathVariable Long id,
                                        Authentication authentication,
                                        HttpServletRequest request) {
+        requireAdminActionPermission(authentication, AdminRoleService.BRANDS_DELETE_PERMISSION,
+                "BRAND_DELETE", "BRAND", id, request, null);
         Optional<Brand> brand = brandService.findById(id);
         if (brand.isEmpty()) {
             auditLogService.record("BRAND_DELETE", "FAILURE", authentication, "BRAND", id, request,
@@ -98,6 +116,24 @@ public class BrandController {
         auditLogService.record("BRAND_DELETE", "SUCCESS", authentication, "BRAND", id, request,
                 "Brand deleted", brandAuditMetadata(brand.get()));
         return ResponseEntity.ok().build();
+    }
+
+    private void requireAdminActionPermission(Authentication authentication,
+                                              String permission,
+                                              String auditAction,
+                                              String resourceType,
+                                              Long resourceId,
+                                              HttpServletRequest request,
+                                              String metadata) {
+        if (adminRoleService.hasPermission(SecurityUtils.requireUser(authentication).getId(), permission)) {
+            return;
+        }
+        String auditMetadata = metadata == null || metadata.isBlank()
+                ? "permission=" + permission
+                : metadata + ",permission=" + permission;
+        auditLogService.record(auditAction, "FAILURE", authentication, resourceType, resourceId, request,
+                "Missing admin action permission", auditMetadata);
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
     }
 
     private String brandAuditMetadata(Brand brand) {

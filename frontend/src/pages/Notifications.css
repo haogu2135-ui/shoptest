@@ -920,3 +920,23 @@
     min-height: 38px;
   }
 }
+
+/* Final mobile/App touch-target guard */
+@media (max-width: 640px) {
+  .notifications-page__header .ant-btn,
+  .notifications-page__assistant > .ant-btn,
+  .notifications-page__actionPlan > .ant-btn,
+  .notifications-page__item .ant-list-item-action .ant-btn,
+  .notifications-delete-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+  }
+
+  .notifications-page__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) minmax(44px, auto);
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
+    width: 44px;
+    min-width: 44px;
+  }
+}

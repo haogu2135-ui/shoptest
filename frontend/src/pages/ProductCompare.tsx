@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Empty, Image, message, Rate, Space, Spin, Switch, Table, Tag, Typography } from 'antd';
+import { Button, Card, Empty, Image, message, Popconfirm, Rate, Space, Spin, Switch, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, FireOutlined, SettingOutlined, ShoppingCartOutlined, StarOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
-import type { Product } from '../types';
+import type { ProductPublic as Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
 import { localizeProduct } from '../utils/localizedProduct';
 import { clearCompareProducts, readCompareProductIds, removeCompareProduct } from '../utils/productCompare';
@@ -14,6 +14,7 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
+import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import './ProductCompare.css';
 
 const { Title, Text } = Typography;
@@ -134,7 +135,7 @@ const ProductCompare: React.FC = () => {
       .sort((left, right) => getPrice(left) - getPrice(right))[0];
     const topRated = readyProducts
       .slice()
-      .sort((left, right) => Number(right.averageRating || right.rating || 0) - Number(left.averageRating || left.rating || 0))[0];
+      .sort((left, right) => Number(right.averageRating || 0) - Number(left.averageRating || 0))[0];
     const lowStock = readyProducts.filter((product) => product.stock !== undefined && product.stock > 0 && product.stock <= 5).length;
     const needsSelection = readyProducts.filter(needsOptionSelection).length;
     const priceSpread = readyProducts.length > 1
@@ -143,7 +144,7 @@ const ProductCompare: React.FC = () => {
     const recommended = readyProducts
       .slice()
       .sort((left, right) => {
-        const ratingDelta = Number(right.averageRating || right.rating || 0) - Number(left.averageRating || left.rating || 0);
+        const ratingDelta = Number(right.averageRating || 0) - Number(left.averageRating || 0);
         const priceDelta = getPrice(left) - getPrice(right);
         const stockDelta = (right.stock ?? 999) - (left.stock ?? 999);
         return ratingDelta * 8 + priceDelta * 0.08 + stockDelta * 0.01;
@@ -250,12 +251,13 @@ const ProductCompare: React.FC = () => {
   const specRows = useMemo<CompareRow[]>(() => specKeys.map((specKey) => {
     const normalizedValues = products.map((product) => normalizeSpecValue(getSpecValue(product, specKey)));
     const isDifferent = products.length > 1 && new Set(normalizedValues).size > 1;
+    const specLabel = formatProductSpecLabel(specKey, t);
     return {
       key: `spec-${specKey}`,
-      rawLabel: specKey,
+      rawLabel: specLabel,
       label: (
         <Space size={6} wrap>
-          <span>{specKey}</span>
+          <span>{specLabel}</span>
           {isDifferent ? <Tag color="red">{compareCopy.different}</Tag> : null}
         </Space>
       ),
@@ -276,7 +278,7 @@ const ProductCompare: React.FC = () => {
         );
       },
     };
-  }), [compareCopy.different, compareCopy.missing, products, specKeys]);
+  }), [compareCopy.different, compareCopy.missing, products, specKeys, t]);
 
   const renderAttributeLabel = (label: React.ReactNode, isDifferent?: boolean) => (
     <Space size={6} wrap>
@@ -286,7 +288,7 @@ const ProductCompare: React.FC = () => {
   );
 
   const priceDifferent = valuesDiffer(products, (product) => getPrice(product));
-  const ratingDifferent = valuesDiffer(products, (product) => product.averageRating || product.rating || 0);
+  const ratingDifferent = valuesDiffer(products, (product) => product.averageRating || 0);
   const brandDifferent = valuesDiffer(products, (product) => product.brand || '');
   const stockDifferent = valuesDiffer(products, (product) => product.stock ?? '');
   const shippingDifferent = valuesDiffer(products, (product) => product.freeShipping ? 'free-shipping' : product.shipping || 'default-shipping');
@@ -335,7 +337,7 @@ const ProductCompare: React.FC = () => {
       isDifferent: ratingDifferent,
       render: (product: Product) => (
         <Space direction="vertical" size={0}>
-          <Rate disabled allowHalf value={Number(product.averageRating || product.rating || 0)} />
+          <Rate disabled allowHalf value={Number(product.averageRating || 0)} />
           <Text type="secondary">{t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })}</Text>
         </Space>
       ),
@@ -446,7 +448,13 @@ const ProductCompare: React.FC = () => {
               {t('pages.wishlist.addAllToCart')}
             </Button>
             <Button onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
-            <Button danger disabled={products.length === 0} onClick={clearAll}>{t('pages.compare.clear')}</Button>
+            <Popconfirm
+              popupClassName="shop-mobile-popup-layer product-compare-clear-popconfirm"
+              title={t('pages.compare.clearConfirm')}
+              onConfirm={clearAll}
+            >
+              <Button danger disabled={products.length === 0}>{t('pages.compare.clear')}</Button>
+            </Popconfirm>
           </Space>
         </div>
         {loading ? (
@@ -499,7 +507,7 @@ const ProductCompare: React.FC = () => {
                 </div>
                 <div className="product-compare__decisionItem is-ok">
                   <StarOutlined />
-                  <strong>{compareDecision.topRated ? Number(compareDecision.topRated.averageRating || compareDecision.topRated.rating || 0).toFixed(1) : '-'}</strong>
+                  <strong>{compareDecision.topRated ? Number(compareDecision.topRated.averageRating || 0).toFixed(1) : '-'}</strong>
                   <span>{t('pages.compare.topRated')}</span>
                 </div>
                 <div className={`product-compare__decisionItem ${compareDecision.lowStock ? 'is-risk' : 'is-ok'}`}>
@@ -521,7 +529,7 @@ const ProductCompare: React.FC = () => {
                   {compareDecision.recommended
                     ? t('pages.compare.recommendationSubtitle', {
                       price: formatMoney(getPrice(compareDecision.recommended)),
-                      rating: Number(compareDecision.recommended.averageRating || compareDecision.recommended.rating || 0).toFixed(1),
+                      rating: Number(compareDecision.recommended.averageRating || 0).toFixed(1),
                     })
                     : t('pages.compare.recommendationEmpty')}
                 </Text>

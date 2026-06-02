@@ -2482,6 +2482,29 @@
   }
 }
 
+/* Keep the cart checkout dock above content but below the mobile route rail. */
+@media (max-width: 780px) {
+  .shop-app-shell--cart .cart-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 126px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shop-app-shell--cart .cart-page__summary {
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 12px + env(safe-area-inset-bottom, 0px));
+    z-index: 850;
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .shop-app-shell--cart .cart-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 118px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shop-app-shell--cart .cart-page__summary {
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 10px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* Final cart amount phrase guard: embedded money stays atomic inside longer labels. */
 .cart-page__amountPhrase {
   display: inline-flex !important;
@@ -2507,4 +2530,77 @@
 .cart-page__summaryProgress .ant-typography {
   min-width: 0;
   max-width: 100%;
+}
+
+/* UI issues pass: tablet empty carts should not create a tall blank canyon. */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .cart-page--empty {
+    min-height: auto;
+    padding: clamp(28px, 6vh, 54px) 18px;
+  }
+
+  .cart-page__emptyHero {
+    min-height: auto;
+    padding: 24px;
+  }
+
+  .cart-page__emptyActions {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .cart-page--empty {
+    padding: 24px 10px calc(110px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .cart-page__emptyHero {
+    padding: 22px 16px;
+  }
+}
+
+/* Final mobile/App touch-target guard for cart item quantity and actions. */
+@media (max-width: 640px) {
+  .cart-page__heroActions .ant-btn,
+  .cart-page__emptyActions .ant-btn,
+  .cart-page__emptyPanel .ant-btn,
+  .cart-page__recentRecovery .ant-btn,
+  .cart-page__bulkActions .ant-btn,
+  .cart-page__readinessActions .ant-btn,
+  .cart-page__summary .ant-btn,
+  .cart-page__savedCard .ant-card-extra .ant-btn,
+  .cart-page__savedReminder .ant-btn,
+  .cart-page__savedActions .ant-btn,
+  .cart-page__mobileItemTitle,
+  .cart-page__savedInfo > a,
+  .cart-page-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+  }
+
+  .cart-page__mobileItemBottom {
+    grid-template-columns: minmax(88px, 108px) minmax(0, 1fr) 44px !important;
+    gap: 8px !important;
+  }
+
+  .cart-page__mobileItemBottom .ant-input-number,
+  .cart-page__mobileItemBottom .ant-input-number-input,
+  .cart-page__mobileItemBottom .ant-btn {
+    min-height: 44px !important;
+  }
+
+  .cart-page__mobileItemBottom .ant-input-number {
+    min-width: 88px;
+  }
+
+  .cart-page__mobileItemBottom .ant-btn-dangerous {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .cart-page__mobileItemBottom {
+    grid-template-columns: minmax(84px, 96px) minmax(0, 1fr) 44px !important;
+    gap: 6px !important;
+  }
 }

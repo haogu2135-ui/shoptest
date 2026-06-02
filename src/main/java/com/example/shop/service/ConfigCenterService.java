@@ -31,6 +31,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -51,13 +54,25 @@ public class ConfigCenterService {
             "pet.",
             "pet-gallery.",
             "coupon.",
+            "cart.",
+            "wishlist.",
             "announcement.",
+            "admin.users.",
+            "admin.products.",
             "admin.orders.",
+            "admin.reviews.",
+            "admin.pet-gallery.",
+            "admin.brands.",
+            "admin.categories.",
+            "admin.roles.",
+            "admin.logistics-carriers.",
             "admin.coupons.",
             "admin.announcements.",
             "admin.logs.",
             "admin.audit-logs.",
             "alerts.",
+            "security.ip-blacklist.",
+            "security.login.",
             "traffic.",
             "app.mail.",
             "app.cors.",
@@ -65,7 +80,7 @@ public class ConfigCenterService {
             "app.storefront.",
             "logging.level.");
     private static final Pattern SENSITIVE_KEY_PATTERN = Pattern.compile(
-            ".*(password|passwd|pwd|secret|token|credential|private[-.]?key|access[-.]?key|auth[-.]?header).*",
+            ".*(password|passwd|pwd|secret|token|credential|private[-._]?key|access[-._]?key|api[-._]?key|auth[-._]?header|[._-]key$).*",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern BLOCKED_RUNTIME_KEY_PATTERN = Pattern.compile(
             "^(spring\\.|server\\.|management\\.|mybatis\\.|logging\\.file\\.|logging\\.pattern\\.|stripe\\.|app\\.jwt|admin\\.bootstrap-token).*",
@@ -77,12 +92,60 @@ public class ConfigCenterService {
             "order.free-shipping-threshold=899.00",
             "payment.simulation-enabled=false",
             "payment.simulation-allow-production=false",
+            "product-question.public-max-rows=20",
+            "review.public-max-rows=20",
+            "review.reviewable-order-max-rows=50",
+            "support.websocket.max-connections=500",
+            "support.websocket.max-connections-per-user=5",
+            "support.websocket.max-idle-ms=300000",
+            "support.websocket.max-text-message-bytes=16384",
+            "support.websocket.max-binary-message-bytes=8192",
             "support.message.max-chars=1000",
             "product.search-cache-ttl-ms=30000",
+            "product.public-default-page-size=24",
+            "product.public-max-page-size=100",
+            "product.admin-default-page-size=50",
+            "product.admin-max-page-size=500",
+            "product.featured-max-limit=36",
+            "admin.users.page-max-size=100",
+            "admin.users.export-max-rows=10000",
+            "admin.products.batch-status-max-size=100",
+            "admin.orders.page-max-size=100",
+            "admin.orders.legacy-list-max-rows=100",
+            "admin.orders.export-max-rows=5000",
+            "admin.orders.batch-ship-max-size=100",
+            "cart.max-quantity-per-line=99",
+            "cart.max-lines-per-user=200",
+            "cart.batch-delete-max-size=100",
+            "cart.selected-specs-max-chars=2000",
+            "wishlist.max-items-per-user=500",
+            "admin.reviews.page-max-size=100",
+            "admin.pet-gallery.page-max-size=100",
+            "admin.brands.list-max-rows=500",
+            "admin.categories.list-max-rows=500",
+            "admin.roles.list-max-rows=200",
+            "admin.logistics-carriers.list-max-rows=500",
+            "admin.audit-logs.default-range-hours=24",
+            "admin.audit-logs.max-range-hours=168",
+            "admin.audit-logs.search-max-rows=1000",
+            "admin.audit-logs.export-max-rows=5000",
+            "traffic.rate-limit.guest-checkout-per-hour=10",
+            "traffic.rate-limit.pet-gallery-like-per-minute=20",
+            "security.ip-blacklist.login-failure-threshold=5",
+            "security.ip-blacklist.payment-failure-threshold=5",
+            "security.ip-blacklist.window-minutes=15",
+            "security.ip-blacklist.block-minutes=60",
+            "security.ip-blacklist.block-all-paths=false",
+            "security.ip-blacklist.path-prefixes=/auth/login,/auth/email-login,/auth/email-code,/auth/password-reset-code,/auth/forgot-password,/auth/register,/auth/refresh,/users/create-admin,/payment,/payments,/orders/checkout/guest,/orders/track,/orders/guest,/support/guest,/ws/support",
+            "security.ip-blacklist.trusted-ips=127.0.0.1,::1,0:0:0:0:0:0:0:1",
+            "security.ip-blacklist.admin.batch-release-max-size=100",
+            "security.login.account-failure-threshold=10",
+            "security.login.account-lockout-minutes=30",
             "");
 
     private final ConfigurableEnvironment environment;
     private final ObjectProvider<ConfigurationPropertiesRebinder> rebinderProvider;
+    private final ConcurrentMap<NacosConfigServiceKey, ConfigService> configServices = new ConcurrentHashMap<>();
 
     public ConfigCenterService(
             ConfigurableEnvironment environment,
@@ -196,6 +259,13 @@ public class ConfigCenterService {
         String resolvedNamespace = resolveNamespace(request.getNamespace());
         String content = normalizeContent(request.getContent(), errors);
         Map<String, String> parsed = parseProperties(content, errors);
+        if (errors.isEmpty()) {
+            String mergedContent = preserveMaskedSensitiveValues(content, parsed, resolvedDataId, resolvedGroup, resolvedNamespace, warnings, errors);
+            if (!mergedContent.equals(content)) {
+                content = mergedContent;
+                parsed = parseProperties(content, errors);
+            }
+        }
         validateTarget(resolvedDataId, resolvedGroup, warnings, errors);
         validateParsedProperties(parsed, warnings, errors, true);
         if (parsed.isEmpty()) {
@@ -223,17 +293,34 @@ public class ConfigCenterService {
         return buildResponse(resolvedDataId, resolvedGroup, resolvedNamespace, content, parsed, appliedKeys, warnings, errors, runtimeApplied, published);
     }
 
-    private ConfigService configService(String namespace) throws NacosException {
+    protected ConfigService configService(String namespace) throws NacosException {
+        NacosConfigServiceKey key = new NacosConfigServiceKey(
+                nacosServerAddr(),
+                trimToNull(namespace),
+                trimToNull(environment.getProperty("spring.cloud.nacos.discovery.username", "")),
+                trimToNull(environment.getProperty("spring.cloud.nacos.discovery.password", "")));
+        try {
+            return configServices.computeIfAbsent(key, this::createConfigService);
+        } catch (ConfigServiceCreationException e) {
+            throw e.getCause();
+        }
+    }
+
+    protected ConfigService createConfigService(NacosConfigServiceKey key) {
         Properties props = new Properties();
-        props.put(PropertyKeyConst.SERVER_ADDR, nacosServerAddr());
-        putIfPresent(props, PropertyKeyConst.NAMESPACE, namespace);
-        putIfPresent(props, PropertyKeyConst.USERNAME, environment.getProperty("spring.cloud.nacos.discovery.username", ""));
-        putIfPresent(props, PropertyKeyConst.PASSWORD, environment.getProperty("spring.cloud.nacos.discovery.password", ""));
-        return NacosFactory.createConfigService(props);
+        props.put(PropertyKeyConst.SERVER_ADDR, key.serverAddr);
+        putIfPresent(props, PropertyKeyConst.NAMESPACE, key.namespace);
+        putIfPresent(props, PropertyKeyConst.USERNAME, key.username);
+        putIfPresent(props, PropertyKeyConst.PASSWORD, key.password);
+        try {
+            return NacosFactory.createConfigService(props);
+        } catch (NacosException e) {
+            throw new ConfigServiceCreationException(e);
+        }
     }
 
     private String nacosServerAddr() {
-        return environment.getProperty("spring.cloud.nacos.discovery.server-addr", "158.101.11.223:8848");
+        return environment.getProperty("spring.cloud.nacos.discovery.server-addr", "localhost:8848");
     }
 
     private String safeNacosServerAddr() {
@@ -340,6 +427,103 @@ public class ConfigCenterService {
                         Map.Entry::getValue,
                         (left, right) -> right,
                         LinkedHashMap::new));
+    }
+
+    private String preserveMaskedSensitiveValues(
+            String content,
+            Map<String, String> parsed,
+            String dataId,
+            String group,
+            String namespace,
+            List<String> warnings,
+            List<String> errors
+    ) {
+        List<String> maskedKeys = parsed.entrySet().stream()
+                .filter(entry -> isSensitive(entry.getKey()) && looksMasked(entry.getValue()))
+                .map(Map.Entry::getKey)
+                .sorted()
+                .collect(Collectors.toList());
+        if (maskedKeys.isEmpty()) {
+            return content;
+        }
+
+        String currentContent = "";
+        try {
+            currentContent = configService(namespace).getConfig(dataId, group, 3000);
+        } catch (NacosException e) {
+            errors.add("敏感配置仍是脱敏占位符，且读取 Nacos 原值失败: " + sanitizeError(e));
+            return content;
+        }
+        if (currentContent == null || currentContent.trim().isEmpty()) {
+            errors.add("敏感配置仍是脱敏占位符，但 Nacos 中没有可保留的原始值。请输入真实值或删除该键。");
+            return content;
+        }
+
+        List<String> currentErrors = new ArrayList<>();
+        Map<String, String> currentParsed = parseProperties(currentContent, currentErrors);
+        if (!currentErrors.isEmpty()) {
+            errors.add("敏感配置仍是脱敏占位符，且 Nacos 当前内容无法解析，不能安全保留原值。");
+            return content;
+        }
+        Map<String, String> currentLineValues = rawLineValuesByKey(currentContent);
+        Map<String, String> replacements = new LinkedHashMap<>();
+        for (String key : maskedKeys) {
+            String currentValue = currentParsed.get(key);
+            String currentLineValue = currentLineValues.get(key);
+            if (currentValue == null || looksMasked(currentValue) || currentLineValue == null || looksMasked(currentLineValue)) {
+                errors.add("Sensitive key " + key + " still contains a masked placeholder. Enter the real value or remove the key.");
+            } else {
+                replacements.put(key, currentLineValue);
+            }
+        }
+        if (replacements.isEmpty()) {
+            return content;
+        }
+        warnings.add("已保留 " + replacements.size() + " 个敏感键的 Nacos 原值，避免把脱敏占位符写回配置中心。");
+        return replaceMaskedSensitiveLines(content, replacements);
+    }
+
+    private Map<String, String> rawLineValuesByKey(String content) {
+        Map<String, String> values = new LinkedHashMap<>();
+        Arrays.stream((content == null ? "" : content).split("\\n", -1))
+                .forEach(line -> {
+                    if (line == null || line.trim().isEmpty() || line.trim().startsWith("#") || line.trim().startsWith("!")) {
+                        return;
+                    }
+                    int separator = separatorIndex(line);
+                    if (separator < 0) {
+                        return;
+                    }
+                    String key = line.substring(0, separator).trim();
+                    values.put(key, separator + 1 >= line.length() ? "" : line.substring(separator + 1).trim());
+                });
+        return values;
+    }
+
+    private String replaceMaskedSensitiveLines(String content, Map<String, String> replacements) {
+        return Arrays.stream((content == null ? "" : content).split("\\n", -1))
+                .map(line -> replaceMaskedSensitiveLine(line, replacements))
+                .collect(Collectors.joining("\n"));
+    }
+
+    private String replaceMaskedSensitiveLine(String line, Map<String, String> replacements) {
+        if (line == null || line.trim().isEmpty() || line.trim().startsWith("#") || line.trim().startsWith("!")) {
+            return line;
+        }
+        int separator = separatorIndex(line);
+        if (separator < 0) {
+            return line;
+        }
+        String key = line.substring(0, separator).trim();
+        String replacement = replacements.get(key);
+        if (replacement == null) {
+            return line;
+        }
+        String value = separator + 1 >= line.length() ? "" : line.substring(separator + 1).trim();
+        if (!looksMasked(value)) {
+            return line;
+        }
+        return line.substring(0, separator + 1) + replacement;
     }
 
     private List<String> applyRuntime(Map<String, String> parsed) {
@@ -525,5 +709,52 @@ public class ConfigCenterService {
             return normalized.substring(0, maxLength);
         }
         return normalized;
+    }
+
+    protected static final class NacosConfigServiceKey {
+        private final String serverAddr;
+        private final String namespace;
+        private final String username;
+        private final String password;
+
+        private NacosConfigServiceKey(String serverAddr, String namespace, String username, String password) {
+            this.serverAddr = serverAddr == null ? "" : serverAddr.trim();
+            this.namespace = namespace == null ? "" : namespace.trim();
+            this.username = username == null ? "" : username.trim();
+            this.password = password == null ? "" : password.trim();
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (this == object) {
+                return true;
+            }
+            if (!(object instanceof NacosConfigServiceKey)) {
+                return false;
+            }
+            NacosConfigServiceKey other = (NacosConfigServiceKey) object;
+            return serverAddr.equals(other.serverAddr)
+                    && namespace.equals(other.namespace)
+                    && username.equals(other.username)
+                    && password.equals(other.password);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(serverAddr, namespace, username, password);
+        }
+    }
+
+    private static final class ConfigServiceCreationException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        private ConfigServiceCreationException(NacosException cause) {
+            super(cause);
+        }
+
+        @Override
+        public synchronized NacosException getCause() {
+            return (NacosException) super.getCause();
+        }
     }
 }

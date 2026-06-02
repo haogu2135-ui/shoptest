@@ -1683,3 +1683,40 @@
     gap: 4px;
   }
 }
+
+/* Final mobile/App browsing history touch-target guard */
+@media (max-width: 640px) {
+  .browsing-history__tools .ant-input-affix-wrapper,
+  .browsing-history__tools .ant-btn,
+  .browsing-history__assistant-actions button,
+  .browsing-history__recovery .ant-btn,
+  .browsing-history__nextAction .ant-btn,
+  .browsing-history__name,
+  .browsing-history__footer .ant-btn,
+  .browsing-history__emptyActions .ant-btn,
+  .browsing-history__mobileAction .ant-btn,
+  .browsing-history-clear-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .browsing-history__tools .ant-input-affix-wrapper .ant-input {
+    min-height: 36px;
+  }
+
+  .browsing-history__footer > div {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .browsing-history__footer > div .ant-btn-text {
+    width: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 360px) {
+  .browsing-history__footer > div {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+}

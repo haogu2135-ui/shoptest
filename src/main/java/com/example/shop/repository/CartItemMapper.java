@@ -9,6 +9,8 @@ import java.util.List;
 public interface CartItemMapper {
     
     List<CartItem> findByUserId(Long userId);
+
+    int countByUserId(Long userId);
     
     CartItem findById(Long id);
 

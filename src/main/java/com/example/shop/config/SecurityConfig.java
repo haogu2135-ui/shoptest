@@ -11,8 +11,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
@@ -21,6 +20,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+
+import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
@@ -53,27 +54,42 @@ public class SecurityConfig {
             .authenticationEntryPoint(securityApiErrorHandler)
             .accessDeniedHandler(securityApiErrorHandler)
             .and()
+            .headers(headers -> headers
+                    .contentTypeOptions(withDefaults())
+                    .httpStrictTransportSecurity(hsts -> hsts
+                            .includeSubDomains(true)
+                            .preload(true)
+                            .maxAgeInSeconds(31536000))
+                    .referrerPolicy(referrer -> referrer
+                            .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
             .authorizeRequests()
             .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .antMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
             .antMatchers(HttpMethod.GET, "/announcements/active").permitAll()
             .antMatchers(HttpMethod.GET, "/app/config").permitAll()
-            .antMatchers(HttpMethod.GET, "/payments/channels").permitAll()
-            .antMatchers(HttpMethod.GET, "/payments/order/**").permitAll()
-            .antMatchers("/auth/login", "/auth/register", "/auth/forgot-password", "/auth/email-code", "/auth/email-login", "/auth/refresh").permitAll()
+            .antMatchers(HttpMethod.GET, "/search").permitAll()
+            .antMatchers(HttpMethod.GET, "/payment", "/payment/").permitAll()
+            .antMatchers(HttpMethod.GET, "/payment/channels", "/payments/channels").permitAll()
+            .antMatchers(HttpMethod.GET, "/payment/guest/order/*", "/payment/guest/order/**", "/payments/guest/order/*", "/payments/guest/order/**").permitAll()
+            .antMatchers("/auth/login", "/auth/register", "/auth/forgot-password", "/auth/password-reset-code", "/auth/email-code", "/auth/email-login", "/auth/refresh").permitAll()
             .antMatchers("/ws/support").permitAll()
+            .antMatchers(HttpMethod.GET, "/support", "/support/").permitAll()
             .antMatchers(HttpMethod.GET, "/support/guest/session", "/support/guest/sessions/*/messages", "/support/guest/sessions/**/messages").permitAll()
             .antMatchers(HttpMethod.POST, "/support/guest/messages").permitAll()
             .antMatchers(HttpMethod.PUT, "/support/guest/sessions/*/read", "/support/guest/sessions/**/read").permitAll()
             .antMatchers(HttpMethod.GET, "/orders/track").permitAll()
-            .antMatchers(HttpMethod.GET, "/orders/*", "/orders/*/items").permitAll()
+            .antMatchers(HttpMethod.GET, "/orders/guest/*", "/orders/guest/**").permitAll()
             .antMatchers(HttpMethod.GET, "/logistics/track").permitAll()
             .antMatchers(HttpMethod.POST, "/orders/checkout/guest").permitAll()
-            .antMatchers(HttpMethod.PUT, "/orders/*/cancel", "/orders/**/cancel").permitAll()
-            .antMatchers(HttpMethod.PUT, "/orders/*/confirm", "/orders/**/confirm").permitAll()
-            .antMatchers(HttpMethod.PUT, "/orders/*/return", "/orders/**/return").permitAll()
-            .antMatchers(HttpMethod.PUT, "/orders/*/return-shipment", "/orders/**/return-shipment").permitAll()
+            .antMatchers(HttpMethod.PUT, "/orders/guest/*/cancel", "/orders/guest/**/cancel").permitAll()
+            .antMatchers(HttpMethod.PUT, "/orders/guest/*/confirm", "/orders/guest/**/confirm").permitAll()
+            .antMatchers(HttpMethod.PUT, "/orders/guest/*/return", "/orders/guest/**/return").permitAll()
+            .antMatchers(HttpMethod.PUT, "/orders/guest/*/return-shipment", "/orders/guest/**/return-shipment").permitAll()
             .antMatchers(HttpMethod.POST, "/payments").permitAll()
+            .antMatchers(HttpMethod.POST, "/payment").permitAll()
+            .antMatchers(HttpMethod.POST, "/payment/*/sync", "/payment/**/sync").permitAll()
+            .antMatchers(HttpMethod.POST, "/payment/callback").permitAll()
+            .antMatchers(HttpMethod.POST, "/payment/stripe/webhook").permitAll()
             .antMatchers(HttpMethod.POST, "/payments/*/sync", "/payments/**/sync").permitAll()
             .antMatchers(HttpMethod.POST, "/payments/callback").permitAll()
             .antMatchers(HttpMethod.POST, "/payments/stripe/webhook").permitAll()
@@ -96,6 +112,7 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.DELETE, "/brands", "/brands/**").hasRole("ADMIN")
             .antMatchers(HttpMethod.GET, "/brands", "/brands/**").permitAll()
             .antMatchers(HttpMethod.GET, "/coupons/public").permitAll()
+            .antMatchers(HttpMethod.GET, "/reviews/product/*/reviewable-orders", "/reviews/product/**/reviewable-orders").authenticated()
             .antMatchers(HttpMethod.GET, "/reviews/**").permitAll()
             .antMatchers(HttpMethod.POST, "/reviews/**").authenticated()
             .antMatchers(HttpMethod.GET, "/product-questions/**").permitAll()
@@ -116,16 +133,20 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(corsOriginProperties.getCorsAllowedOriginPatterns());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Accept-Language",
+                "X-Requested-With",
+                RequestCorrelationFilter.REQUEST_ID_HEADER,
+                RequestCorrelationFilter.CORRELATION_ID_HEADER,
+                "X-Bootstrap-Token",
+                "Idempotency-Key"));
         configuration.setExposedHeaders(Arrays.asList(
                 RequestCorrelationFilter.REQUEST_ID_HEADER,
                 RateLimitFilter.LIMIT_HEADER,

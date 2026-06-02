@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +21,15 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CartService {
+    private static final int DEFAULT_MAX_QUANTITY_PER_LINE = 99;
+    private static final int HARD_MAX_QUANTITY_PER_LINE = 999;
+    private static final int DEFAULT_MAX_LINES_PER_USER = 200;
+    private static final int HARD_MAX_LINES_PER_USER = 500;
+    private static final int DEFAULT_BATCH_DELETE_MAX_SIZE = 100;
+    private static final int HARD_BATCH_DELETE_MAX_SIZE = 500;
+    private static final int DEFAULT_SELECTED_SPECS_MAX_CHARS = 2000;
+    private static final int HARD_SELECTED_SPECS_MAX_CHARS = 8000;
+
     private final CartItemMapper cartItemMapper;
     private final ProductRepository productRepository;
     private final ProductVariantService productVariantService;
@@ -60,6 +68,7 @@ public class CartService {
             cartItemMapper.update(existingItem);
             return;
         }
+        enforceCartLineLimit(userId);
 
         CartItem cartItem = new CartItem();
         cartItem.setUserId(userId);
@@ -107,10 +116,13 @@ public class CartService {
         List<Long> normalizedIds = cartItemIds.stream()
                 .filter(id -> id != null && id > 0)
                 .distinct()
-                .limit(100)
                 .collect(Collectors.toList());
         if (normalizedIds.isEmpty()) {
             throw new IllegalArgumentException("No cart items selected");
+        }
+        int maxBatchSize = maxBatchDeleteSize();
+        if (normalizedIds.size() > maxBatchSize) {
+            throw new IllegalArgumentException("Too many cart items selected");
         }
         List<CartItem> items = cartItemMapper.findByIds(normalizedIds);
         if (items.size() != normalizedIds.size()) {
@@ -122,7 +134,7 @@ public class CartService {
         if (ownerIds.size() != 1) {
             throw new IllegalStateException("Cart items must belong to one user");
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, ownerIds.iterator().next());
+        SecurityUtils.assertSelf(authentication, ownerIds.iterator().next());
         cartItemMapper.deleteByIds(normalizedIds);
     }
 
@@ -202,17 +214,51 @@ public class CartService {
 
     private int normalizeQuantity(Integer quantity) {
         int normalized = quantity == null ? 0 : quantity;
-        if (normalized <= 0 || normalized > Math.max(1, runtimeConfig.getInt("cart.max-quantity-per-line", 99))) {
+        if (normalized <= 0 || normalized > maxQuantityPerLine()) {
             throw new IllegalArgumentException("Invalid quantity");
         }
         return normalized;
     }
 
     private String normalizeSelectedSpecs(String selectedSpecs) {
-        if (selectedSpecs != null && selectedSpecs.length() > Math.max(100, runtimeConfig.getInt("cart.selected-specs-max-chars", 2000))) {
+        if (selectedSpecs != null && selectedSpecs.length() > maxSelectedSpecsChars()) {
             throw new IllegalArgumentException("Selected options are too large");
         }
         return productVariantService.normalizeSpecs(selectedSpecs);
+    }
+
+    private void enforceCartLineLimit(Long userId) {
+        if (cartItemMapper.countByUserId(userId) >= maxLinesPerUser()) {
+            throw new IllegalStateException("Cart item limit reached");
+        }
+    }
+
+    private int maxQuantityPerLine() {
+        return clamp(runtimeConfig.getInt("cart.max-quantity-per-line", DEFAULT_MAX_QUANTITY_PER_LINE),
+                1,
+                HARD_MAX_QUANTITY_PER_LINE);
+    }
+
+    private int maxLinesPerUser() {
+        return clamp(runtimeConfig.getInt("cart.max-lines-per-user", DEFAULT_MAX_LINES_PER_USER),
+                1,
+                HARD_MAX_LINES_PER_USER);
+    }
+
+    private int maxBatchDeleteSize() {
+        return clamp(runtimeConfig.getInt("cart.batch-delete-max-size", DEFAULT_BATCH_DELETE_MAX_SIZE),
+                1,
+                HARD_BATCH_DELETE_MAX_SIZE);
+    }
+
+    private int maxSelectedSpecsChars() {
+        return clamp(runtimeConfig.getInt("cart.selected-specs-max-chars", DEFAULT_SELECTED_SPECS_MAX_CHARS),
+                100,
+                HARD_SELECTED_SPECS_MAX_CHARS);
+    }
+
+    private int clamp(int value, int minimum, int maximum) {
+        return Math.max(minimum, Math.min(value, maximum));
     }
 
 }

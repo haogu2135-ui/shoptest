@@ -15,15 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BackupAndApplyPetCatalog {
-    private static final String DEFAULT_URL = "jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
-    private static final String DEFAULT_USER = "root";
-    private static final String DEFAULT_PASSWORD = "84813378";
     private static final String APPLY_CONFIRMATION = "--apply-missing-pet-catalog";
 
     public static void main(String[] args) throws Exception {
         if (args.length == 0 || !APPLY_CONFIRMATION.equals(args[0])) {
             System.err.println("Refusing to run without confirmation: this script backs up categories/products, then inserts missing pet catalog seed rows.");
-            System.err.println("Run with " + APPLY_CONFIRMATION + " only when you intentionally want to add any missing demo pet catalog rows.");
+            System.err.println("Run with " + APPLY_CONFIRMATION + " only when you intentionally want to add any missing pet catalog rows.");
             System.exit(2);
         }
 
@@ -32,9 +29,9 @@ public class BackupAndApplyPetCatalog {
         String stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(LocalDateTime.now());
         Path backupFile = backupDir.resolve("product_category_backup_" + stamp + ".sql");
 
-        String url = envOrDefault("DB_URL", DEFAULT_URL);
-        String user = envOrDefault("DB_USERNAME", DEFAULT_USER);
-        String password = envOrDefault("DB_PASSWORD", DEFAULT_PASSWORD);
+        String url = requireEnv("DB_URL");
+        String user = requireEnv("DB_USERNAME");
+        String password = requireEnv("DB_PASSWORD");
 
         try (Connection connection = DriverManager.getConnection(url, user, password)) {
             backupTable(connection, "categories", backupFile, false);
@@ -44,9 +41,12 @@ public class BackupAndApplyPetCatalog {
         }
     }
 
-    private static String envOrDefault(String name, String defaultValue) {
+    private static String requireEnv(String name) {
         String value = System.getenv(name);
-        return value == null || value.isBlank() ? defaultValue : value;
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(name + " must be set explicitly before modifying catalog data");
+        }
+        return value.trim();
     }
 
     private static void backupTable(Connection connection, String table, Path backupFile, boolean append) throws Exception {

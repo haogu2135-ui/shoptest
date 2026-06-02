@@ -25,7 +25,6 @@ describe('saveForLater', () => {
   it('caps merged saved item quantities', () => {
     const baseItem = {
       id: 1,
-      userId: 0,
       productId: 3,
       quantity: 80,
       productName: 'Treats',
@@ -47,7 +46,6 @@ describe('saveForLater', () => {
 
     expect(() => saveCartItemForLater({
       id: 1,
-      userId: 0,
       productId: 3,
       quantity: 1,
       productName: 'Treats',
@@ -61,7 +59,6 @@ describe('saveForLater', () => {
   it('rejects malformed cart items before saving for later', () => {
     const result = saveCartItemForLater({
       id: 0,
-      userId: 0,
       productId: 0,
       quantity: 1,
       productName: 'Invalid',
@@ -76,7 +73,6 @@ describe('saveForLater', () => {
   it('normalizes ids and specs when removing saved items', () => {
     saveCartItemForLater({
       id: 1,
-      userId: 0,
       productId: 3,
       quantity: 1,
       productName: 'Treats',

@@ -20,9 +20,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RestoreProductCategoryBackup {
-    private static final String DEFAULT_URL = "jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
-    private static final String DEFAULT_USER = "root";
-    private static final String DEFAULT_PASSWORD = "84813378";
     private static final List<String> TABLES_TO_BACKUP = Arrays.asList(
         "categories",
         "products",
@@ -48,9 +45,9 @@ public class RestoreProductCategoryBackup {
         String stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(LocalDateTime.now());
         Path safetyBackup = Path.of("backups", "current_before_restore_" + stamp + ".sql");
 
-        String url = envOrDefault("DB_URL", DEFAULT_URL);
-        String user = envOrDefault("DB_USERNAME", DEFAULT_USER);
-        String password = envOrDefault("DB_PASSWORD", DEFAULT_PASSWORD);
+        String url = requireEnv("DB_URL");
+        String user = requireEnv("DB_USERNAME");
+        String password = requireEnv("DB_PASSWORD");
 
         try (Connection connection = DriverManager.getConnection(url, user, password)) {
             connection.setAutoCommit(false);
@@ -66,9 +63,12 @@ public class RestoreProductCategoryBackup {
         }
     }
 
-    private static String envOrDefault(String name, String defaultValue) {
+    private static String requireEnv(String name) {
         String value = System.getenv(name);
-        return value == null || value.isBlank() ? defaultValue : value;
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(name + " must be set explicitly before restoring catalog data");
+        }
+        return value.trim();
     }
 
     private static void backupCurrentState(Connection connection, Path backupFile) throws Exception {

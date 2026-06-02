@@ -539,3 +539,18 @@
     flex-basis: 100%;
   }
 }
+
+/* Final mobile/App brand-management operations touch-target guard */
+@media (max-width: 720px) {
+  .brand-management-page__toolbar .ant-input-affix-wrapper,
+  .brand-management-page__toolbar .ant-select-selector,
+  .brand-management-page__toolbar .ant-btn,
+  .brand-management-page .ant-table-cell .ant-btn,
+  .brand-management-page__editorModal .ant-modal-footer .ant-btn,
+  .brand-management-page__editorModal .ant-input,
+  .brand-management-page__editorModal textarea.ant-input,
+  .brand-management-page__editorModal .ant-input-number,
+  .brand-management-page__editorModal .ant-select-selector {
+    min-height: 44px;
+  }
+}

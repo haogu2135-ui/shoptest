@@ -6,6 +6,7 @@ import com.example.shop.entity.CartItem;
 import com.example.shop.entity.UserCoupon;
 import com.example.shop.repository.CouponRepository;
 import com.example.shop.repository.UserCouponMapper;
+import com.example.shop.repository.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -21,12 +22,12 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.when;
 class CouponServiceTest {
     private CouponRepository couponRepository;
     private UserCouponMapper userCouponMapper;
+    private UserMapper userMapper;
     private RuntimeConfigService runtimeConfig;
     private CouponService service;
 
@@ -43,10 +45,12 @@ class CouponServiceTest {
     void setUp() {
         couponRepository = mock(CouponRepository.class);
         userCouponMapper = mock(UserCouponMapper.class);
+        userMapper = mock(UserMapper.class);
         runtimeConfig = runtimeConfig();
         service = new CouponService(
                 couponRepository,
                 userCouponMapper,
+                userMapper,
                 mock(PetBirthdayCouponService.class),
                 runtimeConfig
         );
@@ -80,12 +84,15 @@ class CouponServiceTest {
         when(runtimeConfig.getInt("admin.coupons.total-quantity-max", 100_000)).thenReturn(200_000);
         when(runtimeConfig.getInt("admin.coupons.expiring-soon-days", 7)).thenReturn(14);
         when(runtimeConfig.getInt("admin.coupons.low-remaining-threshold", 10)).thenReturn(25);
-        when(couponRepository.count()).thenReturn(11L);
-        when(couponRepository.countByStatus("ACTIVE")).thenReturn(7L);
-        when(couponRepository.countByStatus("INACTIVE")).thenReturn(4L);
-        when(couponRepository.countByScopeAndStatus("PUBLIC", "ACTIVE")).thenReturn(5L);
-        when(couponRepository.countActiveExpiringBetween(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(2L);
-        when(couponRepository.countActiveLowRemaining(25)).thenReturn(3L);
+        when(couponRepository.countAdminCoupons(isNull(), isNull(), isNull(), isNull())).thenReturn(11L);
+        when(couponRepository.countAdminCoupons(isNull(), isNull(), eq("ACTIVE"), isNull())).thenReturn(7L);
+        when(couponRepository.countAdminCoupons(isNull(), isNull(), eq("INACTIVE"), isNull())).thenReturn(4L);
+        when(couponRepository.countAdminCoupons(isNull(), isNull(), eq("ACTIVE"), eq("PUBLIC"))).thenReturn(5L);
+        when(couponRepository.countAdminActiveExpiringBetween(
+                isNull(), isNull(), isNull(), isNull(), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(2L);
+        when(couponRepository.countAdminActiveLowRemaining(isNull(), isNull(), isNull(), isNull(), eq(25)))
+                .thenReturn(3L);
 
         CouponAdminSummaryResponse summary = service.adminSummary();
 
@@ -109,7 +116,8 @@ class CouponServiceTest {
 
         ArgumentCaptor<LocalDateTime> startCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
         ArgumentCaptor<LocalDateTime> endCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(couponRepository).countActiveExpiringBetween(startCaptor.capture(), endCaptor.capture());
+        verify(couponRepository).countAdminActiveExpiringBetween(
+                isNull(), isNull(), isNull(), isNull(), startCaptor.capture(), endCaptor.capture());
         assertEquals(14, java.time.Duration.between(startCaptor.getValue(), endCaptor.getValue()).toDays());
     }
 
@@ -178,6 +186,7 @@ class CouponServiceTest {
     void grantDeduplicatesPositiveUserIdsBeforeIssuing() {
         Coupon coupon = activePublicCoupon();
         when(couponRepository.findById(5L)).thenReturn(Optional.of(coupon));
+        when(userMapper.findExistingIds(List.of(2L, 3L))).thenReturn(List.of(2L, 3L));
         when(couponRepository.incrementClaimedQuantity(5L)).thenReturn(1);
 
         int granted = service.grant(5L, Arrays.asList(2L, 2L, null, -1L, 3L));
@@ -188,6 +197,20 @@ class CouponServiceTest {
         assertEquals(List.of(2L, 3L), userCouponCaptor.getAllValues().stream()
                 .map(UserCoupon::getUserId)
                 .collect(Collectors.toList()));
+    }
+
+    @Test
+    void grantRejectsUnknownRecipientsBeforeQuantityIncrement() {
+        Coupon coupon = activePublicCoupon();
+        when(couponRepository.findById(5L)).thenReturn(Optional.of(coupon));
+        when(userMapper.findExistingIds(List.of(2L, 99L))).thenReturn(List.of(2L));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.grant(5L, List.of(2L, 99L)));
+
+        assertEquals("Unknown coupon recipient user IDs: 99", error.getMessage());
+        verify(couponRepository, never()).incrementClaimedQuantity(5L);
+        verify(userCouponMapper, never()).insert(any(UserCoupon.class));
     }
 
     @Test

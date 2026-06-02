@@ -3,6 +3,8 @@ package com.example.shop.controller;
 import com.example.shop.entity.Order;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.service.AdminRoleService;
+import com.example.shop.service.BrandService;
+import com.example.shop.service.CategoryService;
 import com.example.shop.service.CouponService;
 import com.example.shop.service.LogisticsCarrierService;
 import com.example.shop.service.NotificationService;
@@ -10,6 +12,7 @@ import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.PetGalleryService;
+import com.example.shop.service.PaymentService;
 import com.example.shop.service.ProductQuestionService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.ProductUrlImportService;
@@ -36,6 +39,8 @@ class AdminControllerOrderPageTest {
             mock(UserService.class),
             orderService,
             mock(OrderItemService.class),
+            mock(BrandService.class),
+            mock(CategoryService.class),
             mock(ProductService.class),
             mock(ProductQuestionService.class),
             mock(ProductUrlImportService.class),
@@ -44,6 +49,7 @@ class AdminControllerOrderPageTest {
             mock(NotificationService.class),
             mock(PetBirthdayCouponService.class),
             mock(PetGalleryService.class),
+            mock(PaymentService.class),
             mock(LogisticsCarrierService.class),
             mock(SecurityAuditLogService.class),
             mock(AdminRoleService.class),

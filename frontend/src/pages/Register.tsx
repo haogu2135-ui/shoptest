@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
+import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -16,15 +17,26 @@ interface RegisterForm {
   confirmPassword: string;
   email: string;
   phone: string;
+  emailCode?: string;
 }
 
 const phonePattern = /^(?=(?:.*\d){8,20})(\+?[\d\s().-]{8,32})$/;
-const stripControlChars = (value: unknown) => String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ');
+const stripControlChars = (value: unknown) => Array.from(String(value || ''), (char) => {
+  const code = char.charCodeAt(0);
+  return code <= 31 || code === 127 ? ' ' : char;
+}).join('');
 const normalizeUsername = (value: unknown) => stripControlChars(value).replace(/\s+/g, '').trim();
 const normalizeEmail = (value: unknown) => stripControlChars(value).trim().toLowerCase();
 const normalizePhone = (value: unknown) => {
   const normalized = stripControlChars(value).trim();
   return normalized.startsWith('+') ? `+${normalized.slice(1).replace(/\D+/g, '')}` : normalized.replace(/\D+/g, '');
+};
+const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
+const maskEmail = (value: unknown) => {
+  const email = normalizeEmail(value);
+  const [name, domain] = email.split('@');
+  if (!name || !domain) return email;
+  return `${name.charAt(0)}***@${domain}`;
 };
 const uniqueLoginCandidates = (...values: unknown[]) => Array.from(new Set(
   values
@@ -35,8 +47,68 @@ const uniqueLoginCandidates = (...values: unknown[]) => Array.from(new Set(
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const [form] = Form.useForm<RegisterForm>();
   const [registering, setRegistering] = useState(false);
+  const [codeSending, setCodeSending] = useState(false);
+  const [sendCodeCountdown, setSendCodeCountdown] = useState(0);
+  const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
+  const [sentEmailHint, setSentEmailHint] = useState('');
+  const [emailCodeRequired, setEmailCodeRequired] = useState(false);
+  const codeInputRef = useRef<any>(null);
+  const emailCodeEnabled = appConfig.emailCodeEnabled === true;
+
+  useEffect(() => {
+    if (sendCodeCountdown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setSendCodeCountdown((value) => Math.max(value - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [sendCodeCountdown]);
+
+  const getRetryAfterSeconds = (error: any, fallback = 0) => {
+    const retryAfterSeconds = Number(error?.response?.data?.retryAfterSeconds);
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) return Math.ceil(retryAfterSeconds);
+    const resendIntervalSeconds = Number(error?.response?.data?.resendIntervalSeconds);
+    if (Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0) return Math.ceil(resendIntervalSeconds);
+    return fallback;
+  };
+
+  const sendRegisterCode = async () => {
+    if (!emailCodeEnabled) {
+      message.warning(t('pages.auth.emailCodeUnavailable'));
+      return;
+    }
+    try {
+      const { email } = await form.validateFields(['email']);
+      const normalizedEmail = normalizeEmail(email);
+      form.setFieldValue('email', normalizedEmail);
+      setCodeSending(true);
+      const response = await userApi.sendEmailLoginCode(normalizedEmail);
+      const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
+      const ttlMinutes = Number(response.data?.codeTtlMinutes);
+      setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
+      setCodeTtlMinutes(Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 0);
+      setSentEmailHint(maskEmail(normalizedEmail));
+      setEmailCodeRequired(true);
+      form.setFieldValue('emailCode', '');
+      form.setFields([{ name: 'emailCode', errors: [] }]);
+      window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
+      message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
+    } catch (error: any) {
+      if (!error?.errorFields) {
+        const errorCode = error?.response?.data?.code;
+        if (errorCode === 'RATE_LIMITED') {
+          setSendCodeCountdown(getRetryAfterSeconds(error, 60));
+        }
+        message.error(errorCode === 'RATE_LIMITED'
+          ? t('pages.auth.emailCodeRateLimited')
+          : t('pages.auth.emailCodeSendFailed'));
+      }
+    } finally {
+      setCodeSending(false);
+    }
+  };
 
   const onFinish = async (values: RegisterForm) => {
     if (registering) return;
@@ -45,26 +117,49 @@ const Register: React.FC = () => {
       const username = normalizeUsername(values.username);
       const email = normalizeEmail(values.email);
       const phone = normalizePhone(values.phone);
+      const emailCode = normalizeEmailCode(values.emailCode);
+      if (emailCodeRequired && emailCode.length !== 6) {
+        form.setFields([{ name: 'emailCode', errors: [t('pages.auth.emailCodeLength')] }]);
+        setRegistering(false);
+        return;
+      }
       form.setFieldsValue({ username, email, phone });
       const response = await userApi.register({
         username,
         password: values.password,
         email,
         phone,
+        emailCode,
         role: 'USER'
       });
       const responseUsername = normalizeUsername(response.data?.username);
-      const responseEmail = normalizeEmail(response.data?.email);
-      const responsePhone = normalizePhone(response.data?.phone);
-      const loginCandidates = uniqueLoginCandidates(responseUsername, username, responseEmail, email, responsePhone, phone);
+      const loginCandidates = uniqueLoginCandidates(responseUsername, username, email, phone);
       const registeredLogin = loginCandidates[0] || username || email || phone;
       setSessionStorageItem('loginPrefill', registeredLogin);
       setSessionStorageItem('loginCandidates', JSON.stringify(loginCandidates));
       message.success(t('pages.auth.registerSuccess'));
       navigate('/login');
     } catch (error: any) {
+      const responseData = error.response?.data || {};
+      const serverCode = String(responseData.code || '').toUpperCase();
+      const needsEmailCode = responseData.emailCodeRequired === true || responseData.emailCodeRequired === 'true';
       const rawMessage = String(error.response?.data?.error || '').trim();
       const normalizedMessage = rawMessage.toLowerCase();
+      if (needsEmailCode || serverCode === 'INVALID_CODE' || serverCode === 'TOO_MANY_ATTEMPTS') {
+        setEmailCodeRequired(true);
+        const msg = serverCode === 'TOO_MANY_ATTEMPTS'
+          ? t('pages.auth.emailCodeTooManyAttempts')
+          : serverCode === 'INVALID_CODE'
+          ? t('pages.auth.emailCodeInvalid')
+          : t('pages.auth.emailCodeRequired');
+        if (serverCode === 'TOO_MANY_ATTEMPTS') {
+          setSendCodeCountdown(getRetryAfterSeconds(error, 60));
+        }
+        form.setFields([{ name: 'emailCode', errors: [msg] }]);
+        message.error(msg);
+        window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
+        return;
+      }
       const fieldError = normalizedMessage.includes('phone number already registered')
         ? { name: 'phone' as const, message: t('pages.auth.phoneAlreadyRegistered') }
         : normalizedMessage.includes('email already registered')
@@ -213,6 +308,55 @@ const Register: React.FC = () => {
               onBlur={(event) => form.setFieldValue('email', normalizeEmail(event.target.value))}
             />
           </Form.Item>
+
+          {emailCodeRequired && (
+            <>
+              {emailCodeRequired && sentEmailHint && (
+                <Text type="secondary" className="register-page__codeHint">
+                  {t('pages.auth.emailCodeSentTo', { email: sentEmailHint })}
+                  {codeTtlMinutes > 0 ? ` · ${t('pages.auth.emailCodeExpiresIn', { minutes: codeTtlMinutes })}` : ''}
+                </Text>
+              )}
+              {emailCodeRequired && !emailCodeEnabled && !appConfigLoading && (
+                <Text type="warning" className="register-page__codeHint">
+                  {t('pages.auth.emailCodeUnavailable')}
+                </Text>
+              )}
+              <Form.Item
+                name="emailCode"
+                rules={emailCodeRequired ? [
+                  { required: true, message: t('pages.auth.emailCodeRequired') },
+                  { len: 6, message: t('pages.auth.emailCodeLength') },
+                ] : []}
+              >
+                <Input
+                  ref={codeInputRef}
+                  prefix={<SafetyCertificateOutlined />}
+                  placeholder={t('pages.auth.emailCodeRequired')}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  disabled={!emailCodeRequired}
+                  addonAfter={
+                    <Button
+                      type="link"
+                      size="small"
+                      loading={codeSending}
+                      disabled={registering || codeSending || sendCodeCountdown > 0 || !emailCodeEnabled}
+                      onClick={sendRegisterCode}
+                    >
+                      {codeSending
+                        ? t('pages.auth.emailCodeSending')
+                        : sendCodeCountdown > 0
+                        ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
+                        : t('pages.auth.sendCode')}
+                    </Button>
+                  }
+                  onChange={(event) => form.setFieldValue('emailCode', normalizeEmailCode(event.target.value))}
+                />
+              </Form.Item>
+            </>
+          )}
 
           <Form.Item
             name="phone"

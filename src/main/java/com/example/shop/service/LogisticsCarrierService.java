@@ -2,14 +2,20 @@ package com.example.shop.service;
 
 import com.example.shop.entity.LogisticsCarrier;
 import com.example.shop.repository.LogisticsCarrierRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class LogisticsCarrierService {
+    private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
+
     private final LogisticsCarrierRepository logisticsCarrierRepository;
 
     public LogisticsCarrierService(LogisticsCarrierRepository logisticsCarrierRepository) {
@@ -21,6 +27,14 @@ public class LogisticsCarrierService {
             return logisticsCarrierRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE");
         }
         return logisticsCarrierRepository.findAllByOrderBySortOrderAscNameAsc();
+    }
+
+    public List<LogisticsCarrier> findAll(boolean activeOnly, int maxRows) {
+        Pageable page = PageRequest.of(0, Math.max(1, maxRows));
+        if (activeOnly) {
+            return logisticsCarrierRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE", page);
+        }
+        return logisticsCarrierRepository.findAllByOrderBySortOrderAscNameAsc(page);
     }
 
     public Optional<LogisticsCarrier> findById(Long id) {
@@ -49,9 +63,7 @@ public class LogisticsCarrierService {
                 });
         carrier.setName(name);
         carrier.setTrackingCode(trackingCode);
-        if (carrier.getStatus() == null || carrier.getStatus().isEmpty()) {
-            carrier.setStatus("ACTIVE");
-        }
+        carrier.setStatus(normalizeStatus(carrier.getStatus()));
         if (carrier.getSortOrder() == null) {
             carrier.setSortOrder(0);
         }
@@ -61,5 +73,16 @@ public class LogisticsCarrierService {
     @Transactional
     public void deleteById(Long id) {
         logisticsCarrierRepository.deleteById(id);
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "ACTIVE";
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_STATUSES.contains(normalized)) {
+            throw new IllegalArgumentException("Carrier status must be ACTIVE or INACTIVE");
+        }
+        return normalized;
     }
 }

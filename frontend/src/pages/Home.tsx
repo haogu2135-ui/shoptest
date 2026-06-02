@@ -25,7 +25,7 @@ import {
 } from '@ant-design/icons';
 import { cartApi, categoryApi, petGalleryApi, productApi, wishlistApi } from '../api';
 import { useLanguage } from '../i18n';
-import type { Category, PetGalleryPhoto, PetGalleryQuota, Product } from '../types';
+import type { CategoryPublic, PetGalleryPhotoPublic, PetGalleryQuota, ProductPublic as Product } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/categoryTree';
@@ -37,17 +37,22 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext } from '../utils/guestSupportContext';
+import { addAppScrollListener, getAppScrollMetrics } from '../utils/nativeScroll';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
+import type { ProductCatalogSnapshotProduct } from '../utils/productCatalogSnapshot';
 import SocialProofToast from '../components/SocialProofToast';
 import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text } = Typography;
 const DISCOVERY_BATCH_SIZE = 12;
+const HOME_FEATURED_LIMIT = 12;
+const HOME_PRODUCT_PAGE_SIZE = 48;
 const PET_GALLERY_MAX_FILE_SIZE = 5 * 1024 * 1024;
 const PET_GALLERY_LOCAL_LIKES_KEY = 'shop-pet-gallery-local-likes';
 const productTileImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 33vw, 17vw';
@@ -64,6 +69,16 @@ const fallbackImages = [
 ];
 const petGalleryImageFallback = fallbackImages[0];
 
+const mergeProductsById = (...groups: Product[][]) => {
+  const productsById = new Map<number, Product>();
+  groups.flat().forEach((product) => {
+    if (Number.isSafeInteger(product.id) && !productsById.has(product.id)) {
+      productsById.set(product.id, product);
+    }
+  });
+  return Array.from(productsById.values());
+};
+
 const ugcImages = [
   { key: 'happy_pet_1', image: 'https://images.unsplash.com/photo-1537151672256-6caf2e9f8c95?auto=format&fit=crop&w=700&q=80', label: '@happy_pet_1', likeCount: 42 },
   { key: 'cozy_paws', image: 'https://images.unsplash.com/photo-1568572933382-74d440642117?auto=format&fit=crop&w=700&q=80', label: '@cozy_paws', likeCount: 36 },
@@ -73,8 +88,8 @@ const ugcImages = [
   { key: 'softnap_cat', image: 'https://images.unsplash.com/photo-1596854407944-bf87f6fdd49e?auto=format&fit=crop&w=700&q=80', label: '@softnap_cat', likeCount: 19 },
 ];
 
-const buildFallbackCategories = (products: Product[]): Category[] => {
-  const categories = new Map<number, Category>();
+const buildFallbackCategories = (products: ProductCatalogSnapshotProduct[]): CategoryPublic[] => {
+  const categories = new Map<number, CategoryPublic>();
   products.forEach((product) => {
     const id = Number(product.categoryId);
     if (!Number.isSafeInteger(id) || id <= 0 || categories.has(id)) return;
@@ -94,7 +109,7 @@ type PetGalleryItem = {
   likeCount: number;
   likedByMe: boolean;
   canDelete: boolean;
-  photo?: PetGalleryPhoto;
+  photo?: PetGalleryPhotoPublic;
 };
 
 const readLocalPetGalleryLikes = () => {
@@ -149,13 +164,13 @@ const Home: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [personalizedProducts, setPersonalizedProducts] = useState<Product[]>([]);
   const [recentlyViewedDetails, setRecentlyViewedDetails] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryPublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [usingCatalogSnapshot, setUsingCatalogSnapshot] = useState(false);
   const [visibleCount, setVisibleCount] = useState(DISCOVERY_BATCH_SIZE);
   const [viewPreferences, setViewPreferences] = useState(() => loadProductViewPreferences());
-  const [petGalleryPhotos, setPetGalleryPhotos] = useState<PetGalleryPhoto[]>([]);
+  const [petGalleryPhotos, setPetGalleryPhotos] = useState<PetGalleryPhotoPublic[]>([]);
   const [petGalleryQuota, setPetGalleryQuota] = useState<PetGalleryQuota | null>(null);
   const [uploadingPetPhoto, setUploadingPetPhoto] = useState(false);
   const [localPetGalleryLikes, setLocalPetGalleryLikes] = useState<string[]>(() => readLocalPetGalleryLikes());
@@ -311,8 +326,8 @@ const Home: React.FC = () => {
     if (!file) return;
 
     const isSupportedImage =
-      ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) ||
-      /\.(jpe?g|png|webp|gif)$/i.test(file.name);
+      ['image/jpeg', 'image/png', 'image/gif'].includes(file.type) ||
+      /\.(jpe?g|png|gif)$/i.test(file.name);
     if (!isSupportedImage) {
       message.error(t('home.petUgcInvalidType'));
       return;
@@ -360,7 +375,7 @@ const Home: React.FC = () => {
     }
   };
 
-  const handleDeletePetPhoto = async (photo: PetGalleryPhoto) => {
+  const handleDeletePetPhoto = async (photo: PetGalleryPhotoPublic) => {
     try {
       await petGalleryApi.delete(photo.id);
       setPetGalleryPhotos((current) => current.filter((item) => item.id !== photo.id));
@@ -446,13 +461,15 @@ const Home: React.FC = () => {
       setLoadError(false);
       setUsingCatalogSnapshot(false);
       try {
-        const [productsRes, categoriesRes] = await Promise.all([
-          productApi.getAll(),
-          categoryApi.getAll(),
+        const [productsRes, featuredRes, categoriesRes] = await Promise.all([
+          productApi.getAll(undefined, undefined, undefined, { page: 0, size: HOME_PRODUCT_PAGE_SIZE }),
+          productApi.getFeatured(HOME_FEATURED_LIMIT),
+          categoryApi.getTopLevel(),
         ]);
-        saveProductCatalogSnapshot(productsRes.data);
-        const localizedProducts = productsRes.data.map((product) => localizeProduct(product, language));
-        setFeatured(localizedProducts.filter((product) => product.isFeatured).slice(0, 12));
+        const boundedCatalog = mergeProductsById(featuredRes.data, productsRes.data);
+        saveProductCatalogSnapshot(boundedCatalog);
+        const localizedProducts = boundedCatalog.map((product) => localizeProduct(product, language));
+        setFeatured(featuredRes.data.map((product) => localizeProduct(product, language)).slice(0, HOME_FEATURED_LIMIT));
         setProducts(localizedProducts);
         setCategories(categoriesRes.data);
         setVisibleCount(DISCOVERY_BATCH_SIZE);
@@ -460,7 +477,7 @@ const Home: React.FC = () => {
         const fallbackSourceProducts = loadProductCatalogSnapshot()?.products || loadFallbackProductCatalog();
         const fallbackProducts = fallbackSourceProducts.map((product) => localizeProduct(product, language));
         if (fallbackProducts.length > 0) {
-          setFeatured(fallbackProducts.filter((product) => product.isFeatured).slice(0, 12));
+          setFeatured(fallbackProducts.filter((product) => product.isFeatured).slice(0, HOME_FEATURED_LIMIT));
           setProducts(fallbackProducts);
           setCategories(buildFallbackCategories(fallbackSourceProducts));
           setVisibleCount(DISCOVERY_BATCH_SIZE);
@@ -602,7 +619,7 @@ const Home: React.FC = () => {
           (product.tag ? (viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
           (getDiscountPercent(product) > 0 ? 1 : 0),
       }))
-      .filter((entry) => entry.score > 0 && !recentSet.has(entry.product.id) && (entry.product.status || 'ACTIVE') === 'ACTIVE')
+      .filter((entry) => entry.score > 0 && !recentSet.has(entry.product.id))
       .sort((left, right) => right.score - left.score || left.index - right.index)
       .map((entry) => entry.product)
       .slice(0, 8);
@@ -634,7 +651,8 @@ const Home: React.FC = () => {
     let frameId: number | null = null;
     const updateVisibleCount = () => {
       frameId = null;
-      const distanceToBottom = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+      const { scrollHeight, viewportHeight, scrollTop } = getAppScrollMetrics();
+      const distanceToBottom = scrollHeight - viewportHeight - scrollTop;
       if (distanceToBottom < 420) {
         setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length));
       }
@@ -643,10 +661,10 @@ const Home: React.FC = () => {
       if (frameId !== null) return;
       frameId = window.requestAnimationFrame(updateVisibleCount);
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    const removeScrollListener = addAppScrollListener(handleScroll, { passive: true });
     updateVisibleCount();
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      removeScrollListener();
       if (frameId !== null) {
         window.cancelAnimationFrame(frameId);
       }
@@ -818,7 +836,7 @@ const Home: React.FC = () => {
     const savingsAmount = Math.max(0, Number(product.originalPrice || 0) - getPrice(product));
     const quickAddReady = !isSoldOut && !needsOptionSelection(product);
     const lowStockCount = product.stock !== undefined && product.stock > 0 && product.stock <= 5 ? product.stock : null;
-    const ratingValue = product.averageRating ?? product.rating;
+    const ratingValue = product.averageRating;
     const hasRatingSignal = typeof ratingValue === 'number' && ratingValue > 0;
     const positiveRate = Math.round(product.positiveRate || 0);
     const hasPositiveSignal = positiveRate > 0 && (product.reviewCount || 0) > 0;
@@ -1288,7 +1306,7 @@ const Home: React.FC = () => {
           </section>
         ) : null}
 
-        <section className="shopee-section">
+        <section className="shopee-section shopee-categories-section">
           <div className="shopee-section__header">
             <h2>{t('home.categories')}</h2>
             <button onClick={() => navigate('/products')}>{t('home.viewAll')}</button>
@@ -1325,19 +1343,23 @@ const Home: React.FC = () => {
         </section>
 
         {recentlyViewedProducts.length ? (
-          <section className="shopee-section shopee-promo-products">
+          <section className="shopee-section shopee-promo-products shopee-recently-viewed-products">
             <div className="shopee-section__header shopee-section__header--with-actions">
               <h2>{t('home.recentlyViewed')}</h2>
               <div className="shopee-section__actions">
                 <button onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
-                <button
-                  onClick={() => {
+                <Popconfirm
+                  popupClassName="shop-mobile-popup-layer shopee-home-popconfirm"
+                  title={t('home.clearRecentlyViewedConfirm')}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
+                  onConfirm={() => {
                     clearProductViewHistory();
                     setViewPreferences(loadProductViewPreferences());
                   }}
                 >
-                  {t('home.clearRecentlyViewed')}
-                </button>
+                  <button type="button">{t('home.clearRecentlyViewed')}</button>
+                </Popconfirm>
               </div>
             </div>
             <Row gutter={[12, 12]}>
@@ -1400,7 +1422,7 @@ const Home: React.FC = () => {
               <input
                 ref={petUploadInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/jpeg,image/png,image/gif"
                 onChange={handlePetPhotoSelected}
                 className="pet-ugc__file"
               />
@@ -1449,10 +1471,11 @@ const Home: React.FC = () => {
                   </button>
                   {item.canDelete && item.photo ? (
                     <Popconfirm
+                      popupClassName="shop-mobile-popup-layer shopee-home-popconfirm"
                       title={t('home.petUgcDeleteConfirm')}
                       okText={t('common.confirm')}
                       cancelText={t('common.cancel')}
-                      onConfirm={() => handleDeletePetPhoto(item.photo as PetGalleryPhoto)}
+                      onConfirm={() => handleDeletePetPhoto(item.photo as PetGalleryPhotoPublic)}
                     >
                       <button type="button" className="pet-ugc__delete" aria-label={t('home.petUgcDelete')}>
                         <DeleteOutlined />

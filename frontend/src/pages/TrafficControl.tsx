@@ -1,11 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Popconfirm, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ClearOutlined, DashboardOutlined, ReloadOutlined, ThunderboltOutlined, UndoOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { AdminTrafficControlStatus } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import {
+  TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION,
+  TRAFFIC_CONTROL_RATE_LIMIT_CLEAR_PERMISSION,
+  getEffectiveRole,
+  hasAdminPermission,
+} from '../utils/roles';
 import './TrafficControl.css';
 
 const { Text, Title } = Typography;
@@ -24,6 +30,10 @@ const TrafficControl: React.FC = () => {
   const [status, setStatus] = useState<AdminTrafficControlStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const canClearRateLimit = hasAdminPermission(adminPermissions, currentRole, TRAFFIC_CONTROL_RATE_LIMIT_CLEAR_PERMISSION);
+  const canResetCircuit = hasAdminPermission(adminPermissions, currentRole, TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -41,7 +51,29 @@ const TrafficControl: React.FC = () => {
     loadStatus();
   }, [loadStatus]);
 
-  const resetCircuit = async (name?: string) => {
+  useEffect(() => {
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((response) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  const resetCircuit = useCallback(async (name?: string) => {
+    if (!canResetCircuit) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setActing(name || 'all');
     try {
       const response = await adminApi.resetCircuitBreaker(name);
@@ -52,9 +84,13 @@ const TrafficControl: React.FC = () => {
     } finally {
       setActing(null);
     }
-  };
+  }, [canResetCircuit, language, t]);
 
   const clearRateLimit = async () => {
+    if (!canClearRateLimit) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setActing('rate-limit');
     try {
       const response = await adminApi.clearRateLimitCounters();
@@ -66,61 +102,80 @@ const TrafficControl: React.FC = () => {
       setActing(null);
     }
   };
+  const circuitStateLabels = useMemo(() => ({
+    OPEN: t('pages.trafficControl.circuitStates.OPEN'),
+    HALF_OPEN: t('pages.trafficControl.circuitStates.HALF_OPEN'),
+    CLOSED: t('pages.trafficControl.circuitStates.CLOSED'),
+  }), [t]);
 
-  const columns: ColumnsType<CircuitRow> = useMemo(() => [
-    {
-      title: t('pages.trafficControl.name'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (value: string) => <Text strong>{value}</Text>,
-    },
-    {
-      title: t('common.status'),
-      dataIndex: 'state',
-      key: 'state',
-      width: 120,
-      render: (value: string) => <Tag color={stateColor(value)}>{value}</Tag>,
-    },
-    {
-      title: t('pages.trafficControl.failures'),
-      dataIndex: 'failureCount',
-      key: 'failureCount',
-      width: 90,
-    },
-    {
-      title: t('pages.trafficControl.halfOpenSuccess'),
-      dataIndex: 'halfOpenSuccessCount',
-      key: 'halfOpenSuccessCount',
-      width: 110,
-    },
-    {
-      title: t('pages.trafficControl.openedUntil'),
-      dataIndex: 'openedUntil',
-      key: 'openedUntil',
-      render: (value?: string) => value ? new Date(value).toLocaleString(dateLocale) : '-',
-    },
-    {
-      title: t('pages.trafficControl.lastFailure'),
-      dataIndex: 'lastFailureMessage',
-      key: 'lastFailureMessage',
-      render: (value?: string) => value || '-',
-    },
-    {
-      title: t('common.actions'),
-      key: 'action',
-      width: 110,
-      render: (_, row) => (
-        <Button
-          size="small"
-          icon={<UndoOutlined />}
-          loading={acting === row.name}
-          onClick={() => resetCircuit(row.name)}
-        >
-          {t('pages.trafficControl.reset')}
-        </Button>
-      ),
-    },
-  ], [acting, dateLocale, t]);
+  const columns: ColumnsType<CircuitRow> = useMemo(() => {
+    const baseColumns: ColumnsType<CircuitRow> = [
+      {
+        title: t('pages.trafficControl.name'),
+        dataIndex: 'name',
+        key: 'name',
+        render: (value: string) => <Text strong>{value}</Text>,
+      },
+      {
+        title: t('common.status'),
+        dataIndex: 'state',
+        key: 'state',
+        width: 120,
+        render: (value: string) => <Tag color={stateColor(value)}>{circuitStateLabels[value as keyof typeof circuitStateLabels] || value}</Tag>,
+      },
+      {
+        title: t('pages.trafficControl.failures'),
+        dataIndex: 'failureCount',
+        key: 'failureCount',
+        width: 90,
+      },
+      {
+        title: t('pages.trafficControl.halfOpenSuccess'),
+        dataIndex: 'halfOpenSuccessCount',
+        key: 'halfOpenSuccessCount',
+        width: 110,
+      },
+      {
+        title: t('pages.trafficControl.openedUntil'),
+        dataIndex: 'openedUntil',
+        key: 'openedUntil',
+        render: (value?: string) => value ? new Date(value).toLocaleString(dateLocale) : '-',
+      },
+      {
+        title: t('pages.trafficControl.lastFailure'),
+        dataIndex: 'lastFailureMessage',
+        key: 'lastFailureMessage',
+        render: (value?: string) => value || '-',
+      },
+    ];
+
+    if (canResetCircuit) {
+      baseColumns.push({
+        title: t('common.actions'),
+        key: 'action',
+        width: 110,
+        render: (_, row) => (
+          <Popconfirm
+            title={`${t('pages.trafficControl.reset')} ${row.name}?`}
+            description={t('pages.trafficControl.resetCircuitConfirmDescription')}
+            okText={t('common.confirm')}
+            cancelText={t('common.cancel')}
+            onConfirm={() => resetCircuit(row.name)}
+          >
+            <Button
+              size="small"
+              icon={<UndoOutlined />}
+              loading={acting === row.name}
+            >
+              {t('pages.trafficControl.reset')}
+            </Button>
+          </Popconfirm>
+        ),
+      });
+    }
+
+    return baseColumns;
+  }, [acting, canResetCircuit, circuitStateLabels, dateLocale, resetCircuit, t]);
 
   const rateLimit = status?.rateLimit;
   const circuitConfig = status?.circuitBreakerConfig;
@@ -129,7 +184,7 @@ const TrafficControl: React.FC = () => {
     <div className="traffic-control">
       <div className="traffic-control__hero">
         <div>
-          <Text className="traffic-control__eyebrow">Traffic Control</Text>
+          <Text className="traffic-control__eyebrow">{t('pages.trafficControl.eyebrow')}</Text>
           <Title level={2}>{t('pages.trafficControl.title')}</Title>
           <Text type="secondary">{t('pages.trafficControl.description')}</Text>
         </div>
@@ -137,19 +192,39 @@ const TrafficControl: React.FC = () => {
           <Button icon={<ReloadOutlined />} loading={loading} onClick={loadStatus}>
             {t('common.refresh')}
           </Button>
-          <Button icon={<ClearOutlined />} loading={acting === 'rate-limit'} onClick={clearRateLimit}>
-            {t('pages.trafficControl.clearRateLimit')}
-          </Button>
-          <Button type="primary" icon={<UndoOutlined />} loading={acting === 'all'} onClick={() => resetCircuit()}>
-            {t('pages.trafficControl.resetAllCircuits')}
-          </Button>
+          {canClearRateLimit ? (
+            <Popconfirm
+              title={`${t('pages.trafficControl.clearRateLimit')}?`}
+              description={t('pages.trafficControl.clearRateLimitConfirmDescription')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              onConfirm={clearRateLimit}
+            >
+              <Button icon={<ClearOutlined />} loading={acting === 'rate-limit'}>
+                {t('pages.trafficControl.clearRateLimit')}
+              </Button>
+            </Popconfirm>
+          ) : null}
+          {canResetCircuit ? (
+            <Popconfirm
+              title={`${t('pages.trafficControl.resetAllCircuits')}?`}
+              description={t('pages.trafficControl.resetAllCircuitsConfirmDescription')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              onConfirm={() => resetCircuit()}
+            >
+              <Button type="primary" icon={<UndoOutlined />} loading={acting === 'all'}>
+                {t('pages.trafficControl.resetAllCircuits')}
+              </Button>
+            </Popconfirm>
+          ) : null}
         </Space>
       </div>
 
       <Spin spinning={loading && !status}>
         <div className="traffic-control__stats">
           <Card>
-            <Statistic title={t('pages.trafficControl.rateLimitStatus')} value={rateLimit?.enabled ? 'ON' : 'OFF'} prefix={<DashboardOutlined />} />
+            <Statistic title={t('pages.trafficControl.rateLimitStatus')} value={rateLimit?.enabled ? t('pages.trafficControl.enabled') : t('pages.trafficControl.disabled')} prefix={<DashboardOutlined />} />
           </Card>
           <Card>
             <Statistic title={t('pages.trafficControl.accepted')} value={rateLimit?.acceptedRequests || 0} />
@@ -174,7 +249,7 @@ const TrafficControl: React.FC = () => {
 
           <Card title={t('pages.trafficControl.circuitConfig')} className="traffic-control__card">
             <div className="traffic-control__configList">
-              <span>{t('pages.trafficControl.circuitStatus')} <Tag color={circuitConfig?.enabled ? 'green' : 'default'}>{circuitConfig?.enabled ? 'ON' : 'OFF'}</Tag></span>
+              <span>{t('pages.trafficControl.circuitStatus')} <Tag color={circuitConfig?.enabled ? 'green' : 'default'}>{circuitConfig?.enabled ? t('pages.trafficControl.enabled') : t('pages.trafficControl.disabled')}</Tag></span>
               <span>{t('pages.trafficControl.failureThreshold')} <strong>{circuitConfig?.failureThreshold ?? '-'}</strong></span>
               <span>{t('pages.trafficControl.openSeconds')} <strong>{circuitConfig?.openSeconds ?? '-'}</strong></span>
               <span>{t('pages.trafficControl.halfOpenSuccessThreshold')} <strong>{circuitConfig?.halfOpenSuccessThreshold ?? '-'}</strong></span>

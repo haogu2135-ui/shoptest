@@ -18,11 +18,12 @@ import {
   Typography,
 } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
-import { brandApi } from '../api';
+import { adminApi } from '../api';
 import type { Brand } from '../types';
 import { useLanguage } from '../i18n';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
+import { BRANDS_DELETE_PERMISSION, BRANDS_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './BrandManagement.css';
 
 const { Title, Text } = Typography;
@@ -44,8 +45,20 @@ const BrandManagement: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
+  const canWriteBrands = hasAdminPermission(adminPermissions, currentRole, BRANDS_WRITE_PERMISSION);
+  const canDeleteBrands = hasAdminPermission(adminPermissions, currentRole, BRANDS_DELETE_PERMISSION);
+  const formatBrandStatus = useCallback((status?: string) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = (rawStatus || 'ACTIVE').toUpperCase();
+    if (normalizedStatus === 'ACTIVE' || normalizedStatus === 'INACTIVE') {
+      return t(`status.${normalizedStatus}`);
+    }
+    return rawStatus || '-';
+  }, [t]);
 
   const brandHealth = useMemo(() => {
     const active = brands.filter((brand) => (brand.status || 'ACTIVE') === 'ACTIVE').length;
@@ -91,7 +104,7 @@ const BrandManagement: React.FC = () => {
   const fetchBrands = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await brandApi.getAll();
+      const response = await adminApi.getBrands();
       setBrands(response.data);
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.brandAdmin.fetchFailed'), language));
@@ -104,7 +117,23 @@ const BrandManagement: React.FC = () => {
     fetchBrands();
   }, [fetchBrands]);
 
+  useEffect(() => {
+    adminApi.getMyPermissions()
+      .then((response) => {
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+  }, []);
+
   const openModal = (brand?: Brand) => {
+    if (!canWriteBrands) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setEditingBrand(brand || null);
     setLogoPreviewUrl(brand?.logoUrl || '');
     form.resetFields();
@@ -120,6 +149,10 @@ const BrandManagement: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!canWriteBrands) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setSaving(true);
@@ -132,10 +165,10 @@ const BrandManagement: React.FC = () => {
         sortOrder: values.sortOrder ?? 0,
       };
       if (editingBrand) {
-        await brandApi.update(editingBrand.id, payload);
+        await adminApi.updateBrand(editingBrand.id, payload);
         message.success(t('pages.brandAdmin.updated'));
       } else {
-        await brandApi.create(payload);
+        await adminApi.createBrand(payload);
         message.success(t('pages.brandAdmin.created'));
       }
       setModalVisible(false);
@@ -160,8 +193,12 @@ const BrandManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!canDeleteBrands) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
-      await brandApi.delete(id);
+      await adminApi.deleteBrand(id);
       message.success(t('pages.brandAdmin.deleted'));
       fetchBrands();
     } catch (error: any) {
@@ -175,9 +212,9 @@ const BrandManagement: React.FC = () => {
       dataIndex: 'logoUrl',
       key: 'logoUrl',
       width: 88,
-      render: (url?: string) =>
+      render: (url?: string, record?: Brand) =>
         url ? (
-          <Image src={resolveBrandImage(url)} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
+          <Image src={resolveBrandImage(url)} alt={record?.name || t('pages.brandAdmin.logo')} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
         ) : (
           <div className="brand-management-page__imagePlaceholder" />
         ),
@@ -205,7 +242,10 @@ const BrandManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 110,
-      render: (status = 'ACTIVE') => <Tag color={statusColors[status]}>{t(`status.${status}`)}</Tag>,
+      render: (status = 'ACTIVE') => {
+        const normalizedStatus = String(status || 'ACTIVE').trim().toUpperCase();
+        return <Tag color={statusColors[normalizedStatus] || 'default'}>{formatBrandStatus(status)}</Tag>;
+      },
     },
     {
       title: t('pages.brandAdmin.readiness'),
@@ -232,14 +272,16 @@ const BrandManagement: React.FC = () => {
       width: 180,
       render: (_: unknown, record: Brand) => (
         <Space size="small">
-          <Button icon={<EditOutlined />} size="small" onClick={() => openModal(record)}>
+          {canWriteBrands ? <Button icon={<EditOutlined />} size="small" onClick={() => openModal(record)}>
             {t('common.edit')}
-          </Button>
-          <Popconfirm title={t('pages.brandAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
-            <Button icon={<DeleteOutlined />} danger size="small">
-              {t('common.delete')}
-            </Button>
-          </Popconfirm>
+          </Button> : null}
+          {canDeleteBrands ? (
+            <Popconfirm title={t('pages.brandAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+              <Button icon={<DeleteOutlined />} danger size="small">
+                {t('common.delete')}
+              </Button>
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },
@@ -274,9 +316,11 @@ const BrandManagement: React.FC = () => {
               { value: 'INACTIVE', label: t('status.INACTIVE') },
             ]}
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-            {t('pages.brandAdmin.addBrand')}
-          </Button>
+          {canWriteBrands ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+              {t('pages.brandAdmin.addBrand')}
+            </Button>
+          ) : null}
         </Space>
       </Card>
 
@@ -342,12 +386,12 @@ const BrandManagement: React.FC = () => {
 
           {logoPreviewUrl ? (
             <div className="brand-management-page__preview">
-              <Image src={resolveBrandImage(logoPreviewUrl)} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
+              <Image src={resolveBrandImage(logoPreviewUrl)} alt={editingBrand?.name || t('pages.brandAdmin.logo')} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
             </div>
           ) : null}
 
           <Form.Item name="websiteUrl" label={t('pages.brandAdmin.websiteUrl')}>
-            <Input placeholder="https://brand.example.com" />
+            <Input placeholder="https://..." />
           </Form.Item>
 
           <Form.Item name="description" label={t('pages.brandAdmin.description')}>

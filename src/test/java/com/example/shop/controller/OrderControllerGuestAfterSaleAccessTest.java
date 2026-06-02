@@ -1,14 +1,20 @@
 package com.example.shop.controller;
 
 import com.example.shop.entity.Order;
+import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.SecurityAuditLogService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -22,21 +28,21 @@ class OrderControllerGuestAfterSaleAccessTest {
     private final OrderController controller = new OrderController(
             orderService,
             mock(OrderItemService.class),
-            mock(SecurityAuditLogService.class)
+            mock(SecurityAuditLogService.class),
+            mock(IpBlacklistService.class)
     );
 
     @Test
     void guestCanRequestReturnWhenEmailMatchesOrder() {
         Order order = guestOrder();
         when(orderService.getOrderById(42L)).thenReturn(order);
-        when(orderService.guestOrderEmailMatches(order, "MIA@example.com")).thenReturn(true);
+        when(orderService.guestOrderAccessMatches(order, "MIA@example.com", "SO202605260001")).thenReturn(true);
         when(orderService.requestReturn(42L, null, "Too small")).thenReturn(true);
 
-        ResponseEntity<?> response = controller.returnOrder(
+        ResponseEntity<?> response = controller.returnGuestOrder(
                 42L,
                 Map.of("guestEmail", "MIA@example.com", "orderNo", "SO202605260001", "reason", "Too small"),
-                null,
-                new MockHttpServletRequest("PUT", "/orders/42/return")
+                new MockHttpServletRequest("PUT", "/orders/guest/42/return")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -47,14 +53,13 @@ class OrderControllerGuestAfterSaleAccessTest {
     void guestCanSubmitReturnShipmentWhenEmailMatchesOrder() {
         Order order = guestOrder();
         when(orderService.getOrderById(42L)).thenReturn(order);
-        when(orderService.guestOrderEmailMatches(order, "mia@example.com")).thenReturn(true);
+        when(orderService.guestOrderAccessMatches(order, "mia@example.com", "SO202605260001")).thenReturn(true);
         when(orderService.submitReturnShipment(42L, null, "RX123")).thenReturn(true);
 
-        ResponseEntity<?> response = controller.submitReturnShipment(
+        ResponseEntity<?> response = controller.submitGuestReturnShipment(
                 42L,
                 Map.of("guestEmail", "mia@example.com", "orderNo", "SO202605260001", "returnTrackingNumber", "RX123"),
-                null,
-                new MockHttpServletRequest("PUT", "/orders/42/return-shipment")
+                new MockHttpServletRequest("PUT", "/orders/guest/42/return-shipment")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -66,13 +71,13 @@ class OrderControllerGuestAfterSaleAccessTest {
         Order order = guestOrder();
         order.setStatus("SHIPPED");
         when(orderService.getOrderById(42L)).thenReturn(order);
-        when(orderService.guestOrderEmailMatches(order, "MIA@example.com")).thenReturn(true);
+        when(orderService.guestOrderAccessMatches(order, "MIA@example.com", "SO202605260001")).thenReturn(true);
         when(orderService.updateOrderStatus(42L, "COMPLETED")).thenReturn(true);
 
-        ResponseEntity<?> response = controller.confirmReceipt(
+        ResponseEntity<?> response = controller.confirmGuestReceipt(
                 42L,
                 Map.of("guestEmail", "MIA@example.com", "orderNo", "SO202605260001"),
-                null
+                new MockHttpServletRequest("PUT", "/orders/guest/42/confirm")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -83,11 +88,10 @@ class OrderControllerGuestAfterSaleAccessTest {
     void guestAfterSaleRejectsMismatchedEmail() {
         when(orderService.getOrderById(42L)).thenReturn(guestOrder());
 
-        assertThrows(ResponseStatusException.class, () -> controller.returnOrder(
+        assertThrows(ResponseStatusException.class, () -> controller.returnGuestOrder(
                 42L,
                 Map.of("guestEmail", "other@example.com", "orderNo", "SO202605260001", "reason", "Too small"),
-                null,
-                new MockHttpServletRequest("PUT", "/orders/42/return")
+                new MockHttpServletRequest("PUT", "/orders/guest/42/return")
         ));
     }
 
@@ -95,16 +99,15 @@ class OrderControllerGuestAfterSaleAccessTest {
     void guestAfterSaleRejectsMismatchedOrderNo() {
         when(orderService.getOrderById(42L)).thenReturn(guestOrder());
 
-        assertThrows(ResponseStatusException.class, () -> controller.returnOrder(
+        assertThrows(ResponseStatusException.class, () -> controller.returnGuestOrder(
                 42L,
                 Map.of("guestEmail", "mia@example.com", "orderNo", "SO202605260999", "reason", "Too small"),
-                null,
-                new MockHttpServletRequest("PUT", "/orders/42/return")
+                new MockHttpServletRequest("PUT", "/orders/guest/42/return")
         ));
     }
 
     @Test
-    void trackedRegisteredCustomerCanRequestReturnWhenEmailAndOrderNoMatchOrder() {
+    void authenticatedRegisteredCustomerCanRequestReturnForOwnOrder() {
         Order order = new Order();
         order.setId(42L);
         order.setOrderNo("SO202605260001");
@@ -112,22 +115,21 @@ class OrderControllerGuestAfterSaleAccessTest {
         order.setShippingAddress("Mia / 555-0100 / 1 Main St");
 
         when(orderService.getOrderById(42L)).thenReturn(order);
-        when(orderService.orderEmailMatches(order, "mia@example.com")).thenReturn(true);
-        when(orderService.requestReturn(42L, null, "Too small")).thenReturn(true);
+        when(orderService.requestReturn(42L, 12L, "Too small")).thenReturn(true);
 
         ResponseEntity<?> response = controller.returnOrder(
                 42L,
-                Map.of("guestEmail", "mia@example.com", "orderNo", "SO202605260001", "reason", "Too small"),
-                null,
+                Map.of("reason", "Too small"),
+                customerAuthentication(12L),
                 new MockHttpServletRequest("PUT", "/orders/42/return")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        verify(orderService).requestReturn(42L, null, "Too small");
+        verify(orderService).requestReturn(42L, 12L, "Too small");
     }
 
     @Test
-    void trackedRegisteredCustomerCanConfirmReceiptWhenEmailAndOrderNoMatchOrder() {
+    void authenticatedRegisteredCustomerCanConfirmReceiptForOwnOrder() {
         Order order = new Order();
         order.setId(42L);
         order.setOrderNo("SO202605260001");
@@ -136,13 +138,13 @@ class OrderControllerGuestAfterSaleAccessTest {
         order.setShippingAddress("Mia / 555-0100 / 1 Main St");
 
         when(orderService.getOrderById(42L)).thenReturn(order);
-        when(orderService.orderEmailMatches(order, "mia@example.com")).thenReturn(true);
         when(orderService.updateOrderStatus(42L, "COMPLETED")).thenReturn(true);
 
         ResponseEntity<?> response = controller.confirmReceipt(
                 42L,
-                Map.of("guestEmail", "mia@example.com", "orderNo", "SO202605260001"),
-                null
+                Map.of(),
+                customerAuthentication(12L),
+                new MockHttpServletRequest("PUT", "/orders/42/confirm")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -156,5 +158,17 @@ class OrderControllerGuestAfterSaleAccessTest {
         order.setUserId(7001L);
         order.setShippingAddress("[Guest] Mia / 555-0100 / mia@example.com / 1 Main St");
         return order;
+    }
+
+    private Authentication customerAuthentication(Long userId) {
+        UserDetailsImpl principal = new UserDetailsImpl(
+                userId,
+                "mia",
+                "mia@example.com",
+                "ACTIVE",
+                "encoded-password",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+        return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
 }

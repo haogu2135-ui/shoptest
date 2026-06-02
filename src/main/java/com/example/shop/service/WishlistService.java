@@ -4,9 +4,12 @@ import com.example.shop.entity.Wishlist;
 import com.example.shop.entity.Product;
 import com.example.shop.repository.WishlistMapper;
 import com.example.shop.repository.ProductRepository;
+import com.example.shop.util.ProductStatusUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -17,10 +20,26 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class WishlistService {
+    private static final int DEFAULT_MAX_ITEMS_PER_USER = 500;
+    private static final int HARD_MAX_ITEMS_PER_USER = 1000;
+
     private final WishlistMapper wishlistMapper;
     private final ProductRepository productRepository;
+    private final RuntimeConfigService runtimeConfig;
+
+    @Autowired
+    public WishlistService(WishlistMapper wishlistMapper,
+                           ProductRepository productRepository,
+                           RuntimeConfigService runtimeConfig) {
+        this.wishlistMapper = wishlistMapper;
+        this.productRepository = productRepository;
+        this.runtimeConfig = runtimeConfig;
+    }
+
+    WishlistService(WishlistMapper wishlistMapper, ProductRepository productRepository) {
+        this(wishlistMapper, productRepository, null);
+    }
 
     public List<Wishlist> getWishlist(Long userId) {
         List<Wishlist> items = wishlistMapper.findByUserId(userId);
@@ -29,21 +48,35 @@ public class WishlistService {
     }
 
     public boolean isWishlisted(Long userId, Long productId) {
+        requirePositiveId(userId, "User");
+        requirePositiveId(productId, "Product");
         return wishlistMapper.findByUserAndProduct(userId, productId) != null;
     }
 
     @Transactional
     public void addToWishlist(Long userId, Long productId) {
+        requirePositiveId(userId, "User");
+        requirePositiveId(productId, "Product");
         if (isWishlisted(userId, productId)) return;
+        requireWishlistEligibleProduct(productId);
+        enforceWishlistItemLimit(userId);
         Wishlist w = new Wishlist();
         w.setUserId(userId);
         w.setProductId(productId);
         w.setCreatedAt(LocalDateTime.now());
-        wishlistMapper.insert(w);
+        try {
+            wishlistMapper.insert(w);
+        } catch (DuplicateKeyException e) {
+            // A concurrent add for the same user/product is equivalent to success.
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("Product is no longer available for wishlist", e);
+        }
     }
 
     @Transactional
     public void removeFromWishlist(Long userId, Long productId) {
+        requirePositiveId(userId, "User");
+        requirePositiveId(productId, "Product");
         wishlistMapper.deleteByUserAndProduct(userId, productId);
     }
 
@@ -57,7 +90,35 @@ public class WishlistService {
     }
 
     public int getCount(Long userId) {
+        requirePositiveId(userId, "User");
         return wishlistMapper.countByUserId(userId);
+    }
+
+    private void requireWishlistEligibleProduct(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+        if (!ProductStatusUtils.isPublicProduct(product)) {
+            throw new IllegalStateException("Product is not available for wishlist");
+        }
+    }
+
+    private void requirePositiveId(Long id, String fieldName) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+    }
+
+    private void enforceWishlistItemLimit(Long userId) {
+        if (wishlistMapper.countByUserId(userId) >= maxItemsPerUser()) {
+            throw new IllegalStateException("Wishlist item limit reached");
+        }
+    }
+
+    private int maxItemsPerUser() {
+        int configured = runtimeConfig == null
+                ? DEFAULT_MAX_ITEMS_PER_USER
+                : runtimeConfig.getInt("wishlist.max-items-per-user", DEFAULT_MAX_ITEMS_PER_USER);
+        return Math.max(1, Math.min(configured, HARD_MAX_ITEMS_PER_USER));
     }
 
     private void attachSelectionRequirements(List<Wishlist> items) {

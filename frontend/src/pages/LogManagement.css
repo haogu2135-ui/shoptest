@@ -243,3 +243,17 @@
     flex-basis: 134px;
   }
 }
+
+/* Final mobile/App log-management operations touch-target guard */
+@media (max-width: 720px) {
+  .log-management__actions .ant-btn,
+  .log-management__control .ant-input,
+  .log-management__control .ant-btn,
+  .log-management__switchRow .ant-switch,
+  .log-management__download .ant-picker,
+  .log-management__download .ant-select-selector,
+  .log-management__download .ant-input,
+  .log-management__download .ant-btn {
+    min-height: 44px;
+  }
+}

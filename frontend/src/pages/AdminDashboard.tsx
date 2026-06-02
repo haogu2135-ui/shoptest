@@ -11,6 +11,7 @@ import { useMarket } from '../hooks/useMarket';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getApiErrorMessage } from '../utils/apiError';
+import { resolveProductImage } from '../utils/productMedia';
 import './AdminDashboard.css';
 
 const { Title } = Typography;
@@ -24,9 +25,14 @@ const statusColors: Record<string, string> = {
   RETURN_REQUESTED: 'gold',
   RETURN_APPROVED: 'geekblue',
   RETURN_SHIPPED: 'cyan',
+  RETURN_REFUNDING: 'magenta',
   RETURNED: 'purple',
   REFUNDED: 'purple',
 };
+
+const ORDER_STATUS_LABEL_KEYS = new Set([...Object.keys(statusColors), 'PENDING_RECEIPT']);
+
+const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
 
 const TrendChart: React.FC<{
   data: Array<{ date: string; orders: number; revenue: number }>;
@@ -240,6 +246,18 @@ const AdminDashboard: React.FC = () => {
   const [loadError, setLoadError] = useState('');
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const formatOrderStatusLabel = (status?: string) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = normalizeStatusCode(rawStatus);
+    if (!normalizedStatus) return t('common.unknown');
+    if (ORDER_STATUS_LABEL_KEYS.has(normalizedStatus)) return t(`status.${normalizedStatus}`);
+    return rawStatus;
+  };
+  const getOrderStatusColor = (status?: string) => {
+    const normalizedStatus = normalizeStatusCode(status);
+    if (!ORDER_STATUS_LABEL_KEYS.has(normalizedStatus)) return 'default';
+    return statusColors[normalizedStatus] || 'default';
+  };
   const paymentRefundCopy = {
     title: t('pages.adminDashboard.paymentReturnOps.title'),
     subtitle: t('pages.adminDashboard.paymentReturnOps.subtitle'),
@@ -317,7 +335,7 @@ const AdminDashboard: React.FC = () => {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
-      render: (s: string) => <Tag color={statusColors[s] || 'default'}>{t(`status.${s}`) === `status.${s}` ? s : t(`status.${s}`)}</Tag>,
+      render: (s: string) => <Tag color={getOrderStatusColor(s)}>{formatOrderStatusLabel(s)}</Tag>,
     },
     {
       title: t('common.time'),
@@ -384,7 +402,7 @@ const AdminDashboard: React.FC = () => {
       value: refundingPayments,
       label: paymentRefundCopy.refunding,
       tone: refundingPayments > 0 ? 'danger' : 'ready',
-      target: '/admin/audit-logs?view=refunds',
+      target: '/admin/orders?quick=REFUNDING',
     },
     {
       key: 'returned',
@@ -407,7 +425,7 @@ const AdminDashboard: React.FC = () => {
       value: Number(operationsSlaRisks.stalePendingPayment || 0),
       title: slaCopy.stalePendingPayment,
       text: slaCopy.stalePendingPaymentText,
-      target: '/admin/orders?status=PENDING_PAYMENT',
+      target: '/admin/orders?quick=SLA_OVERDUE_PAYMENT',
       tone: Number(operationsSlaRisks.stalePendingPayment || 0) > 0 ? 'warning' : 'ready',
     },
     {
@@ -415,7 +433,7 @@ const AdminDashboard: React.FC = () => {
       value: Number(operationsSlaRisks.delayedShipment || 0),
       title: slaCopy.delayedShipment,
       text: slaCopy.delayedShipmentText,
-      target: '/admin/orders?status=PENDING_SHIPMENT',
+      target: '/admin/orders?quick=SLA_OVERDUE_SHIPMENT',
       tone: Number(operationsSlaRisks.delayedShipment || 0) > 0 ? 'danger' : 'ready',
     },
     {
@@ -423,7 +441,7 @@ const AdminDashboard: React.FC = () => {
       value: Number(operationsSlaRisks.returnAwaitingShipment || 0),
       title: slaCopy.returnAwaitingShipment,
       text: slaCopy.returnAwaitingShipmentText,
-      target: '/admin/orders?status=RETURN_APPROVED',
+      target: '/admin/orders?quick=SLA_OVERDUE_RETURN_APPROVED',
       tone: Number(operationsSlaRisks.returnAwaitingShipment || 0) > 0 ? 'info' : 'ready',
     },
     {
@@ -431,7 +449,7 @@ const AdminDashboard: React.FC = () => {
       value: Number(operationsSlaRisks.refundDue || 0),
       title: slaCopy.refundDue,
       text: slaCopy.refundDueText,
-      target: '/admin/orders?status=RETURN_SHIPPED',
+      target: '/admin/orders?quick=SLA_OVERDUE_RETURN_SHIPPED',
       tone: Number(operationsSlaRisks.refundDue || 0) > 0 ? 'danger' : 'ready',
     },
   ];
@@ -495,9 +513,9 @@ const AdminDashboard: React.FC = () => {
       key: 'fulfillment',
       icon: <TruckOutlined />,
       label: t('pages.adminDashboard.commercialReadiness.fulfillment'),
-      value: pendingShipmentOrders + missingTrackingOrders,
-      target: pendingShipmentOrders > 0 ? '/admin/orders?status=PENDING_SHIPMENT' : '/admin/orders?quick=MISSING_TRACKING',
-      tone: pendingShipmentOrders + missingTrackingOrders > 0 ? 'risk' : 'ready',
+      value: pendingShipmentOrders,
+      target: '/admin/orders?status=PENDING_SHIPMENT',
+      tone: pendingShipmentOrders > 0 ? 'risk' : 'ready',
     },
     {
       key: 'stock',
@@ -512,7 +530,7 @@ const AdminDashboard: React.FC = () => {
       icon: <WarningOutlined />,
       label: t('pages.adminDashboard.commercialReadiness.afterSales'),
       value: returnRequestedOrders + returnApprovedOrders + returnShippedOrders + refundingPayments,
-      target: '/admin/orders?quick=RETURN_SHIPPED',
+      target: '/admin/orders?quick=AFTER_SALES',
       tone: returnRequestedOrders + returnApprovedOrders + returnShippedOrders + refundingPayments > 0 ? 'risk' : 'ready',
     },
   ];
@@ -529,7 +547,7 @@ const AdminDashboard: React.FC = () => {
       dataIndex: 'imageUrl',
       key: 'imageUrl',
       width: 72,
-      render: (value: string, row: any) => <Avatar shape="square" size={48} src={value}>{String(row.productName || row.productId).slice(0, 1)}</Avatar>,
+      render: (value: string, row: any) => <Avatar shape="square" size={48} src={resolveProductImage(value)}>{String(row.productName || row.productId).slice(0, 1)}</Avatar>,
     },
     { title: t('pages.productAdmin.productName'), dataIndex: 'productName', key: 'productName' },
     { title: t('common.quantity'), dataIndex: 'quantity', key: 'quantity', width: 110 },
@@ -854,7 +872,7 @@ const AdminDashboard: React.FC = () => {
           <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.statusBreakdown')}>
             {Object.entries(stats.orderStatusBreakdown || {}).map(([status, count]) => (
               <div key={status} className="admin-dashboard__statusRow">
-                <Tag color={statusColors[status] || 'default'}>{t(`status.${status}`) === `status.${status}` ? status : t(`status.${status}`)}</Tag>
+                <Tag color={getOrderStatusColor(status)}>{formatOrderStatusLabel(status)}</Tag>
                 <span>{count}</span>
               </div>
             ))}
@@ -887,7 +905,7 @@ const AdminDashboard: React.FC = () => {
               renderItem={(item) => (
                 <List.Item>
                   <List.Item.Meta
-                    avatar={<Avatar shape="square" src={item.imageUrl}>{item.name.slice(0, 1)}</Avatar>}
+                    avatar={<Avatar shape="square" src={resolveProductImage(item.imageUrl)}>{item.name.slice(0, 1)}</Avatar>}
                     title={item.name}
                     description={`${t('common.id')}: ${item.id}`}
                   />

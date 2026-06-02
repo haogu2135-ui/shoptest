@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -19,6 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class SystemAlertServiceTest {
@@ -50,7 +52,7 @@ class SystemAlertServiceTest {
     }
 
     @Test
-    void batchActionsClampIdsAndExposeIgnoredCount() {
+    void batchActionsNormalizeIdsAndMaskActorBeforeWriting() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         RuntimeConfigService runtimeConfig = runtimeConfig();
         SystemAlertService service = service(jdbcTemplate, runtimeConfig);
@@ -63,11 +65,11 @@ class SystemAlertServiceTest {
                 any(),
                 any())).thenReturn(2);
 
-        SystemAlertBatchActionResponse response = service.resolveBatch(List.of(3L, 2L, 2L, -1L, 1L, 4L), "admin password=secret");
+        SystemAlertBatchActionResponse response = service.resolveBatch(List.of(3L, 2L, 2L, -1L, 1L), "admin password=secret");
 
         assertEquals("RESOLVE", response.getAction());
-        assertEquals(6, response.getRequestedCount());
-        assertEquals(3, response.getIgnoredCount());
+        assertEquals(5, response.getRequestedCount());
+        assertEquals(2, response.getIgnoredCount());
         assertEquals(3, response.getMaxBatchSize());
         assertEquals(List.of(3L, 2L, 1L), response.getIds());
         assertEquals(2, response.getUpdatedCount());
@@ -79,6 +81,18 @@ class SystemAlertServiceTest {
                 eq(2L),
                 eq(1L),
                 eq(SystemAlertService.STATUS_RESOLVED));
+    }
+
+    @Test
+    void batchActionsRejectOversizedIdSetsBeforeWriting() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        RuntimeConfigService runtimeConfig = runtimeConfig();
+        SystemAlertService service = service(jdbcTemplate, runtimeConfig);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.resolveBatch(List.of(3L, 2L, 2L, -1L, 1L, 4L), "admin"));
+
+        verifyNoInteractions(jdbcTemplate);
     }
 
     @Test
@@ -105,6 +119,26 @@ class SystemAlertServiceTest {
         assertEquals(10, purge.getRetentionDays());
         assertEquals(7, purge.getDeletedCount());
         assertTrue(purge.getPurgedBefore().contains("T"));
+    }
+
+    @Test
+    void searchTreatsBlankSeverityAndCategoryAsUnfiltered() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        RuntimeConfigService runtimeConfig = runtimeConfig();
+        SystemAlertService service = service(jdbcTemplate, runtimeConfig);
+
+        service.search("open", " ", "", 25);
+
+        verify(jdbcTemplate).query(
+                anyString(),
+                any(org.springframework.jdbc.core.RowMapper.class),
+                eq(SystemAlertService.STATUS_OPEN),
+                eq(SystemAlertService.STATUS_OPEN),
+                eq(null),
+                eq(null),
+                eq(null),
+                eq(null),
+                eq(5));
     }
 
     private RuntimeConfigService runtimeConfig() {

@@ -4,7 +4,7 @@ import {
   encodeSupportOrderMessage,
   normalizeSupportOrderContext,
 } from './supportOrderMessage';
-import type { Order } from '../types';
+import type { OrderCustomer } from '../types';
 
 const validOrder = {
   id: 12,
@@ -55,6 +55,6 @@ describe('supportOrderMessage', () => {
   });
 
   it('encodes only the safe order context used by chat', () => {
-    expect(encodeSupportOrderMessage(validOrder as Order)).toBe(`${SUPPORT_ORDER_MESSAGE_PREFIX}${JSON.stringify(validOrder)}`);
+    expect(encodeSupportOrderMessage(validOrder as OrderCustomer)).toBe(`${SUPPORT_ORDER_MESSAGE_PREFIX}${JSON.stringify(validOrder)}`);
   });
 });

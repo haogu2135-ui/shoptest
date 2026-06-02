@@ -6,6 +6,7 @@ import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.ClientIpResolver;
 import com.example.shop.service.EmailLoginService;
 import com.example.shop.service.EmailLoginService.EmailLoginException;
+import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.UserService;
@@ -49,7 +50,8 @@ class UserControllerUpdateProfileTest {
                 mock(RuntimeConfigService.class),
                 mock(SecurityAuditLogService.class),
                 emailLoginService,
-                clientIpResolver);
+                clientIpResolver,
+                mock(IpBlacklistService.class));
         objectMapper = new ObjectMapper()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }

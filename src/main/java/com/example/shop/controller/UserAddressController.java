@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.UserAddressResponse;
 import com.example.shop.entity.UserAddress;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/addresses")
@@ -29,51 +31,50 @@ public class UserAddressController {
     private final UserAddressService userAddressService;
 
     @GetMapping
-    public List<UserAddress> getAddresses(@RequestParam Long userId, Authentication authentication) {
-        SecurityUtils.assertSelfOrAdmin(authentication, userId);
-        return userAddressService.getAddresses(userId);
+    public List<UserAddressResponse> getAddresses(@RequestParam(required = false) Long userId, Authentication authentication) {
+        return toResponses(userAddressService.getAddresses(resolveAddressUserId(userId, authentication)));
     }
 
     @GetMapping("/me")
-    public List<UserAddress> getMyAddresses(Authentication authentication) {
-        return userAddressService.getAddresses(SecurityUtils.requireUser(authentication).getId());
+    public List<UserAddressResponse> getMyAddresses(Authentication authentication) {
+        return toResponses(userAddressService.getAddresses(SecurityUtils.requireUser(authentication).getId()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserAddress> getAddress(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<UserAddressResponse> getAddress(@PathVariable Long id, Authentication authentication) {
         UserAddress address = userAddressService.getAddress(id);
         if (address != null) {
-            SecurityUtils.assertSelfOrAdmin(authentication, address.getUserId());
+            SecurityUtils.assertSelf(authentication, address.getUserId());
         }
-        return address == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(address);
+        return address == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(UserAddressResponse.from(address));
     }
 
     @GetMapping("/default")
-    public ResponseEntity<UserAddress> getDefaultAddress(@RequestParam Long userId, Authentication authentication) {
-        SecurityUtils.assertSelfOrAdmin(authentication, userId);
-        UserAddress address = userAddressService.getDefaultAddress(userId);
-        return address == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(address);
+    public ResponseEntity<UserAddressResponse> getDefaultAddress(@RequestParam(required = false) Long userId, Authentication authentication) {
+        UserAddress address = userAddressService.getDefaultAddress(resolveAddressUserId(userId, authentication));
+        return address == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(UserAddressResponse.from(address));
     }
 
     @GetMapping("/me/default")
-    public ResponseEntity<UserAddress> getMyDefaultAddress(Authentication authentication) {
+    public ResponseEntity<UserAddressResponse> getMyDefaultAddress(Authentication authentication) {
         UserAddress address = userAddressService.getDefaultAddress(SecurityUtils.requireUser(authentication).getId());
-        return address == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(address);
+        return address == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(UserAddressResponse.from(address));
     }
 
     @PostMapping
-    public UserAddress addAddress(@RequestBody(required = false) UserAddress address, Authentication authentication) {
+    public ResponseEntity<?> addAddress(@RequestBody(required = false) UserAddress address, Authentication authentication) {
         if (address == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address is required");
         }
         UserDetailsImpl user = SecurityUtils.requireUser(authentication);
-        if (!SecurityUtils.isAdmin(user)) {
-            address.setUserId(user.getId());
-        } else if (address.getUserId() == null) {
-            address.setUserId(user.getId());
+        address.setUserId(user.getId());
+        try {
+            userAddressService.addAddress(address);
+            UserAddress saved = address.getId() == null ? address : userAddressService.getAddress(address.getId());
+            return ResponseEntity.ok(UserAddressResponse.from(saved));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        userAddressService.addAddress(address);
-        return address;
     }
 
     @PutMapping("/{id}")
@@ -85,13 +86,14 @@ public class UserAddressController {
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, existing.getUserId());
+        SecurityUtils.assertSelf(authentication, existing.getUserId());
         address.setId(id);
         address.setUserId(existing.getUserId());
         address.setIsDefault(existing.getIsDefault());
         try {
             userAddressService.updateAddress(address);
-            return ResponseEntity.ok(address);
+            UserAddress updated = userAddressService.getAddress(id);
+            return ResponseEntity.ok(UserAddressResponse.from(updated == null ? address : updated));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -103,7 +105,7 @@ public class UserAddressController {
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, existing.getUserId());
+        SecurityUtils.assertSelf(authentication, existing.getUserId());
         try {
             userAddressService.deleteAddress(id);
             return ResponseEntity.ok(Map.of("message", "Deleted"));
@@ -118,8 +120,23 @@ public class UserAddressController {
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, existing.getUserId());
+        SecurityUtils.assertSelf(authentication, existing.getUserId());
         userAddressService.setDefault(id);
         return ResponseEntity.ok(Map.of("message", "Default address set"));
+    }
+
+    private Long resolveAddressUserId(Long requestedUserId, Authentication authentication) {
+        UserDetailsImpl currentUser = SecurityUtils.requireUser(authentication);
+        if (requestedUserId == null) {
+            return currentUser.getId();
+        }
+        SecurityUtils.assertSelf(authentication, requestedUserId);
+        return requestedUserId;
+    }
+
+    private List<UserAddressResponse> toResponses(List<UserAddress> addresses) {
+        return addresses.stream()
+                .map(UserAddressResponse::from)
+                .collect(Collectors.toList());
     }
 }

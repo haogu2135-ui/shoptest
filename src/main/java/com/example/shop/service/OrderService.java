@@ -5,6 +5,8 @@ import com.example.shop.dto.CouponQuoteRequest;
 import com.example.shop.dto.CouponQuoteResponse;
 import com.example.shop.dto.GuestCheckoutItemRequest;
 import com.example.shop.dto.GuestCheckoutRequest;
+import com.example.shop.dto.OrderCustomerResponse;
+import com.example.shop.dto.OrderItemCustomerResponse;
 import com.example.shop.dto.OrderTrackResponse;
 import com.example.shop.entity.CartItem;
 import com.example.shop.entity.Order;
@@ -31,9 +33,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,8 +52,32 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class OrderService {
-    private static final String RETURN_REFUNDING = "RETURN_REFUNDING";
+    private static final List<String> DASHBOARD_REVENUE_STATUSES = List.of(
+            "PENDING_SHIPMENT",
+            "SHIPPED",
+            "COMPLETED",
+            "RETURN_REQUESTED",
+            "RETURN_APPROVED",
+            "RETURN_SHIPPED");
 
+    private static final List<String> ADMIN_ORDER_SUMMARY_KEYS = List.of(
+            "NEEDS_ACTION",
+            "SLA_OVERDUE",
+            "SLA_DUE_SOON",
+            "MISSING_TRACKING",
+            "PENDING_SHIPMENT",
+            "RETURN_REQUESTED",
+            "RETURN_SHIPPED",
+            "AFTER_SALES",
+            "REFUNDING",
+            "REFUNDED");
+
+    private static final String RETURN_REFUNDING = "RETURN_REFUNDING";
+    private static final String GUEST_USERNAME_PREFIX = "guest_";
+    private static final int GUEST_USERNAME_MAX_LENGTH = 50;
+    private static final int GUEST_USERNAME_TOKEN_LENGTH = 32;
+    private static final int GUEST_USERNAME_SEED_MAX_LENGTH =
+            GUEST_USERNAME_MAX_LENGTH - GUEST_USERNAME_TOKEN_LENGTH - 1;
 
     @Autowired
     private OrderRepository orderRepository;
@@ -88,12 +116,53 @@ public class OrderService {
      */
     @Transactional
     public Order createOrder(Order order) {
+        throw new IllegalStateException("Direct order creation is disabled; use checkout flows");
+    }
+
+    private void normalizeDirectOrder(Order order) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order payload is required");
+        }
+        if (order.getUserId() == null || order.getUserId() <= 0) {
+            throw new IllegalArgumentException("userId is required");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (order.getTotalAmount() == null && order.getOriginalAmount() == null) {
+            throw new IllegalArgumentException("Order amount is required; use /orders/checkout/me for cart checkout");
+        }
         order.setOrderNo(nextOrderNo());
         order.setStatus("PENDING_PAYMENT");
-        order.setCreatedAt(LocalDateTime.now());
-        order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.insert(order);
-        return order;
+        order.setOriginalAmount(normalizeMoney(defaultAmount(order.getOriginalAmount(), order.getTotalAmount())));
+        order.setDiscountAmount(normalizeMoney(defaultAmount(order.getDiscountAmount(), BigDecimal.ZERO)));
+        order.setShippingFee(normalizeMoney(defaultAmount(order.getShippingFee(), BigDecimal.ZERO)));
+        if (order.getTotalAmount() == null) {
+            BigDecimal calculatedTotal = order.getOriginalAmount()
+                    .subtract(order.getDiscountAmount())
+                    .max(BigDecimal.ZERO)
+                    .add(order.getShippingFee());
+            order.setTotalAmount(normalizeMoney(calculatedTotal));
+        } else {
+            order.setTotalAmount(normalizeMoney(order.getTotalAmount()));
+        }
+        if (order.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("totalAmount must be greater than 0");
+        }
+        if (trimToNull(order.getShippingAddress()) == null) {
+            throw new IllegalArgumentException("Shipping address is required");
+        }
+        order.setShippingAddress(order.getShippingAddress().trim());
+        order.setPaymentMethod(trimToNull(order.getPaymentMethod()) == null ? "MANUAL" : order.getPaymentMethod().trim());
+        order.setCreatedAt(order.getCreatedAt() == null ? now : order.getCreatedAt());
+        order.setUpdatedAt(now);
+    }
+
+    private BigDecimal defaultAmount(BigDecimal value, BigDecimal fallback) {
+        return value == null ? fallback : value;
+    }
+
+    private BigDecimal normalizeMoney(BigDecimal value) {
+        BigDecimal normalized = value == null ? BigDecimal.ZERO : value;
+        return normalized.setScale(2, RoundingMode.HALF_UP);
     }
 
     @Transactional
@@ -119,6 +188,9 @@ public class OrderService {
         order.setTotalAmount(payableAmount);
         order.setStatus("PENDING_PAYMENT");
         order.setShippingAddress(request.getShippingAddress());
+        order.setRecipientName(request.getRecipientName());
+        order.setRecipientPhone(request.getRecipientPhone());
+        order.setContactEmail(firstNonBlank(request.getContactEmail(), accountEmailForUser(request.getUserId())));
         order.setPaymentMethod(request.getPaymentMethod());
         order.setUserCouponId(effectiveUserCouponId);
         order.setCreatedAt(LocalDateTime.now());
@@ -173,6 +245,9 @@ public class OrderService {
         order.setTotalAmount(originalAmount.add(shippingFee));
         order.setStatus("PENDING_PAYMENT");
         order.setShippingAddress("[Guest] " + request.getGuestName() + " / " + request.getGuestPhone() + " / " + request.getGuestEmail() + " / " + request.getShippingAddress());
+        order.setRecipientName(request.getGuestName());
+        order.setRecipientPhone(request.getGuestPhone());
+        order.setContactEmail(request.getGuestEmail());
         order.setPaymentMethod(request.getPaymentMethod());
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
@@ -330,11 +405,7 @@ public class OrderService {
             return user.getId();
         }
         User user = new User();
-        String usernameSeed = "guest_" + email.replaceAll("[^a-z0-9]+", "_");
-        if (usernameSeed.length() > 36) {
-            usernameSeed = usernameSeed.substring(0, 36);
-        }
-        user.setUsername(usernameSeed + "_" + UUID.randomUUID().toString().substring(0, 8));
+        user.setUsername(generateGuestUsername(email));
         user.setEmail(email);
         user.setPhone(null);
         user.setPassword(UUID.randomUUID().toString());
@@ -344,6 +415,15 @@ public class OrderService {
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user).getId();
+    }
+
+    private String generateGuestUsername(String email) {
+        String usernameSeed = GUEST_USERNAME_PREFIX + email.replaceAll("[^a-z0-9]+", "_");
+        if (usernameSeed.length() > GUEST_USERNAME_SEED_MAX_LENGTH) {
+            usernameSeed = usernameSeed.substring(0, GUEST_USERNAME_SEED_MAX_LENGTH);
+        }
+        String token = UUID.randomUUID().toString().replace("-", "");
+        return usernameSeed + "_" + token;
     }
 
     private BigDecimal calculateShippingFee(List<CartItem> items) {
@@ -405,6 +485,13 @@ public class OrderService {
     private void normalizeCheckoutRequest(CheckoutRequest request) {
         request.setCartItemIds(normalizeCheckoutItemIds(request.getCartItemIds()));
         request.setShippingAddress(normalizeRequiredText(request.getShippingAddress(), "Shipping address", runtimeConfig.getInt("order.shipping-address-max-chars", 500)));
+        request.setRecipientName(firstNonBlank(
+                normalizeOptionalText(request.getRecipientName(), "Recipient name", runtimeConfig.getInt("order.recipient-name-max-chars", 120)),
+                parsedAddressPart(request.getShippingAddress(), 0)));
+        request.setRecipientPhone(firstNonBlank(
+                normalizeOptionalText(request.getRecipientPhone(), "Recipient phone", runtimeConfig.getInt("order.recipient-phone-max-chars", 60)),
+                parsedAddressPart(request.getShippingAddress(), 1)));
+        request.setContactEmail(normalizeOptionalEmail(request.getContactEmail(), "Contact email", runtimeConfig.getInt("order.contact-email-max-chars", 160)));
         request.setPaymentMethod(normalizeRequiredText(request.getPaymentMethod(), "Payment method", runtimeConfig.getInt("order.payment-method-max-chars", 40)));
     }
 
@@ -493,6 +580,26 @@ public class OrderService {
         return normalized;
     }
 
+    private String normalizeOptionalEmail(String value, String field, int maxLength) {
+        String normalized = normalizeOptionalText(value, field, maxLength);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        String email = normalizeEmail(normalized);
+        if (email == null) {
+            throw new IllegalArgumentException(field + " is invalid");
+        }
+        return email;
+    }
+
+    private String parsedAddressPart(String shippingAddress, int index) {
+        String[] parts = normalizeText(shippingAddress).split("\\s*/\\s*", 3);
+        if (parts.length <= index) {
+            return "";
+        }
+        return normalizeText(parts[index]);
+    }
+
     private String normalizeText(String value) {
         return String.valueOf(value == null ? "" : value)
                 .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
@@ -504,9 +611,115 @@ public class OrderService {
      * 获取所有订单
      */
     public List<Order> getAllOrders() {
-        return orderRepository.findAll().stream()
+        int legacyListLimit = Math.max(1, Math.min(runtimeConfig.getInt("admin.orders.legacy-list-max-rows", 100), 5000));
+        return orderRepository.searchAdminOrders(null, null, null, 0, legacyListLimit).stream()
                 .map(this::enrichReturnInfo)
                 .collect(Collectors.toList());
+    }
+
+    public LocalDateTime currentDatabaseTime() {
+        LocalDateTime now = orderRepository.currentDatabaseTime();
+        return now != null ? now : LocalDateTime.now();
+    }
+
+    public List<String> dashboardRevenueStatuses() {
+        return DASHBOARD_REVENUE_STATUSES;
+    }
+
+    public Map<String, Object> getDashboardOrderStats(LocalDateTime now, int trendDays, int recentLimit) {
+        LocalDateTime basis = now != null ? now : currentDatabaseTime();
+        Map<String, Object> row = orderRepository.dashboardOrderStats(basis);
+        long totalOrders = mapLong(row, "totalOrders");
+        long paidOrders = mapLong(row, "paidOrders");
+        long refundedOrders = mapLong(row, "refundedOrders");
+        BigDecimal netRevenue = mapBigDecimal(row, "netRevenue");
+        BigDecimal refundedAmount = mapBigDecimal(row, "refundedAmount");
+        BigDecimal grossPaidRevenue = netRevenue.add(refundedAmount);
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalOrders", totalOrders);
+        stats.put("totalRevenue", grossPaidRevenue);
+        stats.put("grossPaidRevenue", grossPaidRevenue);
+        stats.put("refundedOrders", refundedOrders);
+        stats.put("refundedAmount", refundedAmount);
+        stats.put("netRevenue", netRevenue);
+        stats.put("grossOrderAmount", mapBigDecimal(row, "grossOrderAmount"));
+        stats.put("paidOrders", paidOrders);
+        stats.put("cancelledOrders", mapLong(row, "cancelledOrders"));
+        stats.put("pendingPaymentOrders", mapLong(row, "pendingPaymentOrders"));
+        stats.put("pendingShipmentOrders", mapLong(row, "pendingShipmentOrders"));
+        stats.put("shippedOrders", mapLong(row, "shippedOrders"));
+        stats.put("ordersWithTracking", mapLong(row, "ordersWithTracking"));
+        stats.put("ordersWithoutTracking", mapLong(row, "ordersWithoutTracking"));
+        stats.put("completedOrders", mapLong(row, "completedOrders"));
+        stats.put("averageOrderValue", paidOrders == 0
+                ? BigDecimal.ZERO
+                : netRevenue.divide(BigDecimal.valueOf(paidOrders), 2, RoundingMode.HALF_UP));
+        stats.put("conversionRate", totalOrders == 0
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(paidOrders * 100L).divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP));
+        stats.put("refundRate", grossPaidRevenue.compareTo(BigDecimal.ZERO) == 0
+                ? BigDecimal.ZERO
+                : refundedAmount.multiply(BigDecimal.valueOf(100L)).divide(grossPaidRevenue, 2, RoundingMode.HALF_UP));
+
+        Map<String, Object> slaRisks = new LinkedHashMap<>();
+        slaRisks.put("stalePendingPayment", mapLong(row, "stalePendingPayment"));
+        slaRisks.put("delayedShipment", mapLong(row, "delayedShipment"));
+        slaRisks.put("returnAwaitingShipment", mapLong(row, "returnAwaitingShipment"));
+        slaRisks.put("refundDue", mapLong(row, "refundDue"));
+        stats.put("operationsSlaRisks", slaRisks);
+        stats.put("operationsSlaRiskTotal", slaRisks.values().stream()
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .mapToLong(Number::longValue)
+                .sum());
+        stats.put("orderStatusBreakdown", getStatusBreakdown());
+        stats.put("recentOrders", findRecentAdminOrders(recentLimit));
+        stats.put("salesTrend", dashboardSalesTrend(basis.toLocalDate(), trendDays));
+        stats.put("paymentMethodBreakdown", dashboardPaymentMethodBreakdown());
+        return stats;
+    }
+
+    private List<Order> findRecentAdminOrders(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit <= 0 ? 5 : limit, 20));
+        return orderRepository.findRecentAdminOrders(safeLimit).stream()
+                .map(this::enrichReturnInfo)
+                .collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> dashboardSalesTrend(LocalDate today, int days) {
+        int safeDays = Math.max(1, Math.min(days <= 0 ? 7 : days, 31));
+        LocalDate end = today != null ? today : LocalDate.now();
+        LocalDate start = end.minusDays(safeDays - 1L);
+        Map<String, Map<String, Object>> rowsByDate = new LinkedHashMap<>();
+        for (Map<String, Object> row : orderRepository.dashboardSalesTrend(start.atStartOfDay())) {
+            String date = mapDateString(mapValue(row, "trendDate"));
+            if (date != null) {
+                rowsByDate.put(date, row);
+            }
+        }
+        List<Map<String, Object>> trend = new ArrayList<>();
+        for (int offset = 0; offset < safeDays; offset++) {
+            String date = start.plusDays(offset).toString();
+            Map<String, Object> row = rowsByDate.get(date);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("date", date);
+            item.put("orders", mapLong(row, "orderCount"));
+            item.put("revenue", mapBigDecimal(row, "revenue"));
+            trend.add(item);
+        }
+        return trend;
+    }
+
+    private Map<String, Long> dashboardPaymentMethodBreakdown() {
+        Map<String, Long> breakdown = new LinkedHashMap<>();
+        for (Map<String, Object> row : orderRepository.dashboardPaymentMethodBreakdown()) {
+            Object paymentMethod = mapValue(row, "paymentMethod");
+            if (paymentMethod != null) {
+                breakdown.put(String.valueOf(paymentMethod), mapLong(row, "orderCount"));
+            }
+        }
+        return breakdown;
     }
 
     public List<Order> searchAdminOrders(String status, String search, String quick, int page, int size) {
@@ -523,6 +736,73 @@ public class OrderService {
         return orderRepository.countAdminOrders(blankToNull(status), blankToNull(search), blankToNull(quick));
     }
 
+    public Map<String, Long> countAdminOrderSummary(String search) {
+        Map<String, Object> row = orderRepository.countAdminOrderSummary(blankToNull(search));
+        Map<String, Long> summary = new LinkedHashMap<>();
+        for (String key : ADMIN_ORDER_SUMMARY_KEYS) {
+            summary.put(key, mapLong(row, key));
+        }
+        return summary;
+    }
+
+    private long mapLong(Map<String, Object> row, String key) {
+        Object value = mapValue(row, key);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value == null) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
+    }
+
+    private BigDecimal mapBigDecimal(Map<String, Object> row, String key) {
+        Object value = mapValue(row, key);
+        if (value instanceof BigDecimal) {
+            return (BigDecimal) value;
+        }
+        if (value instanceof Number || value instanceof CharSequence) {
+            try {
+                return new BigDecimal(String.valueOf(value));
+            } catch (NumberFormatException e) {
+                return BigDecimal.ZERO;
+            }
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private Object mapValue(Map<String, Object> row, String key) {
+        if (row == null || key == null) {
+            return null;
+        }
+        Object value = row.get(key);
+        if (value == null) {
+            value = row.get(key.toLowerCase(Locale.ROOT));
+        }
+        if (value == null) {
+            value = row.get(key.toUpperCase(Locale.ROOT));
+        }
+        return value;
+    }
+
+    private String mapDateString(Object value) {
+        if (value instanceof LocalDate) {
+            return value.toString();
+        }
+        if (value instanceof java.sql.Date) {
+            return ((java.sql.Date) value).toLocalDate().toString();
+        }
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value);
+        return text.length() >= 10 ? text.substring(0, 10) : text;
+    }
+
     private String blankToNull(String value) {
         String normalized = normalizeText(value);
         return normalized.isEmpty() ? null : normalized;
@@ -535,7 +815,29 @@ public class OrderService {
         return enrichReturnInfo(orderRepository.findById(id));
     }
 
+    public Order getTrackableOrderForInternalUse(String orderNo, String email) {
+        return enrichReturnInfo(findTrackableOrder(orderNo, email));
+    }
+
     public OrderTrackResponse trackOrder(String orderNo, String email) {
+        Order order = enrichReturnInfo(findTrackableOrder(orderNo, email));
+        if (!isGuestOrder(order)) {
+            return new OrderTrackResponse(
+                    OrderCustomerResponse.from(buildRestrictedAccountOrderTrackingSummary(order)),
+                    Collections.emptyList(),
+                    true,
+                    "ACCOUNT_LOGIN_REQUIRED");
+        }
+        return new OrderTrackResponse(
+                OrderCustomerResponse.from(order),
+                orderItemRepository.findByOrderId(order.getId()).stream()
+                        .map(OrderItemCustomerResponse::from)
+                        .collect(Collectors.toList()),
+                false,
+                null);
+    }
+
+    private Order findTrackableOrder(String orderNo, String email) {
         if (orderNo == null || orderNo.trim().isEmpty()) {
             throw new IllegalArgumentException("Order number is required");
         }
@@ -546,8 +848,19 @@ public class OrderService {
         if (order == null) {
             throw new IllegalArgumentException("Order not found");
         }
-        enrichReturnInfo(order);
-        return new OrderTrackResponse(order, orderItemRepository.findByOrderId(order.getId()));
+        return order;
+    }
+
+    private Order buildRestrictedAccountOrderTrackingSummary(Order order) {
+        Order summary = new Order();
+        summary.setId(order.getId());
+        summary.setOrderNo(order.getOrderNo());
+        summary.setStatus(order.getStatus());
+        summary.setGuestOrder(false);
+        summary.setCreatedAt(order.getCreatedAt());
+        summary.setShippedAt(order.getShippedAt());
+        summary.setCompletedAt(order.getCompletedAt());
+        return summary;
     }
 
     public boolean orderEmailMatches(Order order, String email) {
@@ -559,8 +872,24 @@ public class OrderService {
         return matched != null && order.getId().equals(matched.getId());
     }
 
+    public boolean guestOrderAccessMatches(Order order, String email, String orderNo) {
+        if (order == null || !orderNoMatches(order, orderNo) || !isGuestOrder(order)) {
+            return false;
+        }
+        return guestOrderEmailMatches(order, email);
+    }
+
+    public boolean isGuestOrder(Order order) {
+        if (order == null) {
+            return false;
+        }
+        return order.getShippingAddress() != null && order.getShippingAddress().startsWith("[Guest]");
+    }
+
     public boolean guestOrderEmailMatches(Order order, String email) {
-        String guestEmail = order == null ? null : extractGuestEmail(order.getShippingAddress());
+        String guestEmail = order == null ? null : firstNonBlank(
+                normalizeEmail(order.getContactEmail()),
+                extractGuestEmail(order.getShippingAddress()));
         String normalizedEmail = normalizeEmail(email);
         return guestEmail != null && guestEmail.equals(normalizedEmail);
     }
@@ -597,7 +926,7 @@ public class OrderService {
             return false;
         }
         assertNextStatus(order.getStatus(), status);
-        boolean updated = orderRepository.updateStatus(id, status) > 0;
+        boolean updated = orderRepository.updateStatusIfCurrent(id, order.getStatus(), status) > 0;
         if (updated) {
             notifyOrderStatusChanged(order, status, null);
         }
@@ -689,7 +1018,7 @@ public class OrderService {
         }
         paymentRepository.markPendingCancelledByOrderId(id);
         if ("PENDING_PAYMENT".equals(order.getStatus())) {
-            couponService.releaseUsedCoupon(order.getUserCouponId());
+            releaseOrderCoupon(order);
         }
         notifyCustomer(
                 order,
@@ -856,6 +1185,7 @@ public class OrderService {
         if (updated == 0) {
             Order latest = orderRepository.findById(id);
             if (latest != null && "RETURNED".equals(latest.getStatus())) {
+                releaseOrderCoupon(order);
                 return true;
             }
             throw new IllegalStateException("Return refund finalization failed");
@@ -864,6 +1194,7 @@ public class OrderService {
         for (OrderItem item : items) {
             restoreStock(item);
         }
+        releaseOrderCoupon(order);
         notifyCustomer(
                 order,
                 "Return completed",
@@ -894,6 +1225,7 @@ public class OrderService {
         if ("REFUNDED".equals(order.getStatus()) || "RETURNED".equals(order.getStatus())) {
             Payment refunded = paymentRepository.findLatestRefundedByOrderId(order.getId());
             if (refunded != null) {
+                releaseOrderCoupon(order);
                 return refunded;
             }
             throw new IllegalStateException("Order is marked refunded but no refunded payment was found");
@@ -908,6 +1240,7 @@ public class OrderService {
         if (updated == 0) {
             Order latest = orderRepository.findById(order.getId());
             if (latest != null && ("REFUNDED".equals(latest.getStatus()) || "RETURNED".equals(latest.getStatus()))) {
+                releaseOrderCoupon(order);
                 return refundedPayment;
             }
             throw new IllegalStateException("Order refund finalization failed");
@@ -918,12 +1251,19 @@ public class OrderService {
                 restoreStock(item);
             }
         }
+        releaseOrderCoupon(order);
         notifyCustomer(
                 order,
                 "Order refunded",
                 "Refund for order " + safeOrderNo(order) + " has been completed."
         );
         return refundedPayment;
+    }
+
+    private void releaseOrderCoupon(Order order) {
+        if (order != null) {
+            couponService.releaseUsedCoupon(order.getUserCouponId());
+        }
     }
 
     private void restoreStock(OrderItem item) {
@@ -1019,13 +1359,14 @@ public class OrderService {
         }
         Long userId = order.getUserId();
         String shippingAddress = order.getShippingAddress();
+        String contactEmail = order.getContactEmail();
         String orderNo = safeOrderNo(order);
-        runAfterCommit(() -> dispatchCustomerNotification(userId, shippingAddress, orderNo, title.trim(), message.trim()));
+        runAfterCommit(() -> dispatchCustomerNotification(userId, shippingAddress, contactEmail, orderNo, title.trim(), message.trim()));
     }
 
-    private void dispatchCustomerNotification(Long userId, String shippingAddress, String orderNo, String title, String message) {
+    private void dispatchCustomerNotification(Long userId, String shippingAddress, String contactEmail, String orderNo, String title, String message) {
         try {
-            CustomerContact contact = resolveCustomerContact(userId, shippingAddress);
+            CustomerContact contact = resolveCustomerContact(userId, shippingAddress, contactEmail);
             if (notificationService != null && userId != null && !contact.guestUser) {
                 notificationService.tryCreateNotification(userId, "ORDER", title, message);
             }
@@ -1037,14 +1378,14 @@ public class OrderService {
         }
     }
 
-    private CustomerContact resolveCustomerContact(Long userId, String shippingAddress) {
-        String email = null;
+    private CustomerContact resolveCustomerContact(Long userId, String shippingAddress, String contactEmail) {
+        String email = normalizeEmail(contactEmail);
         boolean guestUser = shippingAddress != null && shippingAddress.startsWith("[Guest]");
         if (userId != null && userRepository != null) {
             try {
                 Optional<User> user = userRepository.findById(userId);
                 if (user.isPresent()) {
-                    email = normalizeEmail(user.get().getEmail());
+                    email = firstNonBlank(email, normalizeEmail(user.get().getEmail()));
                     guestUser = "GUEST".equalsIgnoreCase(trimToNull(user.get().getStatus()));
                 }
             } catch (RuntimeException e) {
@@ -1070,6 +1411,21 @@ public class OrderService {
             }
         }
         return null;
+    }
+
+    private String accountEmailForUser(Long userId) {
+        if (userId == null || userRepository == null) {
+            return null;
+        }
+        try {
+            return userRepository.findById(userId)
+                    .map(User::getEmail)
+                    .map(this::normalizeEmail)
+                    .orElse(null);
+        } catch (RuntimeException e) {
+            log.warn("Customer lookup failed while resolving checkout contact email: userId={}", userId, e);
+            return null;
+        }
     }
 
     private String normalizeEmail(String email) {
@@ -1129,7 +1485,7 @@ public class OrderService {
             return;
         }
         if ("REFUNDED".equals(nextStatus)
-                && Set.of("PENDING_SHIPMENT", "SHIPPED", "COMPLETED", "RETURN_REQUESTED", "RETURN_APPROVED", "RETURN_SHIPPED")
+                && Set.of("PENDING_SHIPMENT", "SHIPPED", "COMPLETED", "RETURN_REQUESTED", "RETURN_APPROVED", "RETURN_SHIPPED", "RETURNED")
                 .contains(currentStatus)) {
             return;
         }
@@ -1165,6 +1521,16 @@ public class OrderService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            String trimmed = trimToNull(value);
+            if (trimmed != null) {
+                return trimmed;
+            }
+        }
+        return null;
+    }
+
     public long count() {
         return orderRepository.countAll();
     }
@@ -1177,10 +1543,9 @@ public class OrderService {
     public Map<String, Long> getStatusBreakdown() {
         Map<String, Long> breakdown = new LinkedHashMap<>();
         for (Map<String, Object> row : orderRepository.countByStatusGroup()) {
-            Object status = row.get("status");
-            Object count = row.get("count");
-            if (status != null && count instanceof Number) {
-                breakdown.put(String.valueOf(status), ((Number) count).longValue());
+            Object status = mapValue(row, "status");
+            if (status != null) {
+                breakdown.put(String.valueOf(status), mapLong(row, "count"));
             }
         }
         return breakdown;
@@ -1195,7 +1560,15 @@ public class OrderService {
         order.setReturnable("COMPLETED".equals(order.getStatus())
                 && deadline != null
                 && !LocalDateTime.now().isAfter(deadline));
+        order.setGuestOrder(isGuestOrder(order));
         return order;
+    }
+
+    private boolean orderNoMatches(Order order, String orderNo) {
+        return orderNo != null
+                && order != null
+                && order.getOrderNo() != null
+                && order.getOrderNo().trim().equalsIgnoreCase(orderNo.trim());
     }
 
     private LocalDateTime calculateReturnDeadline(Order order) {

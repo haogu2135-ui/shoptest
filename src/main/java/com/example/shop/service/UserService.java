@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class UserService {
     private static final int USER_PHONE_MAX_CHARS = 20;
     private static final int PASSWORD_MIN_CHARS = 8;
     private static final int PASSWORD_MAX_CHARS = 128;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -65,18 +68,28 @@ public class UserService {
     
     @Transactional
     public User register(User user) {
-        assertStrongPassword(user.getPassword(), "Password");
-        if (user.getPhone() == null || user.getPhone().trim().isEmpty()) {
-            throw new IllegalArgumentException("Phone number is required");
+        return register(user, false);
+    }
+
+    @Transactional
+    public User register(User user, boolean guestEmailVerified) {
+        if (user == null) {
+            throw new IllegalArgumentException("Registration payload is required");
+        }
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            throw new IllegalArgumentException("Username is required");
         }
         if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
             throw new IllegalArgumentException("Email is required");
         }
+        if (user.getPhone() == null || user.getPhone().trim().isEmpty()) {
+            throw new IllegalArgumentException("Phone number is required");
+        }
+        assertStrongPassword(user.getPassword(), "Password");
         String normalizedPhone = normalizeRequiredPhoneText(user.getPhone(), "Phone number", USER_PHONE_MAX_CHARS);
         String normalizedEmail = normalizeRequiredStorageText(user.getEmail(), "Email", 100).toLowerCase();
-        String normalizedUsername = user.getUsername() == null || user.getUsername().trim().isEmpty()
-                ? normalizedPhone
-                : normalizeUsernameText(user.getUsername(), "Username", 50);
+        assertValidEmail(normalizedEmail, "Email");
+        String normalizedUsername = normalizeUsernameText(user.getUsername(), "Username", 50);
         if (looksLikeEmail(normalizedUsername)) {
             normalizedUsername = normalizedUsername.toLowerCase(Locale.ROOT);
         }
@@ -93,6 +106,9 @@ public class UserService {
         }
         if (existingEmail != null) {
             if (upgradingGuestAccount) {
+                if (!guestEmailVerified) {
+                    throw new IllegalArgumentException("Email verification is required to claim guest checkout history");
+                }
                 String rawPassword = user.getPassword();
                 applyRegisteredUserFields(user, normalizedUsername, normalizedEmail, normalizedPhone, rawPassword);
                 user.setId(existingEmail.getId());
@@ -102,7 +118,10 @@ public class UserService {
             throw new IllegalArgumentException("Email already registered");
         }
         applyRegisteredUserFields(user, normalizedUsername, normalizedEmail, normalizedPhone, user.getPassword());
-        user.setCreatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+        user.setPasswordChangedAt(now);
         userMapper.insert(user);
         if (user.getId() != null) {
             User saved = userMapper.findById(user.getId());
@@ -116,37 +135,92 @@ public class UserService {
 
     @Transactional
     public void registerAdmin(User user) {
-        if (userMapper.countAdminUsers() > 0) {
-            throw new IllegalArgumentException("Admin bootstrap is already completed");
+        assertAdminBootstrapLockAcquired();
+        try {
+            if (userMapper.countAdminUsers() > 0) {
+                throw new IllegalArgumentException("Admin bootstrap is already completed");
+            }
+            if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+                throw new IllegalArgumentException("Admin username is required");
+            }
+            if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+                throw new IllegalArgumentException("Admin email is required");
+            }
+            assertStrongPassword(user.getPassword(), "Admin password");
+            user.setUsername(normalizeRequiredStorageText(user.getUsername(), "Admin username", 50));
+            user.setEmail(normalizeRequiredStorageText(user.getEmail(), "Admin email", 100).toLowerCase());
+            assertValidEmail(user.getEmail(), "Admin email");
+            if (userMapper.findByUsername(user.getUsername()) != null) {
+                throw new IllegalArgumentException("Username already registered");
+            }
+            User existingEmail = userMapper.findByUsernameOrPhoneOrEmail(user.getEmail());
+            if (existingEmail != null) {
+                throw new IllegalArgumentException("Email already registered");
+            }
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setRole("ADMIN");
+            user.setRoleCode("ADMIN");
+            user.setStatus("ACTIVE");
+            user.setCreatedAt(LocalDateTime.now());
+            user.setUpdatedAt(LocalDateTime.now());
+            user.setPasswordChangedAt(user.getUpdatedAt());
+            userMapper.insert(user);
+        } finally {
+            userMapper.releaseAdminBootstrapLock();
         }
-        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
-            throw new IllegalArgumentException("Admin username is required");
-        }
-        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
-            throw new IllegalArgumentException("Admin email is required");
-        }
-        assertStrongPassword(user.getPassword(), "Admin password");
-        user.setUsername(normalizeRequiredStorageText(user.getUsername(), "Admin username", 50));
-        user.setEmail(normalizeRequiredStorageText(user.getEmail(), "Admin email", 100).toLowerCase());
-        if (userMapper.findByUsername(user.getUsername()) != null) {
-            throw new IllegalArgumentException("Username already registered");
-        }
-        User existingEmail = userMapper.findByUsernameOrPhoneOrEmail(user.getEmail());
-        if (existingEmail != null) {
-            throw new IllegalArgumentException("Email already registered");
-        }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole("ADMIN");
-        user.setStatus("ACTIVE");
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
-        userMapper.insert(user);
     }
     
     @Transactional
     public void update(User user) {
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+        User current = userMapper.findById(user.getId());
+        if (current == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+        normalizeMutableProfileFields(user, current);
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.update(user);
+    }
+
+    private void normalizeMutableProfileFields(User user, User current) {
+        if (user.getEmail() != null && !Objects.equals(user.getEmail(), current.getEmail())) {
+            user.setEmail(normalizeOptionalEmailForUpdate(user.getId(), user.getEmail()));
+        }
+        if (user.getPhone() != null && !Objects.equals(user.getPhone(), current.getPhone())) {
+            user.setPhone(normalizeOptionalPhoneForUpdate(user.getId(), user.getPhone()));
+        }
+        if (user.getAddress() != null && !Objects.equals(user.getAddress(), current.getAddress())) {
+            String normalizedAddress = normalizeOptionalStorageText(user.getAddress(), "Address", 260);
+            user.setAddress(normalizedAddress == null ? "" : normalizedAddress);
+        }
+    }
+
+    private String normalizeOptionalEmailForUpdate(Long userId, String email) {
+        String normalizedEmail = normalizeOptionalStorageText(email, "Email", 100);
+        if (normalizedEmail == null) {
+            return "";
+        }
+        normalizedEmail = normalizedEmail.toLowerCase(Locale.ROOT);
+        assertValidEmail(normalizedEmail, "Email");
+        User existingEmail = userMapper.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        if (existingEmail != null && !userId.equals(existingEmail.getId())) {
+            throw new IllegalArgumentException("Email already registered");
+        }
+        return normalizedEmail;
+    }
+
+    private String normalizeOptionalPhoneForUpdate(Long userId, String phone) {
+        String normalizedPhone = normalizeOptionalPhoneText(phone, "Phone number", USER_PHONE_MAX_CHARS);
+        if (normalizedPhone == null) {
+            return "";
+        }
+        User existingPhone = userMapper.findByPhone(normalizedPhone);
+        if (existingPhone != null && !userId.equals(existingPhone.getId())) {
+            throw new IllegalArgumentException("Phone number already registered");
+        }
+        return normalizedPhone;
     }
 
     @Transactional
@@ -157,6 +231,7 @@ public class UserService {
         }
         String normalizedEmail = normalizeRequiredStorageText(email, "Email", 100);
         normalizedEmail = normalizedEmail.toLowerCase();
+        assertValidEmail(normalizedEmail, "Email");
         String normalizedPhone = normalizeOptionalPhoneText(phone, "Phone number", USER_PHONE_MAX_CHARS);
 
         if (!normalizedEmail.equalsIgnoreCase(current.getEmail())) {
@@ -184,7 +259,7 @@ public class UserService {
         assertStrongPassword(newPassword, "New password");
         User user = userMapper.findById(userId);
         if (user != null && passwordEncoder.matches(oldPassword, user.getPassword())) {
-            userMapper.updatePassword(userId, passwordEncoder.encode(newPassword));
+            userMapper.updatePassword(userId, passwordEncoder.encode(newPassword), LocalDateTime.now());
         } else {
             throw new IllegalArgumentException("Current password is incorrect");
         }
@@ -195,11 +270,12 @@ public class UserService {
         assertStrongPassword(newPassword, "New password");
         String normalizedLogin = normalizeLookupText(login);
         String normalizedEmail = normalizeRequiredStorageText(email, "Email", 100).toLowerCase(Locale.ROOT);
+        assertValidEmail(normalizedEmail, "Email");
         User user = normalizedLogin == null ? null : findByUsernameOrPhoneOrEmail(normalizedLogin);
         if (user == null || user.getEmail() == null || !user.getEmail().equalsIgnoreCase(normalizedEmail)) {
             throw new IllegalArgumentException("Account information does not match");
         }
-        userMapper.updatePassword(user.getId(), passwordEncoder.encode(newPassword));
+        userMapper.updatePassword(user.getId(), passwordEncoder.encode(newPassword), LocalDateTime.now());
     }
 
     public List<User> findAll() {
@@ -211,6 +287,25 @@ public class UserService {
                 normalizeText(keyword, 120),
                 normalizeText(role, 40),
                 normalizeText(status, 40));
+    }
+
+    public long countSearch(String keyword, String role, String status) {
+        return userMapper.countSearch(
+                normalizeText(keyword, 120),
+                normalizeText(role, 40),
+                normalizeText(status, 40));
+    }
+
+    public List<User> searchPage(String keyword, String role, String status, int page, int size) {
+        int safeSize = Math.max(1, size);
+        int safePage = Math.max(1, page);
+        int offset = Math.max(0, (safePage - 1) * safeSize);
+        return userMapper.searchPage(
+                normalizeText(keyword, 120),
+                normalizeText(role, 40),
+                normalizeText(status, 40),
+                safeSize,
+                offset);
     }
 
     public UserAdminSummaryResponse adminSummary(String keyword, String role, String status) {
@@ -282,14 +377,23 @@ public class UserService {
         return value.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
+    private void assertAdminBootstrapLockAcquired() {
+        Long acquired = userMapper.acquireAdminBootstrapLock();
+        if (acquired == null || acquired.longValue() != 1L) {
+            throw new IllegalStateException("Admin bootstrap is currently locked");
+        }
+    }
+
     private void applyRegisteredUserFields(User user, String username, String email, String phone, String rawPassword) {
+        LocalDateTime now = LocalDateTime.now();
         user.setUsername(username);
         user.setEmail(email);
         user.setPhone(phone);
         user.setPassword(passwordEncoder.encode(rawPassword));
         user.setRole("USER");
         user.setStatus("ACTIVE");
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(now);
+        user.setPasswordChangedAt(now);
     }
 
     private void assertStrongPassword(String password, String fieldName) {
@@ -313,6 +417,15 @@ public class UserService {
                 && user.getEmail() != null
                 && user.getEmail().equalsIgnoreCase(normalizedEmail)
                 && "GUEST".equalsIgnoreCase(user.getStatus());
+    }
+
+    public boolean isGuestEmailOwner(String email) {
+        String normalizedEmail = normalizeLookupText(email);
+        if (normalizedEmail == null || !looksLikeEmail(normalizedEmail)) {
+            return false;
+        }
+        User existingEmail = userMapper.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        return isGuestEmailOwner(existingEmail, normalizedEmail);
     }
 
     private boolean isSameUser(User left, User right) {
@@ -463,6 +576,12 @@ public class UserService {
             throw new IllegalArgumentException(field + " is too long");
         }
         return normalized;
+    }
+
+    private void assertValidEmail(String value, String field) {
+        if (value == null || !EMAIL_PATTERN.matcher(value).matches()) {
+            throw new IllegalArgumentException(field + " format is invalid");
+        }
     }
 
     private boolean looksLikeEmail(String value) {

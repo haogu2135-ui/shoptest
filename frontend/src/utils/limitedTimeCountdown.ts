@@ -1,4 +1,4 @@
-import type { Product } from '../types';
+import type { ProductPublic } from '../types';
 
 export const getLimitedTimeEndMs = (value: unknown): number => {
   if (!value) return 0;
@@ -7,7 +7,7 @@ export const getLimitedTimeEndMs = (value: unknown): number => {
 };
 
 export const getLimitedTimeRemainingMs = (
-  product: Pick<Product, 'activeLimitedTimeDiscount' | 'limitedTimeEndAt'> | null | undefined,
+  product: Pick<ProductPublic, 'activeLimitedTimeDiscount' | 'limitedTimeEndAt'> | null | undefined,
   now = Date.now(),
 ): number => {
   if (!product?.activeLimitedTimeDiscount) return 0;
@@ -16,6 +16,6 @@ export const getLimitedTimeRemainingMs = (
 };
 
 export const shouldRunLimitedTimeTicker = (
-  product: Pick<Product, 'activeLimitedTimeDiscount' | 'limitedTimeEndAt'> | null | undefined,
+  product: Pick<ProductPublic, 'activeLimitedTimeDiscount' | 'limitedTimeEndAt'> | null | undefined,
   now = Date.now(),
 ): boolean => getLimitedTimeRemainingMs(product, now) > 0;

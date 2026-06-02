@@ -3294,3 +3294,40 @@
   flex: 0 0 auto;
   max-width: min(124px, 34vw);
 }
+
+/* Final mobile/App profile operation touch-target guard */
+@media (max-width: 640px) {
+  .profile-overview__actions .ant-btn,
+  .profile-mobile-entry__item,
+  .profile-tabs .ant-tabs-tab,
+  .profile-info-actions .ant-btn,
+  .profile-section-action.ant-btn,
+  .profile-address-card .ant-btn,
+  .profile-orders__toolbar .ant-input-search .ant-input,
+  .profile-orders__toolbar .ant-input-search .ant-input-affix-wrapper,
+  .profile-orders__toolbar .ant-select-selector,
+  .profile-orders__toolbar .ant-btn,
+  .profile-orders__tab,
+  .profile-order-card__actions .ant-btn,
+  .profile-pet-next-step .ant-btn,
+  .profile-pet-shop-path__actions .ant-btn,
+  .profile-pet-card .ant-btn,
+  .profile-payment-actions .ant-btn,
+  .profile-flow-actions__buttons .ant-btn,
+  .profile-payment-recommend__chip,
+  .profile-payment-link,
+  .profile-payment-modal .ant-modal-footer .ant-btn,
+  .profile-payment-modal .ant-select-selector,
+  .profile-mobile-safe-modal .ant-modal-footer .ant-btn,
+  .profile-address-modal .ant-input,
+  .profile-address-modal .ant-input-affix-wrapper,
+  .profile-address-modal .ant-cascader,
+  .profile-address-modal textarea.ant-input,
+  .profile-address-modal .ant-checkbox-wrapper,
+  .profile-order-detail__descriptions .ant-btn,
+  .profile-order-detail__itemsHeader .ant-btn,
+  .profile-order-detail__productButton,
+  .profile-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+  }
+}

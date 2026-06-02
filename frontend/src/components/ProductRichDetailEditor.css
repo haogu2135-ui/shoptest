@@ -205,3 +205,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Final mobile/App rich-detail editor touch-target guard */
+@media (max-width: 640px) {
+  .product-rich-detail-editor__toolbar .ant-btn,
+  .product-rich-detail-editor__blockActions .ant-btn,
+  .product-rich-detail-editor__typeSelect .ant-select-selector,
+  .product-rich-detail-editor__mediaFields .ant-input,
+  .product-rich-detail-editor textarea {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}

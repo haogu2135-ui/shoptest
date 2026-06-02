@@ -1052,3 +1052,25 @@
     gap: 6px;
   }
 }
+
+/* Final mobile/App stock-alert action touch-target guard */
+@media (max-width: 640px) {
+  .stock-alerts__header .ant-btn,
+  .stock-alerts__recoveryActions .ant-btn,
+  .stock-alerts__nextAction .ant-btn,
+  .stock-alerts__mobileAction .ant-btn,
+  .stock-alerts__item .ant-btn,
+  .stock-alerts .ant-empty .ant-btn,
+  .stock-alerts-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+  }
+
+  .stock-alerts__item .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .stock-alerts__item .ant-list-item-action .ant-btn:not(.ant-btn-primary) {
+    width: 44px;
+    min-width: 44px;
+  }
+}

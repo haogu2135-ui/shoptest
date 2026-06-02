@@ -16,6 +16,7 @@ import com.example.shop.repository.OrderRepository;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -38,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -195,6 +197,55 @@ class PaymentFlowServiceTest {
         assertEquals("gw-txn-42", payment.getTransactionId());
         server.verify();
         verify(paymentRepository).insert(any(Payment.class));
+    }
+
+    @Test
+    void duplicatePaymentCreateRaceReturnsExistingPayment() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        PaymentChannelConfig.Channel channel = new PaymentChannelConfig.Channel();
+        channel.setCode("OXXO");
+        channel.setProvider("REDIRECT");
+        channel.setEnabled(true);
+        channelConfig.setChannels(List.of(channel));
+        channelConfig.setCheckoutBaseUrl("https://payments.example.com/checkout");
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605270001");
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(new BigDecimal("88.00"));
+        Payment racedPayment = new Payment();
+        racedPayment.setId(9L);
+        racedPayment.setOrderId(42L);
+        racedPayment.setOrderNo(order.getOrderNo());
+        racedPayment.setChannel("OXXO");
+        racedPayment.setStatus("PENDING");
+
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getBoolean("payment.gateway-allow-local", false)).thenReturn(false);
+        when(runtimeConfig.getString("payment.success-url", "http://localhost:3000/profile?payment=success")).thenReturn("https://shop.example.com/profile?payment=success");
+        when(runtimeConfig.getString("payment.cancel-url", "http://localhost:3000/cart?payment=cancelled")).thenReturn("https://shop.example.com/cart?payment=cancelled");
+        when(runtimeConfig.getLong("payment.timeout-minutes", 30)).thenReturn(30L);
+        doThrow(new DataIntegrityViolationException("duplicate order channel")).when(paymentRepository).insert(any(Payment.class));
+        when(paymentRepository.findByOrderIdAndChannel(42L, "OXXO")).thenReturn(null, racedPayment);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "paymentChannelAvailabilityService", availabilityService(channelConfig, runtimeConfig));
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "circuitBreakerService", new CircuitBreakerService(runtimeConfig));
+        PaymentCreateRequest request = new PaymentCreateRequest();
+        request.setOrderId(42L);
+        request.setChannel("OXXO");
+
+        Payment result = service.createPayment(request);
+
+        assertEquals(9L, result.getId());
     }
 
     @Test
@@ -385,7 +436,7 @@ class PaymentFlowServiceTest {
         PaymentService service = new PaymentService();
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
-        when(runtimeConfig.getString("payment.callback-secret", "dev-payment-secret")).thenReturn("dev-payment-secret");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
         when(runtimeConfig.getLong("payment.callback-max-skew-seconds", 300)).thenReturn(300L);
         ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
         ReflectionTestUtils.setField(service, "orderService", orderService);
@@ -572,12 +623,20 @@ class PaymentFlowServiceTest {
         ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
         ReflectionTestUtils.setField(service, "orderItemRepository", orderItemRepository);
         ReflectionTestUtils.setField(service, "refundService", refundService);
+        ReflectionTestUtils.setField(service, "couponService", mock(CouponService.class));
 
         service.completeReturn(42L);
 
         verify(orderRepository, never()).markReturnRefundingIfCurrent(eq(42L), any(), any());
         verify(refundService).refundPaidPayment(order, "customer return");
         verify(orderRepository).completeReturnAndRefundIfCurrent(42L, "RETURN_REFUNDING");
+    }
+
+    @Test
+    void returnedOrderCanTransitionToRefundedForLegacyRecovery() {
+        OrderService service = new OrderService();
+
+        service.assertNextStatus("RETURNED", "REFUNDED");
     }
 
     @Test
@@ -652,7 +711,7 @@ class PaymentFlowServiceTest {
 
         when(orderRepository.findById(42L)).thenReturn(order);
         when(runtimeConfig.getLong("order.return-window-days", 7)).thenReturn(7L);
-        when(orderRepository.updateStatus(42L, "COMPLETED")).thenReturn(1);
+        when(orderRepository.updateStatusIfCurrent(42L, "SHIPPED", "COMPLETED")).thenReturn(1);
         when(userRepository.findById(7L)).thenReturn(Optional.of(guest));
 
         OrderService service = new OrderService();
@@ -688,7 +747,7 @@ class PaymentFlowServiceTest {
 
         when(orderRepository.findById(42L)).thenReturn(order);
         when(runtimeConfig.getLong("order.return-window-days", 7)).thenReturn(7L);
-        when(orderRepository.updateStatus(42L, "COMPLETED")).thenReturn(1);
+        when(orderRepository.updateStatusIfCurrent(42L, "SHIPPED", "COMPLETED")).thenReturn(1);
         when(userRepository.findById(7L)).thenReturn(Optional.empty());
 
         OrderService service = new OrderService();
@@ -720,7 +779,7 @@ class PaymentFlowServiceTest {
 
         when(orderRepository.findById(42L)).thenReturn(order);
         when(runtimeConfig.getLong("order.return-window-days", 7)).thenReturn(7L);
-        when(orderRepository.updateStatus(42L, "COMPLETED")).thenReturn(1);
+        when(orderRepository.updateStatusIfCurrent(42L, "SHIPPED", "COMPLETED")).thenReturn(1);
 
         OrderService service = new OrderService();
         ReflectionTestUtils.setField(service, "orderRepository", orderRepository);

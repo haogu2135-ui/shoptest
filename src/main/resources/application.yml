@@ -1,6 +1,7 @@
 server:
   address: ${SERVER_ADDRESS:0.0.0.0}
   port: ${SERVER_PORT:8081}
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:framework}
 
 spring:
   application:
@@ -10,7 +11,7 @@ spring:
       discovery:
         enabled: ${NACOS_DISCOVERY_ENABLED:true}
         register-enabled: ${NACOS_REGISTER_ENABLED:${spring.cloud.nacos.discovery.enabled:true}}
-        server-addr: ${NACOS_SERVER_ADDR:158.101.11.223:8848}
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
         namespace: ${NACOS_NAMESPACE:}
         group: ${NACOS_GROUP:DEFAULT_GROUP}
         cluster-name: ${NACOS_CLUSTER_NAME:DEFAULT}
@@ -29,15 +30,15 @@ spring:
           region: ${NACOS_METADATA_REGION:default}
           zone: ${NACOS_METADATA_ZONE:default}
   datasource:
-    url: ${DB_URL:jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    url: ${DB_URL:}
     username: ${DB_USERNAME:shop}
-    password: ${DB_PASSWORD:shop_password}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   redis:
-    host: ${REDIS_HOST:158.101.11.223}
+    host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:shop_redis_password}
+    password: ${REDIS_PASSWORD:}
     database: ${REDIS_DATABASE:0}
     timeout: ${REDIS_TIMEOUT:2000ms}
 

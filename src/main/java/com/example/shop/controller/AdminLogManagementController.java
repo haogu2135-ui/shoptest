@@ -3,6 +3,9 @@ package com.example.shop.controller;
 import com.example.shop.dto.LogDebugRequest;
 import com.example.shop.dto.LogManagementStatusResponse;
 import com.example.shop.dto.LogPreviewResponse;
+import com.example.shop.security.SecurityUtils;
+import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.LogManagementService;
 import com.example.shop.service.SecurityAuditLogService;
 import org.springframework.http.ContentDisposition;
@@ -28,10 +31,14 @@ import java.time.LocalDateTime;
 public class AdminLogManagementController {
     private final LogManagementService logManagementService;
     private final SecurityAuditLogService auditLogService;
+    private final AdminRoleService adminRoleService;
 
-    public AdminLogManagementController(LogManagementService logManagementService, SecurityAuditLogService auditLogService) {
+    public AdminLogManagementController(LogManagementService logManagementService,
+                                        SecurityAuditLogService auditLogService,
+                                        AdminRoleService adminRoleService) {
         this.logManagementService = logManagementService;
         this.auditLogService = auditLogService;
+        this.adminRoleService = adminRoleService;
     }
 
     @GetMapping
@@ -45,10 +52,11 @@ public class AdminLogManagementController {
             Authentication authentication,
             HttpServletRequest httpRequest
     ) {
-        if (request == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Log debug payload is required");
-        }
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.LOGS_DEBUG_PERMISSION);
+            if (request == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Log debug payload is required");
+            }
             LogManagementStatusResponse response = logManagementService.setDebug(request.isEnabled(), request.getLoggerName());
             auditLogService.record("LOG_DEBUG_TOGGLE", "SUCCESS", authentication, "LOGGING", response.getLoggerName(), httpRequest,
                     request.isEnabled() ? "Debug logging enabled" : "Debug logging disabled",
@@ -63,6 +71,14 @@ public class AdminLogManagementController {
         }
     }
 
+    private void requireAdminActionPermission(Authentication authentication, String permission) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (adminRoleService.hasPermission(user.getId(), permission)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
+    }
+
     @GetMapping("/preview")
     public LogPreviewResponse preview(
             @RequestParam String start,
@@ -74,6 +90,7 @@ public class AdminLogManagementController {
             HttpServletRequest httpRequest
     ) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.LOGS_DOWNLOAD_PERMISSION);
             LocalDateTime startTime = LogManagementService.parseClientDateTime(start);
             LocalDateTime endTime = LogManagementService.parseClientDateTime(end);
             LogPreviewResponse response = logManagementService.preview(startTime, endTime, keyword, level, limit);
@@ -99,6 +116,7 @@ public class AdminLogManagementController {
             HttpServletRequest httpRequest
     ) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.LOGS_DOWNLOAD_PERMISSION);
             LocalDateTime startTime = LogManagementService.parseClientDateTime(start);
             LocalDateTime endTime = LogManagementService.parseClientDateTime(end);
             byte[] body = logManagementService.download(startTime, endTime, keyword, level);

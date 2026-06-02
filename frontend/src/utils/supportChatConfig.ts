@@ -19,8 +19,8 @@ export const parseSupportSocketPayload = (data: string) => {
     const parsed = JSON.parse(data);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? parsed
-      : { type: 'ERROR', message: 'Invalid support message' };
+      : { type: 'ERROR' };
   } catch {
-    return { type: 'ERROR', message: 'Invalid support message' };
+    return { type: 'ERROR' };
   }
 };

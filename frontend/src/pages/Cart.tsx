@@ -3,7 +3,7 @@ import { Alert, Button, Card, Checkbox, Empty, InputNumber, message, Popconfirm,
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
-import type { CartItem, Product } from '../types';
+import type { CartItem, ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
@@ -29,6 +29,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Cart.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Title, Text } = Typography;
 const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;
@@ -48,6 +49,19 @@ const isAuthExpiredError = (error: any) => {
   const status = Number(error?.response?.status);
   return status === 401 || status === 403;
 };
+
+const getLineQuantity = (quantity: unknown) => {
+  const numeric = Number(quantity);
+  return Number.isFinite(numeric) ? Math.max(1, Math.floor(numeric)) : 1;
+};
+
+const getLinePrice = (price: unknown) => {
+  const numeric = Number(price);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+};
+
+const getLineTotal = (item: Pick<CartItem, 'price' | 'quantity'> | Pick<SavedForLaterItem, 'price' | 'quantity'>) =>
+  getLinePrice(item.price) * getLineQuantity(item.quantity);
 
 const Cart: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -91,7 +105,7 @@ const Cart: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   useEffect(() => {
     fetchCartItems();
@@ -118,7 +132,7 @@ const Cart: React.FC = () => {
         const nextRecentProducts = preferences.recent
             .map((productId) => productById.get(productId))
             .filter((product): product is Product => Boolean(product))
-            .filter((product) => (product.status || 'ACTIVE') === 'ACTIVE' && (product.stock === undefined || product.stock > 0))
+            .filter((product) => product.stock === undefined || product.stock > 0)
             .slice(0, conversionConfig.cartRecentlyViewed.maxItems);
         recentProductsCache.set(cacheKey, {
           expiresAt: Date.now() + RECENT_PRODUCTS_CACHE_MS,
@@ -339,7 +353,7 @@ const Cart: React.FC = () => {
   );
   const showRecentlyViewedRecovery = recentProducts.length > 0 && (cartItems.length === 0 || purchasableItems.length === 0);
 
-  const selectedTotal = selectedItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  const selectedTotal = selectedItems.reduce((total, item) => total + getLineTotal(item), 0);
   const freeShippingThreshold = market.freeShippingThreshold;
   const freeShippingRemaining = Math.max(0, freeShippingThreshold - selectedTotal);
   const benefitTarget = getNearestCartBenefitTarget(selectedTotal, freeShippingThreshold, currency);
@@ -350,8 +364,8 @@ const Cart: React.FC = () => {
   const selectedPurchasableIds = selectedIds.filter((id) => purchasableItems.some((item) => item.id === id));
   const selectedPurchasableCount = selectedPurchasableIds.length;
   const allSelected = purchasableItems.length > 0 && selectedPurchasableCount === purchasableItems.length;
-  const selectedUnitCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const savedItemsTotal = savedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const selectedUnitCount = selectedItems.reduce((sum, item) => sum + getLineQuantity(item.quantity), 0);
+  const savedItemsTotal = savedItems.reduce((sum, item) => sum + getLineTotal(item), 0);
   const checkoutBlocked = selectedPurchasableCount === 0 || selectedItems.some((item) => !canCheckout(item));
   const toggleAll = (checked: boolean) => {
     setSelectedIds(checked ? purchasableItems.map((item) => item.id) : []);
@@ -420,7 +434,7 @@ const Cart: React.FC = () => {
         key: 'select',
         tone: 'warning',
         title: t('pages.cart.nextActionSelectTitle'),
-        text: t('pages.cart.nextActionSelectText', { count: purchasableItems.reduce((sum, item) => sum + item.quantity, 0) }),
+        text: t('pages.cart.nextActionSelectText', { count: purchasableItems.reduce((sum, item) => sum + getLineQuantity(item.quantity), 0) }),
         label: t('pages.cart.selectCheckoutReady'),
         action: () => toggleAll(true),
       };
@@ -563,7 +577,7 @@ const Cart: React.FC = () => {
         <Space>
           <img
             src={resolveCartImage(record.imageUrl)}
-            alt={name}
+            alt={name || t('pages.profile.productFallback', { id: record.productId })}
             className="cart-page__tableImage"
             loading="lazy"
             decoding="async"
@@ -574,8 +588,8 @@ const Cart: React.FC = () => {
             }}
           />
           <div>
-            <Link to={`/products/${record.productId}`}><Text>{name}</Text></Link>
-            {record.selectedSpecs ? <div><Text type="secondary">{formatSelectedSpecs(record.selectedSpecs, t)}</Text></div> : null}
+            <Link to={`/products/${record.productId}`}><Text>{name || t('pages.profile.productFallback', { id: record.productId })}</Text></Link>
+            {record.selectedSpecs ? <div><Text type="secondary">{formatSelectedSpecs(record.selectedSpecs, t, language)}</Text></div> : null}
             {!canCheckout(record) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
             {canCheckout(record) && getCartItemLowStockCount(record) !== null ? (
               <div>
@@ -615,7 +629,7 @@ const Cart: React.FC = () => {
       title: t('common.subtotal'),
       key: 'subtotal',
       width: 120,
-      render: (_: unknown, record: CartItem) => <Text strong className="cart-page__priceText commerce-money">{formatMoney(record.price * record.quantity)}</Text>,
+      render: (_: unknown, record: CartItem) => <Text strong className="cart-page__priceText commerce-money">{formatMoney(getLineTotal(record))}</Text>,
     },
     {
       title: t('common.actions'),
@@ -626,7 +640,11 @@ const Cart: React.FC = () => {
           <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(record)} disabled={removingItemIds.includes(record.id)}>
             {t('pages.cart.saveForLater')}
           </Button>
-          <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(record.id)}>
+          <Popconfirm
+            popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+            title={t('pages.cart.deleteConfirm')}
+            onConfirm={() => removeItem(record.id)}
+          >
             <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(record.id)}>{t('common.delete')}</Button>
           </Popconfirm>
         </Space>
@@ -737,9 +755,21 @@ const Cart: React.FC = () => {
           <Title level={2}>{t('pages.cart.title')}</Title>
           <Text>{cartItems.length > 0 ? cartNextAction.text : t('pages.cart.empty')}</Text>
           <div className="cart-page__heroActions">
-            <Button type={cartItems.length > 0 ? 'primary' : 'default'} onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}>
-              {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
-            </Button>
+            {cartItems.length > 0 && cartNextAction.key === 'clear' ? (
+              <Popconfirm
+                popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
+                onConfirm={cartNextAction.action}
+              >
+                <Button type="primary">
+                  {cartNextAction.label}
+                </Button>
+              </Popconfirm>
+            ) : (
+              <Button type={cartItems.length > 0 ? 'primary' : 'default'} onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}>
+                {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
+              </Button>
+            )}
             <Button onClick={() => navigate('/products')}>
               {t('pages.cart.browse')}
             </Button>
@@ -780,7 +810,7 @@ const Cart: React.FC = () => {
                 <button type="button" className="cart-page__recentLink" onClick={() => navigate(`/products/${product.id}`)}>
                   <img
                     src={resolveCartImage(product.imageUrl)}
-                    alt={product.name}
+                    alt={product.name || t('pages.profile.productFallback', { id: product.id })}
                     loading="lazy"
                     decoding="async"
                     onError={(event) => {
@@ -790,7 +820,7 @@ const Cart: React.FC = () => {
                     }}
                   />
                   <span>
-                    <Text strong>{product.name}</Text>
+                    <Text strong>{product.name || t('pages.profile.productFallback', { id: product.id })}</Text>
                     <Text type="secondary" className="commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</Text>
                   </span>
                 </button>
@@ -813,6 +843,7 @@ const Cart: React.FC = () => {
           <Card size="small" className="cart-page__bulkActions">
             <Space wrap>
               <Popconfirm
+                popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
                 title={t('pages.cart.deleteSelectedConfirm', { count: selectedIds.length })}
                 disabled={selectedIds.length === 0}
                 onConfirm={removeSelectedItems}
@@ -822,6 +853,7 @@ const Cart: React.FC = () => {
                 </Button>
               </Popconfirm>
               <Popconfirm
+                popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
                 title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                 disabled={unavailableItems.length === 0}
                 onConfirm={clearUnavailableItems}
@@ -841,7 +873,7 @@ const Cart: React.FC = () => {
                 <Text type="secondary">
                   {t('pages.cart.readinessSubtitle', {
                     selected: selectedUnitCount,
-                    available: purchasableItems.reduce((sum, item) => sum + item.quantity, 0),
+                    available: purchasableItems.reduce((sum, item) => sum + getLineQuantity(item.quantity), 0),
                   })}
                 </Text>
               </div>
@@ -863,9 +895,15 @@ const Cart: React.FC = () => {
                 {t('pages.cart.selectCheckoutReady')}
               </Button>
               {unavailableItems.length > 0 ? (
-                <Button size="small" onClick={clearUnavailableItems} loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}>
-                  {t('pages.cart.clearUnavailable')}
-                </Button>
+                <Popconfirm
+                  popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                  title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
+                  onConfirm={clearUnavailableItems}
+                >
+                  <Button size="small" loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}>
+                    {t('pages.cart.clearUnavailable')}
+                  </Button>
+                </Popconfirm>
               ) : null}
             </div>
           </div>
@@ -876,78 +914,103 @@ const Cart: React.FC = () => {
                 <Text strong>{cartNextAction.title}</Text>
                 <Text type="secondary">{cartNextAction.text}</Text>
               </span>
-              <Button
-                type="default"
-                onClick={cartNextAction.action}
-                loading={cartNextAction.key === 'saved' && restoringSaved}
-              >
-                {cartNextAction.label}
-              </Button>
+              {cartNextAction.key === 'clear' ? (
+                <Popconfirm
+                  popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                  title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
+                  onConfirm={cartNextAction.action}
+                >
+                  <Button type="default">
+                    {cartNextAction.label}
+                  </Button>
+                </Popconfirm>
+              ) : (
+                <Button
+                  type="default"
+                  onClick={cartNextAction.action}
+                  loading={cartNextAction.key === 'saved' && restoringSaved}
+                >
+                  {cartNextAction.label}
+                </Button>
+              )}
             </div>
           ) : null}
           <div className="cart-page__table">
             <Table columns={columns} dataSource={cartItems} rowKey="id" loading={loading} pagination={false} />
           </div>
-          <div className="cart-page__mobileList">
+          <div className="cart-page__mobileList" role="list" aria-label={t('pages.cart.title')}>
             {cartItems.map((item) => (
-          <Card key={item.id} size="small" className="cart-page__mobileItem">
-            <div className="cart-page__mobileItemTop">
-              <Checkbox
-                disabled={!canCheckout(item)}
-                checked={selectedIds.includes(item.id)}
-                onChange={(e) => toggleOne(item.id, e.target.checked)}
-              />
-              <img
-                className="cart-page__mobileItemImage"
-                src={resolveCartImage(item.imageUrl)}
-                alt={item.productName}
-                loading="lazy"
-                decoding="async"
-                onError={(event) => {
-                  if (event.currentTarget.src !== cartImageFallback) {
-                    event.currentTarget.src = cartImageFallback;
-                  }
-                }}
-              />
-              <div className="cart-page__mobileItemInfo">
-                <Link className="cart-page__mobileItemTitle" to={`/products/${item.productId}`}><Text strong>{item.productName}</Text></Link>
-                {item.selectedSpecs ? <div className="cart-page__mobileItemMeta"><Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text></div> : null}
-                {!canCheckout(item) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
-                {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
-                  <div>
-                    <Text type="warning" className="cart-page__urgency">
-                      {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
+              <Card key={item.id} size="small" className="cart-page__mobileItem" role="listitem">
+                <div className="cart-page__mobileItemTop">
+                  <Checkbox
+                    disabled={!canCheckout(item)}
+                    checked={selectedIds.includes(item.id)}
+                    aria-label={`${t('pages.cart.chooseItems')}: ${item.productName || t('pages.profile.productFallback', { id: item.productId })}`}
+                    onChange={(e) => toggleOne(item.id, e.target.checked)}
+                  />
+                  <img
+                    className="cart-page__mobileItemImage"
+                    src={resolveCartImage(item.imageUrl)}
+                    alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
+                    loading="lazy"
+                    decoding="async"
+                    onError={(event) => {
+                      if (event.currentTarget.src !== cartImageFallback) {
+                        event.currentTarget.src = cartImageFallback;
+                      }
+                    }}
+                  />
+                  <div className="cart-page__mobileItemInfo">
+                    <Link className="cart-page__mobileItemTitle" to={`/products/${item.productId}`}><Text strong>{item.productName || t('pages.profile.productFallback', { id: item.productId })}</Text></Link>
+                    {item.selectedSpecs ? <div className="cart-page__mobileItemMeta"><Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text></div> : null}
+                    {!canCheckout(item) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
+                    {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
+                      <div>
+                        <Text type="warning" className="cart-page__urgency">
+                          {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
+                        </Text>
+                      </div>
+                    ) : null}
+                    <Text type="secondary" className="cart-page__mobileItemUnit commerce-atomic commerce-price-quantity">
+                      <span className="cart-page__mobileItemUnitPrice commerce-money">{formatMoney(item.price)}</span>
+                      <span className="commerce-quantity">x {item.quantity}</span>
                     </Text>
                   </div>
-                ) : null}
-                <Text type="secondary" className="cart-page__mobileItemUnit commerce-atomic commerce-price-quantity">
-                  <span className="cart-page__mobileItemUnitPrice commerce-money">{formatMoney(item.price)}</span>
-                  <span className="commerce-quantity">x {item.quantity}</span>
-                </Text>
-              </div>
-            </div>
-            <div className="cart-page__mobileItemBottom">
-              <div className="cart-page__mobileItemCommerce">
-                <InputNumber
-                  min={1}
-                  max={item.stock ?? undefined}
-                  disabled={!isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id)}
-                  value={item.quantity}
-                  size="small"
-                  onChange={(value) => updateQuantity(item.id, value || 1)}
-                />
-                <Text strong className="cart-page__priceText commerce-money">{formatMoney(item.price * item.quantity)}</Text>
-              </div>
-              <div className="cart-page__mobileItemActions">
-                <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
-                  {t('pages.cart.saveForLaterShort')}
-                </Button>
-                <Popconfirm title={t('pages.cart.deleteConfirm')} onConfirm={() => removeItem(item.id)}>
-                  <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(item.id)} />
-                </Popconfirm>
-              </div>
-            </div>
-          </Card>
+                </div>
+                <div className="cart-page__mobileItemBottom">
+                  <div className="cart-page__mobileItemCommerce">
+                    <InputNumber
+                      min={1}
+                      max={item.stock ?? undefined}
+                      disabled={!isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id)}
+                      value={item.quantity}
+                      size="small"
+                      onChange={(value) => updateQuantity(item.id, value || 1)}
+                    />
+                    <Text strong className="cart-page__priceText commerce-money">{formatMoney(getLineTotal(item))}</Text>
+                  </div>
+                  <div className="cart-page__mobileItemActions">
+                    <Button type="text" icon={<ClockCircleOutlined />} size="small" onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
+                      {t('pages.cart.saveForLaterShort')}
+                    </Button>
+                    <Popconfirm
+                      popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                      title={t('pages.cart.deleteConfirm')}
+                      onConfirm={() => removeItem(item.id)}
+                    >
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        size="small"
+                        loading={removingItemIds.includes(item.id)}
+                        aria-label={t('common.delete')}
+                        title={t('common.delete')}
+                      />
+                    </Popconfirm>
+                  </div>
+                </div>
+              </Card>
             ))}
           </div>
           <Card className="cart-page__summary">
@@ -1037,7 +1100,7 @@ const Cart: React.FC = () => {
                 <Link to={`/products/${item.productId}`}>
                   <img
                     src={resolveCartImage(item.imageUrl)}
-                    alt={item.productName}
+                    alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
                     loading="lazy"
                     decoding="async"
                     onError={(event) => {
@@ -1048,8 +1111,8 @@ const Cart: React.FC = () => {
                   />
                 </Link>
                 <div className="cart-page__savedInfo">
-                  <Link to={`/products/${item.productId}`}><Text strong>{item.productName}</Text></Link>
-                  {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
+                  <Link to={`/products/${item.productId}`}><Text strong>{item.productName || t('pages.profile.productFallback', { id: item.productId })}</Text></Link>
+                  {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
                   <Text type="secondary" className="cart-page__savedQuantity commerce-quantity">{t('common.quantity')}: {item.quantity}</Text>
                   <Tag className="cart-page__savedAge">
                     {t('pages.cart.savedDaysAgo', { count: getSavedAgeDays(item.savedAt) })}
@@ -1060,8 +1123,12 @@ const Cart: React.FC = () => {
                   <Button icon={<ShoppingCartOutlined />} onClick={() => moveSavedItemToCart(item)}>
                     {t('pages.cart.moveToCart')}
                   </Button>
-                  <Popconfirm title={t('pages.cart.deleteSavedConfirm')} onConfirm={() => removeSavedItem(item.id)}>
-                    <Button danger type="text" icon={<DeleteOutlined />} />
+                  <Popconfirm
+                    popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                    title={t('pages.cart.deleteSavedConfirm')}
+                    onConfirm={() => removeSavedItem(item.id)}
+                  >
+                    <Button danger type="text" icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')} />
                   </Popconfirm>
                 </Space>
               </div>

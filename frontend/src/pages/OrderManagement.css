@@ -75,6 +75,10 @@
   line-height: 1.35;
 }
 
+.order-management-page__customerStack .ant-tag {
+  margin-inline-end: 0;
+}
+
 .order-management-page__actions {
   max-width: 100%;
 }
@@ -938,5 +942,20 @@
 
   .order-management-page .ant-modal-footer {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final mobile/App order-operations touch-target guard */
+@media (max-width: 720px) {
+  .order-management-page .ant-btn,
+  .order-management-page__toolbar .ant-btn,
+  .order-management-page__refundActions .ant-btn,
+  .order-management-page__detailActions .ant-btn,
+  .order-management-page__actions .ant-btn,
+  .order-management-page .ant-modal-footer .ant-btn,
+  .order-management-page__toolbar .ant-input-affix-wrapper,
+  .order-management-page__toolbar .ant-select-selector,
+  .order-management-page__batchCarrierSelect .ant-select-selector {
+    min-height: 44px;
   }
 }

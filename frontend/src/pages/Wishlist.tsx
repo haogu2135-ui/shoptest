@@ -13,6 +13,7 @@ import { hasStoredValue } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage } from '../utils/apiError';
 import './Wishlist.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text, Title } = Typography;
 const wishlistImageFallback = productImageFallback;
@@ -295,6 +296,7 @@ const Wishlist: React.FC = () => {
         </Button>
         {wishlistStats.unavailableCount > 0 ? (
           <Popconfirm
+            popupClassName="shop-mobile-popup-layer wishlist-clear-unavailable-popconfirm"
             title={t('pages.cart.clearUnavailableConfirm', { count: wishlistStats.unavailableCount })}
             onConfirm={clearUnavailableItems}
           >
@@ -446,7 +448,11 @@ const Wishlist: React.FC = () => {
               {renderReadiness(item)}
               <div className="wishlist-page__actions">
                 {primaryAction(item)}
-                <Popconfirm title={t('pages.wishlist.removeConfirm')} onConfirm={() => handleRemove(item.productId)}>
+                <Popconfirm
+                  popupClassName="shop-mobile-popup-layer wishlist-remove-popconfirm"
+                  title={t('pages.wishlist.removeConfirm')}
+                  onConfirm={() => handleRemove(item.productId)}
+                >
                   <Button danger icon={<DeleteOutlined />} className="wishlist-page__removeAction" block>
                     {t('pages.wishlist.remove')}
                   </Button>

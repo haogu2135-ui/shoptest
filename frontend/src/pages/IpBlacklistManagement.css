@@ -65,6 +65,11 @@
   margin-bottom: 14px;
 }
 
+.ip-blacklist__notice {
+  margin-bottom: 14px;
+  border-radius: 10px;
+}
+
 .ip-blacklist__filters .ant-select {
   min-width: 150px;
 }
@@ -84,6 +89,11 @@
   border: 1px solid rgba(35, 80, 92, 0.1);
   border-radius: 12px;
   background: #fbfefd;
+}
+
+.ip-blacklist__emptyActions {
+  justify-content: center;
+  margin-top: 10px;
 }
 
 .ip-blacklist .ant-typography,
@@ -245,5 +255,22 @@
 
   .ip-blacklist__stats .ant-card {
     flex-basis: 134px;
+  }
+}
+
+/* Final mobile/App IP blacklist operations touch-target guard */
+@media (max-width: 720px) {
+  .ip-blacklist__actions .ant-btn,
+  .ip-blacklist__filters .ant-select-selector,
+  .ip-blacklist__filters .ant-input,
+  .ip-blacklist__filters .ant-btn,
+  .ip-blacklist__bulkBar .ant-btn,
+  .ip-blacklist .ant-table-cell .ant-btn,
+  .ip-blacklist__emptyActions .ant-btn,
+  .ip-blacklist__manualBlockModal .ant-modal-footer .ant-btn,
+  .ip-blacklist__manualBlockModal .ant-input,
+  .ip-blacklist__manualBlockModal textarea.ant-input,
+  .ip-blacklist__manualBlockModal .ant-input-number {
+    min-height: 44px;
   }
 }

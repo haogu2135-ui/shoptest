@@ -1,6 +1,49 @@
 server {
     listen 80;
-    server_name ${SERVER_NAME};
+    server_name ${SERVER_NAME} ${CANONICAL_REDIRECT_NAMES};
+
+    location = /healthz {
+        access_log off;
+        add_header Cache-Control "no-store" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        return 204;
+    }
+
+    location / {
+        return 301 https://${CANONICAL_SERVER_NAME}$request_uri;
+    }
+}
+
+server {
+    listen ${HTTPS_LISTEN_PORT} ssl http2;
+    server_name ${CANONICAL_REDIRECT_NAMES};
+
+    ssl_certificate ${SSL_CERTIFICATE};
+    ssl_certificate_key ${SSL_CERTIFICATE_KEY};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    return 301 https://${CANONICAL_SERVER_NAME}$request_uri;
+}
+
+server {
+    listen ${HTTPS_LISTEN_PORT} ssl http2;
+    server_name ${CANONICAL_SERVER_NAME};
+
+    ssl_certificate ${SSL_CERTIFICATE};
+    ssl_certificate_key ${SSL_CERTIFICATE_KEY};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
 
     root /usr/share/nginx/html;
     index index.html;
@@ -25,33 +68,98 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http: https: ws: wss:; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
 
     location = /healthz {
         access_log off;
         add_header Cache-Control "no-store" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         return 204;
     }
 
-    location / {
+    if ($request_uri ~* "(?:^|/)(?:\.\.|%2e%2e)(?:/|$)") {
+        return 400;
+    }
+
+    location = / {
+        try_files /index.html =404;
+    }
+
+    location ~ ^/(?:products(?:/[^/]+)?|pet-finder|pet-gallery|compare|cart|checkout|coupons|profile|wishlist|history|stock-alerts|notifications|track-order|payment/[^/]+|login|forgot-password|register|product-management|category-management)/?$ {
         try_files $uri /index.html;
+    }
+
+    location ~ ^/admin(?:/(?:dashboard|products|brands|categories|orders|logistics-carriers|coupons|users|permissions|reviews|questions|notifications|announcements|support|audit-logs|alerts|ip-blacklist|logs|registry|config-center|traffic-control|system|pet-gallery))?/?$ {
+        try_files $uri /index.html;
+    }
+
+    location / {
+        try_files $uri @spa_not_found;
+    }
+
+    location @spa_not_found {
+        internal;
+        add_header Cache-Control "no-store" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        error_page 418 =404 /index.html;
+        return 418;
     }
 
     location /static/ {
         expires 30d;
         add_header Cache-Control "public, max-age=2592000, immutable" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         try_files $uri =404;
+    }
+
+    location ~* \.map$ {
+        add_header Cache-Control "no-store" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        return 404;
     }
 
     location = /runtime-config.js {
         expires -1;
         add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         try_files $uri =404;
     }
 
-    location ~* \.(?:css|js|mjs|map|svg|ico|png|jpg|jpeg|gif|webp|avif|woff2?)$ {
+    location ~* \.(?:css|js|mjs|svg|ico|png|jpg|jpeg|gif|webp|avif|woff2?)$ {
         expires 30d;
         add_header Cache-Control "public, max-age=2592000" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         try_files $uri =404;
     }
 
@@ -79,7 +187,7 @@ server {
         proxy_read_timeout 3600s;
     }
 
-    location /uploads/ {
+    location ^~ /uploads/ {
         proxy_pass ${BACKEND_ORIGIN}/uploads/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -91,33 +199,11 @@ server {
         proxy_read_timeout 60s;
         expires 30d;
         add_header Cache-Control "public, max-age=2592000" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 }
-
-# ─── HTTPS Configuration ───────────────────────────────────────────────
-# To enable HTTPS with Let's Encrypt:
-# 1. Install certbot: apt install certbot python3-certbot-nginx
-# 2. Run: certbot --nginx -d your-domain.com
-# 3. Or manually configure using the template below:
-#
-# server {
-#     listen 443 ssl http2;
-#     server_name ${SERVER_NAME};
-#
-#     ssl_certificate /etc/letsencrypt/live/${SERVER_NAME}/fullchain.pem;
-#     ssl_certificate_key /etc/letsencrypt/live/${SERVER_NAME}/privkey.pem;
-#     ssl_protocols TLSv1.2 TLSv1.3;
-#     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-#     ssl_prefer_server_ciphers off;
-#     ssl_session_cache shared:SSL:10m;
-#     ssl_session_timeout 1d;
-#
-#     # Copy all location blocks from the HTTP server block above
-#     # ...
-# }
-#
-# server {
-#     listen 80;
-#     server_name ${SERVER_NAME};
-#     return 301 https://$host$request_uri;
-# }

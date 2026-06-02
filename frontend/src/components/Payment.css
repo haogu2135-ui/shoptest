@@ -416,3 +416,17 @@
     white-space: nowrap !important;
   }
 }
+
+/* Final mobile/App payment modal touch-target guard */
+@media (max-width: 560px) {
+  .payment-modal .ant-modal-close,
+  .payment-modal__method.ant-radio-button-wrapper,
+  .payment-modal__confirm {
+    min-height: 44px;
+  }
+
+  .payment-modal .ant-modal-close {
+    width: 44px;
+    height: 44px;
+  }
+}

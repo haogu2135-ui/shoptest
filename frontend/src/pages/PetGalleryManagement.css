@@ -1,0 +1,91 @@
+.pet-gallery-management-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.pet-gallery-management-page__hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pet-gallery-management-page__hero h4 {
+  margin: 4px 0 6px;
+}
+
+.pet-gallery-management-page__eyebrow {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pet-gallery-management-page__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pet-gallery-management-page__stats .ant-card {
+  border-radius: 8px;
+}
+
+.pet-gallery-management-page__card {
+  border-radius: 8px;
+}
+
+.pet-gallery-management-page__notice {
+  margin-bottom: 14px;
+}
+
+.pet-gallery-management-page__filters {
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.pet-gallery-management-page__filters .ant-input-affix-wrapper {
+  width: min(320px, 100%);
+}
+
+.pet-gallery-management-page__filters .ant-select {
+  min-width: 150px;
+}
+
+.pet-gallery-management-page__thumb {
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.pet-gallery-management-page__fileCell {
+  max-width: 230px;
+}
+
+@media (max-width: 900px) {
+  .pet-gallery-management-page__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .pet-gallery-management-page__hero {
+    flex-direction: column;
+  }
+
+  .pet-gallery-management-page__hero .ant-btn {
+    width: 100%;
+  }
+
+  .pet-gallery-management-page__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-gallery-management-page__filters,
+  .pet-gallery-management-page__filters .ant-space-item,
+  .pet-gallery-management-page__filters .ant-input-affix-wrapper,
+  .pet-gallery-management-page__filters .ant-select,
+  .pet-gallery-management-page__filters .ant-btn {
+    width: 100%;
+  }
+}

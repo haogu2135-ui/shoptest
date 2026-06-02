@@ -3,7 +3,7 @@ import { Alert, Button, Skeleton, Tag, Typography, message } from 'antd';
 import { CompassOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { petProfileApi, productApi } from '../api';
-import type { PetProfile, Product } from '../types';
+import type { PetProfile, ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -13,6 +13,7 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import { hasStoredValue } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import './PetPersonalizedAssistant.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text, Title } = Typography;
 
@@ -72,7 +73,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
           ? (recommendationsResult.value.data || [])
             .map((product) => localizeProduct(product, language))
             .filter((product) => !excludedSet.has(product.id))
-            .filter((product) => (product.status || 'ACTIVE') === 'ACTIVE' && (product.stock === undefined || product.stock > 0))
+            .filter((product) => product.stock === undefined || product.stock > 0)
           : [];
         setPetProfiles(nextPetProfiles);
         setProducts(nextProducts);
@@ -182,22 +183,24 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
 
       <div className="pet-personalized-assistant__list">
         {displayProducts.map((product) => {
+          const productName = (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id });
           const hasOptions = needsOptionSelection(product);
           const showDeal = isDealProduct(product);
           const price = Number(product.effectivePrice ?? product.price ?? 0);
-          const rating = Number(product.averageRating || product.rating || 0);
+          const rating = Number(product.averageRating || 0);
           return (
             <article key={product.id} className="pet-personalized-assistant__card">
               <button
                 type="button"
                 className="pet-personalized-assistant__media"
+                aria-label={`${t('pages.productList.viewPick')}: ${productName}`}
                 onClick={() => navigate(`/products/${product.id}`)}
               >
                 <img
                   src={getOptimizedImageUrl(resolveProductImage(product.imageUrl), variant === 'compact' ? 176 : 420)}
                   srcSet={buildResponsiveImageSrcSet(resolveProductImage(product.imageUrl), variant === 'compact' ? [88, 176, 264] : [240, 360, 480])}
                   sizes={variant === 'compact' ? '88px' : '(max-width: 900px) calc(100vw - 72px), 33vw'}
-                  alt={product.name}
+                  alt={productName}
                   width={variant === 'compact' ? 88 : 320}
                   height={variant === 'compact' ? 88 : 320}
                   loading="lazy"
@@ -214,9 +217,11 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                 <button
                   type="button"
                   className="pet-personalized-assistant__name"
+                  aria-label={`${t('pages.productList.viewPick')}: ${productName}`}
+                  title={productName}
                   onClick={() => navigate(`/products/${product.id}`)}
                 >
-                  {product.name}
+                  {productName}
                 </button>
                 <div className="pet-personalized-assistant__meta">
                   <Text strong className="pet-personalized-assistant__price commerce-money">{formatMoney(price)}</Text>
@@ -239,6 +244,8 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                     type="primary"
                     icon={hasOptions ? undefined : <ShoppingCartOutlined />}
                     loading={addingId === product.id}
+                    aria-label={`${hasOptions ? t('pages.wishlist.selectOptions') : t('pages.productList.quickAdd')}: ${productName}`}
+                    title={`${hasOptions ? t('pages.wishlist.selectOptions') : t('pages.productList.quickAdd')}: ${productName}`}
                     onClick={() => handlePrimaryAction(product)}
                   >
                     {hasOptions ? t('pages.wishlist.selectOptions') : t('pages.productList.quickAdd')}

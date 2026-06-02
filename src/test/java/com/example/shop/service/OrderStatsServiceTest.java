@@ -1,6 +1,7 @@
 package com.example.shop.service;
 
 import com.example.shop.repository.OrderRepository;
+import com.example.shop.entity.Order;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -17,13 +18,16 @@ import static org.mockito.Mockito.when;
 
 class OrderStatsServiceTest {
     private OrderRepository orderRepository;
+    private RuntimeConfigService runtimeConfig;
     private OrderService service;
 
     @BeforeEach
     void setUp() {
         orderRepository = mock(OrderRepository.class);
+        runtimeConfig = mock(RuntimeConfigService.class);
         service = new OrderService();
         ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
     }
 
     @Test
@@ -56,6 +60,20 @@ class OrderStatsServiceTest {
         assertEquals(Map.of("PENDING_SHIPMENT", 3L, "COMPLETED", 7L), service.getStatusBreakdown());
 
         verify(orderRepository).countByStatusGroup();
+        verify(orderRepository, never()).findAll();
+    }
+
+    @Test
+    void legacyOrderListUsesConfiguredPageLimit() {
+        Order order = new Order();
+        order.setStatus("PENDING_SHIPMENT");
+        when(runtimeConfig.getInt("admin.orders.legacy-list-max-rows", 100)).thenReturn(75);
+        when(runtimeConfig.getLong("order.return-window-days", 7)).thenReturn(7L);
+        when(orderRepository.searchAdminOrders(null, null, null, 0, 75)).thenReturn(List.of(order));
+
+        assertEquals(1, service.getAllOrders().size());
+
+        verify(orderRepository).searchAdminOrders(null, null, null, 0, 75);
         verify(orderRepository, never()).findAll();
     }
 }

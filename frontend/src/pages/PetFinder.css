@@ -32,6 +32,11 @@
   text-align: center;
 }
 
+.pet-finder-page__loadAlert {
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
 .pet-finder-page__insights {
   display: grid;
   grid-template-columns: minmax(240px, 1.25fr) minmax(280px, 1fr);
@@ -200,6 +205,28 @@
   }
 }
 
+@media (min-width: 641px) and (max-width: 900px) {
+  .pet-finder-page__nextStep {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .pet-finder-page__nextStepCopy {
+    max-width: 100%;
+  }
+
+  .pet-finder-page__nextStepCopy h4.ant-typography {
+    max-width: 100%;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .pet-finder-page__nextStepMeta,
+  .pet-finder-page__nextStepActions {
+    justify-content: flex-start;
+  }
+}
+
 /* Pet finder guidance polish */
 .pet-finder-page__insights,
 .pet-finder-page__nextStep,
@@ -256,6 +283,26 @@
 .pet-finder-page__nextStepActions .ant-btn {
   border-radius: 999px;
   font-weight: 900;
+}
+
+.pet-finder-page .commerce-atomic {
+  display: inline-flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .pet-finder-page .ant-slider {
+    margin-inline: 6px;
+  }
+
+  .pet-finder-page__nextStepMeta .ant-tag {
+    max-width: 100%;
+    white-space: normal;
+  }
 }
 
 .pet-finder-page .ant-btn-primary,
@@ -465,26 +512,47 @@
   }
 
   .pet-finder-page__signalGrid {
-    gap: 7px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .pet-finder-page__signal {
-    flex-basis: 116px;
-    min-height: 68px;
-    padding: 9px;
+    min-height: 54px;
+    display: flex;
+    flex: initial;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .pet-finder-page__signal:nth-child(3) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: min(100%, 180px);
   }
 
   .pet-finder-page__signal svg {
     font-size: 16px;
+    flex: 0 0 auto;
   }
 
   .pet-finder-page__signal strong {
     font-size: 18px;
+    flex: 0 0 auto;
   }
 
   .pet-finder-page__signal span {
     font-size: 11px;
     line-height: 1.25;
+    white-space: nowrap;
   }
 
   .pet-finder-page__nextStepActions {
@@ -563,7 +631,11 @@
   }
 
   .pet-finder-page__signal {
-    flex-basis: 108px;
+    padding-inline: 8px;
+  }
+
+  .pet-finder-page__signal span {
+    font-size: 10.5px;
   }
 
   .pet-finder-page__productCard .ant-card-cover,
@@ -917,5 +989,95 @@
 
   .pet-finder-page .ant-form-item {
     margin-bottom: 9px;
+  }
+}
+
+/* Mobile match summary fit pass */
+@media (max-width: 430px) {
+  .pet-finder-page__signalGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .pet-finder-page__signal {
+    min-height: 54px;
+    display: flex;
+    flex: initial;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    scroll-snap-align: unset;
+  }
+
+  .pet-finder-page__signal:nth-child(3) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: min(100%, 180px);
+  }
+
+  .pet-finder-page__signal svg,
+  .pet-finder-page__signal strong {
+    flex: 0 0 auto;
+  }
+
+  .pet-finder-page__signal strong {
+    font-size: 18px;
+  }
+
+  .pet-finder-page__signal span {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}
+
+@media (max-width: 360px) {
+  .pet-finder-page__signal {
+    padding-inline: 8px;
+  }
+
+  .pet-finder-page__signal span {
+    font-size: 10.5px;
+  }
+}
+
+/* V10 UI regression: keep mobile next-action guidance compact without clipping actions. */
+@media (max-width: 430px) {
+  .pet-finder-page__nextStep {
+    gap: 10px;
+  }
+
+  .pet-finder-page__nextStepCopy {
+    gap: 3px;
+  }
+
+  .pet-finder-page__nextStepCopy h4.ant-typography {
+    font-size: 16px;
+    line-height: 1.22;
+  }
+
+  .pet-finder-page__nextStepCopy > span.ant-typography:not(.pet-finder-page__eyebrow) {
+    font-size: 13px;
+    line-height: 1.35;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+}
+
+/* Final mobile/App pet finder touch-target guard */
+@media (max-width: 640px) {
+  .pet-finder-page .ant-btn,
+  .pet-finder-page__fieldControl .ant-select-selector,
+  .pet-finder-page .ant-slider,
+  .pet-finder-page__productCard .ant-card-actions .ant-btn {
+    min-height: 44px;
   }
 }

@@ -18,6 +18,10 @@
         SELECT * FROM pet_profiles WHERE user_id = #{userId} ORDER BY created_at DESC, id DESC
     </select>
 
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM pet_profiles WHERE user_id = #{userId}
+    </select>
+
     <select id="findById" resultMap="petProfileMap">
         SELECT * FROM pet_profiles WHERE id = #{id}
     </select>

@@ -1,4 +1,4 @@
-import type { Product, ProductBundleItem } from '../types';
+import type { ProductBundleItem, ProductPublic } from '../types';
 
 const MAX_BUNDLE_ITEM_QUANTITY = 99;
 
@@ -29,7 +29,28 @@ const parseBundleItems = (value?: string): ProductBundleItem[] => {
   }
 };
 
-export const getBundleInfo = (product?: Product | null) => {
+export const getBundleInfo = (product?: ProductPublic | null) => {
+  const directBundle = product?.bundle && typeof product.bundle === 'object' ? product.bundle : null;
+  if (directBundle?.enabled) {
+    const price = Number(directBundle.price || 0);
+    const items = Array.isArray(directBundle.items)
+      ? directBundle.items
+        .map((item) => ({
+          name: String(item?.name || '').trim(),
+          quantity: normalizeBundleQuantity(item?.quantity),
+          productId: Number.isSafeInteger(Number(item?.productId)) && Number(item.productId) > 0 ? Number(item.productId) : undefined,
+        }))
+        .filter((item) => item.name)
+      : [];
+    if (Number.isFinite(price) && price > 0 && items.length > 0) {
+      return {
+        price,
+        title: String(directBundle.title || product?.name || 'Bundle').trim() || 'Bundle',
+        items,
+      };
+    }
+  }
+
   const specs = product?.specifications || {};
   const enabled = String(specs['bundle.enabled'] || '').toLowerCase() === 'true';
   const price = Number(specs['bundle.price'] || 0);
@@ -44,7 +65,7 @@ export const getBundleInfo = (product?: Product | null) => {
   };
 };
 
-export const buildBundleSpecs = (product: Product, options: Record<string, string> = {}, variantSku?: string) => {
+export const buildBundleSpecs = (product: ProductPublic, options: Record<string, string> = {}, variantSku?: string) => {
   const bundle = getBundleInfo(product);
   if (!bundle) return undefined;
   return JSON.stringify({

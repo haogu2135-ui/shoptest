@@ -1322,3 +1322,27 @@
     max-width: min(148px, 42vw);
   }
 }
+
+/* Final mobile/App touch-target guard */
+@media (max-width: 640px) {
+  .wishlist-page__header .ant-btn,
+  .wishlist-page__recovery .ant-btn,
+  .wishlist-page__nextAction .ant-btn,
+  .wishlist-page__bestPickAction .ant-btn,
+  .wishlist-page__actions .ant-btn,
+  .wishlist-page__mobileAction .ant-btn,
+  .wishlist-page__emptyBrowse,
+  .wishlist-clear-unavailable-popconfirm .ant-popconfirm-buttons .ant-btn,
+  .wishlist-remove-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+  }
+
+  .wishlist-page__actions {
+    grid-template-columns: minmax(0, 1fr) minmax(44px, auto);
+  }
+
+  .wishlist-page__removeAction.ant-btn {
+    width: 44px;
+    min-width: 44px;
+  }
+}

@@ -5,6 +5,8 @@ import com.example.shop.repository.NotificationMapper;
 import com.example.shop.repository.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,26 +23,57 @@ import static org.mockito.Mockito.when;
 class NotificationServiceTest {
     private NotificationMapper notificationMapper;
     private UserMapper userMapper;
+    private TransactionTemplate transactionTemplate;
     private NotificationService service;
 
     @BeforeEach
     void setUp() {
         notificationMapper = mock(NotificationMapper.class);
         userMapper = mock(UserMapper.class);
-        service = new NotificationService(notificationMapper, userMapper);
+        transactionTemplate = mock(TransactionTemplate.class);
+        when(transactionTemplate.execute(org.mockito.ArgumentMatchers.<TransactionCallback<Integer>>any()))
+                .thenAnswer(invocation -> invocation.<TransactionCallback<Integer>>getArgument(0).doInTransaction(null));
+        service = new NotificationService(notificationMapper, userMapper, transactionTemplate);
+    }
+
+    @Test
+    void getNotificationsUsesBoundedPageDefaults() {
+        service.getNotifications(7L);
+
+        verify(notificationMapper).findByUserIdPage(7L, 20, 0);
+    }
+
+    @Test
+    void getNotificationsNormalizesPageAndCapsSize() {
+        service.getNotifications(7L, 3, 500);
+
+        verify(notificationMapper).findByUserIdPage(7L, 100, 200);
+    }
+
+    @Test
+    void getNotificationsRepairsInvalidPageInputs() {
+        service.getNotifications(7L, -3, 0);
+
+        verify(notificationMapper).findByUserIdPage(7L, 20, 0);
     }
 
     @Test
     void broadcastUsesActiveCustomerIdsAndBatchesInserts() {
         List<Long> userIds = LongStream.rangeClosed(1, 501).boxed().collect(Collectors.toList());
-        when(userMapper.findActiveCustomerIds()).thenReturn(userIds);
+        when(userMapper.findActiveCustomerIdsAfter(0L, 500)).thenReturn(userIds.subList(0, 500));
+        when(userMapper.findActiveCustomerIdsAfter(500L, 500)).thenReturn(userIds.subList(500, 501));
+        when(userMapper.findActiveCustomerIdsAfter(501L, 500)).thenReturn(List.of());
         when(notificationMapper.insertBatch(anyList())).thenAnswer(invocation -> invocation.<List<?>>getArgument(0).size());
 
         int sent = service.broadcastToCustomers("promotion", " Sale ", " Message ", "html");
 
         assertEquals(501, sent);
-        verify(userMapper).findActiveCustomerIds();
+        verify(userMapper).findActiveCustomerIdsAfter(0L, 500);
+        verify(userMapper).findActiveCustomerIdsAfter(500L, 500);
+        verify(userMapper).findActiveCustomerIdsAfter(501L, 500);
         verify(userMapper, never()).findAll();
+        verify(transactionTemplate, org.mockito.Mockito.times(2))
+                .execute(org.mockito.ArgumentMatchers.<TransactionCallback<Integer>>any());
 
         verify(notificationMapper).insertBatch(org.mockito.ArgumentMatchers.argThat(batch ->
                 batch.size() == 500
@@ -53,7 +86,7 @@ class NotificationServiceTest {
 
     @Test
     void broadcastSkipsInsertWhenNoActiveCustomers() {
-        when(userMapper.findActiveCustomerIds()).thenReturn(List.of());
+        when(userMapper.findActiveCustomerIdsAfter(0L, 500)).thenReturn(List.of());
 
         assertEquals(0, service.broadcastToCustomers("system", "Title", "Message", "text"));
 

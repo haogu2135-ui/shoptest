@@ -3,32 +3,21 @@ import { Rate, Input, Button, List, Avatar, Space, message, Select, Empty, Typog
 import { UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
-import type { Order } from '../types';
+import type { PublicReview, ReviewableOrder } from '../types';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { formatSafeDate, formatSafeDateTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import './ProductReview.css';
+import '../styles/mobile-page-contrast.css';
 
 const { TextArea } = Input;
 const { Text } = Typography;
 
-interface Review {
-    id: number;
-    userId: number;
-    productId: number;
-    rating: number;
-    comment: string;
-    username: string;
-    createdAt: string;
-    adminReply?: string;
-    repliedAt?: string;
-}
-
 interface ProductReviewProps {
     productId: number;
-    reviews: Review[];
-    reviewableOrders: Order[];
+    reviews: PublicReview[];
+    reviewableOrders: ReviewableOrder[];
     onAddReview: (orderId: number, rating: number, comment: string) => Promise<void>;
 }
 
@@ -138,6 +127,12 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                 className="product-review__list"
                 itemLayout="horizontal"
                 dataSource={reviews}
+                pagination={reviews.length > 8 ? {
+                    pageSize: 8,
+                    size: 'small',
+                    showSizeChanger: false,
+                    hideOnSinglePage: true,
+                } : false}
                 renderItem={(review) => (
                     <List.Item className="product-review__item">
                         <List.Item.Meta

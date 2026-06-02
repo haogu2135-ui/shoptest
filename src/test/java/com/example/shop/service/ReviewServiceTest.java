@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import com.example.shop.dto.ReviewableOrderResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.entity.Product;
@@ -122,9 +123,10 @@ class ReviewServiceTest {
         when(orderItemRepository.findByOrderIds(List.of(101L, 102L, 103L))).thenReturn(List.of(eligibleItem, reviewedItem, wrongProductItem));
         when(reviewRepository.findByProduct_IdAndUser_IdAndOrderIdIn(7L, 3L, List.of(101L, 102L, 103L))).thenReturn(List.of(existingReview));
 
-        List<Order> result = service.getReviewableOrders(7L, 3L);
+        List<ReviewableOrderResponse> result = service.getReviewableOrders(7L, 3L);
 
-        assertEquals(List.of(eligibleOrder), result);
+        assertEquals(1, result.size());
+        assertEquals(eligibleOrder.getId(), result.get(0).getId());
         verify(orderItemRepository).findByOrderIds(List.of(101L, 102L, 103L));
         verify(reviewRepository).findByProduct_IdAndUser_IdAndOrderIdIn(7L, 3L, List.of(101L, 102L, 103L));
         verify(orderItemRepository, never()).findByOrderIdAndProductId(any(), any());

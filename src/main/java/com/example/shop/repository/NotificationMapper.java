@@ -8,7 +8,9 @@ import java.util.List;
 @Mapper
 public interface NotificationMapper {
 
-    List<Notification> findByUserId(Long userId);
+    List<Notification> findByUserIdPage(@Param("userId") Long userId,
+                                        @Param("limit") int limit,
+                                        @Param("offset") int offset);
 
     Notification findById(Long id);
 

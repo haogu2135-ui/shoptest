@@ -6,4 +6,7 @@ window.__SHOP_RUNTIME_CONFIG__ = window.__SHOP_RUNTIME_CONFIG__ || {
   supportWebSocketUrl: "/ws/support",
   apiGatewayEnabled: false,
   apiGatewayPrefix: "/gateway",
+  mobileVersionManifestUrl: "/downloads/mobile-version.json",
+  mobileCurrentVersionName: "1.0.23",
+  mobileCurrentVersionCode: 10023,
 };

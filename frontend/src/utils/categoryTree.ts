@@ -1,5 +1,9 @@
-import type { Category } from '../types';
+import type { CategoryPublic } from '../types';
 import type { Language } from '../i18n';
+
+export type CategoryTreeNode<T extends CategoryPublic = CategoryPublic> = T & {
+  children?: CategoryTreeNode<T>[];
+};
 
 export interface CategoryTreeOption {
   value: number;
@@ -10,9 +14,9 @@ export interface CategoryTreeOption {
   children?: CategoryTreeOption[];
 }
 
-export const buildCategoryTree = (categories: Category[]): Category[] => {
-  const nodeMap = new Map<number, Category>();
-  const roots: Category[] = [];
+export const buildCategoryTree = <T extends CategoryPublic>(categories: T[]): CategoryTreeNode<T>[] => {
+  const nodeMap = new Map<number, CategoryTreeNode<T>>();
+  const roots: CategoryTreeNode<T>[] = [];
 
   categories.forEach((category) => {
     nodeMap.set(category.id, { ...category, children: [] });
@@ -26,7 +30,7 @@ export const buildCategoryTree = (categories: Category[]): Category[] => {
     roots.push(category);
   });
 
-  const sortTree = (nodes: Category[]) => {
+  const sortTree = (nodes: CategoryTreeNode<T>[]) => {
     nodes.sort((left, right) => left.id - right.id);
     nodes.forEach((node) => sortTree(node.children || []));
   };
@@ -35,9 +39,9 @@ export const buildCategoryTree = (categories: Category[]): Category[] => {
   return roots;
 };
 
-export const flattenCategoryTree = (categories: Category[]): Category[] => {
-  const result: Category[] = [];
-  const visit = (nodes: Category[]) => {
+export const flattenCategoryTree = <T extends CategoryPublic>(categories: CategoryTreeNode<T>[]): CategoryTreeNode<T>[] => {
+  const result: CategoryTreeNode<T>[] = [];
+  const visit = (nodes: CategoryTreeNode<T>[]) => {
     nodes.forEach((node) => {
       result.push(node);
       visit(node.children || []);
@@ -48,7 +52,7 @@ export const flattenCategoryTree = (categories: Category[]): Category[] => {
   return result;
 };
 
-export const getDisplayCategoryRoots = (categories: Category[]): Category[] => {
+export const getDisplayCategoryRoots = <T extends CategoryPublic>(categories: T[]): CategoryTreeNode<T>[] => {
   const tree = buildCategoryTree(categories);
   const onlyRoot = tree.length === 1 ? tree[0] : undefined;
   return onlyRoot?.children?.length ? onlyRoot.children : tree;
@@ -77,7 +81,7 @@ const getCategoryNameFallback = (name: string | undefined, language: Language) =
 };
 
 export const getLocalizedCategoryValue = (
-  category: Category,
+  category: CategoryPublic,
   language: Language,
   field: 'name' | 'description',
 ) => category.localizedContent?.[language]?.[field]
@@ -86,7 +90,7 @@ export const getLocalizedCategoryValue = (
   || category[field]
   || '';
 
-export const getCategoryPath = (categories: Category[], categoryId?: number, language?: Language) => {
+export const getCategoryPath = (categories: CategoryTreeNode<CategoryPublic>[], categoryId?: number, language?: Language) => {
   if (!categoryId) return '';
 
   const byId = new Map(categories.map((category) => [category.id, category]));
@@ -101,9 +105,9 @@ export const getCategoryPath = (categories: Category[], categoryId?: number, lan
   return names.join(' / ');
 };
 
-export const toTreeOptions = (
-  categories: Category[],
-  disabledPredicate?: (category: Category) => boolean,
+export const toTreeOptions = <T extends CategoryPublic>(
+  categories: CategoryTreeNode<T>[],
+  disabledPredicate?: (category: CategoryTreeNode<T>) => boolean,
   language?: Language,
 ): CategoryTreeOption[] =>
   categories.map((category) => {
@@ -118,9 +122,9 @@ export const toTreeOptions = (
     };
   });
 
-export const descendantIdSet = (category: Category): Set<number> => {
+export const descendantIdSet = (category: CategoryTreeNode<CategoryPublic>): Set<number> => {
   const ids = new Set<number>([category.id]);
-  const visit = (nodes: Category[]) => {
+  const visit = (nodes: CategoryTreeNode<CategoryPublic>[]) => {
     nodes.forEach((node) => {
       ids.add(node.id);
       visit(node.children || []);

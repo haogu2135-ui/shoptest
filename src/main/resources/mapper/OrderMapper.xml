@@ -5,6 +5,11 @@
         <id property="id" column="id"/>
         <result property="orderNo" column="order_no"/>
         <result property="userId" column="user_id"/>
+        <result property="customerUsername" column="customer_username"/>
+        <result property="customerEmail" column="customer_email"/>
+        <result property="customerPhone" column="customer_phone"/>
+        <result property="customerDisplayName" column="customer_display_name"/>
+        <result property="customerType" column="customer_type"/>
         <result property="originalAmount" column="original_amount"/>
         <result property="discountAmount" column="discount_amount"/>
         <result property="shippingFee" column="shipping_fee"/>
@@ -14,6 +19,9 @@
         <result property="couponName" column="coupon_name"/>
         <result property="status" column="status"/>
         <result property="shippingAddress" column="shipping_address"/>
+        <result property="recipientName" column="recipient_name"/>
+        <result property="recipientPhone" column="recipient_phone"/>
+        <result property="contactEmail" column="contact_email"/>
         <result property="paymentMethod" column="payment_method"/>
         <result property="trackingNumber" column="tracking_number"/>
         <result property="trackingCarrierCode" column="tracking_carrier_code"/>
@@ -40,6 +48,10 @@
         SELECT COUNT(*) FROM orders
     </select>
 
+    <select id="currentDatabaseTime" resultType="java.time.LocalDateTime">
+        SELECT NOW()
+    </select>
+
     <select id="sumTotalAmount" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(total_amount), 0) FROM orders
     </select>
@@ -51,55 +63,141 @@
         ORDER BY count DESC, status ASC
     </select>
 
+    <select id="dashboardOrderStats" resultType="java.util.HashMap">
+        SELECT
+            COUNT(*) AS totalOrders,
+            COUNT(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED') THEN 1 END) AS paidOrders,
+            COALESCE(SUM(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED') THEN total_amount ELSE 0 END), 0) AS netRevenue,
+            COUNT(CASE WHEN status IN ('REFUNDED', 'RETURNED') OR refunded_at IS NOT NULL THEN 1 END) AS refundedOrders,
+            COALESCE(SUM(CASE WHEN status IN ('REFUNDED', 'RETURNED') OR refunded_at IS NOT NULL THEN total_amount ELSE 0 END), 0) AS refundedAmount,
+            COALESCE(SUM(COALESCE(original_amount, total_amount, 0)), 0) AS grossOrderAmount,
+            COUNT(CASE WHEN status = 'CANCELLED' THEN 1 END) AS cancelledOrders,
+            COUNT(CASE WHEN status = 'PENDING_PAYMENT' THEN 1 END) AS pendingPaymentOrders,
+            COUNT(CASE WHEN status = 'PENDING_SHIPMENT' THEN 1 END) AS pendingShipmentOrders,
+            COUNT(CASE WHEN status = 'SHIPPED' THEN 1 END) AS shippedOrders,
+            COUNT(CASE WHEN status = 'SHIPPED' AND tracking_number IS NOT NULL AND TRIM(tracking_number) != '' THEN 1 END) AS ordersWithTracking,
+            COUNT(CASE WHEN status = 'SHIPPED' AND (tracking_number IS NULL OR TRIM(tracking_number) = '') THEN 1 END) AS ordersWithoutTracking,
+            COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) AS completedOrders,
+            COUNT(CASE WHEN status = 'PENDING_PAYMENT' AND created_at &lt; DATE_SUB(#{now}, INTERVAL 30 MINUTE) THEN 1 END) AS stalePendingPayment,
+            COUNT(CASE WHEN status = 'PENDING_SHIPMENT' AND COALESCE(updated_at, created_at) &lt; DATE_SUB(#{now}, INTERVAL 24 HOUR) THEN 1 END) AS delayedShipment,
+            COUNT(CASE WHEN status = 'RETURN_APPROVED' AND COALESCE(return_approved_at, updated_at) &lt; DATE_SUB(#{now}, INTERVAL 3 DAY) THEN 1 END) AS returnAwaitingShipment,
+            COUNT(CASE WHEN status = 'RETURN_SHIPPED' AND COALESCE(return_shipped_at, updated_at) &lt; DATE_SUB(#{now}, INTERVAL 24 HOUR) THEN 1 END) AS refundDue
+        FROM orders
+    </select>
+
+    <select id="dashboardSalesTrend" resultType="java.util.HashMap">
+        SELECT
+            DATE(created_at) AS trendDate,
+            COUNT(*) AS orderCount,
+            COALESCE(SUM(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED') THEN total_amount ELSE 0 END), 0) AS revenue
+        FROM orders
+        WHERE created_at &gt;= #{start}
+        GROUP BY DATE(created_at)
+        ORDER BY trendDate ASC
+    </select>
+
+    <select id="dashboardPaymentMethodBreakdown" resultType="java.util.HashMap">
+        SELECT payment_method AS paymentMethod, COUNT(*) AS orderCount
+        FROM orders
+        WHERE status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED')
+          AND payment_method IS NOT NULL
+          AND payment_method != ''
+        GROUP BY payment_method
+        ORDER BY orderCount DESC, paymentMethod ASC
+    </select>
+
     <sql id="adminOrderFilters">
         <where>
             <if test="status != null and status != ''">
-                AND status = #{status}
+                AND orders.status = #{status}
             </if>
             <if test="search != null and search != ''">
                 AND (
-                    CAST(id AS CHAR) LIKE CONCAT('%', #{search}, '%')
-                    OR order_no LIKE CONCAT('%', #{search}, '%')
-                    OR CAST(user_id AS CHAR) LIKE CONCAT('%', #{search}, '%')
-                    OR status LIKE CONCAT('%', #{search}, '%')
-                    OR shipping_address LIKE CONCAT('%', #{search}, '%')
-                    OR payment_method LIKE CONCAT('%', #{search}, '%')
-                    OR tracking_number LIKE CONCAT('%', #{search}, '%')
-                    OR tracking_carrier_name LIKE CONCAT('%', #{search}, '%')
-                    OR return_tracking_number LIKE CONCAT('%', #{search}, '%')
-                    OR return_reason LIKE CONCAT('%', #{search}, '%')
+                    CAST(orders.id AS CHAR) LIKE CONCAT('%', #{search}, '%')
+                    OR orders.order_no LIKE CONCAT('%', #{search}, '%')
+                    OR CAST(orders.user_id AS CHAR) LIKE CONCAT('%', #{search}, '%')
+                    OR orders.status LIKE CONCAT('%', #{search}, '%')
+                    OR orders.shipping_address LIKE CONCAT('%', #{search}, '%')
+                    OR orders.recipient_name LIKE CONCAT('%', #{search}, '%')
+                    OR orders.recipient_phone LIKE CONCAT('%', #{search}, '%')
+                    OR orders.contact_email LIKE CONCAT('%', #{search}, '%')
+                    OR orders.payment_method LIKE CONCAT('%', #{search}, '%')
+                    OR orders.tracking_number LIKE CONCAT('%', #{search}, '%')
+                    OR orders.tracking_carrier_name LIKE CONCAT('%', #{search}, '%')
+                    OR orders.return_tracking_number LIKE CONCAT('%', #{search}, '%')
+                    OR orders.return_reason LIKE CONCAT('%', #{search}, '%')
+                    OR users.username LIKE CONCAT('%', #{search}, '%')
+                    OR users.email LIKE CONCAT('%', #{search}, '%')
+                    OR users.phone LIKE CONCAT('%', #{search}, '%')
                 )
             </if>
             <if test="quick != null and quick != ''">
                 <choose>
                     <when test="quick == 'NEEDS_ACTION'">
-                        AND status IN ('PENDING_PAYMENT', 'PENDING_SHIPMENT', 'RETURN_REQUESTED', 'RETURN_SHIPPED')
+                        AND orders.status IN ('PENDING_PAYMENT', 'PENDING_SHIPMENT', 'RETURN_REQUESTED', 'RETURN_SHIPPED')
                     </when>
                     <when test="quick == 'SLA_OVERDUE'">
                         AND (
-                            (status = 'PENDING_PAYMENT' AND created_at &lt; DATE_SUB(NOW(), INTERVAL 30 MINUTE))
-                            OR (status = 'PENDING_SHIPMENT' AND COALESCE(updated_at, created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
-                            OR (status = 'RETURN_APPROVED' AND COALESCE(return_approved_at, updated_at, created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
-                            OR (status = 'RETURN_SHIPPED' AND COALESCE(return_shipped_at, updated_at, created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                            (orders.status = 'PENDING_PAYMENT' AND orders.created_at &lt; DATE_SUB(NOW(), INTERVAL 30 MINUTE))
+                            OR (orders.status = 'PENDING_SHIPMENT' AND COALESCE(orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                            OR (orders.status = 'RETURN_REQUESTED' AND COALESCE(orders.return_requested_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                            OR (orders.status = 'RETURN_APPROVED' AND COALESCE(orders.return_approved_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
+                            OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
                         )
+                    </when>
+                    <when test="quick == 'SLA_OVERDUE_PAYMENT'">
+                        AND orders.status = 'PENDING_PAYMENT'
+                        AND orders.created_at &lt; DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                    </when>
+                    <when test="quick == 'SLA_OVERDUE_SHIPMENT'">
+                        AND orders.status = 'PENDING_SHIPMENT'
+                        AND COALESCE(orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                    </when>
+                    <when test="quick == 'SLA_OVERDUE_RETURN_APPROVED'">
+                        AND orders.status = 'RETURN_APPROVED'
+                        AND COALESCE(orders.return_approved_at, orders.updated_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY)
+                    </when>
+                    <when test="quick == 'SLA_OVERDUE_RETURN_SHIPPED'">
+                        AND orders.status = 'RETURN_SHIPPED'
+                        AND COALESCE(orders.return_shipped_at, orders.updated_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR)
                     </when>
                     <when test="quick == 'SLA_DUE_SOON'">
                         AND (
-                            (status = 'PENDING_PAYMENT' AND created_at BETWEEN DATE_SUB(NOW(), INTERVAL 30 MINUTE) AND DATE_SUB(NOW(), INTERVAL 20 MINUTE))
-                            OR (status = 'PENDING_SHIPMENT' AND COALESCE(updated_at, created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
-                            OR (status = 'RETURN_APPROVED' AND COALESCE(return_approved_at, updated_at, created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 2 DAY))
-                            OR (status = 'RETURN_SHIPPED' AND COALESCE(return_shipped_at, updated_at, created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
+                            (orders.status = 'PENDING_PAYMENT' AND orders.created_at BETWEEN DATE_SUB(NOW(), INTERVAL 30 MINUTE) AND DATE_SUB(NOW(), INTERVAL 20 MINUTE))
+                            OR (orders.status = 'PENDING_SHIPMENT' AND COALESCE(orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
+                            OR (orders.status = 'RETURN_REQUESTED' AND COALESCE(orders.return_requested_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
+                            OR (orders.status = 'RETURN_APPROVED' AND COALESCE(orders.return_approved_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 2 DAY))
+                            OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 66 HOUR))
                         )
                     </when>
                     <when test="quick == 'MISSING_TRACKING'">
-                        AND status = 'SHIPPED'
-                        AND (tracking_number IS NULL OR TRIM(tracking_number) = '')
+                        AND orders.status = 'SHIPPED'
+                        AND (orders.tracking_number IS NULL OR TRIM(orders.tracking_number) = '')
                     </when>
                     <when test="quick == 'REFUNDED'">
-                        AND (status IN ('REFUNDED', 'RETURNED') OR refunded_at IS NOT NULL)
+                        AND (orders.status IN ('REFUNDED', 'RETURNED') OR orders.refunded_at IS NOT NULL)
+                    </when>
+                    <when test="quick == 'REFUNDING'">
+                        AND EXISTS (
+                            SELECT 1
+                            FROM payments p
+                            WHERE p.order_id = orders.id
+                              AND p.status = 'REFUNDING'
+                        )
+                    </when>
+                    <when test="quick == 'AFTER_SALES'">
+                        AND (
+                            orders.status IN ('RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING')
+                            OR EXISTS (
+                                SELECT 1
+                                FROM payments p
+                                WHERE p.order_id = orders.id
+                                  AND p.status = 'REFUNDING'
+                            )
+                        )
                     </when>
                     <otherwise>
-                        AND status = #{quick}
+                        AND orders.status = #{quick}
                     </otherwise>
                 </choose>
             </if>
@@ -107,15 +205,38 @@
     </sql>
 
     <select id="searchAdminOrders" resultMap="orderMap">
-        SELECT * FROM orders
+        SELECT
+            orders.*,
+            users.username AS customer_username,
+            users.email AS customer_email,
+            users.phone AS customer_phone,
+            CASE
+                WHEN orders.shipping_address LIKE '[Guest]%' OR users.status = 'GUEST' THEN 'GUEST'
+                ELSE 'REGISTERED'
+            END AS customer_type,
+            CASE
+                WHEN orders.shipping_address LIKE '[Guest]%' THEN COALESCE(
+                    NULLIF(TRIM(orders.recipient_name), ''),
+                    NULLIF(TRIM(SUBSTRING_INDEX(SUBSTRING(orders.shipping_address, 9), ' / ', 1)), ''),
+                    NULLIF(TRIM(users.email), ''),
+                    CONCAT('Guest #', orders.user_id)
+                )
+                ELSE COALESCE(
+                    NULLIF(TRIM(users.username), ''),
+                    NULLIF(TRIM(users.email), ''),
+                    CONCAT('User #', orders.user_id)
+                )
+            END AS customer_display_name
+        FROM orders
+        LEFT JOIN users ON users.id = orders.user_id
         <include refid="adminOrderFilters"/>
         ORDER BY
-            CASE status
+            CASE orders.status
                 WHEN 'PENDING_PAYMENT' THEN 1
                 WHEN 'PENDING_SHIPMENT' THEN 2
                 WHEN 'RETURN_REQUESTED' THEN 3
-                WHEN 'RETURN_SHIPPED' THEN 4
-                WHEN 'RETURN_APPROVED' THEN 5
+                WHEN 'RETURN_APPROVED' THEN 4
+                WHEN 'RETURN_SHIPPED' THEN 5
                 WHEN 'SHIPPED' THEN 6
                 WHEN 'COMPLETED' THEN 7
                 WHEN 'RETURNED' THEN 8
@@ -123,14 +244,108 @@
                 WHEN 'CANCELLED' THEN 10
                 ELSE 99
             END,
-            created_at DESC,
-            id DESC
+            orders.created_at DESC,
+            orders.id DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
+    <select id="findRecentAdminOrders" resultMap="orderMap">
+        SELECT
+            orders.*,
+            users.username AS customer_username,
+            users.email AS customer_email,
+            users.phone AS customer_phone,
+            CASE
+                WHEN orders.shipping_address LIKE '[Guest]%' OR users.status = 'GUEST' THEN 'GUEST'
+                ELSE 'REGISTERED'
+            END AS customer_type,
+            CASE
+                WHEN orders.shipping_address LIKE '[Guest]%' THEN COALESCE(
+                    NULLIF(TRIM(orders.recipient_name), ''),
+                    NULLIF(TRIM(SUBSTRING_INDEX(SUBSTRING(orders.shipping_address, 9), ' / ', 1)), ''),
+                    NULLIF(TRIM(users.email), ''),
+                    CONCAT('Guest #', orders.user_id)
+                )
+                ELSE COALESCE(
+                    NULLIF(TRIM(users.username), ''),
+                    NULLIF(TRIM(users.email), ''),
+                    CONCAT('User #', orders.user_id)
+                )
+            END AS customer_display_name
+        FROM orders
+        LEFT JOIN users ON users.id = orders.user_id
+        ORDER BY orders.created_at DESC, orders.id DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="countAdminOrders" resultType="int">
-        SELECT COUNT(*) FROM orders
+        SELECT COUNT(*)
+        FROM orders
+        LEFT JOIN users ON users.id = orders.user_id
         <include refid="adminOrderFilters"/>
+    </select>
+
+    <select id="countAdminOrderSummary" resultType="java.util.HashMap">
+        SELECT
+            COUNT(CASE WHEN orders.status IN ('PENDING_PAYMENT', 'PENDING_SHIPMENT', 'RETURN_REQUESTED', 'RETURN_SHIPPED') THEN 1 END) AS NEEDS_ACTION,
+            COUNT(CASE WHEN (
+                (orders.status = 'PENDING_PAYMENT' AND orders.created_at &lt; DATE_SUB(NOW(), INTERVAL 30 MINUTE))
+                OR (orders.status = 'PENDING_SHIPMENT' AND COALESCE(orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                OR (orders.status = 'RETURN_REQUESTED' AND COALESCE(orders.return_requested_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                OR (orders.status = 'RETURN_APPROVED' AND COALESCE(orders.return_approved_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
+                OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
+            ) THEN 1 END) AS SLA_OVERDUE,
+            COUNT(CASE WHEN (
+                (orders.status = 'PENDING_PAYMENT' AND orders.created_at BETWEEN DATE_SUB(NOW(), INTERVAL 30 MINUTE) AND DATE_SUB(NOW(), INTERVAL 20 MINUTE))
+                OR (orders.status = 'PENDING_SHIPMENT' AND COALESCE(orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
+                OR (orders.status = 'RETURN_REQUESTED' AND COALESCE(orders.return_requested_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
+                OR (orders.status = 'RETURN_APPROVED' AND COALESCE(orders.return_approved_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 2 DAY))
+                OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 66 HOUR))
+            ) THEN 1 END) AS SLA_DUE_SOON,
+            COUNT(CASE WHEN orders.status = 'SHIPPED' AND (orders.tracking_number IS NULL OR TRIM(orders.tracking_number) = '') THEN 1 END) AS MISSING_TRACKING,
+            COUNT(CASE WHEN orders.status = 'PENDING_SHIPMENT' THEN 1 END) AS PENDING_SHIPMENT,
+            COUNT(CASE WHEN orders.status = 'RETURN_REQUESTED' THEN 1 END) AS RETURN_REQUESTED,
+            COUNT(CASE WHEN orders.status = 'RETURN_SHIPPED' THEN 1 END) AS RETURN_SHIPPED,
+            COUNT(CASE WHEN (
+                orders.status IN ('RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING')
+                OR EXISTS (
+                    SELECT 1
+                    FROM payments p
+                    WHERE p.order_id = orders.id
+                      AND p.status = 'REFUNDING'
+                )
+            ) THEN 1 END) AS AFTER_SALES,
+            COUNT(CASE WHEN EXISTS (
+                SELECT 1
+                FROM payments p
+                WHERE p.order_id = orders.id
+                  AND p.status = 'REFUNDING'
+            ) THEN 1 END) AS REFUNDING,
+            COUNT(CASE WHEN (orders.status IN ('REFUNDED', 'RETURNED') OR orders.refunded_at IS NOT NULL) THEN 1 END) AS REFUNDED
+        FROM orders
+        LEFT JOIN users ON users.id = orders.user_id
+        <where>
+            <if test="search != null and search != ''">
+                AND (
+                    CAST(orders.id AS CHAR) LIKE CONCAT('%', #{search}, '%')
+                    OR orders.order_no LIKE CONCAT('%', #{search}, '%')
+                    OR CAST(orders.user_id AS CHAR) LIKE CONCAT('%', #{search}, '%')
+                    OR orders.status LIKE CONCAT('%', #{search}, '%')
+                    OR orders.shipping_address LIKE CONCAT('%', #{search}, '%')
+                    OR orders.recipient_name LIKE CONCAT('%', #{search}, '%')
+                    OR orders.recipient_phone LIKE CONCAT('%', #{search}, '%')
+                    OR orders.contact_email LIKE CONCAT('%', #{search}, '%')
+                    OR orders.payment_method LIKE CONCAT('%', #{search}, '%')
+                    OR orders.tracking_number LIKE CONCAT('%', #{search}, '%')
+                    OR orders.tracking_carrier_name LIKE CONCAT('%', #{search}, '%')
+                    OR orders.return_tracking_number LIKE CONCAT('%', #{search}, '%')
+                    OR orders.return_reason LIKE CONCAT('%', #{search}, '%')
+                    OR users.username LIKE CONCAT('%', #{search}, '%')
+                    OR users.email LIKE CONCAT('%', #{search}, '%')
+                    OR users.phone LIKE CONCAT('%', #{search}, '%')
+                )
+            </if>
+        </where>
     </select>
 
     <select id="findById" resultMap="orderMap">
@@ -148,6 +363,7 @@
         WHERE o.order_no = #{orderNo}
           AND (
               LOWER(TRIM(u.email)) = LOWER(TRIM(#{email}))
+              OR LOWER(TRIM(o.contact_email)) = LOWER(TRIM(#{email}))
               OR (
                   o.shipping_address LIKE '[Guest]%'
                   AND LOWER(o.shipping_address) LIKE CONCAT('% / ', LOWER(TRIM(#{email})), ' /%')
@@ -168,8 +384,8 @@
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.Order" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO orders (order_no, user_id, original_amount, discount_amount, shipping_fee, total_amount, user_coupon_id, coupon_id, coupon_name, status, shipping_address, payment_method, tracking_number, tracking_carrier_code, tracking_carrier_name, return_tracking_number, return_reason, return_requested_at, return_approved_at, return_rejected_at, return_shipped_at, returned_at, refunded_at, shipped_at, completed_at, created_at, updated_at)
-        VALUES (#{orderNo}, #{userId}, #{originalAmount}, #{discountAmount}, #{shippingFee}, #{totalAmount}, #{userCouponId}, #{couponId}, #{couponName}, #{status}, #{shippingAddress}, #{paymentMethod}, #{trackingNumber}, #{trackingCarrierCode}, #{trackingCarrierName}, #{returnTrackingNumber}, #{returnReason}, #{returnRequestedAt}, #{returnApprovedAt}, #{returnRejectedAt}, #{returnShippedAt}, #{returnedAt}, #{refundedAt}, #{shippedAt}, #{completedAt}, #{createdAt}, #{updatedAt})
+        INSERT INTO orders (order_no, user_id, original_amount, discount_amount, shipping_fee, total_amount, user_coupon_id, coupon_id, coupon_name, status, shipping_address, recipient_name, recipient_phone, contact_email, payment_method, tracking_number, tracking_carrier_code, tracking_carrier_name, return_tracking_number, return_reason, return_requested_at, return_approved_at, return_rejected_at, return_shipped_at, returned_at, refunded_at, shipped_at, completed_at, created_at, updated_at)
+        VALUES (#{orderNo}, #{userId}, #{originalAmount}, #{discountAmount}, #{shippingFee}, #{totalAmount}, #{userCouponId}, #{couponId}, #{couponName}, #{status}, #{shippingAddress}, #{recipientName}, #{recipientPhone}, #{contactEmail}, #{paymentMethod}, #{trackingNumber}, #{trackingCarrierCode}, #{trackingCarrierName}, #{returnTrackingNumber}, #{returnReason}, #{returnRequestedAt}, #{returnApprovedAt}, #{returnRejectedAt}, #{returnShippedAt}, #{returnedAt}, #{refundedAt}, #{shippedAt}, #{completedAt}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.example.shop.entity.Order">
@@ -185,6 +401,9 @@
             coupon_name = #{couponName},
             status = #{status},
             shipping_address = #{shippingAddress},
+            recipient_name = #{recipientName},
+            recipient_phone = #{recipientPhone},
+            contact_email = #{contactEmail},
             payment_method = #{paymentMethod},
             tracking_number = #{trackingNumber},
             tracking_carrier_code = #{trackingCarrierCode},

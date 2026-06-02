@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
-import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
-import { Layout, Spin } from 'antd';
+import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { Button, Layout, Modal, Space, Spin, Typography } from 'antd';
 import { CustomerServiceOutlined, GiftOutlined, UserAddOutlined, FileSearchOutlined } from '@ant-design/icons';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -8,11 +8,48 @@ import CustomerSupportWidget from './components/CustomerSupportWidget';
 import { useLanguage } from './i18n';
 import type { CartItem } from './types';
 import { dispatchDomEvent } from './utils/domEvents';
-import { hasStoredValue } from './utils/safeStorage';
-import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from './utils/guestSupportContext';
+import { scrollAppToTop } from './utils/nativeScroll';
+import { consumeNativeBack, useNativeBackHandler } from './utils/nativeBack';
+import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from './utils/safeStorage';
+import { clearGuestSupportContext, loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from './utils/guestSupportContext';
+import { installMobileContrastGuard, refreshMobileContrastGuard } from './utils/mobileContrastGuard';
+import {
+  currentMobileVersionName,
+  currentMobileVersionCode,
+  fetchLatestMobileRelease,
+  isMobileReleaseDownloadAllowed,
+  isNativeMobileApp,
+  openMobileReleaseDownload,
+  type MobileReleaseManifest,
+} from './utils/mobileUpdate';
 import './App.css';
+import './mobile-app.css';
 
 const { Content, Footer } = Layout;
+const { Text } = Typography;
+const MOBILE_UPDATE_DISMISSED_KEY_PREFIX = 'shop-mobile-update-dismissed';
+
+declare global {
+  interface Window {
+    Capacitor?: {
+      getPlatform?: () => string;
+      isNativePlatform?: () => boolean;
+      Plugins?: {
+        App?: {
+          addListener?: (
+            eventName: 'backButton',
+            listener: (event?: { canGoBack?: boolean }) => void,
+          ) => Promise<{ remove: () => Promise<void> | void }> | { remove: () => Promise<void> | void };
+          minimizeApp?: () => Promise<void>;
+          exitApp?: () => Promise<void>;
+        };
+        Browser?: {
+          open?: (options: { url: string }) => Promise<void>;
+        };
+      };
+    };
+  }
+}
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
@@ -39,6 +76,7 @@ const OrderTracking = lazy(() => import('./pages/OrderTracking'));
 const PaymentInstructions = lazy(() => import('./pages/PaymentInstructions'));
 const PetFinder = lazy(() => import('./pages/PetFinder'));
 const PetGallery = lazy(() => import('./pages/PetGallery'));
+const PetGalleryManagement = lazy(() => import('./pages/PetGalleryManagement'));
 const PermissionManagement = lazy(() => import('./pages/PermissionManagement'));
 const ProductCompare = lazy(() => import('./pages/ProductCompare'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
@@ -69,6 +107,7 @@ type SupportOpenRequest = {
   id: number;
   guestOrderNo?: string;
   guestEmail?: string;
+  clearGuestContext?: boolean;
 };
 
 type SupportOpenDetail = {
@@ -76,6 +115,8 @@ type SupportOpenDetail = {
   email?: string;
   guestOrderNo?: string;
   guestEmail?: string;
+  clearGuestContext?: boolean;
+  clearGuestSupportContext?: boolean;
 };
 
 type SupportWidgetBoundaryProps = {
@@ -115,6 +156,9 @@ class SupportWidgetBoundary extends React.Component<SupportWidgetBoundaryProps, 
 
 const getSupportOpenDetail = (event?: Event): SupportOpenDetail | null => {
   const detail = event && 'detail' in event ? (event as CustomEvent<SupportOpenDetail>).detail : null;
+  if (detail?.clearGuestContext === true || detail?.clearGuestSupportContext === true) {
+    return { clearGuestContext: true };
+  }
   const normalized = normalizeGuestSupportContext(detail);
   return normalized ? { guestOrderNo: normalized.orderNo, guestEmail: normalized.email } : null;
 };
@@ -127,6 +171,180 @@ const LoadingFallback = () => (
     <Spin size="large" />
   </div>
 );
+
+const NativeAppClassHost: React.FC = () => {
+  useEffect(() => {
+    const capacitor = window.Capacitor;
+    const platform = capacitor?.getPlatform?.();
+    const isNative = capacitor?.isNativePlatform?.() === true
+      || platform === 'android'
+      || platform === 'ios'
+      || window.location.protocol === 'capacitor:';
+    if (!isNative) return undefined;
+
+    document.documentElement.classList.add('shop-mobile-app-root');
+    document.body.classList.add('shop-mobile-app');
+    if (platform) {
+      document.body.classList.add(`shop-mobile-app--${platform}`);
+      document.documentElement.dataset.shopPlatform = platform;
+    }
+
+    return () => {
+      document.documentElement.classList.remove('shop-mobile-app-root');
+      document.body.classList.remove('shop-mobile-app', 'shop-mobile-app--android', 'shop-mobile-app--ios');
+      delete document.documentElement.dataset.shopPlatform;
+    };
+  }, []);
+
+  return null;
+};
+
+const NativeMobileUpdateGate: React.FC = () => {
+  const { t } = useLanguage();
+  const [release, setRelease] = useState<MobileReleaseManifest | null>(null);
+  const [openingDownload, setOpeningDownload] = useState(false);
+  const [downloadFailed, setDownloadFailed] = useState(false);
+  const installedVersionCode = currentMobileVersionCode();
+  const latestVersionCode = release?.versionCode || 0;
+  const updateRequired = Boolean(release && (release.mandatory || (release.minSupportedVersionCode || 0) > installedVersionCode));
+
+  useEffect(() => {
+    if (!isNativeMobileApp()) return undefined;
+
+    let disposed = false;
+    fetchLatestMobileRelease().then((latestRelease) => {
+      const latestReleaseVersionCode = latestRelease?.versionCode || 0;
+      if (
+        disposed
+        || !latestRelease
+        || latestReleaseVersionCode <= installedVersionCode
+        || !isMobileReleaseDownloadAllowed(latestRelease)
+      ) {
+        return;
+      }
+      const required = latestRelease.mandatory || (latestRelease.minSupportedVersionCode || 0) > installedVersionCode;
+      const dismissed = getLocalStorageItem(`${MOBILE_UPDATE_DISMISSED_KEY_PREFIX}:${latestReleaseVersionCode}`) === '1';
+      if (!required && dismissed) {
+        return;
+      }
+      setDownloadFailed(false);
+      setRelease(latestRelease);
+    });
+
+    return () => {
+      disposed = true;
+    };
+  }, [installedVersionCode]);
+
+  const handleDismiss = useCallback(() => {
+    if (!release || updateRequired) return;
+    setLocalStorageItem(`${MOBILE_UPDATE_DISMISSED_KEY_PREFIX}:${release.versionCode}`, '1');
+    setDownloadFailed(false);
+    setRelease(null);
+  }, [release, updateRequired]);
+
+  const handleNativeBack = useCallback(() => {
+    if (updateRequired) {
+      return true;
+    }
+    handleDismiss();
+    return true;
+  }, [handleDismiss, updateRequired]);
+
+  useNativeBackHandler(Boolean(release), handleNativeBack);
+
+  const handleDownload = async () => {
+    if (!release) return;
+    setOpeningDownload(true);
+    setDownloadFailed(false);
+    try {
+      const opened = await openMobileReleaseDownload(release);
+      setDownloadFailed(!opened);
+    } catch {
+      setDownloadFailed(true);
+    } finally {
+      setOpeningDownload(false);
+    }
+  };
+
+  if (!release) return null;
+
+  const releaseNotes = release.releaseNotes || [];
+  const currentVersionLabel = currentMobileVersionName();
+  const latestVersionLabel = release.versionName || String(latestVersionCode);
+
+  return (
+    <Modal
+      open
+      centered
+      closable={!updateRequired}
+      maskClosable={!updateRequired}
+      onCancel={handleDismiss}
+      title={t(updateRequired ? 'appUpdate.requiredTitle' : 'appUpdate.title')}
+      footer={(
+        <Space wrap>
+          {!updateRequired ? (
+            <Button onClick={handleDismiss}>{t('appUpdate.later')}</Button>
+          ) : null}
+          <Button type="primary" loading={openingDownload} onClick={handleDownload}>
+            {t('appUpdate.download')}
+          </Button>
+        </Space>
+      )}
+    >
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Text>{t('appUpdate.description')}</Text>
+        <Text type="secondary">
+          {t('appUpdate.versionSummary', { current: currentVersionLabel, latest: latestVersionLabel })}
+        </Text>
+        {downloadFailed ? (
+          <Text type="danger">{t('appUpdate.downloadFailed')}</Text>
+        ) : null}
+        {releaseNotes.length ? (
+          <div>
+            <Text strong>{t('appUpdate.releaseNotes')}</Text>
+            <ul>
+              {releaseNotes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </Space>
+    </Modal>
+  );
+};
+
+const NativeMobileContrastGuard: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!isNativeMobileApp() && !document.body.classList.contains('shop-mobile-app')) {
+      return undefined;
+    }
+    return installMobileContrastGuard();
+  }, []);
+
+  useEffect(() => {
+    if (!isNativeMobileApp() && !document.body.classList.contains('shop-mobile-app')) {
+      return undefined;
+    }
+
+    refreshMobileContrastGuard();
+    const frameId = window.requestAnimationFrame(refreshMobileContrastGuard);
+    const timeoutIds = [
+      window.setTimeout(refreshMobileContrastGuard, 80),
+      window.setTimeout(refreshMobileContrastGuard, 260),
+    ];
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [location.pathname, location.search, location.hash]);
+
+  return null;
+};
 
 const RouteScrollReset: React.FC = () => {
   const location = useLocation();
@@ -141,9 +359,7 @@ const RouteScrollReset: React.FC = () => {
     if (location.hash) return;
 
     const resetScroll = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
+      scrollAppToTop('auto');
     };
 
     resetScroll();
@@ -155,6 +371,87 @@ const RouteScrollReset: React.FC = () => {
       window.clearTimeout(timeoutId);
     };
   }, [location.pathname, location.search, location.hash]);
+
+  return null;
+};
+
+const NativeBackNavigation: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const navigationType = useNavigationType();
+  const routeStackRef = useRef<string[]>([]);
+  const currentRouteKey = `${location.pathname}${location.search}${location.hash}`;
+
+  useEffect(() => {
+    const stack = routeStackRef.current;
+    if (stack.length === 0) {
+      routeStackRef.current = [currentRouteKey];
+      return;
+    }
+
+    if (navigationType === 'REPLACE') {
+      stack[stack.length - 1] = currentRouteKey;
+      return;
+    }
+
+    if (navigationType === 'POP') {
+      const existingIndex = stack.lastIndexOf(currentRouteKey);
+      routeStackRef.current = existingIndex >= 0 ? stack.slice(0, existingIndex + 1) : [currentRouteKey];
+      return;
+    }
+
+    if (stack[stack.length - 1] !== currentRouteKey) {
+      stack.push(currentRouteKey);
+    }
+  }, [currentRouteKey, navigationType]);
+
+  useEffect(() => {
+    if (!isNativeMobileApp()) return undefined;
+    const appPlugin = window.Capacitor?.Plugins?.App;
+    if (!appPlugin || typeof appPlugin.addListener !== 'function') return undefined;
+
+    let disposed = false;
+    let removeListener: (() => Promise<void> | void) | null = null;
+
+    const handleNativeBack = () => {
+      if (consumeNativeBack()) {
+        return;
+      }
+      const stack = routeStackRef.current;
+      if (stack.length > 1) {
+        navigate(-1);
+        return;
+      }
+      if (window.location.pathname !== '/') {
+        navigate('/', { replace: true });
+        return;
+      }
+      if (typeof appPlugin.minimizeApp === 'function') {
+        void appPlugin.minimizeApp();
+        return;
+      }
+      if (typeof appPlugin.exitApp === 'function') {
+        void appPlugin.exitApp();
+      }
+    };
+
+    Promise.resolve(appPlugin.addListener('backButton', handleNativeBack))
+      .then((listener) => {
+        if (disposed) {
+          void listener?.remove?.();
+          return;
+        }
+        removeListener = listener?.remove ? () => listener.remove() : null;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      if (removeListener) {
+        void removeListener();
+      }
+    };
+  }, [navigate]);
 
   return null;
 };
@@ -227,8 +524,13 @@ const LazySupportWidgetHost: React.FC = () => {
   const requestSeqRef = useRef(0);
 
   const openSupport = useCallback((event?: Event) => {
-    const guestDetail = getSupportOpenDetail(event) || toSupportOpenDetail(loadGuestSupportContext());
-    if (guestDetail) {
+    const eventDetail = getSupportOpenDetail(event);
+    const clearGuestContext = eventDetail?.clearGuestContext === true;
+    if (clearGuestContext) {
+      clearGuestSupportContext();
+    }
+    const guestDetail = clearGuestContext ? eventDetail : eventDetail || toSupportOpenDetail(loadGuestSupportContext());
+    if (guestDetail && !clearGuestContext) {
       saveGuestSupportContext({ orderNo: guestDetail.guestOrderNo || '', email: guestDetail.guestEmail || '' });
     }
     requestSeqRef.current += 1;
@@ -282,7 +584,7 @@ const StorefrontLayout: React.FC = () => {
     location.pathname === '/cart' ? 'shop-app-shell--cart' : '',
     location.pathname === '/checkout' ? 'shop-app-shell--checkout' : '',
     location.pathname === '/history' ? 'shop-app-shell--history' : '',
-    location.pathname === '/cart' || location.pathname === '/checkout' ? 'shop-app-shell--checkout-flow' : '',
+    location.pathname === '/checkout' ? 'shop-app-shell--checkout-flow' : '',
     ['/login', '/register', '/forgot-password'].includes(location.pathname) ? 'shop-app-shell--auth-flow' : '',
   ].filter(Boolean).join(' ');
   const footerActionCards = [
@@ -321,7 +623,9 @@ const StorefrontLayout: React.FC = () => {
     <Layout className={shellClassName} style={{ minHeight: '100vh' }}>
       <Navbar />
       <Content style={{ marginTop: 0, padding: 0 }}>
-        <Outlet />
+        <ErrorBoundary key={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </Content>
       <Footer className="shop-footer">
         <div className="shop-footer__inner">
@@ -368,6 +672,10 @@ const StorefrontLayout: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
+      <NativeAppClassHost />
+      <NativeMobileUpdateGate />
+      <NativeMobileContrastGuard />
+      <NativeBackNavigation />
       <RouteScrollReset />
       <ErrorBoundary>
         <Suspense fallback={<LoadingFallback />}>
@@ -415,6 +723,7 @@ const App: React.FC = () => {
               <Route path="alerts" element={<AlertManagement />} />
               <Route path="ip-blacklist" element={<IpBlacklistManagement />} />
               <Route path="logs" element={<LogManagement />} />
+              <Route path="pet-gallery" element={<PetGalleryManagement />} />
               <Route path="registry" element={<RegistryManagement />} />
               <Route path="config-center" element={<ConfigCenter />} />
               <Route path="traffic-control" element={<TrafficControl />} />

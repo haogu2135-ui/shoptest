@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -20,6 +21,7 @@ public class UserDetailsImpl implements UserDetails {
     private String username;
     private String email;
     private String status;
+    private LocalDateTime passwordChangedAt;
 
     @JsonIgnore
     private String password;
@@ -28,11 +30,17 @@ public class UserDetailsImpl implements UserDetails {
 
     public UserDetailsImpl(Long id, String username, String email, String status, String password,
             Collection<? extends GrantedAuthority> authorities) {
+        this(id, username, email, status, password, null, authorities);
+    }
+
+    public UserDetailsImpl(Long id, String username, String email, String status, String password,
+            LocalDateTime passwordChangedAt, Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.status = status;
         this.password = password;
+        this.passwordChangedAt = passwordChangedAt;
         this.authorities = authorities;
     }
 
@@ -43,17 +51,14 @@ public class UserDetailsImpl implements UserDetails {
         if (!role.isEmpty()) {
             authorityNames.add("ROLE_" + role);
         }
-        if (!roleCode.isEmpty() && !roleCode.equals(role)) {
+        boolean adminRole = "ADMIN".equals(role) || "SUPER_ADMIN".equals(role);
+        if (adminRole && !roleCode.isEmpty() && !roleCode.equals(role)) {
             authorityNames.add("ROLE_" + roleCode);
         }
-        if ("SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(roleCode)) {
+        if ("SUPER_ADMIN".equals(role)) {
             authorityNames.add("ROLE_SUPER_ADMIN");
         }
-        if ("ADMIN".equals(role)
-                || "SUPER_ADMIN".equals(role)
-                || "ADMIN".equals(roleCode)
-                || "SUPER_ADMIN".equals(roleCode)
-                || (!roleCode.isEmpty() && !"USER".equals(roleCode))) {
+        if (adminRole) {
             authorityNames.add("ROLE_ADMIN");
         }
         List<GrantedAuthority> authorities = new ArrayList<>();
@@ -65,6 +70,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getEmail(),
                 user.getStatus(),
                 user.getPassword(),
+                user.getPasswordChangedAt(),
                 authorities);
     }
 
@@ -79,6 +85,10 @@ public class UserDetailsImpl implements UserDetails {
 
     public String getEmail() {
         return email;
+    }
+
+    public LocalDateTime getPasswordChangedAt() {
+        return passwordChangedAt;
     }
 
     @Override

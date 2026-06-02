@@ -3,8 +3,9 @@ import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty,
 import { BarChartOutlined, BellOutlined, CheckCircleOutlined, CloseOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi } from '../api';
-import type { Product, Category } from '../types';
+import type { ProductPublic as Product, CategoryPublic } from '../types';
 import { flattenCategoryTree, getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/categoryTree';
+import type { CategoryTreeNode } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -23,15 +24,22 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
+import type { ProductCatalogSnapshotProduct } from '../utils/productCatalogSnapshot';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import { getApiErrorMessage } from '../utils/apiError';
+import { scrollAppToTop } from '../utils/nativeScroll';
+import { useNativeBackHandler } from '../utils/nativeBack';
+import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import './ProductList.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text } = Typography;
 const SEARCH_HISTORY_KEY = 'shop-product-search-history';
 const MAX_SEARCH_HISTORY = 6;
 const MAX_SEARCH_LENGTH = 80;
+const PRODUCT_LIST_PAGE_SIZE = 12;
+const PRODUCT_LIST_FETCH_SIZE = PRODUCT_LIST_PAGE_SIZE * 8;
 const CATEGORY_CACHE_TTL = 5 * 60 * 1000;
 const DEFAULT_PRICE_RANGE: [number, number] = [0, 10000];
 const SMART_DEVICE_CATEGORY_IDS = new Set([10, 11]);
@@ -49,6 +57,8 @@ const VALID_SORT_VALUES = new Set([
   'name',
 ]);
 const VALID_PET_SIZES = new Set(['Small', 'Medium', 'Large']);
+const VALID_MATERIALS = new Set(['Cotton', 'Nylon', 'Silicone', 'Wood']);
+const VALID_COLORS = new Set(['Black', 'Blue', 'Green', 'Pink']);
 const VALID_COLLECTIONS = new Set(['smart-devices']);
 const resolveProductListImage = resolveProductImage;
 const resolveProductPrimaryImage = (product: Product) => {
@@ -74,23 +84,68 @@ const writeSearchHistory = (history: string[]) => {
 };
 
 const normalizeSearchValue = (value: string) => value.replace(/\s+/g, ' ').trim().slice(0, MAX_SEARCH_LENGTH);
+const labelPaginationControl = (element: React.ReactNode, label: string) => {
+  if (!React.isValidElement(element)) return element;
+  return React.cloneElement(element as React.ReactElement<{ 'aria-label'?: string; title?: string }>, {
+    'aria-label': label,
+    title: label,
+  });
+};
 const normalizeSortValue = (value: string | null | undefined) =>
   value && VALID_SORT_VALUES.has(value) ? value : 'default';
 const normalizePetSizeValue = (value: string | null | undefined) =>
   value && VALID_PET_SIZES.has(value) ? value : '';
 const normalizePetSizeValues = (values: Array<string | null | undefined>) =>
   Array.from(new Set(values.map(normalizePetSizeValue).filter(Boolean)));
+const normalizeOptionValues = (values: Array<string | null | undefined>, allowedValues: Set<string>) => {
+  const allowedByLower = new Map(Array.from(allowedValues).map((value) => [value.toLowerCase(), value]));
+  return Array.from(new Set(values
+    .map((value) => allowedByLower.get(String(value || '').trim().toLowerCase()))
+    .filter(Boolean))) as string[];
+};
 const normalizeCollectionValue = (value: string | null | undefined) =>
   value && VALID_COLLECTIONS.has(value) ? value : '';
 const parsePositiveId = (value: string | null) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 };
+const parsePriceParam = (value: string | null) => {
+  if (value === null || value.trim() === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+};
+
+const DEFAULT_CATALOG_TITLE_BY_LANGUAGE = {
+  en: 'Pet supplies',
+  zh: '\u5ba0\u7269\u7528\u54c1',
+  es: 'Productos para mascotas',
+} as const;
+
+const getDefaultCatalogTitle = (language: string) =>
+  DEFAULT_CATALOG_TITLE_BY_LANGUAGE[language as keyof typeof DEFAULT_CATALOG_TITLE_BY_LANGUAGE]
+  || DEFAULT_CATALOG_TITLE_BY_LANGUAGE.en;
+
+const normalizeCatalogTitle = (value: string | null | undefined, fallback: string) => {
+  const title = String(value || '').replace(/\s+/g, ' ').trim();
+  const normalized = title.toLowerCase();
+  if (
+    !title
+    || normalized === 'catalog title'
+    || normalized === 'pages.productlist.catalogtitle'
+    || normalized === 'pages.products.catalogtitle'
+  ) {
+    return fallback;
+  }
+  return title;
+};
 
 const productSearchText = (product: Product) => [
   product.name,
   product.description,
   product.brand,
+  product.tag,
   ...Object.values(product.specifications || {}),
 ].join(' ').toLowerCase();
 
@@ -107,9 +162,10 @@ const matchesDiscountFilter = (product: Product) =>
   Number(product.effectiveDiscountPercent || product.discount || 0) > 0 ||
   (product.originalPrice !== undefined && Number(product.originalPrice) > Number(product.effectivePrice ?? product.price ?? 0));
 
-const filterSnapshotProducts = (products: Product[], keyword?: string, categoryId?: number, discount?: boolean) => {
+const filterSnapshotProducts = (products: Product[], keyword?: string, categoryId?: number, discount?: boolean, collection?: string) => {
   const normalizedKeyword = normalizeSearchValue(keyword || '').toLowerCase();
   return products.filter((product) => {
+    if (collection === 'smart-devices' && !matchesSmartDeviceCollection(product)) return false;
     if (normalizedKeyword && !productSearchText(product).includes(normalizedKeyword)) return false;
     if (categoryId && Number(product.categoryId) !== categoryId) return false;
     if (discount && !matchesDiscountFilter(product)) return false;
@@ -117,13 +173,13 @@ const filterSnapshotProducts = (products: Product[], keyword?: string, categoryI
   });
 };
 
-const pickBestProductFallback = (products: Product[], keyword?: string, categoryId?: number, discount?: boolean) => {
-  const filtered = filterSnapshotProducts(products, keyword, categoryId, discount);
+const pickBestProductFallback = (products: Product[], keyword?: string, categoryId?: number, discount?: boolean, collection?: string) => {
+  const filtered = filterSnapshotProducts(products, keyword, categoryId, discount, collection);
   return filtered.length > 0 ? filtered : products;
 };
 
-const buildFallbackCategories = (products: Product[]): Category[] => {
-  const categories = new Map<number, Category>();
+const buildFallbackCategories = (products: ProductCatalogSnapshotProduct[]): CategoryPublic[] => {
+  const categories = new Map<number, CategoryPublic>();
   products.forEach((product) => {
     const id = Number(product.categoryId);
     if (!Number.isSafeInteger(id) || id <= 0 || categories.has(id)) return;
@@ -142,8 +198,22 @@ const notifyCatalogFallback = (text: string) => {
   }
 };
 
-let categoryCache: { expiresAt: number; items: Category[] } | null = null;
-let categoryCacheRequest: Promise<Category[]> | null = null;
+let categoryCache: { expiresAt: number; items: CategoryPublic[] } | null = null;
+let categoryCacheRequest: Promise<CategoryPublic[]> | null = null;
+let categorySessionResetRegistered = false;
+
+const clearProductListSessionCaches = () => {
+  categoryCache = null;
+  categoryCacheRequest = null;
+};
+
+const registerProductListSessionReset = () => {
+  if (categorySessionResetRegistered || typeof window === 'undefined') return;
+  window.addEventListener(AUTH_SESSION_CHANGED_EVENT, clearProductListSessionCaches);
+  categorySessionResetRegistered = true;
+};
+
+registerProductListSessionReset();
 
 type ProductListUrlOverrides = Partial<{
   collection: string;
@@ -152,13 +222,29 @@ type ProductListUrlOverrides = Partial<{
   discount: boolean;
   sortBy: string;
   petSizes: string[];
+  materials: string[];
+  colors: string[];
+  priceRange: [number, number];
+  priceFilterTouched: boolean;
 }>;
+
+type ProductFetchFilters = {
+  minPrice?: number;
+  maxPrice?: number;
+  petSizes?: string[];
+  materials?: string[];
+  colors?: string[];
+  collection?: string;
+  sort?: string;
+  page?: number;
+  size?: number;
+};
 
 const ProductList: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryPublic[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [usingCatalogSnapshot, setUsingCatalogSnapshot] = useState(false);
@@ -181,8 +267,11 @@ const ProductList: React.FC = () => {
   const [personalizedProducts, setPersonalizedProducts] = useState<Product[]>([]);
   const [viewPreferences, setViewPreferences] = useState(() => loadProductViewPreferences());
   const [currentPage, setCurrentPage] = useState(1);
+  const [productTotal, setProductTotal] = useState(0);
+  const [usingServerPagination, setUsingServerPagination] = useState(false);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [wishlistedProductIds, setWishlistedProductIds] = useState<Set<number>>(new Set());
+  const [authSessionVersion, setAuthSessionVersion] = useState(0);
   const [alertedStockProductIds, setAlertedStockProductIds] = useState<Set<number>>(
     () => new Set(readStockAlerts().map((alert) => alert.productId)),
   );
@@ -191,8 +280,29 @@ const ProductList: React.FC = () => {
   const previousProductsRef = useRef<Product[]>([]);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  useNativeBackHandler(filterDrawerOpen, () => {
+    setFilterDrawerOpen(false);
+    return true;
+  });
+  useNativeBackHandler(Boolean(quickAddProduct), () => {
+    if (!quickAddSubmitting) {
+      setQuickAddProduct(null);
+    }
+    return true;
+  });
+  useNativeBackHandler(Boolean(previewProduct), () => {
+    setPreviewProduct(null);
+    return true;
+  });
+  const catalogTitleFallback = normalizeCatalogTitle(
+    t('pages.productList.catalogTitle'),
+    getDefaultCatalogTitle(language),
+  );
+  const normalizeCategoryTitle = useCallback((category: CategoryPublic | null | undefined, fallback = catalogTitleFallback) => (
+    category ? normalizeCatalogTitle(getLocalizedCategoryValue(category, language, 'name'), fallback) : ''
+  ), [catalogTitleFallback, language]);
   const collection = normalizeCollectionValue(searchParams.get('collection'));
-  const pageSize = 12;
+  const pageSize = PRODUCT_LIST_PAGE_SIZE;
   const isAuthenticated = hasStoredValue('token');
   const openSupport = useCallback(() => {
     if (!hasStoredValue('token')) {
@@ -238,6 +348,21 @@ const ProductList: React.FC = () => {
     { label: t('pages.productList.colorGreen'), value: 'Green' },
     { label: t('pages.productList.colorPink'), value: 'Pink' },
   ], [t]);
+
+  useEffect(() => {
+    const handleAuthSessionChanged = () => {
+      clearProductListSessionCaches();
+      setCategories([]);
+      setWishlistedProductIds(new Set());
+      setPersonalizedProducts([]);
+      setAuthSessionVersion((version) => version + 1);
+    };
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
+    };
+  }, []);
+
   useEffect(() => {
     if (categoryCache && categoryCache.expiresAt > Date.now()) {
       setCategories(categoryCache.items);
@@ -245,7 +370,7 @@ const ProductList: React.FC = () => {
     }
     let active = true;
     if (!categoryCacheRequest) {
-      categoryCacheRequest = categoryApi.getAll()
+      categoryCacheRequest = categoryApi.getTopLevel()
         .then((res) => {
           categoryCache = { expiresAt: Date.now() + CATEGORY_CACHE_TTL, items: res.data };
           return res.data;
@@ -267,7 +392,7 @@ const ProductList: React.FC = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [authSessionVersion]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -277,7 +402,7 @@ const ProductList: React.FC = () => {
     wishlistApi.getByUser(0)
       .then((res) => setWishlistedProductIds(new Set(res.data.map((item) => item.productId))))
       .catch(() => setWishlistedProductIds(new Set()));
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authSessionVersion]);
 
   useEffect(() => {
     const refreshStockAlerts = () => {
@@ -306,19 +431,19 @@ const ProductList: React.FC = () => {
     productApi.getPersonalizedRecommendations()
       .then((response) => setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language))))
       .catch(() => setPersonalizedProducts([]));
-  }, [isAuthenticated, language]);
+  }, [isAuthenticated, language, authSessionVersion]);
 
   const collectionProducts = useMemo(() => {
     let result = products;
-    if (collection === 'smart-devices') {
+    if (!usingServerPagination && collection === 'smart-devices') {
       result = result.filter(matchesSmartDeviceCollection);
     }
-    if (collection && keyword.trim()) {
+    if (!usingServerPagination && collection && keyword.trim()) {
       const normalizedKeyword = keyword.trim().toLowerCase();
       result = result.filter((product) => productSearchText(product).includes(normalizedKeyword));
     }
     return result;
-  }, [collection, keyword, products]);
+  }, [collection, keyword, products, usingServerPagination]);
 
   const maxCatalogPrice = useMemo(() => {
     const highestPrice = collectionProducts.reduce((max, product) => Math.max(max, Number(getPrice(product) || 0)), 0);
@@ -352,6 +477,10 @@ const ProductList: React.FC = () => {
     const nextDiscount = overrides.discount ?? discount;
     const nextSort = normalizeSortValue(overrides.sortBy ?? sortBy);
     const nextPetSizes = normalizePetSizeValues(overrides.petSizes ?? petSizes);
+    const nextMaterials = normalizeOptionValues(overrides.materials ?? materials, VALID_MATERIALS);
+    const nextColors = normalizeOptionValues(overrides.colors ?? colors, VALID_COLORS);
+    const nextPriceFilterTouched = overrides.priceFilterTouched ?? priceFilterTouched;
+    const nextPriceRange = overrides.priceRange ?? priceRange;
     const params = new URLSearchParams();
     if (nextCollection) params.set('collection', nextCollection);
     if (nextKeyword) params.set('keyword', nextKeyword);
@@ -359,13 +488,41 @@ const ProductList: React.FC = () => {
     if (nextDiscount) params.set('discount', 'true');
     if (nextSort !== 'default') params.set('sort', nextSort);
     nextPetSizes.forEach((size) => params.append('petSize', size));
+    nextMaterials.forEach((material) => params.append('material', material));
+    nextColors.forEach((color) => params.append('color', color));
+    if (nextPriceFilterTouched) {
+      if (nextPriceRange[0] > 0) params.set('minPrice', String(nextPriceRange[0]));
+      if (nextPriceRange[1] > 0) params.set('maxPrice', String(nextPriceRange[1]));
+    }
     return `/products${params.toString() ? '?' + params.toString() : ''}`;
-  }, [categoryId, collection, discount, keyword, petSizes, sortBy]);
+  }, [categoryId, collection, colors, discount, keyword, materials, petSizes, priceFilterTouched, priceRange, sortBy]);
   const updatePetSizes = useCallback((nextSizes: string[]) => {
     const normalizedSizes = normalizePetSizeValues(nextSizes);
     setPetSizes(normalizedSizes);
     setCurrentPage(1);
     navigate(buildProductsUrl({ petSizes: normalizedSizes }));
+  }, [buildProductsUrl, navigate]);
+  const updateMaterials = useCallback((nextMaterials: string[]) => {
+    const normalizedMaterials = normalizeOptionValues(nextMaterials, VALID_MATERIALS);
+    setMaterials(normalizedMaterials);
+    setCurrentPage(1);
+    navigate(buildProductsUrl({ materials: normalizedMaterials }));
+  }, [buildProductsUrl, navigate]);
+  const updateColors = useCallback((nextColors: string[]) => {
+    const normalizedColors = normalizeOptionValues(nextColors, VALID_COLORS);
+    setColors(normalizedColors);
+    setCurrentPage(1);
+    navigate(buildProductsUrl({ colors: normalizedColors }));
+  }, [buildProductsUrl, navigate]);
+  const commitPriceRange = useCallback((nextRange: [number, number]) => {
+    const normalizedRange: [number, number] = [
+      Math.max(0, Math.min(nextRange[0], nextRange[1])),
+      Math.max(nextRange[0], nextRange[1]),
+    ];
+    setPriceFilterTouched(true);
+    setPriceRange(normalizedRange);
+    setCurrentPage(1);
+    navigate(buildProductsUrl({ priceRange: normalizedRange, priceFilterTouched: true }));
   }, [buildProductsUrl, navigate]);
 
   useEffect(() => {
@@ -389,6 +546,9 @@ const ProductList: React.FC = () => {
   }, [maxCatalogPrice, priceFilterTouched]);
 
   const visibleCategories = useMemo(() => {
+    if (usingServerPagination && !collection) {
+      return categories;
+    }
     const hasActiveCatalogNarrowing = Boolean(collection || keyword.trim() || categoryId);
     if (collectionProducts.length === 0) {
       return hasActiveCatalogNarrowing ? [] : categories;
@@ -411,12 +571,12 @@ const ProductList: React.FC = () => {
       }
     });
     return categories.filter((category) => visibleIds.has(category.id));
-  }, [categories, categoryId, collection, collectionProducts, keyword]);
+  }, [categories, categoryId, collection, collectionProducts, keyword, usingServerPagination]);
   const categoryTree = useMemo(() => getDisplayCategoryRoots(visibleCategories), [visibleCategories]);
   const categoryRows = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const categoryDepthById = useMemo(() => {
     const depths = new Map<number, number>();
-    const visit = (nodes: Category[], depth: number) => {
+    const visit = (nodes: CategoryTreeNode<CategoryPublic>[], depth: number) => {
       nodes.forEach((category) => {
         depths.set(category.id, depth);
         visit(category.children || [], depth + 1);
@@ -434,7 +594,7 @@ const ProductList: React.FC = () => {
     if (selectedCategory) {
       tags.push({
         key: `category-${selectedCategory.id}`,
-        label: getLocalizedCategoryValue(selectedCategory, language, 'name'),
+        label: normalizeCategoryTitle(selectedCategory),
         onClose: () => {
           setCategoryId(undefined);
           setCurrentPage(1);
@@ -451,6 +611,7 @@ const ProductList: React.FC = () => {
           setPriceRange([0, maxCatalogPrice]);
           setPriceFilterTouched(false);
           setCurrentPage(1);
+          navigate(buildProductsUrl({ priceRange: [0, maxCatalogPrice], priceFilterTouched: false }));
         },
       });
     }
@@ -466,16 +627,14 @@ const ProductList: React.FC = () => {
       key: `material-${value}`,
       label: `${t('pages.productList.filterMaterial')}: ${optionLabels.get(value) || value}`,
       onClose: () => {
-        setMaterials((current) => current.filter((item) => item !== value));
-        setCurrentPage(1);
+        updateMaterials(materials.filter((item) => item !== value));
       },
     }));
     colors.forEach((value) => tags.push({
       key: `color-${value}`,
       label: `${t('pages.productList.filterColor')}: ${optionLabels.get(value) || value}`,
       onClose: () => {
-        setColors((current) => current.filter((item) => item !== value));
-        setCurrentPage(1);
+        updateColors(colors.filter((item) => item !== value));
       },
     }));
     return tags;
@@ -485,16 +644,18 @@ const ProductList: React.FC = () => {
     buildProductsUrl,
     displayedPriceRange,
     formatMoney,
-    language,
     materialOptions,
     materials,
     maxCatalogPrice,
     navigate,
+    normalizeCategoryTitle,
     petSizeOptions,
     petSizes,
     priceFilterActive,
     selectedCategory,
     t,
+    updateColors,
+    updateMaterials,
     updatePetSizes,
   ]);
   const applySort = (nextSort: string) => {
@@ -503,10 +664,14 @@ const ProductList: React.FC = () => {
     setCurrentPage(1);
     navigate(buildProductsUrl({ sortBy: normalizedSort }));
   };
+  const getCollectionLabel = useCallback((value: string) => {
+    if (value === 'smart-devices') return t('nav.petNav.smartDevices');
+    return value.replace(/-/g, ' ');
+  }, [t]);
   const resultContextTags = [
-    collection ? { key: 'collection', color: 'geekblue', label: collection.replace(/-/g, ' ') } : null,
+    collection ? { key: 'collection', color: 'geekblue', label: normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback) } : null,
     keyword.trim() ? { key: 'keyword', color: 'purple', label: keyword.trim() } : null,
-    selectedCategory ? { key: 'category', color: 'green', label: getLocalizedCategoryValue(selectedCategory, language, 'name') } : null,
+    selectedCategory ? { key: 'category', color: 'green', label: normalizeCategoryTitle(selectedCategory) } : null,
     discount ? { key: 'discount', color: 'red', label: t('home.flashOffers') } : null,
   ].filter(Boolean) as Array<{ key: string; color: string; label: string }>;
   const quickAddOptionGroups = useMemo(() => getProductOptionGroups(quickAddProduct), [quickAddProduct]);
@@ -536,15 +701,20 @@ const ProductList: React.FC = () => {
     imageUrl: quickAddVariant?.imageUrl || resolveProductPrimaryImage(quickAddProduct),
   }) : null;
 
-  const fetchProducts = useCallback(async (kw?: string, cid?: number, disc?: boolean) => {
+  const fetchProducts = useCallback(async (kw?: string, cid?: number, disc?: boolean, filters: ProductFetchFilters = {}) => {
     const requestSeq = productRequestSeqRef.current + 1;
     productRequestSeqRef.current = requestSeq;
     try {
       setLoading(true);
-      const res = await productApi.getAll(kw || undefined, cid, disc);
+      const boundedFilters = {
+        ...filters,
+        page: filters.page ?? 0,
+        size: filters.size ?? pageSize,
+      };
+      const res = await productApi.getPage(kw || undefined, cid, disc, boundedFilters);
       if (productRequestSeqRef.current !== requestSeq) return;
-      const localizedProducts = res.data.map((product) => localizeProduct(product, language));
-      if (localizedProducts.length === 0 && !kw && !cid && !disc) {
+      const localizedProducts = res.data.items.map((product) => localizeProduct(product, language));
+      if (localizedProducts.length === 0 && res.data.total === 0 && !kw && !cid && !disc) {
         const snapshot = loadProductCatalogSnapshot();
         const snapshotProducts = snapshot?.products?.length
           ? snapshot.products.map((product) => localizeProduct(product, language))
@@ -555,6 +725,8 @@ const ProductList: React.FC = () => {
         if (fallbackProducts.length > 0) {
           previousProductsRef.current = fallbackProducts;
           setProducts(fallbackProducts);
+          setProductTotal(fallbackProducts.length);
+          setUsingServerPagination(false);
           setLoadFailed(false);
           setUsingCatalogSnapshot(true);
           setCurrentPage(1);
@@ -562,28 +734,32 @@ const ProductList: React.FC = () => {
           return;
         }
       }
-      if (localizedProducts.length > 0) {
-        saveProductCatalogSnapshot(res.data);
+      if (localizedProducts.length > 0 && res.data.page === 0) {
+        saveProductCatalogSnapshot(res.data.items);
       }
       previousProductsRef.current = localizedProducts;
       setProducts(localizedProducts);
+      setProductTotal(res.data.total);
+      setUsingServerPagination(true);
       setLoadFailed(false);
       setUsingCatalogSnapshot(false);
-      setCurrentPage(1);
+      setCurrentPage(Math.max(1, res.data.page + 1));
     } catch (error) {
       if (productRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(error, t('pages.productList.fetchFailed'), language);
-      if (kw || cid || disc) {
+      if (kw || cid || disc || filters.collection) {
         try {
-          const fallbackRes = await productApi.getAll();
+          const fallbackRes = await productApi.getAll(undefined, undefined, undefined, { page: 0, size: PRODUCT_LIST_FETCH_SIZE });
           if (productRequestSeqRef.current !== requestSeq) return;
-          const fallbackProducts = pickBestProductFallback(fallbackRes.data, kw, cid, disc).map((product) => localizeProduct(product, language));
+          const fallbackProducts = pickBestProductFallback(fallbackRes.data, kw, cid, disc, filters.collection).map((product) => localizeProduct(product, language));
           if (fallbackProducts.length === 0) {
             throw new Error('Empty fallback catalog');
           }
           saveProductCatalogSnapshot(fallbackRes.data);
           previousProductsRef.current = fallbackProducts;
           setProducts(fallbackProducts);
+          setProductTotal(fallbackProducts.length);
+          setUsingServerPagination(false);
           setLoadFailed(false);
           setUsingCatalogSnapshot(false);
           setCurrentPage(1);
@@ -600,6 +776,8 @@ const ProductList: React.FC = () => {
           if (broadSnapshotProducts.length > 0) {
             previousProductsRef.current = broadSnapshotProducts;
             setProducts(broadSnapshotProducts);
+            setProductTotal(broadSnapshotProducts.length);
+            setUsingServerPagination(false);
             setLoadFailed(false);
             setUsingCatalogSnapshot(true);
             setCurrentPage(1);
@@ -609,6 +787,8 @@ const ProductList: React.FC = () => {
         }
         previousProductsRef.current = snapshotProducts;
         setProducts(snapshotProducts);
+        setProductTotal(snapshotProducts.length);
+        setUsingServerPagination(false);
         setLoadFailed(false);
         setUsingCatalogSnapshot(true);
         setCurrentPage(1);
@@ -617,7 +797,10 @@ const ProductList: React.FC = () => {
       }
       if (previousProductsRef.current.length > 0) {
         const previousProducts = pickBestProductFallback(previousProductsRef.current, kw, cid, disc);
-        setProducts(previousProducts.length > 0 ? previousProducts : previousProductsRef.current);
+        const fallbackProducts = previousProducts.length > 0 ? previousProducts : previousProductsRef.current;
+        setProducts(fallbackProducts);
+        setProductTotal(fallbackProducts.length);
+        setUsingServerPagination(false);
         setLoadFailed(false);
         setUsingCatalogSnapshot(true);
         notifyCatalogFallback(t('pages.productList.snapshotNotice'));
@@ -627,6 +810,8 @@ const ProductList: React.FC = () => {
       if (fallbackProducts.length > 0) {
         previousProductsRef.current = fallbackProducts;
         setProducts(fallbackProducts);
+        setProductTotal(fallbackProducts.length);
+        setUsingServerPagination(false);
         setLoadFailed(false);
         setUsingCatalogSnapshot(true);
         notifyCatalogFallback(t('pages.productList.snapshotNotice'));
@@ -636,6 +821,8 @@ const ProductList: React.FC = () => {
       if (broadFallbackProducts.length > 0) {
         previousProductsRef.current = broadFallbackProducts;
         setProducts(broadFallbackProducts);
+        setProductTotal(broadFallbackProducts.length);
+        setUsingServerPagination(false);
         setLoadFailed(false);
         setUsingCatalogSnapshot(true);
         notifyCatalogFallback(t('pages.productList.snapshotNotice'));
@@ -643,6 +830,8 @@ const ProductList: React.FC = () => {
       }
       setLoadFailed(true);
       setUsingCatalogSnapshot(false);
+      setUsingServerPagination(false);
+      setProductTotal(0);
       setProducts([]);
       if (process.env.NODE_ENV !== 'production') {
         message.error(errorMessage);
@@ -652,7 +841,28 @@ const ProductList: React.FC = () => {
         setLoading(false);
       }
     }
-  }, [language, t]);
+  }, [language, pageSize, t]);
+
+  const buildActiveFetchFilters = useCallback((page = 0): ProductFetchFilters => ({
+    minPrice: priceFilterTouched ? priceRange[0] : undefined,
+    maxPrice: priceFilterTouched ? priceRange[1] : undefined,
+    petSizes,
+    materials,
+    colors,
+    collection: collection || undefined,
+    sort: sortBy,
+    page,
+    size: pageSize,
+  }), [collection, colors, materials, pageSize, petSizes, priceFilterTouched, priceRange, sortBy]);
+
+  const handleProductPageChange = useCallback((nextPage: number) => {
+    const normalizedPage = Math.max(1, nextPage);
+    setCurrentPage(normalizedPage);
+    if (usingServerPagination) {
+      fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(normalizedPage - 1));
+    }
+    scrollAppToTop('smooth');
+  }, [buildActiveFetchFilters, categoryId, discount, fetchProducts, keyword, usingServerPagination]);
 
   useEffect(() => {
     const kw = normalizeSearchValue(searchParams.get('keyword') || '');
@@ -661,13 +871,38 @@ const ProductList: React.FC = () => {
     const activeCollection = normalizeCollectionValue(searchParams.get('collection'));
     const requestedSort = normalizeSortValue(searchParams.get('sort'));
     const requestedPetSizes = normalizePetSizeValues(searchParams.getAll('petSize').length ? searchParams.getAll('petSize') : [searchParams.get('petSize')]);
+    const requestedMaterials = normalizeOptionValues(searchParams.getAll('material'), VALID_MATERIALS);
+    const requestedColors = normalizeOptionValues(searchParams.getAll('color'), VALID_COLORS);
+    const requestedMinPrice = parsePriceParam(searchParams.get('minPrice'));
+    const requestedMaxPrice = parsePriceParam(searchParams.get('maxPrice'));
+    const requestedPriceFilterTouched = requestedMinPrice !== undefined || requestedMaxPrice !== undefined;
+    const requestedPriceRange: [number, number] = [
+      requestedMinPrice ?? 0,
+      Math.max(requestedMinPrice ?? 0, requestedMaxPrice ?? priceRangeMaxRef.current),
+    ];
     setKeyword(kw);
     setCategoryId(cid);
     setDiscount(disc);
     setSortBy(requestedSort);
     setPetSizes(requestedPetSizes);
-    fetchProducts(activeCollection ? undefined : kw, cid, disc);
-  }, [fetchProducts, searchParams, language]);
+    setMaterials(requestedMaterials);
+    setColors(requestedColors);
+    setPriceFilterTouched(requestedPriceFilterTouched);
+    if (requestedPriceFilterTouched) {
+      setPriceRange(requestedPriceRange);
+    }
+    fetchProducts(kw, cid, disc, {
+      minPrice: requestedMinPrice,
+      maxPrice: requestedMaxPrice,
+      petSizes: requestedPetSizes,
+      materials: requestedMaterials,
+      colors: requestedColors,
+      collection: activeCollection || undefined,
+      sort: requestedSort,
+      page: 0,
+      size: pageSize,
+    });
+  }, [fetchProducts, pageSize, searchParams, language]);
 
   useEffect(() => {
     if (products.length > 0) {
@@ -737,6 +972,13 @@ const ProductList: React.FC = () => {
     setMaterials([]);
     setColors([]);
     setCurrentPage(1);
+    navigate(buildProductsUrl({
+      petSizes: [],
+      materials: [],
+      colors: [],
+      priceRange: [0, maxCatalogPrice],
+      priceFilterTouched: false,
+    }));
   };
 
   const handleCategoryChange = (cid: number | undefined) => {
@@ -918,7 +1160,7 @@ const ProductList: React.FC = () => {
     (getSavingsAmount(product) > 0 ? Math.min(12, getSavingsAmount(product) / 20) : 0) -
     (isProductSoldOut(product) ? 120 : 0);
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
+  const sortedProducts = usingServerPagination ? [...filteredProducts] : [...filteredProducts].sort((a, b) => {
     if (sortBy === 'quick-add-desc') {
       const readyDiff = Number(isQuickAddReady(b)) - Number(isQuickAddReady(a));
       if (readyDiff !== 0) return readyDiff;
@@ -953,6 +1195,7 @@ const ProductList: React.FC = () => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     return getConversionSortScore(b) - getConversionSortScore(a);
   });
+  const productCountForUi = usingServerPagination ? productTotal : sortedProducts.length;
   const checkoutPathProducts = sortedProducts.filter((product) => !isProductSoldOut(product)).slice(0, 3);
   const checkoutPathReadyCount = checkoutPathProducts.filter(isQuickAddReady).length;
 
@@ -974,11 +1217,22 @@ const ProductList: React.FC = () => {
     quickAddReadyCount: productListInsightTotals.quickAddReadyCount,
     averageSavings: filteredProducts.length ? productListInsightTotals.totalSavings / filteredProducts.length : 0,
   };
-  const topCategoryName = selectedCategory
-    ? getLocalizedCategoryValue(selectedCategory, language, 'name')
-    : categoryRows[0]
-      ? getLocalizedCategoryValue(categoryRows[0], language, 'name')
-      : t('pages.productList.allCategories');
+  const selectedCategoryName = selectedCategory
+    ? normalizeCategoryTitle(selectedCategory)
+    : '';
+  const leadingCategoryName = categoryRows[0]
+    ? normalizeCategoryTitle(categoryRows[0])
+    : '';
+  const topCategoryName = selectedCategoryName
+    || leadingCategoryName
+    || normalizeCatalogTitle(t('pages.productList.allCategories'), catalogTitleFallback);
+  const collectionLabel = normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback);
+  const catalogHeroTitle = normalizeCatalogTitle(keyword.trim()
+    || selectedCategoryName
+    || (categoryId ? leadingCategoryName : '')
+    || (collection ? collectionLabel : '')
+    || (discount ? t('pages.productList.shopBestDeals') : '')
+    || catalogTitleFallback, catalogTitleFallback);
   const recommendedProduct = filteredProducts
     .filter((product) => !isProductSoldOut(product))
     .map((product, index) => ({
@@ -1121,7 +1375,14 @@ const ProductList: React.FC = () => {
   const resetMobileRefinements = () => {
     resetFilters();
     setCategoryId(undefined);
-    navigate(buildProductsUrl({ categoryId: undefined, petSizes: [] }));
+    navigate(buildProductsUrl({
+      categoryId: undefined,
+      petSizes: [],
+      materials: [],
+      colors: [],
+      priceRange: [0, maxCatalogPrice],
+      priceFilterTouched: false,
+    }));
   };
   const hasActiveCatalogContext = Boolean(keyword.trim() || categoryId || collection || discount || activeRefinementCount > 0);
   const mobileNextStepText = filteredProducts.length === 0
@@ -1131,7 +1392,7 @@ const ProductList: React.FC = () => {
     : productListGuideText;
   const mobileNextStepTitle = filteredProducts.length === 0 && activeRefinementCount > 0
     ? t('pages.productList.activeFilters', { count: activeRefinementCount })
-    : t('pages.productList.count', { count: filteredProducts.length });
+    : t('pages.productList.count', { count: productCountForUi });
   const mobileNextStepActions = filteredProducts.length === 0
     ? [
       {
@@ -1197,7 +1458,7 @@ const ProductList: React.FC = () => {
       ? {
         key: 'collection',
         icon: <GiftOutlined />,
-        label: collection.replace(/-/g, ' '),
+        label: normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback),
         onClear: () => {
           setCurrentPage(1);
           navigate(buildProductsUrl({ collection: '' }));
@@ -1220,7 +1481,7 @@ const ProductList: React.FC = () => {
       ? {
         key: 'category',
         icon: <FilterOutlined />,
-        label: getLocalizedCategoryValue(selectedCategory, language, 'name'),
+        label: normalizeCategoryTitle(selectedCategory),
         onClear: () => {
           setCategoryId(undefined);
           setCurrentPage(1);
@@ -1246,13 +1507,15 @@ const ProductList: React.FC = () => {
       : null,
   ].filter(Boolean) as Array<{ key: string; icon: React.ReactNode; label: string; onClear: () => void }>;
   useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
+    const totalPages = Math.max(1, Math.ceil(productCountForUi / pageSize));
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
-  }, [currentPage, sortedProducts.length]);
+  }, [currentPage, pageSize, productCountForUi]);
 
-  const paginatedProducts = sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedProducts = usingServerPagination
+    ? sortedProducts
+    : sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const renderBadges = (product: Product) => {
     const badges: Array<{ label: string; color: string }> = [];
@@ -1339,7 +1602,7 @@ const ProductList: React.FC = () => {
           className="product-list__categoryButton"
           style={{ paddingLeft: 12 + ((categoryDepthById.get(cat.id) || 1) - 1) * 14 }}
         >
-          {getLocalizedCategoryValue(cat, language, 'name')}
+          {normalizeCategoryTitle(cat)}
         </Button>
       ))}
     </div>
@@ -1360,6 +1623,7 @@ const ProductList: React.FC = () => {
             setPriceRange(value as [number, number]);
             setCurrentPage(1);
           }}
+          onChangeComplete={(value) => commitPriceRange(value as [number, number])}
         />
         <Text type="secondary" className="commerce-atomic">{formatMoney(displayedPriceRange[0])} - {formatMoney(displayedPriceRange[1])}</Text>
       </div>
@@ -1375,10 +1639,7 @@ const ProductList: React.FC = () => {
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterMaterial')}</Text>
         <Checkbox.Group
           value={materials}
-          onChange={(value) => {
-            setMaterials(value.map(String));
-            setCurrentPage(1);
-          }}
+          onChange={(value) => updateMaterials(value.map(String))}
           options={materialOptions}
         />
       </div>
@@ -1386,10 +1647,7 @@ const ProductList: React.FC = () => {
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterColor')}</Text>
         <Checkbox.Group
           value={colors}
-          onChange={(value) => {
-            setColors(value.map(String));
-            setCurrentPage(1);
-          }}
+          onChange={(value) => updateColors(value.map(String))}
           options={colorOptions}
         />
       </div>
@@ -1479,16 +1737,16 @@ const ProductList: React.FC = () => {
           <section className="product-list__heroBand">
             <div className="product-list__heroContent">
               <span className="product-list__heroEyebrow">{topCategoryName}</span>
-              <h1>{keyword.trim() || t('pages.productList.catalogTitle')}</h1>
+              <h1>{catalogHeroTitle}</h1>
               <Text>
                 {collection
-                  ? `${t('pages.productList.resultContextLabel')}: ${collection.replace(/-/g, ' ')}`
+                  ? `${t('pages.productList.resultContextLabel')}: ${collectionLabel}`
                   : resultContextTags.length > 0
                     ? resultContextTags.map((tag) => tag.label).join(' / ')
                     : t('pages.productList.searchPlaceholder')}
               </Text>
               <div className="product-list__heroStats">
-                <span>{t('pages.productList.count', { count: filteredProducts.length })}</span>
+                <span>{t('pages.productList.count', { count: productCountForUi })}</span>
                 <span>{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</span>
                 <span>{t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}</span>
               </div>
@@ -1524,7 +1782,14 @@ const ProductList: React.FC = () => {
                   onChange={e => setKeyword(e.target.value.slice(0, MAX_SEARCH_LENGTH))}
                   onSearch={handleSearch}
                   className="product-list__search"
-                  enterButton={<SearchOutlined aria-label={t('common.search')} title={t('common.search')} />}
+                  enterButton={(
+                    <Button
+                      type="primary"
+                      aria-label={t('common.search')}
+                      title={t('common.search')}
+                      icon={<SearchOutlined />}
+                    />
+                  )}
                 />
               </Col>
               <Col xs={12} sm={5} md={6}>
@@ -1539,7 +1804,7 @@ const ProductList: React.FC = () => {
               </Col>
               <Col xs={12} sm={7} md={4}>
                 <div className="product-list__toolbarMeta">
-                  <Text type="secondary">{t('pages.productList.count', { count: filteredProducts.length })}</Text>
+                  <Text type="secondary">{t('pages.productList.count', { count: productCountForUi })}</Text>
                   <Button className="product-list__filterButton" icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
                     <span>{t('pages.productList.filters')}</span>
                     {activeRefinementCount > 0 ? (
@@ -1653,7 +1918,7 @@ const ProductList: React.FC = () => {
             >
               <div className="product-list__mobileConversionStats">
                 <span className="product-list__mobileConversionEyebrow">{t('pages.productList.viewPick')}</span>
-                <strong>{heroProduct?.name || t('pages.productList.count', { count: filteredProducts.length })}</strong>
+                <strong>{heroProduct?.name || t('pages.productList.count', { count: productCountForUi })}</strong>
                 <span>
                   {activeRefinementCount > 0
                     ? t('pages.productList.activeFilters', { count: activeRefinementCount })
@@ -1712,7 +1977,7 @@ const ProductList: React.FC = () => {
                   <Button
                     size="small"
                     icon={<ReloadOutlined />}
-                    onClick={() => fetchProducts(collection ? undefined : keyword, categoryId, discount)}
+                    onClick={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
                   >
                     {t('common.refresh')}
                   </Button>
@@ -1833,7 +2098,7 @@ const ProductList: React.FC = () => {
                     <Button
                       type="primary"
                       icon={<ReloadOutlined />}
-                      onClick={() => fetchProducts(collection ? undefined : keyword, categoryId, discount)}
+                      onClick={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
                     >
                       {t('common.refresh')}
                     </Button>
@@ -2004,9 +2269,20 @@ const ProductList: React.FC = () => {
                   );
                 })}
               </Row>
-              {sortedProducts.length > pageSize && (
+              {productCountForUi > pageSize && (
                 <div className="product-list__pagination">
-                  <Pagination current={currentPage} total={sortedProducts.length} pageSize={pageSize} onChange={setCurrentPage} showTotal={(total) => t('pages.productList.count', { count: total })} />
+                  <Pagination
+                    current={currentPage}
+                    total={productCountForUi}
+                    pageSize={pageSize}
+                    onChange={handleProductPageChange}
+                    showTotal={(total) => t('pages.productList.count', { count: total })}
+                    itemRender={(_page, type, element) => {
+                      if (type === 'prev') return labelPaginationControl(element, t('common.previousPage'));
+                      if (type === 'next') return labelPaginationControl(element, t('common.nextPage'));
+                      return element;
+                    }}
+                  />
                 </div>
               )}
             </>
@@ -2034,7 +2310,7 @@ const ProductList: React.FC = () => {
       >
         <div className="product-list__drawerContent">
           <section className="product-list__drawerSummary" aria-live="polite">
-            <span>{t('pages.productList.count', { count: filteredProducts.length })}</span>
+            <span>{t('pages.productList.count', { count: productCountForUi })}</span>
             <strong>
               {activeRefinementCount > 0
                 ? t('pages.productList.activeFilters', { count: activeRefinementCount })

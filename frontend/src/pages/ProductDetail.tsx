@@ -5,8 +5,7 @@ import { HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCi
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
-import type { CartItem, Order, Product } from '../types';
-import type { ProductQuestion } from '../types';
+import type { CartItem, ProductPublic as Product, PublicReview, ProductQuestionPublic, ReviewableOrder } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
@@ -18,36 +17,42 @@ import { conversionConfig, estimatePetSize, getDeliveryPromise } from '../utils/
 import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueIsCompatible, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
 import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { dispatchDomEvent } from '../utils/domEvents';
-import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
 import { getLimitedTimeEndMs, getLimitedTimeRemainingMs, shouldRunLimitedTimeTicker } from '../utils/limitedTimeCountdown';
 import { getApiErrorMessage } from '../utils/apiError';
 import { loadFallbackProductCatalog, loadProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
+import { addAppScrollListener } from '../utils/nativeScroll';
+import { useNativeBackHandler } from '../utils/nativeBack';
+import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
+import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import './ProductDetail.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Title, Text } = Typography;
 const ProductRichDetail = React.lazy(() => import('../components/ProductRichDetail'));
 const ProductReview = React.lazy(() => import('../components/ProductReview').then((module) => ({ default: module.ProductReview })));
 
-interface Review {
-  id: number;
-  userId: number;
-  productId: number;
-  rating: number;
-  comment: string;
-  username: string;
-  createdAt: string;
-  orderId?: number;
-  adminReply?: string;
-  repliedAt?: string;
-}
-
 const fallbackProductImage = 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=900&q=80';
+const resolveDetailImage = (imageUrl?: string | null) => resolveApiAssetUrl(imageUrl, fallbackProductImage);
 const PRODUCT_RECOMMENDATIONS_CACHE_TTL = 2 * 60 * 1000;
 const productRecommendationsCache = new Map<string, { expiresAt: number; items: Product[] }>();
+let recommendationSessionResetRegistered = false;
 const eagerImagePriorityProps = { fetchPriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
 const lazyImagePriorityProps = { fetchPriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
+
+const clearProductDetailSessionCaches = () => {
+  productRecommendationsCache.clear();
+};
+
+const registerProductDetailSessionReset = () => {
+  if (recommendationSessionResetRegistered || typeof window === 'undefined') return;
+  window.addEventListener(AUTH_SESSION_CHANGED_EVENT, clearProductDetailSessionCaches);
+  recommendationSessionResetRegistered = true;
+};
+
+registerProductDetailSessionReset();
 
 const parseImageList = (value: unknown): string[] => {
   if (Array.isArray(value)) return value;
@@ -65,7 +70,7 @@ const normalizeProductImages = (product: any) => {
   const images = [product?.imageUrl, ...rawImages]
     .map((image) => String(image || '').trim())
     .filter(Boolean);
-  const uniqueImages = Array.from(new Set(images));
+  const uniqueImages = Array.from(new Set(images.map(resolveDetailImage)));
   return uniqueImages.length > 0
     ? uniqueImages.concat(fallbackProductImage)
     : [fallbackProductImage, fallbackProductImage];
@@ -74,7 +79,7 @@ const normalizeProductImages = (product: any) => {
 const resolveProductPrimaryImage = (product: Partial<Product> | null | undefined) => {
   const images = product?.images;
   const galleryImage = Array.isArray(images) ? images.find((image) => String(image || '').trim()) : '';
-  return String(product?.imageUrl || galleryImage || fallbackProductImage).trim();
+  return resolveDetailImage(product?.imageUrl || galleryImage || fallbackProductImage);
 };
 
 const findFallbackProductById = (id: number) => {
@@ -137,26 +142,33 @@ const ProductDetail: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [activeMobileImageIndex, setActiveMobileImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewableOrders, setReviewableOrders] = useState<Order[]>([]);
+  const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [reviewableOrders, setReviewableOrders] = useState<ReviewableOrder[]>([]);
   const [averageRating, setAverageRating] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recommendationAddingId, setRecommendationAddingId] = useState<number | null>(null);
-  const [questions, setQuestions] = useState<ProductQuestion[]>([]);
+  const [questions, setQuestions] = useState<ProductQuestionPublic[]>([]);
   const [questionText, setQuestionText] = useState('');
-  const [answerDrafts, setAnswerDrafts] = useState<Record<number, string>>({});
   const [questionSubmitting, setQuestionSubmitting] = useState(false);
-  const [answerSubmitting, setAnswerSubmitting] = useState<Record<number, boolean>>({});
   const [now, setNow] = useState(() => Date.now());
   const [imagePaused, setImagePaused] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  useNativeBackHandler(isModalVisible, () => {
+    setIsModalVisible(false);
+    return true;
+  });
+  useNativeBackHandler(sizeGuideOpen, () => {
+    setSizeGuideOpen(false);
+    return true;
+  });
   const [sizeCalculatorBreed, setSizeCalculatorBreed] = useState('');
   const [sizeCalculatorWeight, setSizeCalculatorWeight] = useState('');
   const [purchaseMode, setPurchaseMode] = useState<'once' | 'bundle'>('once');
   const [purchaseSubmitting, setPurchaseSubmitting] = useState<'cart' | 'buy' | null>(null);
   const [pinchZoom, setPinchZoom] = useState({ active: false, scale: 1, originX: 50, originY: 50 });
   const [isAlerted, setIsAlerted] = useState(false);
+  const [authSessionVersion, setAuthSessionVersion] = useState(0);
   const mobileGalleryRef = useRef<HTMLDivElement | null>(null);
   const detailContentRef = useRef<HTMLDivElement | null>(null);
   const optionsSectionRef = useRef<HTMLDivElement | null>(null);
@@ -265,7 +277,14 @@ const ProductDetail: React.FC = () => {
   const bundleInfo = useMemo(() => getBundleInfo(product), [product]);
   const selectedVariant = useMemo(() => {
     if (!variants.length) return undefined;
-    return variants.find((variant) => Object.entries(variant.options || {}).every(([key, value]) => selectedOptions[key] === value));
+    return variants.find((variant) => {
+      const variantOptions = variant.options || {};
+      const variantKeys = Object.keys(variantOptions);
+      const selectedKeys = Object.keys(selectedOptions).filter((key) => selectedOptions[key]);
+      return variantKeys.length === selectedKeys.length
+        && variantKeys.every((key) => selectedOptions[key] === variantOptions[key])
+        && selectedKeys.every((key) => Object.prototype.hasOwnProperty.call(variantOptions, key));
+    });
   }, [selectedOptions, variants]);
   const currentStock = selectedVariant?.stock ?? product?.stock;
   const selectedSpecsPayload = useMemo(() => JSON.stringify({
@@ -321,6 +340,22 @@ const ProductDetail: React.FC = () => {
       setQuantity(nextQuantity);
     }
   }, [currentStock, quantity]);
+
+  useEffect(() => {
+    const handleAuthSessionChanged = () => {
+      clearProductDetailSessionCaches();
+      nonCriticalLoadedRef.current = false;
+      setIsWishlisted(false);
+      setReviewableOrders([]);
+      setRecommendations([]);
+      setRecommendationAddingId(null);
+      setAuthSessionVersion((version) => version + 1);
+    };
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
+    };
+  }, []);
 
   const fetchReviews = useCallback(async () => {
     try {
@@ -431,18 +466,19 @@ const ProductDetail: React.FC = () => {
       }, { rootMargin: '520px 0px' });
       observer.observe(target);
     } else {
+      let removeScrollWarmup: () => void = () => undefined;
       const scrollWarmup = () => {
         const nextTarget = detailContentRef.current;
         if (!nextTarget || nextTarget.getBoundingClientRect().top < window.innerHeight + 520) {
           warmNonCriticalContent();
-          window.removeEventListener('scroll', scrollWarmup);
+          removeScrollWarmup();
         }
       };
-      window.addEventListener('scroll', scrollWarmup, { passive: true });
+      removeScrollWarmup = addAppScrollListener(scrollWarmup, { passive: true });
       scrollWarmup();
       return () => {
         window.clearTimeout(fallbackTimer);
-        window.removeEventListener('scroll', scrollWarmup);
+        removeScrollWarmup();
         observer?.disconnect();
       }
     }
@@ -451,7 +487,7 @@ const ProductDetail: React.FC = () => {
       window.clearTimeout(fallbackTimer);
       observer?.disconnect();
     };
-  }, [id, language, warmNonCriticalContent]);
+  }, [authSessionVersion, id, language, warmNonCriticalContent]);
 
   useEffect(() => {
     const syncStockAlert = () => setIsAlerted(hasStockAlert(Number(id)));
@@ -479,7 +515,11 @@ const ProductDetail: React.FC = () => {
         await cartApi.addItem(0, Number(id), quantity, specs);
         dispatchDomEvent('shop:cart-updated');
       } else {
-        addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
+        const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
+        if (!cartItem) {
+          message.error(t('messages.addFailed'));
+          return;
+        }
       }
       message.success(t('messages.addCartSuccess'));
       dispatchDomEvent('shop:open-cart');
@@ -524,6 +564,10 @@ const ProductDetail: React.FC = () => {
         }
       } else {
         const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
+        if (!cartItem) {
+          message.error(t('messages.operationFailed'));
+          return;
+        }
         syncCheckoutCartItemIds([cartItem]);
       }
       removeSessionStorageItem('checkoutPaymentMethod');
@@ -597,30 +641,6 @@ const ProductDetail: React.FC = () => {
     }
   };
 
-  const handleAnswerQuestion = async (questionId: number) => {
-    const text = (answerDrafts[questionId] || '').trim();
-    if (!hasStoredValue('token')) {
-      message.warning(t('messages.loginRequired'));
-      navigate(buildLoginUrlFromWindow());
-      return;
-    }
-    if (!text) {
-      message.warning(t('pages.ask.emptyAnswer'));
-      return;
-    }
-    try {
-      setAnswerSubmitting((prev) => ({ ...prev, [questionId]: true }));
-      await questionApi.answer(questionId, text);
-      setAnswerDrafts((prev) => ({ ...prev, [questionId]: '' }));
-      await fetchQuestions();
-      message.success(t('pages.ask.answerSuccess'));
-    } catch (err: any) {
-      message.error(getApiErrorMessage(err, t('pages.ask.answerFailed'), language));
-    } finally {
-      setAnswerSubmitting((prev) => ({ ...prev, [questionId]: false }));
-    }
-  };
-
   if (loading) {
     return (
       <div className="product-detail-loading">
@@ -642,7 +662,7 @@ const ProductDetail: React.FC = () => {
   const selectedStock = currentStock;
   const isOutOfStock = selectedStock !== undefined && selectedStock <= 0;
   const stockLabel = selectedStock !== undefined ? selectedStock : t('pages.productDetail.enough');
-  const displayedRating = Number(averageRating || product.rating || 0);
+  const displayedRating = Number(averageRating || product.averageRating || 0);
   const activePrice = selectedVariant?.price ?? product.effectivePrice ?? product.price;
   const displayPrice = purchaseMode === 'bundle' && bundleInfo ? bundleInfo.price : activePrice;
   const bundleSavings = bundleInfo ? Math.max(0, activePrice - bundleInfo.price) : 0;
@@ -795,8 +815,7 @@ const ProductDetail: React.FC = () => {
 
   const isRecommendationUnavailable = (item: Product | any) => {
     const hasStockValue = item.stock !== undefined && item.stock !== null;
-    const isInactive = item.status && item.status !== 'ACTIVE';
-    return Boolean(isInactive || (hasStockValue && Number(item.stock) <= 0));
+    return Boolean(hasStockValue && Number(item.stock) <= 0);
   };
 
   const handleAddRecommendationToCart = async (event: React.MouseEvent<HTMLElement>, item: Product | any) => {
@@ -964,7 +983,13 @@ const ProductDetail: React.FC = () => {
           items={[
             {
               title: (
-                <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/')}>
+                <button
+                  type="button"
+                  className="product-detail-breadcrumb__link"
+                  aria-label={t('nav.ariaHome')}
+                  title={t('nav.ariaHome')}
+                  onClick={() => navigate('/')}
+                >
                   <HomeOutlined />
                 </button>
               ),
@@ -1100,6 +1125,8 @@ const ProductDetail: React.FC = () => {
                       key={`mobile-thumb-${image}-${index}`}
                       type="button"
                       className={`product-mobile-thumbs__button${activeMobileImageIndex === index ? ' product-mobile-thumbs__button--active' : ''}`}
+                      aria-label={t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: product.name })}
+                      title={t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: product.name })}
                       onClick={() => selectGalleryImage(image, index)}
                     >
                       <img
@@ -1562,7 +1589,17 @@ const ProductDetail: React.FC = () => {
                 children: (
                   <div className="product-tab-content">
                     <Suspense fallback={<Spin />}>
-                      <ProductRichDetail detailContent={product.detailContent} fallback={product.description} />
+                      <ProductRichDetail
+                        detailContent={product.detailContent}
+                        fallback={product.description}
+                        emptyText={t('pages.productDetail.noDetails')}
+                        labels={{
+                          imageAlt: t('pages.productDetail.richImageAlt'),
+                          videoTitle: (index) => t('pages.productDetail.richVideoTitle', { index }),
+                          openVideo: t('pages.productDetail.openRichVideo'),
+                          unsupported: t('pages.productDetail.unsupportedRichContent'),
+                        }}
+                      />
                     </Suspense>
                   </div>
                 ),
@@ -1576,7 +1613,7 @@ const ProductDetail: React.FC = () => {
                       .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.') && !key.startsWith('bundle.'))
                       .map(([key, value]) => (
                         <div key={key} className="product-spec-row">
-                          <Text strong>{key}: </Text>
+                          <Text strong>{formatProductSpecLabel(key, t)}: </Text>
                           <Text>{value as string}</Text>
                         </div>
                       ))}
@@ -1636,30 +1673,12 @@ const ProductDetail: React.FC = () => {
                 <div className="product-question-item">
                   <div className="product-question-text">{q.question}</div>
                   <div className="product-question-meta">
-                    {q.username} - {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
+                    {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
                   </div>
-                  {q.answer ? (
-                    <div className="product-answer-box">
-                      <Text strong>{t('pages.ask.answerLabel')}: </Text>
-                      <Text>{q.answer}</Text>
-                    </div>
-                  ) : (
-                    <Space direction="vertical" className="product-question-answer-form">
-                      <Input.TextArea
-                        rows={2}
-                        value={answerDrafts[q.id] || ''}
-                        onChange={(e) => setAnswerDrafts((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                        placeholder={t('pages.ask.answerPlaceholder')}
-                      />
-                      <Button
-                        onClick={() => handleAnswerQuestion(q.id)}
-                        loading={!!answerSubmitting[q.id]}
-                        size="small"
-                      >
-                        {t('pages.ask.answerAction')}
-                      </Button>
-                    </Space>
-                  )}
+                  <div className="product-answer-box">
+                    <Text strong>{t('pages.ask.answerLabel')}: </Text>
+                    <Text>{q.answer}</Text>
+                  </div>
                 </div>
               </List.Item>
             )}

@@ -176,4 +176,9 @@
   .payment-instructions-page__actions .ant-btn {
     width: 100%;
   }
+
+  .payment-instructions-page__actions .ant-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
 }

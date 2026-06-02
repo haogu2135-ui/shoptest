@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
 import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { adminSupportApi, orderApi, supportWebSocketUrl, userApi } from '../api';
+import { adminApi, adminSupportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
 import type { Order, OrderItem, SupportAdminSummary, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -12,23 +12,102 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { decodeSupportOrderMessage, type SupportOrderContext } from '../utils/supportOrderMessage';
 import { formatSafeDateTime, formatSafeTime, getSafeTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { getReconnectDelayMs } from '../utils/reconnectBackoff';
+import {
+  COUPONS_BIRTHDAY_REISSUE_PERMISSION,
+  getEffectiveRole,
+  hasAdminPermission,
+  SUPPORT_ASSIGN_PERMISSION,
+  SUPPORT_CLOSE_PERMISSION,
+  SUPPORT_READ_STATE_PERMISSION,
+  SUPPORT_REOPEN_PERMISSION,
+  SUPPORT_REPLY_PERMISSION,
+} from '../utils/roles';
 import './SupportManagement.css';
 
 const { Text, Title } = Typography;
+const SUPPORT_MESSAGE_WINDOW = 80;
+const SUPPORT_QUEUE_PAGE_SIZE = 20;
 const supportOrderImageFallback = productImageFallback;
 const resolveSupportOrderImage = resolveProductImage;
-
+const SUPPORT_MANAGEMENT_STATUS_LABEL_KEYS = new Set([
+  'PENDING_PAYMENT',
+  'PENDING_SHIPMENT',
+  'SHIPPED',
+  'PENDING_RECEIPT',
+  'COMPLETED',
+  'CANCELLED',
+  'RETURN_REQUESTED',
+  'RETURN_APPROVED',
+  'RETURN_SHIPPED',
+  'RETURN_REFUNDING',
+  'RETURNED',
+  'PENDING',
+  'PAID',
+  'FAILED',
+  'EXPIRED',
+  'REFUNDING',
+  'REFUNDED',
+  'DELIVERED',
+  'OPEN',
+  'CLOSED',
+]);
+
+const newestSupportMessageId = (items: SupportMessage[]) =>
+  items.reduce((maxId, item) => Math.max(maxId, Number(item.id) || 0), 0) || undefined;
+
+const mergeSupportMessages = (current: SupportMessage[], incoming: SupportMessage[]) => {
+  const byId = new Map<number, SupportMessage>();
+  [...current, ...incoming].forEach((item) => {
+    if (Number.isSafeInteger(item.id) && item.id > 0) {
+      byId.set(item.id, item);
+    }
+  });
+  return Array.from(byId.values())
+    .sort((left, right) => left.id - right.id)
+    .slice(-SUPPORT_MESSAGE_WINDOW);
+};
+
 const readAdminSupportToken = () => {
-  return getLocalStorageItem('token');
+  return getLocalStorageItem('token') || '';
+};
+
+const supportSessionMatchesQueue = (session: SupportSession, filter?: string, search?: string) => {
+  const normalizedFilter = String(filter || 'ALL').toUpperCase();
+  if (normalizedFilter === 'NEEDS_REPLY' && (session.status !== 'OPEN' || Number(session.unreadByAdmin || 0) <= 0)) {
+    return false;
+  }
+  if (normalizedFilter !== 'ALL' && normalizedFilter !== 'NEEDS_REPLY' && session.status !== normalizedFilter) {
+    return false;
+  }
+  const normalizedSearch = String(search || '').trim().toLowerCase();
+  if (!normalizedSearch) {
+    return true;
+  }
+  const searchable = [
+    session.id,
+    session.userId,
+    session.username,
+    session.status,
+    session.contextKey,
+    session.assignedAdminName,
+    session.lastMessage,
+  ].join(' ').toLowerCase();
+  return searchable.includes(normalizedSearch);
 };
 
 const SupportManagement: React.FC = () => {
   const [sessions, setSessions] = useState<SupportSession[]>([]);
   const [summary, setSummary] = useState<SupportAdminSummary | null>(null);
   const [selectedSession, setSelectedSession] = useState<SupportSession | null>(null);
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [filter, setFilter] = useState<string | undefined>('OPEN');
-  const [content, setContent] = useState('');
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [filter, setFilter] = useState<string | undefined>('OPEN');
+  const [queueSearch, setQueueSearch] = useState('');
+  const [queuePage, setQueuePage] = useState(1);
+  const [queuePageSize, setQueuePageSize] = useState(SUPPORT_QUEUE_PAGE_SIZE);
+  const [queueTotal, setQueueTotal] = useState(0);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [content, setContent] = useState('');
   const [connected, setConnected] = useState(false);
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -39,19 +118,63 @@ const SupportManagement: React.FC = () => {
   const [detailItems, setDetailItems] = useState<OrderItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [currentAdminId, setCurrentAdminId] = useState(0);
-  const socketRef = useRef<WebSocket | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const selectedSessionRef = useRef<SupportSession | null>(null);
-  const reconnectTimerRef = useRef<number | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const socketRef = useRef<WebSocket | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const sessionsRef = useRef<SupportSession[]>([]);
+  const queueTotalRef = useRef(0);
+  const messagesRef = useRef<SupportMessage[]>([]);
+  const selectedSessionRef = useRef<SupportSession | null>(null);
+  const queueFilterRef = useRef<string | undefined>(filter);
+  const queueSearchRef = useRef(queueSearch);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const formatStatusLabel = useCallback((value?: string) => {
+    const rawValue = String(value || '').trim();
+    const normalized = rawValue.toUpperCase();
+    if (!normalized) return '-';
+    if (SUPPORT_MANAGEMENT_STATUS_LABEL_KEYS.has(normalized)) {
+      return t(`status.${normalized}`);
+    }
+    return rawValue;
+  }, [t]);
+  const formatOrderStatus = formatStatusLabel;
+  const canReplySupport = hasAdminPermission(adminPermissions, currentRole, SUPPORT_REPLY_PERMISSION);
+  const canAssignSupport = hasAdminPermission(adminPermissions, currentRole, SUPPORT_ASSIGN_PERMISSION);
+  const canCloseSupport = hasAdminPermission(adminPermissions, currentRole, SUPPORT_CLOSE_PERMISSION);
+  const canReopenSupport = hasAdminPermission(adminPermissions, currentRole, SUPPORT_REOPEN_PERMISSION);
+  const canUpdateSupportReadState = hasAdminPermission(adminPermissions, currentRole, SUPPORT_READ_STATE_PERMISSION);
+  const canReissueBirthdayCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_BIRTHDAY_REISSUE_PERMISSION);
+  const canViewOrders = hasAdminPermission(adminPermissions, currentRole, 'orders');
 
   useEffect(() => {
     if (!readAdminSupportToken()) return;
     userApi.getProfile()
       .then((res) => setCurrentAdminId(Number(res.data.id || 0)))
       .catch(() => setCurrentAdminId(0));
+  }, []);
+
+  useEffect(() => {
+    if (!readAdminSupportToken()) return;
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((res) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
+        setAdminPermissions(res.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const playTone = () => {
@@ -97,15 +220,17 @@ const SupportManagement: React.FC = () => {
 
   const workflowActions = useMemo(
     () => latestOrderContext
-      ? buildSupportOrderWorkflowActions(latestOrderContext, language, t(`status.${latestOrderContext.status}`))
+      ? buildSupportOrderWorkflowActions(latestOrderContext, language, formatOrderStatus(latestOrderContext.status))
       : [],
-    [language, latestOrderContext, t]
+    [formatOrderStatus, language, latestOrderContext]
   );
 
   const replyText = content.trim();
   const replyTooLong = replyText.length > supportChatConfig.maxMessageChars;
-  const replyReady = Boolean(selectedSession && selectedSession.status === 'OPEN' && replyText && !replyTooLong);
-  const replyReadinessText = !selectedSession
+  const replyReady = Boolean(canReplySupport && selectedSession && selectedSession.status === 'OPEN' && replyText && !replyTooLong);
+  const replyReadinessText = !canReplySupport
+    ? t('adminLayout.noPermission')
+    : !selectedSession
     ? t('pages.adminSupport.replySelectSession')
     : selectedSession.status !== 'OPEN'
       ? t('pages.adminSupport.replyClosedSession')
@@ -129,36 +254,98 @@ const SupportManagement: React.FC = () => {
       return rightTime - leftTime || right.id - left.id;
     });
 
-  useEffect(() => {
-    selectedSessionRef.current = selectedSession;
-  }, [selectedSession]);
+  useEffect(() => {
+    selectedSessionRef.current = selectedSession;
+  }, [selectedSession]);
+
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
+
+  useEffect(() => {
+    queueTotalRef.current = queueTotal;
+  }, [queueTotal]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    queueFilterRef.current = filter;
+  }, [filter]);
+
+  useEffect(() => {
+    queueSearchRef.current = queueSearch;
+  }, [queueSearch]);
+
+  const mergeSessionIntoCurrentQueue = useCallback((session: SupportSession, options?: { countNewMatch?: boolean }) => {
+    const matchesQueue = supportSessionMatchesQueue(session, queueFilterRef.current, queueSearchRef.current);
+    const currentItems = sessionsRef.current;
+    const existed = currentItems.some((item) => item.id === session.id);
+    const remaining = currentItems.filter((item) => item.id !== session.id);
+    setSelectedSession((current) => current?.id === session.id ? session : current);
+    const nextItems = matchesQueue ? sortSupportSessions([session, ...remaining]) : remaining;
+    sessionsRef.current = nextItems;
+    setSessions(nextItems);
+    if (!matchesQueue && existed) {
+      const nextTotal = Math.max(0, queueTotalRef.current - 1);
+      queueTotalRef.current = nextTotal;
+      setQueueTotal(nextTotal);
+    } else if (matchesQueue && !existed && options?.countNewMatch) {
+      const nextTotal = queueTotalRef.current + 1;
+      queueTotalRef.current = nextTotal;
+      setQueueTotal(nextTotal);
+    }
+  }, []);
 
-  const loadSessions = useCallback(async (status = filter) => {
-    try {
-      const apiStatus = status === 'NEEDS_REPLY' ? 'OPEN' : status;
+  const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string }) => {
+    try {
+      setQueueLoading(true);
+      const effectiveStatus = options?.status === undefined ? filter : options.status;
+      const effectivePage = options?.page || queuePage;
+      const effectivePageSize = options?.pageSize || queuePageSize;
+      const effectiveSearch = options?.search === undefined ? queueSearch : options.search;
+      const apiStatus = effectiveStatus === 'NEEDS_REPLY' ? 'OPEN' : effectiveStatus;
       const [sessionsRes, summaryRes] = await Promise.all([
-        adminSupportApi.getSessions(apiStatus),
+        adminSupportApi.getSessions({
+          status: apiStatus,
+          needsReply: effectiveStatus === 'NEEDS_REPLY',
+          search: effectiveSearch,
+          page: effectivePage,
+          size: effectivePageSize,
+        }),
         adminSupportApi.getSummary().catch(() => null),
       ]);
-      setSessions(sortSupportSessions(sessionsRes.data));
+      const nextSessions = sortSupportSessions(sessionsRes.data.items);
+      sessionsRef.current = nextSessions;
+      queueTotalRef.current = sessionsRes.data.total;
+      setSessions(nextSessions);
+      setQueueTotal(sessionsRes.data.total);
+      setQueuePage(sessionsRes.data.page);
+      setQueuePageSize(sessionsRes.data.size);
 
       setSummary(summaryRes?.data || null);
-      const currentSession = selectedSessionRef.current;
-      if (currentSession) {
-        const fresh = sessionsRes.data.find((item) => item.id === currentSession.id);
-        if (fresh) setSelectedSession(fresh);
-      }
+      const currentSession = selectedSessionRef.current;
+      if (currentSession) {
+        const fresh = sessionsRes.data.items.find((item) => item.id === currentSession.id);
+        if (fresh) setSelectedSession(fresh);
+      }
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
+    } finally {
+      setQueueLoading(false);
     }
-  }, [filter, language, t]);
+  }, [filter, language, queuePage, queuePageSize, queueSearch, t]);
 
-  const loadMessages = async (session: SupportSession) => {
-    setSelectedSession(session);
-    try {
-      const res = await adminSupportApi.getMessages(session.id);
-      setMessages(res.data);
-      await loadSessions();
+  const loadMessages = async (session: SupportSession) => {
+    setSelectedSession(session);
+    try {
+      const res = await adminSupportApi.getMessages(session.id, { limit: SUPPORT_MESSAGE_WINDOW });
+      setMessages(mergeSupportMessages([], res.data));
+      if (canUpdateSupportReadState) {
+        await adminSupportApi.markRead(session.id).catch(() => undefined);
+      }
+      await loadSessions();
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
     }
@@ -168,21 +355,41 @@ const SupportManagement: React.FC = () => {
     loadSessions();
   }, [loadSessions]);
 
-  useEffect(() => {
+  useEffect(() => {
     const token = readAdminSupportToken();
-    if (!token) return;
-    let shouldReconnect = true;
-    const connect = () => {
-      if (!shouldReconnect) return;
-      const socket = new WebSocket(supportWebSocketUrl(token));
-      socketRef.current = socket;
-      socket.onopen = () => setConnected(true);
-      socket.onclose = () => {
-        setConnected(false);
-        if (shouldReconnect) {
-          reconnectTimerRef.current = window.setTimeout(connect, 2500);
-        }
-      };
+    if (!token) return;
+    let shouldReconnect = true;
+    const scheduleReconnect = () => {
+      if (!shouldReconnect) return;
+      if (reconnectTimerRef.current) {
+        window.clearTimeout(reconnectTimerRef.current);
+      }
+      const delay = getReconnectDelayMs(reconnectAttemptRef.current);
+      reconnectAttemptRef.current += 1;
+      reconnectTimerRef.current = window.setTimeout(() => {
+        reconnectTimerRef.current = null;
+        connect();
+      }, delay);
+    };
+    function connect() {
+      if (!shouldReconnect) return;
+      let socket: WebSocket;
+      try {
+        socket = new WebSocket(supportWebSocketUrl(token), supportWebSocketProtocols(token));
+      } catch {
+        setConnected(false);
+        scheduleReconnect();
+        return;
+      }
+      socketRef.current = socket;
+      socket.onopen = () => {
+        reconnectAttemptRef.current = 0;
+        setConnected(true);
+      };
+      socket.onclose = () => {
+        setConnected(false);
+        scheduleReconnect();
+      };
       socket.onerror = () => setConnected(false);
       socket.onmessage = (event) => {
         const payload = parseSupportSocketPayload(event.data);
@@ -190,40 +397,42 @@ const SupportManagement: React.FC = () => {
           message.warning(payload.message || t('pages.support.messageRejected'));
           return;
         }
-        if (payload.type === 'MESSAGE') {
-          setSessions((items) => sortSupportSessions([payload.session, ...items.filter((item) => item.id !== payload.session.id)]));
-          if (selectedSessionRef.current?.id === payload.message.sessionId) {
-            setMessages((items) => {
-              if (items.some((item) => item.id === payload.message.id)) {
-                return items;
+        if (payload.type === 'MESSAGE') {
+          mergeSessionIntoCurrentQueue(payload.session, { countNewMatch: true });
+          if (selectedSessionRef.current?.id === payload.message.sessionId) {
+            setMessages((items) => {
+              if (items.some((item) => item.id === payload.message.id)) {
+                return items;
               }
               if (payload.message.senderRole === 'USER') {
                 playTone();
               }
-              return [...items, payload.message];
-            });
-            adminSupportApi.markRead(payload.message.sessionId).catch(() => undefined);
-          } else if (payload.message.senderRole === 'USER') {
-            playTone();
-          }
+              return mergeSupportMessages(items, [payload.message]);
+            });
+            if (canUpdateSupportReadState) {
+              adminSupportApi.markRead(payload.message.sessionId).catch(() => undefined);
+            }
+          } else if (payload.message.senderRole === 'USER') {
+            playTone();
+          }
         }
-        if (payload.type === 'SESSION_CLOSED' || payload.type === 'SESSION_UPDATED') {
-          setSessions((items) => items.map((item) => item.id === payload.session.id ? payload.session : item));
-          if (selectedSessionRef.current?.id === payload.session.id) setSelectedSession(payload.session);
-        }
-      };
-    };
+        if (payload.type === 'SESSION_CLOSED' || payload.type === 'SESSION_UPDATED') {
+          mergeSessionIntoCurrentQueue(payload.session);
+        }
+      };
+    }
     connect();
     return () => {
       shouldReconnect = false;
-      if (reconnectTimerRef.current) {
-        window.clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
-      socketRef.current?.close();
-      socketRef.current = null;
-    };
-  }, [t]);
+      if (reconnectTimerRef.current) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      reconnectAttemptRef.current = 0;
+      socketRef.current?.close();
+      socketRef.current = null;
+    };
+  }, [canUpdateSupportReadState, mergeSessionIntoCurrentQueue, t]);
 
   useEffect(() => {
     let polling = false;
@@ -234,13 +443,17 @@ const SupportManagement: React.FC = () => {
       polling = true;
       await loadSessions();
       const activeSession = selectedSessionRef.current;
-      if (activeSession) {
-        try {
-          const res = await adminSupportApi.getMessages(activeSession.id);
-          setMessages(res.data);
-        } catch {
-          // Polling is a backup path for missed socket events.
-        }
+      if (activeSession) {
+        try {
+          const afterId = newestSupportMessageId(messagesRef.current);
+          const res = await adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW });
+          setMessages((items) => mergeSupportMessages(items, res.data));
+          if (canUpdateSupportReadState) {
+            await adminSupportApi.markRead(activeSession.id).catch(() => undefined);
+          }
+        } catch {
+          // Polling is a backup path for missed socket events.
+        }
       }
       polling = false;
     }, 10000);
@@ -248,7 +461,7 @@ const SupportManagement: React.FC = () => {
       polling = false;
       window.clearInterval(timer);
     };
-  }, [loadSessions]);
+  }, [canUpdateSupportReadState, loadSessions]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
@@ -257,6 +470,10 @@ const SupportManagement: React.FC = () => {
   const send = async () => {
     const text = content.trim();
     if (sending) return;
+    if (!canReplySupport) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (!text || !selectedSession) return;
     if (text.length > supportChatConfig.maxMessageChars) {
       message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
@@ -274,10 +491,9 @@ const SupportManagement: React.FC = () => {
       return;
     }
     try {
-      const res = await adminSupportApi.sendMessage(selectedSession.id, text);
-      setSelectedSession(res.data.session);
-      setSessions((items) => [res.data.session, ...items.filter((item) => item.id !== res.data.session.id)]);
-      setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
+      const res = await adminSupportApi.sendMessage(selectedSession.id, text);
+      mergeSessionIntoCurrentQueue(res.data.session);
+      setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       setContent('');
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
@@ -288,11 +504,14 @@ const SupportManagement: React.FC = () => {
 
   const closeSession = async () => {
     if (!selectedSession || closing) return;
+    if (!canCloseSupport) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setClosing(true);
     try {
       const res = await adminSupportApi.closeSession(selectedSession.id);
-      setSelectedSession(res.data);
-      setSessions((items) => items.map((item) => item.id === res.data.id ? res.data : item));
+      mergeSessionIntoCurrentQueue(res.data);
       message.success(t('pages.adminSupport.sessionClosed'));
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
@@ -303,6 +522,10 @@ const SupportManagement: React.FC = () => {
 
   const reissueBirthdayCoupons = async () => {
     if (!selectedSession) return;
+    if (!canReissueBirthdayCoupons) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setReissueLoading(true);
     try {
       const res = await adminSupportApi.reissueBirthdayCoupons(selectedSession.id);
@@ -318,13 +541,17 @@ const SupportManagement: React.FC = () => {
     }
   };
 
-  const openOrderDetail = async (orderId: number) => {
-    setDetailLoading(true);
+  const openOrderDetail = async (orderId: number) => {
+    if (!canViewOrders) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    setDetailLoading(true);
     try {
-      const [orderRes, itemsRes] = await Promise.all([
-        orderApi.getById(orderId),
-        orderApi.getItems(orderId),
-      ]);
+      const [orderRes, itemsRes] = await Promise.all([
+        adminApi.getOrder(orderId),
+        adminApi.getOrderItems(orderId),
+      ]);
       setDetailOrder(orderRes.data);
       setDetailItems(itemsRes.data);
     } catch (err: any) {
@@ -349,17 +576,25 @@ const SupportManagement: React.FC = () => {
   const staleOpenSessionCount = summary?.staleOpenSessions ?? 0;
   const staleMinutes = summary?.staleMinutes ?? 30;
   const responseScore = summary?.responseScore ?? null;
-  const filteredQueueSessions = filter === 'NEEDS_REPLY'
-    ? sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0)
-    : sessions;
+  const queueSessions = sessions;
 
   const upsertSession = (session: SupportSession) => {
-    setSelectedSession((current) => current?.id === session.id ? session : current);
-    setSessions((items) => sortSupportSessions([session, ...items.filter((item) => item.id !== session.id)]));
+    mergeSessionIntoCurrentQueue(session);
+  };
+
+  const resetCurrentQueue = () => {
+    sessionsRef.current = [];
+    queueTotalRef.current = 0;
+    setSessions([]);
+    setQueueTotal(0);
   };
 
   const assignToMe = async () => {
     if (!selectedSession) return;
+    if (!canAssignSupport) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setAssigning(true);
     try {
       const res = await adminSupportApi.assignSession(selectedSession.id);
@@ -374,11 +609,16 @@ const SupportManagement: React.FC = () => {
 
   const reopenSession = async () => {
     if (!selectedSession) return;
+    if (!canReopenSupport) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setReopening(true);
     try {
       const res = await adminSupportApi.reopenSession(selectedSession.id);
       upsertSession(res.data);
       setFilter('OPEN');
+      setQueuePage(1);
       message.success(t('pages.adminSupport.sessionReopened'));
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
@@ -388,30 +628,66 @@ const SupportManagement: React.FC = () => {
   };
 
   const applyQuickReply = (text: string) => {
+    if (!canReplySupport) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setContent((current) => current.trim() ? `${current.trim()}\n${text}` : text);
+  };
+
+  const changeQueueFilter = (nextFilter?: string) => {
+    queueFilterRef.current = nextFilter;
+    resetCurrentQueue();
+    setFilter(nextFilter);
+    setQueuePage(1);
+  };
+
+  const changeQueuePage = (page: number, pageSize: number) => {
+    setQueuePage(page);
+    setQueuePageSize(pageSize);
+  };
+
+  const submitQueueSearch = (value: string) => {
+    const nextSearch = value.trim();
+    queueSearchRef.current = nextSearch;
+    resetCurrentQueue();
+    setQueueSearch(nextSearch);
+    setQueuePage(1);
   };
 
   return (
     <div className={`support-management support-management--${language}`}>
-      <div className="support-management__header">
-        <Space>
-          <CustomerServiceOutlined style={{ fontSize: 22, color: '#ee4d2d' }} />
-          <Title level={4} style={{ margin: 0 }}>{t('pages.adminSupport.title')}</Title>
-          <Badge status={connected ? 'success' : 'default'} text={connected ? t('pages.support.online') : t('pages.support.offline')} />
-        </Space>
-        <Select
-          value={filter || 'ALL'}
-          style={{ width: 150 }}
-          onChange={(value) => setFilter(value === 'ALL' ? undefined : value)}
-          popupClassName="shop-mobile-popup-layer"
-          getPopupContainer={() => document.body}
-          options={[
-            { value: 'OPEN', label: t('status.OPEN') },
-            { value: 'CLOSED', label: t('status.CLOSED') },
-            { value: 'NEEDS_REPLY', label: t('pages.adminSupport.needsReply') },
-            { value: 'ALL', label: t('common.all') },
-          ]}
-        />
+      <div className="support-management__header">
+        <Space>
+          <CustomerServiceOutlined style={{ fontSize: 22, color: '#ee4d2d' }} />
+          <Title level={4} style={{ margin: 0 }}>{t('pages.adminSupport.title')}</Title>
+          <Badge status={connected ? 'success' : 'default'} text={connected ? t('pages.support.online') : t('pages.support.offline')} />
+        </Space>
+        <Space className="support-management__headerControls" wrap>
+          <Input.Search
+            allowClear
+            defaultValue={queueSearch}
+            placeholder={t('pages.adminSupport.queueSearchPlaceholder')}
+            onSearch={submitQueueSearch}
+            onChange={(event) => {
+              if (!event.target.value) submitQueueSearch('');
+            }}
+            style={{ width: 240 }}
+          />
+          <Select
+            value={filter || 'ALL'}
+            style={{ width: 150 }}
+            onChange={(value) => changeQueueFilter(value === 'ALL' ? undefined : value)}
+            popupClassName="shop-mobile-popup-layer"
+            getPopupContainer={() => document.body}
+            options={[
+              { value: 'OPEN', label: t('status.OPEN') },
+              { value: 'CLOSED', label: t('status.CLOSED') },
+              { value: 'NEEDS_REPLY', label: t('pages.adminSupport.needsReply') },
+              { value: 'ALL', label: t('common.all') },
+            ]}
+          />
+        </Space>
       </div>
 
       <div className="support-management__insightBar" aria-label={t('pages.adminSupport.queueTitle')}>
@@ -432,23 +708,59 @@ const SupportManagement: React.FC = () => {
           <Tag color="default">{t('pages.adminSupport.closedSessions', { count: closedSessionCount })}</Tag>
         </div>
         <div className="support-management__insightActions">
-          <Button size="small" icon={<AlertOutlined />} onClick={() => setFilter('NEEDS_REPLY')} disabled={unreadSessionCount === 0}>
-            {t('pages.adminSupport.showNeedsReply')}
-          </Button>
-          <Button size="small" icon={<CheckCircleOutlined />} onClick={() => setFilter('OPEN')}>
-            {t('pages.adminSupport.showOpen')}
-          </Button>
-        </div>
-      </div>
-
-      <div className="support-management__layout">
+          <Button size="small" icon={<AlertOutlined />} onClick={() => changeQueueFilter('NEEDS_REPLY')} disabled={unreadSessionCount === 0}>
+            {t('pages.adminSupport.showNeedsReply')}
+          </Button>
+          <Button size="small" icon={<CheckCircleOutlined />} onClick={() => changeQueueFilter('OPEN')}>
+            {t('pages.adminSupport.showOpen')}
+          </Button>
+          <Button size="small" onClick={() => changeQueueFilter('CLOSED')} disabled={closedSessionCount === 0}>
+            {t('status.CLOSED')}
+          </Button>
+          <Button size="small" onClick={() => changeQueueFilter(undefined)}>
+            {t('common.all')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="support-management__layout">
         <div className="support-management__queuePane">
-          {filteredQueueSessions.length === 0 ? (
-            <Empty style={{ marginTop: 80 }} description={t('pages.adminSupport.noSessions')} />
-          ) : (
-            <List
-              dataSource={filteredQueueSessions}
-              renderItem={(item) => (
+          {queueSessions.length === 0 ? (
+            <Empty style={{ marginTop: 80 }} description={t('pages.adminSupport.noSessions')}>
+              <Space wrap>
+                {filter !== 'OPEN' ? (
+                  <Button size="small" onClick={() => changeQueueFilter('OPEN')}>
+                    {t('status.OPEN')}
+                  </Button>
+                ) : null}
+                {filter !== 'CLOSED' ? (
+                  <Button size="small" onClick={() => changeQueueFilter('CLOSED')} disabled={closedSessionCount === 0}>
+                    {t('status.CLOSED')}
+                  </Button>
+                ) : null}
+                {filter ? (
+                  <Button size="small" onClick={() => changeQueueFilter(undefined)}>
+                    {t('common.all')}
+                  </Button>
+                ) : null}
+              </Space>
+            </Empty>
+          ) : (
+            <List
+              loading={queueLoading}
+              dataSource={queueSessions}
+              pagination={{
+                current: queuePage,
+                pageSize: queuePageSize,
+                total: queueTotal,
+                showSizeChanger: true,
+                pageSizeOptions: ['10', '20', '30', '50'],
+                size: 'small',
+                showTotal: (total) => t('pages.adminSupport.queueTotal', { count: total }),
+                onChange: changeQueuePage,
+                onShowSizeChange: changeQueuePage,
+              }}
+              renderItem={(item) => (
                 <List.Item
                   onClick={() => loadMessages(item)}
                   className={`support-management__queueItem ${selectedSession?.id === item.id ? 'is-active' : ''} ${Number(item.unreadByAdmin || 0) > 0 ? 'support-management__queueItem--high' : ''}`}
@@ -457,7 +769,7 @@ const SupportManagement: React.FC = () => {
                     title={
                       <Space>
                         <Text strong>{item.username || `${t('pages.adminSupport.user')} #${item.userId}`}</Text>
-                        <Tag color={item.status === 'OPEN' ? 'green' : 'default'}>{t(`status.${item.status}`)}</Tag>
+                        <Tag color={item.status === 'OPEN' ? 'green' : 'default'}>{formatStatusLabel(item.status)}</Tag>
                         {!!item.unreadByAdmin && <Badge count={item.unreadByAdmin} size="small" />}
                       </Space>
                     }
@@ -488,25 +800,29 @@ const SupportManagement: React.FC = () => {
               <div className="support-management__conversationHeader">
                 <Space>
                   <Text strong>{selectedSession.username || `${t('pages.adminSupport.user')} #${selectedSession.userId}`}</Text>
-                  <Tag color={selectedSession.status === 'OPEN' ? 'green' : 'default'}>{t(`status.${selectedSession.status}`)}</Tag>
+                  <Tag color={selectedSession.status === 'OPEN' ? 'green' : 'default'}>{formatStatusLabel(selectedSession.status)}</Tag>
                   <Tag color={selectedSession.assignedAdminId ? 'blue' : 'default'}>
                     {selectedSession.assignedAdminName || t('pages.adminSupport.unassigned')}
                   </Tag>
                 </Space>
                 <Space>
-                  {selectedSession.status === 'OPEN' ? (
+                  {selectedSession.status === 'OPEN' && canAssignSupport ? (
                     <Button loading={assigning} onClick={assignToMe}>
                       {t('pages.adminSupport.assignToMe')}
                     </Button>
-                  ) : (
+                  ) : selectedSession.status !== 'OPEN' && canReopenSupport ? (
                     <Button loading={reopening} onClick={reopenSession}>
                       {t('pages.adminSupport.reopenSession')}
                     </Button>
-                  )}
-                  <Button icon={<GiftOutlined />} loading={reissueLoading} onClick={reissueBirthdayCoupons}>
-                    {t('pages.adminSupport.reissueBirthdayCoupon')}
-                  </Button>
-                  <Button loading={closing} disabled={selectedSession.status !== 'OPEN'} onClick={closeSession}>{t('pages.adminSupport.closeSession')}</Button>
+                  ) : null}
+                  {canReissueBirthdayCoupons ? (
+                    <Button icon={<GiftOutlined />} loading={reissueLoading} onClick={reissueBirthdayCoupons}>
+                      {t('pages.adminSupport.reissueBirthdayCoupon')}
+                    </Button>
+                  ) : null}
+                  {canCloseSupport ? (
+                    <Button loading={closing} disabled={selectedSession.status !== 'OPEN'} onClick={closeSession}>{t('pages.adminSupport.closeSession')}</Button>
+                  ) : null}
                 </Space>
               </div>
               <div ref={listRef} className="support-management__messagesPane">
@@ -533,12 +849,14 @@ const SupportManagement: React.FC = () => {
                                     <div className="support-management__orderTitle">{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
                                     <div className="support-management__orderPrice commerce-money">{formatMoney(order.totalAmount)}</div>
                                     <div className="support-management__orderTags">
-                                      <Tag color="blue">{t(`status.${order.status}`)}</Tag>
+                                      <Tag color="blue">{formatOrderStatus(order.status)}</Tag>
                                       {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
                                     </div>
-                                    <Button type="link" size="small" className="support-management__orderLink" onClick={() => openOrderDetail(order.id)}>
-                                      {t('pages.support.viewOrder')}
-                                    </Button>
+                                    {canViewOrders ? (
+                                      <Button type="link" size="small" className="support-management__orderLink" onClick={() => openOrderDetail(order.id)}>
+                                        {t('pages.support.viewOrder')}
+                                      </Button>
+                                    ) : null}
                                   </div>
                                 </Space>
                               </Card>
@@ -554,12 +872,12 @@ const SupportManagement: React.FC = () => {
                   />
                 )}
               </div>
-              {latestOrderContext ? (
+              {latestOrderContext && canReplySupport ? (
                 <div className="support-management__orderWorkflow">
                   <div className="support-management__orderWorkflowHeader">
                     <span>{t('pages.adminSupport.orderWorkflowTitle')}</span>
                     <strong>
-                      {latestOrderContext.orderNo || `${t('pages.support.order')} #${latestOrderContext.id}`} · {t(`status.${latestOrderContext.status}`)}
+                      {latestOrderContext.orderNo || `${t('pages.support.order')} #${latestOrderContext.id}`} · {formatOrderStatus(latestOrderContext.status)}
                     </strong>
                   </div>
                   <div className="support-management__orderWorkflowActions">
@@ -568,7 +886,7 @@ const SupportManagement: React.FC = () => {
                         key={action.key}
                         type="button"
                         className="support-management__orderWorkflowCard"
-                        disabled={selectedSession.status !== 'OPEN'}
+                        disabled={!canReplySupport || selectedSession.status !== 'OPEN'}
                         onClick={() => applyQuickReply(action.adminReply)}
                       >
                         <strong>{action.label}</strong>
@@ -578,46 +896,48 @@ const SupportManagement: React.FC = () => {
                   </div>
                 </div>
               ) : null}
-              <div className="support-management__composer">
-                <div className="support-management__replyReadiness">
-                  <div>
-                    <span>{t('pages.adminSupport.replyReadiness')}</span>
-                    <strong>{replyReadinessText}</strong>
+              {canReplySupport ? (
+                <div className="support-management__composer">
+                  <div className="support-management__replyReadiness">
+                    <div>
+                      <span>{t('pages.adminSupport.replyReadiness')}</span>
+                      <strong>{replyReadinessText}</strong>
+                    </div>
+                    <div className="support-management__replyReadinessChips">
+                      <span className={`support-management__replyReadinessChip ${selectedSession.status === 'OPEN' ? 'is-ready' : 'is-pending'}`}>
+                        {formatStatusLabel(selectedSession.status)}
+                      </span>
+                      <span className={`support-management__replyReadinessChip ${latestOrderContext ? 'is-ready' : 'is-pending'}`}>
+                        {latestOrderContext ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}
+                      </span>
+                      <span className={`support-management__replyReadinessChip ${replyText && !replyTooLong ? 'is-ready' : 'is-pending'}`}>
+                        {replyText ? t('pages.adminSupport.draftReady') : t('pages.adminSupport.draftMissing')}
+                      </span>
+                    </div>
                   </div>
-                  <div className="support-management__replyReadinessChips">
-                    <span className={`support-management__replyReadinessChip ${selectedSession.status === 'OPEN' ? 'is-ready' : 'is-pending'}`}>
-                      {selectedSession.status === 'OPEN' ? t('status.OPEN') : t('status.CLOSED')}
+                  <Input.TextArea
+                    value={content}
+                    disabled={selectedSession.status !== 'OPEN' || sending}
+                    maxLength={supportChatConfig.maxMessageChars}
+                    showCount
+                    onChange={(event) => setContent(event.target.value)}
+                    onPressEnter={(event) => {
+                      if (!event.shiftKey) {
+                        event.preventDefault();
+                        send();
+                      }
+                    }}
+                    placeholder={t('pages.adminSupport.messagePlaceholder')}
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                  />
+                  <div className="support-management__composerActions">
+                    <span className={`support-management__sendReadiness ${replyReady ? 'is-ready' : 'is-pending'}`}>
+                      {replyReady ? t('pages.adminSupport.replyReady') : replyReadinessText}
                     </span>
-                    <span className={`support-management__replyReadinessChip ${latestOrderContext ? 'is-ready' : 'is-pending'}`}>
-                      {latestOrderContext ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}
-                    </span>
-                    <span className={`support-management__replyReadinessChip ${replyText && !replyTooLong ? 'is-ready' : 'is-pending'}`}>
-                      {replyText ? t('pages.adminSupport.draftReady') : t('pages.adminSupport.draftMissing')}
-                    </span>
+                    <Button type="primary" icon={<SendOutlined />} onClick={send} loading={sending} disabled={!replyReady}>{t('common.send')}</Button>
                   </div>
                 </div>
-                <Input.TextArea
-                  value={content}
-                  disabled={selectedSession.status !== 'OPEN' || sending}
-                  maxLength={supportChatConfig.maxMessageChars}
-                  showCount
-                  onChange={(event) => setContent(event.target.value)}
-                  onPressEnter={(event) => {
-                    if (!event.shiftKey) {
-                      event.preventDefault();
-                      send();
-                    }
-                  }}
-                  placeholder={t('pages.adminSupport.messagePlaceholder')}
-                  autoSize={{ minRows: 2, maxRows: 4 }}
-                />
-                <div className="support-management__composerActions">
-                  <span className={`support-management__sendReadiness ${replyReady ? 'is-ready' : 'is-pending'}`}>
-                    {replyReady ? t('pages.adminSupport.replyReady') : replyReadinessText}
-                  </span>
-                  <Button type="primary" icon={<SendOutlined />} onClick={send} loading={sending} disabled={!replyReady}>{t('common.send')}</Button>
-                </div>
-              </div>
+              ) : null}
             </>
           )}
         </div>
@@ -637,7 +957,7 @@ const SupportManagement: React.FC = () => {
         ) : detailOrder ? (
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             <Space wrap>
-              <Tag color="blue">{detailOrder.status}</Tag>
+              <Tag color="blue">{formatOrderStatus(detailOrder.status)}</Tag>
               {detailOrder.paymentMethod ? <Tag>{detailOrder.paymentMethod}</Tag> : null}
               <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(detailOrder.totalAmount)}</Text>
             </Space>

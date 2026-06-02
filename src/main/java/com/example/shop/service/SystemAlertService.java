@@ -91,6 +91,9 @@ public class SystemAlertService {
 
     public List<SystemAlert> search(String status, String severity, String category, int limit) {
         int safeLimit = Math.max(1, Math.min(limit <= 0 ? 200 : limit, searchMaxRows()));
+        String statusFilter = normalizeStatusFilter(status);
+        String severityFilter = normalizeSeverityFilter(severity);
+        String categoryFilter = normalizeCategoryFilter(category);
         return jdbcTemplate.query(
                 "SELECT * FROM system_alerts "
                         + "WHERE (? IS NULL OR status = ?) "
@@ -98,9 +101,9 @@ public class SystemAlertService {
                         + "AND (? IS NULL OR category = ?) "
                         + "ORDER BY last_seen_at DESC, id DESC LIMIT ?",
                 (rs, rowNum) -> mapAlert(rs),
-                blankToNull(normalizeStatus(status)), blankToNull(normalizeStatus(status)),
-                blankToNull(normalizeSeverity(severity)), blankToNull(normalizeSeverity(severity)),
-                blankToNull(normalizeCategory(category)), blankToNull(normalizeCategory(category)),
+                statusFilter, statusFilter,
+                severityFilter, severityFilter,
+                categoryFilter, categoryFilter,
                 safeLimit);
     }
 
@@ -352,11 +355,11 @@ public class SystemAlertService {
         }
         String safeActor = sanitize(actor, 100);
         if (STATUS_ACKNOWLEDGED.equals(status)) {
-            jdbcTemplate.update("UPDATE system_alerts SET status = ?, acknowledged_at = NOW(), acknowledged_by = ? WHERE id = ?",
-                    status, safeActor, id);
+            jdbcTemplate.update("UPDATE system_alerts SET status = ?, acknowledged_at = NOW(), acknowledged_by = ? WHERE id = ? AND status <> ?",
+                    status, safeActor, id, STATUS_RESOLVED);
         } else if (STATUS_RESOLVED.equals(status)) {
-            jdbcTemplate.update("UPDATE system_alerts SET status = ?, resolved_at = NOW(), resolved_by = ? WHERE id = ?",
-                    status, safeActor, id);
+            jdbcTemplate.update("UPDATE system_alerts SET status = ?, resolved_at = NOW(), resolved_by = ? WHERE id = ? AND status <> ?",
+                    status, safeActor, id, STATUS_RESOLVED);
         }
     }
 
@@ -394,11 +397,14 @@ public class SystemAlertService {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
-        return ids.stream()
+        List<Long> normalizedIds = ids.stream()
                 .filter(id -> id != null && id > 0)
                 .distinct()
-                .limit(batchActionMaxSize())
                 .collect(Collectors.toList());
+        if (normalizedIds.size() > batchActionMaxSize()) {
+            throw new IllegalArgumentException("Too many system alerts selected");
+        }
+        return normalizedIds;
     }
 
     private SystemAlertBatchActionResponse batchResponse(String action, int requestedCount, List<Long> ids, int updatedCount) {
@@ -463,6 +469,13 @@ public class SystemAlertService {
         return "WARNING";
     }
 
+    private String normalizeSeverityFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return "ALL".equals(value.trim().toUpperCase(Locale.ROOT)) ? null : normalizeSeverity(value);
+    }
+
     private String normalizeStatus(String value) {
         String normalized = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
         if (STATUS_OPEN.equals(normalized) || STATUS_ACKNOWLEDGED.equals(normalized) || STATUS_RESOLVED.equals(normalized)) {
@@ -471,9 +484,24 @@ public class SystemAlertService {
         return normalized;
     }
 
+    private String normalizeStatusFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        return "ALL".equals(normalized) ? null : blankToNull(normalizeStatus(value));
+    }
+
     private String normalizeCategory(String value) {
         String normalized = value == null ? "APPLICATION" : value.trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9_]", "_");
         return limit(normalized.isEmpty() ? "APPLICATION" : normalized, 50);
+    }
+
+    private String normalizeCategoryFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return "ALL".equals(value.trim().toUpperCase(Locale.ROOT)) ? null : normalizeCategory(value);
     }
 
     private String blankToNull(String value) {

@@ -2,6 +2,7 @@ package com.example.shop.service;
 
 import com.example.shop.entity.PetProfile;
 import com.example.shop.repository.PetProfileMapper;
+import com.example.shop.repository.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class PetProfileService {
     private final PetProfileMapper petProfileMapper;
+    private final UserMapper userMapper;
     private final ProductService productService;
     private final RuntimeConfigService runtimeConfig;
 
@@ -29,9 +31,6 @@ public class PetProfileService {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("User is required");
         }
-        if (id == null && petProfileMapper.findByUserId(userId).size() >= maxProfilesPerUser()) {
-            throw new IllegalStateException("Pet profile limit reached");
-        }
         PetProfile pet = new PetProfile();
         pet.setId(id);
         pet.setUserId(userId);
@@ -43,6 +42,10 @@ public class PetProfileService {
         pet.setSize(normalizeSize(request.getSize()));
         pet.setUpdatedAt(LocalDateTime.now());
         if (id == null) {
+            lockOwnerForProfileCreate(userId);
+            if (petProfileMapper.countByUserId(userId) >= maxProfilesPerUser()) {
+                throw new IllegalStateException("Pet profile limit reached");
+            }
             pet.setCreatedAt(LocalDateTime.now());
             petProfileMapper.insert(pet);
         } else if (petProfileMapper.update(pet) == 0) {
@@ -56,6 +59,12 @@ public class PetProfileService {
     public void delete(Long userId, Long id) {
         petProfileMapper.deleteByIdAndUserId(id, userId);
         productService.clearPersonalizedRecommendationCache(userId);
+    }
+
+    private void lockOwnerForProfileCreate(Long userId) {
+        if (userMapper.findByIdForUpdate(userId) == null) {
+            throw new IllegalArgumentException("User is required");
+        }
     }
 
     private String normalizePetType(String value) {

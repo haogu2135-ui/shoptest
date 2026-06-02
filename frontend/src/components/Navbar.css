@@ -116,6 +116,11 @@
   padding-inline: 2px;
 }
 
+.shop-nav__downloadLink {
+  gap: 5px;
+  font-weight: 800;
+}
+
 .shop-nav__linkActive {
   position: relative;
   opacity: 1 !important;
@@ -1828,6 +1833,35 @@
     backdrop-filter: blur(18px);
   }
 
+  .shop-nav__bottomBar--native {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    grid-template-areas: "home products coupons cart account" !important;
+  }
+
+  .shop-nav__bottomBar--native .shop-nav__bottomItem--support {
+    display: none !important;
+  }
+
+  .shop-nav__bottomBar--native .shop-nav__bottomItem--home {
+    grid-area: home;
+  }
+
+  .shop-nav__bottomBar--native .shop-nav__bottomItem--products {
+    grid-area: products;
+  }
+
+  .shop-nav__bottomBar--native .shop-nav__bottomItem--coupons {
+    grid-area: coupons;
+  }
+
+  .shop-nav__bottomBar--native .shop-nav__bottomItem--cart {
+    grid-area: cart;
+  }
+
+  .shop-nav__bottomBar--native .shop-nav__bottomItem--account {
+    grid-area: account;
+  }
+
   .shop-nav__bottomItem {
     min-width: 0;
     min-height: 48px;
@@ -2318,4 +2352,269 @@
 .shop-nav__amountPhrase .commerce-money {
   flex: 0 0 auto;
   max-width: min(120px, 34vw);
+}
+
+/* UI issues pass: category chips scroll horizontally instead of truncating into unusable labels. */
+@media (max-width: 780px) {
+  :root {
+    --shop-mobile-bottom-nav-height: 76px;
+  }
+
+  .shop-nav__mega {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-right: 28px;
+    scroll-padding-inline: 8px 28px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+  }
+
+  .shop-nav__mega::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shop-nav__mega button,
+  .shop-nav__megaButton,
+  .shop-nav--es .shop-nav__mega button,
+  .shop-nav--es .shop-nav__megaButton {
+    flex: 0 0 auto;
+    max-width: none;
+    width: max-content;
+    min-width: max-content;
+    padding-inline: 12px;
+    white-space: nowrap !important;
+  }
+
+  .shop-nav__bottomBar {
+    min-height: 62px;
+    z-index: 1250;
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --shop-mobile-bottom-nav-height: 72px;
+  }
+
+  .shop-nav__mega button,
+  .shop-nav__megaButton,
+  .shop-nav--es .shop-nav__mega button,
+  .shop-nav--es .shop-nav__megaButton {
+    max-width: none;
+    min-width: max-content;
+    padding-inline: 10px;
+  }
+}
+
+/* Final mobile Web navbar touch-target guard. */
+@media (max-width: 780px) {
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-locale,
+  .shop-nav .shop-nav__actions > .shop-nav__secondary-action,
+  .shop-nav .shop-nav__actions > button[aria-label],
+  .shop-nav .shop-nav__actions > a[aria-label],
+  .shop-nav .shop-nav__actions > .shop-nav__admin {
+    box-sizing: border-box;
+    flex: 0 0 44px;
+    inline-size: 44px;
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    block-size: 44px;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    touch-action: manipulation;
+  }
+
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-auth {
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-auth:not(.shop-nav__mobile-auth--primary) {
+    flex: 0 0 44px;
+    width: 44px;
+    max-width: 44px;
+    padding-inline: 0;
+  }
+
+  .shop-nav .shop-nav__search .ant-input-group {
+    min-height: 44px;
+    height: auto;
+    padding: 0;
+  }
+
+  .shop-nav .shop-nav__search .ant-input-affix-wrapper,
+  .shop-nav .shop-nav__search .ant-input-search-button,
+  .shop-nav .shop-nav__search .ant-btn {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  .shop-nav .shop-nav__search .ant-input-affix-wrapper {
+    border-radius: 18px 0 0 18px;
+  }
+
+  .shop-nav .shop-nav__search .ant-btn {
+    min-width: 52px;
+    border-radius: 18px !important;
+    touch-action: manipulation;
+  }
+
+  .shop-nav .shop-nav__mobile-auth,
+  .shop-nav .shop-nav__suggestions button,
+  .shop-nav .shop-nav__mega button,
+  .shop-nav .shop-nav__megaButton,
+  .shop-nav.shop-nav--es .shop-nav__mega button,
+  .shop-nav.shop-nav--es .shop-nav__megaButton {
+    min-height: 44px;
+    height: auto;
+    touch-action: manipulation;
+  }
+
+  .shop-nav .shop-nav__mega {
+    min-height: 52px;
+    align-items: center;
+    padding-block: 4px;
+  }
+
+  .shop-nav .shop-nav__mega button,
+  .shop-nav .shop-nav__megaButton,
+  .shop-nav.shop-nav--es .shop-nav__mega button,
+  .shop-nav.shop-nav--es .shop-nav__megaButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 360px) {
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-auth--primary {
+    flex: 0 0 44px;
+    width: 44px;
+    max-width: 44px;
+    padding-inline: 0;
+  }
+}
+
+/* Native App final hit-area guard. Navbar.css loads after mobile-app.css, so
+   this closure must live here to keep header icon controls at 44px. */
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-locale,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__secondary-action,
+body.shop-mobile-app .shop-nav .shop-nav__actions > button[aria-label],
+body.shop-mobile-app .shop-nav .shop-nav__actions > a[aria-label],
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__admin {
+  box-sizing: border-box !important;
+  flex: 0 0 44px !important;
+  inline-size: 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  block-size: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-locale :where(.anticon, .ant-badge),
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__secondary-action :where(.anticon, .ant-badge),
+body.shop-mobile-app .shop-nav .shop-nav__actions > button[aria-label] :where(.anticon, .ant-badge),
+body.shop-mobile-app .shop-nav .shop-nav__actions > a[aria-label] :where(.anticon, .ant-badge),
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__admin :where(.anticon, .ant-badge) {
+  flex: 0 0 auto !important;
+}
+
+/* Final App bottom navigation touch-target guard. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .shop-nav__bottomBar {
+    min-height: 64px !important;
+    padding-block: 7px !important;
+  }
+
+  body.shop-mobile-app .shop-nav__bottomItem {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 340px) {
+  body.shop-mobile-app .shop-nav__bottomBar {
+    min-height: 58px !important;
+    padding-block: 6px !important;
+  }
+
+  body.shop-mobile-app .shop-nav__bottomItem {
+    min-height: 44px !important;
+  }
+}
+
+/* Final native App navbar action hit-area guard. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-group {
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-affix-wrapper,
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+    min-height: 44px !important;
+    height: 44px !important;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-affix-wrapper {
+    border-radius: 18px 0 0 18px !important;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+    min-width: 52px !important;
+    border-radius: 18px !important;
+    touch-action: manipulation;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__mobile-auth,
+  body.shop-mobile-app .shop-nav .shop-nav__suggestions button,
+  body.shop-mobile-app .shop-nav .shop-nav__mega button,
+  body.shop-mobile-app .shop-nav .shop-nav__megaButton,
+  body.shop-mobile-app .shop-nav.shop-nav--es .shop-nav__mega button,
+  body.shop-mobile-app .shop-nav.shop-nav--es .shop-nav__megaButton {
+    min-height: 44px !important;
+    height: auto !important;
+    touch-action: manipulation;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__mega {
+    min-height: 52px !important;
+    align-items: center;
+    padding-block: 4px !important;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__mega button,
+  body.shop-mobile-app .shop-nav .shop-nav__megaButton,
+  body.shop-mobile-app .shop-nav.shop-nav--es .shop-nav__mega button,
+  body.shop-mobile-app .shop-nav.shop-nav--es .shop-nav__megaButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+  }
 }

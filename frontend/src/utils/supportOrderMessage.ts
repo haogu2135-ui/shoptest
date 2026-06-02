@@ -1,8 +1,8 @@
-import type { Order } from '../types';
+import type { OrderCustomer } from '../types';
 
 export const SUPPORT_ORDER_MESSAGE_PREFIX = '[ORDER]';
 
-export type SupportOrderContext = Pick<Order, 'id' | 'orderNo' | 'status' | 'totalAmount' | 'paymentMethod' | 'createdAt'>;
+export type SupportOrderContext = Pick<OrderCustomer, 'id' | 'orderNo' | 'status' | 'totalAmount' | 'paymentMethod' | 'createdAt'>;
 
 const normalizeText = (value: unknown, maxLength: number) => {
   if (value === undefined || value === null) return undefined;
@@ -28,7 +28,7 @@ export const normalizeSupportOrderContext = (value: unknown): SupportOrderContex
   };
 };
 
-export const encodeSupportOrderMessage = (order: Order) => `${SUPPORT_ORDER_MESSAGE_PREFIX}${JSON.stringify({
+export const encodeSupportOrderMessage = (order: OrderCustomer) => `${SUPPORT_ORDER_MESSAGE_PREFIX}${JSON.stringify({
   id: order.id,
   orderNo: order.orderNo,
   status: order.status,

@@ -1,9 +1,9 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Col, Input, List, message, Row, Select, Skeleton, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Input, List, message, Row, Select, Skeleton, Space, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, FireOutlined, GiftOutlined, SearchOutlined, ShoppingOutlined, SortAscendingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, couponApi } from '../api';
-import type { CartItem, Coupon, UserCoupon } from '../types';
+import type { CartItem, CouponPublic, UserCoupon } from '../types';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { useMarket } from '../hooks/useMarket';
@@ -17,6 +17,7 @@ import {
   getCartItemCount,
   getCartSubtotal,
   getCouponEstimatedValue,
+  getFallbackPublicCoupons,
   getCouponRemaining,
   isCouponInValidWindow,
   getDaysUntilEnd,
@@ -27,6 +28,7 @@ import {
 } from '../utils/couponCenter';
 import type { CouponFilter, CouponSort } from '../utils/couponCenter';
 import './CouponCenter.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text, Title } = Typography;
 
@@ -35,14 +37,17 @@ const couponStatusColor: Record<string, string> = {
   USED: 'default',
   EXPIRED: 'volcano',
 };
+const COUPON_WALLET_STATUS_KEYS = new Set(['UNUSED', 'USED', 'EXPIRED']);
 
 type WalletFilter = 'all' | 'UNUSED' | 'USED' | 'EXPIRED';
 const CLAIM_BATCH_SIZE = 4;
 
-const getCouponDisplayName = (coupon: Coupon | UserCoupon) =>
+const getCouponDisplayName = (coupon: CouponPublic | UserCoupon) =>
   'couponName' in coupon ? coupon.couponName : coupon.name;
 
-const claimCouponsInBatches = async (coupons: Coupon[]) => {
+const isFallbackCoupon = (couponId: number) => couponId < 0;
+
+const claimCouponsInBatches = async (coupons: CouponPublic[]) => {
   const results: PromiseSettledResult<unknown>[] = [];
   for (let index = 0; index < coupons.length; index += CLAIM_BATCH_SIZE) {
     const batch = coupons.slice(index, index + CLAIM_BATCH_SIZE);
@@ -67,9 +72,10 @@ const CouponCenter: React.FC = () => {
     startY: 0,
   });
   const suppressPriorityClickRef = useRef(false);
-  const [publicCoupons, setPublicCoupons] = useState<Coupon[]>([]);
+  const [publicCoupons, setPublicCoupons] = useState<CouponPublic[]>([]);
   const [myCoupons, setMyCoupons] = useState<UserCoupon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const [claimingAll, setClaimingAll] = useState(false);
   const [cartSubtotal, setCartSubtotal] = useState(0);
@@ -87,6 +93,15 @@ const CouponCenter: React.FC = () => {
     const date = new Date(value);
     return Number.isFinite(date.getTime()) ? date.toLocaleString(dateLocale) : '';
   }, [dateLocale]);
+  const formatWalletStatusLabel = useCallback((status?: string) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = rawStatus.toUpperCase();
+    if (!normalizedStatus) return t('common.unknown');
+    if (COUPON_WALLET_STATUS_KEYS.has(normalizedStatus)) {
+      return t(`status.${normalizedStatus}`);
+    }
+    return rawStatus;
+  }, [t]);
 
   const loadCoupons = useCallback(async () => {
     const requestId = loadCouponsRequestRef.current + 1;
@@ -103,20 +118,27 @@ const CouponCenter: React.FC = () => {
       ]);
       if (!mountedRef.current || requestId !== loadCouponsRequestRef.current) return;
       const safeCartItems = toSafeArray<CartItem>(cartItems);
-      setPublicCoupons(toSafeArray<Coupon>(publicRes.data));
+      const livePublicCoupons = toSafeArray<CouponPublic>(publicRes.data);
+      setPublicCoupons(livePublicCoupons.length > 0 ? livePublicCoupons : getFallbackPublicCoupons());
       setMyCoupons(toSafeArray<UserCoupon>(mineRes.data));
       setCartSubtotal(getCartSubtotal(safeCartItems));
       setCartItemCount(getCartItemCount(safeCartItems));
+      setLoadError(false);
     } catch {
       if (mountedRef.current && requestId === loadCouponsRequestRef.current) {
-        message.error(t('pages.coupons.loadFailed'));
+        setPublicCoupons(getFallbackPublicCoupons());
+        setMyCoupons([]);
+        const fallbackCartItems = isAuthenticated ? [] : getGuestCartItems();
+        setCartSubtotal(getCartSubtotal(fallbackCartItems));
+        setCartItemCount(getCartItemCount(fallbackCartItems));
+        setLoadError(true);
       }
     } finally {
       if (mountedRef.current && requestId === loadCouponsRequestRef.current) {
         setLoading(false);
       }
     }
-  }, [isAuthenticated, t]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     loadCoupons();
@@ -156,6 +178,7 @@ const CouponCenter: React.FC = () => {
     () => filterPublicCoupons(sortedClaimablePublicCoupons, ownedCouponIds, couponFilter),
     [couponFilter, ownedCouponIds, sortedClaimablePublicCoupons],
   );
+  const usingFallbackCoupons = publicCoupons.some((coupon) => isFallbackCoupon(coupon.id));
   const couponInsights = useMemo(() => {
     const now = Date.now();
     const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
@@ -186,12 +209,13 @@ const CouponCenter: React.FC = () => {
     return { expiringSoon, limitedStock, bestCoupon, unusedMine, nextToUse, targetCoupon };
   }, [claimableCoupons, myCoupons]);
 
-  const describeCoupon = (coupon: Pick<Coupon, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>) => {
+  const describeCoupon = (coupon: Pick<CouponPublic, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>) => {
     if (coupon.couponType === 'FULL_REDUCTION') {
       return `${t('pages.adminCoupons.minimumSpend')} ${formatMoney(Math.max(0, toFiniteNumber(coupon.thresholdAmount)))} / ${t('pages.adminCoupons.reductionAmount')} ${formatMoney(Math.max(0, toFiniteNumber(coupon.reductionAmount)))}`;
     }
     const maxDiscount = Math.max(0, toFiniteNumber(coupon.maxDiscountAmount));
-    const discountPercent = Math.max(0, Math.min(toFiniteNumber(coupon.discountPercent, 0), 100));
+    const payablePercent = Math.max(0, Math.min(toFiniteNumber(coupon.discountPercent, 100), 100));
+    const discountPercent = Math.max(0, 100 - payablePercent);
     const maxText = maxDiscount > 0 ? `, ${t('pages.coupons.maxDiscount', { amount: formatMoney(maxDiscount) })}` : '';
     return t('pages.coupons.discountPayable', { percent: discountPercent }) + maxText;
   };
@@ -201,6 +225,10 @@ const CouponCenter: React.FC = () => {
     if (!isAuthenticated) {
       message.warning(t('messages.loginRequired'));
       navigate(buildLoginUrlFromWindow());
+      return;
+    }
+    if (isFallbackCoupon(couponId)) {
+      message.info(t('pages.coupons.previewOnly'));
       return;
     }
     setClaimingId(couponId);
@@ -224,6 +252,11 @@ const CouponCenter: React.FC = () => {
       navigate(buildLoginUrlFromWindow());
       return;
     }
+    const liveClaimableCoupons = claimableCoupons.filter((coupon) => !isFallbackCoupon(coupon.id));
+    if (claimableCoupons.length > 0 && liveClaimableCoupons.length === 0) {
+      message.info(t('pages.coupons.previewOnly'));
+      return;
+    }
     if (claimableCoupons.length === 0) {
       message.info(t('pages.coupons.noClaimable'));
       return;
@@ -231,9 +264,9 @@ const CouponCenter: React.FC = () => {
     try {
       setClaimingAll(true);
       setClaimBatchSummary(null);
-      const results = await claimCouponsInBatches(claimableCoupons);
+      const results = await claimCouponsInBatches(liveClaimableCoupons);
       const claimed = results.filter((result) => result.status === 'fulfilled').length;
-      setClaimBatchSummary({ claimed, total: claimableCoupons.length });
+      setClaimBatchSummary({ claimed, total: liveClaimableCoupons.length });
       if (claimed > 0) {
         message.success(t('pages.coupons.claimedAllSuccess', { count: claimed }));
         dispatchDomEvent('shop:coupons-updated');
@@ -251,6 +284,7 @@ const CouponCenter: React.FC = () => {
   const targetThreshold = Math.max(0, toFiniteNumber(couponInsights.targetCoupon?.thresholdAmount));
   const hasCouponTarget = Boolean(couponInsights.targetCoupon);
   const couponCartGap = Math.max(0, targetThreshold - cartSubtotal);
+  const bestCouponIsPreview = Boolean(couponInsights.bestCoupon && isFallbackCoupon(couponInsights.bestCoupon.id));
   const couponNextAction = (() => {
     if (!isAuthenticated && couponInsights.bestCoupon) {
       return {
@@ -269,7 +303,7 @@ const CouponCenter: React.FC = () => {
           name: couponInsights.bestCoupon.name,
           value: formatMoney(getCouponEstimatedValue(couponInsights.bestCoupon)),
         }),
-        label: t('pages.coupons.claimBest'),
+        label: bestCouponIsPreview ? t('pages.coupons.preview') : t('pages.coupons.claimBest'),
         action: () => claimCoupon(couponInsights.bestCoupon!.id),
       };
     }
@@ -306,10 +340,16 @@ const CouponCenter: React.FC = () => {
     };
   })();
   const couponActionBusy = claimingAll || claimingId != null;
+  const hasLiveClaimableCoupons = claimableCoupons.some((coupon) => !isFallbackCoupon(coupon.id));
   const claimAllActionDisabled = isAuthenticated
-    ? claimableCoupons.length === 0 || couponActionBusy
+    ? claimableCoupons.length === 0 || couponActionBusy || !hasLiveClaimableCoupons
     : couponActionBusy;
   const showClaimCta = isAuthenticated ? claimableCoupons.length > 0 : publicCoupons.length > 0;
+  const primaryClaimLabel = isAuthenticated && usingFallbackCoupons && !hasLiveClaimableCoupons
+    ? t('pages.coupons.preview')
+    : isAuthenticated
+      ? t('pages.coupons.claimAll')
+      : t('nav.login');
   const hideMobileSecondaryAction = !showClaimCta && couponNextAction.label === t('pages.coupons.goShopping');
   const hasAnyCouponAction = sortedClaimablePublicCoupons.length > 0 || couponInsights.unusedMine > 0;
   const couponPageStateClass = hasAnyCouponAction ? 'coupon-center-page--actionable' : 'coupon-center-page--quiet';
@@ -431,6 +471,14 @@ const CouponCenter: React.FC = () => {
 
   return (
     <div className={`coupon-center-page ${couponPageStateClass} coupon-center-page--${language}`}>
+      {loadError || usingFallbackCoupons ? (
+        <Alert
+          type={usingFallbackCoupons ? 'info' : 'warning'}
+          showIcon
+          message={usingFallbackCoupons ? t('pages.coupons.catalogFallback') : t('pages.coupons.loadFailed')}
+          className="coupon-center-page__loadAlert"
+        />
+      ) : null}
       <section className={`coupon-center-page__hero coupon-center-page__hero--${couponNextAction.tone}`}>
         <div className="coupon-center-page__heroCopy">
           <Text className="coupon-center-page__eyebrow">{t('pages.coupons.title')}</Text>
@@ -443,11 +491,11 @@ const CouponCenter: React.FC = () => {
           <Space wrap className="coupon-center-page__heroActions">
             <Button
               type="primary"
-              loading={showClaimCta ? claimingAll : false}
-              disabled={showClaimCta ? claimAllActionDisabled : couponActionBusy}
+              loading={showClaimCta && isAuthenticated ? claimingAll : false}
+              disabled={showClaimCta ? (isAuthenticated ? claimAllActionDisabled : couponActionBusy) : couponActionBusy}
               onClick={showClaimCta ? claimAllCoupons : couponNextAction.action}
             >
-              {showClaimCta ? (isAuthenticated ? t('pages.coupons.claimAll') : t('nav.login')) : couponNextAction.label}
+              {showClaimCta ? primaryClaimLabel : couponNextAction.label}
             </Button>
             <Button
               icon={<ShoppingOutlined />}
@@ -494,7 +542,7 @@ const CouponCenter: React.FC = () => {
             <Text type="secondary">{t('pages.coupons.nextActionEyebrow')}</Text>
             <strong>{couponNextAction.title}</strong>
             <span>{couponNextAction.text}</span>
-            <Button size="small" type="primary" onClick={couponNextAction.action} disabled={claimingAll || claimingId != null}>
+            <Button size="small" type="primary" onClick={couponNextAction.action} disabled={claimingAll || claimingId != null || (isAuthenticated && bestCouponIsPreview)}>
               {couponNextAction.label}
             </Button>
           </div>
@@ -537,10 +585,10 @@ const CouponCenter: React.FC = () => {
         <Button
           type="primary"
           loading={showClaimCta ? claimingAll : false}
-          disabled={showClaimCta ? claimAllActionDisabled : couponActionBusy}
+          disabled={showClaimCta ? (isAuthenticated ? claimAllActionDisabled : couponActionBusy) : couponActionBusy}
           onClick={showClaimCta ? claimAllCoupons : couponNextAction.action}
         >
-          {showClaimCta ? (isAuthenticated ? t('pages.coupons.claimAll') : t('nav.login')) : couponNextAction.label}
+          {showClaimCta ? primaryClaimLabel : couponNextAction.label}
         </Button>
         <Button
           icon={<ShoppingOutlined />}
@@ -586,8 +634,8 @@ const CouponCenter: React.FC = () => {
               ) : null;
             })()}
             {couponInsights.bestCoupon ? (
-              <Button type="primary" loading={claimingId === couponInsights.bestCoupon.id} disabled={claimingAll || claimingId != null} onClick={() => claimCoupon(couponInsights.bestCoupon!.id)}>
-                {t('pages.coupons.claimBest')}
+              <Button type="primary" loading={claimingId === couponInsights.bestCoupon.id} disabled={claimingAll || claimingId != null || (isAuthenticated && bestCouponIsPreview)} onClick={() => claimCoupon(couponInsights.bestCoupon!.id)}>
+                {bestCouponIsPreview ? t('pages.coupons.preview') : t('pages.coupons.claimBest')}
               </Button>
             ) : (
               <Button onClick={() => navigate('/products')}>{t('pages.coupons.goShopping')}</Button>
@@ -683,7 +731,7 @@ const CouponCenter: React.FC = () => {
             type={couponNextAction.tone === 'ready' || couponNextAction.tone === 'claim' ? 'primary' : 'default'}
             icon={<ShoppingOutlined />}
             loading={couponInsights.bestCoupon ? claimingId === couponInsights.bestCoupon.id : false}
-            disabled={claimingAll || claimingId != null}
+            disabled={claimingAll || claimingId != null || (isAuthenticated && bestCouponIsPreview)}
             onClick={couponNextAction.action}
           >
             {couponNextAction.label}
@@ -707,7 +755,7 @@ const CouponCenter: React.FC = () => {
         extra={
           showClaimCta ? (
             <Button loading={claimingAll} disabled={claimAllActionDisabled} onClick={claimAllCoupons}>
-              {isAuthenticated ? t('pages.coupons.claimAll') : t('nav.login')}
+              {primaryClaimLabel}
             </Button>
           ) : null
         }
@@ -757,7 +805,7 @@ const CouponCenter: React.FC = () => {
               </div>
               {showClaimCta ? (
                 <Button type="primary" loading={claimingAll} disabled={claimAllActionDisabled} onClick={claimAllCoupons}>
-                  {isAuthenticated ? t('pages.coupons.claimAll') : t('nav.login')}
+                  {primaryClaimLabel}
                 </Button>
               ) : null}
             </div>
@@ -875,6 +923,7 @@ const CouponCenter: React.FC = () => {
               const endingSoon = isCouponEndingSoon(coupon.endAt) && !claimed && remaining !== 0;
               const limitedStock = remaining != null && remaining > 0 && remaining <= 10 && !claimed;
               const estimatedValue = getCouponEstimatedValue(coupon);
+              const previewCoupon = isFallbackCoupon(coupon.id);
               const thresholdAmount = Math.max(0, toFiniteNumber(coupon.thresholdAmount));
               const cartGap = Math.max(0, thresholdAmount - cartSubtotal);
               const cartProgress = thresholdAmount > 0 ? Math.min(100, Math.round((cartSubtotal / thresholdAmount) * 100)) : 100;
@@ -905,7 +954,7 @@ const CouponCenter: React.FC = () => {
                         : t('pages.coupons.claim');
               const validUntilText = formatCouponDate(coupon.endAt);
               return (
-                <Col xs={24} md={12} lg={8} key={coupon.id}>
+                <Col xs={24} md={24} lg={8} key={coupon.id}>
                   <Card
                     className={`coupon-center-page__coupon ${couponStateClass}`}
                     size="small"
@@ -913,6 +962,7 @@ const CouponCenter: React.FC = () => {
                       <span className="coupon-center-page__couponTitle">
                         <span>{coupon.name}</span>
                         {isBestPublicCoupon ? <Tag color="volcano">{couponUiText.bestMatch}</Tag> : null}
+                        {previewCoupon ? <Tag color="blue">{t('pages.coupons.preview')}</Tag> : null}
                         {claimed ? <Tag color="green">{t('pages.coupons.claimed')}</Tag> : null}
                       </span>
                     )}
@@ -971,12 +1021,18 @@ const CouponCenter: React.FC = () => {
                         block
                         className="coupon-center-page__couponAction"
                         icon={!isAuthenticated ? undefined : claimed ? <CheckCircleOutlined /> : <GiftOutlined />}
-                        disabled={claimingAll || claimingId != null || claimed || remaining === 0}
+                        disabled={claimingAll || claimingId != null || claimed || remaining === 0 || (isAuthenticated && previewCoupon)}
                         loading={claimingId === coupon.id}
                         aria-label={`${couponStateLabel}: ${coupon.name}`}
                         onClick={() => claimCoupon(coupon.id)}
                       >
-                        {!isAuthenticated ? t('nav.login') : claimed ? t('pages.coupons.claimed') : t('pages.coupons.claim')}
+                        {!isAuthenticated
+                          ? t('nav.login')
+                          : previewCoupon
+                            ? t('pages.coupons.preview')
+                            : claimed
+                              ? t('pages.coupons.claimed')
+                              : t('pages.coupons.claim')}
                       </Button>
                     </Space>
                   </Card>
@@ -1069,7 +1125,7 @@ const CouponCenter: React.FC = () => {
             locale={{ emptyText: couponUiText.walletFilteredEmpty }}
             renderItem={(coupon) => {
               const expiryText = formatCouponDate(coupon.endAt);
-              const statusLabel = coupon.status ? t(`status.${coupon.status}`) : '-';
+              const statusLabel = formatWalletStatusLabel(coupon.status);
               const daysLeft = getDaysUntilEnd(coupon.endAt);
               const walletCouponValue = getCouponEstimatedValue(coupon);
               const walletThreshold = Math.max(0, toFiniteNumber(coupon.thresholdAmount));

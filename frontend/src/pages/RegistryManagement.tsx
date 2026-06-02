@@ -10,8 +10,8 @@ import './RegistryManagement.css';
 
 const { Title, Text } = Typography;
 
-const boolTag = (value?: boolean) => (
-  <Tag color={value ? 'green' : 'red'}>{String(Boolean(value))}</Tag>
+const boolTag = (value: boolean | undefined, labels: { enabled: string; disabled: string }) => (
+  <Tag color={value ? 'green' : 'red'}>{value ? labels.enabled : labels.disabled}</Tag>
 );
 
 const RegistryManagement: React.FC = () => {
@@ -51,12 +51,16 @@ const RegistryManagement: React.FC = () => {
     });
   }, [serviceKeyword, serviceSummaries]);
   const frontendGatewayReady = apiGatewayEnabled || apiBaseUrl === '/api' || apiBaseUrl.endsWith('/api');
+  const boolLabels = {
+    enabled: t('pages.registryAdmin.enabledStatus'),
+    disabled: t('pages.registryAdmin.disabledStatus'),
+  };
 
   return (
     <div className="registry-management">
       <div className="registry-management__hero">
         <div>
-          <Text className="registry-management__eyebrow">Nacos Discovery</Text>
+          <Text className="registry-management__eyebrow">{t('pages.registryAdmin.eyebrow')}</Text>
           <Title level={2}>{t('pages.registryAdmin.title')}</Title>
           <Text type="secondary">{t('pages.registryAdmin.description')}</Text>
         </div>
@@ -102,12 +106,12 @@ const RegistryManagement: React.FC = () => {
               <Card title={t('pages.registryAdmin.registryConfig')} className="registry-management__card">
                 <Descriptions column={1} bordered size="small">
                   <Descriptions.Item label={t('pages.registryAdmin.nacosAddress')}>{status.nacosServerAddr || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Namespace">{status.namespace || 'public'}</Descriptions.Item>
-                  <Descriptions.Item label="Group">{status.group || 'DEFAULT_GROUP'}</Descriptions.Item>
-                  <Descriptions.Item label="Discovery Enabled">{boolTag(status.discoveryEnabled)}</Descriptions.Item>
-                  <Descriptions.Item label="Register Enabled">{boolTag(status.registerEnabled)}</Descriptions.Item>
-                  <Descriptions.Item label="Ephemeral">{boolTag(status.ephemeral)}</Descriptions.Item>
-                  <Descriptions.Item label="Weight">{status.weight || '1'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.namespace')}>{status.namespace || 'public'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.group')}>{status.group || 'DEFAULT_GROUP'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.discoveryEnabled')}>{boolTag(status.discoveryEnabled, boolLabels)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.registerEnabled')}>{boolTag(status.registerEnabled, boolLabels)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.ephemeral')}>{boolTag(status.ephemeral, boolLabels)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.registryAdmin.weight')}>{status.weight || '1'}</Descriptions.Item>
                 </Descriptions>
               </Card>
 
@@ -117,7 +121,7 @@ const RegistryManagement: React.FC = () => {
                   <Descriptions.Item label={t('pages.registryAdmin.registryIp')}>{status.configuredIp || 'auto'}</Descriptions.Item>
                   <Descriptions.Item label={t('pages.registryAdmin.registryPort')}>{status.configuredPort || status.serverPort || '-'}</Descriptions.Item>
                   <Descriptions.Item label="DiscoveryClient">{status.discoveryClientDescription || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Profiles">
+                  <Descriptions.Item label={t('pages.registryAdmin.profiles')}>
                     {(status.profiles || []).length
                       ? status.profiles?.map((profile) => <Tag key={profile}>{profile}</Tag>)
                       : <Tag>default</Tag>}
@@ -129,11 +133,11 @@ const RegistryManagement: React.FC = () => {
             <Card title={t('pages.registryAdmin.frontendGateway')} className="registry-management__card">
               <div className="registry-management__gateway">
                 <div>
-                  <Text type="secondary">API Base URL</Text>
+                  <Text type="secondary">{t('pages.registryAdmin.apiBaseUrl')}</Text>
                   <Text copyable strong>{apiBaseUrl}</Text>
                 </div>
                 <div>
-                  <Text type="secondary">Gateway Prefix</Text>
+                  <Text type="secondary">{t('pages.registryAdmin.gatewayPrefix')}</Text>
                   <Text copyable strong>{apiGatewayPrefix}</Text>
                 </div>
                 <Tag color={apiGatewayEnabled ? 'green' : 'red'}>
@@ -166,7 +170,7 @@ const RegistryManagement: React.FC = () => {
                   scroll={{ x: 720 }}
                   columns={[
                     {
-                      title: 'Service ID',
+                      title: t('pages.registryAdmin.serviceId'),
                       dataIndex: 'serviceId',
                       render: (value: string) => (
                         <Tag color={value === status.applicationName ? 'green' : 'blue'}>{value}</Tag>
@@ -200,16 +204,16 @@ const RegistryManagement: React.FC = () => {
                 pagination={false}
                 scroll={{ x: 980 }}
                 columns={[
-                  { title: 'Service ID', dataIndex: 'serviceId', width: 180 },
-                  { title: 'Host', dataIndex: 'host', width: 160 },
-                  { title: 'Port', dataIndex: 'port', width: 100 },
+                  { title: t('pages.registryAdmin.serviceId'), dataIndex: 'serviceId', width: 180 },
+                  { title: t('pages.registryAdmin.host'), dataIndex: 'host', width: 160 },
+                  { title: t('pages.registryAdmin.port'), dataIndex: 'port', width: 100 },
                   {
-                    title: 'URI',
+                    title: t('pages.registryAdmin.uri'),
                     dataIndex: 'uri',
                     render: (value: string) => <Text copyable><LinkOutlined /> {value}</Text>,
                   },
                   {
-                    title: 'Metadata',
+                    title: t('pages.registryAdmin.metadata'),
                     dataIndex: 'metadata',
                     render: (metadata?: Record<string, string>) => (
                       <Space wrap size={[4, 4]}>

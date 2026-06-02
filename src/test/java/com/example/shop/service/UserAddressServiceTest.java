@@ -1,16 +1,20 @@
 package com.example.shop.service;
 
+import com.example.shop.entity.User;
 import com.example.shop.entity.UserAddress;
 import com.example.shop.repository.UserAddressMapper;
+import com.example.shop.repository.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -18,18 +22,21 @@ import static org.mockito.Mockito.when;
 
 class UserAddressServiceTest {
     private UserAddressMapper userAddressMapper;
+    private UserMapper userMapper;
     private RuntimeConfigService runtimeConfig;
     private UserAddressService service;
 
     @BeforeEach
     void setUp() {
         userAddressMapper = mock(UserAddressMapper.class);
+        userMapper = mock(UserMapper.class);
         runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getInt("user-address.max-per-user", 20)).thenReturn(2);
         when(runtimeConfig.getInt("user-address.recipient-name-max-chars", 80)).thenReturn(40);
         when(runtimeConfig.getInt("user-address.phone-max-chars", 30)).thenReturn(20);
         when(runtimeConfig.getInt("user-address.address-max-chars", 500)).thenReturn(80);
-        service = new UserAddressService(userAddressMapper, runtimeConfig);
+        when(userMapper.findByIdForUpdate(7L)).thenReturn(new User());
+        service = new UserAddressService(userAddressMapper, userMapper, runtimeConfig);
     }
 
     @Test
@@ -39,6 +46,9 @@ class UserAddressServiceTest {
 
         service.addAddress(address);
 
+        InOrder inOrder = inOrder(userMapper, userAddressMapper);
+        inOrder.verify(userMapper).findByIdForUpdate(7L);
+        inOrder.verify(userAddressMapper).findByUserId(7L);
         ArgumentCaptor<UserAddress> captor = ArgumentCaptor.forClass(UserAddress.class);
         verify(userAddressMapper).insert(captor.capture());
         assertEquals("Mia Chen", captor.getValue().getRecipientName());
@@ -99,6 +109,23 @@ class UserAddressServiceTest {
         assertThrows(IllegalStateException.class, () -> service.addAddress(third));
 
         verify(userAddressMapper, never()).insert(any());
+    }
+
+    @Test
+    void setDefaultLocksUserBeforeClearingDefaults() {
+        UserAddress existing = address(7L, "Mia Chen", "5550101", "1 Main Street");
+        existing.setId(12L);
+        when(userAddressMapper.findById(12L)).thenReturn(existing);
+        when(userAddressMapper.setDefault(12L, 7L)).thenReturn(1);
+
+        service.setDefault(12L);
+
+        InOrder inOrder = inOrder(userAddressMapper, userMapper);
+        inOrder.verify(userAddressMapper).findById(12L);
+        inOrder.verify(userMapper).findByIdForUpdate(7L);
+        inOrder.verify(userAddressMapper).findById(12L);
+        inOrder.verify(userAddressMapper).clearDefault(7L);
+        inOrder.verify(userAddressMapper).setDefault(12L, 7L);
     }
 
     @Test

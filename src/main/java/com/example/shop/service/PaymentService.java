@@ -9,7 +9,6 @@ import com.example.shop.repository.PaymentRepository;
 import com.example.shop.util.GatewayUrlValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
@@ -17,6 +16,7 @@ import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -31,6 +31,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -40,6 +42,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Currency;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -104,14 +108,22 @@ public class PaymentService {
             }
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        if (channelConfig.isStripeProvider()) {
-            return createStripePayment(order, now, channelConfig);
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            if (channelConfig.isStripeProvider()) {
+                return createStripePayment(order, now, channelConfig);
+            }
+            if (channelConfig.isGenericApiProvider()) {
+                return createGenericApiPayment(order, now, channelConfig);
+            }
+            return createRedirectPayment(order, now, channelConfig);
+        } catch (DataIntegrityViolationException e) {
+            Payment raced = paymentRepository.findByOrderIdAndChannel(order.getId(), channel);
+            if (raced != null) {
+                return raced;
+            }
+            throw e;
         }
-        if (channelConfig.isGenericApiProvider()) {
-            return createGenericApiPayment(order, now, channelConfig);
-        }
-        return createRedirectPayment(order, now, channelConfig);
     }
 
     @Transactional
@@ -148,13 +160,13 @@ public class PaymentService {
         }
         PaymentCallbackRequest request = new PaymentCallbackRequest();
         if (PAID.equals(payment.getStatus())) {
-            assertMatchingPaidCallback(payment, request);
             return payment;
         }
         request.setOrderNo(payment.getOrderNo());
         request.setChannel(payment.getChannel());
-        request.setTransactionId(newTransactionId());
-        request.setProviderReference("sim-" + payment.getId());
+        String simulatedTransactionId = firstNonBlank(payment.getTransactionId(), newTransactionId());
+        request.setTransactionId(simulatedTransactionId);
+        request.setProviderReference(firstNonBlank(payment.getProviderReference(), simulatedTransactionId, "sim-" + payment.getId()));
         request.setStatus("SUCCESS");
         request.setAmount(payment.getAmount());
         request.setCallbackTimestamp(Instant.now().getEpochSecond());
@@ -178,6 +190,7 @@ public class PaymentService {
         if (payment.getAmount().compareTo(request.getAmount()) != 0) {
             throw new IllegalArgumentException("Payment amount mismatch");
         }
+        assertMatchingPaidCallback(payment, request);
         if (PAID.equals(payment.getStatus())) {
             return payment;
         }
@@ -247,6 +260,8 @@ public class PaymentService {
             if (!PENDING.equals(payment.getStatus())) {
                 throw new IllegalStateException("Payment is not pending");
             }
+            PaymentChannelConfig.Channel channel = requireStripePaymentChannel(payment);
+            validateStripePaidSession(payment, channel, session);
             assertOrderStillAwaitingPayment(payment.getOrderId());
             int updated = paymentRepository.markPaidDetailed(
                     payment.getId(),
@@ -286,6 +301,16 @@ public class PaymentService {
             }
         }
         return changedAny ? paymentRepository.findByOrderId(orderId) : payments;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Payment> findStoredByOrderId(Long orderId) {
+        return paymentRepository.findByOrderId(orderId);
+    }
+
+    @Transactional(readOnly = true)
+    public Payment findStoredLatestByOrderId(Long orderId) {
+        return paymentRepository.findLatestByOrderId(orderId);
     }
 
     @Transactional
@@ -415,12 +440,9 @@ public class PaymentService {
             throw new IllegalStateException("Stripe secret key is not configured");
         }
         try {
-            Stripe.apiKey = secretKey;
             Session session = Session.create(
                     buildStripeCheckoutSession(order, channelConfig),
-                    RequestOptions.builder()
-                            .setIdempotencyKey("checkout-session-" + order.getId() + "-" + channelConfig.getCode())
-                            .build());
+                    stripeRequestOptions(secretKey, "checkout-session-" + order.getId() + "-" + channelConfig.getCode()));
             Payment payment = new Payment();
             payment.setOrderId(order.getId());
             payment.setOrderNo(order.getOrderNo());
@@ -446,12 +468,9 @@ public class PaymentService {
             throw new IllegalStateException("Stripe secret key is not configured");
         }
         try {
-            Stripe.apiKey = secretKey;
             Session session = Session.create(
                     buildStripeCheckoutSession(order, channelConfig),
-                    RequestOptions.builder()
-                            .setIdempotencyKey("checkout-session-refresh-" + order.getId() + "-" + payment.getId() + "-" + now.toString())
-                            .build());
+                    stripeRequestOptions(secretKey, "checkout-session-refresh-" + order.getId() + "-" + payment.getId() + "-" + now.toString()));
             payment.setAmount(order.getTotalAmount());
             payment.setChannel(channelConfig.getCode());
             payment.setStatus(PENDING);
@@ -590,6 +609,7 @@ public class PaymentService {
             if (isBlank(paymentUrl) || isBlank(transactionId)) {
                 throw new IllegalStateException("Gateway create payment response is missing paymentUrl or transactionId");
             }
+            paymentUrl = validateGatewayPaymentUrl(paymentUrl, channelConfig);
             LocalDateTime expiresAt = parseGatewayExpiresAt(root, now.plusMinutes(resolveTimeoutMinutes(channelConfig)));
             return new GenericApiPaymentResponse(transactionId, providerReference, paymentUrl, expiresAt);
         } catch (IllegalStateException e) {
@@ -609,6 +629,129 @@ public class PaymentService {
         } catch (Exception e) {
             return fallback;
         }
+    }
+
+    private String validateGatewayPaymentUrl(String paymentUrl, PaymentChannelConfig.Channel channelConfig) {
+        String normalized = GatewayUrlValidator.requireOutboundHttpUrl(
+                paymentUrl,
+                paymentGatewayAllowLocal(),
+                "Gateway payment URL");
+        URI uri = parseHttpUri(normalized, "Gateway payment URL");
+        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+        if (isProductionMode() && !"https".equals(scheme)) {
+            throw new IllegalStateException("Gateway payment URL must use https in production");
+        }
+        if (!isGatewayPaymentHostAllowed(uri, channelConfig)) {
+            throw new IllegalStateException("Gateway payment URL host is not allowed for channel " + channelConfig.getCode());
+        }
+        return uri.toString();
+    }
+
+    private URI parseHttpUri(String value, String label) {
+        try {
+            return new URI(value);
+        } catch (URISyntaxException e) {
+            throw new IllegalStateException(label + " is invalid");
+        }
+    }
+
+    private boolean isGatewayPaymentHostAllowed(URI uri, PaymentChannelConfig.Channel channelConfig) {
+        String host = normalizeHost(uri.getHost());
+        if (host == null) {
+            return false;
+        }
+        List<String> allowedHosts = gatewayPaymentAllowedHosts(channelConfig);
+        if (allowedHosts.isEmpty()) {
+            return !isProductionMode();
+        }
+        return allowedHosts.stream().anyMatch(pattern -> hostMatchesPattern(host, pattern));
+    }
+
+    private List<String> gatewayPaymentAllowedHosts(PaymentChannelConfig.Channel channelConfig) {
+        List<String> allowed = new ArrayList<>();
+        addGatewayPaymentHost(allowed, channelConfig.getCreateUrl());
+        addGatewayPaymentHost(allowed, channelConfig.getCheckoutUrl());
+        addGatewayPaymentHost(allowed, paymentChannelConfig.getCheckoutBaseUrl());
+        Map<String, String> metadata = channelConfig.getMetadata();
+        if (metadata != null) {
+            addGatewayPaymentHost(allowed, metadata.get("payment-url-hosts"));
+            addGatewayPaymentHost(allowed, metadata.get("paymentUrlHosts"));
+            addGatewayPaymentHost(allowed, metadata.get("checkout-url-hosts"));
+            addGatewayPaymentHost(allowed, metadata.get("checkoutUrlHosts"));
+            addGatewayPaymentHost(allowed, metadata.get("allowed-payment-hosts"));
+            addGatewayPaymentHost(allowed, metadata.get("allowedPaymentHosts"));
+            addGatewayPaymentHost(allowed, metadata.get("allowed-hosts"));
+            addGatewayPaymentHost(allowed, metadata.get("allowedHosts"));
+        }
+        return allowed;
+    }
+
+    private void addGatewayPaymentHost(List<String> allowed, String value) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
+            return;
+        }
+        for (String token : normalized.split("[,;\\s]+")) {
+            String pattern = normalizeHostPattern(token);
+            if (pattern != null && !allowed.contains(pattern)) {
+                allowed.add(pattern);
+            }
+        }
+    }
+
+    private String normalizeHostPattern(String value) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.contains("://")) {
+            try {
+                normalized = new URI(normalized).getHost();
+            } catch (URISyntaxException e) {
+                return null;
+            }
+        } else {
+            int pathIndex = normalized.indexOf('/');
+            if (pathIndex >= 0) {
+                normalized = normalized.substring(0, pathIndex);
+            }
+            int queryIndex = normalized.indexOf('?');
+            if (queryIndex >= 0) {
+                normalized = normalized.substring(0, queryIndex);
+            }
+            int colonIndex = normalized.indexOf(':');
+            if (colonIndex > 0 && normalized.indexOf(':', colonIndex + 1) < 0) {
+                normalized = normalized.substring(0, colonIndex);
+            }
+        }
+        return normalizeHost(normalized);
+    }
+
+    private String normalizeHost(String host) {
+        String normalized = trimToNull(host);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
+        return normalized;
+    }
+
+    private boolean hostMatchesPattern(String host, String pattern) {
+        String normalizedPattern = normalizeHostPattern(pattern);
+        if (normalizedPattern == null) {
+            return false;
+        }
+        if (normalizedPattern.startsWith("*.")) {
+            String suffix = normalizedPattern.substring(1);
+            return host.endsWith(suffix) && host.length() > suffix.length();
+        }
+        if (normalizedPattern.startsWith(".")) {
+            return host.endsWith(normalizedPattern) && host.length() > normalizedPattern.length();
+        }
+        return host.equals(normalizedPattern);
     }
 
     private SessionCreateParams buildStripeCheckoutSession(Order order, PaymentChannelConfig.Channel channelConfig) {
@@ -652,11 +795,11 @@ public class PaymentService {
             return null;
         }
         try {
-            Stripe.apiKey = secretKey;
-            Session session = Session.retrieve(sessionId);
+            Session session = Session.retrieve(sessionId, stripeRequestOptions(secretKey));
             String sessionStatus = session.getStatus() == null ? "" : session.getStatus().toLowerCase(Locale.ROOT);
             String paymentStatus = session.getPaymentStatus() == null ? "" : session.getPaymentStatus().toLowerCase(Locale.ROOT);
             if ("complete".equals(sessionStatus) && "paid".equals(paymentStatus)) {
+                validateStripePaidSession(payment, channel, session);
                 assertOrderStillAwaitingPayment(payment.getOrderId());
                 int updated = paymentRepository.markPaidDetailed(
                         payment.getId(),
@@ -678,6 +821,67 @@ public class PaymentService {
         }
     }
 
+    private PaymentChannelConfig.Channel requireStripePaymentChannel(Payment payment) {
+        PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
+        if (channel == null || !channel.isStripeProvider()) {
+            throw new IllegalStateException("Payment channel is not configured for Stripe");
+        }
+        return channel;
+    }
+
+    private void validateStripePaidSession(Payment payment, PaymentChannelConfig.Channel channel, Session session) {
+        String paymentStatus = session.getPaymentStatus() == null ? "" : session.getPaymentStatus().trim().toLowerCase(Locale.ROOT);
+        if (!"paid".equals(paymentStatus)) {
+            throw new IllegalStateException("Stripe session is not paid");
+        }
+        String expectedCurrency = resolveCurrency(channel);
+        String actualCurrency = trimToNull(session.getCurrency());
+        if (actualCurrency == null || !expectedCurrency.equalsIgnoreCase(actualCurrency)) {
+            throw new IllegalArgumentException("Stripe payment currency mismatch");
+        }
+        Long actualAmount = session.getAmountTotal();
+        if (actualAmount == null) {
+            throw new IllegalArgumentException("Stripe payment amount is missing");
+        }
+        long expectedAmount = toStripeMinorUnit(payment.getAmount(), expectedCurrency);
+        if (actualAmount.longValue() != expectedAmount) {
+            throw new IllegalArgumentException("Stripe payment amount mismatch");
+        }
+    }
+
+    private long toStripeMinorUnit(BigDecimal amount, String currency) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Payment amount is invalid");
+        }
+        try {
+            return amount.movePointRight(currencyFractionDigits(currency))
+                    .setScale(0, RoundingMode.HALF_UP)
+                    .longValueExact();
+        } catch (ArithmeticException e) {
+            throw new IllegalStateException("Payment amount is invalid");
+        }
+    }
+
+    private int currencyFractionDigits(String currency) {
+        try {
+            int digits = Currency.getInstance(currency).getDefaultFractionDigits();
+            return digits < 0 ? 2 : digits;
+        } catch (IllegalArgumentException e) {
+            return 2;
+        }
+    }
+
+    private RequestOptions stripeRequestOptions(String apiKey) {
+        return RequestOptions.builder().setApiKey(apiKey).build();
+    }
+
+    private RequestOptions stripeRequestOptions(String apiKey, String idempotencyKey) {
+        return RequestOptions.builder()
+                .setApiKey(apiKey)
+                .setIdempotencyKey(idempotencyKey)
+                .build();
+    }
+
     private boolean verifySignature(PaymentCallbackRequest request) {
         String signature = trimToNull(request.getSignature());
         if (signature == null) {
@@ -693,10 +897,11 @@ public class PaymentService {
         String expectedReference = trimToNull(payment.getProviderReference());
         String requestTransactionId = trimToNull(request.getTransactionId());
         String requestReference = trimToNull(request.getProviderReference());
-        if (expectedTransactionId != null && requestTransactionId != null && !expectedTransactionId.equals(requestTransactionId)) {
+        if (expectedTransactionId != null && !expectedTransactionId.equals(requestTransactionId)) {
             throw new IllegalArgumentException("Paid payment transactionId mismatch");
         }
-        if (expectedReference != null && requestReference != null && !expectedReference.equals(requestReference)) {
+        String effectiveRequestReference = firstNonBlank(requestReference, requestTransactionId);
+        if (expectedReference != null && !expectedReference.equals(effectiveRequestReference)) {
             throw new IllegalArgumentException("Paid payment providerReference mismatch");
         }
     }
@@ -770,14 +975,11 @@ public class PaymentService {
         String baseUrl = isBlank(configuredUrl)
                 ? storefrontBaseUrl() + "/payment"
                 : configuredUrl.trim().replaceAll("/+$", "");
-        String guestEmail = guestEmailForOrder(order);
-        String guestQuery = guestEmail == null ? "" : "&guestEmail=" + urlEncode(guestEmail);
         return baseUrl + "/" + urlEncode(order.getOrderNo())
                 + "?channel=" + urlEncode(channel.getCode())
                 + "&amount=" + urlEncode(order.getTotalAmount().stripTrailingZeros().toPlainString())
                 + "&currency=" + urlEncode(resolveCurrency(channel))
-                + "&expiresAt=" + urlEncode(expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-                + guestQuery;
+                + "&expiresAt=" + urlEncode(expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     }
 
     private String extractGuestEmail(String shippingAddress) {
@@ -795,7 +997,11 @@ public class PaymentService {
     }
 
     private String guestEmailForOrder(Order order) {
-        return order == null ? null : extractGuestEmail(order.getShippingAddress());
+        if (order == null) {
+            return null;
+        }
+        String contactEmail = normalizeEmail(order.getContactEmail());
+        return contactEmail != null ? contactEmail : extractGuestEmail(order.getShippingAddress());
     }
 
     private String normalizeEmail(String value) {
@@ -846,7 +1052,7 @@ public class PaymentService {
             return;
         }
         String secret = trimToNull(callbackSecret());
-        if (secret == null || "dev-payment-secret".equals(secret) || secret.length() < 32) {
+        if (secret == null || isWeakCallbackSecret(secret)) {
             throw new IllegalStateException("Payment callback secret is not configured for production");
         }
     }
@@ -943,7 +1149,19 @@ public class PaymentService {
     }
 
     private String callbackSecret() {
-        return runtimeConfig.getString("payment.callback-secret", "dev-payment-secret");
+        return runtimeConfig.getString("payment.callback-secret", "");
+    }
+
+    private boolean isWeakCallbackSecret(String secret) {
+        String normalized = secret == null ? "" : secret.trim();
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        return normalized.length() < 32
+                || "dev-payment-secret".equals(lower)
+                || lower.startsWith("replace-")
+                || lower.contains("replace-with")
+                || lower.contains("your-")
+                || "secret".equals(lower)
+                || "default-secret".equals(lower);
     }
 
     private boolean paymentGatewayAllowLocal() {
@@ -1004,20 +1222,17 @@ public class PaymentService {
     }
 
     private String contextualReturnUrl(String configuredUrl, Order order, String statusKey, String statusValue) {
-        String guestEmail = guestEmailForOrder(order);
+        boolean guestOrder = guestEmailForOrder(order) != null;
         String baseUrl = trimToNull(configuredUrl);
-        if (guestEmail != null) {
+        if (guestOrder) {
             baseUrl = storefrontBaseUrl() + "/track-order";
         }
         if (baseUrl == null) {
-            baseUrl = guestEmail == null
-                    ? storefrontBaseUrl() + "/profile"
-                    : storefrontBaseUrl() + "/track-order";
+            baseUrl = guestOrder
+                    ? storefrontBaseUrl() + "/track-order"
+                    : storefrontBaseUrl() + "/profile";
         }
         String url = appendQueryParam(baseUrl, "orderNo", order == null ? null : order.getOrderNo());
-        if (guestEmail != null) {
-            url = appendQueryParam(url, "guestEmail", guestEmail);
-        }
         return appendQueryParam(url, statusKey, statusValue);
     }
 

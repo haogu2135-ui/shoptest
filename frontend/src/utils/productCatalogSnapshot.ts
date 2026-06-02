@@ -1,4 +1,4 @@
-import type { Product, ProductVariant } from '../types';
+import type { ProductPublic, ProductVariant } from '../types';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 export const PRODUCT_CATALOG_SNAPSHOT_KEY = 'shop-product-catalog-snapshot';
@@ -9,12 +9,19 @@ const MAX_SNAPSHOT_OPTIONS = 16;
 const MAX_SNAPSHOT_VARIANTS = 20;
 const MAX_SNAPSHOT_SPEC_KEYS = 32;
 
-type ProductCatalogSnapshot = {
-  savedAt: number;
-  products: Product[];
+export type ProductCatalogSnapshotProduct = ProductPublic & {
+  categoryName?: string;
+  rating?: number;
+  sizes?: string[];
+  colors?: string[];
 };
 
-const fallbackCatalogProducts: Product[] = [
+type ProductCatalogSnapshot = {
+  savedAt: number;
+  products: ProductCatalogSnapshotProduct[];
+};
+
+const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
   {
     id: 1,
     name: 'PawPilot Smart Pet Feeder 4L',
@@ -32,7 +39,6 @@ const fallbackCatalogProducts: Product[] = [
       'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80',
       'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80',
     ],
-    status: 'ACTIVE',
     brand: 'PawPilot',
     tag: 'Smart feeder',
     rating: 4.8,
@@ -66,7 +72,6 @@ const fallbackCatalogProducts: Product[] = [
     categoryName: 'Water Fountains',
     imageUrl: 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80',
     images: ['https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80'],
-    status: 'ACTIVE',
     brand: 'HydraWhisk',
     tag: 'Quiet fountain',
     rating: 4.7,
@@ -97,7 +102,6 @@ const fallbackCatalogProducts: Product[] = [
     categoryName: 'Harnesses & Leashes',
     imageUrl: 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=900&q=80',
     images: ['https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80'],
-    status: 'ACTIVE',
     brand: 'TrailTails',
     tag: 'Walking bundle',
     rating: 4.6,
@@ -134,7 +138,6 @@ const fallbackCatalogProducts: Product[] = [
     categoryName: 'Beds & Furniture',
     imageUrl: 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80',
     images: ['https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80'],
-    status: 'ACTIVE',
     brand: 'CloudNap',
     tag: 'Calming bed',
     rating: 4.9,
@@ -215,8 +218,8 @@ const normalizeVariants = (value: unknown): ProductVariant[] | undefined => {
   return variants.length ? variants : undefined;
 };
 
-export const normalizeProductForCatalogSnapshot = (value: unknown): Product | null => {
-  const product = value as Partial<Product> | null | undefined;
+export const normalizeProductForCatalogSnapshot = (value: unknown): ProductCatalogSnapshotProduct | null => {
+  const product = value as Partial<ProductCatalogSnapshotProduct> | null | undefined;
   const id = positiveInt(product?.id);
   const name = clampString(product?.name, 180);
   const price = finiteNumber(product?.effectivePrice ?? product?.price, NaN);
@@ -237,7 +240,6 @@ export const normalizeProductForCatalogSnapshot = (value: unknown): Product | nu
     stock: Math.max(0, Math.floor(finiteNumber(product?.stock, 0))),
     categoryId,
     imageUrl: clampString(product?.imageUrl, 1000),
-    status: clampString(product?.status, 40) || undefined,
     categoryName: clampString(product?.categoryName, 120) || undefined,
     isFeatured: Boolean(product?.isFeatured),
     images: boundedStringList(product?.images, MAX_SNAPSHOT_IMAGES, 1000),
@@ -266,11 +268,11 @@ export const normalizeProductForCatalogSnapshot = (value: unknown): Product | nu
   };
 };
 
-export const saveProductCatalogSnapshot = (products: Product[], now = Date.now()) => {
+export const saveProductCatalogSnapshot = (products: ProductPublic[], now = Date.now()) => {
   try {
     const normalizedProducts = products
       .map(normalizeProductForCatalogSnapshot)
-      .filter((product): product is Product => Boolean(product))
+      .filter((product): product is ProductCatalogSnapshotProduct => Boolean(product))
       .slice(0, MAX_SNAPSHOT_PRODUCTS);
     if (normalizedProducts.length === 0) return;
     setLocalStorageItem(PRODUCT_CATALOG_SNAPSHOT_KEY, JSON.stringify({
@@ -290,7 +292,7 @@ export const loadProductCatalogSnapshot = (now = Date.now()): ProductCatalogSnap
     const products = Array.isArray(parsed?.products)
       ? parsed.products
         .map(normalizeProductForCatalogSnapshot)
-        .filter((product: Product | null): product is Product => Boolean(product))
+        .filter((product: ProductCatalogSnapshotProduct | null): product is ProductCatalogSnapshotProduct => Boolean(product))
         .slice(0, MAX_SNAPSHOT_PRODUCTS)
       : [];
     return products.length ? { savedAt, products } : null;
@@ -299,7 +301,7 @@ export const loadProductCatalogSnapshot = (now = Date.now()): ProductCatalogSnap
   }
 };
 
-export const loadFallbackProductCatalog = (): Product[] =>
+export const loadFallbackProductCatalog = (): ProductCatalogSnapshotProduct[] =>
   fallbackCatalogProducts
     .map(normalizeProductForCatalogSnapshot)
-    .filter((product): product is Product => Boolean(product));
+    .filter((product): product is ProductCatalogSnapshotProduct => Boolean(product));

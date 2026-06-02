@@ -3,6 +3,9 @@ package com.example.shop.entity;
 import lombok.Data;
 
 import javax.persistence.*;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 @Data
@@ -14,15 +17,22 @@ public class LogisticsCarrier {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 100)
+    @NotBlank
+    @Size(max = 100)
     private String name;
 
     @Column(name = "tracking_code", nullable = false, unique = true, length = 80)
+    @NotBlank
+    @Size(max = 80)
     private String trackingCode;
 
     @Column(length = 20, nullable = false)
+    @NotBlank
+    @Size(max = 20)
     private String status = "ACTIVE";
 
     @Column(name = "sort_order")
+    @Min(0)
     private Integer sortOrder = 0;
 
     @Column(name = "created_at")

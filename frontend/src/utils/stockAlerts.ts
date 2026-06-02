@@ -1,4 +1,4 @@
-import type { Product } from '../types';
+import type { ProductPublic } from '../types';
 import { dispatchDomEvent } from './domEvents';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
@@ -69,7 +69,7 @@ export const readStockAlerts = () => readRaw();
 
 export const hasStockAlert = (productId: number) => readRaw().some((item) => item.productId === productId);
 
-export const addStockAlert = (product: Pick<Product, 'id' | 'name' | 'imageUrl'>) => {
+export const addStockAlert = (product: Pick<ProductPublic, 'id' | 'name' | 'imageUrl'>) => {
   const productId = normalizePositiveId(product.id);
   const productName = String(product.name || '').trim().slice(0, 160);
   if (productId === null || !productName) {

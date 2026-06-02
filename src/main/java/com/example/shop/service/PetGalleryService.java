@@ -8,6 +8,7 @@ import com.example.shop.repository.PetGalleryPhotoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,13 +17,22 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,8 +50,11 @@ public class PetGalleryService {
     private static final Map<String, String> EXTENSIONS_BY_CONTENT_TYPE = Map.of(
         "image/jpeg", ".jpg",
         "image/png", ".png",
-        "image/webp", ".webp",
         "image/gif", ".gif"
+    );
+    private static final Map<String, String> OUTPUT_FORMAT_BY_CONTENT_TYPE = Map.of(
+        "image/jpeg", "jpg",
+        "image/png", "png"
     );
     private static final List<SeedPhoto> SEED_PHOTOS = List.of(
         new SeedPhoto("happy_pet_1", "https://images.unsplash.com/photo-1537151672256-6caf2e9f8c95?auto=format&fit=crop&w=700&q=80", 42),
@@ -58,6 +71,7 @@ public class PetGalleryService {
 
     public List<PetGalleryPhoto> findPublicPhotos(Long viewerId, String ipAddress) {
         return photoRepository.findTop24ByStatusOrderByLikeCountDescCreatedAtDescIdDesc(ACTIVE_STATUS).stream()
+            .filter(this::isRenderablePublicPhoto)
             .peek((photo) -> decorateViewerState(photo, viewerId, ipAddress))
             .collect(Collectors.toList());
     }
@@ -67,8 +81,13 @@ public class PetGalleryService {
         int maxSize = Math.max(1, Math.min(size <= 0 ? 24 : size, 50));
         Page<PetGalleryPhoto> result = photoRepository.findByStatusOrderByLikeCountDescCreatedAtDescIdDesc(
                 ACTIVE_STATUS, PageRequest.of(safePage, maxSize));
-        result.getContent().forEach(photo -> decorateViewerState(photo, viewerId, ipAddress));
-        return result;
+        List<PetGalleryPhoto> visiblePhotos = result.getContent().stream()
+                .filter(this::isRenderablePublicPhoto)
+                .peek(photo -> decorateViewerState(photo, viewerId, ipAddress))
+                .collect(Collectors.toList());
+        int hiddenCount = result.getContent().size() - visiblePhotos.size();
+        long adjustedTotal = Math.max(0L, result.getTotalElements() - hiddenCount);
+        return new PageImpl<>(visiblePhotos, result.getPageable(), adjustedTotal);
     }
 
     public PetGalleryQuota getQuota(Long userId, String ipAddress) {
@@ -79,49 +98,56 @@ public class PetGalleryService {
         long userRemaining = Math.max(0, maxPhotosPerUser - userUploads);
         long ipRemaining = Math.max(0, maxPhotosPerIp - ipUploads);
         long remaining = Math.min(userRemaining, ipRemaining);
-        return new PetGalleryQuota(maxPhotosPerUser, userUploads, ipUploads, remaining, remaining > 0);
+        return new PetGalleryQuota(maxPhotosPerUser, remaining, remaining > 0);
     }
 
     @Transactional
-    public synchronized PetGalleryPhoto upload(Long userId, String username, String ipAddress, MultipartFile file) {
-        validateQuota(userId, ipAddress);
-        validateFile(file);
-
-        String contentType = normalizeContentType(file.getContentType());
-        String filename = UUID.randomUUID() + EXTENSIONS_BY_CONTENT_TYPE.get(contentType);
-        Path uploadPath = Paths.get(uploadDir()).toAbsolutePath().normalize();
-        Path target = uploadPath.resolve(filename).normalize();
-        if (!target.startsWith(uploadPath)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid upload path");
-        }
-
+    public PetGalleryPhoto upload(Long userId, String username, String ipAddress, MultipartFile file) {
+        String lockName = uploadQuotaLockName(userId, ipAddress);
+        assertUploadQuotaLockAcquired(lockName);
         try {
-            Files.createDirectories(uploadPath);
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upload failed");
-        }
+            validateQuota(userId, ipAddress);
+            validateFile(file);
 
-        PetGalleryPhoto photo = new PetGalleryPhoto();
-        photo.setUserId(userId);
-        photo.setUsername(StringUtils.hasText(username) ? username.trim() : "pet_parent");
-        photo.setImageUrl(publicPath().replaceAll("/$", "") + "/" + filename);
-        photo.setOriginalFilename(cleanFilename(file.getOriginalFilename()));
-        photo.setContentType(contentType);
-        photo.setFileSize(file.getSize());
-        photo.setIpAddress(ipAddress);
-        photo.setStatus(ACTIVE_STATUS);
-        photo.setSource(USER_UPLOAD_SOURCE);
-        photo.setLikeCount(0);
-
-        try {
-            return decorateViewerState(photoRepository.saveAndFlush(photo), userId, ipAddress);
-        } catch (RuntimeException e) {
-            try {
-                Files.deleteIfExists(target);
-            } catch (IOException ignored) {
+            String uploadedContentType = normalizeContentType(file.getContentType());
+            SanitizedPhoto sanitizedPhoto = sanitizeImage(file, uploadedContentType);
+            String filename = UUID.randomUUID() + EXTENSIONS_BY_CONTENT_TYPE.get(sanitizedPhoto.contentType);
+            Path uploadPath = Paths.get(uploadDir()).toAbsolutePath().normalize();
+            Path target = uploadPath.resolve(filename).normalize();
+            if (!target.startsWith(uploadPath)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid upload path");
             }
-            throw e;
+
+            try {
+                Files.createDirectories(uploadPath);
+                Files.write(target, sanitizedPhoto.bytes);
+            } catch (IOException e) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upload failed");
+            }
+
+            PetGalleryPhoto photo = new PetGalleryPhoto();
+            photo.setUserId(userId);
+            photo.setUsername(StringUtils.hasText(username) ? username.trim() : "pet_parent");
+            photo.setImageUrl(publicPath().replaceAll("/$", "") + "/" + filename);
+            photo.setOriginalFilename(cleanFilename(file.getOriginalFilename()));
+            photo.setContentType(sanitizedPhoto.contentType);
+            photo.setFileSize((long) sanitizedPhoto.bytes.length);
+            photo.setIpAddress(ipAddress);
+            photo.setStatus(ACTIVE_STATUS);
+            photo.setSource(USER_UPLOAD_SOURCE);
+            photo.setLikeCount(0);
+
+            try {
+                return decorateViewerState(photoRepository.saveAndFlush(photo), userId, ipAddress);
+            } catch (RuntimeException e) {
+                try {
+                    Files.deleteIfExists(target);
+                } catch (IOException ignored) {
+                }
+                throw e;
+            }
+        } finally {
+            photoRepository.releaseUploadQuotaLock(lockName);
         }
     }
 
@@ -133,19 +159,19 @@ public class PetGalleryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Photo not found");
         }
 
-        boolean alreadyLiked = userId != null
-            ? likeRepository.existsByPhotoIdAndUserId(photoId, userId)
-            : likeRepository.existsByPhotoIdAndIpAddressAndUserIdIsNull(photoId, ipAddress);
+        String viewerKey = viewerKey(userId, ipAddress);
+        boolean alreadyLiked = likeRepository.existsByPhotoIdAndViewerKey(photoId, viewerKey);
         if (!alreadyLiked) {
             PetGalleryPhotoLike like = new PetGalleryPhotoLike();
             like.setPhotoId(photoId);
             like.setUserId(userId);
-            like.setIpAddress(ipAddress);
+            like.setIpAddress(normalizeIpAddress(ipAddress));
+            like.setViewerKey(viewerKey);
             try {
                 likeRepository.saveAndFlush(like);
                 photoRepository.incrementLikeCount(photoId);
             } catch (DataIntegrityViolationException e) {
-                // Duplicate like from concurrent request — safe to ignore
+                // Database uniqueness makes repeated/concurrent likes idempotent.
             }
             photo = photoRepository.findById(photoId).orElse(photo);
         }
@@ -160,7 +186,7 @@ public class PetGalleryService {
             return;
         }
         if (!isUserUpload(photo)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sample photos cannot be deleted");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Featured gallery photos cannot be deleted from the customer account");
         }
         if (!Objects.equals(photo.getUserId(), userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own photos");
@@ -182,8 +208,27 @@ public class PetGalleryService {
         deleteUploadedFileIfLocal(photo);
     }
 
-    public List<PetGalleryPhoto> findAllForAdmin() {
-        return photoRepository.findAllByStatusOrderByCreatedAtDescIdDesc(ACTIVE_STATUS);
+    public Page<PetGalleryPhoto> findForAdmin(String status, String source, String keyword, int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size <= 0 ? 12 : size, 100));
+        return photoRepository.searchAdminPhotos(
+                normalizeAdminStatus(status),
+                normalizeAdminSource(source),
+                normalizeAdminKeyword(keyword),
+                PageRequest.of(safePage, safeSize));
+    }
+
+    public Map<String, Long> summarizeForAdmin(String status, String source, String keyword) {
+        String safeStatus = normalizeAdminStatus(status);
+        String safeSource = normalizeAdminSource(source);
+        String safeKeyword = normalizeAdminKeyword(keyword);
+        return Map.of(
+                "visiblePhotos", photoRepository.countAdminPhotos(safeStatus, safeSource, safeKeyword),
+                "userUploads", photoRepository.countAdminPhotosByUserUploadSource(safeStatus, safeSource, safeKeyword, USER_UPLOAD_SOURCE),
+                "seedPhotos", photoRepository.countAdminPhotosBySource(safeStatus, safeSource, safeKeyword, SEED_SOURCE),
+                "recentUploads", photoRepository.countAdminRecentPhotos(safeStatus, safeSource, safeKeyword, LocalDateTime.now().minusDays(7)),
+                "largeFiles", photoRepository.countAdminLargePhotos(safeStatus, safeSource, safeKeyword, 5L * 1024 * 1024)
+        );
     }
 
     @Transactional
@@ -220,16 +265,104 @@ public class PetGalleryService {
     }
 
     private PetGalleryPhoto decorateViewerState(PetGalleryPhoto photo, Long viewerId, String ipAddress) {
-        boolean liked = viewerId != null
-            ? likeRepository.existsByPhotoIdAndUserId(photo.getId(), viewerId)
-            : likeRepository.existsByPhotoIdAndIpAddressAndUserIdIsNull(photo.getId(), ipAddress);
+        boolean liked = likeRepository.existsByPhotoIdAndViewerKey(photo.getId(), viewerKey(viewerId, ipAddress));
         photo.setLikedByMe(liked);
         photo.setCanDelete(viewerId != null && isUserUpload(photo) && Objects.equals(photo.getUserId(), viewerId));
         return photo;
     }
 
+    private String viewerKey(Long userId, String ipAddress) {
+        if (userId != null) {
+            return "user:" + userId;
+        }
+        return "ip:" + normalizeIpAddress(ipAddress);
+    }
+
+    private String normalizeIpAddress(String ipAddress) {
+        String normalized = ipAddress == null ? "unknown" : ipAddress.trim().toLowerCase(Locale.ROOT);
+        normalized = normalized.replaceAll("[^a-z0-9:._-]", "");
+        if (normalized.isBlank()) {
+            return "unknown";
+        }
+        return normalized.length() <= 96 ? normalized : normalized.substring(0, 96);
+    }
+
     private boolean isUserUpload(PetGalleryPhoto photo) {
         return !StringUtils.hasText(photo.getSource()) || USER_UPLOAD_SOURCE.equals(photo.getSource());
+    }
+
+    private boolean isRenderablePublicPhoto(PetGalleryPhoto photo) {
+        if (!isUserUpload(photo) || !isLocalUploadPhoto(photo)) {
+            return StringUtils.hasText(photo.getImageUrl());
+        }
+        if (localUploadFileExists(photo)) {
+            return true;
+        }
+        photo.setStatus(DELETED_STATUS);
+        photoRepository.save(photo);
+        return false;
+    }
+
+    private boolean isLocalUploadPhoto(PetGalleryPhoto photo) {
+        String imageUrl = photo.getImageUrl();
+        String normalizedPublicPath = publicPath().replaceAll("/$", "");
+        return imageUrl != null && imageUrl.startsWith(normalizedPublicPath + "/");
+    }
+
+    private boolean localUploadFileExists(PetGalleryPhoto photo) {
+        Path target = resolveLocalUploadPath(photo);
+        return target != null && Files.isRegularFile(target);
+    }
+
+    private void assertUploadQuotaLockAcquired(String lockName) {
+        Long acquired = photoRepository.acquireUploadQuotaLock(lockName);
+        if (acquired == null || acquired.longValue() != 1L) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Pet gallery upload quota is busy. Please retry later.");
+        }
+    }
+
+    private String uploadQuotaLockName(Long userId, String ipAddress) {
+        String owner = userId != null ? "user:" + userId : "ip:" + normalizeIpAddress(ipAddress);
+        String normalized = owner.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9:._-]", "_");
+        return "shop_pet_gallery_upload:" + normalized;
+    }
+
+    private String normalizeAdminStatus(String status) {
+        if (!StringUtils.hasText(status) || "ALL".equalsIgnoreCase(status.trim())) {
+            return null;
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        if (ACTIVE_STATUS.equals(normalized) || DELETED_STATUS.equals(normalized)) {
+            return normalized;
+        }
+        return null;
+    }
+
+    private String normalizeAdminSource(String source) {
+        if (!StringUtils.hasText(source) || "ALL".equalsIgnoreCase(source.trim())) {
+            return null;
+        }
+        String normalized = source.trim().toUpperCase(Locale.ROOT);
+        if (USER_UPLOAD_SOURCE.equals(normalized) || SEED_SOURCE.equals(normalized)) {
+            return normalized;
+        }
+        return null;
+    }
+
+    private String normalizeAdminKeyword(String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return null;
+        }
+        String normalized = keyword.trim().toLowerCase(Locale.ROOT)
+                .replace("%", "")
+                .replace("_", "");
+        if (normalized.isBlank()) {
+            return null;
+        }
+        if (normalized.length() > 120) {
+            normalized = normalized.substring(0, 120);
+        }
+        return "%" + normalized + "%";
     }
 
     private String uploadDir() {
@@ -249,21 +382,29 @@ public class PetGalleryService {
     }
 
     private void deleteUploadedFileIfLocal(PetGalleryPhoto photo) {
-        String imageUrl = photo.getImageUrl();
-        String normalizedPublicPath = publicPath().replaceAll("/$", "");
-        if (imageUrl == null || !imageUrl.startsWith(normalizedPublicPath + "/")) {
-            return;
-        }
-        String filename = imageUrl.substring((normalizedPublicPath + "/").length());
-        Path uploadPath = Paths.get(uploadDir()).toAbsolutePath().normalize();
-        Path target = uploadPath.resolve(filename).normalize();
-        if (!target.startsWith(uploadPath)) {
+        Path target = resolveLocalUploadPath(photo);
+        if (target == null) {
             return;
         }
         try {
             Files.deleteIfExists(target);
         } catch (IOException ignored) {
         }
+    }
+
+    private Path resolveLocalUploadPath(PetGalleryPhoto photo) {
+        String imageUrl = photo.getImageUrl();
+        String normalizedPublicPath = publicPath().replaceAll("/$", "");
+        if (imageUrl == null || !imageUrl.startsWith(normalizedPublicPath + "/")) {
+            return null;
+        }
+        String filename = imageUrl.substring((normalizedPublicPath + "/").length());
+        if (!StringUtils.hasText(filename)) {
+            return null;
+        }
+        Path uploadPath = Paths.get(uploadDir()).toAbsolutePath().normalize();
+        Path target = uploadPath.resolve(filename).normalize();
+        return target.startsWith(uploadPath) ? target : null;
     }
 
     private void validateFile(MultipartFile file) {
@@ -275,10 +416,94 @@ public class PetGalleryService {
         }
         String contentType = normalizeContentType(file.getContentType());
         if (!EXTENSIONS_BY_CONTENT_TYPE.containsKey(contentType)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPG, PNG, WebP or GIF photos are supported");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPG, PNG or GIF photos are supported");
         }
         validateImageSignature(file, contentType);
         validateImageDimensions(file, contentType);
+    }
+
+    private SanitizedPhoto sanitizeImage(MultipartFile file, String contentType) {
+        BufferedImage decoded = decodeImage(file);
+        String outputContentType = "image/jpeg".equals(contentType) ? "image/jpeg" : "image/png";
+        String outputFormat = OUTPUT_FORMAT_BY_CONTENT_TYPE.get(outputContentType);
+        byte[] bytes = encodeImage(decoded, outputContentType, outputFormat);
+        long maxFileSize = runtimeConfig.getLong("pet-gallery.max-file-size-bytes", 5242880);
+        if (bytes.length > maxFileSize) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Sanitized photo is too large");
+        }
+        return new SanitizedPhoto(outputContentType, bytes);
+    }
+
+    private BufferedImage decodeImage(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream()) {
+            BufferedImage image = ImageIO.read(inputStream);
+            if (image == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
+            }
+            return image;
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
+        }
+    }
+
+    private byte[] encodeImage(BufferedImage image, String contentType, String outputFormat) {
+        if ("image/jpeg".equals(contentType)) {
+            return encodeJpeg(image);
+        }
+        return encodeWithImageIo(copyImage(image, BufferedImage.TYPE_INT_ARGB, null), outputFormat);
+    }
+
+    private byte[] encodeJpeg(BufferedImage image) {
+        BufferedImage rgbImage = copyImage(image, BufferedImage.TYPE_INT_RGB, Color.WHITE);
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
+        if (!writers.hasNext()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
+        }
+        ImageWriter writer = writers.next();
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+             ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(outputStream)) {
+            if (imageOutputStream == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
+            }
+            writer.setOutput(imageOutputStream);
+            ImageWriteParam writeParam = writer.getDefaultWriteParam();
+            if (writeParam.canWriteCompressed()) {
+                writeParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                writeParam.setCompressionQuality(0.88f);
+            }
+            writer.write(null, new IIOImage(rgbImage, null, null), writeParam);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
+        } finally {
+            writer.dispose();
+        }
+    }
+
+    private byte[] encodeWithImageIo(BufferedImage image, String outputFormat) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            if (!ImageIO.write(image, outputFormat, outputStream)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
+            }
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
+        }
+    }
+
+    private BufferedImage copyImage(BufferedImage source, int targetType, Color background) {
+        BufferedImage target = new BufferedImage(source.getWidth(), source.getHeight(), targetType);
+        Graphics2D graphics = target.createGraphics();
+        try {
+            if (background != null) {
+                graphics.setColor(background);
+                graphics.fillRect(0, 0, target.getWidth(), target.getHeight());
+            }
+            graphics.drawImage(source, 0, 0, null);
+        } finally {
+            graphics.dispose();
+        }
+        return target;
     }
 
     private void validateImageSignature(MultipartFile file, String contentType) {
@@ -318,17 +543,6 @@ public class PetGalleryService {
                     && (header[4] == 0x37 || header[4] == 0x39)
                     && header[5] == 0x61;
                 break;
-            case "image/webp":
-                valid = read >= 12
-                    && header[0] == 0x52
-                    && header[1] == 0x49
-                    && header[2] == 0x46
-                    && header[3] == 0x46
-                    && header[8] == 0x57
-                    && header[9] == 0x45
-                    && header[10] == 0x42
-                    && header[11] == 0x50;
-                break;
             default:
                 valid = false;
                 break;
@@ -366,8 +580,6 @@ public class PetGalleryService {
                 return gifDimensions(bytes);
             case "image/jpeg":
                 return jpegDimensions(bytes);
-            case "image/webp":
-                return webpDimensions(bytes);
             default:
                 return null;
         }
@@ -434,33 +646,6 @@ public class PetGalleryService {
                 || (marker >= 0xcd && marker <= 0xcf);
     }
 
-    private int[] webpDimensions(byte[] bytes) {
-        if (bytes.length < 30 || bytes[0] != 0x52 || bytes[1] != 0x49 || bytes[2] != 0x46 || bytes[3] != 0x46
-                || bytes[8] != 0x57 || bytes[9] != 0x45 || bytes[10] != 0x42 || bytes[11] != 0x50) {
-            return null;
-        }
-        String chunk = new String(bytes, 12, 4, java.nio.charset.StandardCharsets.US_ASCII);
-        if ("VP8X".equals(chunk)) {
-            return new int[]{1 + read24LittleEndian(bytes, 24), 1 + read24LittleEndian(bytes, 27)};
-        }
-        if ("VP8L".equals(chunk) && bytes.length >= 25 && (bytes[20] & 0xff) == 0x2f) {
-            int b1 = bytes[21] & 0xff;
-            int b2 = bytes[22] & 0xff;
-            int b3 = bytes[23] & 0xff;
-            int b4 = bytes[24] & 0xff;
-            int width = 1 + (b1 | ((b2 & 0x3f) << 8));
-            int height = 1 + (((b2 & 0xc0) >> 6) | (b3 << 2) | ((b4 & 0x0f) << 10));
-            return new int[]{width, height};
-        }
-        if ("VP8 ".equals(chunk) && bytes.length >= 30
-                && (bytes[23] & 0xff) == 0x9d && (bytes[24] & 0xff) == 0x01 && (bytes[25] & 0xff) == 0x2a) {
-            int width = readUnsignedShortLittleEndian(bytes, 26) & 0x3fff;
-            int height = readUnsignedShortLittleEndian(bytes, 28) & 0x3fff;
-            return new int[]{width, height};
-        }
-        return null;
-    }
-
     private int readIntBigEndian(byte[] bytes, int offset) {
         return ((bytes[offset] & 0xff) << 24)
                 | ((bytes[offset + 1] & 0xff) << 16)
@@ -476,10 +661,6 @@ public class PetGalleryService {
         return (bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8);
     }
 
-    private int read24LittleEndian(byte[] bytes, int offset) {
-        return (bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8) | ((bytes[offset + 2] & 0xff) << 16);
-    }
-
     private String normalizeContentType(String contentType) {
         return contentType == null ? "" : contentType.trim().toLowerCase(Locale.ROOT);
     }
@@ -490,6 +671,16 @@ public class PetGalleryService {
             return null;
         }
         return filename.length() > 255 ? filename.substring(filename.length() - 255) : filename;
+    }
+
+    private static class SanitizedPhoto {
+        private final String contentType;
+        private final byte[] bytes;
+
+        private SanitizedPhoto(String contentType, byte[] bytes) {
+            this.contentType = contentType;
+            this.bytes = bytes;
+        }
     }
 
     private static class SeedPhoto {

@@ -1,25 +1,61 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, ReloadOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { IpBlacklistEntry, IpBlacklistStatus } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import {
+  IP_BLACKLIST_BLOCK_PERMISSION,
+  IP_BLACKLIST_RELEASE_PERMISSION,
+  getEffectiveRole,
+  hasAdminPermission,
+} from '../utils/roles';
 import './IpBlacklistManagement.css';
 
 const { Text, Title } = Typography;
 
 const statusColor = (status: string) => {
-  if (status === 'BLOCKED') return 'red';
-  if (status === 'MONITORING') return 'gold';
-  return 'green';
+  const normalized = String(status || '').trim().toUpperCase();
+  if (normalized === 'BLOCKED') return 'red';
+  if (normalized === 'MONITORING') return 'gold';
+  if (normalized === 'RELEASED') return 'green';
+  return 'default';
 };
 
 const sourceColor = (source: string) => {
-  if (source === 'LOGIN') return 'blue';
-  if (source === 'PAYMENT') return 'volcano';
-  return 'purple';
+  const normalized = String(source || '').trim().toUpperCase();
+  if (normalized === 'LOGIN') return 'blue';
+  if (normalized === 'PAYMENT') return 'volcano';
+  if (normalized === 'MANUAL') return 'purple';
+  return 'default';
+};
+
+const STATUS_OPTIONS = ['ALL', 'BLOCKED', 'MONITORING', 'RELEASED'];
+const SOURCE_OPTIONS = ['ALL', 'LOGIN', 'PAYMENT', 'MANUAL'];
+
+const readEntryArray = (value: unknown): IpBlacklistEntry[] | null => {
+  if (Array.isArray(value)) return value as IpBlacklistEntry[];
+  if (value && typeof value === 'object') {
+    const wrapped = value as { data?: unknown; items?: unknown; content?: unknown; records?: unknown; list?: unknown };
+    return readEntryArray(wrapped.items)
+      || readEntryArray(wrapped.content)
+      || readEntryArray(wrapped.records)
+      || readEntryArray(wrapped.list)
+      || readEntryArray(wrapped.data);
+  }
+  return null;
+};
+
+const normalizeEntryList = (payload: unknown): IpBlacklistEntry[] => {
+  return readEntryArray(payload) || [];
+};
+
+const normalizeStatusInfo = (payload: unknown): IpBlacklistStatus | null => {
+  if (!payload || typeof payload !== 'object') return null;
+  const wrapped = payload as { data?: unknown };
+  return (wrapped.data && typeof wrapped.data === 'object' ? wrapped.data : payload) as IpBlacklistStatus;
 };
 
 const IpBlacklistManagement: React.FC = () => {
@@ -27,45 +63,134 @@ const IpBlacklistManagement: React.FC = () => {
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [entries, setEntries] = useState<IpBlacklistEntry[]>([]);
   const [statusInfo, setStatusInfo] = useState<IpBlacklistStatus | null>(null);
-  const [status, setStatus] = useState('BLOCKED');
+  const [status, setStatus] = useState('ALL');
   const [source, setSource] = useState('ALL');
   const [ipAddress, setIpAddress] = useState('');
   const [selectedEntryIds, setSelectedEntryIds] = useState<number[]>([]);
+  const [listLoadError, setListLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState<number | null>(null);
   const [batchActing, setBatchActing] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [form] = Form.useForm();
-  const formatTime = useCallback((value?: string) => value ? new Date(value).toLocaleString(dateLocale) : '-', [dateLocale]);
+  const canBlockIp = hasAdminPermission(adminPermissions, currentRole, IP_BLACKLIST_BLOCK_PERMISSION);
+  const canReleaseIp = hasAdminPermission(adminPermissions, currentRole, IP_BLACKLIST_RELEASE_PERMISSION);
+  const formatTime = useCallback((value?: string) => {
+    if (!value) return '-';
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed.toLocaleString(dateLocale) : '-';
+  }, [dateLocale]);
+  const hasActiveFilters = status !== 'ALL' || source !== 'ALL' || Boolean(ipAddress.trim());
+  const getStatusLabel = useCallback((value: string) => {
+    const rawValue = String(value || '').trim();
+    const normalized = rawValue.toUpperCase();
+    if (!normalized) return t('common.unknown');
+    if (STATUS_OPTIONS.includes(normalized)) {
+      return t(`pages.ipBlacklistAdmin.status.${normalized}`);
+    }
+    return rawValue;
+  }, [t]);
+  const getSourceLabel = useCallback((value: string) => {
+    const rawValue = String(value || '').trim();
+    const normalized = rawValue.toUpperCase();
+    if (!normalized) return t('common.unknown');
+    if (SOURCE_OPTIONS.includes(normalized)) {
+      return t(`pages.ipBlacklistAdmin.sources.${normalized}`);
+    }
+    return rawValue;
+  }, [t]);
+  const entryStatusCounts = useMemo(() => ({
+    blocked: entries.filter((entry) => entry.status === 'BLOCKED').length,
+    monitoring: entries.filter((entry) => entry.status === 'MONITORING').length,
+    released: entries.filter((entry) => entry.status === 'RELEASED').length,
+    total: entries.length,
+  }), [entries]);
+  const blockedCount = Math.max(statusInfo?.blockedCount ?? 0, entryStatusCounts.blocked);
+  const monitoringCount = Math.max(statusInfo?.monitoringCount ?? 0, entryStatusCounts.monitoring);
+  const releasedCount = Math.max(statusInfo?.releasedCount ?? 0, entryStatusCounts.released);
+  const totalCount = Math.max(statusInfo?.totalCount ?? 0, entryStatusCounts.total);
 
-  const loadData = useCallback(async () => {
+  const fetchData = useCallback(async (nextStatus: string, nextSource: string, nextIpAddress: string) => {
     setLoading(true);
     try {
-      const [listResponse, statusResponse] = await Promise.all([
+      let listError: any = null;
+      let statusError: any = null;
+      const [listLoaded] = await Promise.all([
         adminApi.getIpBlacklist({
-          status: status === 'ALL' ? undefined : status,
-          source: source === 'ALL' ? undefined : source,
-          ipAddress: ipAddress.trim() || undefined,
+          status: nextStatus === 'ALL' ? undefined : nextStatus,
+          source: nextSource === 'ALL' ? undefined : nextSource,
+          ipAddress: nextIpAddress.trim() || undefined,
           limit: 300,
+        }).then((listResponse) => {
+          const nextEntries = normalizeEntryList(listResponse.data);
+          setEntries(nextEntries);
+          setSelectedEntryIds((ids) => ids.filter((id) => nextEntries.some((entry) => entry.id === id)));
+          setListLoadError(null);
+          return true;
+        }).catch((error) => {
+          listError = error;
+          setSelectedEntryIds([]);
+          return false;
         }),
-        adminApi.getIpBlacklistStatus(),
+        adminApi.getIpBlacklistStatus().then((statusResponse) => {
+          const nextStatusInfo = normalizeStatusInfo(statusResponse.data);
+          if (nextStatusInfo) setStatusInfo(nextStatusInfo);
+          return true;
+        }).catch((error) => {
+          statusError = error;
+          return false;
+        }),
       ]);
-      setEntries(listResponse.data);
-      setStatusInfo(statusResponse.data);
-      setSelectedEntryIds((ids) => ids.filter((id) => listResponse.data.some((entry) => entry.id === id)));
+      if (!listLoaded) {
+        const errorMessage = getApiErrorMessage(listError, t('pages.ipBlacklistAdmin.loadFailed'), language);
+        setListLoadError(errorMessage);
+        message.error(errorMessage);
+      } else if (statusError) {
+        message.warning(getApiErrorMessage(statusError, t('pages.ipBlacklistAdmin.statusLoadFailed'), language));
+      }
     } catch (error: any) {
-      message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.loadFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.ipBlacklistAdmin.loadFailed'), language);
+      setListLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [ipAddress, language, source, status, t]);
+  }, [language, t]);
+
+  const loadData = useCallback(async (overrides?: { status?: string; source?: string; ipAddress?: string }) => {
+    await fetchData(overrides?.status ?? status, overrides?.source ?? source, overrides?.ipAddress ?? ipAddress);
+  }, [fetchData, ipAddress, source, status]);
 
   useEffect(() => {
-    loadData();
-  }, [language, loadData, t]);
+    fetchData('ALL', 'ALL', '');
+  }, [fetchData]);
+
+  useEffect(() => {
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((response) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   const blockIp = async () => {
+    if (!canBlockIp) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setBlocking(true);
@@ -73,7 +198,10 @@ const IpBlacklistManagement: React.FC = () => {
       message.success(t('pages.ipBlacklistAdmin.blocked'));
       setModalOpen(false);
       form.resetFields();
-      loadData();
+      setStatus('ALL');
+      setSource('ALL');
+      setIpAddress('');
+      await loadData({ status: 'ALL', source: 'ALL', ipAddress: '' });
     } catch (error: any) {
       if (error?.errorFields) return;
       message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.blockFailed'), language));
@@ -83,9 +211,34 @@ const IpBlacklistManagement: React.FC = () => {
   };
 
   const openBlockModal = () => {
+    if (!canBlockIp) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     form.resetFields();
     form.setFieldsValue({ blockMinutes: statusInfo?.blockMinutes || 60 });
     setModalOpen(true);
+  };
+
+  const applyStatusFilter = (value: string) => {
+    setStatus(value);
+    loadData({ status: value });
+  };
+
+  const applySourceFilter = (value: string) => {
+    setSource(value);
+    loadData({ source: value });
+  };
+
+  const refreshData = () => {
+    loadData();
+  };
+
+  const resetFilters = () => {
+    setStatus('ALL');
+    setSource('ALL');
+    setIpAddress('');
+    loadData({ status: 'ALL', source: 'ALL', ipAddress: '' });
   };
 
   const closeBlockModal = () => {
@@ -95,17 +248,21 @@ const IpBlacklistManagement: React.FC = () => {
   };
 
   const releaseEntry = useCallback(async (entry: IpBlacklistEntry) => {
+    if (!canReleaseIp) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setActing(entry.id);
     try {
       await adminApi.releaseIpBlacklistEntry(entry.id);
       message.success(t('pages.ipBlacklistAdmin.released'));
-      loadData();
+      await loadData();
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.releaseFailed'), language));
     } finally {
       setActing(null);
     }
-  }, [loadData]);
+  }, [canReleaseIp, language, loadData, t]);
 
   const selectedEntries = useMemo(
     () => entries.filter((entry) => selectedEntryIds.includes(entry.id)),
@@ -118,13 +275,17 @@ const IpBlacklistManagement: React.FC = () => {
   );
 
   const releaseSelectedEntries = async () => {
+    if (!canReleaseIp) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (!selectedReleasableIds.length) {
       message.warning(t('pages.ipBlacklistAdmin.selectReleasableFirst'));
       return;
     }
     setBatchActing(true);
     try {
-      const response = await adminApi.releaseIpBlacklistEntries(selectedReleasableIds, 'Batch released from IP blacklist center');
+      const response = await adminApi.releaseIpBlacklistEntries(selectedReleasableIds, t('pages.ipBlacklistAdmin.batchReleaseReason'));
       message.success(t('pages.ipBlacklistAdmin.batchReleaseDone', { count: response.data.releasedCount }));
       setSelectedEntryIds([]);
       await loadData();
@@ -135,156 +296,216 @@ const IpBlacklistManagement: React.FC = () => {
     }
   };
 
-  const columns: ColumnsType<IpBlacklistEntry> = useMemo(() => [
-    {
-      title: 'IP',
-      dataIndex: 'ipAddress',
-      key: 'ipAddress',
-      render: (value: string) => <Text strong>{value}</Text>,
-    },
-    {
-      title: t('common.status'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 130,
-      render: (value: string) => <Tag color={statusColor(value)}>{value}</Tag>,
-    },
-    {
-      title: t('pages.ipBlacklistAdmin.source'),
-      dataIndex: 'source',
-      key: 'source',
-      width: 110,
-      render: (value: string) => <Tag color={sourceColor(value)}>{value}</Tag>,
-    },
-    {
-      title: t('pages.ipBlacklistAdmin.failureCount'),
-      dataIndex: 'failureCount',
-      key: 'failureCount',
-      width: 100,
-    },
-    {
-      title: t('pages.ipBlacklistAdmin.reason'),
-      dataIndex: 'reason',
-      key: 'reason',
-      render: (value?: string) => value || '-',
-    },
-    {
-      title: t('pages.ipBlacklistAdmin.blockedUntil'),
-      dataIndex: 'blockedUntil',
-      key: 'blockedUntil',
-      width: 190,
-      render: formatTime,
-    },
-    {
-      title: t('pages.ipBlacklistAdmin.lastSeen'),
-      dataIndex: 'lastSeenAt',
-      key: 'lastSeenAt',
-      width: 190,
-      render: formatTime,
-    },
-    {
-      title: t('common.actions'),
-      key: 'actions',
-      width: 120,
-      render: (_, record) => record.status !== 'RELEASED' ? (
-        <Button size="small" icon={<UnlockOutlined />} loading={acting === record.id} onClick={() => releaseEntry(record)}>
-          {t('pages.ipBlacklistAdmin.release')}
-        </Button>
-      ) : null,
-    },
-  ], [acting, formatTime, releaseEntry, t]);
+  const columns: ColumnsType<IpBlacklistEntry> = useMemo(() => {
+    const baseColumns: ColumnsType<IpBlacklistEntry> = [
+      {
+        title: 'IP',
+        dataIndex: 'ipAddress',
+        key: 'ipAddress',
+        render: (value: string) => <Text strong>{value}</Text>,
+      },
+      {
+        title: t('common.status'),
+        dataIndex: 'status',
+        key: 'status',
+        width: 130,
+        render: (value: string) => <Tag color={statusColor(value)}>{getStatusLabel(value)}</Tag>,
+      },
+      {
+        title: t('pages.ipBlacklistAdmin.source'),
+        dataIndex: 'source',
+        key: 'source',
+        width: 110,
+        render: (value: string, record) => (
+          <Space size={4} wrap>
+            <Tag color={sourceColor(value)}>{getSourceLabel(value)}</Tag>
+            {record.legacyOnly ? <Tag color="cyan">{t('pages.ipBlacklistAdmin.legacyLogin')}</Tag> : null}
+          </Space>
+        ),
+      },
+      {
+        title: t('pages.ipBlacklistAdmin.failureCount'),
+        dataIndex: 'failureCount',
+        key: 'failureCount',
+        width: 100,
+      },
+      {
+        title: t('pages.ipBlacklistAdmin.reason'),
+        dataIndex: 'reason',
+        key: 'reason',
+        render: (value?: string) => value || '-',
+      },
+      {
+        title: t('pages.ipBlacklistAdmin.blockedUntil'),
+        dataIndex: 'blockedUntil',
+        key: 'blockedUntil',
+        width: 190,
+        render: formatTime,
+      },
+      {
+        title: t('pages.ipBlacklistAdmin.lastSeen'),
+        dataIndex: 'lastSeenAt',
+        key: 'lastSeenAt',
+        width: 190,
+        render: formatTime,
+      },
+    ];
+
+    if (canReleaseIp) {
+      baseColumns.push({
+        title: t('common.actions'),
+        key: 'actions',
+        width: 120,
+        render: (_, record) => record.status !== 'RELEASED' ? (
+          <Popconfirm
+            title={t('pages.ipBlacklistAdmin.releaseConfirm', { ip: record.ipAddress })}
+            description={t('pages.ipBlacklistAdmin.releaseDescription', { source: getSourceLabel(record.source) })}
+            onConfirm={() => releaseEntry(record)}
+          >
+            <Button size="small" icon={<UnlockOutlined />} loading={acting === record.id}>
+              {t('pages.ipBlacklistAdmin.release')}
+            </Button>
+          </Popconfirm>
+        ) : null,
+      });
+    }
+
+    return baseColumns;
+  }, [acting, canReleaseIp, formatTime, getSourceLabel, getStatusLabel, releaseEntry, t]);
 
   return (
     <div className="ip-blacklist">
       <div className="ip-blacklist__hero">
         <div>
-          <Text className="ip-blacklist__eyebrow">IP Defense</Text>
+          <Text className="ip-blacklist__eyebrow">{t('pages.ipBlacklistAdmin.eyebrow')}</Text>
           <Title level={2}>{t('pages.ipBlacklistAdmin.title')}</Title>
           <Text type="secondary">{t('pages.ipBlacklistAdmin.description')}</Text>
         </div>
         <Space className="ip-blacklist__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={loadData}>
+          <Button icon={<ReloadOutlined />} loading={loading} onClick={refreshData}>
             {t('common.refresh')}
           </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openBlockModal}>
-            {t('pages.ipBlacklistAdmin.manualBlock')}
-          </Button>
+          {canBlockIp ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openBlockModal}>
+              {t('pages.ipBlacklistAdmin.manualBlock')}
+            </Button>
+          ) : null}
         </Space>
       </div>
 
       <Spin spinning={loading && entries.length === 0}>
         <div className="ip-blacklist__stats">
           <Card>
-            <Statistic title={t('pages.ipBlacklistAdmin.featureStatus')} value={statusInfo?.enabled ? 'ON' : 'OFF'} prefix={<StopOutlined />} />
+            <Statistic title={t('pages.ipBlacklistAdmin.featureStatus')} value={statusInfo ? (statusInfo.enabled ? t('pages.ipBlacklistAdmin.enabledStatus') : t('pages.ipBlacklistAdmin.disabledStatus')) : t('common.unknown')} prefix={<StopOutlined />} />
           </Card>
           <Card>
-            <Statistic title={t('pages.ipBlacklistAdmin.blockedStat')} value={statusInfo?.blockedCount || 0} valueStyle={{ color: (statusInfo?.blockedCount || 0) > 0 ? '#c2410c' : '#1f8a4c' }} />
+            <Statistic title={t('pages.ipBlacklistAdmin.blockedStat')} value={blockedCount} valueStyle={{ color: blockedCount > 0 ? '#c2410c' : '#1f8a4c' }} />
           </Card>
           <Card>
-            <Statistic title={t('pages.ipBlacklistAdmin.monitoringStat')} value={statusInfo?.monitoringCount || 0} />
+            <Statistic title={t('pages.ipBlacklistAdmin.monitoringStat')} value={monitoringCount} />
           </Card>
           <Card>
-            <Statistic title={t('pages.ipBlacklistAdmin.thresholds')} value={`${statusInfo?.loginFailureThreshold || '-'} / ${statusInfo?.paymentFailureThreshold || '-'}`} />
+            <Statistic title={t('pages.ipBlacklistAdmin.totalStat')} value={totalCount} />
           </Card>
         </div>
 
         <Card className="ip-blacklist__card">
+          <Alert
+            type={blockedCount > 0 ? 'warning' : 'info'}
+            showIcon
+            className="ip-blacklist__notice"
+            message={blockedCount > 0
+              ? t('pages.ipBlacklistAdmin.activeNotice', { count: blockedCount })
+              : totalCount > 0
+                ? t('pages.ipBlacklistAdmin.historyNotice', {
+                  total: totalCount,
+                  monitoring: monitoringCount,
+                  released: releasedCount,
+                })
+                : t('pages.ipBlacklistAdmin.emptyNotice')}
+          />
+          {listLoadError ? (
+            <Alert
+              type="error"
+              showIcon
+              className="ip-blacklist__notice"
+              message={t('pages.ipBlacklistAdmin.listUnavailable')}
+              description={listLoadError}
+            />
+          ) : null}
           <Space className="ip-blacklist__filters" wrap>
             <Select
               value={status}
-              onChange={setStatus}
+              onChange={applyStatusFilter}
               popupClassName="shop-mobile-popup-layer"
               getPopupContainer={() => document.body}
-              options={['BLOCKED', 'MONITORING', 'RELEASED', 'ALL'].map((value) => ({ value, label: value }))}
+              options={STATUS_OPTIONS.map((value) => ({ value, label: getStatusLabel(value) }))}
             />
             <Select
               value={source}
-              onChange={setSource}
+              onChange={applySourceFilter}
               popupClassName="shop-mobile-popup-layer"
               getPopupContainer={() => document.body}
-              options={['ALL', 'LOGIN', 'PAYMENT', 'MANUAL'].map((value) => ({ value, label: value }))}
+              options={SOURCE_OPTIONS.map((value) => ({ value, label: getSourceLabel(value) }))}
             />
             <Input
               allowClear
               value={ipAddress}
               onChange={(event) => setIpAddress(event.target.value)}
-              onPressEnter={loadData}
+              onPressEnter={refreshData}
               placeholder={t('pages.ipBlacklistAdmin.ipAddress')}
             />
-            <Button onClick={loadData}>{t('pages.ipBlacklistAdmin.filter')}</Button>
+            <Button icon={<SearchOutlined />} onClick={refreshData}>{t('pages.ipBlacklistAdmin.filter')}</Button>
+            <Button disabled={!hasActiveFilters} onClick={resetFilters}>{t('common.reset')}</Button>
           </Space>
 
-          <div className="ip-blacklist__bulkBar">
-            <Text type="secondary">
-              {t('pages.ipBlacklistAdmin.selectedSummary', { selected: selectedEntryIds.length, releasable: selectedReleasableIds.length })}
-            </Text>
-            <Popconfirm
-              title={t('pages.ipBlacklistAdmin.batchReleaseConfirm')}
-              description={t('pages.ipBlacklistAdmin.batchReleaseDescription', { count: selectedReleasableIds.length })}
-              disabled={!selectedReleasableIds.length}
-              onConfirm={releaseSelectedEntries}
-            >
-              <Button
-                icon={<UnlockOutlined />}
-                loading={batchActing}
+          {canReleaseIp ? (
+            <div className="ip-blacklist__bulkBar">
+              <Text type="secondary">
+                {t('pages.ipBlacklistAdmin.selectedSummary', { selected: selectedEntryIds.length, releasable: selectedReleasableIds.length })}
+              </Text>
+              <Popconfirm
+                title={t('pages.ipBlacklistAdmin.batchReleaseConfirm')}
+                description={t('pages.ipBlacklistAdmin.batchReleaseDescription', { count: selectedReleasableIds.length })}
                 disabled={!selectedReleasableIds.length}
+                onConfirm={releaseSelectedEntries}
               >
-                {t('pages.ipBlacklistAdmin.batchRelease')}
-              </Button>
-            </Popconfirm>
-          </div>
+                <Button
+                  icon={<UnlockOutlined />}
+                  loading={batchActing}
+                  disabled={!selectedReleasableIds.length}
+                >
+                  {t('pages.ipBlacklistAdmin.batchRelease')}
+                </Button>
+              </Popconfirm>
+            </div>
+          ) : null}
 
           <Table<IpBlacklistEntry>
             rowKey="id"
             columns={columns}
             dataSource={entries}
-            rowSelection={{
+            rowSelection={canReleaseIp ? {
               selectedRowKeys: selectedEntryIds,
               onChange: (keys) => setSelectedEntryIds(keys.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)),
               getCheckboxProps: (record) => ({ disabled: record.status === 'RELEASED' }),
-            }}
+            } : undefined}
             pagination={{ pageSize: 10 }}
             scroll={{ x: 1100 }}
+            locale={{
+              emptyText: (
+                <Empty description={hasActiveFilters ? t('pages.ipBlacklistAdmin.noFilteredRecords') : t('pages.ipBlacklistAdmin.noRecords')}>
+                  <Space wrap className="ip-blacklist__emptyActions">
+                    {canBlockIp ? (
+                      <Button type="primary" icon={<PlusOutlined />} onClick={openBlockModal}>
+                        {t('pages.ipBlacklistAdmin.manualBlock')}
+                      </Button>
+                    ) : null}
+                    {hasActiveFilters ? <Button onClick={resetFilters}>{t('pages.ipBlacklistAdmin.showAllRecords')}</Button> : null}
+                  </Space>
+                </Empty>
+              ),
+            }}
           />
         </Card>
       </Spin>

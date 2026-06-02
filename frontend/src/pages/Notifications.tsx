@@ -10,6 +10,7 @@ import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { hasStoredValue } from '../utils/safeStorage';
 import './Notifications.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text, Title } = Typography;
 
@@ -19,6 +20,7 @@ const typeColors: Record<string, string> = {
   SYSTEM: 'default',
   DELIVERY: 'green',
 };
+const NOTIFICATION_TYPE_KEYS = new Set(['ORDER', 'PROMOTION', 'SYSTEM', 'DELIVERY']);
 
 const notifyNavbarChanged = () => {
   dispatchDomEvent('shop:notifications-updated');
@@ -39,9 +41,18 @@ const Notifications: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
 
+  const formatNotificationType = useCallback((type?: string) => {
+    const rawType = String(type || '').trim();
+    const normalizedType = rawType.toUpperCase();
+    if (NOTIFICATION_TYPE_KEYS.has(normalizedType)) {
+      return t(`pages.notifications.typeValues.${normalizedType}`);
+    }
+    return rawType || '-';
+  }, [t]);
+
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await notificationApi.getByUser();
+      const res = await notificationApi.getByUser(0, false, 1, 50);
       setNotifications(sortNotifications(res.data));
     } catch {
       message.error(t('pages.notifications.fetchFailed'));
@@ -235,15 +246,22 @@ const Notifications: React.FC = () => {
                 !item.isRead && (
                   <Button key="mark-read" size="small" type="link" onClick={() => handleMarkAsRead(item.id)}>{t('pages.notifications.markRead')}</Button>
                 ),
-                <Popconfirm key="delete" title={t('pages.notifications.deleteConfirm')} onConfirm={() => handleDelete(item.id)}>
-                  <Button size="small" type="link" danger icon={<DeleteOutlined />} />
+                <Popconfirm
+                  key="delete"
+                  popupClassName="shop-mobile-popup-layer notifications-delete-popconfirm"
+                  title={t('pages.notifications.deleteConfirm')}
+                  onConfirm={() => handleDelete(item.id)}
+                >
+                  <Button size="small" type="link" danger icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')} />
                 </Popconfirm>,
               ].filter(Boolean)}
             >
               <List.Item.Meta
                 title={
                   <Space>
-                    <Tag color={typeColors[item.type] || 'default'}>{t(`status.${item.type}`)}</Tag>
+                    <Tag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
+                      {formatNotificationType(item.type)}
+                    </Tag>
                     <Text strong={!item.isRead}>{item.title}</Text>
                     {item.isRead && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
                   </Space>

@@ -1,4 +1,4 @@
-import type { Payment } from '../types';
+import type { PaymentCustomer } from '../types';
 
 export type PaymentRecoveryState = {
   isPaid: boolean;
@@ -7,7 +7,7 @@ export type PaymentRecoveryState = {
   minutesLeft: number | null;
 };
 
-export const getPaymentRecoveryState = (payment?: Pick<Payment, 'status' | 'expiresAt'> | null): PaymentRecoveryState => {
+export const getPaymentRecoveryState = (payment?: Pick<PaymentCustomer, 'status' | 'expiresAt'> | null): PaymentRecoveryState => {
   const isPaid = String(payment?.status || '').trim().toUpperCase() === 'PAID';
   if (!payment?.expiresAt || isPaid) {
     return {

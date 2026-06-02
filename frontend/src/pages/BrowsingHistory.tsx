@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
-import type { Product } from '../types';
+import type { ProductPublic as Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getLowStockCount } from '../utils/conversionConfig';
 import { addGuestCartItem } from '../utils/guestCart';
@@ -20,6 +20,7 @@ import {
   removeProductViewHistoryItem,
 } from '../utils/productViewPreferences';
 import './BrowsingHistory.css';
+import '../styles/mobile-page-contrast.css';
 
 const fallbackImage = productImageFallback;
 type HistoryQuickFilter = 'all' | 'recent' | 'deals' | 'lowStock';
@@ -32,7 +33,7 @@ const isDealProduct = (product: Product) => {
 };
 
 const isPurchasable = (product: Product) =>
-  (product.status || 'ACTIVE') === 'ACTIVE' && (product.stock === undefined || product.stock > 0);
+  product.stock === undefined || product.stock > 0;
 
 const BrowsingHistory: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -105,7 +106,7 @@ const BrowsingHistory: React.FC = () => {
           const recencyBoost = viewedAt >= oneDayAgo ? 28 : 0;
           const dealBoost = isDealProduct(product) ? 24 : 0;
           const stockBoost = getLowStockCount(product.stock, 1) !== null ? 18 : 0;
-          return recencyBoost + dealBoost + stockBoost + Math.min(Number(product.averageRating || product.rating || 0), 5) * 5;
+          return recencyBoost + dealBoost + stockBoost + Math.min(Number(product.averageRating || 0), 5) * 5;
         };
         return score(b) - score(a);
       })[0];
@@ -115,7 +116,7 @@ const BrowsingHistory: React.FC = () => {
   const filteredProducts = useMemo(() => {
     const query = keyword.trim().toLowerCase();
     const keywordMatched = !query ? historyProducts : historyProducts.filter((product) =>
-      [product.name, product.brand, product.categoryName, product.description]
+      [product.name, product.brand, product.description]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
     );
@@ -277,6 +278,7 @@ const BrowsingHistory: React.FC = () => {
             placeholder={t('pages.browsingHistory.searchPlaceholder')}
           />
           <Popconfirm
+            popupClassName="shop-mobile-popup-layer browsing-history-clear-popconfirm"
             title={t('pages.browsingHistory.clearConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}

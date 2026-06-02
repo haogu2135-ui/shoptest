@@ -1,4 +1,4 @@
-import type { Product, ProductVariant } from '../types';
+import type { ProductPublic, ProductVariant } from '../types';
 
 export type ProductOptionGroup = {
   name: string;
@@ -40,8 +40,23 @@ const normalizeVariantOptions = (variant: any): Record<string, string> => {
   return parseVariantOptionText(variant?.optionText);
 };
 
-export const getProductOptionGroups = (product?: Partial<Product> | null): ProductOptionGroup[] => {
+type ProductOptionInput = Partial<ProductPublic> & {
+  sizes?: unknown;
+  colors?: unknown;
+};
+
+export const getProductOptionGroups = (product?: ProductOptionInput | null): ProductOptionGroup[] => {
   if (!product) return [];
+  const directGroups = Array.isArray(product.optionGroups)
+    ? product.optionGroups
+      .map((group: any) => ({
+        name: String(group?.name || '').trim(),
+        values: normalizeOptionValues(Array.isArray(group?.values) ? group.values : (Array.isArray(group?.options) ? group.options : [])),
+      }))
+      .filter((group) => group.name && group.values.length > 0)
+    : [];
+  if (directGroups.length > 0) return directGroups;
+
   const specs = product.specifications || {};
   const configured = Object.entries(specs)
     .filter(([key]) => key.startsWith('options.'))
@@ -59,7 +74,7 @@ export const getProductOptionGroups = (product?: Partial<Product> | null): Produ
   return fallback;
 };
 
-export const getProductVariants = (product?: Partial<Product> | null): ProductVariant[] => {
+export const getProductVariants = (product?: ProductOptionInput | null): ProductVariant[] => {
   if (!product) return [];
   const rawVariants = (product as { variants?: ProductVariant[] | string }).variants;
   const normalizeVariants = (items: any[]) =>
@@ -82,7 +97,7 @@ export const getProductVariants = (product?: Partial<Product> | null): ProductVa
   }
 };
 
-export const needsOptionSelection = (product?: Partial<Product> | null) =>
+export const needsOptionSelection = (product?: ProductOptionInput | null) =>
   Boolean(product && (getProductOptionGroups(product).length > 0 || getProductVariants(product).length > 0));
 
 export const variantMatchesSelectedOptions = (

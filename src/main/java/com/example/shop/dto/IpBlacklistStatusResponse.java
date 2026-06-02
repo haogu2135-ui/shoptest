@@ -8,6 +8,9 @@ public class IpBlacklistStatusResponse {
     private int blockMinutes;
     private long blockedCount;
     private long monitoringCount;
+    private long releasedCount;
+    private long totalCount;
+    private long legacyLoginFailureCount;
 
     public boolean isEnabled() {
         return enabled;
@@ -63,5 +66,29 @@ public class IpBlacklistStatusResponse {
 
     public void setMonitoringCount(long monitoringCount) {
         this.monitoringCount = monitoringCount;
+    }
+
+    public long getReleasedCount() {
+        return releasedCount;
+    }
+
+    public void setReleasedCount(long releasedCount) {
+        this.releasedCount = releasedCount;
+    }
+
+    public long getTotalCount() {
+        return totalCount;
+    }
+
+    public void setTotalCount(long totalCount) {
+        this.totalCount = totalCount;
+    }
+
+    public long getLegacyLoginFailureCount() {
+        return legacyLoginFailureCount;
+    }
+
+    public void setLegacyLoginFailureCount(long legacyLoginFailureCount) {
+        this.legacyLoginFailureCount = legacyLoginFailureCount;
     }
 }

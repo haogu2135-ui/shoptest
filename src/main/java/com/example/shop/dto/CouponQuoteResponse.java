@@ -1,7 +1,5 @@
 package com.example.shop.dto;
 
-import com.example.shop.entity.UserCoupon;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -14,10 +12,10 @@ public class CouponQuoteResponse {
     private BigDecimal shippingFee;
     private BigDecimal payableAmount;
     private Long selectedUserCouponId;
-    private List<UserCoupon> availableCoupons;
+    private List<UserCouponResponse> availableCoupons;
 
     public CouponQuoteResponse(BigDecimal subtotal, BigDecimal discountAmount, BigDecimal payableAmount,
-                               Long selectedUserCouponId, List<UserCoupon> availableCoupons) {
+                               Long selectedUserCouponId, List<UserCouponResponse> availableCoupons) {
         this.subtotal = subtotal;
         this.discountAmount = discountAmount;
         this.shippingFee = BigDecimal.ZERO;

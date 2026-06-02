@@ -1980,8 +1980,10 @@
   }
 
   .shopee-product__quickActions button {
-    width: 31px;
-    height: 31px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 
   .shopee-product__name {
@@ -3031,8 +3033,10 @@
 }
 
 .shopee-product__quickActions button {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
   border-radius: 999px;
 }
 
@@ -3106,8 +3110,10 @@
   }
 
   .shopee-product__quickActions button {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 
   .shopee-section__header button,
@@ -3337,8 +3343,10 @@
   }
 
   .shopee-product__quickActions button {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 
   .pet-trust-strip {
@@ -4207,11 +4215,12 @@
     gap: 5px;
   }
 
+  .shopee-product__quickActions button,
   .shopee-product__quickActions .ant-btn {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    min-height: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 }
 
@@ -4471,5 +4480,113 @@
   .shopee-coupon-entry,
   .shopee-conversion-band__action {
     white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .shopee-categories-section {
+    margin-bottom: 0;
+  }
+
+  .shopee-categories-section + .shopee-recently-viewed-products {
+    margin-top: 8px;
+  }
+}
+
+/* V8 UI regression: the primary hero CTA must show its full label on desktop. */
+.shopee-hero__actions {
+  align-items: center;
+}
+
+.shopee-hero__actions .ant-btn {
+  flex: 0 0 auto;
+  width: fit-content;
+  max-width: 100%;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
+.shopee-hero__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .shopee-hero__actions .ant-btn {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    white-space: normal;
+  }
+
+  .shopee-hero__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+}
+
+/* Product-card badge safety: keep discount badges readable and above image controls. */
+.shopee-product__imageWrap {
+  isolation: isolate;
+}
+
+.shopee-product__discount {
+  z-index: 5;
+  border: 1px solid rgba(255, 247, 240, 0.38);
+  background: #8f2d17;
+  color: #fff7f0;
+  box-shadow: 0 12px 24px rgba(143, 45, 23, 0.24);
+}
+
+.shopee-product__mall {
+  z-index: 4;
+}
+
+.shopee-product__quickActions {
+  z-index: 3;
+}
+
+@media (max-width: 600px) {
+  .shopee-product__discount {
+    top: 8px;
+    right: 8px;
+    max-width: calc(100% - 16px);
+  }
+}
+
+/* Final mobile/App home storefront touch-target guard */
+@media (max-width: 600px) {
+  .shopee-hero__actions .ant-btn,
+  .shopee-hero__authActions .ant-btn,
+  .shopee-hero__featuredActions .ant-btn,
+  .shopee-hero__spotlight .ant-btn,
+  .shopee-hero__categoryRail button,
+  .shopee-mobile-quick-panel button,
+  .shopee-conversion-band__card,
+  .shopee-coupon-entry,
+  .shopee-story-card .ant-btn,
+  .shopee-section__header button,
+  .shopee-editorial-band__actions .ant-btn,
+  .shopee-editorial-band__miniCard,
+  .shopee-personalized-insight .ant-btn,
+  .shopee-product__quickActions .ant-btn,
+  .shopee-product__quickActions button,
+  .pet-ugc__upload,
+  .pet-ugc__imageButton,
+  .pet-ugc__like,
+  .pet-ugc__delete,
+  .shopee-home-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+  }
+
+  .pet-ugc__delete {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 }

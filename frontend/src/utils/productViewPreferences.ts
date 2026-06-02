@@ -1,4 +1,4 @@
-import type { Product } from '../types';
+import type { ProductPublic } from '../types';
 import { dispatchDomEvent } from './domEvents';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
@@ -74,7 +74,7 @@ const saveProductViewPreferences = (preferences: ProductViewPreferences) => {
   dispatchDomEvent('shop:product-view-preferences-updated');
 };
 
-export const recordProductView = (product: Pick<Product, 'id' | 'categoryId' | 'brand' | 'tag'>) => {
+export const recordProductView = (product: Pick<ProductPublic, 'id' | 'categoryId' | 'brand' | 'tag'>) => {
   try {
     const preferences = loadProductViewPreferences();
     const now = Date.now();

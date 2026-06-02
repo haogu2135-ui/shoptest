@@ -2,6 +2,7 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.EmailLoginCodeRequest;
 import com.example.shop.dto.EmailLoginRequest;
+import com.example.shop.dto.LoginRequest;
 import com.example.shop.entity.User;
 import com.example.shop.service.EmailLoginService;
 import com.example.shop.service.EmailLoginService.EmailLoginException;
@@ -41,7 +42,7 @@ public class LoginController {
     private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody(required = false) User loginRequest, HttpServletRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody(required = false) LoginRequest loginRequest, HttpServletRequest request) {
         String clientIp = clientKey(request);
         String login = normalizeLogin(loginRequest == null ? null : loginRequest.getUsername());
         String password = loginRequest == null ? null : loginRequest.getPassword();
@@ -170,6 +171,23 @@ public class LoginController {
         }
     }
 
+    @PostMapping("/password-reset-code")
+    public ResponseEntity<?> sendPasswordResetCode(@Valid @RequestBody(required = false) EmailLoginCodeRequest codeRequest, HttpServletRequest request) {
+        if (codeRequest == null) {
+            return ResponseEntity.badRequest().body(emailCodeError("INVALID_REQUEST", "Email payload is required"));
+        }
+        try {
+            emailLoginService.sendPasswordResetCode(codeRequest.getEmail(), clientKey(request));
+            return ResponseEntity.ok(emailCodeResponse("Verification code sent"));
+        } catch (EmailLoginException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(emailCodeError(e.getCode(), e.getMessage(), e.getRetryAfterSeconds()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(emailCodeError("SEND_FAILED", "Unable to send verification code"));
+        }
+    }
+
     @PostMapping("/email-login")
     public ResponseEntity<?> emailLogin(@Valid @RequestBody(required = false) EmailLoginRequest loginRequest, HttpServletRequest request) {
         if (loginRequest == null) {
@@ -210,6 +228,10 @@ public class LoginController {
                         : HttpStatus.BAD_REQUEST;
                 return ResponseEntity.status(status)
                         .body(emailCodeError(loginException.getCode(), loginException.getMessage(), loginException.getRetryAfterSeconds()));
+            }
+            if (e instanceof IllegalStateException) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(emailCodeError("CODE_SERVICE_UNAVAILABLE", "Verification service is temporarily unavailable"));
             }
             return ResponseEntity.badRequest().body(emailCodeError("INVALID_CODE", "Verification code expired or invalid"));
         }

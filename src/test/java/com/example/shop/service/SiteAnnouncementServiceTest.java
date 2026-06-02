@@ -1,6 +1,7 @@
 package com.example.shop.service;
 
 import com.example.shop.dto.SiteAnnouncementAdminSummaryResponse;
+import com.example.shop.dto.SiteAnnouncementPublicResponse;
 import com.example.shop.entity.SiteAnnouncement;
 import com.example.shop.repository.SiteAnnouncementRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,12 +47,12 @@ class SiteAnnouncementServiceTest {
         when(runtimeConfig.getInt("admin.announcements.title-max-chars", 120)).thenReturn(80);
         when(runtimeConfig.getInt("admin.announcements.content-max-chars", 500)).thenReturn(420);
         when(runtimeConfig.getInt("admin.announcements.link-url-max-chars", 500)).thenReturn(260);
-        when(repository.count()).thenReturn(9L);
-        when(repository.countCurrentlyActive(any(LocalDateTime.class))).thenReturn(3L);
-        when(repository.countScheduled(any(LocalDateTime.class))).thenReturn(2L);
-        when(repository.countExpired(any(LocalDateTime.class))).thenReturn(1L);
-        when(repository.countByStatusIgnoreCase("INACTIVE")).thenReturn(4L);
-        when(repository.countLinked()).thenReturn(5L);
+        when(repository.countAdmin(isNull(), isNull())).thenReturn(9L);
+        when(repository.countAdminCurrentlyActive(isNull(), isNull(), any(LocalDateTime.class))).thenReturn(3L);
+        when(repository.countAdminScheduled(isNull(), isNull(), any(LocalDateTime.class))).thenReturn(2L);
+        when(repository.countAdminExpired(isNull(), isNull(), any(LocalDateTime.class))).thenReturn(1L);
+        when(repository.countAdmin(eq("INACTIVE"), isNull())).thenReturn(4L);
+        when(repository.countAdminLinked(isNull(), isNull())).thenReturn(5L);
 
         SiteAnnouncementAdminSummaryResponse summary = service.adminSummary();
 
@@ -92,7 +95,7 @@ class SiteAnnouncementServiceTest {
         unsafe.setLinkUrl("javascript:alert(1)");
         when(repository.findActive(any(LocalDateTime.class), any(Pageable.class))).thenReturn(List.of(safe, unsafe));
 
-        List<SiteAnnouncement> active = service.findActive(4);
+        List<SiteAnnouncementPublicResponse> active = service.findActive(4);
 
         assertEquals(2, active.size());
         assertNotSame(safe, active.get(0));

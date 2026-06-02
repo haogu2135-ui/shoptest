@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
 import { CloseOutlined, CustomerServiceOutlined, SendOutlined, ShoppingOutlined, SoundOutlined, UserOutlined } from '@ant-design/icons';
-import { orderApi, supportApi, supportWebSocketUrl } from '../api';
-import type { Order, OrderItem, SupportMessage, SupportSession } from '../types';
+import { orderApi, supportApi, supportWebSocketProtocols, supportWebSocketUrl } from '../api';
+import type { OrderCustomer, OrderItemCustomer, SupportMessageCustomer, SupportSessionCustomer } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
@@ -13,16 +13,36 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { decodeSupportOrderMessage, encodeSupportOrderMessage, type SupportOrderContext } from '../utils/supportOrderMessage';
 import { formatSafeDate, formatSafeDateTime, formatSafeTime, getSafeTime } from '../utils/dateFormat';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
-import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext, type GuestSupportContext } from '../utils/guestSupportContext';
+import { clearGuestSupportContext, loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext, type GuestSupportContext } from '../utils/guestSupportContext';
+import { getReconnectDelayMs } from '../utils/reconnectBackoff';
+import { useNativeBackHandler } from '../utils/nativeBack';
 import './CustomerSupportWidget.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text } = Typography;
 const SUPPORT_BUTTON_POSITION_KEY = 'shop-support-button-position';
 const SUPPORT_BUTTON_SIZE = 56;
 const SUPPORT_BUTTON_MARGIN = 12;
 const SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN = 20;
+const SUPPORT_MESSAGE_WINDOW = 80;
+const SUPPORT_SESSION_HISTORY_WINDOW = 12;
 const supportOrderImageFallback = productImageFallback;
 const resolveSupportOrderImage = resolveProductImage;
+const SUPPORT_ORDER_STATUS_KEYS = new Set([
+  'PENDING_PAYMENT',
+  'PENDING_SHIPMENT',
+  'SHIPPED',
+  'PENDING_RECEIPT',
+  'COMPLETED',
+  'CANCELLED',
+  'RETURN_REQUESTED',
+  'RETURN_APPROVED',
+  'RETURN_SHIPPED',
+  'RETURN_REFUNDING',
+  'RETURNED',
+  'REFUNDING',
+  'REFUNDED',
+]);
 
 type SupportButtonPosition = {
   left: number;
@@ -33,6 +53,11 @@ type SupportOpenRequest = {
   id: number;
   guestOrderNo?: string;
   guestEmail?: string;
+  clearGuestContext?: boolean;
+};
+
+type SupportOpenSourceDetail = SupportOpenRequest & {
+  clearGuestSupportContext?: boolean;
 };
 
 type CustomerSupportWidgetProps = {
@@ -43,26 +68,51 @@ type CustomerSupportWidgetProps = {
 const getSupportButtonBottomMargin = () =>
   window.innerWidth <= 720 ? SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN : 24;
 
+const isSupportOpenCustomEvent = (source?: SupportOpenRequest | Event | null): source is CustomEvent =>
+  Boolean(typeof Event !== 'undefined' && source && typeof source === 'object' && 'detail' in source && source instanceof Event);
+
 const getGuestContextFromOpenSource = (source?: SupportOpenRequest | Event | null): GuestSupportContext | null => {
   if (!source) return null;
-  if ('detail' in source) {
-    return normalizeGuestSupportContext((source as CustomEvent).detail);
+  if (isSupportOpenCustomEvent(source)) {
+    return normalizeGuestSupportContext(source.detail);
   }
   return normalizeGuestSupportContext(source);
+};
+
+const shouldClearGuestContext = (source?: SupportOpenRequest | Event | null) => {
+  const detail = isSupportOpenCustomEvent(source) ? source.detail : source;
+  if (!detail || typeof detail !== 'object') return false;
+  const request = detail as SupportOpenSourceDetail;
+  return request.clearGuestContext === true || request.clearGuestSupportContext === true;
+};
+
+const newestSupportMessageId = (items: SupportMessageCustomer[]) =>
+  items.reduce((maxId, item) => Math.max(maxId, Number(item.id) || 0), 0) || undefined;
+
+const mergeSupportMessages = (current: SupportMessageCustomer[], incoming: SupportMessageCustomer[]) => {
+  const byId = new Map<number, SupportMessageCustomer>();
+  [...current, ...incoming].forEach((item) => {
+    if (Number.isSafeInteger(item.id) && item.id > 0) {
+      byId.set(item.id, item);
+    }
+  });
+  return Array.from(byId.values())
+    .sort((left, right) => left.id - right.id)
+    .slice(-SUPPORT_MESSAGE_WINDOW);
 };
 
 const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOpenRequest, onReady }) => {
   const [open, setOpen] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [session, setSession] = useState<SupportSession | null>(null);
-  const [sessionHistory, setSessionHistory] = useState<SupportSession[]>([]);
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [session, setSession] = useState<SupportSessionCustomer | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<SupportSessionCustomer[]>([]);
+  const [messages, setMessages] = useState<SupportMessageCustomer[]>([]);
+  const [orders, setOrders] = useState<OrderCustomer[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersLoadFailed, setOrdersLoadFailed] = useState(false);
   const [orderSelectOpen, setOrderSelectOpen] = useState(false);
-  const [detailOrder, setDetailOrder] = useState<Order | null>(null);
-  const [detailItems, setDetailItems] = useState<OrderItem[]>([]);
+  const [detailOrder, setDetailOrder] = useState<OrderCustomer | null>(null);
+  const [detailItems, setDetailItems] = useState<OrderItemCustomer[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [sendingOrderId, setSendingOrderId] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
@@ -83,13 +133,25 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const sessionRef = useRef<SupportSession | null>(null);
+  const sessionRef = useRef<SupportSessionCustomer | null>(null);
+  const messagesRef = useRef<SupportMessageCustomer[]>([]);
   const reconnectTimerRef = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const handledOpenRequestRef = useRef<number | null>(null);
+  const detailRequestSeqRef = useRef(0);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const formatOrderStatusLabel = useCallback((status?: string) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = rawStatus.toUpperCase();
+    if (!normalizedStatus) return t('common.unknown');
+    if (SUPPORT_ORDER_STATUS_KEYS.has(normalizedStatus)) {
+      return t(`status.${normalizedStatus}`);
+    }
+    return rawStatus;
+  }, [t]);
   const token = getLocalStorageItem('token');
   const activeGuestContext = !token ? guestContext : null;
   const canSendSupportMessage = Boolean(token || activeGuestContext);
@@ -159,14 +221,14 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const workflowOrder = sharedOrderContext || latestOrder || null;
   const workflowActions = useMemo(
     () => workflowOrder
-      ? buildSupportOrderWorkflowActions(workflowOrder, language, t(`status.${workflowOrder.status}`))
+      ? buildSupportOrderWorkflowActions(workflowOrder, language, formatOrderStatusLabel(workflowOrder.status))
       : [],
-    [language, t, workflowOrder]
+    [formatOrderStatusLabel, language, workflowOrder]
   );
   const conversationUpdatedAt = session?.lastMessageAt || session?.updatedAt || session?.createdAt;
   const assignedAgentText = session?.assignedAdminName || t('pages.support.unassignedAgent');
 
-  const sortSupportSessions = useCallback((items: SupportSession[]) =>
+  const sortSupportSessions = useCallback((items: SupportSessionCustomer[]) =>
     [...items].sort((left, right) => {
       const leftOpen = left.status === 'OPEN' ? 1 : 0;
       const rightOpen = right.status === 'OPEN' ? 1 : 0;
@@ -176,7 +238,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       return rightTime - leftTime || right.id - left.id;
     }), []);
 
-  const upsertSessionHistory = useCallback((nextSession: SupportSession) => {
+  const upsertSessionHistory = useCallback((nextSession: SupportSessionCustomer) => {
     setSessionHistory((items) => sortSupportSessions([nextSession, ...items.filter((item) => item.id !== nextSession.id)]));
   }, [sortSupportSessions]);
 
@@ -193,6 +255,10 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     try {
@@ -307,6 +373,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   useEffect(() => {
     if (!open || !token) return;
+    const socketToken = token;
     let disposed = false;
 
     const load = async () => {
@@ -315,10 +382,10 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         if (disposed) return;
         setSession(sessionRes.data);
         upsertSessionHistory(sessionRes.data);
-        const messagesRes = await supportApi.getMessages(sessionRes.data.id);
+        const messagesRes = await supportApi.getMessages(sessionRes.data.id, { limit: SUPPORT_MESSAGE_WINDOW });
         if (disposed) return;
-        setMessages(messagesRes.data);
-        supportApi.getSessions()
+        setMessages(mergeSupportMessages([], messagesRes.data));
+        supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW })
           .then((res) => {
             if (!disposed) setSessionHistory(sortSupportSessions(res.data || []));
           })
@@ -331,25 +398,36 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     };
 
     let shouldReconnect = true;
-    const connect = () => {
+    const scheduleReconnect = () => {
+      if (!shouldReconnect) return;
+      if (reconnectTimerRef.current) {
+        window.clearTimeout(reconnectTimerRef.current);
+      }
+      const delay = getReconnectDelayMs(reconnectAttemptRef.current);
+      reconnectAttemptRef.current += 1;
+      reconnectTimerRef.current = window.setTimeout(() => {
+        reconnectTimerRef.current = null;
+        connect();
+      }, delay);
+    };
+    function connect() {
       if (!shouldReconnect) return;
       let socket: WebSocket;
       try {
-        socket = new WebSocket(supportWebSocketUrl(token));
+        socket = new WebSocket(supportWebSocketUrl(socketToken), supportWebSocketProtocols(socketToken));
       } catch {
         setConnected(false);
-        if (shouldReconnect) {
-          reconnectTimerRef.current = window.setTimeout(connect, 2500);
-        }
+        scheduleReconnect();
         return;
       }
       socketRef.current = socket;
-      socket.onopen = () => setConnected(true);
+      socket.onopen = () => {
+        reconnectAttemptRef.current = 0;
+        setConnected(true);
+      };
       socket.onclose = () => {
         setConnected(false);
-        if (shouldReconnect) {
-          reconnectTimerRef.current = window.setTimeout(connect, 2500);
-        }
+        scheduleReconnect();
       };
       socket.onerror = () => setConnected(false);
       socket.onmessage = (event) => {
@@ -372,7 +450,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               return items;
             }
             if (incomingFromAgent) playTone();
-            return [...items, payload.message];
+            return mergeSupportMessages(items, [payload.message]);
           });
           if (payload.message.senderRole === 'ADMIN') {
             supportApi.markRead(payload.message.sessionId).catch(() => undefined);
@@ -383,7 +461,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           upsertSessionHistory(payload.session);
         }
       };
-    };
+    }
 
     load();
     connect();
@@ -394,6 +472,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         window.clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
+      reconnectAttemptRef.current = 0;
       socketRef.current?.close();
       socketRef.current = null;
     };
@@ -416,9 +495,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         if (orderTrackRes?.data?.order) {
           setOrders([orderTrackRes.data.order]);
         }
-        const messagesRes = await supportApi.getGuestMessages(sessionRes.data.id, activeGuestContext.orderNo, activeGuestContext.email);
+        const messagesRes = await supportApi.getGuestMessages(sessionRes.data.id, activeGuestContext.orderNo, activeGuestContext.email, { limit: SUPPORT_MESSAGE_WINDOW });
         if (disposed) return;
-        setMessages(messagesRes.data);
+        setMessages(mergeSupportMessages([], messagesRes.data));
         setUnread(0);
         supportApi.markGuestRead(sessionRes.data.id, activeGuestContext.orderNo, activeGuestContext.email).catch(() => undefined);
       } catch (err: any) {
@@ -441,14 +520,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       if (polling) return;
       polling = true;
       try {
+        const afterId = newestSupportMessageId(messagesRef.current);
         const [messagesRes, sessionsRes] = activeGuestContext
           ? await Promise.all([
-            supportApi.getGuestMessages(activeSessionId, activeGuestContext.orderNo, activeGuestContext.email),
+            supportApi.getGuestMessages(activeSessionId, activeGuestContext.orderNo, activeGuestContext.email, { afterId, limit: SUPPORT_MESSAGE_WINDOW }),
             Promise.resolve({ data: sessionRef.current ? [sessionRef.current] : [] }),
           ])
           : await Promise.all([
-            supportApi.getMessages(activeSessionId),
-            supportApi.getSessions(),
+            supportApi.getMessages(activeSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW }),
+            supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW }),
           ]);
         if (disposed || sessionRef.current?.id !== activeSessionId) return;
         const sortedSessions = sortSupportSessions(sessionsRes.data || []);
@@ -458,7 +538,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           sessionRef.current = selectedSession;
         }
         setSessionHistory(sortedSessions);
-        setMessages(messagesRes.data);
+        setMessages((items) => mergeSupportMessages(items, messagesRes.data));
         setUnread(0);
         if (activeGuestContext) {
           supportApi.markGuestRead(activeSessionId, activeGuestContext.orderNo, activeGuestContext.email).catch(() => undefined);
@@ -481,10 +561,19 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   const openPanel = useCallback((source?: SupportOpenRequest | Event | null) => {
     const nextGuestContext = getGuestContextFromOpenSource(source);
-    const existingGuestContext = !getLocalStorageItem('token') ? (guestContext || loadGuestSupportContext()) : null;
+    const clearGuestContext = shouldClearGuestContext(source);
+    const existingGuestContext = !clearGuestContext && !getLocalStorageItem('token') ? (guestContext || loadGuestSupportContext()) : null;
     if (nextGuestContext) {
       saveGuestSupportContext(nextGuestContext);
       setGuestContext(nextGuestContext);
+      setSession(null);
+      sessionRef.current = null;
+      setSessionHistory([]);
+      setMessages([]);
+      setOrders([]);
+    } else if (clearGuestContext) {
+      clearGuestSupportContext();
+      setGuestContext(null);
       setSession(null);
       sessionRef.current = null;
       setSessionHistory([]);
@@ -544,6 +633,28 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     }
   };
 
+  const closeOrderDetail = useCallback(() => {
+    detailRequestSeqRef.current += 1;
+    setDetailLoading(false);
+    setDetailOrder(null);
+    setDetailItems([]);
+  }, []);
+
+  const closeSupportForNativeBack = useCallback(() => {
+    if (orderSelectOpen) {
+      setOrderSelectOpen(false);
+      return true;
+    }
+    setOpen(false);
+    return true;
+  }, [orderSelectOpen]);
+
+  useNativeBackHandler(open, closeSupportForNativeBack);
+  useNativeBackHandler(Boolean(detailOrder || detailLoading), () => {
+    closeOrderDetail();
+    return true;
+  });
+
   useEffect(() => {
     const handleOpenSupport = (event: Event) => openPanel(event);
     window.addEventListener('shop:open-support', handleOpenSupport);
@@ -583,7 +694,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setSession(res.data.session);
         sessionRef.current = res.data.session;
         setSessionHistory([res.data.session]);
-        setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
+        setMessages((items) => mergeSupportMessages(items, [res.data.message]));
         setContent('');
         return;
       }
@@ -599,7 +710,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       const res = await supportApi.sendMessage(text, activeSessionId);
       setSession(res.data.session);
       upsertSessionHistory(res.data.session);
-      setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
+      setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       setContent('');
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
@@ -627,7 +738,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setSession(res.data.session);
         sessionRef.current = res.data.session;
         setSessionHistory([res.data.session]);
-        setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
+        setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       } else if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         socketRef.current.send(JSON.stringify({
           type: 'SEND',
@@ -638,7 +749,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         const res = await supportApi.sendMessage(text, activeSessionId);
         setSession(res.data.session);
         upsertSessionHistory(res.data.session);
-        setMessages((items) => items.some((item) => item.id === res.data.message.id) ? items : [...items, res.data.message]);
+        setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       }
       message.success(t('pages.support.orderSent'));
     } catch (err: any) {
@@ -657,6 +768,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   };
 
   const openOrderDetail = async (orderId: number) => {
+    const requestId = detailRequestSeqRef.current + 1;
+    detailRequestSeqRef.current = requestId;
     setDetailLoading(true);
     try {
       const guestEmail = activeGuestContext?.email;
@@ -665,12 +778,17 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         orderApi.getById(orderId, guestEmail, guestOrderNo),
         orderApi.getItems(orderId, guestEmail, guestOrderNo),
       ]);
+      if (detailRequestSeqRef.current !== requestId) return;
       setDetailOrder(orderRes.data);
       setDetailItems(itemsRes.data);
     } catch {
-      message.error(t('pages.support.orderLoadFailed'));
+      if (detailRequestSeqRef.current === requestId) {
+        message.error(t('pages.support.orderLoadFailed'));
+      }
     } finally {
-      setDetailLoading(false);
+      if (detailRequestSeqRef.current === requestId) {
+        setDetailLoading(false);
+      }
     }
   };
 
@@ -705,11 +823,11 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     }
     try {
       const messagesRes = activeGuestContext
-        ? await supportApi.getGuestMessages(sessionId, activeGuestContext.orderNo, activeGuestContext.email)
-        : await supportApi.getMessages(sessionId);
-      setMessages(messagesRes.data);
+        ? await supportApi.getGuestMessages(sessionId, activeGuestContext.orderNo, activeGuestContext.email, { limit: SUPPORT_MESSAGE_WINDOW })
+        : await supportApi.getMessages(sessionId, { limit: SUPPORT_MESSAGE_WINDOW });
+      setMessages(mergeSupportMessages([], messagesRes.data));
       if (!activeGuestContext) {
-        supportApi.getSessions()
+        supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW })
           .then((res) => setSessionHistory(sortSupportSessions(res.data || [])))
           .catch(() => undefined);
       }
@@ -859,7 +977,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                                   <div className="customer-support-widget__orderTitle">{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
                                   <div className="customer-support-widget__orderAmount commerce-money">{formatMoney(order.totalAmount)}</div>
                                   <div className="customer-support-widget__orderTags">
-                                    <Tag color="blue">{t(`status.${order.status}`)}</Tag>
+                                    <Tag color="blue">{formatOrderStatusLabel(order.status)}</Tag>
                                     {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
                                   </div>
                                   <Button className="customer-support-widget__linkButton" type="link" size="small" onClick={() => openOrderDetail(order.id)}>
@@ -1009,10 +1127,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         width={isMobileViewport ? 'calc(100vw - 20px)' : 520}
         title={detailOrder ? `${t('pages.support.order')} ${detailOrder.orderNo || `#${detailOrder.id}`}` : t('pages.support.order')}
         open={!!detailOrder || detailLoading}
-        onCancel={() => {
-          setDetailOrder(null);
-          setDetailItems([]);
-        }}
+        onCancel={closeOrderDetail}
         footer={null}
       >
         {detailLoading ? (
@@ -1020,7 +1135,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         ) : detailOrder ? (
           <Space direction="vertical" className="customer-support-widget__orderDetail" size="middle">
             <Space wrap>
-              <Tag color="blue">{detailOrder.status}</Tag>
+              <Tag color="blue">{formatOrderStatusLabel(detailOrder.status)}</Tag>
               {detailOrder.paymentMethod ? <Tag>{detailOrder.paymentMethod}</Tag> : null}
               <Text strong className="customer-support-widget__money commerce-money">{formatMoney(detailOrder.totalAmount)}</Text>
             </Space>
@@ -1034,7 +1149,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                     avatar={
                       <img
                         src={resolveSupportOrderImage(item.imageUrl)}
-                        alt={item.productName}
+                        alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
                         className="customer-support-widget__orderItemImage"
                         onError={(event) => {
                           if (event.currentTarget.src !== supportOrderImageFallback) {
@@ -1043,10 +1158,10 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                         }}
                       />
                     }
-                    title={item.productName || `#${item.productId}`}
+                    title={item.productName || t('pages.profile.productFallback', { id: item.productId })}
                     description={
                       <Space direction="vertical" size={0}>
-                        {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
+                        {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
                         <Text type="secondary" className="customer-support-widget__itemUnit commerce-atomic commerce-price-quantity">
                           <span className="commerce-money">{formatMoney(item.price)}</span>
                           <span className="commerce-quantity">x {item.quantity}</span>

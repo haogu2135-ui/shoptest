@@ -37,12 +37,16 @@ const buildChinaRegionData = (): RegionOption => {
   const provinces = (chinaLevelData as ChinaLevelItem[]).map((province) =>
     option(
       province.n,
-      (province.d || []).map((city) =>
-        option(
-          city.n,
-          (city.d || []).map((area) => option(area.n, townsByAreaCode[area.c] || [])),
-        ),
-      ),
+      (province.d || []).map((cityOrArea) => {
+        const childAreas = cityOrArea.d || [];
+        if (childAreas.length === 0) {
+          return option(cityOrArea.n, townsByAreaCode[cityOrArea.c] || []);
+        }
+        return option(
+          cityOrArea.n,
+          childAreas.map((area) => option(area.n, townsByAreaCode[area.c] || [])),
+        );
+      }),
     ),
   );
 

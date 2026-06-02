@@ -35,6 +35,7 @@ class RateLimitServiceTest {
         when(runtimeConfig.getInt("traffic.rate-limit.admin-per-minute", 600)).thenReturn(600);
         when(runtimeConfig.getInt("traffic.rate-limit.window-seconds", 60)).thenReturn(60);
         when(runtimeConfig.getInt("traffic.rate-limit.max-buckets", 5000)).thenReturn(5000);
+        when(runtimeConfig.getInt("traffic.rate-limit.pet-gallery-like-per-minute", 20)).thenReturn(2);
         when(runtimeConfig.getString("traffic.rate-limit.skip-path-prefixes", "/actuator/health,/actuator/info,/uploads/,/ws/"))
                 .thenReturn("/actuator/health,/actuator/info,/uploads/,/ws/");
         when(clientIpResolver.resolve(org.mockito.ArgumentMatchers.any())).thenReturn("203.0.113.9");
@@ -79,6 +80,18 @@ class RateLimitServiceTest {
 
         assertEquals(0, service.status().getActiveBuckets());
         assertEquals(5, service.status().getAcceptedRequests());
+    }
+
+    @Test
+    void petGalleryLikeEndpointHasSharedPerClientLimitAcrossPhotoIds() {
+        assertTrue(service.check(request("POST", "/pet-gallery/100/like"), null).isAllowed());
+        assertTrue(service.check(request("POST", "/pet-gallery/200/like"), null).isAllowed());
+
+        RateLimitService.Decision third = service.check(request("POST", "/pet-gallery/300/like"), null);
+
+        assertFalse(third.isAllowed());
+        assertEquals(0, third.getRemaining());
+        assertEquals("/pet-gallery/{id}/like", service.status().getHotBuckets().get(0).getPath());
     }
 
     @Test

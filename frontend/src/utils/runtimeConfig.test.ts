@@ -37,6 +37,9 @@ describe('runtimeConfig', () => {
 
     expect(normalizeApiBaseUrl('//evil.example.com')).toBeNull();
     expect(normalizeApiBaseUrl('javascript:alert(1)')).toBeNull();
+    expect(normalizeApiBaseUrl('https:\\\\api.example.com\\root')).toBeNull();
+    expect(normalizeApiBaseUrl('https://api.example.com/%5cadmin')).toBeNull();
+    expect(normalizeApiBaseUrl('https://api.example.com/root%00')).toBeNull();
     expect(resolveApiBaseUrl()).toBe('https://build.example.com/root');
   });
 
@@ -57,6 +60,9 @@ describe('runtimeConfig', () => {
     expect(normalizeSupportWebSocketUrl('javascript:alert(1)')).toBeNull();
     expect(normalizeSupportWebSocketUrl('wss://user:pass@support.example.com/ws')).toBeNull();
     expect(normalizeSupportWebSocketUrl('wss://support.example.com/ws?token=secret')).toBeNull();
+    expect(normalizeSupportWebSocketUrl('wss:\\\\support.example.com\\ws')).toBeNull();
+    expect(normalizeSupportWebSocketUrl('wss://support.example.com/%5cws')).toBeNull();
+    expect(normalizeSupportWebSocketUrl('wss://support.example.com/ws%00')).toBeNull();
   });
 
   it('derives support websocket endpoint from API origin without inheriting api proxy path', () => {

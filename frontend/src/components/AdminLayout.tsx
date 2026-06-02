@@ -5,14 +5,15 @@ import {
   ShoppingOutlined, TeamOutlined, StarOutlined, QuestionCircleOutlined,
   ArrowLeftOutlined, LogoutOutlined, CustomerServiceOutlined, GiftOutlined,
   NotificationOutlined, TagsOutlined, TruckOutlined, SoundOutlined,
-  SafetyCertificateOutlined, ApiOutlined, SettingOutlined, CloudSyncOutlined, FileTextOutlined, ThunderboltOutlined, AlertOutlined, StopOutlined,
+  SafetyCertificateOutlined, ApiOutlined, SettingOutlined, CloudSyncOutlined, FileTextOutlined, ThunderboltOutlined, AlertOutlined, StopOutlined, CameraOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { adminApi, adminSupportApi, userApi } from '../api';
+import { adminApi, adminSupportApi, clearStoredAuthSession, userApi } from '../api';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getEffectiveRole, isAdminRole, isSuperAdminRole } from '../utils/roles';
-import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import ErrorBoundary from './ErrorBoundary';
 import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
@@ -53,6 +54,7 @@ const AdminLayout: React.FC = () => {
     canSee('alerts') ? { key: '/admin/alerts', icon: <AlertOutlined />, label: t('adminLayout.alerts') } : null,
     canSee('ip-blacklist') ? { key: '/admin/ip-blacklist', icon: <StopOutlined />, label: t('adminLayout.ipBlacklist') } : null,
     canSee('logs') ? { key: '/admin/logs', icon: <FileTextOutlined />, label: t('adminLayout.logs') } : null,
+    canSee('pet-gallery') ? { key: '/admin/pet-gallery', icon: <CameraOutlined />, label: t('adminLayout.petGallery') } : null,
     canSee('registry') ? { key: '/admin/registry', icon: <ApiOutlined />, label: t('adminLayout.registry') } : null,
     canSee('config-center') ? { key: '/admin/config-center', icon: <CloudSyncOutlined />, label: t('adminLayout.configCenter') } : null,
     canSee('traffic-control') ? { key: '/admin/traffic-control', icon: <ThunderboltOutlined />, label: t('adminLayout.trafficControl') } : null,
@@ -71,35 +73,38 @@ const AdminLayout: React.FC = () => {
   const defaultAdminPath = menuItems[0]?.key as string | undefined;
   const canSeeSupport = canSee('support');
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      const token = getLocalStorageItem('token');
-      if (!token) {
-        message.warning(t('messages.loginRequired'));
-        navigate(buildLoginUrlFromWindow());
+  const checkAdmin = useCallback(async (initial = false) => {
+    const token = getLocalStorageItem('token');
+    if (!token) {
+      if (initial) message.warning(t('messages.loginRequired'));
+      clearStoredAuthSession();
+      navigate(buildLoginUrlFromWindow(), { replace: true });
+      return;
+    }
+    try {
+      const res = await userApi.getProfile();
+      const effectiveRole = getEffectiveRole(res.data.role, res.data.roleCode);
+      if (!isAdminRole(effectiveRole)) {
+        message.error(t('adminLayout.noPermission'));
+        clearStoredAuthSession();
+        navigate('/', { replace: true });
         return;
       }
-      try {
-        const res = await userApi.getProfile();
-        const effectiveRole = getEffectiveRole(res.data.role, res.data.roleCode);
-        if (!isAdminRole(effectiveRole)) {
-          message.error(t('adminLayout.noPermission'));
-          navigate('/');
-          return;
-        }
-        setLocalStorageItem('role', effectiveRole);
-        setCurrentRole(effectiveRole);
-        const permissionsRes = await adminApi.getMyPermissions();
-        const nextPermissions = permissionsRes.data.permissions || [];
-        setPermissions(nextPermissions);
-        setChecking(false);
-      } catch {
-        message.error(t('adminLayout.verifyFailed'));
-        navigate(buildLoginUrlFromWindow());
-      }
-    };
-    checkAdmin();
+      setLocalStorageItem('role', effectiveRole);
+      setCurrentRole(effectiveRole);
+      const permissionsRes = await adminApi.getMyPermissions({ bypassCache: true });
+      setPermissions(permissionsRes.data.permissions || []);
+      setChecking(false);
+    } catch {
+      message.error(t('adminLayout.verifyFailed'));
+      clearStoredAuthSession();
+      navigate(buildLoginUrlFromWindow(), { replace: true });
+    }
   }, [navigate, t]);
+
+  useEffect(() => {
+    void checkAdmin(checking);
+  }, [checkAdmin, checking, location.pathname]);
 
   useEffect(() => {
     if (checking) return;
@@ -140,12 +145,7 @@ const AdminLayout: React.FC = () => {
   const handleLogout = () => {
     const refreshToken = getLocalStorageItem('refreshToken');
     userApi.logout(refreshToken).catch(() => undefined);
-    removeLocalStorageItem('token');
-    removeLocalStorageItem('refreshToken');
-    removeLocalStorageItem('userId');
-    removeLocalStorageItem('username');
-    removeLocalStorageItem('role');
-    removeLocalStorageItem('adminDefaultPath');
+    clearStoredAuthSession();
     navigate('/login');
   };
 
@@ -194,7 +194,9 @@ const AdminLayout: React.FC = () => {
           </Button>
         </Header>
         <Content className="admin-layout__content">
-          <Outlet />
+          <ErrorBoundary key={location.pathname} homePath="/admin/dashboard" homeLabel={t('adminLayout.dashboard')}>
+            <Outlet />
+          </ErrorBoundary>
         </Content>
       </Layout>
     </Layout>

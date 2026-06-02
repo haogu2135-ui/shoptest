@@ -5,6 +5,9 @@ import com.example.shop.dto.IpBlacklistBatchReleaseResponse;
 import com.example.shop.dto.IpBlacklistRequest;
 import com.example.shop.dto.IpBlacklistStatusResponse;
 import com.example.shop.entity.IpBlacklistEntry;
+import com.example.shop.security.SecurityUtils;
+import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.util.SensitiveDataMasker;
@@ -28,10 +31,14 @@ import java.util.List;
 public class AdminIpBlacklistController {
     private final IpBlacklistService ipBlacklistService;
     private final SecurityAuditLogService auditLogService;
+    private final AdminRoleService adminRoleService;
 
-    public AdminIpBlacklistController(IpBlacklistService ipBlacklistService, SecurityAuditLogService auditLogService) {
+    public AdminIpBlacklistController(IpBlacklistService ipBlacklistService,
+                                      SecurityAuditLogService auditLogService,
+                                      AdminRoleService adminRoleService) {
         this.ipBlacklistService = ipBlacklistService;
         this.auditLogService = auditLogService;
+        this.adminRoleService = adminRoleService;
     }
 
     @GetMapping
@@ -51,6 +58,7 @@ public class AdminIpBlacklistController {
     public IpBlacklistEntry block(@RequestBody(required = false) IpBlacklistRequest body, Authentication authentication, HttpServletRequest request) {
         String ipAddress = body == null ? null : body.getIpAddress();
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.IP_BLACKLIST_BLOCK_PERMISSION);
             IpBlacklistEntry entry = ipBlacklistService.block(
                     ipAddress,
                     IpBlacklistService.SOURCE_MANUAL,
@@ -70,6 +78,7 @@ public class AdminIpBlacklistController {
     @PostMapping("/{id}/release")
     public IpBlacklistEntry release(@PathVariable Long id, Authentication authentication, HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.IP_BLACKLIST_RELEASE_PERMISSION);
             IpBlacklistEntry entry = ipBlacklistService.release(id, actor(authentication))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "IP blacklist entry not found"));
             auditLogService.record("IP_BLACKLIST_RELEASE", "SUCCESS", authentication, "IP_BLACKLIST", id, request,
@@ -87,6 +96,7 @@ public class AdminIpBlacklistController {
                                                         Authentication authentication,
                                                         HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.IP_BLACKLIST_RELEASE_PERMISSION);
             IpBlacklistBatchReleaseResponse response = ipBlacklistService.releaseBatch(body == null ? null : body.getIds(), actor(authentication));
             auditLogService.record("IP_BLACKLIST_BATCH_RELEASE", "SUCCESS", authentication, "IP_BLACKLIST", "batch", request,
                     "IP blacklist entries released in batch",
@@ -103,8 +113,28 @@ public class AdminIpBlacklistController {
 
     @PostMapping("/record-login-failure")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void recordLoginFailure(@RequestBody(required = false) IpBlacklistRequest body) {
-        ipBlacklistService.recordFailure(IpBlacklistService.SOURCE_LOGIN, body == null ? null : body.getIpAddress(), body == null ? null : body.getReason());
+    public void recordLoginFailure(@RequestBody(required = false) IpBlacklistRequest body,
+                                   Authentication authentication,
+                                   HttpServletRequest request) {
+        String ipAddress = body == null ? null : body.getIpAddress();
+        try {
+            requireAdminActionPermission(authentication, AdminRoleService.IP_BLACKLIST_RECORD_FAILURE_PERMISSION);
+            ipBlacklistService.recordFailure(IpBlacklistService.SOURCE_LOGIN, ipAddress, body == null ? null : body.getReason());
+            auditLogService.record("IP_BLACKLIST_RECORD_LOGIN_FAILURE", "SUCCESS", authentication, "IP_BLACKLIST", ipAddress, request,
+                    "Login failure recorded for blacklist evaluation", ipBlacklistMetadata(body));
+        } catch (RuntimeException e) {
+            auditLogService.record("IP_BLACKLIST_RECORD_LOGIN_FAILURE", "FAILURE", authentication, "IP_BLACKLIST", ipAddress, request,
+                    e.getMessage(), ipBlacklistMetadata(body));
+            throw e;
+        }
+    }
+
+    private void requireAdminActionPermission(Authentication authentication, String permission) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (adminRoleService.hasPermission(user.getId(), permission)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
     }
 
     private String actor(Authentication authentication) {

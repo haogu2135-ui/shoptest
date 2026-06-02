@@ -2524,3 +2524,23 @@
     }
   }
 }
+
+/* Final mobile/App support widget touch-target guard */
+@media (max-width: 720px) {
+  .customer-support-widget__headerClose.ant-btn,
+  .customer-support-widget__sessionSelect .ant-select-selector,
+  .customer-support-widget__welcomeQuickReplies button,
+  .customer-support-widget__quickReplies .ant-btn,
+  .customer-support-widget__workflowChip,
+  .customer-support-widget__shareLatest.ant-btn,
+  .customer-support-widget__orderSelect .ant-select-selector,
+  .customer-support-widget__messageInput .ant-input,
+  .customer-support-widget__actions .ant-btn,
+  .customer-support-widget__linkButton.ant-btn {
+    min-height: 44px;
+  }
+
+  .customer-support-widget__headerClose.ant-btn {
+    min-width: 44px;
+  }
+}

@@ -1,10 +1,25 @@
 const LOGIN_PATH = '/login';
 const DEFAULT_REDIRECT_PATH = '/';
 
+const hasUnsafeRedirectCharacter = (value: string) =>
+  Array.from(value).some((char) => {
+    const code = char.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
+
 const normalizeRelativePath = (value: unknown) => {
   const path = String(value || '').trim();
   if (!path.startsWith('/')) return '';
   if (path.startsWith('//')) return '';
+  const normalizedPath = path.toLowerCase();
+  if (
+    hasUnsafeRedirectCharacter(path)
+    || path.includes('\\')
+    || normalizedPath.includes('%00')
+    || normalizedPath.includes('%5c')
+  ) {
+    return '';
+  }
   return path;
 };
 

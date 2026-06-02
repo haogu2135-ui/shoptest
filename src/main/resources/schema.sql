@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
     role_code VARCHAR(50),
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    password_changed_at TIMESTAMP(3) NULL
 );
 
 -- 鍟嗗搧鍒嗙被琛?
@@ -108,6 +109,9 @@ CREATE TABLE IF NOT EXISTS orders (
     coupon_name VARCHAR(100),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING_PAYMENT',
     shipping_address TEXT NOT NULL,
+    recipient_name VARCHAR(120),
+    recipient_phone VARCHAR(60),
+    contact_email VARCHAR(160),
     payment_method VARCHAR(50) NOT NULL,
     tracking_number VARCHAR(100),
     tracking_carrier_code VARCHAR(80),
@@ -124,7 +128,16 @@ CREATE TABLE IF NOT EXISTS orders (
     completed_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_orders_status_created (status, created_at),
+    INDEX idx_orders_user_status (user_id, status),
+    INDEX idx_orders_created_id (created_at, id),
+    INDEX idx_orders_status_updated (status, updated_at),
+    INDEX idx_orders_status_return_requested (status, return_requested_at),
+    INDEX idx_orders_status_return_approved (status, return_approved_at),
+    INDEX idx_orders_status_return_shipped (status, return_shipped_at),
+    INDEX idx_orders_status_tracking (status, tracking_number),
+    INDEX idx_orders_refunded_at (refunded_at)
 );
 
 -- 鏀惰揣鍦板潃琛?
@@ -161,7 +174,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     content_format VARCHAR(20) NOT NULL DEFAULT 'TEXT',
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_notifications_user_read (user_id, is_read)
 );
 
 -- 璁㈠崟璇︽儏琛?
@@ -192,8 +206,10 @@ CREATE TABLE IF NOT EXISTS reviews (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
     INDEX idx_reviews_product_id (product_id),
     INDEX idx_reviews_user_id (user_id),
+    INDEX idx_reviews_order_id (order_id),
     INDEX idx_reviews_status_created (status, created_at)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -236,13 +252,16 @@ CREATE TABLE IF NOT EXISTS pet_gallery_photo_likes (
     photo_id BIGINT NOT NULL,
     user_id BIGINT,
     ip_address VARCHAR(45) NOT NULL,
+    viewer_key VARCHAR(120) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (photo_id) REFERENCES pet_gallery_photos(id),
     FOREIGN KEY (user_id) REFERENCES users(id),
     INDEX idx_pet_gallery_like_photo (photo_id),
     INDEX idx_pet_gallery_like_user (user_id),
     INDEX idx_pet_gallery_like_ip (ip_address),
-    UNIQUE KEY uk_gallery_like_photo_user (photo_id, user_id)
+    INDEX idx_pet_gallery_like_viewer (viewer_key),
+    UNIQUE KEY uk_gallery_like_photo_user (photo_id, user_id),
+    UNIQUE KEY uk_gallery_like_photo_viewer (photo_id, viewer_key)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS payments (
@@ -263,7 +282,9 @@ CREATE TABLE IF NOT EXISTS payments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id),
-    UNIQUE KEY uk_payment_order_channel (order_id, channel)
+    UNIQUE KEY uk_payment_order_channel (order_id, channel),
+    INDEX idx_payments_order_no_channel (order_no, channel),
+    INDEX idx_payments_transaction_id (transaction_id)
 );
 
 CREATE TABLE IF NOT EXISTS security_audit_logs (
@@ -322,6 +343,9 @@ CREATE TABLE IF NOT EXISTS user_coupons (
     INDEX idx_user_coupons_user_status (user_id, status)
 );
 
+ALTER TABLE orders ADD CONSTRAINT fk_orders_coupon_id FOREIGN KEY (coupon_id) REFERENCES coupons(id);
+ALTER TABLE orders ADD CONSTRAINT fk_orders_user_coupon_id FOREIGN KEY (user_coupon_id) REFERENCES user_coupons(id);
+
 CREATE TABLE IF NOT EXISTS pet_birthday_coupon_grants (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     pet_id BIGINT NOT NULL,
@@ -378,6 +402,7 @@ CREATE TABLE IF NOT EXISTS support_sessions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL,
     assigned_admin_id BIGINT,
+    context_key VARCHAR(120),
     status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
     last_message VARCHAR(500),
     last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -385,6 +410,7 @@ CREATE TABLE IF NOT EXISTS support_sessions (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (assigned_admin_id) REFERENCES users(id),
+    INDEX idx_support_sessions_user_context_status (user_id, context_key, status),
     INDEX idx_support_sessions_user_status (user_id, status),
     INDEX idx_support_sessions_updated_at (updated_at)
 );
@@ -415,6 +441,8 @@ ALTER TABLE products MODIFY COLUMN description TEXT;
 ALTER TABLE users MODIFY COLUMN email VARCHAR(100) NULL;
 ALTER TABLE users ADD COLUMN role_code VARCHAR(50);
 ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE users ADD COLUMN password_changed_at TIMESTAMP(3) NULL;
+UPDATE users SET password_changed_at = COALESCE(password_changed_at, updated_at, created_at, NOW(3)) WHERE password_changed_at IS NULL;
 ALTER TABLE users ADD UNIQUE KEY uk_users_phone (phone);
 ALTER TABLE cart_items ADD COLUMN selected_specs TEXT;
 ALTER TABLE cart_items DROP INDEX uk_cart_user_product;
@@ -457,6 +485,9 @@ ALTER TABLE orders ADD COLUMN shipping_fee DECIMAL(10,2) DEFAULT 0.00;
 ALTER TABLE orders ADD COLUMN user_coupon_id BIGINT;
 ALTER TABLE orders ADD COLUMN coupon_id BIGINT;
 ALTER TABLE orders ADD COLUMN coupon_name VARCHAR(100);
+ALTER TABLE orders ADD COLUMN recipient_name VARCHAR(120);
+ALTER TABLE orders ADD COLUMN recipient_phone VARCHAR(60);
+ALTER TABLE orders ADD COLUMN contact_email VARCHAR(160);
 ALTER TABLE notifications ADD COLUMN content_format VARCHAR(20) NOT NULL DEFAULT 'TEXT';
 ALTER TABLE payments ADD COLUMN expires_at TIMESTAMP NULL;
 ALTER TABLE payments ADD COLUMN provider_reference VARCHAR(128);
@@ -502,14 +533,14 @@ UPDATE orders SET completed_at = updated_at WHERE completed_at IS NULL AND statu
 UPDATE orders SET returned_at = updated_at, refunded_at = COALESCE(refunded_at, updated_at) WHERE status = 'RETURNED' AND returned_at IS NULL;
 
 INSERT IGNORE INTO brands (id, name, description, logo_url, website_url, status, sort_order) VALUES
-(1, 'PawPilot', 'Smart feeding and connected pet care devices.', 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=240&q=80', 'https://pawpilot.example.com', 'ACTIVE', 10),
-(2, 'HydraWhisk', 'Quiet hydration products for cats and small pets.', 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=240&q=80', 'https://hydrawhisk.example.com', 'ACTIVE', 20),
-(3, 'TrailTails', 'Walking, travel and safety gear for daily adventures.', 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=240&q=80', 'https://trailtails.example.com', 'ACTIVE', 30),
-(4, 'CloudNap', 'Comfort beds and furniture for restful pets.', 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=240&q=80', 'https://cloudnap.example.com', 'ACTIVE', 40),
-(5, 'BrightBite', 'Dental toys and enrichment for healthy play.', 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=240&q=80', 'https://brightbite.example.com', 'ACTIVE', 50),
-(6, 'PurePaws', 'Gentle grooming and hygiene essentials.', 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=240&q=80', 'https://purepaws.example.com', 'ACTIVE', 60),
-(7, 'NutriTail', 'Balanced nutrition for cats and dogs.', 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=240&q=80', 'https://nutritail.example.com', 'ACTIVE', 70),
-(8, 'CanineCore', 'Training treats and puppy care basics.', 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=240&q=80', 'https://caninecore.example.com', 'ACTIVE', 80);
+(1, 'PawPilot', 'Smart feeding and connected pet care devices.', 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=240&q=80', NULL, 'ACTIVE', 10),
+(2, 'HydraWhisk', 'Quiet hydration products for cats and small pets.', 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=240&q=80', NULL, 'ACTIVE', 20),
+(3, 'TrailTails', 'Walking, travel and safety gear for daily adventures.', 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=240&q=80', NULL, 'ACTIVE', 30),
+(4, 'CloudNap', 'Comfort beds and furniture for restful pets.', 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=240&q=80', NULL, 'ACTIVE', 40),
+(5, 'BrightBite', 'Dental toys and enrichment for healthy play.', 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=240&q=80', NULL, 'ACTIVE', 50),
+(6, 'PurePaws', 'Gentle grooming and hygiene essentials.', 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=240&q=80', NULL, 'ACTIVE', 60),
+(7, 'NutriTail', 'Balanced nutrition for cats and dogs.', 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=240&q=80', NULL, 'ACTIVE', 70),
+(8, 'CanineCore', 'Training treats and puppy care basics.', 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=240&q=80', NULL, 'ACTIVE', 80);
 
 INSERT IGNORE INTO logistics_carriers (id, name, tracking_code, status, sort_order) VALUES
 (1, 'DHL', '100001', 'ACTIVE', 10),
@@ -522,7 +553,7 @@ INSERT IGNORE INTO logistics_carriers (id, name, tracking_code, status, sort_ord
 
 -- Default catalog seed is intentionally non-destructive: existing rows are left intact.
 INSERT IGNORE INTO categories (id, name, description, parent_id, level, image_url) VALUES
-(1, 'Pet Supplies', 'English default catalog root for pet-only test data.', NULL, 1, 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=900&q=80'),
+(1, 'Pet Supplies', 'Main catalog root for pet food, care and accessories.', NULL, 1, 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=900&q=80'),
 (2, 'Pet Food', 'Dry food, wet food, treats and supplements for dogs and cats.', 1, 2, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80'),
 (3, 'Bowls, Feeders & Waterers', 'Automatic feeders, slow feeders, bowls and fountains.', 1, 2, 'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80'),
 (4, 'Beds & Furniture', 'Comfort beds, crates, mats and calming furniture.', 1, 2, 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80'),
@@ -542,7 +573,7 @@ INSERT IGNORE INTO products (
     tag, images, specifications, detail_content, warranty, shipping, free_shipping,
     free_shipping_threshold, is_featured
 ) VALUES
-(1, 'PawPilot Smart Pet Feeder 4L', 'Programmable automatic feeder with portion control, sealed food storage and a clear schedule for cats and small dogs.', 129.90, 42, 10, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'PawPilot', 159.90, 19, 109.90, '2026-05-01 00:00:00', '2026-06-30 23:59:59', 'hot', '["https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium","Capacity":"4 L","Material":"BPA-free ABS","Color":"White","options.Size":"Small,Medium","options.Color":"White,Black","i18n.es.name":"Comedero inteligente PawPilot 4L","i18n.es.description":"Comedero automático programable con control de porciones para gatos y perros pequeños.","i18n.zh.name":"PawPilot 4L \\u667a\\u80fd\\u5ba0\\u7269\\u5582\\u98df\\u5668","i18n.zh.description":"\\u652f\\u6301\\u5b9a\\u65f6\\u4e0e\\u5206\\u91cf\\u63a7\\u5236\\u7684\\u81ea\\u52a8\\u5582\\u98df\\u5668\\uff0c\\u9002\\u5408\\u732b\\u548c\\u5c0f\\u578b\\u72ac\\u3002"}', '[{"type":"text","content":"Set up to six meals per day and keep dry food fresh with the sealed hopper."},{"type":"text","content":"English is the default content. Spanish and Chinese demo text is stored in specifications for language fallback testing."}]', '1 year limited warranty', 'Ships in a protective box; free over threshold.', TRUE, 899.00, TRUE),
+(1, 'PawPilot Smart Pet Feeder 4L', 'Programmable automatic feeder with portion control, sealed food storage and a clear schedule for cats and small dogs.', 129.90, 42, 10, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'PawPilot', 159.90, 19, 109.90, '2026-05-01 00:00:00', '2026-06-30 23:59:59', 'hot', '["https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium","Capacity":"4 L","Material":"BPA-free ABS","Color":"White","options.Size":"Small,Medium","options.Color":"White,Black","i18n.es.name":"Comedero inteligente PawPilot 4L","i18n.es.description":"Comedero automático programable con control de porciones para gatos y perros pequeños.","i18n.zh.name":"PawPilot 4L \\u667a\\u80fd\\u5ba0\\u7269\\u5582\\u98df\\u5668","i18n.zh.description":"\\u652f\\u6301\\u5b9a\\u65f6\\u4e0e\\u5206\\u91cf\\u63a7\\u5236\\u7684\\u81ea\\u52a8\\u5582\\u98df\\u5668\\uff0c\\u9002\\u5408\\u732b\\u548c\\u5c0f\\u578b\\u72ac\\u3002"}', '[{"type":"text","content":"Set up to six meals per day and keep dry food fresh with the sealed hopper."},{"type":"text","content":"Localized product copy is maintained for shoppers who switch language from the storefront."}]', '1 year limited warranty', 'Ships in a protective box; free over threshold.', TRUE, 899.00, TRUE),
 (2, 'HydraWhisk Quiet Cat Water Fountain', 'Low-noise filtered water fountain that encourages cats to drink more throughout the day.', 49.90, 75, 11, 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'HydraWhisk', 64.90, 23, NULL, NULL, NULL, 'new', '["https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Cat","Capacity":"2.5 L","Material":"Stainless steel, ABS","Color":"Blue","options.Color":"Blue,White","Filter":"Replace every 30 days","i18n.es.name":"Fuente silenciosa HydraWhisk para gato","i18n.es.description":"Fuente filtrada de bajo ruido que ayuda a los gatos a beber mas agua."}', '[{"type":"text","content":"Circulating water and replaceable filters help keep every sip fresh."}]', '6 month warranty', 'Standard shipping', FALSE, NULL, TRUE),
 (3, 'TrailTails Walking Starter Bundle', 'Leash, collar and waste-bag holder bundled for safer daily walks at one special set price.', 34.90, 120, 13, 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'TrailTails', 54.90, 27, NULL, NULL, NULL, 'hot', '["https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium, Large","Material":"Nylon","Color":"Black","options.Size":"Small,Medium,Large","options.Color":"Black,Red,Blue","Closure":"Quick-release buckles","bundle.enabled":"true","bundle.title":"Leash + Collar + Waste Bags","bundle.price":"39.90","bundle.items":"[{\"name\":\"Adjustable leash\",\"quantity\":1},{\"name\":\"Matching collar\",\"quantity\":1},{\"name\":\"Waste-bag roll\",\"quantity\":2}]","i18n.es.name":"Kit TrailTails de paseo inicial","i18n.es.description":"Correa, collar y bolsas en un kit para paseos diarios mas seguros."}', '[{"type":"text","content":"Adjustable neck and chest straps help the harness fit growing pets and different breeds."},{"type":"text","content":"Bundle includes a matching walking set for first-time pet parents."}]', '1 year limited warranty', 'Standard shipping', FALSE, NULL, FALSE),
 (4, 'CloudNap Orthopedic Calming Bed', 'Bolstered pet bed with orthopedic foam support and a washable cover for deep everyday rest.', 89.90, 36, 4, 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'CloudNap', 109.90, 18, 79.90, '2026-05-01 00:00:00', '2026-05-31 23:59:59', 'discount', '["https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Medium, Large","Material":"Orthopedic foam, plush cover","Color":"Gray","options.Size":"Medium,Large","options.Color":"Gray,Brown","Care":"Machine-washable cover","i18n.es.name":"Cama ortopédica CloudNap relajante","i18n.es.description":"Cama con bordes, espuma ortopédica y funda lavable para descanso diario."}', '[{"type":"text","content":"The raised edge supports curled sleepers while the foam base cushions joints."}]', '1 year limited warranty', 'Ships compressed; allow 24 hours to expand.', TRUE, 899.00, TRUE),

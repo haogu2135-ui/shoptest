@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -158,6 +159,7 @@ public class ProductUrlImportService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Too many redirects while importing product URL");
         }
         try {
+            DnsPin dnsPin = resolvePublicDnsPin(uri);
             HttpRequest request = HttpRequest.newBuilder(uri)
                     .timeout(Duration.ofSeconds(8))
                     .header("User-Agent", IMPORT_USER_AGENT)
@@ -168,6 +170,7 @@ public class ProductUrlImportService {
                     .GET()
                     .build();
             HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            dnsPin.verifyUnchanged();
             int status = response.statusCode();
             if (status >= 300 && status < 400) {
                 String location = response.headers().firstValue("location")
@@ -276,7 +279,9 @@ public class ProductUrlImportService {
     }
 
     private String sendTopmRequest(HttpRequest request) throws IOException, InterruptedException {
+        DnsPin dnsPin = resolvePublicDnsPin(request.uri());
         HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        dnsPin.verifyUnchanged();
         int status = response.statusCode();
         if (status < 200 || status >= 300) {
             closeQuietly(response.body());
@@ -705,12 +710,7 @@ public class ProductUrlImportService {
             if (isBlank(host)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product URL host is required");
             }
-            String asciiHost = IDN.toASCII(host);
-            for (InetAddress address : InetAddress.getAllByName(asciiHost)) {
-                if (isBlockedAddress(address)) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Private or local product URLs are not allowed");
-                }
-            }
+            resolvePublicDnsPin(uri);
             return uri;
         } catch (ResponseStatusException ex) {
             throw ex;
@@ -725,6 +725,54 @@ public class ProductUrlImportService {
                 || address.isLinkLocalAddress()
                 || address.isSiteLocalAddress()
                 || address.isMulticastAddress();
+    }
+
+    private DnsPin resolvePublicDnsPin(URI uri) {
+        String host = uri == null ? null : uri.getHost();
+        if (isBlank(host)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product URL host is required");
+        }
+        String asciiHost = IDN.toASCII(host);
+        List<String> addresses = resolvePublicAddresses(asciiHost);
+        if (addresses.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product URL host could not be resolved");
+        }
+        return new DnsPin(asciiHost, addresses);
+    }
+
+    private List<String> resolvePublicAddresses(String asciiHost) {
+        try {
+            List<String> addresses = new ArrayList<>();
+            for (InetAddress address : InetAddress.getAllByName(asciiHost)) {
+                if (isBlockedAddress(address)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Private or local product URLs are not allowed");
+                }
+                addresses.add(address.getHostAddress());
+            }
+            Collections.sort(addresses);
+            return addresses;
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product URL host could not be resolved");
+        }
+    }
+
+    private class DnsPin {
+        private final String asciiHost;
+        private final List<String> addresses;
+
+        private DnsPin(String asciiHost, List<String> addresses) {
+            this.asciiHost = asciiHost;
+            this.addresses = List.copyOf(addresses);
+        }
+
+        private void verifyUnchanged() {
+            List<String> currentAddresses = resolvePublicAddresses(asciiHost);
+            if (!addresses.equals(currentAddresses)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product URL DNS changed during fetch");
+            }
+        }
     }
 
     private void applyJsonLd(ProductUrlImportPreview preview, String html) {
@@ -1415,7 +1463,7 @@ public class ProductUrlImportService {
                 return null;
             }
             try {
-                return URI.create("https://topm.tech/placeholder" + value.substring(queryIndex).replace(" ", "%20"));
+                return URI.create("https://pet.686888666.xyz/import-query" + value.substring(queryIndex).replace(" ", "%20"));
             } catch (Exception ignoredAgain) {
                 return null;
             }

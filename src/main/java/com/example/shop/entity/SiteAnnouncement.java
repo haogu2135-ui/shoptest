@@ -10,6 +10,9 @@ import javax.persistence.Id;
 import javax.persistence.PrePersist;
 import javax.persistence.PreUpdate;
 import javax.persistence.Table;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,18 +24,26 @@ public class SiteAnnouncement {
     private Long id;
 
     @Column(nullable = false, length = 120)
+    @NotBlank
+    @Size(max = 120)
     private String title;
 
     @Column(nullable = false, columnDefinition = "TEXT")
+    @NotBlank
+    @Size(max = 4000)
     private String content;
 
     @Column(name = "link_url", length = 500)
+    @Size(max = 500)
     private String linkUrl;
 
     @Column(nullable = false, length = 20)
+    @NotBlank
+    @Size(max = 20)
     private String status = "ACTIVE";
 
     @Column(name = "sort_order")
+    @Min(0)
     private Integer sortOrder = 0;
 
     @Column(name = "starts_at")

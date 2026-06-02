@@ -40,13 +40,16 @@ CREATE TABLE IF NOT EXISTS pet_gallery_photo_likes (
     photo_id BIGINT NOT NULL,
     user_id BIGINT,
     ip_address VARCHAR(45) NOT NULL,
+    viewer_key VARCHAR(120) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (photo_id) REFERENCES pet_gallery_photos(id),
     FOREIGN KEY (user_id) REFERENCES users(id),
     INDEX idx_pet_gallery_like_photo (photo_id),
     INDEX idx_pet_gallery_like_user (user_id),
     INDEX idx_pet_gallery_like_ip (ip_address),
-    UNIQUE KEY uk_gallery_like_photo_user (photo_id, user_id)
+    INDEX idx_pet_gallery_like_viewer (viewer_key),
+    UNIQUE KEY uk_gallery_like_photo_user (photo_id, user_id),
+    UNIQUE KEY uk_gallery_like_photo_viewer (photo_id, viewer_key)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Pet birthday coupon configuration

@@ -36,6 +36,9 @@ describe('mediaAssets', () => {
     expect(resolveApiAssetUrl('javascript:alert(1)', 'fallback')).toBe('fallback');
     expect(resolveApiAssetUrl('//evil.example.com/x.png', 'fallback')).toBe('fallback');
     expect(resolveApiAssetUrl('https://user:pass@example.com/x.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('https:\\\\evil.example.com\\x.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('https://cdn.example.com/%5cadmin.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('https://cdn.example.com/image%00.png', 'fallback')).toBe('fallback');
     expect(resolveApiAssetUrl('data:text/html;base64,xxx', 'fallback')).toBe('fallback');
   });
 
@@ -46,7 +49,7 @@ describe('mediaAssets', () => {
     expect(resolveApiAssetUrl('https://cdn.example.com/a.png')).toBe('https://cdn.example.com/a.png');
     expect(resolveApiAssetUrl('data:image/png;base64,abc')).toBe('data:image/png;base64,abc');
     expect(resolveApiAssetUrl('blob:https://app.example.com/id')).toBe('blob:https://app.example.com/id');
-    expect(resolveApiAssetUrl('/uploads/a.png')).toBe('https://api.example.com/uploads/a.png');
+    expect(resolveApiAssetUrl('/uploads/a.png')).toBe('/uploads/a.png');
   });
 
   it('resolves relative asset URLs from runtime API config without loading the API client', () => {
@@ -57,8 +60,9 @@ describe('mediaAssets', () => {
 
     const { resolveApiAssetUrl } = require('./mediaAssets');
 
-    expect(resolveApiAssetUrl('/uploads/product.png')).toBe('https://api.example.com/store/uploads/product.png');
-    expect(resolveApiAssetUrl('uploads/product.png')).toBe('https://api.example.com/store/uploads/product.png');
+    expect(resolveApiAssetUrl('/uploads/product.png')).toBe('/uploads/product.png');
+    expect(resolveApiAssetUrl('uploads/product.png')).toBe('/uploads/product.png');
+    expect(resolveApiAssetUrl('/assets/product.png')).toBe('https://api.example.com/store/assets/product.png');
   });
 
   it('builds responsive next-gen image candidates only for resize-aware URLs', () => {
@@ -72,6 +76,7 @@ describe('mediaAssets', () => {
     expect(srcSet).toContain('640w');
     expect(buildResponsiveImageSrcSet('https://cdn.example.com/pet.jpg')).toBeUndefined();
     expect(buildResponsiveImageSrcSet('data:image/png;base64,abc')).toBeUndefined();
+    expect(buildResponsiveImageSrcSet('https://images.unsplash.com/%5cadmin?w=900')).toBeUndefined();
   });
 
   it('returns optimized primary image URLs for resize-aware providers', () => {
@@ -82,6 +87,7 @@ describe('mediaAssets', () => {
     expect(optimized).toContain('w=640');
     expect(optimized).toContain('q=76');
     expect(getOptimizedImageUrl('https://cdn.example.com/pet.jpg', 640)).toBe('https://cdn.example.com/pet.jpg');
+    expect(getOptimizedImageUrl('https:\\\\images.unsplash.com\\photo-1?w=900', 640)).toBe('');
   });
 });
 

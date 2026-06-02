@@ -13,6 +13,9 @@ interface SkeletonLoaderProps {
   className?: string;
 }
 
+const titleWidths = [72, 84, 66, 78, 88, 70];
+const metaWidths = [42, 58, 36, 64, 48, 54];
+
 const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   rows = 4,
   height,
@@ -31,11 +34,11 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
           >
             <div
               className="skeleton__line skeleton__line--title shimmer"
-              style={{ width: `${60 + Math.random() * 30}%` }}
+              style={{ width: `${titleWidths[i % titleWidths.length]}%` }}
             />
             <div
               className="skeleton__line skeleton__line--meta shimmer"
-              style={{ width: `${35 + Math.random() * 40}%` }}
+              style={{ width: `${metaWidths[i % metaWidths.length]}%` }}
             />
           </div>
           {height && (

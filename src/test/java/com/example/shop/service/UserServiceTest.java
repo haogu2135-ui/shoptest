@@ -29,6 +29,7 @@ class UserServiceTest {
     void setUp() {
         userMapper = mock(UserMapper.class);
         passwordEncoder = mock(PasswordEncoder.class);
+        when(userMapper.acquireAdminBootstrapLock()).thenReturn(1L);
         when(passwordEncoder.encode("secret123")).thenReturn("encoded-secret");
         when(passwordEncoder.encode("Newpass123")).thenReturn("encoded-newpass");
         service = new UserService(userMapper, passwordEncoder);
@@ -60,6 +61,15 @@ class UserServiceTest {
         service.search(" \u0000 ", " ", null);
 
         verify(userMapper).search(null, null, null);
+    }
+
+    @Test
+    void searchPageNormalizesFiltersAndUsesOffset() {
+        when(userMapper.searchPage("Jane Doe", "ADMIN", "ACTIVE", 20, 40)).thenReturn(List.of());
+
+        service.searchPage("  Jane\u0000   Doe  ", " ADMIN ", " ACTIVE ", 3, 20);
+
+        verify(userMapper).searchPage("Jane Doe", "ADMIN", "ACTIVE", 20, 40);
     }
 
     @Test
@@ -205,6 +215,23 @@ class UserServiceTest {
         assertEquals("Admin bootstrap is already completed", exception.getMessage());
         verify(userMapper, never()).insert(admin);
         verify(passwordEncoder, never()).encode("secret123");
+        verify(userMapper).releaseAdminBootstrapLock();
+    }
+
+    @Test
+    void registerAdminRejectsWhenBootstrapLockCannotBeAcquired() {
+        User admin = new User();
+        admin.setUsername("admin");
+        admin.setPassword("secret123");
+        admin.setEmail("admin@example.com");
+        when(userMapper.acquireAdminBootstrapLock()).thenReturn(0L);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> service.registerAdmin(admin));
+
+        assertEquals("Admin bootstrap is currently locked", exception.getMessage());
+        verify(userMapper, never()).countAdminUsers();
+        verify(userMapper, never()).insert(admin);
+        verify(userMapper, never()).releaseAdminBootstrapLock();
     }
 
     @Test
@@ -268,7 +295,7 @@ class UserServiceTest {
 
         when(userMapper.findByUsernameOrPhoneOrEmail("user@example.com")).thenReturn(guest);
 
-        service.register(user);
+        service.register(user, true);
 
         ArgumentCaptor<User> updatedUser = ArgumentCaptor.forClass(User.class);
         verify(userMapper).update(updatedUser.capture());
@@ -279,6 +306,30 @@ class UserServiceTest {
         assertEquals("encoded-secret", updatedUser.getValue().getPassword());
         assertEquals("USER", updatedUser.getValue().getRole());
         assertEquals("ACTIVE", updatedUser.getValue().getStatus());
+        verify(userMapper, never()).insert(any(User.class));
+    }
+
+    @Test
+    void registerRejectsGuestEmailClaimWithoutVerification() {
+        User user = new User();
+        user.setUsername("NewUser");
+        user.setPassword("secret123");
+        user.setEmail("user@example.com");
+        user.setPhone("15551234567");
+
+        User guest = new User();
+        guest.setId(18L);
+        guest.setUsername("guest_user_example_com_12345678");
+        guest.setEmail("user@example.com");
+        guest.setStatus("GUEST");
+        guest.setRole("USER");
+
+        when(userMapper.findByUsernameOrPhoneOrEmail("user@example.com")).thenReturn(guest);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
+
+        assertEquals("Email verification is required to claim guest checkout history", exception.getMessage());
+        verify(userMapper, never()).update(any(User.class));
         verify(userMapper, never()).insert(any(User.class));
     }
 
@@ -352,7 +403,10 @@ class UserServiceTest {
 
         assertEquals("New password must include letters and numbers", exception.getMessage());
         verify(userMapper, never()).findById(5L);
-        verify(userMapper, never()).updatePassword(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+        verify(userMapper, never()).updatePassword(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -365,7 +419,10 @@ class UserServiceTest {
 
         service.updatePassword(5L, "old-secret", "Newpass123");
 
-        verify(userMapper).updatePassword(5L, "encoded-newpass");
+        verify(userMapper).updatePassword(
+                org.mockito.ArgumentMatchers.eq(5L),
+                org.mockito.ArgumentMatchers.eq("encoded-newpass"),
+                org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -380,7 +437,10 @@ class UserServiceTest {
                 () -> service.updatePassword(5L, "wrong-secret", "Newpass123"));
 
         assertEquals("Current password is incorrect", exception.getMessage());
-        verify(userMapper, never()).updatePassword(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+        verify(userMapper, never()).updatePassword(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -390,6 +450,9 @@ class UserServiceTest {
 
         assertEquals("New password must include letters and numbers", exception.getMessage());
         verify(userMapper, never()).findByUsernameOrPhoneOrEmail("mia");
-        verify(userMapper, never()).updatePassword(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+        verify(userMapper, never()).updatePassword(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any());
     }
 }

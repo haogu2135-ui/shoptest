@@ -5,6 +5,7 @@
         <id property="id" column="id"/>
         <result property="userId" column="user_id"/>
         <result property="assignedAdminId" column="assigned_admin_id"/>
+        <result property="contextKey" column="context_key"/>
         <result property="status" column="status"/>
         <result property="lastMessage" column="last_message"/>
         <result property="lastMessageAt" column="last_message_at"/>
@@ -17,7 +18,7 @@
     </resultMap>
 
     <sql id="supportSessionColumns">
-        ss.id, ss.user_id, ss.assigned_admin_id, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at,
+        ss.id, ss.user_id, ss.assigned_admin_id, ss.context_key, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at,
         u.username,
         admin.username AS assigned_admin_name,
         COALESCE(unread.unread_by_user, 0) AS unread_by_user,
@@ -32,6 +33,41 @@
             FROM support_messages
             GROUP BY session_id
         ) unread ON ss.id = unread.session_id
+    </sql>
+
+    <sql id="supportSessionAdminPageColumns">
+        ss.id, ss.user_id, ss.assigned_admin_id, ss.context_key, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at,
+        u.username,
+        admin.username AS assigned_admin_name,
+        (SELECT COUNT(*) FROM support_messages sm_user WHERE sm_user.session_id = ss.id AND sm_user.is_read_by_user = FALSE) AS unread_by_user,
+        (SELECT COUNT(*) FROM support_messages sm_admin WHERE sm_admin.session_id = ss.id AND sm_admin.is_read_by_admin = FALSE) AS unread_by_admin
+    </sql>
+
+    <sql id="supportSessionAdminPageFilters">
+        <where>
+            <if test="status != null and status != ''">
+                ss.status = #{status}
+            </if>
+            <if test="needsReply != null and needsReply">
+                AND EXISTS (
+                    SELECT 1
+                    FROM support_messages sm_pending
+                    WHERE sm_pending.session_id = ss.id
+                      AND sm_pending.is_read_by_admin = FALSE
+                )
+            </if>
+            <if test="assignedAdminId != null">
+                AND ss.assigned_admin_id = #{assignedAdminId}
+            </if>
+            <if test="search != null and search != ''">
+                AND (
+                    LOWER(COALESCE(u.username, '')) LIKE CONCAT('%', LOWER(#{search}), '%')
+                    OR LOWER(COALESCE(admin.username, '')) LIKE CONCAT('%', LOWER(#{search}), '%')
+                    OR LOWER(COALESCE(ss.last_message, '')) LIKE CONCAT('%', LOWER(#{search}), '%')
+                    OR LOWER(COALESCE(ss.context_key, '')) LIKE CONCAT('%', LOWER(#{search}), '%')
+                )
+            </if>
+        </where>
     </sql>
 
     <select id="findById" resultMap="supportSessionMap">
@@ -51,6 +87,20 @@
         <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
           AND ss.status = 'OPEN'
+          AND (ss.context_key IS NULL OR TRIM(ss.context_key) = '')
+        ORDER BY ss.updated_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="findOpenByUserIdAndContextKey" resultMap="supportSessionMap">
+        SELECT <include refid="supportSessionColumns"/>
+        FROM support_sessions ss
+        JOIN users u ON ss.user_id = u.id
+        LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
+        <include refid="supportUnreadJoin"/>
+        WHERE ss.user_id = #{userId}
+          AND ss.status = 'OPEN'
+          AND ss.context_key = #{contextKey}
         ORDER BY ss.updated_at DESC
         LIMIT 1
     </select>
@@ -62,6 +112,7 @@
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
         <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
+          AND (ss.context_key IS NULL OR TRIM(ss.context_key) = '')
         ORDER BY ss.updated_at DESC
         LIMIT 1
     </select>
@@ -73,21 +124,27 @@
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
         <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
+          AND (ss.context_key IS NULL OR TRIM(ss.context_key) = '')
         ORDER BY ss.updated_at DESC
+        LIMIT #{limit}
     </select>
 
-    <select id="findAll" resultMap="supportSessionMap">
-        SELECT <include refid="supportSessionColumns"/>
+    <select id="findAdminPage" resultMap="supportSessionMap">
+        SELECT <include refid="supportSessionAdminPageColumns"/>
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
-        <include refid="supportUnreadJoin"/>
-        <where>
-            <if test="status != null and status != ''">
-                ss.status = #{status}
-            </if>
-        </where>
-        ORDER BY ss.updated_at DESC
+        <include refid="supportSessionAdminPageFilters"/>
+        ORDER BY unread_by_admin DESC, ss.updated_at DESC, ss.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminPage" resultType="long">
+        SELECT COUNT(*)
+        FROM support_sessions ss
+        JOIN users u ON ss.user_id = u.id
+        LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
+        <include refid="supportSessionAdminPageFilters"/>
     </select>
 
     <select id="adminSummary" resultType="map">
@@ -108,8 +165,8 @@
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.SupportSession" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO support_sessions (user_id, assigned_admin_id, status, last_message, last_message_at, created_at, updated_at)
-        VALUES (#{userId}, #{assignedAdminId}, #{status}, #{lastMessage}, #{lastMessageAt}, #{createdAt}, #{updatedAt})
+        INSERT INTO support_sessions (user_id, assigned_admin_id, context_key, status, last_message, last_message_at, created_at, updated_at)
+        VALUES (#{userId}, #{assignedAdminId}, #{contextKey}, #{status}, #{lastMessage}, #{lastMessageAt}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="updateLastMessage">

@@ -9,6 +9,7 @@ import { navigateToSafeUrl } from '../utils/safeUrl';
 import { getApiErrorMessage } from '../utils/apiError';
 import type { PaymentChannel } from '../types';
 import './Payment.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text, Title } = Typography;
 const getDefaultPaymentMethod = (channels: PaymentChannel[]) =>

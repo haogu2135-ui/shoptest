@@ -10,6 +10,21 @@ export {};
 
 const originalApiBaseUrl = process.env.REACT_APP_API_BASE_URL;
 const originalSupportWebSocketUrl = process.env.REACT_APP_SUPPORT_WEBSOCKET_URL;
+const originalLocalStorageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+
+const restoreLocalStorage = () => {
+  if (originalLocalStorageDescriptor) {
+    Object.defineProperty(window, 'localStorage', originalLocalStorageDescriptor);
+  }
+};
+
+const clearLocalStorage = () => {
+  try {
+    window.localStorage.clear();
+  } catch {
+    // Some tests intentionally replace storage with throwing mocks.
+  }
+};
 
 jest.mock('axios', () => ({
   __esModule: true,
@@ -47,7 +62,8 @@ describe('api parameter normalization', () => {
     process.env.REACT_APP_API_BASE_URL = 'https://api.example.com';
     delete process.env.REACT_APP_SUPPORT_WEBSOCKET_URL;
     delete window.__SHOP_RUNTIME_CONFIG__;
-    window.localStorage.clear();
+    restoreLocalStorage();
+    clearLocalStorage();
     mockRequestInterceptorFulfilled = undefined;
     mockResponseInterceptorRejected = undefined;
     mockGet.mockResolvedValue({ data: [] });
@@ -68,13 +84,16 @@ describe('api parameter normalization', () => {
     } else {
       process.env.REACT_APP_SUPPORT_WEBSOCKET_URL = originalSupportWebSocketUrl;
     }
+    restoreLocalStorage();
   });
 
   it('trims websocket tokens and rejects empty tokens', () => {
-    const { supportWebSocketUrl } = require('./index');
+    const { supportWebSocketProtocols, supportWebSocketUrl } = require('./index');
 
-    expect(supportWebSocketUrl('  token  ')).toBe('wss://api.example.com/ws/support?token=token');
+    expect(supportWebSocketUrl('  token  ')).toBe('wss://api.example.com/ws/support');
+    expect(supportWebSocketProtocols('  token  ')).toEqual(['support.v1', 'auth.dG9rZW4']);
     expect(() => supportWebSocketUrl('   ')).toThrow('Support websocket token is required');
+    expect(() => supportWebSocketProtocols('   ')).toThrow('Support websocket token is required');
   });
 
   it('keeps support websocket on the same-origin ws proxy when API uses the /api proxy', () => {
@@ -84,7 +103,7 @@ describe('api parameter normalization', () => {
 
     const { supportWebSocketUrl } = require('./index');
 
-    expect(supportWebSocketUrl('token')).toBe('ws://localhost/ws/support?token=token');
+    expect(supportWebSocketUrl('token')).toBe('ws://localhost/ws/support');
   });
 
   it('uses explicit runtime support websocket endpoint when provided', () => {
@@ -96,7 +115,7 @@ describe('api parameter normalization', () => {
 
     const { supportWebSocketUrl } = require('./index');
 
-    expect(supportWebSocketUrl(' token ')).toBe('wss://support.example.com/ws/support?token=token');
+    expect(supportWebSocketUrl(' token ')).toBe('wss://support.example.com/ws/support');
   });
 
   it('normalizes email login payloads before sending', async () => {
@@ -265,6 +284,7 @@ describe('api parameter normalization', () => {
         '/notifications/me/unread-count',
         '/pet-profiles',
       ]);
+      expect(mockGet.mock.calls[1][1]).toEqual({ params: { page: 1, size: 50 } });
     } finally {
       Object.defineProperty(window, 'localStorage', {
         configurable: true,
@@ -289,8 +309,11 @@ describe('api parameter normalization', () => {
     await productApi.getAll('  leash\u0000   kit  ', -2, true);
 
     expect(mockGet.mock.calls[0][0]).toBe('/products');
+    const params = mockGet.mock.calls[0][1].params as URLSearchParams;
+    expect(params.get('keyword')).toBe('leash kit');
+    expect(params.get('discount')).toBe('true');
+    expect(params.has('categoryId')).toBe(false);
     expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({
-      params: { keyword: 'leash kit', discount: true },
       skipAuthHeader: true,
       skipAuthRedirect: true,
     }));
@@ -327,11 +350,11 @@ describe('api parameter normalization', () => {
   it('normalizes cart mutation params', async () => {
     const { cartApi } = require('./index');
 
-    await cartApi.addItem(0, 8.2, Number.NaN, '  Size=S   Color=Blue  ');
+    await cartApi.addItem(0, 8, Number.NaN, '  Size=S   Color=Blue  ');
     await cartApi.removeItems([1, '2', 2, 3.4, -1] as unknown as number[]);
 
     expect(mockPost.mock.calls[0][2].params).toEqual({
-      productId: 0,
+      productId: 8,
       quantity: 1,
       selectedSpecs: 'Size=S Color=Blue',
     });
@@ -369,11 +392,18 @@ describe('api parameter normalization', () => {
     const { paymentApi } = require('./index');
 
     await paymentApi.create(7, ' stripe ', ' USER@Example.COM ', ' so202605260001 ');
-    await paymentApi.getByOrder(7.2, 'bad-email', ' so202605260001 ');
+    await paymentApi.getByOrder(7, 'bad-email', ' so202605260001 ');
+    await paymentApi.getByOrder(7, ' USER@Example.COM ', ' so202605260001 ');
 
     expect(mockPost.mock.calls[0][1]).toEqual({ orderId: 7, channel: 'STRIPE', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
-    expect(mockGet.mock.calls[0][0]).toBe('/payments/order/0');
+    expect(mockGet.mock.calls[0][0]).toBe('/payments/order/7');
     expect(mockGet.mock.calls[0][1]).toEqual({ params: undefined });
+    expect(mockGet.mock.calls[1][0]).toBe('/payments/guest/order/7');
+    expect(mockGet.mock.calls[1][1]).toEqual(expect.objectContaining({
+      params: { guestEmail: 'user@example.com', orderNo: 'SO202605260001' },
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
   });
 
   it('uses anonymous configs for public storefront bootstrap endpoints', async () => {
@@ -413,18 +443,18 @@ describe('api parameter normalization', () => {
   it('normalizes support session path params and optional session payloads', async () => {
     const { supportApi, adminSupportApi } = require('./index');
 
-    await supportApi.getMessages('9.3' as unknown as number);
+    await supportApi.getMessages('9' as unknown as number);
     await supportApi.markRead('11' as unknown as number);
     await supportApi.sendMessage('hello', -4);
-    await adminSupportApi.reopenSession(Number.POSITIVE_INFINITY);
-    await adminSupportApi.sendMessage(8.8, 'reply');
+    await adminSupportApi.reopenSession(12);
+    await adminSupportApi.sendMessage(8, 'reply');
 
-    expect(mockGet.mock.calls[0][0]).toBe('/support/sessions/0/messages');
+    expect(mockGet.mock.calls[0][0]).toBe('/support/sessions/9/messages');
     expect(mockPut.mock.calls[0][0]).toBe('/support/sessions/11/read');
     expect(mockPost.mock.calls[0][0]).toBe('/support/messages');
     expect(mockPost.mock.calls[0][1]).toEqual({ content: 'hello', sessionId: undefined });
-    expect(mockPut.mock.calls[1][0]).toBe('/admin/support/sessions/0/reopen');
-    expect(mockPost.mock.calls[1][0]).toBe('/admin/support/sessions/0/messages');
+    expect(mockPut.mock.calls[1][0]).toBe('/admin/support/sessions/12/reopen');
+    expect(mockPost.mock.calls[1][0]).toBe('/admin/support/sessions/8/messages');
   });
 
   it('requests admin support summary for queue health panels', async () => {
@@ -438,11 +468,11 @@ describe('api parameter normalization', () => {
   it('normalizes product path params and short-circuits invalid recommendation requests', async () => {
     const { productApi } = require('./index');
 
-    await productApi.update(2.2, { name: 'bad id' });
+    await productApi.update(2, { name: 'valid id' });
     await productApi.delete('4' as unknown as number);
     await productApi.getRecommendations(Number.NaN);
 
-    expect(mockPut.mock.calls[0][0]).toBe('/products/0');
+    expect(mockPut.mock.calls[0][0]).toBe('/products/2');
     expect(mockDelete.mock.calls[0][0]).toBe('/products/4');
     expect(mockGet).not.toHaveBeenCalled();
   });
@@ -450,27 +480,38 @@ describe('api parameter normalization', () => {
   it('normalizes order paths, checkout ids, guest email, and return text fields', async () => {
     const { orderApi } = require('./index');
 
-    await orderApi.checkout({ cartItemIds: [1, 1, 2.8, -2], shippingAddress: 'addr', paymentMethod: 'card', userCouponId: 7.3 });
+    await orderApi.checkout({
+      cartItemIds: [1, 1, 2.8, -2],
+      shippingAddress: 'addr',
+      paymentMethod: 'card',
+      userCouponId: 7.3,
+      recipientName: ' Mia\tCat ',
+      recipientPhone: ' 555\t0100 ',
+      contactEmail: ' USER@Example.COM ',
+    });
     await orderApi.cancel('8' as unknown as number, ' USER@Example.COM ', ' so202605260001 ');
     await orderApi.confirm(9, ' USER@Example.COM ', ' so202605260001 ');
     await orderApi.returnOrder(9, '  Too\t small  ', ' USER@Example.COM ', ' so202605260001 ');
-    await orderApi.submitReturnShipment(Infinity, '  TRACK   123  ', ' USER@Example.COM ', ' so202605260001 ');
+    await orderApi.submitReturnShipment(11, '  TRACK   123  ', ' USER@Example.COM ', ' so202605260001 ');
     await orderApi.getItems(10);
 
     expect(mockPost.mock.calls[0][0]).toBe('/orders/checkout/me');
     expect(mockPost.mock.calls[0][1]).toEqual({
       cartItemIds: [1],
       shippingAddress: 'addr',
+      recipientName: 'Mia Cat',
+      recipientPhone: '555 0100',
+      contactEmail: 'user@example.com',
       paymentMethod: 'card',
       userCouponId: null,
     });
-    expect(mockPut.mock.calls[0][0]).toBe('/orders/8/cancel');
+    expect(mockPut.mock.calls[0][0]).toBe('/orders/guest/8/cancel');
     expect(mockPut.mock.calls[0][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
-    expect(mockPut.mock.calls[1][0]).toBe('/orders/9/confirm');
+    expect(mockPut.mock.calls[1][0]).toBe('/orders/guest/9/confirm');
     expect(mockPut.mock.calls[1][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
-    expect(mockPut.mock.calls[2][0]).toBe('/orders/9/return');
+    expect(mockPut.mock.calls[2][0]).toBe('/orders/guest/9/return');
     expect(mockPut.mock.calls[2][1]).toEqual({ reason: 'Too small', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
-    expect(mockPut.mock.calls[3][0]).toBe('/orders/0/return-shipment');
+    expect(mockPut.mock.calls[3][0]).toBe('/orders/guest/11/return-shipment');
     expect(mockPut.mock.calls[3][1]).toEqual({ returnTrackingNumber: 'TRACK 123', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockGet.mock.calls[0][0]).toBe('/orders/10/items');
   });
@@ -513,27 +554,27 @@ describe('api parameter normalization', () => {
       paymentMethod: 'stripe',
       items: [{ productId: 4, quantity: 2, selectedSpecs: undefined }],
     });
-    expect(mockGet.mock.calls[0][0]).toBe('/orders/track');
-    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({
-      params: { orderNo: 'ORD123', email: 'user@example.com' },
+    expect(mockPost.mock.calls[1][0]).toBe('/orders/track');
+    expect(mockPost.mock.calls[1][1]).toEqual({ orderNo: 'ORD123', email: 'user@example.com' });
+    expect(mockPost.mock.calls[1][2]).toEqual(expect.objectContaining({
       skipAuthHeader: true,
       skipAuthRedirect: true,
     }));
   });
 
   it('normalizes review and question params and text payloads', async () => {
-    const { reviewApi, questionApi } = require('./index');
+    const { reviewApi, questionApi, adminApi } = require('./index');
 
-    await reviewApi.create(3.4, '9' as unknown as number, 9, '  Great   bowl  ');
-    await questionApi.ask(-1, '  Is   it washable?  ');
-    await questionApi.answer('5' as unknown as number, '  Yes   it is  ');
+    await reviewApi.create(3, '9' as unknown as number, 9, '  Great   bowl  ');
+    await questionApi.ask(4, '  Is   it washable?  ');
+    await adminApi.answerQuestion('5' as unknown as number, '  Yes   it is  ');
 
-    expect(mockPost.mock.calls[0][0]).toBe('/reviews/product/0');
+    expect(mockPost.mock.calls[0][0]).toBe('/reviews/product/3');
     expect(mockPost.mock.calls[0][1]).toEqual({ orderId: 9, rating: 5, comment: 'Great bowl' });
-    expect(mockPost.mock.calls[1][0]).toBe('/product-questions/product/0');
+    expect(mockPost.mock.calls[1][0]).toBe('/product-questions/product/4');
     expect(mockPost.mock.calls[1][1]).toEqual({ question: 'Is it washable?' });
-    expect(mockPost.mock.calls[2][0]).toBe('/product-questions/5/answer');
-    expect(mockPost.mock.calls[2][1]).toEqual({ answer: 'Yes it is' });
+    expect(mockPut.mock.calls[0][0]).toBe('/admin/questions/5/answer');
+    expect(mockPut.mock.calls[0][1]).toEqual({ answer: 'Yes it is' });
   });
 
   it('caches product reviews and questions until content changes', async () => {
@@ -565,16 +606,16 @@ describe('api parameter normalization', () => {
 
     await categoryApi.getAll({ parentId: -2, level: 2.2 });
     await categoryApi.getChildren('6' as unknown as number);
-    await brandApi.delete(Number.NaN);
-    await addressApi.setDefault(12.1);
+    await brandApi.delete(5);
+    await addressApi.setDefault(12);
     await wishlistApi.toggle(0, '14' as unknown as number);
 
     expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ params: { parentId: undefined, level: undefined } }));
     expect(mockGet.mock.calls[1][1]).toEqual(expect.objectContaining({ params: { parentId: 6 } }));
     expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
     expect(mockGet.mock.calls[1][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
-    expect(mockDelete.mock.calls[0][0]).toBe('/brands/0');
-    expect(mockPut.mock.calls[0][0]).toBe('/addresses/0/default');
+    expect(mockDelete.mock.calls[0][0]).toBe('/brands/5');
+    expect(mockPut.mock.calls[0][0]).toBe('/addresses/12/default');
     expect(mockPost.mock.calls[0][2]).toEqual({ params: { productId: 14 } });
   });
 
@@ -650,16 +691,16 @@ describe('api parameter normalization', () => {
   it('normalizes admin mutation and batch payload ids', async () => {
     const { adminApi } = require('./index');
 
-    await adminApi.updateOrderStatus(3.1, ' SHIPPED ', '  TN\u0000   1 ', '  DHL ');
+    await adminApi.updateOrderStatus(3, ' SHIPPED ', '  TN\u0000   1 ', '  DHL ');
     await adminApi.getOrdersPage({ status: ' PENDING_SHIPMENT ', search: '  TN\u0000   1 ', quick: ' SLA_OVERDUE ', page: 2, size: 200 });
     await adminApi.exportOrders(' REFUNDED ', '  order   9 ', ' REFUNDED ');
     await adminApi.batchShipOrders([1, '2', 2, -4, 5.5] as unknown as number[], '  PKG   ', '  UPS  ');
     await adminApi.batchUpdateProductStatus([7, 7, Infinity, 8] as unknown as number[], ' INACTIVE ');
-    await adminApi.grantCoupon(9.2, [10, 10, '11', -2] as unknown as number[]);
+    await adminApi.grantCoupon(9, [10, 10, '11', -2] as unknown as number[]);
     await adminApi.getCouponSummary();
     await adminApi.grantCoupon(9, [1, 2, 3, 4], 2);
 
-    expect(mockPut.mock.calls[0][0]).toBe('/admin/orders/0/status');
+    expect(mockPut.mock.calls[0][0]).toBe('/admin/orders/3/status');
     expect(mockPut.mock.calls[0][1]).toEqual({ status: 'SHIPPED', trackingNumber: 'TN 1', trackingCarrierCode: 'DHL' });
     expect(mockGet.mock.calls[0][0]).toBe('/admin/orders/page');
     expect(mockGet.mock.calls[0][1]).toEqual({ params: { status: 'PENDING_SHIPMENT', search: 'TN 1', quick: 'SLA_OVERDUE', page: 2, size: 100 } });
@@ -668,7 +709,7 @@ describe('api parameter normalization', () => {
     expect(mockGet.mock.calls[2][0]).toBe('/admin/coupons/summary');
     expect(mockPost.mock.calls[0][1]).toEqual({ orderIds: [1, 2], trackingPrefix: 'PKG', trackingCarrierCode: 'UPS' });
     expect(mockPost.mock.calls[1][1]).toEqual({ productIds: [7, 8], status: 'INACTIVE' });
-    expect(mockPost.mock.calls[2][0]).toBe('/admin/coupons/0/grant');
+    expect(mockPost.mock.calls[2][0]).toBe('/admin/coupons/9/grant');
     expect(mockPost.mock.calls[2][1]).toEqual({ userIds: [10, 11] });
     expect(mockPost.mock.calls[3][0]).toBe('/admin/coupons/9/grant');
     expect(mockPost.mock.calls[3][1]).toEqual({ userIds: [1, 2] });
@@ -812,7 +853,7 @@ describe('api parameter normalization', () => {
     ]);
   });
 
-  it('caches admin order lists while normalizing filters until order mutations', async () => {
+  it('caches bounded admin order pages while normalizing filters until order mutations', async () => {
     const { adminApi } = require('./index');
 
     await adminApi.getOrders(' PENDING ');
@@ -823,9 +864,9 @@ describe('api parameter normalization', () => {
     await adminApi.getOrders('PENDING');
 
     expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
-      '/admin/orders',
       '/admin/orders/page',
-      '/admin/orders',
+      '/admin/orders/page',
+      '/admin/orders/page',
     ]);
     expect(mockGet.mock.calls[1][1]).toEqual({
       params: { status: 'PAID', search: 'order 7', quick: 'OVERDUE', page: 1, size: 100 },
@@ -865,7 +906,7 @@ describe('api parameter normalization', () => {
 
     await adminApi.getQuestions({ status: 'UNANSWERED', limit: 200 });
     await adminApi.getQuestions({ status: ' unanswered ', limit: 200 });
-    await adminApi.answerQuestion(12.8, '  It   fits small dogs.  ');
+    await adminApi.answerQuestion(12, '  It   fits small dogs.  ');
     await adminApi.getQuestions({ status: 'UNANSWERED', limit: 200 });
 
     expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
@@ -873,7 +914,7 @@ describe('api parameter normalization', () => {
       '/admin/questions',
     ]);
     expect(mockPut.mock.calls[0]).toEqual([
-      '/admin/questions/0/answer',
+      '/admin/questions/12/answer',
       { answer: 'It fits small dogs.' },
     ]);
   });
@@ -897,7 +938,7 @@ describe('api parameter normalization', () => {
       '/admin/roles',
     ]);
     expect(mockGet.mock.calls[0][1]).toEqual({
-      params: { keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' },
+      params: { keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE', page: 1, size: 100 },
     });
   });
 
@@ -957,16 +998,16 @@ describe('api parameter normalization', () => {
   it('normalizes notification, pet profile, pet gallery, and logistics params', async () => {
     const { notificationApi, petProfileApi, petGalleryApi, logisticsApi } = require('./index');
 
-    await notificationApi.markAsRead(4.4);
+    await notificationApi.markAsRead(4);
     await petProfileApi.update('6' as unknown as number, { name: 'Milo' });
-    await petGalleryApi.like(Number.NEGATIVE_INFINITY);
-    await logisticsApi.track('  1Z   999  ', '  UPS  ', 20.1);
+    await petGalleryApi.like(7);
+    await logisticsApi.track('  1Z   999  ', '  UPS  ', 20);
 
-    expect(mockPut.mock.calls[0][0]).toBe('/notifications/0/read');
+    expect(mockPut.mock.calls[0][0]).toBe('/notifications/4/read');
     expect(mockPut.mock.calls[1][0]).toBe('/pet-profiles/6');
-    expect(mockPost.mock.calls[0][0]).toBe('/pet-gallery/0/like');
+    expect(mockPost.mock.calls[0][0]).toBe('/pet-gallery/7/like');
     expect(mockGet.mock.calls[0][0]).toBe('/logistics/track');
-    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ params: { trackingNumber: '1Z 999', carrier: 'UPS', orderId: undefined }, skipAuthHeader: true, skipAuthRedirect: true }));
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ params: { trackingNumber: '1Z 999', carrier: 'UPS', orderId: 20 }, allowAnonymousRetry: false }));
   });
 
   it('caches logistics tracking and rejects empty tracking requests', async () => {
@@ -978,7 +1019,8 @@ describe('api parameter normalization', () => {
 
     expect(mockGet).toHaveBeenCalledTimes(1);
     expect(mockGet.mock.calls[0][0]).toBe('/logistics/track');
-    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }));
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ allowAnonymousRetry: false }));
+    expect(mockGet.mock.calls[0][1]).not.toEqual(expect.objectContaining({ skipAuthHeader: true }));
   });
 
   it('caches logistics carriers until carrier mutations invalidate them', async () => {

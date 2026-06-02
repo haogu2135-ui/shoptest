@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
-import com.example.shop.entity.Review;
+import com.example.shop.dto.ReviewableOrderResponse;
+import com.example.shop.dto.PublicReviewResponse;
 import com.example.shop.service.ReviewService;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.List;
-import com.example.shop.entity.Order;
 
 @RestController
 @RequestMapping("/reviews")
@@ -27,7 +27,7 @@ public class ReviewController {
             currentUserId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
         }
         return ResponseEntity.ok(Map.of(
-            "reviews", reviewService.getReviewsByProductId(productId, currentUserId),
+            "reviews", reviewService.getPublicReviewsByProductId(productId, currentUserId),
             "averageRating", reviewService.getAverageRating(productId)
         ));
     }
@@ -35,7 +35,7 @@ public class ReviewController {
     @GetMapping("/product/{productId}/reviewable-orders")
     public ResponseEntity<?> getReviewableOrders(@PathVariable Long productId, Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
-        List<Order> orders = reviewService.getReviewableOrders(productId, userDetails.getId());
+        List<ReviewableOrderResponse> orders = reviewService.getReviewableOrders(productId, userDetails.getId());
         return ResponseEntity.ok(orders);
     }
 
@@ -50,14 +50,13 @@ public class ReviewController {
         }
         Long orderId = parseLong(request.get("orderId"), "orderId");
         Integer rating = parseRating(request.get("rating"));
-        Review review = reviewService.addReview(
+        return ResponseEntity.ok(PublicReviewResponse.from(reviewService.addReview(
             productId,
             userDetails.getId(),
             orderId,
             rating,
             request.get("comment") == null ? "" : String.valueOf(request.get("comment"))
-        );
-        return ResponseEntity.ok(review);
+        ), userDetails.getId()));
     }
 
     private Long parseLong(Object value, String field) {
@@ -85,4 +84,4 @@ public class ReviewController {
             throw new IllegalArgumentException("rating is invalid");
         }
     }
-} 
+}

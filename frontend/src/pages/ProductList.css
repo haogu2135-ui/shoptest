@@ -6253,3 +6253,197 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* UI issues pass: compact mobile catalog banners avoid compressed fallback layouts. */
+@media (max-width: 720px) {
+  .product-list__heroBand {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .product-list__heroContent .ant-typography {
+    display: block;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .product-list__heroCard {
+    width: 100%;
+    min-height: 86px;
+    padding: 12px;
+  }
+
+  .product-list__heroCard strong,
+  .product-list__heroCard span,
+  .product-list__heroHighlights small {
+    white-space: normal;
+  }
+
+  .product-list__mobileNextStep {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .product-list__mobileNextStepActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .product-list__mobileNextStepActions .ant-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .product-list__mobileNextStepActions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .product-list__priceLine {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: baseline;
+    gap: 4px;
+    height: 22px;
+    min-height: 22px;
+    overflow: hidden;
+  }
+
+  .product-list__currentPrice,
+  .product-list__originalPrice,
+  .product-list__priceTag.ant-tag {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+  }
+
+  .product-list__priceTag.ant-tag {
+    max-width: 54px;
+  }
+}
+
+/* Product-card contrast and mobile price safety. */
+.product-list__actionButton.ant-btn-primary {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #b84222, #7f2d16) !important;
+  color: #fff7f0 !important;
+  box-shadow: 0 12px 24px rgba(127, 45, 22, 0.24);
+}
+
+.product-list__actionButton.ant-btn-primary:hover,
+.product-list__actionButton.ant-btn-primary:focus-visible {
+  background: linear-gradient(135deg, #c94a28, #7f2d16) !important;
+  color: #fff7f0 !important;
+  box-shadow: 0 15px 28px rgba(127, 45, 22, 0.3);
+}
+
+.product-list__actionButton.ant-btn-primary > span,
+.product-list__actionButton.ant-btn-primary .anticon {
+  color: inherit !important;
+}
+
+.product-list__priceTag.ant-tag {
+  border-color: rgba(143, 45, 23, 0.18);
+  background: #8f2d17;
+  color: #fff7f0;
+}
+
+@media (max-width: 420px) {
+  .product-list__priceLine {
+    height: auto;
+    min-height: 22px;
+    overflow: visible;
+    flex-wrap: wrap !important;
+    row-gap: 3px;
+  }
+
+  .product-list__currentPrice,
+  .product-list__originalPrice,
+  .product-list__priceTag.ant-tag {
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .product-list__priceTag.ant-tag {
+    flex-basis: auto;
+    max-width: 100%;
+  }
+}
+
+/* App/mobile product-card action tap targets must not be compressed by narrow-card fit rules. */
+@media (max-width: 720px) {
+  .product-list__card .ant-card-actions {
+    grid-template-columns: minmax(0, 1fr) 44px 44px !important;
+    min-height: 52px !important;
+  }
+
+  .product-list__card .ant-card-actions > li {
+    min-height: 44px;
+    margin: 4px 0;
+  }
+
+  .product-list__card .ant-card-actions > li > span {
+    min-height: 44px;
+    padding: 4px !important;
+  }
+
+  .product-list__actionButton.ant-btn,
+  .product-list__actionButton--compact.ant-btn,
+  .product-list__previewTrigger.ant-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    border-radius: 12px;
+  }
+
+  .product-list__actionButton--compact.ant-btn,
+  .product-list__previewTrigger.ant-btn {
+    width: 44px !important;
+    max-width: 44px !important;
+    padding-inline: 0 !important;
+  }
+}
+
+/* Final mobile/App product-list operation touch-target guard */
+@media (max-width: 720px) {
+  .product-list__focusActions .ant-btn,
+  .product-list__toolbar .ant-btn,
+  .product-list__toolbar .ant-input-affix-wrapper,
+  .product-list__toolbar .ant-select-selector,
+  .product-list__filterButton.ant-btn,
+  .product-list__refinementChips .ant-btn,
+  .product-list__mobileContextChip,
+  .product-list__mobileDiscoveryButton,
+  .product-list__mobileNextStepActions .ant-btn,
+  .product-list__mobileConversionActions .ant-btn,
+  .product-list__snapshotNotice .ant-btn,
+  .product-list__categoryButton.ant-btn,
+  .product-list__filterStack .ant-checkbox-wrapper,
+  .product-list__drawerFooter .ant-btn,
+  .product-list__quickAddModal .ant-modal-footer .ant-btn,
+  .product-list__quickAddModal .ant-select-selector,
+  .product-list__previewActions .ant-btn,
+  .product-list__emptyActions .ant-btn,
+  .product-list__recoveryGrid .ant-btn {
+    min-height: 44px;
+  }
+
+  .product-list .ant-pagination-item,
+  .product-list .ant-pagination-prev,
+  .product-list .ant-pagination-next,
+  .product-list .ant-pagination-prev .ant-pagination-item-link,
+  .product-list .ant-pagination-next .ant-pagination-item-link {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

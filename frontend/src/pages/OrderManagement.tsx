@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Divider, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
-import { adminApi, logisticsCarrierApi, orderApi, paymentApi } from '../api';
-import type { LogisticsCarrier, Order, OrderItem, Payment } from '../types';
+import { adminApi, logisticsCarrierApi } from '../api';
+import type { AdminPayment, LogisticsCarrier, Order, OrderItem } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import {
@@ -12,13 +12,21 @@ import {
   isOrderShippable,
   getOrderSlaState,
   orderNextActionByStatus,
-  orderPriority,
   orderStatusColors,
   orderValidTransitions,
 } from '../utils/orderOperationsConfig';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getApiErrorMessage } from '../utils/apiError';
+import {
+  getEffectiveRole,
+  hasAdminPermission,
+  ORDER_EXPORT_PERMISSION,
+  ORDER_FULFILLMENT_PERMISSION,
+  ORDER_PAYMENT_PERMISSION,
+  ORDER_REFUND_PERMISSION,
+  ORDER_STATUS_PERMISSION,
+} from '../utils/roles';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderManagement.css';
 
@@ -50,6 +58,17 @@ export const buildOrderFilterSearchParams = (
   return nextParams;
 };
 
+const orderRecipientLine = (order: Pick<Order, 'recipientName' | 'recipientPhone'>) =>
+  [order.recipientName, order.recipientPhone].filter(Boolean).join(' / ');
+
+const orderShipToBlock = (order: Pick<Order, 'recipientName' | 'recipientPhone' | 'shippingAddress'>) =>
+  [orderRecipientLine(order), order.shippingAddress].filter(Boolean).join('\n');
+
+const ORDER_STATUS_LABEL_KEYS = new Set([...Object.keys(orderStatusColors), 'PENDING_RECEIPT']);
+const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED']);
+
+const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
+
 const OrderManagement: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -77,22 +96,55 @@ const OrderManagement: React.FC = () => {
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState('');
   const [selectedTrackingCarrierCode, setSelectedTrackingCarrierCode] = useState<string | undefined>();
+  const [selectedTrackingOrderId, setSelectedTrackingOrderId] = useState<number | undefined>();
   const [refundOrder, setRefundOrder] = useState<Order | null>(null);
   const [refundReason, setRefundReason] = useState('');
   const [manualRefundReference, setManualRefundReference] = useState('');
   const [refundRestock, setRefundRestock] = useState(false);
   const [refunding, setRefunding] = useState(false);
-  const [refundPayments, setRefundPayments] = useState<Payment[]>([]);
+  const [refundPayments, setRefundPayments] = useState<AdminPayment[]>([]);
   const [refundPaymentsLoading, setRefundPaymentsLoading] = useState(false);
-  const [orderPayments, setOrderPayments] = useState<Payment[]>([]);
+  const [orderPayments, setOrderPayments] = useState<AdminPayment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [syncingPaymentIds, setSyncingPaymentIds] = useState<React.Key[]>([]);
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
   const [statusUpdatingIds, setStatusUpdatingIds] = useState<React.Key[]>([]);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const { formatMoney } = useMarket();
   const pageSizeRef = useRef(20);
+  const canExportOrders = hasAdminPermission(adminPermissions, currentRole, ORDER_EXPORT_PERMISSION);
+  const canUpdateOrderStatus = hasAdminPermission(adminPermissions, currentRole, ORDER_STATUS_PERMISSION);
+  const canFulfillOrders = hasAdminPermission(adminPermissions, currentRole, ORDER_FULFILLMENT_PERMISSION);
+  const canSyncOrderPayments = hasAdminPermission(adminPermissions, currentRole, ORDER_PAYMENT_PERMISSION);
+  const canRefundOrders = hasAdminPermission(adminPermissions, currentRole, ORDER_REFUND_PERMISSION);
+  const formatKnownStatusLabel = useCallback((status: string | undefined, knownStatuses: Set<string>) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = normalizeStatusCode(rawStatus);
+    if (!normalizedStatus) return t('common.unknown');
+    if (knownStatuses.has(normalizedStatus)) return t(`status.${normalizedStatus}`);
+    return rawStatus;
+  }, [t]);
+  const formatOrderStatusLabel = useCallback(
+    (status?: string) => formatKnownStatusLabel(status, ORDER_STATUS_LABEL_KEYS),
+    [formatKnownStatusLabel],
+  );
+  const formatPaymentStatusLabel = useCallback(
+    (status?: string) => formatKnownStatusLabel(status, PAYMENT_STATUS_LABEL_KEYS),
+    [formatKnownStatusLabel],
+  );
+  const getOrderStatusColor = useCallback((status?: string) => {
+    const normalizedStatus = normalizeStatusCode(status);
+    if (!ORDER_STATUS_LABEL_KEYS.has(normalizedStatus)) return 'default';
+    return orderStatusColors[normalizedStatus] || 'default';
+  }, []);
+  const getPaymentStatusColor = useCallback((status?: string) => {
+    const normalizedStatus = normalizeStatusCode(status);
+    if (!PAYMENT_STATUS_LABEL_KEYS.has(normalizedStatus)) return 'default';
+    return orderStatusColors[normalizedStatus] || 'default';
+  }, []);
   const syncRouteFilters = useCallback((filters: { status?: string; quick?: string }) => {
     const nextParams = buildOrderFilterSearchParams(searchParams, filters);
     setSearchParams(nextParams, { replace: true });
@@ -162,11 +214,56 @@ const OrderManagement: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const shippableIds = new Set(orders.filter(isOrderShippable).map((order) => order.id));
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((res) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
+        setAdminPermissions(res.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const shippableIds = new Set(canFulfillOrders ? orders.filter(isOrderShippable).map((order) => order.id) : []);
     setSelectedOrderIds((current) => current.filter((id) => shippableIds.has(Number(id))));
-  }, [orders]);
+  }, [canFulfillOrders, orders]);
+
+  const permissionForOrderTransition = (currentStatus: string, nextStatus: string) => {
+    if (nextStatus === 'PENDING_SHIPMENT') {
+      return currentStatus === 'PENDING_PAYMENT' ? ORDER_PAYMENT_PERMISSION : ORDER_FULFILLMENT_PERMISSION;
+    }
+    if (nextStatus === 'SHIPPED' || nextStatus === 'RETURN_APPROVED'
+      || (nextStatus === 'COMPLETED' && currentStatus === 'RETURN_REQUESTED')) {
+      return ORDER_FULFILLMENT_PERMISSION;
+    }
+    if (nextStatus === 'RETURNED') {
+      return ORDER_REFUND_PERMISSION;
+    }
+    return ORDER_STATUS_PERMISSION;
+  };
+
+  const canApplyOrderTransition = (order: Order, nextStatus: string) => {
+    const permission = permissionForOrderTransition(order.status, nextStatus);
+    if (permission === ORDER_PAYMENT_PERMISSION) return canSyncOrderPayments;
+    if (permission === ORDER_FULFILLMENT_PERMISSION) return canFulfillOrders;
+    if (permission === ORDER_REFUND_PERMISSION) return canRefundOrders;
+    return canUpdateOrderStatus;
+  };
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
+    const order = orders.find((item) => item.id === orderId);
+    if (order && !canApplyOrderTransition(order, newStatus)) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (statusUpdatingIds.includes(orderId)) {
       return;
     }
@@ -196,7 +293,7 @@ const OrderManagement: React.FC = () => {
 
   const formatLabelSpecs = (selectedSpecs?: string | null) => {
     try {
-      return selectedSpecs ? formatSelectedSpecs(selectedSpecs, t) : '';
+      return selectedSpecs ? formatSelectedSpecs(selectedSpecs, t, language) : '';
     } catch {
       return selectedSpecs || '';
     }
@@ -276,7 +373,7 @@ const OrderManagement: React.FC = () => {
             </div>
             <div class="section">
               <div class="label-text">${escapeHtml(labelCopy.shipTo)}</div>
-              <div class="address">${escapeHtml(order.shippingAddress || '-')}</div>
+              <div class="address">${escapeHtml(orderShipToBlock(order) || '-')}</div>
             </div>
             <div class="section meta">
               <div><div class="label-text">${escapeHtml(labelCopy.payment)}</div>${escapeHtml(order.paymentMethod || '-')}</div>
@@ -310,7 +407,7 @@ const OrderManagement: React.FC = () => {
 
     let items: OrderItem[] = [];
     try {
-      const res = await orderApi.getItems(order.id);
+      const res = await adminApi.getOrderItems(order.id);
       items = res.data || [];
     } catch {
       items = [];
@@ -328,6 +425,10 @@ const OrderManagement: React.FC = () => {
 
   const handleShip = async () => {
     if (!shippingOrder) {
+      return;
+    }
+    if (!canFulfillOrders) {
+      message.error(t('adminLayout.noPermission'));
       return;
     }
     if (!trackingNumber.trim()) {
@@ -374,8 +475,8 @@ const OrderManagement: React.FC = () => {
     setPaymentsLoading(true);
     try {
       const [itemsRes, paymentsRes] = await Promise.all([
-        orderApi.getItems(order.id),
-        paymentApi.getByOrder(order.id),
+        adminApi.getOrderItems(order.id),
+        adminApi.getOrderPayments(order.id),
       ]);
       setOrderItems(itemsRes.data);
       setOrderPayments(paymentsRes.data || []);
@@ -394,13 +495,17 @@ const OrderManagement: React.FC = () => {
     && !isOrderRefunded(order);
 
   const openRefundModal = async (order: Order) => {
+    if (!canRefundOrders) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setRefundOrder(order);
     setRefundReason(order.returnReason || '');
     setRefundRestock(order.status === 'PENDING_SHIPMENT');
     setRefundPayments([]);
     setRefundPaymentsLoading(true);
     try {
-      const res = await paymentApi.getByOrder(order.id);
+      const res = await adminApi.getOrderPayments(order.id);
       setRefundPayments(res.data || []);
     } catch {
       setRefundPayments([]);
@@ -421,6 +526,14 @@ const OrderManagement: React.FC = () => {
 
   const handleRefundOrder = async () => {
     if (!refundOrder) return;
+    if (!canRefundOrders) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (!refundReason.trim()) {
+      message.warning(t('pages.adminOrders.refundReasonRequired'));
+      return;
+    }
     try {
       setRefunding(true);
       const res = await adminApi.refundOrder(refundOrder.id, {
@@ -445,17 +558,22 @@ const OrderManagement: React.FC = () => {
   const hasLoadedRefundPayments = refundPayments.length > 0;
   const hasPaidRefundPayment = refundPayments.some((payment) => payment.status === 'PAID');
   const refundAlreadyProcessing = refundPayments.some((payment) => payment.status === 'REFUNDING');
+  const hasRefundablePayment = hasPaidRefundPayment || refundAlreadyProcessing;
 
-  const mergePayment = (payments: Payment[], syncedPayment: Payment) =>
+  const mergePayment = (payments: AdminPayment[], syncedPayment: AdminPayment) =>
     payments.map((payment) => payment.id === syncedPayment.id ? syncedPayment : payment);
 
-  const handleSyncPayment = async (payment: Payment, scope: 'detail' | 'refund') => {
+  const handleSyncPayment = async (payment: AdminPayment, scope: 'detail' | 'refund') => {
+    if (!canSyncOrderPayments) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (syncingPaymentIds.includes(payment.id)) {
       return;
     }
     try {
       setSyncingPaymentIds((current) => [...current, payment.id]);
-      const res = await paymentApi.sync(payment.id);
+      const res = await adminApi.syncOrderPayment(payment.id);
       if (scope === 'refund') {
         setRefundPayments((current) => mergePayment(current, res.data));
       } else {
@@ -471,6 +589,10 @@ const OrderManagement: React.FC = () => {
   };
 
   const handleBatchShip = async () => {
+    if (!canFulfillOrders) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (selectedVisibleShippableIds.length === 0) {
       message.error(t('pages.adminOrders.selectPendingShipment'));
       return;
@@ -502,6 +624,7 @@ const OrderManagement: React.FC = () => {
     setTrackingOpen(false);
     setSelectedTrackingNumber('');
     setSelectedTrackingCarrierCode(undefined);
+    setSelectedTrackingOrderId(undefined);
   };
 
   const closeDetailModal = () => {
@@ -513,6 +636,10 @@ const OrderManagement: React.FC = () => {
   };
 
   const handleExport = async () => {
+    if (!canExportOrders) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setExporting(true);
     try {
       const res = await adminApi.exportOrders(filterStatus, debouncedSearchText, quickFilter);
@@ -537,13 +664,14 @@ const OrderManagement: React.FC = () => {
     }
   };
 
-  const handleTrackShipment = (trackingNo?: string, carrierCode?: string) => {
+  const handleTrackShipment = (trackingNo?: string, carrierCode?: string, orderId?: number) => {
     if (!trackingNo) {
       message.warning(t('pages.adminOrders.noTrackingNumber'));
       return;
     }
     setSelectedTrackingNumber(trackingNo);
     setSelectedTrackingCarrierCode(carrierCode);
+    setSelectedTrackingOrderId(orderId);
     setTrackingOpen(true);
   };
   const handleStatusFilterChange = (value?: string) => {
@@ -582,16 +710,11 @@ const OrderManagement: React.FC = () => {
   };
 
   const normalizedSearchText = debouncedSearchText.trim().toLowerCase();
-  const sortedFilteredOrders = [...orders].sort((left, right) => {
-    const priorityDelta = (orderPriority[left.status] ?? 99) - (orderPriority[right.status] ?? 99);
-    if (priorityDelta !== 0) return priorityDelta;
-    const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
-    const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
-    return rightTime - leftTime || right.id - left.id;
-  });
-  const selectedVisibleShippableIds = sortedFilteredOrders
-    .filter((order) => selectedOrderIds.includes(order.id) && isOrderShippable(order))
-    .map((order) => order.id);
+  const selectedVisibleShippableIds = canFulfillOrders
+    ? orders
+      .filter((order) => selectedOrderIds.includes(order.id) && isOrderShippable(order))
+      .map((order) => order.id)
+    : [];
   const orderSummaryCards = [
     {
       key: 'needsAction',
@@ -629,6 +752,13 @@ const OrderManagement: React.FC = () => {
       filter: 'PENDING_SHIPMENT',
     },
     {
+      key: 'afterSales',
+      label: t('pages.adminDashboard.commercialReadiness.afterSales'),
+      value: orderSummary.AFTER_SALES ?? orders.filter((order) => ['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING'].includes(order.status)).length,
+      color: '#cf1322',
+      filter: 'AFTER_SALES',
+    },
+    {
       key: 'returnRequested',
       label: t('status.RETURN_REQUESTED'),
       value: orderSummary.RETURN_REQUESTED ?? orders.filter((order) => order.status === 'RETURN_REQUESTED').length,
@@ -643,6 +773,13 @@ const OrderManagement: React.FC = () => {
       filter: 'RETURN_SHIPPED',
     },
     {
+      key: 'refunding',
+      label: t('status.REFUNDING'),
+      value: orderSummary.REFUNDING ?? 0,
+      color: '#c41d7f',
+      filter: 'REFUNDING',
+    },
+    {
       key: 'refunded',
       label: t('status.REFUNDED'),
       value: orderSummary.REFUNDED ?? orders.filter(isOrderRefunded).length,
@@ -650,7 +787,14 @@ const OrderManagement: React.FC = () => {
       filter: 'REFUNDED',
     },
   ];
-  const activeQuickFilterLabel = orderSummaryCards.find((item) => item.filter === quickFilter)?.label;
+  const specificQuickFilterLabels: Record<string, string> = {
+    SLA_OVERDUE_PAYMENT: `${t('status.PENDING_PAYMENT')} · ${t('pages.adminOrders.slaOverdueCard')}`,
+    SLA_OVERDUE_SHIPMENT: `${t('status.PENDING_SHIPMENT')} · ${t('pages.adminOrders.slaOverdueCard')}`,
+    SLA_OVERDUE_RETURN_APPROVED: `${t('status.RETURN_APPROVED')} · ${t('pages.adminOrders.slaOverdueCard')}`,
+    SLA_OVERDUE_RETURN_SHIPPED: `${t('status.RETURN_SHIPPED')} · ${t('pages.adminOrders.slaOverdueCard')}`,
+  };
+  const activeQuickFilterLabel = orderSummaryCards.find((item) => item.filter === quickFilter)?.label
+    || (quickFilter ? specificQuickFilterLabels[quickFilter] : undefined);
   const transitionLabel = (currentStatus: string, nextStatus: string) => {
     if (currentStatus === 'PENDING_PAYMENT' && nextStatus === 'PENDING_SHIPMENT') {
       return t('pages.adminOrders.confirmPayment');
@@ -664,9 +808,13 @@ const OrderManagement: React.FC = () => {
     if (currentStatus === 'RETURN_SHIPPED' && nextStatus === 'RETURNED') {
       return t('pages.adminOrders.confirmReturnReceivedAndRefund');
     }
-    return t(`status.${nextStatus}`);
+    return formatOrderStatusLabel(nextStatus);
   };
   const confirmStatusChange = (record: Order, nextStatus: string) => {
+    if (!canApplyOrderTransition(record, nextStatus)) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (record.status === 'PENDING_PAYMENT' && nextStatus === 'PENDING_SHIPMENT') {
       Modal.confirm({
         title: t('pages.adminOrders.confirmPaymentTitle'),
@@ -730,10 +878,33 @@ const OrderManagement: React.FC = () => {
     );
   };
 
+  const renderCustomer = (order: Order) => {
+    const isGuest = order.customerType === 'GUEST' || order.guestOrder;
+    const displayName = order.customerDisplayName || order.customerUsername || order.username || (order.userId ? `#${order.userId}` : '-');
+    return (
+      <Space direction="vertical" size={2} className="order-management-page__compactStack order-management-page__customerStack">
+        <Space size={4} wrap>
+          <Typography.Text strong>{displayName}</Typography.Text>
+          <Tag color={isGuest ? 'purple' : 'blue'}>
+            {isGuest ? t('pages.adminOrders.guestCustomer') : t('pages.adminOrders.registeredCustomer')}
+          </Tag>
+        </Space>
+        {order.customerEmail ? <Typography.Text type="secondary">{order.customerEmail}</Typography.Text> : null}
+        {order.customerPhone ? <Typography.Text type="secondary">{order.customerPhone}</Typography.Text> : null}
+        {order.userId ? <Typography.Text type="secondary">ID {order.userId}</Typography.Text> : null}
+      </Space>
+    );
+  };
+
 
   const columns = [
     { title: t('pages.adminOrders.orderId'), dataIndex: 'id', key: 'id', width: 76 },
-    { title: t('common.userId'), dataIndex: 'userId', key: 'userId', width: 72 },
+    {
+      title: t('pages.adminOrders.customer'),
+      key: 'customer',
+      width: 190,
+      render: (_: any, record: Order) => renderCustomer(record),
+    },
     {
       title: t('common.amount'),
       dataIndex: 'totalAmount',
@@ -746,7 +917,7 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 112,
-      render: (s: string) => <Tag color={orderStatusColors[s]}>{t(`status.${s}`)}</Tag>,
+      render: (s: string) => <Tag color={getOrderStatusColor(s)}>{formatOrderStatusLabel(s)}</Tag>,
     },
     {
       title: t('pages.adminOrders.nextAction'),
@@ -775,7 +946,13 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'shippingAddress',
       key: 'shippingAddress',
       width: 220,
-      render: (v: string) => <span className="order-management-page__addressText">{v || '-'}</span>,
+      render: (_: string, record: Order) => (
+        <Space direction="vertical" size={0} className="order-management-page__compactStack">
+          {orderRecipientLine(record) ? <Typography.Text strong>{orderRecipientLine(record)}</Typography.Text> : null}
+          <span className="order-management-page__addressText">{record.shippingAddress || '-'}</span>
+          {record.contactEmail ? <Typography.Text type="secondary">{record.contactEmail}</Typography.Text> : null}
+        </Space>
+      ),
     },
     {
       title: t('pages.adminOrders.paymentMethod'),
@@ -794,7 +971,7 @@ const OrderManagement: React.FC = () => {
           <span className="order-management-page__trackingText">{v}</span>
           {record.trackingCarrierName ? <Typography.Text type="secondary">{record.trackingCarrierName}</Typography.Text> : null}
           <Space size={8}>
-            <Button size="small" type="link" className="order-management-page__linkButton" onClick={() => handleTrackShipment(v, record.trackingCarrierCode)}>{t('pages.adminOrders.track')}</Button>
+            <Button size="small" type="link" className="order-management-page__linkButton" onClick={() => handleTrackShipment(v, record.trackingCarrierCode, record.id)}>{t('pages.adminOrders.track')}</Button>
             <Button size="small" type="link" className="order-management-page__linkButton" onClick={() => printShippingLabel(record)}>{t('pages.adminOrders.printLabel')}</Button>
           </Space>
         </Space>
@@ -813,6 +990,7 @@ const OrderManagement: React.FC = () => {
       width: 180,
       render: (_: any, record: Order) => {
         const transitions = orderValidTransitions[record.status] || [];
+        const allowedTransitions = transitions.filter((status) => canApplyOrderTransition(record, status));
         const statusUpdating = statusUpdatingIds.includes(record.id);
         return (
           <Space wrap size={[6, 6]} className="order-management-page__actions">
@@ -821,7 +999,7 @@ const OrderManagement: React.FC = () => {
             </Button>
             {transitions.length === 0 ? (
               <span className="order-management-page__completed">{t('common.completed')}</span>
-            ) : (
+            ) : allowedTransitions.length > 0 ? (
               <Select
                 size="small"
                 className="order-management-page__transitionSelect"
@@ -839,13 +1017,13 @@ const OrderManagement: React.FC = () => {
                   }
                   confirmStatusChange(record, val);
                 }}
-                options={transitions.map((s) => ({
+                options={allowedTransitions.map((s) => ({
                   value: s,
                   label: transitionLabel(record.status, s),
                 }))}
               />
-            )}
-            {canRefundOrder(record) ? (
+            ) : null}
+            {canRefundOrders && canRefundOrder(record) ? (
               <Button size="small" danger onClick={() => openRefundModal(record)}>
                 {t('pages.adminOrders.refundNow')}
               </Button>
@@ -893,6 +1071,7 @@ const OrderManagement: React.FC = () => {
               { value: 'RETURN_REQUESTED', label: t('status.RETURN_REQUESTED') },
               { value: 'RETURN_APPROVED', label: t('status.RETURN_APPROVED') },
               { value: 'RETURN_SHIPPED', label: t('status.RETURN_SHIPPED') },
+              { value: 'RETURN_REFUNDING', label: t('status.RETURN_REFUNDING') },
               { value: 'RETURNED', label: t('status.RETURNED') },
               { value: 'REFUNDED', label: t('status.REFUNDED') },
               { value: 'CANCELLED', label: t('status.CANCELLED') },
@@ -906,16 +1085,20 @@ const OrderManagement: React.FC = () => {
             placeholder={t('pages.adminOrders.searchPlaceholder')}
             className="order-management-page__searchInput"
           />
-          <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
-            {quickFilter || normalizedSearchText ? t('pages.adminOrders.exportVisibleOrders') : t('pages.adminOrders.exportOrders')}
-          </Button>
-          <Button
-            type="primary"
-            disabled={selectedVisibleShippableIds.length === 0}
-            onClick={() => setBatchShipOpen(true)}
-          >
-            {t('pages.adminOrders.batchShip')}
-          </Button>
+          {canExportOrders ? (
+            <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
+              {quickFilter || normalizedSearchText ? t('pages.adminOrders.exportVisibleOrders') : t('pages.adminOrders.exportOrders')}
+            </Button>
+          ) : null}
+          {canFulfillOrders ? (
+            <Button
+              type="primary"
+              disabled={selectedVisibleShippableIds.length === 0}
+              onClick={() => setBatchShipOpen(true)}
+            >
+              {t('pages.adminOrders.batchShip')}
+            </Button>
+          ) : null}
           {activeQuickFilterLabel ? (
             <Tag
               closable
@@ -936,15 +1119,15 @@ const OrderManagement: React.FC = () => {
       <div className="order-management-page__table">
         <Table
           columns={columns}
-          dataSource={sortedFilteredOrders}
+          dataSource={orders}
           rowKey="id"
-          rowSelection={{
+          rowSelection={canFulfillOrders ? {
             selectedRowKeys: selectedOrderIds,
             onChange: setSelectedOrderIds,
             getCheckboxProps: (record) => ({
               disabled: !isOrderShippable(record),
             }),
-          }}
+          } : undefined}
           loading={loading}
           pagination={{
             current: orderPage.page,
@@ -966,6 +1149,7 @@ const OrderManagement: React.FC = () => {
         open={!!shippingOrder}
         className="profile-mobile-safe-modal order-management-page__shippingModal"
         confirmLoading={shipping}
+        okButtonProps={{ disabled: !canFulfillOrders }}
         onOk={handleShip}
         onCancel={closeShippingModal}
         destroyOnHidden
@@ -1001,7 +1185,7 @@ const OrderManagement: React.FC = () => {
         okText={t('pages.adminOrders.refundNow')}
         okButtonProps={{
           danger: true,
-          disabled: refundPaymentsLoading || (hasLoadedRefundPayments && !hasPaidRefundPayment),
+          disabled: !canRefundOrders || refundPaymentsLoading || (hasLoadedRefundPayments && !hasRefundablePayment),
         }}
         onOk={handleRefundOrder}
         onCancel={closeRefundModal}
@@ -1021,6 +1205,7 @@ const OrderManagement: React.FC = () => {
             maxLength={500}
             showCount
             rows={4}
+            status={!refundReason.trim() ? 'error' : undefined}
           />
           <Input
             value={manualRefundReference}
@@ -1032,7 +1217,7 @@ const OrderManagement: React.FC = () => {
           <Checkbox checked={refundRestock} onChange={(event) => setRefundRestock(event.target.checked)}>
             {t('pages.adminOrders.restockRefundItems')}
           </Checkbox>
-          {hasLoadedRefundPayments && !hasPaidRefundPayment ? (
+          {hasLoadedRefundPayments && (!hasPaidRefundPayment || refundAlreadyProcessing) ? (
             <Alert
               type={refundAlreadyProcessing ? 'warning' : 'error'}
               showIcon
@@ -1059,7 +1244,7 @@ const OrderManagement: React.FC = () => {
                   dataIndex: 'status',
                   key: 'status',
                   width: 104,
-                  render: (status: string) => <Tag color={orderStatusColors[status] || 'default'}>{t(`status.${status}`)}</Tag>,
+                  render: (status: string) => <Tag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</Tag>,
                 },
                 {
                   title: t('common.amount'),
@@ -1078,17 +1263,24 @@ const OrderManagement: React.FC = () => {
                   title: t('common.actions'),
                   key: 'actions',
                   width: 120,
-                  render: (_: any, payment: Payment) => (
-                    <Button
-                      size="small"
-                      type="link"
-                      loading={syncingPaymentIds.includes(payment.id)}
-                      disabled={payment.status !== 'PENDING'}
-                      onClick={() => handleSyncPayment(payment, 'refund')}
+                  render: (_: any, payment: AdminPayment) => canSyncOrderPayments ? (
+                    <Popconfirm
+                      title={t('pages.adminOrders.syncPaymentConfirm', { id: payment.id })}
+                      onConfirm={() => handleSyncPayment(payment, 'refund')}
+                      okText={t('pages.adminOrders.syncPayment')}
+                      cancelText={t('common.cancel')}
+                      disabled={payment.status !== 'PENDING' || syncingPaymentIds.includes(payment.id)}
                     >
-                      {t('pages.adminOrders.syncPayment')}
-                    </Button>
-                  ),
+                      <Button
+                        size="small"
+                        type="link"
+                        loading={syncingPaymentIds.includes(payment.id)}
+                        disabled={payment.status !== 'PENDING'}
+                      >
+                        {t('pages.adminOrders.syncPayment')}
+                      </Button>
+                    </Popconfirm>
+                  ) : '-',
                 },
               ]}
             />
@@ -1100,6 +1292,7 @@ const OrderManagement: React.FC = () => {
         open={batchShipOpen}
         className="profile-mobile-safe-modal order-management-page__batchShipModal"
         confirmLoading={batchShipping}
+        okButtonProps={{ disabled: !canFulfillOrders || selectedVisibleShippableIds.length === 0 }}
         onOk={handleBatchShip}
         onCancel={closeBatchShipModal}
         destroyOnHidden
@@ -1133,7 +1326,7 @@ const OrderManagement: React.FC = () => {
         className="profile-mobile-safe-modal order-management-page__trackingModal"
         destroyOnHidden
       >
-        <SeventeenTrackWidget trackingNumber={selectedTrackingNumber} carrierCode={selectedTrackingCarrierCode} />
+        <SeventeenTrackWidget trackingNumber={selectedTrackingNumber} carrierCode={selectedTrackingCarrierCode} orderId={selectedTrackingOrderId} />
       </Modal>
       <Modal
         title={t('pages.adminOrders.orderItemsTitle', { id: detailOrder?.orderNo || detailOrder?.id || '' })}
@@ -1160,7 +1353,7 @@ const OrderManagement: React.FC = () => {
                 render: (v: string, item: OrderItem) => (
                   <Space direction="vertical" size={0}>
                     <span>{v || `#${item.productId}`}</span>
-                    {item.selectedSpecs ? <Typography.Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Typography.Text> : null}
+                    {item.selectedSpecs ? <Typography.Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Typography.Text> : null}
                   </Space>
                 ),
               },
@@ -1195,7 +1388,7 @@ const OrderManagement: React.FC = () => {
                   dataIndex: 'status',
                   key: 'status',
                   width: 110,
-                  render: (status: string) => <Tag color={orderStatusColors[status] || 'default'}>{t(`status.${status}`)}</Tag>,
+                  render: (status: string) => <Tag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</Tag>,
                 },
                 {
                   title: t('common.amount'),
@@ -1221,17 +1414,24 @@ const OrderManagement: React.FC = () => {
                   title: t('common.actions'),
                   key: 'actions',
                   width: 120,
-                  render: (_: any, payment: Payment) => (
-                    <Button
-                      size="small"
-                      type="link"
-                      loading={syncingPaymentIds.includes(payment.id)}
-                      disabled={payment.status !== 'PENDING'}
-                      onClick={() => handleSyncPayment(payment, 'detail')}
+                  render: (_: any, payment: AdminPayment) => canSyncOrderPayments ? (
+                    <Popconfirm
+                      title={t('pages.adminOrders.syncPaymentConfirm', { id: payment.id })}
+                      onConfirm={() => handleSyncPayment(payment, 'detail')}
+                      okText={t('pages.adminOrders.syncPayment')}
+                      cancelText={t('common.cancel')}
+                      disabled={payment.status !== 'PENDING' || syncingPaymentIds.includes(payment.id)}
                     >
-                      {t('pages.adminOrders.syncPayment')}
-                    </Button>
-                  ),
+                      <Button
+                        size="small"
+                        type="link"
+                        loading={syncingPaymentIds.includes(payment.id)}
+                        disabled={payment.status !== 'PENDING'}
+                      >
+                        {t('pages.adminOrders.syncPayment')}
+                      </Button>
+                    </Popconfirm>
+                  ) : '-',
                 },
               ]}
             />

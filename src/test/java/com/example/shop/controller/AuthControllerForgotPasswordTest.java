@@ -5,6 +5,7 @@ import com.example.shop.entity.User;
 import com.example.shop.service.ClientIpResolver;
 import com.example.shop.service.EmailLoginService;
 import com.example.shop.service.EmailLoginService.EmailLoginException;
+import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class AuthControllerForgotPasswordTest {
         userService = mock(UserService.class);
         emailLoginService = mock(EmailLoginService.class);
         clientIpResolver = mock(ClientIpResolver.class);
-        controller = new AuthController(userService, emailLoginService, clientIpResolver);
+        controller = new AuthController(userService, emailLoginService, clientIpResolver, mock(IpBlacklistService.class));
     }
 
     @Test
@@ -41,7 +42,7 @@ class AuthControllerForgotPasswordTest {
         User verifiedUser = verifiedUser(7L, "mia", "5550100", "mia@example.com");
 
         when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.10");
-        when(emailLoginService.verifyLoginCode("MIA@example.com", "123456", "203.0.113.10"))
+        when(emailLoginService.verifyPasswordResetCode("MIA@example.com", "123456", "203.0.113.10"))
                 .thenReturn(verifiedUser);
 
         ResponseEntity<?> response = controller.forgotPassword(request, servletRequest);
@@ -57,7 +58,7 @@ class AuthControllerForgotPasswordTest {
         ForgotPasswordRequest request = resetRequest("mia", "mia@example.com", "111111");
 
         when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.11");
-        when(emailLoginService.verifyLoginCode("mia@example.com", "111111", "203.0.113.11"))
+        when(emailLoginService.verifyPasswordResetCode("mia@example.com", "111111", "203.0.113.11"))
                 .thenThrow(new EmailLoginException("INVALID_CODE", "Verification code expired or invalid", 0));
 
         ResponseEntity<?> response = controller.forgotPassword(request, servletRequest);
@@ -74,13 +75,14 @@ class AuthControllerForgotPasswordTest {
         User verifiedUser = verifiedUser(8L, "other-user", "5550199", "mia@example.com");
 
         when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.12");
-        when(emailLoginService.verifyLoginCode("mia@example.com", "123456", "203.0.113.12"))
+        when(emailLoginService.verifyPasswordResetCode("mia@example.com", "123456", "203.0.113.12"))
                 .thenReturn(verifiedUser);
 
         ResponseEntity<?> response = controller.forgotPassword(request, servletRequest);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("Account information does not match", ((Map<?, ?>) response.getBody()).get("error"));
+        assertEquals("Password reset failed. Please verify the account information and code.", ((Map<?, ?>) response.getBody()).get("error"));
+        assertEquals("RESET_FAILED", ((Map<?, ?>) response.getBody()).get("code"));
         verifyNoInteractions(userService);
     }
 

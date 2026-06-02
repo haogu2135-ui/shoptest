@@ -1,10 +1,13 @@
 package com.example.shop.config;
 
 import com.example.shop.service.RuntimeConfigService;
+import com.example.shop.util.GatewayUrlValidator;
 import org.springframework.stereotype.Component;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Component
@@ -12,6 +15,7 @@ public class CorsOriginProperties {
     private static final String LOCAL_DEVELOPMENT_ORIGINS =
             "http://localhost:*,http://127.0.0.1:*,"
                     + "http://10.*:*,http://172.*:*,http://192.168.*:*";
+    private static final String PRODUCTION_ORIGINS = "https://pet.686888666.xyz";
 
     private final RuntimeConfigService runtimeConfig;
 
@@ -20,7 +24,7 @@ public class CorsOriginProperties {
     }
 
     public List<String> getCorsAllowedOriginPatterns() {
-        return parseOriginPatterns(runtimeConfig.getString("app.cors.allowed-origin-patterns", LOCAL_DEVELOPMENT_ORIGINS), LOCAL_DEVELOPMENT_ORIGINS);
+        return parseOriginPatterns(runtimeConfig.getString("app.cors.allowed-origin-patterns", defaultOriginFallback()), defaultOriginFallback());
     }
 
     public String[] getCorsAllowedOriginPatternArray() {
@@ -37,13 +41,45 @@ public class CorsOriginProperties {
         List<String> patterns = Arrays.stream(source.split(","))
                 .map(String::trim)
                 .filter(this::hasText)
+                .filter(pattern -> !isProductionMode() || isSafeProductionOrigin(pattern))
                 .distinct()
                 .collect(Collectors.toList());
 
         if (patterns.isEmpty()) {
-            return Arrays.asList(LOCAL_DEVELOPMENT_ORIGINS.split(","));
+            return Arrays.asList(defaultOriginFallback().split(","));
         }
         return patterns;
+    }
+
+    private String defaultOriginFallback() {
+        return isProductionMode() ? PRODUCTION_ORIGINS : LOCAL_DEVELOPMENT_ORIGINS;
+    }
+
+    private boolean isProductionMode() {
+        String mode = runtimeConfig.getString("app.runtime-mode", "production");
+        String normalized = mode == null ? "" : mode.trim().toLowerCase(Locale.ROOT);
+        return "production".equals(normalized) || "prod".equals(normalized);
+    }
+
+    private boolean isSafeProductionOrigin(String value) {
+        if (!hasText(value)) {
+            return false;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if ("*".equals(normalized) || normalized.contains("*")) {
+            return false;
+        }
+        try {
+            URI uri = new URI(value.trim());
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+            return "https".equals(scheme)
+                    && uri.getUserInfo() == null
+                    && !host.isBlank()
+                    && !GatewayUrlValidator.isLocalOrPrivateHost(host);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean hasText(String value) {

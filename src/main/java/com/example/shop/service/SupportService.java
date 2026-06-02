@@ -1,6 +1,7 @@
 package com.example.shop.service;
 
 import com.example.shop.dto.SupportAdminSummaryResponse;
+import com.example.shop.dto.SupportAdminSessionPageResponse;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
 import com.example.shop.repository.SupportMessageMapper;
@@ -19,6 +20,13 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 @RequiredArgsConstructor
 public class SupportService {
+    private static final int DEFAULT_MESSAGE_LIMIT = 80;
+    private static final int MAX_MESSAGE_LIMIT = 120;
+    private static final int DEFAULT_SESSION_LIMIT = 12;
+    private static final int MAX_SESSION_LIMIT = 30;
+    private static final int DEFAULT_ADMIN_SESSION_PAGE_SIZE = 20;
+    private static final int MAX_ADMIN_SESSION_PAGE_SIZE = 50;
+
     private final SupportSessionMapper supportSessionMapper;
     private final SupportMessageMapper supportMessageMapper;
     private final RuntimeConfigService runtimeConfig;
@@ -27,11 +35,27 @@ public class SupportService {
     @Transactional
     public SupportSession getOrCreateOpenSession(Long userId) {
         SupportSession session = supportSessionMapper.findOpenByUserId(userId);
+        return getOrCreateOpenSession(userId, null, session);
+    }
+
+    @Transactional
+    public SupportSession getOrCreateOpenSession(Long userId, String contextKey) {
+        String normalizedContextKey = normalizeContextKey(contextKey);
+        if (normalizedContextKey == null) {
+            return getOrCreateOpenSession(userId);
+        }
+        SupportSession session = supportSessionMapper.findOpenByUserIdAndContextKey(userId, normalizedContextKey);
+        return getOrCreateOpenSession(userId, normalizedContextKey, session);
+    }
+
+    private SupportSession getOrCreateOpenSession(Long userId, String contextKey, SupportSession existingSession) {
+        SupportSession session = existingSession;
         if (session != null) {
             return session;
         }
         session = new SupportSession();
         session.setUserId(userId);
+        session.setContextKey(contextKey);
         session.setStatus("OPEN");
         session.setLastMessage("");
         session.setLastMessageAt(LocalDateTime.now());
@@ -51,11 +75,38 @@ public class SupportService {
     }
 
     public List<SupportSession> getUserSessions(Long userId) {
-        return supportSessionMapper.findByUserId(userId);
+        return getUserSessions(userId, DEFAULT_SESSION_LIMIT);
     }
 
-    public List<SupportSession> getAllSessions(String status) {
-        return supportSessionMapper.findAll(status);
+    public List<SupportSession> getUserSessions(Long userId, Integer limit) {
+        return supportSessionMapper.findByUserId(userId, normalizeSessionLimit(limit));
+    }
+
+    public boolean isDefaultUserSession(SupportSession session) {
+        return normalizeContextKey(session == null ? null : session.getContextKey()) == null;
+    }
+
+    public SupportAdminSessionPageResponse getAdminSessionPage(String status,
+                                                               Boolean needsReply,
+                                                               Long assignedAdminId,
+                                                               String search,
+                                                               Integer page,
+                                                               Integer size) {
+        int safeSize = normalizeAdminSessionPageSize(size);
+        int safePage = normalizeAdminSessionPage(page);
+        String safeStatus = normalizeAdminStatus(status);
+        String safeSearch = normalizeAdminSearch(search);
+        Long safeAssignedAdminId = assignedAdminId != null && assignedAdminId > 0 ? assignedAdminId : null;
+        Boolean safeNeedsReply = Boolean.TRUE.equals(needsReply) ? Boolean.TRUE : null;
+        long total = supportSessionMapper.countAdminPage(safeStatus, safeNeedsReply, safeAssignedAdminId, safeSearch);
+        int totalPages = total <= 0 ? 0 : (int) Math.ceil((double) total / safeSize);
+        if (totalPages > 0 && safePage > totalPages) {
+            safePage = totalPages;
+        }
+        int offset = (safePage - 1) * safeSize;
+        List<SupportSession> items = supportSessionMapper.findAdminPage(
+                safeStatus, safeNeedsReply, safeAssignedAdminId, safeSearch, safeSize, offset);
+        return SupportAdminSessionPageResponse.of(items, total, safePage, safeSize);
     }
 
     public SupportAdminSummaryResponse adminSummary(Long adminId) {
@@ -77,11 +128,26 @@ public class SupportService {
     }
 
     public List<SupportMessage> getMessages(Long sessionId) {
-        return supportMessageMapper.findBySessionId(sessionId);
+        return getMessages(sessionId, DEFAULT_MESSAGE_LIMIT, null);
+    }
+
+    public List<SupportMessage> getMessages(Long sessionId, Integer limit, Long afterId) {
+        int normalizedLimit = normalizeMessageLimit(limit);
+        Long normalizedAfterId = afterId != null && afterId > 0 ? afterId : null;
+        if (normalizedAfterId != null) {
+            return supportMessageMapper.findBySessionIdAfterId(sessionId, normalizedAfterId, normalizedLimit);
+        }
+        return supportMessageMapper.findRecentBySessionId(sessionId, normalizedLimit);
     }
 
     @Transactional
     public SupportMessage sendUserMessage(Long userId, Long sessionId, String content) {
+        return sendUserMessage(userId, sessionId, content, null);
+    }
+
+    @Transactional
+    public SupportMessage sendUserMessage(Long userId, Long sessionId, String content, String contextKey) {
+        String normalizedContextKey = normalizeContextKey(contextKey);
         SupportSession session = null;
         if (sessionId != null) {
             session = supportSessionMapper.findById(sessionId);
@@ -91,9 +157,10 @@ public class SupportService {
             if (!userId.equals(session.getUserId())) {
                 throw new IllegalStateException("Forbidden");
             }
+            assertContextMatches(session, normalizedContextKey);
         }
         if (session == null || !"OPEN".equals(session.getStatus())) {
-            session = getOrCreateOpenSession(userId);
+            session = getOrCreateOpenSession(userId, normalizedContextKey);
         }
         return sendMessage(session.getId(), userId, "USER", content);
     }
@@ -137,10 +204,56 @@ public class SupportService {
         message.setCreatedAt(LocalDateTime.now());
         supportMessageMapper.insert(message);
         supportSessionMapper.updateLastMessage(sessionId, message.getContent());
-        return supportMessageMapper.findBySessionId(sessionId).stream()
-                .filter(item -> message.getId().equals(item.getId()))
-                .findFirst()
-                .orElse(message);
+        SupportMessage saved = supportMessageMapper.findById(message.getId());
+        return saved == null ? message : saved;
+    }
+
+    private int normalizeMessageLimit(Integer limit) {
+        int normalizedLimit = limit == null || limit <= 0 ? DEFAULT_MESSAGE_LIMIT : limit;
+        return Math.max(1, Math.min(normalizedLimit, MAX_MESSAGE_LIMIT));
+    }
+
+    private int normalizeSessionLimit(Integer limit) {
+        int normalizedLimit = limit == null || limit <= 0 ? DEFAULT_SESSION_LIMIT : limit;
+        return Math.max(1, Math.min(normalizedLimit, MAX_SESSION_LIMIT));
+    }
+
+    private int normalizeAdminSessionPage(Integer page) {
+        return Math.max(1, page == null || page <= 0 ? 1 : page);
+    }
+
+    private int normalizeAdminSessionPageSize(Integer size) {
+        int configuredMax = runtimeConfig.getInt("support.admin.sessions.max-page-size", MAX_ADMIN_SESSION_PAGE_SIZE);
+        int maxSize = Math.max(1, Math.min(configuredMax, 200));
+        int normalizedSize = size == null || size <= 0 ? DEFAULT_ADMIN_SESSION_PAGE_SIZE : size;
+        return Math.max(1, Math.min(normalizedSize, maxSize));
+    }
+
+    private String normalizeAdminStatus(String status) {
+        if (status == null) {
+            return null;
+        }
+        String normalized = status.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", " ")
+                .trim()
+                .toUpperCase()
+                .replaceAll("\\s+", "");
+        if (normalized.isEmpty() || "ALL".equals(normalized)) {
+            return null;
+        }
+        return normalized.length() <= 40 ? normalized : normalized.substring(0, 40);
+    }
+
+    private String normalizeAdminSearch(String search) {
+        if (search == null) {
+            return null;
+        }
+        String normalized = search.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized.length() <= 120 ? normalized : normalized.substring(0, 120);
     }
 
     private String normalizeContent(String content) {
@@ -155,6 +268,33 @@ public class SupportService {
             throw new IllegalArgumentException("Message is too long");
         }
         return normalized;
+    }
+
+    private String normalizeContextKey(String contextKey) {
+        if (contextKey == null || contextKey.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = contextKey.trim().toLowerCase()
+                .replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", " ")
+                .replaceAll("\\s+", " ")
+                .replaceAll("[^a-z0-9:._-]", "_");
+        if (normalized.isBlank()) {
+            return null;
+        }
+        return normalized.length() <= 120 ? normalized : normalized.substring(0, 120);
+    }
+
+    private void assertContextMatches(SupportSession session, String contextKey) {
+        String sessionContextKey = normalizeContextKey(session == null ? null : session.getContextKey());
+        if (contextKey == null) {
+            if (sessionContextKey != null) {
+                throw new IllegalStateException("Forbidden");
+            }
+            return;
+        }
+        if (!contextKey.equals(sessionContextKey)) {
+            throw new IllegalStateException("Forbidden");
+        }
     }
 
     private void consumeMessageRate(Long senderId, String senderRole) {

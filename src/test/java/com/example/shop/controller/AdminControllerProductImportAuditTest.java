@@ -4,7 +4,10 @@ import com.example.shop.dto.ProductImportResult;
 import com.example.shop.dto.ProductImportHistoryEntry;
 import com.example.shop.entity.SecurityAuditLog;
 import com.example.shop.repository.PaymentRepository;
+import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
+import com.example.shop.service.BrandService;
+import com.example.shop.service.CategoryService;
 import com.example.shop.service.CouponService;
 import com.example.shop.service.LogisticsCarrierService;
 import com.example.shop.service.NotificationService;
@@ -12,6 +15,7 @@ import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.PetGalleryService;
+import com.example.shop.service.PaymentService;
 import com.example.shop.service.ProductQuestionService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.ProductUrlImportService;
@@ -25,7 +29,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -47,10 +53,13 @@ class AdminControllerProductImportAuditTest {
     private final ProductService productService = mock(ProductService.class);
     private final ProductUrlImportService productUrlImportService = mock(ProductUrlImportService.class);
     private final SecurityAuditLogService auditLogService = mock(SecurityAuditLogService.class);
+    private final AdminRoleService adminRoleService = mock(AdminRoleService.class);
     private final AdminController controller = new AdminController(
             mock(UserService.class),
             mock(OrderService.class),
             mock(OrderItemService.class),
+            mock(BrandService.class),
+            mock(CategoryService.class),
             productService,
             mock(ProductQuestionService.class),
             productUrlImportService,
@@ -59,9 +68,10 @@ class AdminControllerProductImportAuditTest {
             mock(NotificationService.class),
             mock(PetBirthdayCouponService.class),
             mock(PetGalleryService.class),
+            mock(PaymentService.class),
             mock(LogisticsCarrierService.class),
             auditLogService,
-            mock(AdminRoleService.class),
+            adminRoleService,
             mock(PaymentRepository.class),
             mock(RuntimeConfigService.class)
     );
@@ -79,7 +89,7 @@ class AdminControllerProductImportAuditTest {
         result.setUpdated(1);
         result.setUpdateFields(List.of("price", "stock"));
         when(productService.previewImportCsv(file)).thenReturn(result);
-        Authentication authentication = mock(Authentication.class);
+        Authentication authentication = productImportAdminAuthentication();
         MockHttpServletRequest request = new MockHttpServletRequest();
         ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
 
@@ -111,7 +121,7 @@ class AdminControllerProductImportAuditTest {
 
     @Test
     void previewImportAuditsMissingFileAsPreviewBlocked() {
-        Authentication authentication = mock(Authentication.class);
+        Authentication authentication = productImportAdminAuthentication();
         MockHttpServletRequest request = new MockHttpServletRequest();
         ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
 
@@ -142,7 +152,7 @@ class AdminControllerProductImportAuditTest {
 
     @Test
     void applyImportAuditsMissingFileAsRejected() {
-        Authentication authentication = mock(Authentication.class);
+        Authentication authentication = productImportAdminAuthentication();
         MockHttpServletRequest request = new MockHttpServletRequest();
         ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
 
@@ -183,7 +193,7 @@ class AdminControllerProductImportAuditTest {
         result.setCreated(1);
         result.setUpdateFields(List.of("price", "stock"));
         when(productService.previewImportCsv(file)).thenReturn(result);
-        Authentication authentication = mock(Authentication.class);
+        Authentication authentication = productImportAdminAuthentication();
         MockHttpServletRequest request = new MockHttpServletRequest();
         ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
 
@@ -250,7 +260,7 @@ class AdminControllerProductImportAuditTest {
         result.setTotalRows(1);
         result.addError(2, "price", "price must be greater than or equal to zero");
         when(productService.importCsv(file)).thenReturn(result);
-        Authentication authentication = mock(Authentication.class);
+        Authentication authentication = productImportAdminAuthentication();
         MockHttpServletRequest request = new MockHttpServletRequest();
         ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
 
@@ -343,5 +353,18 @@ class AdminControllerProductImportAuditTest {
                 "text/csv",
                 "id,name,description,price,stock,categoryId\n".getBytes(StandardCharsets.UTF_8)
         );
+    }
+
+    private Authentication productImportAdminAuthentication() {
+        when(adminRoleService.hasPermission(1L, AdminRoleService.PRODUCTS_IMPORT_PERMISSION)).thenReturn(true);
+        UserDetailsImpl principal = new UserDetailsImpl(
+                1L,
+                "admin",
+                "admin@example.com",
+                "ACTIVE",
+                "encoded-password",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+        );
+        return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
 }

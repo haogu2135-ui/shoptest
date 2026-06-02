@@ -1,9 +1,11 @@
 package com.example.shop.controller;
 
 import com.example.shop.config.PaymentChannelConfig;
+import com.example.shop.dto.PaymentResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
 import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PaymentChannelRecommendationService;
@@ -18,9 +20,11 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
@@ -31,13 +35,15 @@ import static org.mockito.Mockito.when;
 class PaymentControllerSimulationAccessTest {
     private final PaymentService paymentService = mock(PaymentService.class);
     private final OrderService orderService = mock(OrderService.class);
+    private final AdminRoleService adminRoleService = mock(AdminRoleService.class);
     private final PaymentController controller = new PaymentController(
             paymentService,
             orderService,
             mock(SecurityAuditLogService.class),
             new PaymentChannelConfig(),
             mock(PaymentChannelRecommendationService.class),
-            mock(IpBlacklistService.class)
+            mock(IpBlacklistService.class),
+            adminRoleService
     );
 
     @Test
@@ -74,7 +80,7 @@ class PaymentControllerSimulationAccessTest {
     }
 
     @Test
-    void trackedRegisteredCustomerCanCreatePaymentWhenEmailMatchesOrder() {
+    void authenticatedRegisteredCustomerCanCreatePaymentForOwnOrder() {
         Order order = new Order();
         order.setId(42L);
         order.setOrderNo("SO202605260001");
@@ -86,26 +92,26 @@ class PaymentControllerSimulationAccessTest {
 
         com.example.shop.dto.PaymentCreateRequest request = new com.example.shop.dto.PaymentCreateRequest();
         request.setOrderId(42L);
-        request.setOrderNo("SO202605260001");
         request.setChannel("STRIPE");
-        request.setGuestEmail("mia@example.com");
 
         when(orderService.getOrderById(42L)).thenReturn(order);
-        when(orderService.orderEmailMatches(order, "mia@example.com")).thenReturn(true);
         when(paymentService.createPayment(request)).thenReturn(payment);
 
         ResponseEntity<?> response = controller.createPayment(
                 request,
-                null,
+                customerAuthentication(12L),
                 new MockHttpServletRequest("POST", "/payments")
         );
 
-        assertSame(payment, response.getBody());
+        PaymentResponse body = (PaymentResponse) response.getBody();
+        assertNotNull(body);
+        assertEquals(payment.getId(), body.getId());
+        assertEquals(payment.getOrderId(), body.getOrderId());
         verify(paymentService).createPayment(request);
     }
 
     @Test
-    void trackedRegisteredCustomerCannotCreatePaymentWhenEmailDoesNotMatchOrder() {
+    void anonymousRegisteredOrderCannotCreatePaymentEvenWhenEmailMatchesOrder() {
         Order order = new Order();
         order.setId(42L);
         order.setOrderNo("SO202605260001");
@@ -115,10 +121,9 @@ class PaymentControllerSimulationAccessTest {
         request.setOrderId(42L);
         request.setOrderNo("SO202605260001");
         request.setChannel("STRIPE");
-        request.setGuestEmail("other@example.com");
+        request.setGuestEmail("mia@example.com");
 
         when(orderService.getOrderById(42L)).thenReturn(order);
-        when(orderService.orderEmailMatches(order, "other@example.com")).thenReturn(false);
 
         assertThrows(ResponseStatusException.class, () -> controller.createPayment(
                 request,
@@ -128,7 +133,7 @@ class PaymentControllerSimulationAccessTest {
     }
 
     @Test
-    void trackedRegisteredCustomerCannotCreatePaymentWhenOrderNoDoesNotMatch() {
+    void anonymousRegisteredOrderCannotCreatePaymentWhenOrderNoDoesNotMatch() {
         Order order = new Order();
         order.setId(42L);
         order.setOrderNo("SO202605260001");
@@ -141,7 +146,6 @@ class PaymentControllerSimulationAccessTest {
         request.setGuestEmail("mia@example.com");
 
         when(orderService.getOrderById(42L)).thenReturn(order);
-        when(orderService.orderEmailMatches(order, "mia@example.com")).thenReturn(true);
 
         assertThrows(ResponseStatusException.class, () -> controller.createPayment(
                 request,
@@ -158,6 +162,17 @@ class PaymentControllerSimulationAccessTest {
                 "ACTIVE",
                 "encoded-password",
                 List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+    }
+
+    private Authentication customerAuthentication(Long userId) {
+        UserDetailsImpl principal = new UserDetailsImpl(
+                userId,
+                "mia",
+                "mia@example.com",
+                "ACTIVE",
+                "encoded-password",
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
 }

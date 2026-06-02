@@ -7,8 +7,6 @@ import lombok.Data;
 @AllArgsConstructor
 public class PetGalleryQuota {
     private int limit;
-    private long userUploads;
-    private long ipUploads;
     private long remaining;
     private boolean canUpload;
 }

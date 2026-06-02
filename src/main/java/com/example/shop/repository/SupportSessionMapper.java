@@ -12,9 +12,19 @@ import java.util.Map;
 public interface SupportSessionMapper {
     SupportSession findById(Long id);
     SupportSession findOpenByUserId(Long userId);
+    SupportSession findOpenByUserIdAndContextKey(@Param("userId") Long userId, @Param("contextKey") String contextKey);
     SupportSession findLatestByUserId(Long userId);
-    List<SupportSession> findByUserId(Long userId);
-    List<SupportSession> findAll(@Param("status") String status);
+    List<SupportSession> findByUserId(@Param("userId") Long userId, @Param("limit") int limit);
+    List<SupportSession> findAdminPage(@Param("status") String status,
+                                       @Param("needsReply") Boolean needsReply,
+                                       @Param("assignedAdminId") Long assignedAdminId,
+                                       @Param("search") String search,
+                                       @Param("limit") int limit,
+                                       @Param("offset") int offset);
+    long countAdminPage(@Param("status") String status,
+                        @Param("needsReply") Boolean needsReply,
+                        @Param("assignedAdminId") Long assignedAdminId,
+                        @Param("search") String search);
     Map<String, Object> adminSummary(@Param("adminId") Long adminId, @Param("staleBefore") LocalDateTime staleBefore);
     int insert(SupportSession session);
     int updateLastMessage(@Param("id") Long id, @Param("lastMessage") String lastMessage);

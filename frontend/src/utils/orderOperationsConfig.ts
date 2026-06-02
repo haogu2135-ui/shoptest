@@ -16,6 +16,7 @@ export const orderStatusColors: Record<string, string> = {
   RETURN_REQUESTED: 'gold',
   RETURN_APPROVED: 'geekblue',
   RETURN_SHIPPED: 'cyan',
+  RETURN_REFUNDING: 'magenta',
   RETURNED: 'purple',
   REFUNDING: 'magenta',
   REFUNDED: 'purple',
@@ -29,6 +30,7 @@ export const orderValidTransitions: Record<string, string[]> = {
   RETURN_REQUESTED: ['RETURN_APPROVED', 'COMPLETED'],
   RETURN_APPROVED: [],
   RETURN_SHIPPED: ['RETURNED'],
+  RETURN_REFUNDING: [],
   CANCELLED: [],
   RETURNED: [],
   REFUNDED: [],
@@ -36,6 +38,7 @@ export const orderValidTransitions: Record<string, string[]> = {
 
 export const orderPriority: Record<string, number> = {
   RETURN_SHIPPED: 0,
+  RETURN_REFUNDING: 0,
   RETURN_REQUESTED: 1,
   PENDING_SHIPMENT: 2,
   SHIPPED: 3,
@@ -91,6 +94,11 @@ export const orderNextActionByStatus: Record<string, AdminOrderNextAction> = {
     tone: 'urgent',
     titleKey: 'pages.adminOrders.nextRefund',
     textKey: 'pages.adminOrders.nextRefundHint',
+  },
+  RETURN_REFUNDING: {
+    tone: 'warning',
+    titleKey: 'pages.adminOrders.nextRefundProcessing',
+    textKey: 'pages.adminOrders.nextRefundProcessingHint',
   },
   RETURNED: {
     tone: 'success',

@@ -110,6 +110,10 @@
   margin: 16px;
 }
 
+.seventeen-track-widget__inlineAlert {
+  margin: 0;
+}
+
 .seventeen-track-widget__results,
 .seventeen-track-widget__results * {
   overflow-wrap: anywhere;
@@ -190,5 +194,14 @@
 @media (max-width: 360px) {
   .seventeen-track-widget__results {
     max-width: calc(100vw - 16px);
+  }
+}
+
+/* Final mobile/App tracking widget touch-target guard */
+@media (max-width: 520px) {
+  .seventeen-track-widget__search .ant-input,
+  .seventeen-track-widget__search .ant-input-affix-wrapper,
+  .seventeen-track-widget__search .ant-btn {
+    min-height: 44px;
   }
 }

@@ -602,3 +602,22 @@
     flex-basis: 100%;
   }
 }
+
+/* Final mobile/App coupon-operations touch-target guard */
+@media (max-width: 720px) {
+  .coupon-management-page__actions .ant-btn,
+  .coupon-management-birthday .ant-card-extra .ant-btn,
+  .coupon-management-page__toolbar .ant-input-affix-wrapper,
+  .coupon-management-page__toolbar .ant-select-selector,
+  .coupon-management-page .ant-table-cell .ant-btn,
+  .coupon-management-page__editorModal .ant-modal-footer .ant-btn,
+  .coupon-management-page__grantModal .ant-modal-footer .ant-btn,
+  .coupon-management-page__editorModal .ant-input,
+  .coupon-management-page__editorModal .ant-input-number,
+  .coupon-management-page__editorModal .ant-picker,
+  .coupon-management-page__editorModal .ant-select-selector,
+  .coupon-management-page__grantModal .ant-select-selector,
+  .coupon-management-page__grantConfirmModal .ant-modal-confirm-btns .ant-btn {
+    min-height: 44px;
+  }
+}

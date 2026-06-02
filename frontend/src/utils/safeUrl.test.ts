@@ -1,15 +1,6 @@
-import { isSafeHttpUrl, navigateToSafeUrl } from './safeUrl';
+import { isSafeHttpUrl, navigateToSafeUrl, normalizeSafeHttpUrl } from './safeUrl';
 
 describe('safeUrl', () => {
-  const originalLocation = window.location;
-
-  afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
-    });
-  });
-
   it('rejects blank, script, and credentialed urls', () => {
     expect(isSafeHttpUrl('   ')).toBe(false);
     expect(isSafeHttpUrl('/checkout/session')).toBe(false);
@@ -24,13 +15,10 @@ describe('safeUrl', () => {
   });
 
   it('trims safe payment urls before navigating', () => {
-    const locationMock = { ...originalLocation, href: 'http://localhost/' };
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: locationMock,
-    });
+    const navigate = jest.fn();
 
-    expect(navigateToSafeUrl(' https://pay.example.com/session ')).toBe(true);
-    expect(window.location.href).toBe('https://pay.example.com/session');
+    expect(normalizeSafeHttpUrl(' https://pay.example.com/session ')).toBe('https://pay.example.com/session');
+    expect(navigateToSafeUrl(' https://pay.example.com/session ', navigate)).toBe(true);
+    expect(navigate).toHaveBeenCalledWith('https://pay.example.com/session');
   });
 });

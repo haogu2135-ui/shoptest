@@ -2,6 +2,7 @@ package com.example.shop.service;
 
 import com.example.shop.entity.UserAddress;
 import com.example.shop.repository.UserAddressMapper;
+import com.example.shop.repository.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserAddressService {
     private final UserAddressMapper userAddressMapper;
+    private final UserMapper userMapper;
     private final RuntimeConfigService runtimeConfig;
 
     public List<UserAddress> getAddresses(Long userId) {
@@ -29,6 +31,7 @@ public class UserAddressService {
     @Transactional
     public void addAddress(UserAddress address) {
         normalizeAddress(address);
+        lockAddressOwner(address.getUserId());
         List<UserAddress> existing = userAddressMapper.findByUserId(address.getUserId());
         int maxAddresses = normalizedMaxAddressesPerUser();
         if (existing.size() >= maxAddresses) {
@@ -47,6 +50,7 @@ public class UserAddressService {
     @Transactional
     public void updateAddress(UserAddress address) {
         normalizeAddress(address);
+        lockAddressOwner(address.getUserId());
         address.setUpdatedAt(LocalDateTime.now());
         if (userAddressMapper.update(address) == 0) {
             throw new IllegalStateException("Address update failed");
@@ -56,6 +60,9 @@ public class UserAddressService {
     @Transactional
     public void deleteAddress(Long id) {
         UserAddress addr = userAddressMapper.findById(id);
+        if (addr == null) return;
+        lockAddressOwner(addr.getUserId());
+        addr = userAddressMapper.findById(id);
         if (addr == null) return;
         if (userAddressMapper.deleteByIdAndUserId(id, addr.getUserId()) == 0) {
             throw new IllegalStateException("Address delete failed");
@@ -75,6 +82,11 @@ public class UserAddressService {
             throw new IllegalArgumentException("Address not found");
         }
         Long userId = address.getUserId();
+        lockAddressOwner(userId);
+        address = userAddressMapper.findById(id);
+        if (address == null || !userId.equals(address.getUserId())) {
+            throw new IllegalArgumentException("Address not found");
+        }
         userAddressMapper.clearDefault(userId);
         int updated = userAddressMapper.setDefault(id, userId);
         if (updated == 0) {
@@ -87,6 +99,9 @@ public class UserAddressService {
             throw new IllegalArgumentException("Address is required");
         }
         if (address.getUserId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+        if (address.getUserId() <= 0) {
             throw new IllegalArgumentException("User is required");
         }
         address.setRecipientName(normalizeRequiredText(address.getRecipientName(), "Recipient name",
@@ -110,6 +125,15 @@ public class UserAddressService {
             throw new IllegalArgumentException(field + " is too long");
         }
         return normalized;
+    }
+
+    private void lockAddressOwner(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("User not found");
+        }
+        if (userMapper.findByIdForUpdate(userId) == null) {
+            throw new IllegalArgumentException("User not found");
+        }
     }
 
     private int normalizedMaxAddressesPerUser() {

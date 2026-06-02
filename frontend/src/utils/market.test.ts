@@ -1,14 +1,30 @@
 import { detectDefaultCurrency, formatMarketMoney, getCurrency, getMarket, setCurrency, withShippingConfig } from './market';
 
 describe('market currency storage', () => {
-  const originalLocalStorage = window.localStorage;
+  const originalLocalStorageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+
+  const restoreLocalStorage = () => {
+    if (originalLocalStorageDescriptor) {
+      Object.defineProperty(window, 'localStorage', originalLocalStorageDescriptor);
+    }
+  };
+
+  const clearLocalStorage = () => {
+    try {
+      window.localStorage.clear();
+    } catch {
+      // Individual tests replace storage with throwing mocks.
+    }
+  };
+
+  beforeEach(() => {
+    restoreLocalStorage();
+    clearLocalStorage();
+  });
 
   afterEach(() => {
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: originalLocalStorage,
-    });
-    localStorage.clear();
+    restoreLocalStorage();
+    clearLocalStorage();
   });
 
   it('falls back when localStorage cannot be read', () => {

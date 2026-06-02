@@ -15,6 +15,10 @@ public class CheckoutRequest {
     @NotEmpty
     private String shippingAddress;
 
+    private String recipientName;
+    private String recipientPhone;
+    private String contactEmail;
+
     @NotEmpty
     private String paymentMethod;
 

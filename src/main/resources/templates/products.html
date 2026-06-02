@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>商品列表 - MyShop</title>
+    <title>宠物用品列表 - ShopMX</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">MyShop</div>
+        <div class="logo">ShopMX Pet</div>
         <div class="navbar-search">
-            <input type="text" id="searchInput" placeholder="搜索商品..." autocomplete="off">
+            <input type="text" id="searchInput" placeholder="搜索宠物用品..." autocomplete="off">
             <span class="search-icon">🔍</span>
         </div>
         <div class="nav-links">
@@ -24,12 +24,12 @@
 
     <div class="category-bar" id="categoryBar">
         <div class="category-tab active" data-cat="all">全部</div>
-        <div class="category-tab" data-cat="clothing">服装</div>
-        <div class="category-tab" data-cat="electronics">数码</div>
-        <div class="category-tab" data-cat="food">食品</div>
-        <div class="category-tab" data-cat="home">家居</div>
-        <div class="category-tab" data-cat="beauty">美妆</div>
-        <div class="category-tab" data-cat="sports">运动</div>
+        <div class="category-tab" data-cat="pet-food">宠物食品</div>
+        <div class="category-tab" data-cat="toys">玩具互动</div>
+        <div class="category-tab" data-cat="walking">牵引出行</div>
+        <div class="category-tab" data-cat="beds">窝垫家居</div>
+        <div class="category-tab" data-cat="grooming">美容清洁</div>
+        <div class="category-tab" data-cat="smart-devices">智能设备</div>
     </div>
 
     <div class="page-content">
@@ -56,7 +56,7 @@
         </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-            <span class="section-title" id="sectionTitle">全部商品</span>
+            <span class="section-title" id="sectionTitle">全部宠物用品</span>
             <span style="font-size:0.82rem;color:var(--text-muted);" id="productCount"></span>
         </div>
 
@@ -87,12 +87,12 @@
 
         <div id="noResult" style="display:none;text-align:center;padding:3rem;color:var(--text-muted);">
             <div style="font-size:2.5rem;margin-bottom:0.8rem;">🔍</div>
-            <div>没有找到相关商品</div>
+            <div>没有找到相关宠物用品</div>
         </div>
     </div>
 
     <footer class="site-footer">
-        © 2025 MyShop &nbsp;·&nbsp; <a href="#">关于我们</a> &nbsp;·&nbsp; <a href="#">联系客服</a> &nbsp;·&nbsp; <a href="#">隐私政策</a>
+        © 2025 ShopMX Pet &nbsp;·&nbsp; <a href="#">关于我们</a> &nbsp;·&nbsp; <a href="#">联系客服</a> &nbsp;·&nbsp; <a href="#">隐私政策</a>
     </footer>
 
     <button class="back-to-top" id="backToTop" title="回到顶部">↑</button>
@@ -188,7 +188,7 @@
                 document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
                 this.classList.add('active');
                 document.getElementById('sectionTitle').textContent =
-                    this.dataset.cat === 'all' ? '全部商品' : this.textContent;
+                    this.dataset.cat === 'all' ? '全部宠物用品' : this.textContent;
             });
         });
 

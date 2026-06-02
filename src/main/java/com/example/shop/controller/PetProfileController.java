@@ -2,9 +2,11 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.PetProfileResponse;
 import com.example.shop.entity.PetProfile;
+import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.PetProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +23,7 @@ public class PetProfileController {
 
     @GetMapping
     public ResponseEntity<List<PetProfileResponse>> mine(Authentication authentication) {
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         List<PetProfileResponse> responses = petProfileService.findByUserId(userDetails.getId()).stream()
                 .map(PetProfileResponse::from)
                 .collect(Collectors.toList());
@@ -31,28 +33,32 @@ public class PetProfileController {
     @PostMapping
     public ResponseEntity<?> create(@RequestBody(required = false) PetProfile request, Authentication authentication) {
         try {
-            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
             PetProfile saved = petProfileService.save(userDetails.getId(), request, null);
             return ResponseEntity.ok(PetProfileResponse.from(saved));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody(required = false) PetProfile request, Authentication authentication) {
         try {
-            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
             PetProfile saved = petProfileService.save(userDetails.getId(), request, id);
             return ResponseEntity.ok(PetProfileResponse.from(saved));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id, Authentication authentication) {
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         petProfileService.delete(userDetails.getId(), id);
         return ResponseEntity.ok().build();
     }

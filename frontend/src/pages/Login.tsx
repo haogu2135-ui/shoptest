@@ -1,20 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Form, Input, Button, Typography, message, Tabs } from 'antd';
-import { CompassOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
+import { CompassOutlined, CustomerServiceOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { cartApi, userApi } from '../api';
+import { cartApi, persistAuthSession, userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
-import { getEffectiveRole } from '../utils/roles';
-import { getLocalStorageItem, getSessionStorageItem, removeLocalStorageItem, removeSessionStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './Login.css';
 
 const { Text, Title } = Typography;
 
-const stripControlChars = (value: unknown) => String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ');
+const stripControlChars = (value: unknown) => Array.from(String(value || ''), (char) => {
+  const code = char.charCodeAt(0);
+  return code <= 31 || code === 127 ? ' ' : char;
+}).join('');
 const normalizeEmail = (value: unknown) => stripControlChars(value).trim().toLowerCase();
 const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
 const normalizePasswordLogin = (value: unknown) => {
@@ -160,16 +163,14 @@ const Login: React.FC = () => {
   };
 
   const completeLogin = async (responseData: any) => {
-    const { token, refreshToken, id, username, email, phone, role, roleCode } = responseData || {};
-    if (!token || !id) {
+    const { id } = responseData || {};
+    if (!id) {
       throw new Error(t('pages.auth.loginFailed'));
     }
-    setLocalStorageItem('token', token);
-    if (refreshToken) setLocalStorageItem('refreshToken', refreshToken);
-    setLocalStorageItem('userId', String(id));
-    setLocalStorageItem('username', String(username || email || phone || id));
-    setLocalStorageItem('role', getEffectiveRole(role, roleCode));
-    removeLocalStorageItem('adminDefaultPath');
+    const token = persistAuthSession(responseData);
+    if (!token) {
+      throw new Error(t('pages.auth.loginFailed'));
+    }
     await mergeGuestCart(Number(id));
     message.success(t('pages.auth.loginSuccess'));
     navigate(postLoginRedirectTarget, { replace: true });
@@ -336,6 +337,29 @@ const Login: React.FC = () => {
         </aside>
 
         <section className="shopee-login-card">
+          <div className="shopee-login-appHeader" aria-label={t('pages.auth.mobileLoginTitle')}>
+            <span className="shopee-login-appHeader__icon">
+              <MobileOutlined />
+            </span>
+            <span className="shopee-login-appHeader__copy">
+              <strong>{t('pages.auth.mobileAppLabel')}</strong>
+              <span>{t('pages.auth.mobileLoginTitle')}</span>
+            </span>
+            <span className="shopee-login-appHeader__status">
+              <SafetyCertificateOutlined />
+              {t('pages.auth.mobileSecure')}
+            </span>
+          </div>
+          <div className="shopee-login-appActions" aria-label={t('pages.auth.mobileQuickActions')}>
+            <button type="button" onClick={() => navigate('/track-order')}>
+              <TruckOutlined />
+              <span>{t('nav.trackOrder')}</span>
+            </button>
+            <button type="button" onClick={() => dispatchDomEvent('shop:open-support')}>
+              <CustomerServiceOutlined />
+              <span>{t('nav.help')}</span>
+            </button>
+          </div>
           <div className="shopee-login-card__header">
             <div className="shopee-login-brand">
               <div className="shopee-login-mark">ShopMX</div>

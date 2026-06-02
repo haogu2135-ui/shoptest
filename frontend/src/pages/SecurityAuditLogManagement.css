@@ -800,3 +800,16 @@
     flex-basis: 122px;
   }
 }
+
+/* Final mobile/App audit-log operations touch-target guard */
+@media (max-width: 720px) {
+  .audit-log-page__toolbar .ant-input-affix-wrapper,
+  .audit-log-page__toolbar .ant-select-selector,
+  .audit-log-page__toolbar .ant-picker,
+  .audit-log-page__toolbar .ant-btn,
+  .audit-log-page__opsActions .ant-btn,
+  .audit-log-page__retention .ant-input-number,
+  .audit-log-page__retention .ant-btn {
+    min-height: 44px;
+  }
+}

@@ -1,10 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, PlusOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
-import { logisticsCarrierApi } from '../api';
+import { adminApi, logisticsCarrierApi } from '../api';
 import type { LogisticsCarrier } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import {
+  LOGISTICS_CARRIERS_DELETE_PERMISSION,
+  LOGISTICS_CARRIERS_WRITE_PERMISSION,
+  getEffectiveRole,
+  hasAdminPermission,
+} from '../utils/roles';
 import './LogisticsCarrierManagement.css';
 
 const { Title, Text } = Typography;
@@ -17,8 +23,19 @@ const LogisticsCarrierManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [editingCarrier, setEditingCarrier] = useState<LogisticsCarrier | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
+  const canWriteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_WRITE_PERMISSION);
+  const canDeleteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_DELETE_PERMISSION);
+  const formatCarrierStatus = useCallback((status?: string) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = rawStatus.toUpperCase();
+    if (normalizedStatus === 'ACTIVE') return t('pages.logisticsCarriers.active');
+    if (normalizedStatus === 'INACTIVE') return t('pages.logisticsCarriers.inactive');
+    return rawStatus || '-';
+  }, [t]);
 
   const carrierHealth = useMemo(() => {
     const active = carriers.filter((carrier) => carrier.status === 'ACTIVE').length;
@@ -87,7 +104,23 @@ const LogisticsCarrierManagement: React.FC = () => {
     fetchCarriers();
   }, [fetchCarriers]);
 
+  useEffect(() => {
+    adminApi.getMyPermissions()
+      .then((response) => {
+        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+        setAdminPermissions(response.data.permissions || []);
+      })
+      .catch(() => {
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+  }, []);
+
   const openModal = (carrier?: LogisticsCarrier) => {
+    if (!canWriteCarriers) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setEditingCarrier(carrier || null);
     form.resetFields();
     form.setFieldsValue(carrier || { status: 'ACTIVE', sortOrder: 0 });
@@ -102,6 +135,10 @@ const LogisticsCarrierManagement: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!canWriteCarriers) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       const values = await form.validateFields();
       setSaving(true);
@@ -124,6 +161,10 @@ const LogisticsCarrierManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!canDeleteCarriers) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     try {
       await logisticsCarrierApi.delete(id);
       message.success(t('pages.logisticsCarriers.deleted'));
@@ -160,9 +201,11 @@ const LogisticsCarrierManagement: React.FC = () => {
               { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
             ]}
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-            {t('pages.logisticsCarriers.addCarrier')}
-          </Button>
+          {canWriteCarriers ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+              {t('pages.logisticsCarriers.addCarrier')}
+            </Button>
+          ) : null}
         </Space>
       </Card>
       <section className="logistics-carrier-page__health" aria-label={t('pages.logisticsCarriers.healthTitle')}>
@@ -219,8 +262,8 @@ const LogisticsCarrierManagement: React.FC = () => {
             key: 'status',
             width: 120,
             render: (status: string) => (
-              <Tag color={status === 'ACTIVE' ? 'green' : 'default'}>
-                {status === 'ACTIVE' ? t('pages.logisticsCarriers.active') : t('pages.logisticsCarriers.inactive')}
+              <Tag color={String(status || '').trim().toUpperCase() === 'ACTIVE' ? 'green' : 'default'}>
+                {formatCarrierStatus(status)}
               </Tag>
             ),
           },
@@ -244,10 +287,12 @@ const LogisticsCarrierManagement: React.FC = () => {
             width: 180,
             render: (_: unknown, carrier: LogisticsCarrier) => (
               <Space>
-                <Button size="small" onClick={() => openModal(carrier)}>{t('common.edit')}</Button>
-                <Popconfirm title={t('pages.logisticsCarriers.deleteConfirm')} onConfirm={() => handleDelete(carrier.id)}>
-                  <Button size="small" danger>{t('common.delete')}</Button>
-                </Popconfirm>
+                {canWriteCarriers ? <Button size="small" onClick={() => openModal(carrier)}>{t('common.edit')}</Button> : null}
+                {canDeleteCarriers ? (
+                  <Popconfirm title={t('pages.logisticsCarriers.deleteConfirm')} onConfirm={() => handleDelete(carrier.id)}>
+                    <Button size="small" danger>{t('common.delete')}</Button>
+                  </Popconfirm>
+                ) : null}
               </Space>
             ),
           },

@@ -11,8 +11,6 @@ public class PaymentChannelResponse {
     private String descriptionKey;
     private String market;
     private String currency;
-    private String provider;
-    private String refundMode;
     private String badgeKey;
     private int sortOrder;
     private boolean recommended;
@@ -30,8 +28,6 @@ public class PaymentChannelResponse {
         response.setDescriptionKey(channel.getDescriptionKey());
         response.setMarket(channel.getMarket());
         response.setCurrency(channel.getCurrency());
-        response.setProvider(channel.getProvider());
-        response.setRefundMode(channel.getRefundMode());
         response.setBadgeKey(channel.getBadgeKey());
         response.setSortOrder(channel.getSortOrder());
         response.setRecommended(recommended);

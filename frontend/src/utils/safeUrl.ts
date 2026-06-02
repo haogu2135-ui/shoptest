@@ -20,10 +20,19 @@ export const isSafeHttpUrl = (value?: string | null) => {
   }
 };
 
-export const navigateToSafeUrl = (value?: string | null) => {
-  if (!isSafeHttpUrl(value)) {
-    return false;
-  }
-  window.location.href = new URL(String(value).trim()).toString();
+export const normalizeSafeHttpUrl = (value?: string | null) => {
+  if (!isSafeHttpUrl(value)) return null;
+  return new URL(String(value).trim()).toString();
+};
+
+export const navigateToSafeUrl = (
+  value?: string | null,
+  navigate: (url: string) => void = (url) => {
+    window.location.href = url;
+  },
+) => {
+  const url = normalizeSafeHttpUrl(value);
+  if (!url) return false;
+  navigate(url);
   return true;
 };

@@ -3,7 +3,7 @@ import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Empt
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
-import type { Order, OrderItem, Payment, PaymentChannel, PetProfile, User, UserAddress } from '../types';
+import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel, PetProfile, UserAddress, UserProfile } from '../types';
 import { findRegionPath, regionData } from '../regionData';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
@@ -21,6 +21,7 @@ import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
+import '../styles/mobile-page-contrast.css';
 
 const { Title, Text } = Typography;
 const orderImageFallback = productImageFallback;
@@ -48,6 +49,7 @@ const statusColors: Record<string, string> = {
   RETURN_REQUESTED: 'gold',
   RETURN_APPROVED: 'geekblue',
   RETURN_SHIPPED: 'cyan',
+  RETURN_REFUNDING: 'magenta',
   RETURNED: 'purple',
   PENDING: 'orange',
   PAID: 'blue',
@@ -57,20 +59,43 @@ const statusColors: Record<string, string> = {
   DELIVERED: 'green',
 };
 
-const getOrderSortTime = (order: Order) => {
+const ORDER_STATUS_LABEL_KEYS = new Set([
+  'PENDING_PAYMENT',
+  'PENDING_SHIPMENT',
+  'SHIPPED',
+  'PENDING_RECEIPT',
+  'COMPLETED',
+  'CANCELLED',
+  'RETURN_REQUESTED',
+  'RETURN_APPROVED',
+  'RETURN_SHIPPED',
+  'RETURN_REFUNDING',
+  'RETURNED',
+  'REFUNDED',
+  'DELIVERED',
+]);
+const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED']);
+
+const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
+
+const getOrderSortTime = (order: OrderCustomer) => {
   const createdAt = order.createdAt ? new Date(order.createdAt).getTime() : 0;
   return Number.isNaN(createdAt) ? 0 : createdAt;
 };
 
-const sortOrdersNewestFirst = (items: Order[]) =>
+const sortOrdersNewestFirst = (items: OrderCustomer[]) =>
   [...items].sort((left, right) => getOrderSortTime(right) - getOrderSortTime(left) || right.id - left.id);
 
 const normalizeProfileTab = (value: string | null) =>
   value === 'info' || value === 'addresses' || value === 'orders' || value === 'pets' ? value : null;
 
 const normalizeProfileEmail = (value: unknown) => String(value || '').trim().toLowerCase();
+const stripProfileControlChars = (value: unknown) => Array.from(String(value || ''), (char) => {
+  const code = char.charCodeAt(0);
+  return code <= 31 || code === 127 ? ' ' : char;
+}).join('');
 const normalizeProfilePhone = (value: unknown) => {
-  const raw = String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  const raw = stripProfileControlChars(value).trim();
   return raw.startsWith('+') ? `+${raw.slice(1).replace(/\D+/g, '')}` : raw.replace(/\D+/g, '');
 };
 const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
@@ -96,8 +121,8 @@ const Profile: React.FC = () => {
   const requestedProfileTab = normalizeProfileTab(searchParams.get('tab'));
   const { t, language } = useLanguage();
   const { config: appConfig } = useAppConfig();
-  const [user, setUser] = useState<User | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [orders, setOrders] = useState<OrderCustomer[]>([]);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [petProfiles, setPetProfiles] = useState<PetProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,21 +133,21 @@ const Profile: React.FC = () => {
   const [editingPet, setEditingPet] = useState<PetProfile | null>(null);
   const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null);
   const [orderDetailVisible, setOrderDetailVisible] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [orderItemsByOrderId, setOrderItemsByOrderId] = useState<Record<number, OrderItem[]>>({});
+  const [selectedOrder, setSelectedOrder] = useState<OrderCustomer | null>(null);
+  const [orderItems, setOrderItems] = useState<OrderItemCustomer[]>([]);
+  const [orderItemsByOrderId, setOrderItemsByOrderId] = useState<Record<number, OrderItemCustomer[]>>({});
   const [reordering, setReordering] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentCustomer | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
-  const [orderPayments, setOrderPayments] = useState<Payment[]>([]);
+  const [orderPayments, setOrderPayments] = useState<PaymentCustomer[]>([]);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
   const [refreshingPayment, setRefreshingPayment] = useState(false);
-  const [returnShipmentOrder, setReturnShipmentOrder] = useState<Order | null>(null);
+  const [returnShipmentOrder, setReturnShipmentOrder] = useState<OrderCustomer | null>(null);
   const [returnTrackingNumber, setReturnTrackingNumber] = useState('');
   const [submittingReturnShipment, setSubmittingReturnShipment] = useState(false);
-  const [returnRequestOrder, setReturnRequestOrder] = useState<Order | null>(null);
+  const [returnRequestOrder, setReturnRequestOrder] = useState<OrderCustomer | null>(null);
   const [returnReason, setReturnReason] = useState('');
   const [requestingReturn, setRequestingReturn] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
@@ -136,6 +161,7 @@ const Profile: React.FC = () => {
   const [trackingVisible, setTrackingVisible] = useState(false);
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState('');
   const [selectedTrackingCarrierCode, setSelectedTrackingCarrierCode] = useState<string | undefined>();
+  const [selectedTrackingOrderId, setSelectedTrackingOrderId] = useState<number | undefined>();
   const [profileActiveTab, setProfileActiveTab] = useState(requestedProfileTab || 'info');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [orderSearchText, setOrderSearchText] = useState('');
@@ -146,6 +172,34 @@ const Profile: React.FC = () => {
   const watchedProfileEmail = Form.useWatch('email', editForm);
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const profileEmailChanged = normalizeProfileEmail(watchedProfileEmail) !== normalizeProfileEmail(user?.email);
+  const formatKnownStatusLabel = useCallback((status: string | undefined, knownStatuses: Set<string>) => {
+    const rawStatus = String(status || '').trim();
+    const normalizedStatus = normalizeStatusCode(rawStatus);
+    if (!normalizedStatus) return t('common.unknown');
+    if (knownStatuses.has(normalizedStatus)) return t(`status.${normalizedStatus}`);
+    return rawStatus;
+  }, [t]);
+  const formatOrderStatusLabel = useCallback(
+    (status?: string) => formatKnownStatusLabel(status, ORDER_STATUS_LABEL_KEYS),
+    [formatKnownStatusLabel],
+  );
+  const formatPaymentStatusLabel = useCallback(
+    (status?: string) => formatKnownStatusLabel(status, PAYMENT_STATUS_LABEL_KEYS),
+    [formatKnownStatusLabel],
+  );
+  const getKnownStatusColor = useCallback((status: string | undefined, knownStatuses: Set<string>) => {
+    const normalizedStatus = normalizeStatusCode(status);
+    if (!knownStatuses.has(normalizedStatus)) return 'default';
+    return statusColors[normalizedStatus] || 'default';
+  }, []);
+  const getOrderStatusColor = useCallback(
+    (status?: string) => getKnownStatusColor(status, ORDER_STATUS_LABEL_KEYS),
+    [getKnownStatusColor],
+  );
+  const getPaymentStatusColor = useCallback(
+    (status?: string) => getKnownStatusColor(status, PAYMENT_STATUS_LABEL_KEYS),
+    [getKnownStatusColor],
+  );
 
   const fetchUserInfo = useCallback(async () => {
     try {
@@ -175,7 +229,7 @@ const Profile: React.FC = () => {
         },
       );
       const itemEntries = itemResults
-        .filter((result): result is PromiseFulfilledResult<readonly [number, OrderItem[]]> => result.status === 'fulfilled')
+        .filter((result): result is PromiseFulfilledResult<readonly [number, OrderItemCustomer[]]> => result.status === 'fulfilled')
         .map((result) => result.value);
       setOrderItemsByOrderId(Object.fromEntries(itemEntries));
     } catch {
@@ -236,7 +290,7 @@ const Profile: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [profileEmailCodeCountdown]);
 
-  const refreshPaymentState = async (orderId: number) => {
+  const refreshPaymentState = useCallback(async (orderId: number) => {
     const [orderRes, paymentListRes] = await Promise.all([
       orderApi.getById(orderId),
       paymentApi.getByOrder(orderId),
@@ -249,7 +303,7 @@ const Profile: React.FC = () => {
       setSelectedPayment(latestPayment);
       setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
     }
-  };
+  }, [paymentChannels]);
 
   const handleEditProfile = async () => {
     try {
@@ -347,7 +401,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleViewOrder = async (order: Order) => {
+  const handleViewOrder = async (order: OrderCustomer) => {
     setSelectedOrder(order);
     setOrderDetailVisible(true);
     try {
@@ -402,7 +456,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleContinuePayment = async (order: Order) => {
+  const handleContinuePayment = async (order: OrderCustomer) => {
     setPayingOrderId(order.id);
     try {
       const paymentListRes = await paymentApi.getByOrder(order.id);
@@ -471,7 +525,7 @@ const Profile: React.FC = () => {
       polling = false;
       window.clearInterval(timer);
     };
-  }, [paymentModalVisible, selectedOrder?.id]);
+  }, [paymentModalVisible, refreshPaymentState, selectedOrder?.id]);
 
   useEffect(() => {
     paymentApi.getChannels()
@@ -493,7 +547,17 @@ const Profile: React.FC = () => {
     }
   };
 
-  const openReturnModal = (order: Order) => {
+  const confirmReceiptOrder = (order: OrderCustomer) => {
+    Modal.confirm({
+      title: t('pages.profile.confirmReceiptTitle'),
+      content: t('pages.profile.confirmReceiptContent', { orderNo: order.orderNo || order.id }),
+      okText: t('pages.profile.confirmReceipt'),
+      cancelText: t('common.cancel'),
+      onOk: () => handleConfirmReceipt(order.id),
+    });
+  };
+
+  const openReturnModal = (order: OrderCustomer) => {
     setReturnRequestOrder(order);
     setReturnReason(order.returnReason || '');
   };
@@ -534,13 +598,14 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleTrackShipment = (trackingNumber?: string, carrierCode?: string) => {
+  const handleTrackShipment = (trackingNumber?: string, carrierCode?: string, orderId?: number) => {
     if (!trackingNumber) {
       message.warning(t('pages.adminOrders.noTrackingNumber'));
       return;
     }
     setSelectedTrackingNumber(trackingNumber);
     setSelectedTrackingCarrierCode(carrierCode);
+    setSelectedTrackingOrderId(orderId);
     setTrackingVisible(true);
   };
 
@@ -700,8 +765,8 @@ const Profile: React.FC = () => {
     }
   };
 
-  const afterSaleStatuses = ['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURNED'];
-  const isReturnableOrder = (order: Order) => order.status === 'COMPLETED' && Boolean(order.returnable);
+  const afterSaleStatuses = ['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED'];
+  const isReturnableOrder = (order: OrderCustomer) => order.status === 'COMPLETED' && Boolean(order.returnable);
   const orderStatusTabs = [
     { key: 'all', label: t('pages.profile.allOrders') },
     { key: 'PENDING_PAYMENT', label: t('status.PENDING_PAYMENT'), statuses: ['PENDING_PAYMENT'] },
@@ -712,7 +777,7 @@ const Profile: React.FC = () => {
     { key: 'AFTER_SALE', label: t('pages.profile.afterSale'), statuses: afterSaleStatuses },
     { key: 'CANCELLED', label: t('status.CANCELLED'), statuses: ['CANCELLED'] },
   ];
-  const matchesOrderFilter = (order: Order) => {
+  const matchesOrderFilter = (order: OrderCustomer) => {
     if (orderStatusFilter === 'all') return true;
     if (orderStatusFilter === 'RETURNABLE') return isReturnableOrder(order);
     const currentTab = orderStatusTabs.find((tab) => tab.key === orderStatusFilter);
@@ -743,6 +808,7 @@ const Profile: React.FC = () => {
   const returnableOrdersCount = orders.filter(isReturnableOrder).length;
   const returnApprovedCount = orders.filter((order) => order.status === 'RETURN_APPROVED').length;
   const returnShippedCount = orders.filter((order) => order.status === 'RETURN_SHIPPED').length;
+  const returnRefundingCount = orders.filter((order) => order.status === 'RETURN_REFUNDING').length;
   const defaultAddressReady = addresses.some((address) => address.isDefault);
   const completedPetProfiles = petProfiles.filter((pet) => pet.name && pet.petType && pet.size && pet.weight && pet.birthday).length;
   const petProfileProgress = petProfiles.length > 0 ? Math.round((completedPetProfiles / petProfiles.length) * 100) : 0;
@@ -773,11 +839,13 @@ const Profile: React.FC = () => {
     ? t('pages.profile.afterSaleFocusShipment', { count: returnApprovedCount })
     : returnShippedCount > 0
       ? t('pages.profile.afterSaleFocusRefund', { count: returnShippedCount })
-      : returnableOrdersCount > 0
-        ? nextReturnDeadline
-          ? t('pages.profile.afterSaleFocusWindowWithDate', { count: returnableOrdersCount, date: nextReturnDeadline })
-          : t('pages.profile.afterSaleFocusWindow', { count: returnableOrdersCount })
-        : t('pages.profile.afterSaleFocusHealthy');
+      : returnRefundingCount > 0
+        ? t('pages.profile.afterSaleFocusRefunding', { count: returnRefundingCount })
+        : returnableOrdersCount > 0
+          ? nextReturnDeadline
+            ? t('pages.profile.afterSaleFocusWindowWithDate', { count: returnableOrdersCount, date: nextReturnDeadline })
+            : t('pages.profile.afterSaleFocusWindow', { count: returnableOrdersCount })
+          : t('pages.profile.afterSaleFocusHealthy');
   const petCompletenessText = petProfiles.length === 0
     ? t('pages.profile.petCompletenessEmpty')
     : petProfileProgress === 100
@@ -838,7 +906,7 @@ const Profile: React.FC = () => {
     params.set('sort', 'personalized-desc');
     navigate(`/products?${params.toString()}`);
   };
-  const getOrderActionHint = (order: Order): OrderActionHint => {
+  const getOrderActionHint = (order: OrderCustomer): OrderActionHint => {
     const returnDeadline = order.returnDeadline ? new Date(order.returnDeadline).toLocaleDateString(dateLocale) : '';
     if (order.status === 'PENDING_PAYMENT') {
       return {
@@ -886,7 +954,7 @@ const Profile: React.FC = () => {
         text: t('pages.profile.nextReturnShipText'),
       };
     }
-    if (order.status === 'RETURN_SHIPPED') {
+    if (order.status === 'RETURN_SHIPPED' || order.status === 'RETURN_REFUNDING') {
       return {
         tone: 'return',
         title: t('pages.profile.nextRefundTitle'),
@@ -1128,7 +1196,13 @@ const Profile: React.FC = () => {
                               <Button size="small" icon={<StarFilled />} disabled type="primary">{t('pages.profile.defaultAddressButton')}</Button>
                             )}
                             <Button size="small" icon={<EditOutlined />} onClick={() => openAddressModal(address)}>{t('common.edit')}</Button>
-                            <Popconfirm title={t('pages.profile.deleteAddressConfirm')} onConfirm={() => handleDeleteAddress(address.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+                            <Popconfirm
+                              popupClassName="shop-mobile-popup-layer profile-popconfirm"
+                              title={t('pages.profile.deleteAddressConfirm')}
+                              onConfirm={() => handleDeleteAddress(address.id)}
+                              okText={t('common.confirm')}
+                              cancelText={t('common.cancel')}
+                            >
                               <Button size="small" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
                             </Popconfirm>
                           </Space>
@@ -1217,7 +1291,7 @@ const Profile: React.FC = () => {
                           <Space wrap>
                             <Text>{order.createdAt ? new Date(order.createdAt).toLocaleDateString(dateLocale) : '-'}</Text>
                             <Text strong>{t('pages.profile.orderNo')}{order.orderNo || order.id}</Text>
-                            <Tag color={statusColors[order.status]}>{t(`status.${order.status}`)}</Tag>
+                            <Tag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</Tag>
                             <button type="button" className="profile-order-card__link" onClick={() => handleViewOrder(order)}>
                               {t('pages.profile.detail')}
                             </button>
@@ -1249,7 +1323,7 @@ const Profile: React.FC = () => {
                                     <span className="commerce-money">{formatMoney(primaryItem.price)}</span>
                                     <span className="commerce-quantity">x {primaryItem.quantity}</span>
                                   </Text>
-                                  {primaryItem.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(primaryItem.selectedSpecs, t)}</Text> : null}
+                                  {primaryItem.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(primaryItem.selectedSpecs, t, language)}</Text> : null}
                                   {items.length > 1 ? <Text type="secondary">{t('pages.profile.moreItems', { count: items.length - 1 })}</Text> : null}
                                   {order.shippingAddress ? <Text type="secondary" ellipsis>{order.shippingAddress}</Text> : null}
                                 </div>
@@ -1284,7 +1358,7 @@ const Profile: React.FC = () => {
                               </Button>
                             )}
                             {order.status === 'SHIPPED' && (
-                              <Button type="primary" onClick={() => handleConfirmReceipt(order.id)}>{t('pages.profile.confirmReceipt')}</Button>
+                              <Button type="primary" onClick={() => confirmReceiptOrder(order)}>{t('pages.profile.confirmReceipt')}</Button>
                             )}
                             {isReturnableOrder(order) && (
                               <Button danger onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</Button>
@@ -1304,9 +1378,15 @@ const Profile: React.FC = () => {
                               <Button type="link" onClick={openSupport}>{t('pages.profile.contactSupport')}</Button>
                             )}
                             <Button type="link" onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</Button>
-                            {order.trackingNumber ? <Button type="link" onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode)}>{t('pages.orderTracking.trackShipment')}</Button> : null}
+                            {order.trackingNumber ? <Button type="link" onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode, order.id)}>{t('pages.orderTracking.trackShipment')}</Button> : null}
                             {order.status === 'PENDING_PAYMENT' && (
-                              <Popconfirm title={t('pages.profile.cancelOrderConfirm')} onConfirm={() => handleCancelOrder(order.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+                              <Popconfirm
+                                popupClassName="shop-mobile-popup-layer profile-popconfirm"
+                                title={t('pages.profile.cancelOrderConfirm')}
+                                onConfirm={() => handleCancelOrder(order.id)}
+                                okText={t('common.confirm')}
+                                cancelText={t('common.cancel')}
+                              >
                                 <Button type="link" danger>{t('pages.profile.cancelOrder')}</Button>
                               </Popconfirm>
                             )}
@@ -1403,7 +1483,11 @@ const Profile: React.FC = () => {
                           extra={<Tag color="green">{petTypeLabel(pet.petType)}</Tag>}
                           actions={[
                             <Button type="link" icon={<EditOutlined />} onClick={() => openPetModal(pet)}>{t('common.edit')}</Button>,
-                            <Popconfirm title={t('pages.profile.deletePetConfirm')} onConfirm={() => handleDeletePet(pet.id)}>
+                            <Popconfirm
+                              popupClassName="shop-mobile-popup-layer profile-popconfirm"
+                              title={t('pages.profile.deletePetConfirm')}
+                              onConfirm={() => handleDeletePet(pet.id)}
+                            >
                               <Button type="link" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
                             </Popconfirm>,
                           ]}
@@ -1593,7 +1677,7 @@ const Profile: React.FC = () => {
       >
         <Form form={petForm} layout="vertical">
           <Form.Item name="name" label={t('pages.profile.petName')} rules={[{ required: true, message: t('pages.profile.petNameRequired') }]}>
-            <Input placeholder="Milo" />
+            <Input placeholder={t('pages.profile.petNamePlaceholder')} />
           </Form.Item>
           <Form.Item name="petType" label={t('pages.profile.petType')} rules={[{ required: true }]}>
             <Select
@@ -1607,7 +1691,7 @@ const Profile: React.FC = () => {
             />
           </Form.Item>
           <Form.Item name="breed" label={t('pages.profile.petBreed')}>
-            <Input placeholder="Golden Retriever" />
+            <Input placeholder={t('pages.profile.petBreedPlaceholder')} />
           </Form.Item>
           <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
             <DatePicker className="profile-pet-modal__field" popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} />
@@ -1634,7 +1718,7 @@ const Profile: React.FC = () => {
         {selectedOrder && (
           <div>
             <Descriptions column={1} bordered size="small" className="profile-order-detail__descriptions">
-              <Descriptions.Item label={t('common.status')}><Tag color={statusColors[selectedOrder.status]}>{t(`status.${selectedOrder.status}`)}</Tag></Descriptions.Item>
+              <Descriptions.Item label={t('common.status')}><Tag color={getOrderStatusColor(selectedOrder.status)}>{formatOrderStatusLabel(selectedOrder.status)}</Tag></Descriptions.Item>
               <Descriptions.Item label={t('common.amount')}><Text strong className="profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</Text></Descriptions.Item>
               {selectedOrder.originalAmount ? <Descriptions.Item label={t('common.subtotal')}><span className="commerce-money">{formatMoney(selectedOrder.originalAmount)}</span></Descriptions.Item> : null}
               {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 ? (
@@ -1647,7 +1731,7 @@ const Profile: React.FC = () => {
                   <Space>
                     <span>{selectedOrder.trackingNumber}</span>
                     {selectedOrder.trackingCarrierName ? <Tag>{selectedOrder.trackingCarrierName}</Tag> : null}
-                    <Button size="small" onClick={() => handleTrackShipment(selectedOrder.trackingNumber, selectedOrder.trackingCarrierCode)}>{t('pages.adminOrders.track')}</Button>
+                    <Button size="small" onClick={() => handleTrackShipment(selectedOrder.trackingNumber, selectedOrder.trackingCarrierCode, selectedOrder.id)}>{t('pages.adminOrders.track')}</Button>
                   </Space>
                 ) : '-'}
               </Descriptions.Item>
@@ -1717,7 +1801,7 @@ const Profile: React.FC = () => {
                       }
                       description={
                         <Space direction="vertical" size={0}>
-                          {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
+                          {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
                           <Text type="secondary" className="profile-order-detail__unit commerce-atomic commerce-price-quantity">
                             <span className="commerce-money">{formatMoney(item.price)}</span>
                             <span className="commerce-quantity">x {item.quantity}</span>
@@ -1790,7 +1874,7 @@ const Profile: React.FC = () => {
         width={720}
         className="profile-mobile-safe-modal profile-tracking-modal"
       >
-        <SeventeenTrackWidget trackingNumber={selectedTrackingNumber} carrierCode={selectedTrackingCarrierCode} />
+        <SeventeenTrackWidget trackingNumber={selectedTrackingNumber} carrierCode={selectedTrackingCarrierCode} orderId={selectedTrackingOrderId} />
       </Modal>
 
       <Modal
@@ -1882,8 +1966,8 @@ const Profile: React.FC = () => {
                 ) : null}
               </Descriptions.Item>
               <Descriptions.Item label={t('common.status')}>
-                <Tag color={statusColors[selectedPayment.status] || 'default'}>
-                  {t(`status.${selectedPayment.status}`)}
+                <Tag color={getPaymentStatusColor(selectedPayment.status)}>
+                  {formatPaymentStatusLabel(selectedPayment.status)}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.checkout.paymentLink')}>
@@ -1918,8 +2002,8 @@ const Profile: React.FC = () => {
                   <List.Item>
                     <Space direction="vertical" size={0} className="profile-payment-history__item">
                       <Space wrap>
-                        <Tag color={statusColors[payment.status] || 'default'}>
-                          {t(`status.${payment.status}`)}
+                        <Tag color={getPaymentStatusColor(payment.status)}>
+                          {formatPaymentStatusLabel(payment.status)}
                         </Tag>
                         <Text>{paymentMethodLabel(payment.channel, t)}</Text>
                         {payment.amount ? <Text type="secondary" className="commerce-money">{formatMoney(payment.amount)}</Text> : null}

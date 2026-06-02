@@ -1,4 +1,4 @@
-import type { Order } from '../types';
+import type { OrderCustomer } from '../types';
 
 export type SupportWorkflowLanguage = 'zh' | 'es' | 'en';
 
@@ -88,6 +88,24 @@ const templates: Record<SupportWorkflowLanguage, Record<string, WorkflowCopy[]>>
       customer: '订单 {orderRef} 当前状态为 {statusLabel}。我想确认退货是否已签收，以及退款大概什么时候完成。',
       admin: '我正在核对订单 {orderRef}（{statusLabel}）的退件签收和退款进度，稍后同步预计时间。',
     }],
+    RETURN_REFUNDING: [{
+      label: '跟进退款',
+      helper: '确认退款处理进度和预计到账时间',
+      customer: '订单 {orderRef} 当前状态为 {statusLabel}。请帮我确认退款处理进度，以及预计什么时候到账。',
+      admin: '我正在核对订单 {orderRef}（{statusLabel}）的退款处理进度，稍后同步预计到账时间。',
+    }],
+    RETURNED: [{
+      label: '确认退款完成',
+      helper: '核对退款完成记录和售后关闭状态',
+      customer: '订单 {orderRef} 当前状态为 {statusLabel}。请帮我确认退款是否已经完成，以及售后是否已关闭。',
+      admin: '我正在核对订单 {orderRef}（{statusLabel}）的退款完成记录和售后关闭状态。',
+    }],
+    REFUNDED: [{
+      label: '确认退款记录',
+      helper: '核对退款结果和到账信息',
+      customer: '订单 {orderRef} 当前状态为 {statusLabel}。请帮我确认退款记录和到账信息。',
+      admin: '我正在核对订单 {orderRef}（{statusLabel}）的退款结果和到账信息。',
+    }],
     CANCELLED: [{
       label: '确认取消与退款',
       helper: '确认订单关闭及退款安排',
@@ -99,12 +117,12 @@ const templates: Record<SupportWorkflowLanguage, Record<string, WorkflowCopy[]>>
     PENDING_PAYMENT: [{
       label: 'Revisar pago',
       helper: 'Para cobro fallido, duplicado o estado sin actualizar',
-      customer: 'El pedido {orderRef} esta en estado {statusLabel}. Quiero confirmar si el pago entro correctamente y cual es el siguiente paso para completar la compra.',
-      admin: 'Estoy revisando el pago del pedido {orderRef} ({statusLabel}) para confirmarte si entro correctamente y cual es el siguiente paso.',
+      customer: 'El pedido {orderRef} está en estado {statusLabel}. Quiero confirmar si el pago entró correctamente y cuál es el siguiente paso para completar la compra.',
+      admin: 'Estoy revisando el pago del pedido {orderRef} ({statusLabel}) para confirmarte si entró correctamente y cuál es el siguiente paso.',
     }],
     PENDING_SHIPMENT: [
       {
-        label: 'Acelerar envio',
+        label: 'Acelerar envío',
         helper: 'Para confirmar la fecha estimada de salida',
         customer: 'El pedido {orderRef} está en estado {statusLabel}. Ayúdenme a confirmar cuándo se enviará y si todavía necesitan algún dato mío.',
         admin: 'Estoy revisando la preparación del pedido {orderRef} ({statusLabel}) para confirmarte la salida estimada y si falta algún dato.',
@@ -140,7 +158,7 @@ const templates: Record<SupportWorkflowLanguage, Record<string, WorkflowCopy[]>>
       {
         label: 'Uso del producto',
         helper: 'Para talla, instalación o compatibilidad',
-        customer: 'El pedido {orderRef} esta en estado {statusLabel}. Necesito ayuda con uso, talla o compatibilidad del producto.',
+        customer: 'El pedido {orderRef} está en estado {statusLabel}. Necesito ayuda con uso, talla o compatibilidad del producto.',
         admin: 'Estoy revisando los detalles del producto del pedido {orderRef} ({statusLabel}) para darte una guía de uso o compatibilidad.',
       },
     ],
@@ -158,15 +176,33 @@ const templates: Record<SupportWorkflowLanguage, Record<string, WorkflowCopy[]>>
     }],
     RETURN_SHIPPED: [{
       label: 'Revisar reembolso',
-      helper: 'Para validar recepcion y tiempo estimado del reembolso',
-      customer: 'El pedido {orderRef} esta en estado {statusLabel}. Quiero confirmar si ya recibieron la devolucion y cuando se procesara el reembolso.',
-      admin: 'Estoy revisando la recepcion y el estado del reembolso del pedido {orderRef} ({statusLabel}) para darte el tiempo estimado.',
+      helper: 'Para validar recepción y tiempo estimado del reembolso',
+      customer: 'El pedido {orderRef} está en estado {statusLabel}. Quiero confirmar si ya recibieron la devolución y cuándo se procesará el reembolso.',
+      admin: 'Estoy revisando la recepción y el estado del reembolso del pedido {orderRef} ({statusLabel}) para darte el tiempo estimado.',
+    }],
+    RETURN_REFUNDING: [{
+      label: 'Seguir reembolso',
+      helper: 'Para confirmar avance y fecha estimada de abono',
+      customer: 'El pedido {orderRef} está en estado {statusLabel}. Ayúdenme a confirmar el avance del reembolso y cuándo se verá reflejado.',
+      admin: 'Estoy revisando el avance del reembolso del pedido {orderRef} ({statusLabel}) para darte el tiempo estimado de abono.',
+    }],
+    RETURNED: [{
+      label: 'Confirmar cierre',
+      helper: 'Para validar reembolso completo y cierre postventa',
+      customer: 'El pedido {orderRef} está en estado {statusLabel}. Ayúdenme a confirmar si el reembolso ya quedó completo y si la postventa está cerrada.',
+      admin: 'Estoy revisando el reembolso completo y el cierre postventa del pedido {orderRef} ({statusLabel}).',
+    }],
+    REFUNDED: [{
+      label: 'Validar reembolso',
+      helper: 'Para confirmar resultado y datos de abono',
+      customer: 'El pedido {orderRef} está en estado {statusLabel}. Ayúdenme a confirmar el registro del reembolso y los datos de abono.',
+      admin: 'Estoy revisando el resultado del reembolso y los datos de abono del pedido {orderRef} ({statusLabel}).',
     }],
     CANCELLED: [{
-      label: 'Validar cancelacion',
+      label: 'Validar cancelación',
       helper: 'Para confirmar cierre y reembolso si aplica',
-      customer: 'El pedido {orderRef} esta en estado {statusLabel}. Ayudenme a confirmar si la cancelacion ya quedo completa y como se procesara el reembolso.',
-      admin: 'Estoy revisando la cancelacion del pedido {orderRef} ({statusLabel}) y el reembolso relacionado para confirmarte el cierre correcto.',
+      customer: 'El pedido {orderRef} está en estado {statusLabel}. Ayúdenme a confirmar si la cancelación ya quedó completa y cómo se procesará el reembolso.',
+      admin: 'Estoy revisando la cancelación del pedido {orderRef} ({statusLabel}) y el reembolso relacionado para confirmarte el cierre correcto.',
     }],
   },
   en: {
@@ -236,6 +272,24 @@ const templates: Record<SupportWorkflowLanguage, Record<string, WorkflowCopy[]>>
       customer: 'Order {orderRef} is currently {statusLabel}. I want to confirm whether the return has been received and when the refund is expected to complete.',
       admin: 'I am reviewing the return receipt and refund progress for order {orderRef} ({statusLabel}) and will confirm the expected timing.',
     }],
+    RETURN_REFUNDING: [{
+      label: 'Follow refund',
+      helper: 'For refund processing progress and expected arrival timing',
+      customer: 'Order {orderRef} is currently {statusLabel}. Please help me confirm the refund progress and when it is expected to arrive.',
+      admin: 'I am reviewing the refund progress for order {orderRef} ({statusLabel}) and will confirm the expected arrival timing.',
+    }],
+    RETURNED: [{
+      label: 'Confirm refund complete',
+      helper: 'For final refund confirmation and after-sales closure',
+      customer: 'Order {orderRef} is currently {statusLabel}. Please help me confirm whether the refund is complete and the after-sales case is closed.',
+      admin: 'I am checking the completed refund record and after-sales closure for order {orderRef} ({statusLabel}).',
+    }],
+    REFUNDED: [{
+      label: 'Verify refund record',
+      helper: 'For refund result and settlement details',
+      customer: 'Order {orderRef} is currently {statusLabel}. Please help me verify the refund record and settlement details.',
+      admin: 'I am checking the refund result and settlement details for order {orderRef} ({statusLabel}).',
+    }],
     CANCELLED: [{
       label: 'Confirm cancellation',
       helper: 'For cancellation closure and related refund progress',
@@ -270,7 +324,7 @@ const interpolate = (template: string, orderRef: string, statusLabel: string) =>
   template.replace(/\{orderRef\}/g, orderRef).replace(/\{statusLabel\}/g, statusLabel);
 
 export const buildSupportOrderWorkflowActions = (
-  order: Pick<Order, 'id' | 'orderNo' | 'status'>,
+  order: Pick<OrderCustomer, 'id' | 'orderNo' | 'status'>,
   languageKey: SupportWorkflowLanguage,
   statusLabel: string
 ): SupportOrderWorkflowAction[] => {

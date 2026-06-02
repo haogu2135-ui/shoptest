@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,6 +48,8 @@ public class EmailLoginService {
     private final Map<String, RateBucket> verifyBuckets = new ConcurrentHashMap<>();
     private final Map<String, JavaMailSenderImpl> mailSenderCache = new ConcurrentHashMap<>();
     private final byte[] localCodePepper = createCodePepper();
+    private static final int MAX_EMAIL_LENGTH = 180;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     public void sendLoginCode(String email) {
         sendLoginCode(email, "unknown");
@@ -62,10 +65,51 @@ public class EmailLoginService {
             } catch (EmailLoginException | MailException | IllegalStateException e) {
                 throw e;
             } catch (RuntimeException e) {
-                log.warn("Redis email code store is unavailable. Falling back to in-memory code store.", e);
+                throw redisCodeStoreUnavailable("send login code", e);
             }
         }
         sendLoginCodeInMemory(normalizedEmail, clientKey);
+    }
+
+    public void sendPasswordResetCode(String email, String clientKey) {
+        String normalizedEmail = normalizeEmail(email);
+        ensureMailConfigured();
+        String purposeKey = passwordResetPurposeKey(normalizedEmail);
+        User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        boolean canDeliverCode = user != null && !isDisabled(user);
+        if (shouldUseRedis()) {
+            try {
+                sendPurposeCodeWithRedis(purposeKey, normalizedEmail, clientKey, "password reset", canDeliverCode);
+                return;
+            } catch (EmailLoginException | MailException | IllegalStateException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                throw redisCodeStoreUnavailable("send password reset code", e);
+            }
+        }
+        sendPurposeCodeInMemory(purposeKey, normalizedEmail, clientKey, "password reset", canDeliverCode);
+    }
+
+    public User verifyPasswordResetCode(String email, String code, String clientKey) {
+        String normalizedEmail = normalizeEmail(email);
+        String normalizedCode = normalizeCode(code);
+        String purposeKey = passwordResetPurposeKey(normalizedEmail);
+        if (shouldUseRedis()) {
+            try {
+                verifyPurposeCodeWithRedis(purposeKey, normalizedEmail, normalizedCode, clientKey);
+            } catch (EmailLoginException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                throw redisCodeStoreUnavailable("verify password reset code", e);
+            }
+        } else {
+            verifyPurposeCodeInMemory(purposeKey, normalizedEmail, normalizedCode, clientKey);
+        }
+        User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        if (user == null || isDisabled(user)) {
+            throw invalidCode();
+        }
+        return user;
     }
 
     public void sendProfileEmailChangeCode(Long userId, String email, String clientKey) {
@@ -86,10 +130,14 @@ public class EmailLoginService {
             } catch (EmailLoginException | MailException | IllegalStateException e) {
                 throw e;
             } catch (RuntimeException e) {
-                log.warn("Redis profile email code store is unavailable. Falling back to in-memory code store.", e);
+                throw redisCodeStoreUnavailable("send profile email code", e);
             }
         }
         sendPurposeCodeInMemory(purposeKey, normalizedEmail, clientKey);
+    }
+
+    private String passwordResetPurposeKey(String normalizedEmail) {
+        return "password-reset:" + normalizedEmail;
     }
 
     private void sendLoginCodeInMemory(String normalizedEmail, String clientKey) {
@@ -158,6 +206,14 @@ public class EmailLoginService {
     }
 
     private void sendPurposeCodeInMemory(String purposeKey, String normalizedEmail, String clientKey) {
+        sendPurposeCodeInMemory(purposeKey, normalizedEmail, clientKey, "email change");
+    }
+
+    private void sendPurposeCodeInMemory(String purposeKey, String normalizedEmail, String clientKey, String purposeLabel) {
+        sendPurposeCodeInMemory(purposeKey, normalizedEmail, clientKey, purposeLabel, true);
+    }
+
+    private void sendPurposeCodeInMemory(String purposeKey, String normalizedEmail, String clientKey, String purposeLabel, boolean deliverCode) {
         Instant now = Instant.now(clock);
         consumeRate(sendBuckets, rateKey("send-purpose", purposeKey), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
         consumeRate(sendBuckets, rateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
@@ -166,12 +222,16 @@ public class EmailLoginService {
         if (previousSend != null && Duration.between(previousSend, now).compareTo(resendInterval()) < 0) {
             throw rateLimited("RATE_LIMITED", previousSend.plus(resendInterval()), now);
         }
+        if (!deliverCode) {
+            sendCooldowns.put(purposeKey, now);
+            return;
+        }
 
         String code = String.format("%06d", random.nextInt(1_000_000));
         VerificationCode pendingCode = new VerificationCode(hashCode(purposeKey, code), now.plus(codeTtl()), now);
         codes.put(purposeKey, pendingCode);
         try {
-            sendMail(normalizedEmail, code, "email change");
+            sendMail(normalizedEmail, code, purposeLabel);
             sendCooldowns.put(purposeKey, now);
         } catch (RuntimeException e) {
             codes.remove(purposeKey, pendingCode);
@@ -180,6 +240,14 @@ public class EmailLoginService {
     }
 
     private void sendPurposeCodeWithRedis(String purposeKey, String normalizedEmail, String clientKey) {
+        sendPurposeCodeWithRedis(purposeKey, normalizedEmail, clientKey, "email change");
+    }
+
+    private void sendPurposeCodeWithRedis(String purposeKey, String normalizedEmail, String clientKey, String purposeLabel) {
+        sendPurposeCodeWithRedis(purposeKey, normalizedEmail, clientKey, purposeLabel, true);
+    }
+
+    private void sendPurposeCodeWithRedis(String purposeKey, String normalizedEmail, String clientKey, String purposeLabel, boolean deliverCode) {
         StringRedisTemplate redisTemplate = redisTemplate();
         Instant now = Instant.now(clock);
         consumeRedisRate(redisTemplate, redisRateKey("send-purpose", purposeKey), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
@@ -190,6 +258,10 @@ public class EmailLoginService {
         if (cooldownTtl != null && cooldownTtl > 0) {
             throw rateLimited("RATE_LIMITED", now.plusSeconds(cooldownTtl), now);
         }
+        if (!deliverCode) {
+            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+            return;
+        }
 
         String code = String.format("%06d", random.nextInt(1_000_000));
         String codeKey = redisKey("code", purposeKey);
@@ -198,7 +270,7 @@ public class EmailLoginService {
         redisTemplate.opsForHash().put(codeKey, "failedAttempts", "0");
         redisTemplate.expire(codeKey, codeTtl());
         try {
-            sendMail(normalizedEmail, code, "email change");
+            sendMail(normalizedEmail, code, purposeLabel);
             redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
         } catch (RuntimeException e) {
             redisTemplate.delete(codeKey);
@@ -219,7 +291,7 @@ public class EmailLoginService {
             } catch (EmailLoginException e) {
                 throw e;
             } catch (RuntimeException e) {
-                log.warn("Redis email code store is unavailable. Falling back to in-memory code store.", e);
+                throw redisCodeStoreUnavailable("verify login code", e);
             }
         }
         return verifyLoginCodeInMemory(normalizedEmail, normalizedCode, clientKey);
@@ -239,7 +311,7 @@ public class EmailLoginService {
             } catch (EmailLoginException e) {
                 throw e;
             } catch (RuntimeException e) {
-                log.warn("Redis profile email code store is unavailable. Falling back to in-memory code store.", e);
+                throw redisCodeStoreUnavailable("verify profile email code", e);
             }
         }
         verifyPurposeCodeInMemory(purposeKey, normalizedEmail, normalizedCode, clientKey);
@@ -528,7 +600,11 @@ public class EmailLoginService {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email is required");
         }
-        return email.trim().toLowerCase(Locale.ROOT);
+        String normalized = email.trim().toLowerCase(Locale.ROOT);
+        if (normalized.length() > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Valid email is required");
+        }
+        return normalized;
     }
 
     private String normalizeCode(String code) {
@@ -571,6 +647,11 @@ public class EmailLoginService {
             throw new IllegalStateException("RedisTemplate is not configured");
         }
         return redisTemplate;
+    }
+
+    private IllegalStateException redisCodeStoreUnavailable(String operation, RuntimeException cause) {
+        log.warn("Redis email code store is unavailable during {}. Failing closed to avoid split-brain verification codes.", operation, cause);
+        return new IllegalStateException("Verification code service is temporarily unavailable", cause);
     }
 
     private String redisKey(String type, String value) {
@@ -664,9 +745,12 @@ public class EmailLoginService {
     }
 
     private void assertProfileEmailStillAvailable(String purposeKey, String normalizedEmail) {
-        User existing = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
         Long userId = userIdFromProfileEmailPurposeKey(purposeKey);
-        if (existing != null && (userId == null || !userId.equals(existing.getId()))) {
+        if (userId == null) {
+            return;
+        }
+        User existing = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
+        if (existing != null && !userId.equals(existing.getId())) {
             throw invalidCode();
         }
     }

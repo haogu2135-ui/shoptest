@@ -22,6 +22,7 @@ const statusColors: Record<string, string> = {
   RETURNED: 'volcano',
   RETURNING: 'orange',
   EXTERNAL_EMPTY: 'default',
+  TRACKING_UNAVAILABLE: 'default',
   EXTERNAL: 'blue',
 };
 
@@ -37,16 +38,27 @@ const isProviderConfigurationError = (value: string) =>
 type SeventeenTrackWidgetProps = {
   trackingNumber?: string;
   carrierCode?: string;
+  orderId?: number;
+  guestEmail?: string;
+  orderNo?: string;
   height?: number;
 };
 
-const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNumber = '', carrierCode, height = 560 }) => {
+const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
+  trackingNumber = '',
+  carrierCode,
+  orderId,
+  guestEmail,
+  orderNo,
+  height = 560,
+}) => {
   const { t, language } = useLanguage();
   const [value, setValue] = useState(trackingNumber);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LogisticsTrackResponse | null>(null);
   const [error, setError] = useState('');
   const requestSeq = useRef(0);
+  const queryTrackingRef = useRef<(nextValue: string, silent?: boolean) => Promise<void>>(async () => undefined);
   const dateLocale = localeByLanguage[language] || localeByLanguage.en;
   const resultsMinHeight = Math.max(220, Math.min(height, 560));
 
@@ -63,7 +75,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
     setError('');
 
     try {
-      const response = await logisticsApi.track(num, carrierCode);
+      const response = await logisticsApi.track(num, carrierCode, orderId, guestEmail, orderNo);
       if (requestSeq.current !== requestId) return;
       setResult(response.data);
     } catch (err: any) {
@@ -91,7 +103,11 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
         setLoading(false);
       }
     }
-  }, [carrierCode, language, t]);
+  }, [carrierCode, guestEmail, language, orderId, orderNo, t]);
+
+  useEffect(() => {
+    queryTrackingRef.current = queryTracking;
+  }, [queryTracking]);
 
   useEffect(() => {
     const normalized = trackingNumber.trim();
@@ -99,17 +115,17 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
     setResult(null);
     setError('');
     if (normalized) {
-      void queryTracking(normalized, true);
+      void queryTrackingRef.current(normalized, true);
     }
-  }, [queryTracking, trackingNumber]);
+  }, [carrierCode, guestEmail, orderId, orderNo, trackingNumber]);
 
   const runTrack = () => {
     void queryTracking(value);
   };
 
   const events = result?.events || [];
-  const hasRawResponse = Boolean(result?.rawResponse && Object.keys(result.rawResponse).length > 0);
   const status = result?.status || '';
+  const trackingUnavailable = status === 'TRACKING_UNAVAILABLE';
 
   return (
     <Space className="seventeen-track-widget" direction="vertical" size="middle">
@@ -168,10 +184,18 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({ trackingNum
                   </div>
                 ))}
               </div>
+            ) : trackingUnavailable ? (
+              <Alert
+                className="seventeen-track-widget__alert seventeen-track-widget__inlineAlert"
+                type="info"
+                showIcon
+                message={t('pages.orderTracking.trackingUnavailable')}
+                description={result.summary || t('pages.orderTracking.noTrackingData')}
+              />
             ) : (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={hasRawResponse ? t('pages.adminOrders.rawTrackingData') : t('pages.orderTracking.noTrackingData')}
+                description={t('pages.orderTracking.noTrackingData')}
               />
             )}
           </div>

@@ -7,9 +7,10 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -38,6 +39,11 @@ public class JwtService {
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         ensureJwtSecretConfigured();
         Map<String, Object> claims = new HashMap<>(extraClaims);
+        if (userDetails instanceof UserDetailsImpl) {
+            UserDetailsImpl user = (UserDetailsImpl) userDetails;
+            claims.putIfAbsent("userId", user.getId());
+            claims.putIfAbsent("email", user.getEmail());
+        }
         String jti = UUID.randomUUID().toString();
         return Jwts.builder()
                 .setClaims(claims)
@@ -60,11 +66,29 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        return username.equals(userDetails.getUsername())
+                && !isTokenExpired(token)
+                && !isTokenIssuedBeforePasswordChange(token, userDetails);
     }
 
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
+    }
+
+    private boolean isTokenIssuedBeforePasswordChange(String token, UserDetails userDetails) {
+        if (!(userDetails instanceof UserDetailsImpl)) {
+            return false;
+        }
+        LocalDateTime passwordChangedAt = ((UserDetailsImpl) userDetails).getPasswordChangedAt();
+        if (passwordChangedAt == null) {
+            return false;
+        }
+        Date issuedAt = extractClaim(token, Claims::getIssuedAt);
+        if (issuedAt == null) {
+            return true;
+        }
+        long changedAtMillis = passwordChangedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        return issuedAt.getTime() < changedAtMillis;
     }
 
     private Date extractExpiration(String token) {
@@ -80,21 +104,13 @@ public class JwtService {
     }
 
     private void ensureJwtSecretConfigured() {
-        if (!isProductionMode()) {
-            return;
-        }
         String secret = jwtSecret().trim();
         if (secret.isEmpty()
                 || "your-secret-key".equals(secret)
                 || "your-secret-key-here".equals(secret)
                 || secret.length() < 32) {
-            throw new IllegalStateException("JWT secret is not configured for production");
+            throw new IllegalStateException("JWT secret is not configured; set JWT_SECRET to at least 32 characters");
         }
-    }
-
-    private boolean isProductionMode() {
-        String mode = runtimeConfig.getString("app.runtime-mode", "production").trim().toLowerCase(Locale.ROOT);
-        return "production".equals(mode) || "prod".equals(mode);
     }
 
     private String jwtSecret() {

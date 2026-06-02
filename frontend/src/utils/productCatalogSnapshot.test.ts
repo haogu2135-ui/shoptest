@@ -98,7 +98,7 @@ describe('productCatalogSnapshot', () => {
     const fallbackProducts = loadFallbackProductCatalog();
 
     expect(fallbackProducts.length).toBeGreaterThan(0);
-    expect(fallbackProducts.every((item) => item.status === 'ACTIVE')).toBe(true);
+    expect(fallbackProducts.every((item) => item.stock === undefined || item.stock > 0)).toBe(true);
     expect(fallbackProducts.every((item) => item.name && item.price >= 0 && item.imageUrl)).toBe(true);
   });
 });

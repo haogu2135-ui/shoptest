@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircleOutlined } from '@ant-design/icons';
 import { useLanguage } from '../i18n';
-import { conversionConfig } from '../utils/conversionConfig';
+import { conversionConfig, type SocialProofEvent } from '../utils/conversionConfig';
 import './SocialProofToast.css';
 
 const SocialProofToast: React.FC = () => {
   const { t } = useLanguage();
   const [activeIndex, setActiveIndex] = useState(0);
-  const events = useMemo(() => conversionConfig.socialProof.events, []);
+  const events = useMemo<SocialProofEvent[]>(() => conversionConfig.socialProof.events.filter((event) => event.verified === true), []);
 
   useEffect(() => {
     if (!conversionConfig.socialProof.enabled || events.length <= 1) return undefined;

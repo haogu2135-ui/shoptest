@@ -8,7 +8,6 @@ jest.mock('./productMedia', () => ({
 
 const cartItem = (overrides: Partial<CartItem>): CartItem => ({
   id: 1,
-  userId: 1,
   productId: 1,
   productName: 'Test',
   imageUrl: '',

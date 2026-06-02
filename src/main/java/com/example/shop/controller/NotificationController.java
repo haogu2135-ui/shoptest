@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.NotificationResponse;
 import com.example.shop.entity.Notification;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.service.NotificationService;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/notifications")
@@ -24,19 +26,24 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public List<Notification> getNotifications(@RequestParam Long userId, Authentication authentication) {
-        SecurityUtils.assertSelfOrAdmin(authentication, userId);
-        return notificationService.getNotifications(userId);
+    public List<NotificationResponse> getNotifications(@RequestParam Long userId,
+                                                       @RequestParam(required = false) Integer page,
+                                                       @RequestParam(required = false) Integer size,
+                                                       Authentication authentication) {
+        SecurityUtils.assertSelf(authentication, userId);
+        return toResponses(notificationService.getNotifications(userId, page, size));
     }
 
     @GetMapping("/me")
-    public List<Notification> getMyNotifications(Authentication authentication) {
-        return notificationService.getNotifications(SecurityUtils.requireUser(authentication).getId());
+    public List<NotificationResponse> getMyNotifications(@RequestParam(required = false) Integer page,
+                                                         @RequestParam(required = false) Integer size,
+                                                         Authentication authentication) {
+        return toResponses(notificationService.getNotifications(SecurityUtils.requireUser(authentication).getId(), page, size));
     }
 
     @GetMapping("/unread-count")
     public Map<String, Integer> getUnreadCount(@RequestParam Long userId, Authentication authentication) {
-        SecurityUtils.assertSelfOrAdmin(authentication, userId);
+        SecurityUtils.assertSelf(authentication, userId);
         return Map.of("count", notificationService.getUnreadCount(userId));
     }
 
@@ -51,14 +58,14 @@ public class NotificationController {
         if (notification == null) {
             return ResponseEntity.notFound().build();
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, notification.getUserId());
+        SecurityUtils.assertSelf(authentication, notification.getUserId());
         notificationService.markAsRead(id);
         return ResponseEntity.ok(Map.of("message", "Read"));
     }
 
     @PutMapping("/read-all")
     public Map<String, String> markAllAsRead(@RequestParam Long userId, Authentication authentication) {
-        SecurityUtils.assertSelfOrAdmin(authentication, userId);
+        SecurityUtils.assertSelf(authentication, userId);
         notificationService.markAllAsRead(userId);
         return Map.of("message", "All read");
     }
@@ -75,8 +82,14 @@ public class NotificationController {
         if (notification == null) {
             return ResponseEntity.notFound().build();
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, notification.getUserId());
+        SecurityUtils.assertSelf(authentication, notification.getUserId());
         notificationService.deleteNotification(id);
         return ResponseEntity.ok(Map.of("message", "Deleted"));
+    }
+
+    private List<NotificationResponse> toResponses(List<Notification> notifications) {
+        return notifications.stream()
+                .map(NotificationResponse::from)
+                .collect(Collectors.toList());
     }
 }

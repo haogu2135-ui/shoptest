@@ -2,16 +2,24 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.CheckoutRequest;
 import com.example.shop.dto.GuestCheckoutRequest;
+import com.example.shop.dto.OrderCustomerResponse;
+import com.example.shop.dto.OrderItemCustomerResponse;
+import com.example.shop.dto.OrderTrackRequest;
 import com.example.shop.dto.OrderTrackResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.entity.Payment;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
+import com.example.shop.service.IpBlacklistService;
+import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -22,27 +30,31 @@ import javax.validation.Valid;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
 public class OrderController {
+    private static final int HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT = 5000;
+
     private final OrderService orderService;
     private final OrderItemService orderItemService;
     private final SecurityAuditLogService auditLogService;
+    private final IpBlacklistService ipBlacklistService;
+    @Autowired(required = false)
+    private AdminRoleService adminRoleService;
+    @Autowired(required = false)
+    private RuntimeConfigService runtimeConfig;
 
     @PostMapping
-    public ResponseEntity<Order> createOrder(@Valid @RequestBody(required = false) Order order, Authentication authentication) {
+    public ResponseEntity<?> createOrder(@Valid @RequestBody(required = false) Order order, Authentication authentication) {
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order payload is required");
         }
-        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
-        if (!SecurityUtils.isAdmin(userDetails)) {
-            order.setUserId(userDetails.getId());
-        } else if (order.getUserId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
-        }
-        return ResponseEntity.ok(orderService.createOrder(order));
+        SecurityUtils.requireUser(authentication);
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Legacy order creation is disabled; use /orders/checkout/me or /orders/checkout/guest");
     }
 
     @PostMapping("/checkout")
@@ -53,8 +65,8 @@ public class OrderController {
         if (request.getUserId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, request.getUserId());
-        return ResponseEntity.ok(orderService.checkout(request));
+        SecurityUtils.assertSelf(authentication, request.getUserId());
+        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.checkout(request)));
     }
 
     @PostMapping("/checkout/me")
@@ -64,7 +76,7 @@ public class OrderController {
         }
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         request.setUserId(userDetails.getId());
-        return ResponseEntity.ok(orderService.checkout(request));
+        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.checkout(request)));
     }
 
     @PostMapping("/checkout/guest")
@@ -72,33 +84,63 @@ public class OrderController {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest checkout payload is required");
         }
-        return ResponseEntity.ok(orderService.guestCheckout(request));
+        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.guestCheckout(request)));
     }
 
     @GetMapping("/track")
-    public ResponseEntity<?> trackOrder(@RequestParam String orderNo, @RequestParam String email) {
-        OrderTrackResponse response = orderService.trackOrder(orderNo, email);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> trackOrder() {
+        throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED, "Use POST /orders/track");
+    }
+
+    @PostMapping("/track")
+    public ResponseEntity<?> trackOrder(@Valid @RequestBody(required = false) OrderTrackRequest body,
+                                        HttpServletRequest request) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order tracking payload is required");
+        }
+        try {
+            OrderTrackResponse response = orderService.trackOrder(body.getOrderNo(), body.getEmail());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            ipBlacklistService.recordLoginFailure(request, "guest-order-track failed");
+            throw e;
+        }
     }
 
     @GetMapping("/me")
-    public ResponseEntity<List<Order>> getMyOrders(Authentication authentication) {
+    public ResponseEntity<List<OrderCustomerResponse>> getMyOrders(Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
-        return ResponseEntity.ok(orderService.getOrdersByUserId(userDetails.getId()));
+        return ResponseEntity.ok(toCustomerOrders(orderService.getOrdersByUserId(userDetails.getId())));
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Order>> getUserOrders(@PathVariable Long userId, Authentication authentication) {
-        SecurityUtils.assertSelfOrAdmin(authentication, userId);
-        return ResponseEntity.ok(orderService.getOrdersByUserId(userId));
+    public ResponseEntity<?> getUserOrders(@PathVariable Long userId, Authentication authentication) {
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        if (!isSelf(userDetails, userId)) {
+            if (SecurityUtils.isAdmin(userDetails)) {
+                requireOrdersPagePermission(userDetails);
+            } else {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+            }
+        }
+        List<Order> orders = orderService.getOrdersByUserId(userId);
+        return ResponseEntity.ok(canReadOrdersAsAdmin(userDetails) ? orders : toCustomerOrders(orders));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrder(@PathVariable Long id,
-                                          @RequestParam(required = false) String guestEmail,
-                                          @RequestParam(required = false) String orderNo,
-                                          Authentication authentication) {
-        return ResponseEntity.ok(requireVisibleOrder(id, authentication, guestEmail, orderNo));
+    public ResponseEntity<?> getOrder(@PathVariable Long id,
+                                      Authentication authentication) {
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        Order order = requireVisibleOrder(id, authentication);
+        return ResponseEntity.ok(canReadOrdersAsAdmin(userDetails) ? order : OrderCustomerResponse.from(order));
+    }
+
+    @GetMapping("/guest/{id}")
+    public ResponseEntity<OrderCustomerResponse> getGuestOrder(@PathVariable Long id,
+                                                               @RequestParam String guestEmail,
+                                                               @RequestParam String orderNo,
+                                                               HttpServletRequest request) {
+        return ResponseEntity.ok(OrderCustomerResponse.from(requireGuestVisibleOrder(id, guestEmail, orderNo, request)));
     }
 
     @PutMapping("/{id}")
@@ -107,29 +149,50 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order payload is required");
         }
         SecurityUtils.assertAdmin(authentication);
-        order.setId(id);
-        return ResponseEntity.ok(orderService.updateOrder(order));
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Legacy admin order update is disabled; use /admin/orders/{id}/status");
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Boolean> deleteOrder(@PathVariable Long id, Authentication authentication) {
         SecurityUtils.assertAdmin(authentication);
-        return ResponseEntity.ok(orderService.deleteOrder(id));
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Legacy admin order delete is disabled");
     }
 
     @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders(Authentication authentication) {
-        SecurityUtils.assertAdmin(authentication);
-        return ResponseEntity.ok(orderService.getAllOrders());
+    public ResponseEntity<?> getAllOrders(Authentication authentication) {
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        if (canReadOrdersAsAdmin(userDetails)) {
+            int limit = legacyAdminOrderListLimit();
+            int total = orderService.countAdminOrders(null, null, null);
+            List<Order> orders = orderService.searchAdminOrders(null, null, null, 1, limit);
+            return ResponseEntity.ok()
+                    .header("X-Admin-List-Limit", String.valueOf(limit))
+                    .header("X-Admin-List-Returned", String.valueOf(orders.size()))
+                    .header("X-Admin-List-Total", String.valueOf(total))
+                    .header("X-Admin-List-Truncated", String.valueOf(total > orders.size()))
+                    .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                            "X-Admin-List-Limit,X-Admin-List-Returned,X-Admin-List-Total,X-Admin-List-Truncated")
+                    .body(orders);
+        }
+        return ResponseEntity.ok(toCustomerOrders(orderService.getOrdersByUserId(userDetails.getId())));
     }
 
     @GetMapping("/{id}/items")
-    public ResponseEntity<List<OrderItem>> getOrderItems(@PathVariable Long id,
-                                                         @RequestParam(required = false) String guestEmail,
-                                                         @RequestParam(required = false) String orderNo,
-                                                         Authentication authentication) {
-        requireVisibleOrder(id, authentication, guestEmail, orderNo);
-        return ResponseEntity.ok(orderItemService.getOrderItemsByOrderId(id));
+    public ResponseEntity<?> getOrderItems(@PathVariable Long id,
+                                           Authentication authentication) {
+        UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
+        requireVisibleOrder(id, authentication);
+        List<OrderItem> items = orderItemService.getOrderItemsByOrderId(id);
+        return ResponseEntity.ok(canReadOrdersAsAdmin(userDetails) ? items : toCustomerOrderItems(items));
+    }
+
+    @GetMapping("/guest/{id}/items")
+    public ResponseEntity<List<OrderItemCustomerResponse>> getGuestOrderItems(@PathVariable Long id,
+                                                                              @RequestParam String guestEmail,
+                                                                              @RequestParam String orderNo,
+                                                                              HttpServletRequest request) {
+        requireGuestVisibleOrder(id, guestEmail, orderNo, request);
+        return ResponseEntity.ok(toCustomerOrderItems(orderItemService.getOrderItemsByOrderId(id)));
     }
 
     @PostMapping("/{id}/items")
@@ -138,8 +201,7 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order item payload is required");
         }
         SecurityUtils.assertAdmin(authentication);
-        item.setOrderId(id);
-        return ResponseEntity.ok(orderItemService.addOrderItem(item));
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Legacy admin order item mutation is disabled");
     }
 
     @PutMapping("/{id}/cancel")
@@ -147,12 +209,31 @@ public class OrderController {
                                          @RequestBody(required = false) Map<String, String> body,
                                          Authentication authentication,
                                          HttpServletRequest request) {
+        return cancelOrderInternal(id, body, authentication, request, false);
+    }
+
+    @PutMapping("/guest/{id}/cancel")
+    public ResponseEntity<?> cancelGuestOrder(@PathVariable Long id,
+                                              @RequestBody(required = false) Map<String, String> body,
+                                              HttpServletRequest request) {
+        return cancelOrderInternal(id, body, null, request, true);
+    }
+
+    private ResponseEntity<?> cancelOrderInternal(Long id,
+                                                  Map<String, String> body,
+                                                  Authentication authentication,
+                                                  HttpServletRequest request,
+                                                  boolean allowGuestCredentials) {
         try {
             Order order = orderService.getOrderById(id);
             if (order == null) {
+                recordGuestOrderOperationFailure(allowGuestCredentials, request, "guest-order not found");
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
             }
-            assertCanCancelOrder(order, authentication, body == null ? null : body.get("guestEmail"), body == null ? null : body.get("orderNo"));
+            assertCanCancelOrder(order, authentication,
+                    guestBodyValue(body, "guestEmail", allowGuestCredentials),
+                    guestBodyValue(body, "orderNo", allowGuestCredentials),
+                    request);
             if (!orderService.cancelOrder(id)) {
                 throw new IllegalStateException("Order cancellation failed");
             }
@@ -170,7 +251,7 @@ public class OrderController {
     public ResponseEntity<?> payOrder(@PathVariable Long id,
                                       @RequestBody(required = false) Map<String, String> body,
                                       Authentication authentication) {
-        SecurityUtils.assertAdmin(authentication);
+        requireOrdersActionPermission(authentication, AdminRoleService.ORDER_PAYMENT_PERMISSION);
         String transactionId = body == null ? null : body.get("transactionId");
         Payment payment = orderService.confirmPayment(id, transactionId);
         return ResponseEntity.ok(Map.of("message", "Payment confirmed", "payment", payment));
@@ -178,7 +259,7 @@ public class OrderController {
 
     @PutMapping("/{id}/ship")
     public ResponseEntity<?> shipOrder(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, Authentication authentication) {
-        SecurityUtils.assertAdmin(authentication);
+        requireOrdersActionPermission(authentication, AdminRoleService.ORDER_FULFILLMENT_PERMISSION);
         String trackingNumber = body != null ? body.get("trackingNumber") : null;
         String trackingCarrierCode = body != null ? body.get("trackingCarrierCode") : null;
         if (!orderService.shipOrder(id, trackingNumber, trackingCarrierCode)) {
@@ -190,17 +271,50 @@ public class OrderController {
     @PutMapping("/{id}/confirm")
     public ResponseEntity<?> confirmReceipt(@PathVariable Long id,
                                             @RequestBody(required = false) Map<String, String> body,
-                                            Authentication authentication) {
-        Order order = orderService.getOrderById(id);
-        if (order == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+                                            Authentication authentication,
+                                            HttpServletRequest request) {
+        return confirmReceiptInternal(id, body, authentication, false, request);
+    }
+
+    @PutMapping("/guest/{id}/confirm")
+    public ResponseEntity<?> confirmGuestReceipt(@PathVariable Long id,
+                                                 @RequestBody(required = false) Map<String, String> body,
+                                                 HttpServletRequest request) {
+        return confirmReceiptInternal(id, body, null, true, request);
+    }
+
+    private ResponseEntity<?> confirmReceiptInternal(Long id,
+                                                     Map<String, String> body,
+                                                     Authentication authentication,
+                                                     boolean allowGuestCredentials,
+                                                     HttpServletRequest request) {
+        Order order = null;
+        String previousStatus = null;
+        try {
+            order = orderService.getOrderById(id);
+            if (order == null) {
+                recordGuestOrderOperationFailure(allowGuestCredentials, request, "guest-order not found");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+            }
+            previousStatus = order.getStatus();
+            resolveCustomerUserId(order, authentication,
+                    guestBodyValue(body, "guestEmail", allowGuestCredentials),
+                    guestBodyValue(body, "orderNo", allowGuestCredentials),
+                    "Order confirmation is not available for this order",
+                    request,
+                    permissionForLegacyOrderStatusAction(order.getStatus(), "COMPLETED"),
+                    true);
+            if (!orderService.updateOrderStatus(id, "COMPLETED")) {
+                throw new IllegalStateException("Order completion failed");
+            }
+            auditLogService.record("ORDER_CONFIRM_RECEIPT", "SUCCESS", authentication, "ORDER", id, request,
+                    "Order receipt confirmed", confirmReceiptMetadata(order, body, allowGuestCredentials, previousStatus));
+            return ResponseEntity.ok(Map.of("message", "Order completed"));
+        } catch (RuntimeException e) {
+            auditLogService.record("ORDER_CONFIRM_RECEIPT", "FAILURE", authentication, "ORDER", id, request,
+                    e.getMessage(), confirmReceiptMetadata(order, body, allowGuestCredentials, previousStatus));
+            throw e;
         }
-        resolveCustomerUserId(order, authentication, body == null ? null : body.get("guestEmail"), body == null ? null : body.get("orderNo"),
-                "Order confirmation is not available for this order");
-        if (!orderService.updateOrderStatus(id, "COMPLETED")) {
-            throw new IllegalStateException("Order completion failed");
-        }
-        return ResponseEntity.ok(Map.of("message", "Order completed"));
     }
 
     @PutMapping("/{id}/return")
@@ -208,14 +322,35 @@ public class OrderController {
                                          @RequestBody(required = false) Map<String, String> body,
                                          Authentication authentication,
                                          HttpServletRequest request) {
+        return returnOrderInternal(id, body, authentication, request, false);
+    }
+
+    @PutMapping("/guest/{id}/return")
+    public ResponseEntity<?> returnGuestOrder(@PathVariable Long id,
+                                              @RequestBody(required = false) Map<String, String> body,
+                                              HttpServletRequest request) {
+        return returnOrderInternal(id, body, null, request, true);
+    }
+
+    private ResponseEntity<?> returnOrderInternal(Long id,
+                                                  Map<String, String> body,
+                                                  Authentication authentication,
+                                                  HttpServletRequest request,
+                                                  boolean allowGuestCredentials) {
         String reason = body != null ? body.get("reason") : null;
         try {
             Order order = orderService.getOrderById(id);
             if (order == null) {
+                recordGuestOrderOperationFailure(allowGuestCredentials, request, "guest-order not found");
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
             }
-            Long userId = resolveCustomerUserId(order, authentication, body == null ? null : body.get("guestEmail"), body == null ? null : body.get("orderNo"),
-                    "Return request is not available for this order");
+            Long userId = resolveCustomerUserId(order, authentication,
+                    guestBodyValue(body, "guestEmail", allowGuestCredentials),
+                    guestBodyValue(body, "orderNo", allowGuestCredentials),
+                    "Return request is not available for this order",
+                    request,
+                    null,
+                    false);
             if (!orderService.requestReturn(id, userId, reason)) {
                 auditLogService.record("RETURN_REQUEST", "FAILURE", authentication, "ORDER", id, request,
                         "Order not found or return request was not applied", reason == null ? null : "reason=" + reason);
@@ -236,14 +371,35 @@ public class OrderController {
                                                   @RequestBody(required = false) Map<String, String> body,
                                                   Authentication authentication,
                                                   HttpServletRequest request) {
+        return submitReturnShipmentInternal(id, body, authentication, request, false);
+    }
+
+    @PutMapping("/guest/{id}/return-shipment")
+    public ResponseEntity<?> submitGuestReturnShipment(@PathVariable Long id,
+                                                       @RequestBody(required = false) Map<String, String> body,
+                                                       HttpServletRequest request) {
+        return submitReturnShipmentInternal(id, body, null, request, true);
+    }
+
+    private ResponseEntity<?> submitReturnShipmentInternal(Long id,
+                                                           Map<String, String> body,
+                                                           Authentication authentication,
+                                                           HttpServletRequest request,
+                                                           boolean allowGuestCredentials) {
         String returnTrackingNumber = body != null ? body.get("returnTrackingNumber") : null;
         try {
             Order order = orderService.getOrderById(id);
             if (order == null) {
+                recordGuestOrderOperationFailure(allowGuestCredentials, request, "guest-order not found");
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
             }
-            Long userId = resolveCustomerUserId(order, authentication, body == null ? null : body.get("guestEmail"), body == null ? null : body.get("orderNo"),
-                    "Return shipment is not available for this order");
+            Long userId = resolveCustomerUserId(order, authentication,
+                    guestBodyValue(body, "guestEmail", allowGuestCredentials),
+                    guestBodyValue(body, "orderNo", allowGuestCredentials),
+                    "Return shipment is not available for this order",
+                    request,
+                    null,
+                    false);
             if (!orderService.submitReturnShipment(id, userId, returnTrackingNumber)) {
                 auditLogService.record("RETURN_SHIPMENT_SUBMIT", "FAILURE", authentication, "ORDER", id, request,
                         "Order not found or return shipment was not applied", "returnTrackingNumber=" + returnTrackingNumber);
@@ -264,47 +420,162 @@ public class OrderController {
     }
 
     private Order requireVisibleOrder(Long id, Authentication authentication) {
-        return requireVisibleOrder(id, authentication, null, null);
-    }
-
-    private Order requireVisibleOrder(Long id, Authentication authentication, String guestEmail, String orderNo) {
         Order order = orderService.getOrderById(id);
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        if (customerAccessMatches(order, guestEmail, orderNo)) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (isSelf(user, order.getUserId())) {
             return order;
         }
-        SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
+        if (SecurityUtils.isAdmin(user)) {
+            requireOrdersPagePermission(user);
+            return order;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+    }
+
+    private Order requireGuestVisibleOrder(Long id, String guestEmail, String orderNo, HttpServletRequest request) {
+        Order order = orderService.getOrderById(id);
+        if (order == null) {
+            ipBlacklistService.recordLoginFailure(request, "guest-order not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        if (!guestOrderAccessMatches(order, guestEmail, orderNo)) {
+            ipBlacklistService.recordLoginFailure(request, "guest-order credentials failed");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Guest order access is not available for this order");
+        }
         return order;
     }
 
-    private void assertCanCancelOrder(Order order, Authentication authentication, String guestEmail, String orderNo) {
-        resolveCustomerUserId(order, authentication, guestEmail, orderNo, "Order cancellation is not available for this order");
+    private void assertCanCancelOrder(Order order, Authentication authentication, String guestEmail, String orderNo, HttpServletRequest request) {
+        resolveCustomerUserId(order, authentication, guestEmail, orderNo,
+                "Order cancellation is not available for this order", request,
+                AdminRoleService.ORDER_STATUS_PERMISSION, true);
     }
 
-    private Long resolveCustomerUserId(Order order, Authentication authentication, String guestEmail, String orderNo, String forbiddenMessage) {
-        if (customerAccessMatches(order, guestEmail, orderNo)) {
+    private String guestBodyValue(Map<String, String> body, String key, boolean allowGuestCredentials) {
+        return allowGuestCredentials && body != null ? body.get(key) : null;
+    }
+
+    private Long resolveCustomerUserId(Order order,
+                                       Authentication authentication,
+                                       String guestEmail,
+                                       String orderNo,
+                                       String forbiddenMessage,
+                                       HttpServletRequest request,
+                                       String adminPermission,
+                                       boolean allowLegacyAdminAction) {
+        if (guestOrderAccessMatches(order, guestEmail, orderNo)) {
             return null;
         }
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
-            SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
-            return order.getUserId();
+            UserDetailsImpl user = (UserDetailsImpl) authentication.getPrincipal();
+            if (isSelf(user, order.getUserId())) {
+                return order.getUserId();
+            }
+            if (SecurityUtils.isAdmin(user) && allowLegacyAdminAction && adminPermission != null) {
+                requireOrdersActionPermission(user, adminPermission);
+                return order.getUserId();
+            }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
         }
+        recordGuestOrderOperationFailure(true, request, "guest-order operation credentials failed");
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
     }
 
-    private boolean customerAccessMatches(Order order, String email, String orderNo) {
-        return orderNoMatches(order, orderNo) && customerEmailMatches(order, email);
+    private boolean canReadOrdersAsAdmin(UserDetailsImpl user) {
+        return SecurityUtils.isAdmin(user)
+                && adminRoleService != null
+                && adminRoleService.canAccess(user.getId(), "/admin/orders");
     }
 
-    private boolean orderNoMatches(Order order, String orderNo) {
-        return orderNo != null
-                && order.getOrderNo() != null
-                && order.getOrderNo().trim().equalsIgnoreCase(orderNo.trim());
+    private int legacyAdminOrderListLimit() {
+        int configured = runtimeConfig == null
+                ? 100
+                : runtimeConfig.getInt("admin.orders.legacy-list-max-rows", 100);
+        return Math.max(1, Math.min(configured, HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT));
     }
 
-    private boolean customerEmailMatches(Order order, String email) {
-        return orderService.orderEmailMatches(order, email) || orderService.guestOrderEmailMatches(order, email);
+    private void requireOrdersPagePermission(UserDetailsImpl user) {
+        if (canReadOrdersAsAdmin(user)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No permission for this admin page");
+    }
+
+    private void requireOrdersActionPermission(Authentication authentication, String permission) {
+        requireOrdersActionPermission(SecurityUtils.requireUser(authentication), permission);
+    }
+
+    private void requireOrdersActionPermission(UserDetailsImpl user, String permission) {
+        requireOrdersPagePermission(user);
+        if (adminRoleService != null && adminRoleService.hasPermission(user.getId(), permission)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No permission for this order action");
+    }
+
+    private String permissionForLegacyOrderStatusAction(String currentStatus, String newStatus) {
+        String current = currentStatus == null ? "" : currentStatus.trim().toUpperCase();
+        String target = newStatus == null ? "" : newStatus.trim().toUpperCase();
+        if ("PENDING_SHIPMENT".equals(target)) {
+            return "PENDING_PAYMENT".equals(current)
+                    ? AdminRoleService.ORDER_PAYMENT_PERMISSION
+                    : AdminRoleService.ORDER_FULFILLMENT_PERMISSION;
+        }
+        if ("SHIPPED".equals(target) || "RETURN_APPROVED".equals(target)
+                || ("COMPLETED".equals(target) && "RETURN_REQUESTED".equals(current))) {
+            return AdminRoleService.ORDER_FULFILLMENT_PERMISSION;
+        }
+        if ("RETURNED".equals(target)) {
+            return AdminRoleService.ORDER_REFUND_PERMISSION;
+        }
+        return AdminRoleService.ORDER_STATUS_PERMISSION;
+    }
+
+    private boolean isSelf(UserDetailsImpl user, Long userId) {
+        return user != null && userId != null && Objects.equals(user.getId(), userId);
+    }
+
+    private void recordGuestOrderOperationFailure(boolean allowGuestCredentials, HttpServletRequest request, String reason) {
+        if (allowGuestCredentials) {
+            ipBlacklistService.recordLoginFailure(request, reason);
+        }
+    }
+
+    private String confirmReceiptMetadata(Order order,
+                                          Map<String, String> body,
+                                          boolean allowGuestCredentials,
+                                          String previousStatus) {
+        String orderNo = order != null ? order.getOrderNo() : guestBodyValue(body, "orderNo", allowGuestCredentials);
+        return "orderNo=" + auditMetadataValue(orderNo)
+                + ", previousStatus=" + auditMetadataValue(previousStatus)
+                + ", nextStatus=COMPLETED"
+                + ", access=" + (allowGuestCredentials ? "guest" : "authenticated");
+    }
+
+    private String auditMetadataValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.replaceAll("[\\r\\n\\t]+", " ").replaceAll("\\s+", " ").trim();
+        return normalized.length() > 120 ? normalized.substring(0, 120) : normalized;
+    }
+
+    private boolean guestOrderAccessMatches(Order order, String email, String orderNo) {
+        return orderService.guestOrderAccessMatches(order, email, orderNo);
+    }
+
+    private List<OrderCustomerResponse> toCustomerOrders(List<Order> orders) {
+        return orders.stream()
+                .map(OrderCustomerResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    private List<OrderItemCustomerResponse> toCustomerOrderItems(List<OrderItem> items) {
+        return items.stream()
+                .map(OrderItemCustomerResponse::from)
+                .collect(Collectors.toList());
     }
 }

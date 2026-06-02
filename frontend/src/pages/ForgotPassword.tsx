@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
-import { getApiErrorMessage } from '../utils/apiError';
 import './Login.css';
 
 interface ForgotPasswordForm {
@@ -34,7 +33,7 @@ const ForgotPassword: React.FC = () => {
   const [form] = Form.useForm<ForgotPasswordForm>();
   const codeInputRef = useRef<any>(null);
   const navigate = useNavigate();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
 
@@ -68,7 +67,7 @@ const ForgotPassword: React.FC = () => {
       const normalizedEmail = normalizeEmail(email);
       form.setFieldValue('email', normalizedEmail);
       setCodeSending(true);
-      const response = await userApi.sendEmailLoginCode(normalizedEmail);
+      const response = await userApi.sendPasswordResetCode(normalizedEmail);
       const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
       const ttlMinutes = Number(response.data?.codeTtlMinutes);
       setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
@@ -124,7 +123,7 @@ const ForgotPassword: React.FC = () => {
         form.setFields([{ name: 'code', errors: [msg] }]);
         message.error(msg);
       } else {
-        const msg = getApiErrorMessage(error, t('pages.auth.resetFailed'), language);
+        const msg = t('pages.auth.resetFailed');
         message.error(msg);
       }
     } finally {

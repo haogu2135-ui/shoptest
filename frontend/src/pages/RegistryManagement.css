@@ -386,3 +386,11 @@
     color: #6f7f74;
   }
 }
+
+/* Final mobile/App registry operations touch-target guard */
+@media (max-width: 720px) {
+  .registry-management__hero .ant-btn,
+  .registry-management__card .ant-card-extra .ant-input-affix-wrapper {
+    min-height: 44px;
+  }
+}

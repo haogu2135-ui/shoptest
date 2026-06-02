@@ -13,9 +13,9 @@ const translate = (key: string) => {
     'common.loading': 'Loading...',
     'common.status': 'Status',
     'pages.adminOrders.noTrackingNumber': 'No tracking number',
-    'pages.adminOrders.rawTrackingData': 'Provider returned raw tracking data.',
     'pages.adminOrders.track': 'Track',
     'pages.orderTracking.noTrackingData': 'No tracking data',
+    'pages.orderTracking.trackingUnavailable': 'Live carrier tracking is not configured yet',
     'pages.orderTracking.trackingFailed': 'Failed to query logistics',
     'pages.orderTracking.trackingNumber': 'Tracking number',
   };
@@ -63,7 +63,7 @@ describe('SeventeenTrackWidget', () => {
     fireEvent.change(screen.getByPlaceholderText('Tracking number'), { target: { value: ' 1Z999 ' } });
     fireEvent.click(screen.getByRole('button', { name: /track/i }));
 
-    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('1Z999', 'UPS'));
+    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('1Z999', 'UPS', undefined, undefined, undefined));
     expect(await screen.findByText('Departed facility')).toBeInTheDocument();
     expect(screen.getByText('Shipment is moving')).toBeInTheDocument();
   });
@@ -75,9 +75,28 @@ describe('SeventeenTrackWidget', () => {
 
     render(<SeventeenTrackWidget trackingNumber="NO_PROVIDER" />);
 
-    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined));
+    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined, undefined, undefined, undefined));
     expect(await screen.findByText('EXTERNAL_EMPTY')).toBeInTheDocument();
     expect(screen.getAllByText('No tracking data').length).toBeGreaterThan(0);
     expect(screen.queryByText('Production logistics tracking provider is not configured')).not.toBeInTheDocument();
+  });
+
+  it('explains transparent backend no-provider responses without fake events', async () => {
+    (logisticsApi.track as jest.Mock).mockResolvedValue({
+      data: {
+        trackingNumber: 'NO_PROVIDER',
+        carrier: 'STANDARD',
+        status: 'TRACKING_UNAVAILABLE',
+        summary: 'Real-time logistics tracking is not configured yet.',
+        events: [],
+      },
+    });
+
+    render(<SeventeenTrackWidget trackingNumber="NO_PROVIDER" />);
+
+    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined, undefined, undefined, undefined));
+    expect(await screen.findByText('TRACKING_UNAVAILABLE')).toBeInTheDocument();
+    expect(screen.getByText('Live carrier tracking is not configured yet')).toBeInTheDocument();
+    expect(screen.getAllByText('Real-time logistics tracking is not configured yet.').length).toBeGreaterThan(0);
   });
 });

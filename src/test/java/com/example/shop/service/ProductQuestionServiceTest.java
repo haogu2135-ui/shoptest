@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -104,12 +105,12 @@ class ProductQuestionServiceTest {
 
     @Test
     void adminQueueNormalizesStatusAndLimit() {
-        when(questionRepository.findAdminQueue(eq(false), any(Pageable.class))).thenReturn(List.of());
+        when(questionRepository.findAdminQueue(eq(false), isNull(), any(Pageable.class))).thenReturn(List.of());
 
         service.getAdminQueue(" unanswered ", 999);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(questionRepository).findAdminQueue(eq(false), captor.capture());
+        verify(questionRepository).findAdminQueue(eq(false), isNull(), captor.capture());
         assertEquals(50, captor.getValue().getPageSize());
     }
 
@@ -131,5 +132,25 @@ class ProductQuestionServiceTest {
         assertEquals(1, summary.getStaleHours());
         assertEquals(1000, summary.getMaxAdminRows());
         assertEquals(40, summary.getResponseScore());
+    }
+
+    @Test
+    void adminSummaryUsesActiveStatusAndSearchFilters() {
+        when(questionRepository.countAdminQuestions(false, "puppy harness")).thenReturn(4L);
+        when(questionRepository.countAdminUnansweredQuestions(false, "puppy harness")).thenReturn(4L);
+        when(questionRepository.countAdminAnsweredQuestions(false, "puppy harness")).thenReturn(0L);
+        when(questionRepository.countAdminStaleUnansweredQuestions(eq(false), eq("puppy harness"), any(LocalDateTime.class))).thenReturn(1L);
+
+        ProductQuestionAdminSummaryResponse summary = service.adminSummary(" unanswered ", "  Puppy\tHarness  ");
+
+        assertEquals(4L, summary.getTotalQuestions());
+        assertEquals(4L, summary.getUnansweredQuestions());
+        assertEquals(0L, summary.getAnsweredQuestions());
+        assertEquals(1L, summary.getStaleUnansweredQuestions());
+        verify(questionRepository).countAdminQuestions(false, "puppy harness");
+        verify(questionRepository).countAdminUnansweredQuestions(false, "puppy harness");
+        verify(questionRepository).countAdminAnsweredQuestions(false, "puppy harness");
+        verify(questionRepository).countAdminStaleUnansweredQuestions(eq(false), eq("puppy harness"), any(LocalDateTime.class));
+        verify(questionRepository, never()).countAllQuestions();
     }
 }

@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.LoginRequest;
 import com.example.shop.entity.User;
 import com.example.shop.security.JwtService;
 import com.example.shop.security.UserDetailsImpl;
@@ -58,7 +59,7 @@ class LoginControllerPasswordLoginTest {
     @Test
     void passwordLoginByEmailReturnsFullUserProfileAndRefreshToken() {
         MockHttpServletRequest servletRequest = new MockHttpServletRequest("POST", "/auth/login");
-        User loginRequest = new User();
+        LoginRequest loginRequest = new LoginRequest();
         loginRequest.setUsername("  MIA@Example.COM  ");
         loginRequest.setPassword("secret123");
         UserDetailsImpl principal = new UserDetailsImpl(

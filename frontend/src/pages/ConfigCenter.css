@@ -243,3 +243,18 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Final mobile/App config-center operations touch-target guard */
+@media (max-width: 720px) {
+  .config-center__actions .ant-btn,
+  .config-center__form .ant-input,
+  .config-center__form .ant-checkbox-wrapper,
+  .config-center__contentItem .ant-input {
+    min-height: 44px;
+  }
+
+  .config-center__form .ant-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+  }
+}

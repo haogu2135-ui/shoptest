@@ -570,3 +570,17 @@
     font-size: 12px;
   }
 }
+
+/* Final mobile/App user-management operations touch-target guard */
+@media (max-width: 720px) {
+  .user-management-page__toolbar .ant-input-affix-wrapper,
+  .user-management-page__toolbar .ant-select-selector,
+  .user-management-page__toolbar .ant-btn,
+  .user-management-page .ant-table-cell .ant-select-selector,
+  .user-management-page .ant-table-cell .ant-btn,
+  .user-management-page__profileModal .ant-modal-footer .ant-btn,
+  .user-management-page__profileModal .ant-input,
+  .user-management-page__profileModal textarea.ant-input {
+    min-height: 44px;
+  }
+}

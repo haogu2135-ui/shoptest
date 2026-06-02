@@ -1,4 +1,4 @@
-import type { CartItem, Product } from '../types';
+import type { CartItem, ProductPublic } from '../types';
 import { createLocalId } from './localIds';
 import { dispatchDomEvent } from './domEvents';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
@@ -33,7 +33,7 @@ const normalizePrice = (value: unknown) => {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
 };
 
-const resolveProductSnapshotImage = (product: Partial<Product> | any) => {
+const resolveProductSnapshotImage = (product: Partial<ProductPublic> | any) => {
   const primary = String(product?.imageUrl || '').trim();
   if (primary) return primary;
   const galleryImage = Array.isArray(product?.images)
@@ -50,7 +50,6 @@ const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
   return {
     ...item,
     id,
-    userId: normalizeSafeId(item.userId) ?? 0,
     productId,
     quantity: normalizeQuantity(item.quantity, item.stock),
     productName: String(item.productName || '').trim(),
@@ -82,12 +81,12 @@ export const clearGuestCart = () => writeGuestCart([]);
 
 export const replaceGuestCartItems = (items: CartItem[]) => writeGuestCart(items);
 
-export const addGuestCartItem = (product: Product | any, quantity = 1, selectedSpecs?: string, price?: number): CartItem => {
+export const addGuestCartItem = (product: ProductPublic | any, quantity = 1, selectedSpecs?: string, price?: number): CartItem | null => {
   const items = readGuestCart();
   const productId = normalizePositiveProductId(product.id);
   const productName = String(product.name || '').trim();
   if (productId === null || !productName) {
-    return null as unknown as CartItem;
+    return null;
   }
   const normalizedSpecs = selectedSpecs ? String(selectedSpecs).trim().slice(0, 600) : undefined;
   const stockLimit = normalizeStockLimit(product.stock);
@@ -103,14 +102,13 @@ export const addGuestCartItem = (product: Product | any, quantity = 1, selectedS
 
   const item: CartItem = {
     id: createLocalId(items.map((cartItem) => cartItem.id)),
-    userId: 0,
     productId,
     quantity: normalizedQuantity,
     productName,
     imageUrl: resolveProductSnapshotImage(product),
     price: price ?? product.effectivePrice ?? product.price,
     stock: product.stock,
-    productStatus: product.status || 'ACTIVE',
+    productStatus: 'ACTIVE',
     selectedSpecs: normalizedSpecs,
   };
   writeGuestCart([...items, item]);

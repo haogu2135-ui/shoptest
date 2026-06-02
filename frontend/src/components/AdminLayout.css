@@ -667,3 +667,14 @@
     width: 58px !important;
   }
 }
+
+/* Final mobile/App admin shell touch-target guard */
+@media (max-width: 720px) {
+  .admin-layout__menu.ant-menu-dark .ant-menu-item,
+  .admin-layout__header .ant-btn,
+  .admin-layout__storeLink,
+  .admin-layout__content .ant-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}

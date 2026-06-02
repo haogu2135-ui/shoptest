@@ -1,12 +1,19 @@
 package com.example.shop.service;
 
 import com.example.shop.dto.TrafficControlStatusResponse;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -15,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -22,14 +30,23 @@ import java.util.stream.Collectors;
 public class RateLimitService {
     private final RuntimeConfigService runtimeConfig;
     private final ClientIpResolver clientIpResolver;
+    private final ObjectProvider<StringRedisTemplate> redisTemplateProvider;
     private final ConcurrentMap<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final AtomicLong acceptedRequests = new AtomicLong();
     private final AtomicLong rejectedRequests = new AtomicLong();
     private Clock clock = Clock.systemUTC();
 
     public RateLimitService(RuntimeConfigService runtimeConfig, ClientIpResolver clientIpResolver) {
+        this(runtimeConfig, clientIpResolver, null);
+    }
+
+    @Autowired
+    public RateLimitService(RuntimeConfigService runtimeConfig,
+                            ClientIpResolver clientIpResolver,
+                            ObjectProvider<StringRedisTemplate> redisTemplateProvider) {
         this.runtimeConfig = runtimeConfig;
         this.clientIpResolver = clientIpResolver;
+        this.redisTemplateProvider = redisTemplateProvider;
     }
 
     public Decision check(HttpServletRequest request, Authentication authentication) {
@@ -40,35 +57,41 @@ public class RateLimitService {
         }
 
         Scope scope = resolveScope(request, authentication);
-        int limit = config.limitFor(scope);
-        if (limit <= 0) {
+        List<LimitKey> limits = resolveLimits(request, authentication, config, scope);
+        if (limits.isEmpty()) {
             acceptedRequests.incrementAndGet();
-            return Decision.allowed(limit, config.windowSeconds, nowEpochSecond());
+            return Decision.allowed(config.limitFor(scope), config.windowSeconds, nowEpochSecond());
         }
 
         long now = nowEpochSecond();
-        long windowStart = now - Math.floorMod(now, config.windowSeconds);
-        String client = clientKey(request, authentication);
-        String method = request.getMethod() == null ? "" : request.getMethod().toUpperCase(Locale.ROOT);
-        String path = normalizePath(request);
-        String key = scope.name() + ":" + client + ":" + method + ":" + path;
-        Bucket bucket = buckets.compute(key, (ignored, current) -> {
-            if (current == null || current.windowStart != windowStart) {
-                return new Bucket(scope.name(), client, method, path, windowStart, 1);
+        List<ConsumedLimit> consumedLimits = new ArrayList<>();
+        for (LimitKey limitKey : limits) {
+            if (limitKey.limit <= 0) {
+                continue;
             }
-            current.count++;
-            return current;
-        });
-        cleanup(windowStart, config);
+            consumedLimits.add(consume(limitKey, now, config));
+        }
+        cleanup(now, config);
 
-        long remaining = Math.max(0, limit - bucket.count);
-        long resetAt = windowStart + config.windowSeconds;
-        if (bucket.count > limit) {
+        if (consumedLimits.isEmpty()) {
+            acceptedRequests.incrementAndGet();
+            return Decision.allowed(config.limitFor(scope), config.windowSeconds, now);
+        }
+
+        ConsumedLimit rejected = consumedLimits.stream()
+                .filter(limit -> limit.count > limit.limit)
+                .max(Comparator.comparingLong(limit -> limit.retryAfterSeconds))
+                .orElse(null);
+        if (rejected != null) {
             rejectedRequests.incrementAndGet();
-            return Decision.rejected(limit, remaining, Math.max(1, resetAt - now), resetAt);
+            return Decision.rejected(rejected.limit, rejected.remaining, rejected.retryAfterSeconds, rejected.resetAtEpochSeconds);
         }
         acceptedRequests.incrementAndGet();
-        return Decision.accepted(limit, remaining, Math.max(1, resetAt - now), resetAt);
+        ConsumedLimit mostConstrained = consumedLimits.stream()
+                .min(Comparator.comparingLong(limit -> limit.remaining))
+                .orElse(consumedLimits.get(0));
+        return Decision.accepted(mostConstrained.limit, mostConstrained.remaining,
+                mostConstrained.retryAfterSeconds, mostConstrained.resetAtEpochSeconds);
     }
 
     public TrafficControlStatusResponse.RateLimitStatus status() {
@@ -83,7 +106,7 @@ public class RateLimitService {
         status.setActiveBuckets(buckets.size());
         status.setAcceptedRequests(acceptedRequests.get());
         status.setRejectedRequests(rejectedRequests.get());
-        status.setHotBuckets(hotBuckets(config));
+        status.setHotBuckets(hotBuckets());
         return status;
     }
 
@@ -91,6 +114,26 @@ public class RateLimitService {
         buckets.clear();
         acceptedRequests.set(0);
         rejectedRequests.set(0);
+        clearRedisBuckets();
+    }
+
+    private void clearRedisBuckets() {
+        Config config = config();
+        if (!config.redisEnabled) {
+            return;
+        }
+        StringRedisTemplate redis = redisTemplate();
+        if (redis == null) {
+            return;
+        }
+        try {
+            Set<String> keys = redis.keys(redisPrefix(config.redisKeyPrefix) + ":*");
+            if (keys != null && !keys.isEmpty()) {
+                redis.delete(keys);
+            }
+        } catch (RuntimeException ignored) {
+            // Local counters are already cleared; Redis errors should not block admin recovery.
+        }
     }
 
     private Config config() {
@@ -101,6 +144,16 @@ public class RateLimitService {
                 positiveInt("traffic.rate-limit.admin-per-minute", 600),
                 Math.max(5, Math.min(3600, runtimeConfig.getInt("traffic.rate-limit.window-seconds", 60))),
                 Math.max(100, Math.min(100000, runtimeConfig.getInt("traffic.rate-limit.max-buckets", 5000))),
+                positiveInt("traffic.rate-limit.auth-sensitive-per-minute", 30),
+                positiveInt("traffic.rate-limit.register-per-hour", 5),
+                positiveInt("traffic.rate-limit.password-reset-per-hour", 5),
+                positiveInt("traffic.rate-limit.email-login-per-minute", 10),
+                positiveInt("traffic.rate-limit.refresh-per-minute", 20),
+                positiveInt("traffic.rate-limit.admin-bootstrap-per-hour", 3),
+                positiveInt("traffic.rate-limit.guest-checkout-per-hour", 10),
+                positiveInt("traffic.rate-limit.pet-gallery-like-per-minute", 20),
+                runtimeConfig.getBoolean("traffic.rate-limit.redis-enabled", true),
+                runtimeConfig.getString("traffic.rate-limit.redis-key-prefix", "shop:rate-limit"),
                 parseCsv(runtimeConfig.getString("traffic.rate-limit.skip-path-prefixes", "/actuator/health,/actuator/info,/uploads/,/ws/"))
         );
     }
@@ -137,6 +190,123 @@ public class RateLimitService {
         }
         String clientIp = clientIpResolver.resolve(request);
         return "ip:" + (clientIp.isBlank() ? "unknown" : clientIp);
+    }
+
+    private List<LimitKey> resolveLimits(HttpServletRequest request, Authentication authentication, Config config, Scope scope) {
+        List<LimitKey> limits = new ArrayList<>();
+        String client = clientKey(request, authentication);
+        String method = request.getMethod() == null ? "" : request.getMethod().toUpperCase(Locale.ROOT);
+        String path = normalizePath(request);
+
+        EndpointLimit endpointLimit = endpointLimitFor(method, path, config);
+        if (isSensitiveAuthEndpoint(method, path)) {
+            limits.add(new LimitKey(scope, client, "*", "auth:sensitive", config.authSensitivePerMinute, 60));
+        }
+        if (endpointLimit != null) {
+            limits.add(new LimitKey(scope, client, endpointLimit.method, endpointLimit.path, endpointLimit.limit, endpointLimit.windowSeconds));
+        }
+
+        int globalLimit = config.limitFor(scope);
+        if (globalLimit > 0) {
+            limits.add(new LimitKey(scope, client, method, path, globalLimit, config.windowSeconds));
+        }
+        return limits;
+    }
+
+    private ConsumedLimit consume(LimitKey limitKey, long now, Config config) {
+        StringRedisTemplate redis = redisTemplate();
+        if (config.redisEnabled && redis != null) {
+            try {
+                return consumeRedis(redis, limitKey, now, config);
+            } catch (RuntimeException ignored) {
+                // Local fallback keeps rate limiting active if Redis is temporarily unavailable.
+            }
+        }
+        return consumeLocal(limitKey, now);
+    }
+
+    private ConsumedLimit consumeLocal(LimitKey limitKey, long now) {
+        long windowStart = now - Math.floorMod(now, limitKey.windowSeconds);
+        String key = limitKey.scope.name() + ":" + limitKey.client + ":" + limitKey.method + ":" + limitKey.path;
+        Bucket bucket = buckets.compute(key, (ignored, current) -> {
+            if (current == null || current.windowStart != windowStart
+                    || current.limit != limitKey.limit || current.windowSeconds != limitKey.windowSeconds) {
+                return new Bucket(limitKey.scope.name(), limitKey.client, limitKey.method, limitKey.path,
+                        windowStart, 1, limitKey.limit, limitKey.windowSeconds);
+            }
+            current.count++;
+            return current;
+        });
+        return consumed(limitKey.limit, bucket.count, windowStart, limitKey.windowSeconds, now);
+    }
+
+    private ConsumedLimit consumeRedis(StringRedisTemplate redis, LimitKey limitKey, long now, Config config) {
+        long windowStart = now - Math.floorMod(now, limitKey.windowSeconds);
+        String key = redisKey(config.redisKeyPrefix, limitKey, windowStart);
+        Long count = redis.opsForValue().increment(key);
+        long ttlSeconds = Math.max(2L, (long) limitKey.windowSeconds * 2L);
+        if (count != null && count == 1L) {
+            redis.expire(key, ttlSeconds, TimeUnit.SECONDS);
+        } else {
+            Long ttl = redis.getExpire(key, TimeUnit.SECONDS);
+            if (ttl == null || ttl < 0) {
+                redis.expire(key, ttlSeconds, TimeUnit.SECONDS);
+            }
+        }
+        return consumed(limitKey.limit, count == null ? 0 : count, windowStart, limitKey.windowSeconds, now);
+    }
+
+    private ConsumedLimit consumed(int limit, long count, long windowStart, int windowSeconds, long now) {
+        long remaining = Math.max(0, limit - count);
+        long resetAt = windowStart + windowSeconds;
+        return new ConsumedLimit(limit, remaining, Math.max(1, resetAt - now), resetAt, count);
+    }
+
+    private boolean isSensitiveAuthEndpoint(String method, String path) {
+        if (path == null) {
+            return false;
+        }
+        if ("POST".equals(method) && path.equals("/users/create-admin")) {
+            return true;
+        }
+        if (!path.startsWith("/auth/")) {
+            return false;
+        }
+        return path.equals("/auth/login")
+                || path.equals("/auth/register")
+                || path.equals("/auth/forgot-password")
+                || path.equals("/auth/password-reset-code")
+                || path.equals("/auth/email-code")
+                || path.equals("/auth/email-login")
+                || path.equals("/auth/refresh");
+    }
+
+    private EndpointLimit endpointLimitFor(String method, String path, Config config) {
+        if (!"POST".equals(method)) {
+            return null;
+        }
+        if (path.equals("/auth/register")) {
+            return new EndpointLimit("POST", "auth:register", config.registerPerHour, 3600);
+        }
+        if (path.equals("/auth/forgot-password") || path.equals("/auth/password-reset-code")) {
+            return new EndpointLimit("POST", "auth:password-reset", config.passwordResetPerHour, 3600);
+        }
+        if (path.equals("/auth/email-code") || path.equals("/auth/email-login")) {
+            return new EndpointLimit("POST", "auth:email-login", config.emailLoginPerMinute, 60);
+        }
+        if (path.equals("/auth/refresh")) {
+            return new EndpointLimit("POST", "auth:refresh", config.refreshPerMinute, 60);
+        }
+        if (path.equals("/users/create-admin")) {
+            return new EndpointLimit("POST", "auth:admin-bootstrap", config.adminBootstrapPerHour, 3600);
+        }
+        if (path.equals("/orders/checkout/guest")) {
+            return new EndpointLimit("POST", "checkout:guest", config.guestCheckoutPerHour, 3600);
+        }
+        if (path.equals("/pet-gallery/{id}/like")) {
+            return new EndpointLimit("POST", "pet-gallery:like", config.petGalleryLikePerMinute, 60);
+        }
+        return null;
     }
 
     private String normalizePath(HttpServletRequest request) {
@@ -188,13 +358,12 @@ public class RateLimitService {
                 .collect(Collectors.toSet());
     }
 
-    private void cleanup(long currentWindowStart, Config config) {
+    private void cleanup(long now, Config config) {
         int size = buckets.size();
         if (size <= config.maxBuckets) {
             return;
         }
-        long oldest = currentWindowStart - (long) config.windowSeconds * 2;
-        buckets.entrySet().removeIf(entry -> entry.getValue().windowStart < oldest);
+        buckets.entrySet().removeIf(entry -> entry.getValue().windowStart + (entry.getValue().windowSeconds * 2L) < now);
         int overflow = buckets.size() - config.maxBuckets;
         if (overflow <= 0) {
             return;
@@ -207,37 +376,26 @@ public class RateLimitService {
                 .forEach(entry -> buckets.remove(entry.getKey(), entry.getValue()));
     }
 
-    private List<TrafficControlStatusResponse.RateLimitBucketStatus> hotBuckets(Config config) {
+    private List<TrafficControlStatusResponse.RateLimitBucketStatus> hotBuckets() {
         long now = nowEpochSecond();
-        long oldest = now - (long) config.windowSeconds * 2;
         return buckets.values().stream()
-                .filter(bucket -> bucket.windowStart >= oldest)
+                .filter(bucket -> bucket.windowStart + (bucket.windowSeconds * 2L) >= now)
                 .sorted(Comparator.comparingLong((Bucket bucket) -> bucket.count).reversed())
                 .limit(10)
-                .map(bucket -> toBucketStatus(bucket, config))
+                .map(this::toBucketStatus)
                 .collect(Collectors.toList());
     }
 
-    private TrafficControlStatusResponse.RateLimitBucketStatus toBucketStatus(Bucket bucket, Config config) {
+    private TrafficControlStatusResponse.RateLimitBucketStatus toBucketStatus(Bucket bucket) {
         TrafficControlStatusResponse.RateLimitBucketStatus status = new TrafficControlStatusResponse.RateLimitBucketStatus();
-        Scope scope = parseScope(bucket.scope);
-        int limit = config.limitFor(scope);
         status.setScope(bucket.scope);
         status.setClient(maskClient(bucket.client));
         status.setMethod(bucket.method);
         status.setPath(bucket.path);
         status.setCount(bucket.count);
-        status.setRemaining(Math.max(0, limit - bucket.count));
-        status.setResetAt(Instant.ofEpochSecond(bucket.windowStart + config.windowSeconds).toString());
+        status.setRemaining(Math.max(0, bucket.limit - bucket.count));
+        status.setResetAt(Instant.ofEpochSecond(bucket.windowStart + bucket.windowSeconds).toString());
         return status;
-    }
-
-    private Scope parseScope(String value) {
-        try {
-            return Scope.valueOf(value);
-        } catch (RuntimeException ignored) {
-            return Scope.PUBLIC;
-        }
     }
 
     private String maskClient(String value) {
@@ -248,6 +406,45 @@ public class RateLimitService {
             return value.length() <= 18 ? value : value.substring(0, 18) + "...";
         }
         return value;
+    }
+
+    private StringRedisTemplate redisTemplate() {
+        return redisTemplateProvider == null ? null : redisTemplateProvider.getIfAvailable();
+    }
+
+    private String redisKey(String prefix, LimitKey limitKey, long windowStart) {
+        return redisPrefix(prefix)
+                + ":" + limitKey.scope.name().toLowerCase(Locale.ROOT)
+                + ":" + safeRedisSegment(limitKey.method)
+                + ":" + safeRedisSegment(limitKey.path)
+                + ":" + windowStart
+                + ":" + sha256Hex(limitKey.client);
+    }
+
+    private String redisPrefix(String prefix) {
+        String value = prefix == null || prefix.isBlank() ? "shop:rate-limit" : prefix.trim();
+        return value.replaceAll("[^A-Za-z0-9:_-]", "_");
+    }
+
+    private String safeRedisSegment(String value) {
+        if (value == null || value.isBlank()) {
+            return "_";
+        }
+        return value.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9:_*-]", "_");
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest((value == null ? "" : value).getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                builder.append(String.format("%02x", b & 0xff));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
     }
 
     private enum Scope {
@@ -263,15 +460,51 @@ public class RateLimitService {
         private final int adminPerMinute;
         private final int windowSeconds;
         private final int maxBuckets;
+        private final int authSensitivePerMinute;
+        private final int registerPerHour;
+        private final int passwordResetPerHour;
+        private final int emailLoginPerMinute;
+        private final int refreshPerMinute;
+        private final int adminBootstrapPerHour;
+        private final int guestCheckoutPerHour;
+        private final int petGalleryLikePerMinute;
+        private final boolean redisEnabled;
+        private final String redisKeyPrefix;
         private final Set<String> skipPrefixes;
 
-        private Config(boolean enabled, int publicPerMinute, int authenticatedPerMinute, int adminPerMinute, int windowSeconds, int maxBuckets, Set<String> skipPrefixes) {
+        private Config(boolean enabled,
+                       int publicPerMinute,
+                       int authenticatedPerMinute,
+                       int adminPerMinute,
+                       int windowSeconds,
+                       int maxBuckets,
+                       int authSensitivePerMinute,
+                       int registerPerHour,
+                       int passwordResetPerHour,
+                       int emailLoginPerMinute,
+                       int refreshPerMinute,
+                       int adminBootstrapPerHour,
+                       int guestCheckoutPerHour,
+                       int petGalleryLikePerMinute,
+                       boolean redisEnabled,
+                       String redisKeyPrefix,
+                       Set<String> skipPrefixes) {
             this.enabled = enabled;
             this.publicPerMinute = publicPerMinute;
             this.authenticatedPerMinute = authenticatedPerMinute;
             this.adminPerMinute = adminPerMinute;
             this.windowSeconds = windowSeconds;
             this.maxBuckets = maxBuckets;
+            this.authSensitivePerMinute = authSensitivePerMinute;
+            this.registerPerHour = registerPerHour;
+            this.passwordResetPerHour = passwordResetPerHour;
+            this.emailLoginPerMinute = emailLoginPerMinute;
+            this.refreshPerMinute = refreshPerMinute;
+            this.adminBootstrapPerHour = adminBootstrapPerHour;
+            this.guestCheckoutPerHour = guestCheckoutPerHour;
+            this.petGalleryLikePerMinute = petGalleryLikePerMinute;
+            this.redisEnabled = redisEnabled;
+            this.redisKeyPrefix = redisKeyPrefix;
             this.skipPrefixes = skipPrefixes;
         }
 
@@ -292,14 +525,66 @@ public class RateLimitService {
         private final String method;
         private final String path;
         private final long windowStart;
+        private final int limit;
+        private final int windowSeconds;
         private long count;
 
-        private Bucket(String scope, String client, String method, String path, long windowStart, long count) {
+        private Bucket(String scope, String client, String method, String path, long windowStart, long count, int limit, int windowSeconds) {
             this.scope = scope;
             this.client = client;
             this.method = method;
             this.path = path;
             this.windowStart = windowStart;
+            this.count = count;
+            this.limit = limit;
+            this.windowSeconds = windowSeconds;
+        }
+    }
+
+    private static class LimitKey {
+        private final Scope scope;
+        private final String client;
+        private final String method;
+        private final String path;
+        private final int limit;
+        private final int windowSeconds;
+
+        private LimitKey(Scope scope, String client, String method, String path, int limit, int windowSeconds) {
+            this.scope = scope;
+            this.client = client;
+            this.method = method;
+            this.path = path;
+            this.limit = limit;
+            this.windowSeconds = Math.max(1, windowSeconds);
+        }
+    }
+
+    private static class EndpointLimit {
+        private final String method;
+        private final String path;
+        private final int limit;
+        private final int windowSeconds;
+
+        private EndpointLimit(String method, String path, int limit, int windowSeconds) {
+            this.method = method;
+            this.path = path;
+            this.limit = limit;
+            this.windowSeconds = Math.max(1, windowSeconds);
+        }
+    }
+
+    private static class ConsumedLimit {
+        private final int limit;
+        private final long remaining;
+        private final long retryAfterSeconds;
+        private final long resetAtEpochSeconds;
+        private final long count;
+
+        private ConsumedLimit(int limit, long remaining, long retryAfterSeconds, long resetAtEpochSeconds, long count) {
+            this.limit = limit;
+            this.remaining = remaining;
+            this.retryAfterSeconds = retryAfterSeconds;
+            this.resetAtEpochSeconds = resetAtEpochSeconds;
             this.count = count;
         }
     }

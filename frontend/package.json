@@ -23,9 +23,14 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "prebuild": "node scripts/generate-mobile-version.js",
+    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "postbuild": "node scripts/restore-build-ownership.js",
     "test": "react-scripts test --watchAll=false",
     "eject": "react-scripts eject"
+  },
+  "overrides": {
+    "@adobe/css-tools": "4.2.0"
   },
   "eslintConfig": {
     "extends": [

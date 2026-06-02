@@ -1,14 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Col, Empty, Image, Row, Select, Slider, Space, Spin, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Empty, Image, Row, Select, Slider, Space, Spin, Tag, Typography } from 'antd';
 import { FireOutlined, GiftOutlined, SearchOutlined, StarOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
-import type { Product } from '../types';
+import type { ProductPublic as Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
+import { loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import './PetFinder.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -18,6 +21,9 @@ type Priority = 'best' | 'rating' | 'deal' | 'budget';
 
 const FINDER_STORAGE_KEY = 'shop-pet-finder-preferences';
 const DEFAULT_BUDGET: [number, number] = [0, 500];
+const FINDER_CANDIDATE_KEYWORDS = [
+  'dog', 'cat', 'small pet', 'toy', 'leash', 'bed', 'smart', 'groom', 'food', 'feeder', 'water', 'litter',
+];
 
 const normalizeBudget = (value: unknown, maxBudget = DEFAULT_BUDGET[1]): [number, number] => {
   if (!Array.isArray(value)) {
@@ -40,6 +46,31 @@ const keywordMap: Record<Exclude<PetType, 'all'> | Exclude<NeedType, 'all'>, str
   food: ['food', 'treat', 'bowl', 'feeder', 'water', 'litter'],
 };
 
+const uniqueFinderKeywords = (keywords: string[]) => Array.from(new Set(
+  keywords.map((keyword) => keyword.trim()).filter(Boolean),
+)).slice(0, 12);
+
+const finderCandidateKeywords = (petType: PetType, need: NeedType) => {
+  const selectedKeywords = [
+    ...(petType === 'all' ? [] : keywordMap[petType]),
+    ...(need === 'all' ? [] : keywordMap[need]),
+  ];
+  return uniqueFinderKeywords(selectedKeywords.length > 0 ? selectedKeywords : FINDER_CANDIDATE_KEYWORDS);
+};
+
+const loadLiveFinderProducts = async (petType: PetType, need: NeedType) => {
+  try {
+    const res = await productApi.getFinderCandidates(finderCandidateKeywords(petType, need), 36);
+    if (res.data.length > 0) {
+      return res.data;
+    }
+  } catch {
+    // Fall back to the public catalog below when the optimized finder endpoint is unavailable.
+  }
+  const res = await productApi.getAll();
+  return res.data;
+};
+
 const readPreferences = () => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(FINDER_STORAGE_KEY) || '{}');
@@ -58,7 +89,6 @@ const productText = (product: Product) => [
   product.name,
   product.description,
   product.brand,
-  product.categoryName,
   product.tag,
   ...Object.entries(product.specifications || {}).flatMap(([key, value]) => [key, value]),
 ].join(' ').toLowerCase();
@@ -73,6 +103,8 @@ const PetFinder: React.FC = () => {
   const stored = useMemo(() => readPreferences(), []);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [usingCatalogFallback, setUsingCatalogFallback] = useState(false);
   const [petType, setPetType] = useState<PetType>(stored.petType);
   const [need, setNeed] = useState<NeedType>(stored.need);
   const [budget, setBudget] = useState<[number, number]>(stored.budget);
@@ -83,19 +115,46 @@ const PetFinder: React.FC = () => {
   }, [products]);
 
   useEffect(() => {
+    let isCurrent = true;
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const res = await productApi.getAll();
-        setProducts(res.data.map((product) => localizeProduct(product, language)));
+        const liveProducts = await loadLiveFinderProducts(petType, need);
+        if (!isCurrent) return;
+        const localizedProducts = liveProducts.map((product) => localizeProduct(product, language));
+        if (localizedProducts.length > 0) {
+          saveProductCatalogSnapshot(liveProducts);
+          setProducts(localizedProducts);
+          setUsingCatalogFallback(false);
+        } else {
+          const snapshot = loadProductCatalogSnapshot();
+          const fallbackProducts = snapshot?.products?.length
+            ? snapshot.products
+            : loadFallbackProductCatalog();
+          setProducts(fallbackProducts.map((product) => localizeProduct(product, language)));
+          setUsingCatalogFallback(fallbackProducts.length > 0);
+        }
+        setLoadError(false);
       } catch {
-        message.error(t('pages.petFinder.loadFailed'));
+        if (!isCurrent) return;
+        const snapshot = loadProductCatalogSnapshot();
+        const fallbackProducts = snapshot?.products?.length
+          ? snapshot.products
+          : loadFallbackProductCatalog();
+        setProducts(fallbackProducts.map((product) => localizeProduct(product, language)));
+        setUsingCatalogFallback(fallbackProducts.length > 0);
+        setLoadError(fallbackProducts.length === 0);
       } finally {
-        setLoading(false);
+        if (isCurrent) {
+          setLoading(false);
+        }
       }
     };
     fetchProducts();
-  }, [language, t]);
+    return () => {
+      isCurrent = false;
+    };
+  }, [language, need, petType]);
 
   useEffect(() => {
     setLocalStorageItem(FINDER_STORAGE_KEY, JSON.stringify({ petType, need, budget, priority }));
@@ -115,7 +174,7 @@ const PetFinder: React.FC = () => {
       const price = productPrice(product);
       const keywordHits = selectedKeywords.filter((keyword) => text.includes(keyword)).length;
       const budgetFit = price >= budget[0] && price <= budget[1];
-      const rating = Number(product.averageRating || product.rating || 0);
+      const rating = Number(product.averageRating || 0);
       const discount = product.effectiveDiscountPercent || product.discount || 0;
       const stockBonus = isInStock(product) ? 10 : -20;
       let score = keywordHits * 18 + (budgetFit ? 24 : -18) + rating * 4 + Math.min(discount, 40) * 0.6 + stockBonus;
@@ -134,7 +193,7 @@ const PetFinder: React.FC = () => {
   const finderInsights = useMemo(() => {
     const readyMatches = matches.filter(({ product }) => isInStock(product)).length;
     const dealMatches = matches.filter(({ product }) => (product.effectiveDiscountPercent || product.discount || 0) > 0).length;
-    const topRatedMatches = matches.filter(({ product }) => Number(product.averageRating || product.rating || 0) >= 4.5).length;
+    const topRatedMatches = matches.filter(({ product }) => Number(product.averageRating || 0) >= 4.5).length;
     const bestMatch = matches[0]?.product;
     const bestMatchPrice = bestMatch ? productPrice(bestMatch) : 0;
     const nextAction = bestMatch
@@ -229,6 +288,14 @@ const PetFinder: React.FC = () => {
           title={t('pages.petFinder.results', { count: matches.length })}
           extra={<Button icon={<SearchOutlined />} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>}
         >
+          {(loadError || usingCatalogFallback) && !loading ? (
+            <Alert
+              type={loadError ? 'warning' : 'info'}
+              showIcon
+              message={loadError ? t('pages.petFinder.loadFailed') : t('pages.petFinder.catalogFallback')}
+              className="pet-finder-page__loadAlert"
+            />
+          ) : null}
           {!loading && matches.length > 0 ? (
             <section className="pet-finder-page__insights" aria-label={t('pages.petFinder.insightTitle')}>
               <div className="pet-finder-page__insightCopy">
@@ -304,11 +371,12 @@ const PetFinder: React.FC = () => {
                     cover={
                       <Image
                         className="pet-finder-page__productImage"
-                        src={product.imageUrl}
+                        src={resolveProductImage(product.imageUrl)}
                         alt={product.name}
                         preview={false}
                         height={180}
                         onClick={() => navigate(`/products/${product.id}`)}
+                        fallback={productImageFallback}
                       />
                     }
                     actions={[

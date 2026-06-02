@@ -263,3 +263,15 @@
     margin-inline-start: 0;
   }
 }
+
+/* Final mobile/App product-question operations touch-target guard */
+@media (max-width: 760px) {
+  .product-question-management-page__toolbar .ant-input-affix-wrapper,
+  .product-question-management-page__toolbar .ant-input-search-button,
+  .product-question-management-page__toolbar .ant-select-selector,
+  .product-question-management-page .ant-table-cell .ant-btn,
+  .product-question-management-page__answerModal .ant-modal-footer .ant-btn,
+  .product-question-management-page__answerModal textarea.ant-input {
+    min-height: 44px;
+  }
+}

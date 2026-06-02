@@ -1,9 +1,9 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Drawer, Empty, InputNumber, List, message, Progress, Space, Tag, Typography } from 'antd';
+import { Button, Drawer, Empty, InputNumber, List, message, Popconfirm, Progress, Space, Tag, Typography } from 'antd';
 import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, DeleteOutlined, GoogleOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
-import type { CartItem, Product } from '../types';
+import type { CartItem, ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
@@ -18,7 +18,9 @@ import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/media
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
+import { useNativeBackHandler } from '../utils/nativeBack';
 import './CartDrawer.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text } = Typography;
 const AddOnAssistant = React.lazy(() => import('./AddOnAssistant'));
@@ -86,6 +88,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
+  const closeDrawer = useCallback(() => setOpen(false), []);
+
+  useNativeBackHandler(open, () => {
+    closeDrawer();
+    return true;
+  });
 
   const clearQuantityTimer = useCallback((itemId: number) => {
     const timerId = quantityTimersRef.current[itemId];
@@ -121,7 +129,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         setLoading(false);
       }
     }
-  }, [t]);
+  }, [language, t]);
 
   const openCart = useCallback((detailItems?: CartItem[]) => {
     setOpen(true);
@@ -523,7 +531,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       placement="right"
       width="min(420px, 100vw)"
       open={open}
-      onClose={() => setOpen(false)}
+      onClose={closeDrawer}
       className={`cart-drawer cart-drawer--${language}`}
       styles={{ body: { padding: 16 } }}
       extra={<Text strong className="commerce-money">{formatMoney(subtotal)}</Text>}
@@ -567,21 +575,46 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               <Text strong>{drawerNextAction.title}</Text>
               <Text type="secondary">{drawerNextAction.text}</Text>
             </span>
-            <Button
-              size="small"
-              type={drawerNextAction.tone === 'ready' ? 'primary' : 'default'}
-              onClick={drawerNextAction.onClick}
-              disabled={checkoutSubmitting}
-            >
-              {drawerNextAction.label}
-            </Button>
+            {drawerNextAction.tone === 'attention' ? (
+              <Popconfirm
+                popupClassName="shop-mobile-popup-layer cart-drawer-popconfirm"
+                title={t('pages.cart.drawerClearBlockedConfirm', { count: blockedCount })}
+                onConfirm={drawerNextAction.onClick}
+                okText={t('pages.cart.drawerClearBlocked')}
+                cancelText={t('common.cancel')}
+              >
+                <Button
+                  size="small"
+                  disabled={checkoutSubmitting}
+                >
+                  {drawerNextAction.label}
+                </Button>
+              </Popconfirm>
+            ) : (
+              <Button
+                size="small"
+                type={drawerNextAction.tone === 'ready' ? 'primary' : 'default'}
+                onClick={drawerNextAction.onClick}
+                disabled={checkoutSubmitting}
+              >
+                {drawerNextAction.label}
+              </Button>
+            )}
           </section>
         ) : null}
 
         {blockedCount > 0 ? (
           <div className="cart-drawer__unavailable">
             <Text type="secondary">{t('pages.cart.unavailableSummary', { count: blockedCount })}</Text>
-            <Button size="small" onClick={clearBlockedItems}>{t('pages.cart.drawerClearBlocked')}</Button>
+            <Popconfirm
+              popupClassName="shop-mobile-popup-layer cart-drawer-popconfirm"
+              title={t('pages.cart.drawerClearBlockedConfirm', { count: blockedCount })}
+              onConfirm={clearBlockedItems}
+              okText={t('pages.cart.drawerClearBlocked')}
+              cancelText={t('common.cancel')}
+            >
+              <Button size="small">{t('pages.cart.drawerClearBlocked')}</Button>
+            </Popconfirm>
           </div>
         ) : null}
 
@@ -641,9 +674,16 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                   <Button key="later" type="link" className="cart-drawer__itemAction cart-drawer__itemAction--save" icon={<ClockCircleOutlined />} onClick={() => saveForLater(item)}>
                     {t('pages.cart.saveForLaterShort')}
                   </Button>,
-                  <Button key="delete" type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')} onClick={() => removeItem(item)}>
-                    {t('common.delete')}
-                  </Button>,
+                  <Popconfirm
+                    key="delete"
+                    popupClassName="shop-mobile-popup-layer cart-drawer-popconfirm"
+                    title={t('pages.cart.deleteConfirm')}
+                    onConfirm={() => removeItem(item)}
+                  >
+                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={t('common.delete')} title={t('common.delete')}>
+                      {t('common.delete')}
+                    </Button>
+                  </Popconfirm>,
                 ]}
               >
                 <List.Item.Meta
@@ -665,7 +705,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                   description={
                     <Space direction="vertical" size={4}>
                       {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
-                      {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t)}</Text> : null}
+                      {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
                       {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
                         <Tag color="orange" className="cart-drawer__urgency">
                           {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}

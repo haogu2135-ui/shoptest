@@ -12,6 +12,7 @@
         <result property="roleCode" column="role_code"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
+        <result property="passwordChangedAt" column="password_changed_at"/>
         <result property="status" column="status"/>
     </resultMap>
 
@@ -41,6 +42,10 @@
 
     <select id="findById" resultMap="userMap">
         SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <select id="findByIdForUpdate" resultMap="userMap">
+        SELECT * FROM users WHERE id = #{id} FOR UPDATE
     </select>
 
     <select id="findByUsername" resultMap="userMap">
@@ -84,22 +89,58 @@
         SELECT COUNT(*) FROM users
     </select>
 
+    <select id="acquireAdminBootstrapLock" resultType="long">
+        SELECT GET_LOCK('shop_admin_bootstrap', 10)
+    </select>
+
+    <select id="releaseAdminBootstrapLock" resultType="long">
+        SELECT RELEASE_LOCK('shop_admin_bootstrap')
+    </select>
+
     <select id="countAdminUsers" resultType="long">
         SELECT COUNT(*)
         FROM users
-        WHERE UPPER(COALESCE(NULLIF(role_code, ''), role, 'USER')) != 'USER'
+        WHERE UPPER(COALESCE(role, 'USER')) IN ('ADMIN', 'SUPER_ADMIN')
     </select>
 
-    <select id="findActiveCustomerIds" resultType="long">
+    <select id="findExistingIds" resultType="long">
         SELECT id
         FROM users
-        WHERE UPPER(role) = 'USER'
+        WHERE id IN
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="findActiveCustomerIdsAfter" resultType="long">
+        SELECT id
+        FROM users
+        WHERE id &gt; #{lastId}
+          AND UPPER(role) = 'USER'
           AND (status IS NULL OR UPPER(status) = 'ACTIVE')
         ORDER BY id ASC
+        LIMIT #{limit}
     </select>
 
     <select id="search" resultMap="userMap">
         SELECT * FROM users
+        <include refid="adminUserSearchWhere"/>
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="countSearch" resultType="long">
+        SELECT COUNT(*) FROM users
+        <include refid="adminUserSearchWhere"/>
+    </select>
+
+    <select id="searchPage" resultMap="userMap">
+        SELECT * FROM users
+        <include refid="adminUserSearchWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <sql id="adminUserSearchWhere">
         <where>
             <if test="keyword != null and keyword != ''">
                 AND (
@@ -115,8 +156,7 @@
                 AND UPPER(status) = UPPER(#{status})
             </if>
         </where>
-        ORDER BY created_at DESC, id DESC
-    </select>
+    </sql>
 
     <select id="adminSummary" resultType="map">
         SELECT
@@ -151,8 +191,8 @@
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (username, password, email, phone, address, role, role_code, created_at, updated_at, status)
-        VALUES (#{username}, #{password}, #{email}, #{phone}, #{address}, #{role}, #{roleCode}, #{createdAt}, #{updatedAt}, #{status})
+        INSERT INTO users (username, password, email, phone, address, role, role_code, created_at, updated_at, password_changed_at, status)
+        VALUES (#{username}, #{password}, #{email}, #{phone}, #{address}, #{role}, #{roleCode}, #{createdAt}, #{updatedAt}, #{passwordChangedAt}, #{status})
     </insert>
 
     <update id="update" parameterType="com.example.shop.entity.User">
@@ -160,6 +200,7 @@
         <set>
             <if test="username != null">username = #{username},</if>
             <if test="password != null">password = #{password},</if>
+            <if test="passwordChangedAt != null">password_changed_at = #{passwordChangedAt},</if>
             <if test="email != null">email = #{email},</if>
             <if test="phone != null">phone = #{phone},</if>
             <if test="address != null">address = #{address},</if>
@@ -184,7 +225,9 @@
     </update>
 
     <update id="updatePassword">
-        UPDATE users SET password = #{password} WHERE id = #{userId}
+        UPDATE users
+        SET password = #{password}, password_changed_at = #{passwordChangedAt}, updated_at = #{passwordChangedAt}
+        WHERE id = #{userId}
     </update>
 
     <delete id="deleteById">

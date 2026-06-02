@@ -1,13 +1,14 @@
 package com.example.shop.service;
 
 import com.example.shop.entity.PetProfile;
+import com.example.shop.entity.User;
 import com.example.shop.repository.PetProfileMapper;
+import com.example.shop.repository.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -19,6 +20,7 @@ import static org.mockito.Mockito.when;
 
 class PetProfileServiceTest {
     private PetProfileMapper petProfileMapper;
+    private UserMapper userMapper;
     private ProductService productService;
     private RuntimeConfigService runtimeConfig;
     private PetProfileService service;
@@ -26,6 +28,7 @@ class PetProfileServiceTest {
     @BeforeEach
     void setUp() {
         petProfileMapper = mock(PetProfileMapper.class);
+        userMapper = mock(UserMapper.class);
         productService = mock(ProductService.class);
         runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getInt("pet-profile.max-per-user", 10)).thenReturn(2);
@@ -33,7 +36,7 @@ class PetProfileServiceTest {
         when(runtimeConfig.getInt("pet-profile.breed-max-chars", 80)).thenReturn(30);
         when(runtimeConfig.getInt("pet-profile.max-age-years", 40)).thenReturn(40);
         when(runtimeConfig.getBigDecimal("pet-profile.max-weight-kg", new BigDecimal("200"))).thenReturn(new BigDecimal("80"));
-        service = new PetProfileService(petProfileMapper, productService, runtimeConfig);
+        service = new PetProfileService(petProfileMapper, userMapper, productService, runtimeConfig);
     }
 
     @Test
@@ -45,7 +48,8 @@ class PetProfileServiceTest {
         request.setBirthday(LocalDate.now().minusYears(3));
         request.setWeight(new BigDecimal("4.235"));
         request.setSize(" small ");
-        when(petProfileMapper.findByUserId(7L)).thenReturn(List.of());
+        when(userMapper.findByIdForUpdate(7L)).thenReturn(new User());
+        when(petProfileMapper.countByUserId(7L)).thenReturn(0);
         when(petProfileMapper.findById(null)).thenReturn(request);
 
         service.save(7L, request, null);
@@ -62,7 +66,8 @@ class PetProfileServiceTest {
     @Test
     void saveRejectsProfileLimitBeforeInsert() {
         PetProfile request = validRequest();
-        when(petProfileMapper.findByUserId(7L)).thenReturn(List.of(new PetProfile(), new PetProfile()));
+        when(userMapper.findByIdForUpdate(7L)).thenReturn(new User());
+        when(petProfileMapper.countByUserId(7L)).thenReturn(2);
 
         assertThrows(IllegalStateException.class, () -> service.save(7L, request, null));
 
@@ -73,7 +78,6 @@ class PetProfileServiceTest {
     void saveRejectsFutureBirthday() {
         PetProfile request = validRequest();
         request.setBirthday(LocalDate.now().plusDays(1));
-        when(petProfileMapper.findByUserId(7L)).thenReturn(List.of());
 
         assertThrows(IllegalArgumentException.class, () -> service.save(7L, request, null));
     }
@@ -82,7 +86,6 @@ class PetProfileServiceTest {
     void saveRejectsInvalidWeight() {
         PetProfile request = validRequest();
         request.setWeight(new BigDecimal("81.00"));
-        when(petProfileMapper.findByUserId(7L)).thenReturn(List.of());
 
         assertThrows(IllegalArgumentException.class, () -> service.save(7L, request, null));
     }
@@ -95,7 +98,8 @@ class PetProfileServiceTest {
 
         service.save(7L, request, 12L);
 
-        verify(petProfileMapper, never()).findByUserId(7L);
+        verify(userMapper, never()).findByIdForUpdate(7L);
+        verify(petProfileMapper, never()).countByUserId(7L);
         verify(petProfileMapper).update(any(PetProfile.class));
     }
 

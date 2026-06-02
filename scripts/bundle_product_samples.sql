@@ -1,10 +1,10 @@
--- Bundle product sample data for the current shop schema.
+-- Bundle product catalog data for the current shop schema.
 -- Import after categories/brands exist, or run it against a fresh schema.
 
 INSERT INTO categories (
     id, name, description, parent_id, level, image_url, localized_content
 ) VALUES
-(9001, 'Bundle Samples', 'Demo root category for bundle products.', NULL, 1, 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=900&q=80', '{"en":{"name":"Bundle Samples","description":"Demo root category for bundle products."},"es":{"name":"Paquetes de muestra","description":"Categoria raiz de demostracion para paquetes."},"zh":{"name":"套装样例","description":"套装商品演示根分类。"}}'),
+(9001, 'Pet Care Bundles', 'Curated multi-item sets for common pet care routines.', NULL, 1, 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=900&q=80', '{"en":{"name":"Pet Care Bundles","description":"Curated multi-item sets for common pet care routines."},"es":{"name":"Paquetes de cuidado","description":"Sets seleccionados para rutinas comunes de cuidado de mascotas."},"zh":{"name":"宠物护理套装","description":"围绕常见宠物护理场景组合的多件套。"}}'),
 (9002, 'Feeding Bundles', 'Starter packs for feeders, bowls and feeding mats.', 9001, 2, 'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80', '{"en":{"name":"Feeding Bundles","description":"Starter packs for feeders, bowls and feeding mats."},"es":{"name":"Paquetes de alimentacion","description":"Paquetes iniciales para comederos, tazones y tapetes."},"zh":{"name":"喂食套装","description":"适合喂食器、食盆和餐垫的入门套装。"}}'),
 (9003, 'Walking Bundles', 'Harness, leash and travel bundle combinations.', 9001, 2, 'https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80', '{"en":{"name":"Walking Bundles","description":"Harness, leash and travel bundle combinations."},"es":{"name":"Paquetes de paseo","description":"Combinaciones de arnes, correa y viaje."},"zh":{"name":"遛宠套装","description":"牵引、胸背和出行组合套装。"}}'),
 (9004, 'Comfort Bundles', 'Beds, blankets and calming comfort sets.', 9001, 2, 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80', '{"en":{"name":"Comfort Bundles","description":"Beds, blankets and calming comfort sets."},"es":{"name":"Paquetes de confort","description":"Camas, mantas y sets de descanso."},"zh":{"name":"舒适套装","description":"宠物床、毯子和安抚用品组合。"}}'),
@@ -60,7 +60,7 @@ INSERT INTO products (
  'hot',
  '["https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80"]',
  '{"bundle.enabled":"true","bundle.title":"Smart Feeding Starter Bundle","bundle.price":"159.90","bundle.items":"[{\\\"name\\\":\\\"Automatic feeder 4L\\\",\\\"quantity\\\":1},{\\\"name\\\":\\\"Stainless steel bowl\\\",\\\"quantity\\\":2},{\\\"name\\\":\\\"Silicone feeding mat\\\",\\\"quantity\\\":1}]","i18n.en.name":"Smart Feeding Starter Bundle","i18n.en.description":"A convenient starter set for daily feeding routines, built around an automatic feeder and matching bowls.","i18n.es.name":"Paquete inicial de alimentacion inteligente","i18n.es.description":"Un set inicial para rutinas diarias de alimentacion con comedero automatico y tazones a juego.","i18n.zh.name":"智能喂食入门套装","i18n.zh.description":"包含自动喂食器、食盆和餐垫的日常喂食入门组合。"}',
- '[{"type":"text","content":"Ideal for pet parents who want a ready-to-use feeding setup with one purchase."},{"type":"text","content":"Bundle pricing is recognized by the storefront through the bundle.* specification fields."}]',
+ '[{"type":"text","content":"Ideal for pet parents who want a ready-to-use feeding setup with one purchase."},{"type":"text","content":"The set keeps feeder, bowls and mat together so checkout decisions stay simple."}]',
  NULL,
  '1 year limited warranty',
  'Ships in a protective box.',

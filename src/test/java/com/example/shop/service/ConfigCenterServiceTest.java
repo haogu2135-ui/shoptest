@@ -1,5 +1,7 @@
 package com.example.shop.service;
 
+import com.alibaba.nacos.api.config.ConfigService;
+import com.alibaba.nacos.api.exception.NacosException;
 import com.example.shop.dto.ConfigCenterPublishRequest;
 import com.example.shop.dto.ConfigCenterSnapshotResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,11 +15,14 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ConfigCenterServiceTest {
     private MockEnvironment environment;
+    private ConfigService configService;
     private ConfigCenterService service;
 
     @BeforeEach
@@ -29,7 +34,8 @@ class ConfigCenterServiceTest {
         environment.setProperty("spring.cloud.nacos.discovery.server-addr", "127.0.0.1:8848");
         environment.setProperty("admin.config-center.max-content-bytes", "2048");
         environment.setProperty("admin.config-center.max-properties", "3");
-        service = new ConfigCenterService(environment, mock(ObjectProvider.class));
+        configService = mock(ConfigService.class);
+        service = new TestConfigCenterService(environment, mock(ObjectProvider.class), configService);
     }
 
     @Test
@@ -72,13 +78,32 @@ class ConfigCenterServiceTest {
     }
 
     @Test
-    void rejectsMaskedSensitivePlaceholderOnPublishOrApply() {
+    void preservesMaskedSensitivePlaceholderFromCurrentNacosContent() throws Exception {
+        when(configService.getConfig("shop-backend.properties", "DEFAULT_GROUP", 3000))
+                .thenReturn("payment.callback-secret=super-secret-value-1234567890\n"
+                        + "order.default-shipping-fee=39.00\n");
+        ConfigCenterPublishRequest request = request("payment.callback-secret=su****90\n");
+        request.setContent("payment.callback-secret=su****90\norder.default-shipping-fee=49.00\n");
+
+        ConfigCenterSnapshotResponse response = service.apply(request);
+
+        assertTrue(response.getErrors().isEmpty());
+        assertTrue(response.isRuntimeApplied());
+        assertEquals("super-secret-value-1234567890", environment.getProperty("payment.callback-secret"));
+        assertEquals("49.00", environment.getProperty("order.default-shipping-fee"));
+        assertFalse(response.getContent().contains("super-secret-value-1234567890"));
+        assertTrue(response.getWarnings().stream().anyMatch(warning -> warning.contains("Nacos 原值")));
+    }
+
+    @Test
+    void rejectsMaskedSensitivePlaceholderWhenOriginalValueCannotBeRead() throws Exception {
+        when(configService.getConfig("shop-backend.properties", "DEFAULT_GROUP", 3000)).thenReturn("");
         ConfigCenterPublishRequest request = request("payment.callback-secret=su****90\n");
 
         ConfigCenterSnapshotResponse response = service.apply(request);
 
         assertFalse(response.getErrors().isEmpty());
-        assertTrue(response.getErrors().stream().anyMatch(error -> error.contains("masked placeholder")));
+        assertTrue(response.getErrors().stream().anyMatch(error -> error.contains("脱敏占位符")));
         assertFalse(response.isRuntimeApplied());
     }
 
@@ -92,6 +117,22 @@ class ConfigCenterServiceTest {
         assertEquals("127.0.0.1:8848?token=******&password=******", response.getNacosServerAddr());
         assertFalse(response.getNacosServerAddr().contains("raw-nacos-token"));
         assertFalse(response.getNacosServerAddr().contains("raw-nacos-password"));
+    }
+
+    @Test
+    void masksBareKeyAndApiKeyNamesInResponses() {
+        ConfigCenterSnapshotResponse response = service.apply(request(
+                "kuaidi100.key=raw-kuaidi-key\n"
+                        + "logistics.api-key=raw-logistics-key\n"
+                        + "order.default-shipping-fee=39.00\n"));
+
+        assertTrue(response.getErrors().isEmpty());
+        assertFalse(response.getContent().contains("raw-kuaidi-key"));
+        assertFalse(response.getContent().contains("raw-logistics-key"));
+        assertFalse(response.getProperties().get("kuaidi100.key").contains("raw-kuaidi-key"));
+        assertFalse(response.getProperties().get("logistics.api-key").contains("raw-logistics-key"));
+        assertTrue(response.getSensitiveKeys().contains("kuaidi100.key"));
+        assertTrue(response.getSensitiveKeys().contains("logistics.api-key"));
     }
 
     @Test
@@ -126,6 +167,19 @@ class ConfigCenterServiceTest {
         assertEquals(null, environment.getProperty("order.default-shipping-fee"));
     }
 
+    @Test
+    void cachesNacosConfigServiceByConnectionKey() throws Exception {
+        CountingConfigCenterService countingService = new CountingConfigCenterService(environment, mock(ObjectProvider.class));
+
+        ConfigService defaultService = countingService.configService("");
+        ConfigService defaultServiceAgain = countingService.configService(null);
+        ConfigService isolatedNamespaceService = countingService.configService("isolated");
+
+        assertSame(defaultService, defaultServiceAgain);
+        assertEquals(2, countingService.createdCount);
+        assertFalse(defaultService == isolatedNamespaceService);
+    }
+
     private ConfigCenterPublishRequest request(String content) {
         ConfigCenterPublishRequest request = new ConfigCenterPublishRequest();
         request.setDataId("shop-backend.properties");
@@ -133,5 +187,40 @@ class ConfigCenterServiceTest {
         request.setContent(content);
         request.setApplyRuntime(true);
         return request;
+    }
+
+    private static class TestConfigCenterService extends ConfigCenterService {
+        private final ConfigService configService;
+
+        TestConfigCenterService(
+                MockEnvironment environment,
+                ObjectProvider<ConfigurationPropertiesRebinder> rebinderProvider,
+                ConfigService configService
+        ) {
+            super(environment, rebinderProvider);
+            this.configService = configService;
+        }
+
+        @Override
+        protected ConfigService configService(String namespace) throws NacosException {
+            return configService;
+        }
+    }
+
+    private static class CountingConfigCenterService extends ConfigCenterService {
+        private int createdCount;
+
+        CountingConfigCenterService(
+                MockEnvironment environment,
+                ObjectProvider<ConfigurationPropertiesRebinder> rebinderProvider
+        ) {
+            super(environment, rebinderProvider);
+        }
+
+        @Override
+        protected ConfigService createConfigService(NacosConfigServiceKey key) {
+            createdCount++;
+            return mock(ConfigService.class);
+        }
     }
 }

@@ -21,6 +21,36 @@
         ORDER BY sm.created_at ASC, sm.id ASC
     </select>
 
+    <select id="findRecentBySessionId" resultMap="supportMessageMap">
+        SELECT recent.*
+        FROM (
+            SELECT sm.*, u.username AS sender_name
+            FROM support_messages sm
+            LEFT JOIN users u ON sm.sender_id = u.id
+            WHERE sm.session_id = #{sessionId}
+            ORDER BY sm.created_at DESC, sm.id DESC
+            LIMIT #{limit}
+        ) recent
+        ORDER BY recent.created_at ASC, recent.id ASC
+    </select>
+
+    <select id="findBySessionIdAfterId" resultMap="supportMessageMap">
+        SELECT sm.*, u.username AS sender_name
+        FROM support_messages sm
+        LEFT JOIN users u ON sm.sender_id = u.id
+        WHERE sm.session_id = #{sessionId}
+          AND sm.id &gt; #{afterId}
+        ORDER BY sm.created_at ASC, sm.id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findById" resultMap="supportMessageMap">
+        SELECT sm.*, u.username AS sender_name
+        FROM support_messages sm
+        LEFT JOIN users u ON sm.sender_id = u.id
+        WHERE sm.id = #{id}
+    </select>
+
     <insert id="insert" parameterType="com.example.shop.entity.SupportMessage" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO support_messages (session_id, sender_id, sender_role, content, is_read_by_user, is_read_by_admin, created_at)
         VALUES (#{sessionId}, #{senderId}, #{senderRole}, #{content}, #{isReadByUser}, #{isReadByAdmin}, #{createdAt})
@@ -52,6 +82,7 @@
         FROM support_messages sm
         JOIN support_sessions ss ON sm.session_id = ss.id
         WHERE ss.user_id = #{userId}
+          AND (ss.context_key IS NULL OR TRIM(ss.context_key) = '')
           AND sm.sender_role = 'ADMIN'
           AND sm.is_read_by_user = FALSE
     </select>

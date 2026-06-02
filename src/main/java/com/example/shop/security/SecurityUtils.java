@@ -37,6 +37,13 @@ public final class SecurityUtils {
         }
     }
 
+    public static void assertSelf(Authentication authentication, Long userId) {
+        UserDetailsImpl user = requireUser(authentication);
+        if (userId == null || !Objects.equals(user.getId(), userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+    }
+
     public static void assertAdmin(Authentication authentication) {
         UserDetailsImpl user = requireUser(authentication);
         if (!isAdmin(user)) {

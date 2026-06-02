@@ -1,10 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Divider, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, MessageOutlined, QuestionCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Button, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, MessageOutlined, QuestionCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { ProductQuestion, ProductQuestionAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import {
+  getEffectiveRole,
+  hasAdminPermission,
+  QUESTIONS_ANSWER_PERMISSION,
+  QUESTIONS_DELETE_PERMISSION,
+} from '../utils/roles';
 import './ProductQuestionManagement.css';
 
 const { Title, Paragraph } = Typography;
@@ -16,11 +22,17 @@ const ProductQuestionManagement: React.FC = () => {
   const [summary, setSummary] = useState<ProductQuestionAdminSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<QuestionStatus>('UNANSWERED');
   const [keyword, setKeyword] = useState('');
+  const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
   const [answerTarget, setAnswerTarget] = useState<ProductQuestion | null>(null);
   const [answerText, setAnswerText] = useState('');
   const [answering, setAnswering] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [currentRole, setCurrentRole] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const { t, language } = useLanguage();
+  const canAnswerQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_ANSWER_PERMISSION);
+  const canDeleteQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_DELETE_PERMISSION);
 
   const locale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
 
@@ -32,9 +44,11 @@ const ProductQuestionManagement: React.FC = () => {
   const loadQuestions = useCallback(async () => {
     try {
       setLoading(true);
-      const summaryRes = await adminApi.getQuestionSummary();
+      const normalizedStatus = normalizeStatus(statusFilter);
+      const normalizedSearch = searchText.trim() || undefined;
+      const summaryRes = await adminApi.getQuestionSummary({ status: normalizedStatus, search: normalizedSearch });
       const limit = summaryRes.data.maxAdminRows || 200;
-      const questionsRes = await adminApi.getQuestions({ status: normalizeStatus(statusFilter), limit });
+      const questionsRes = await adminApi.getQuestions({ status: normalizedStatus, search: normalizedSearch, limit });
       setSummary(summaryRes.data);
       setQuestions(questionsRes.data);
     } catch (err: any) {
@@ -42,26 +56,31 @@ const ProductQuestionManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [language, normalizeStatus, statusFilter, t]);
+  }, [language, normalizeStatus, searchText, statusFilter, t]);
 
   useEffect(() => {
     loadQuestions();
   }, [loadQuestions]);
 
-  const visibleQuestions = useMemo(() => {
-    const text = keyword.trim().toLowerCase();
-    if (!text) return questions;
-    return questions.filter((item) => [
-      item.productName,
-      item.product?.name,
-      item.productId,
-      item.product?.id,
-      item.username,
-      item.userId,
-      item.question,
-      item.answer,
-    ].some((value) => String(value || '').toLowerCase().includes(text)));
-  }, [keyword, questions]);
+  useEffect(() => {
+    let disposed = false;
+    adminApi.getMyPermissions()
+      .then((res) => {
+        if (disposed) return;
+        setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
+        setAdminPermissions(res.data.permissions || []);
+      })
+      .catch(() => {
+        if (disposed) return;
+        setCurrentRole('');
+        setAdminPermissions([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  const visibleQuestions = questions;
 
   const answeredCount = summary?.answeredQuestions ?? visibleQuestions.filter((item) => String(item.answer || '').trim()).length;
   const unansweredCount = summary?.unansweredQuestions ?? visibleQuestions.filter((item) => !String(item.answer || '').trim()).length;
@@ -70,11 +89,19 @@ const ProductQuestionManagement: React.FC = () => {
   const staleCount = summary?.staleUnansweredQuestions ?? 0;
 
   const openAnswer = (question: ProductQuestion) => {
+    if (!canAnswerQuestions) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     setAnswerTarget(question);
     setAnswerText(question.answer || '');
   };
 
   const handleAnswer = async () => {
+    if (!canAnswerQuestions) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (!answerTarget) return;
     if (!answerText.trim()) {
       message.warning(t('pages.adminQuestions.answerRequired'));
@@ -98,6 +125,23 @@ const ProductQuestionManagement: React.FC = () => {
     if (answering) return;
     setAnswerTarget(null);
     setAnswerText('');
+  };
+
+  const deleteQuestion = async (question: ProductQuestion) => {
+    if (!canDeleteQuestions) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    try {
+      setDeletingId(question.id);
+      await adminApi.deleteQuestion(question.id);
+      message.success(t('messages.deleteSuccess'));
+      await loadQuestions();
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const formatTime = (value?: string) => (value ? new Date(value).toLocaleString(locale) : '-');
@@ -153,12 +197,31 @@ const ProductQuestionManagement: React.FC = () => {
     {
       title: t('common.actions'),
       key: 'actions',
-      width: 140,
-      render: (_: unknown, record: ProductQuestion) => (
-        <Button size="small" icon={<MessageOutlined />} onClick={() => openAnswer(record)}>
-          {t('pages.adminQuestions.answerAction')}
-        </Button>
-      ),
+      width: 210,
+      render: (_: unknown, record: ProductQuestion) => {
+        const actions = [
+          canAnswerQuestions ? (
+          <Button key="answer" size="small" icon={<MessageOutlined />} onClick={() => openAnswer(record)}>
+            {t('pages.adminQuestions.answerAction')}
+          </Button>
+          ) : null,
+          canDeleteQuestions ? (
+          <Popconfirm
+            key="delete"
+            title={t('pages.adminQuestions.deleteConfirm')}
+            description={t('pages.adminQuestions.deleteConfirmDescription')}
+            okText={t('common.confirm')}
+            cancelText={t('common.cancel')}
+            onConfirm={() => deleteQuestion(record)}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />} loading={deletingId === record.id}>
+              {t('common.delete')}
+            </Button>
+          </Popconfirm>
+          ) : null,
+        ].filter(Boolean);
+        return actions.length ? <Space wrap>{actions}</Space> : '-';
+      },
     },
   ];
 
@@ -196,11 +259,18 @@ const ProductQuestionManagement: React.FC = () => {
         </div>
       </section>
       <Space className="product-question-management-page__toolbar" wrap>
-        <Input
+        <Input.Search
           allowClear
           prefix={<SearchOutlined />}
           value={keyword}
-          onChange={(event) => setKeyword(event.target.value)}
+          onChange={(event) => {
+            const nextKeyword = event.target.value;
+            setKeyword(nextKeyword);
+            if (!nextKeyword.trim()) {
+              setSearchText('');
+            }
+          }}
+          onSearch={(value) => setSearchText(value.trim())}
           placeholder={t('common.search')}
           className="product-question-management-page__keywordInput"
         />
@@ -235,6 +305,7 @@ const ProductQuestionManagement: React.FC = () => {
         open={!!answerTarget}
         onCancel={closeAnswerModal}
         onOk={handleAnswer}
+        okButtonProps={{ disabled: !canAnswerQuestions }}
         confirmLoading={answering}
         title={t('pages.adminQuestions.answerAction')}
         destroyOnHidden

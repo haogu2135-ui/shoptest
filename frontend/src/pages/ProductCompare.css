@@ -1295,3 +1295,34 @@
     padding: 7px !important;
   }
 }
+
+/* Final mobile/App product compare touch-target guard */
+@media (max-width: 600px) {
+  .product-compare__headerActions .ant-btn,
+  .product-compare__recommendationMain .ant-btn,
+  .product-compare__checkoutPath .ant-btn,
+  .product-compare-page .ant-table-cell .ant-btn,
+  .product-compare-page .ant-empty .ant-btn,
+  .product-compare__difference-toggle,
+  .product-compare__productLink,
+  .product-compare-clear-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .product-compare__difference-toggle {
+    align-items: center;
+  }
+
+  .product-compare__difference-toggle .ant-switch {
+    min-width: 44px;
+  }
+
+  .product-compare-page .ant-table-cell .ant-space {
+    gap: 8px !important;
+  }
+
+  .product-compare-page .ant-table-cell .ant-btn {
+    max-width: 140px;
+  }
+}

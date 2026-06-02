@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Skeleton, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { productApi } from '../api';
-import type { Product } from '../types';
+import type { ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -12,6 +12,7 @@ import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { getApiErrorMessage } from '../utils/apiError';
 import './AddOnAssistant.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Text } = Typography;
 
@@ -60,7 +61,7 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
         const localizedProducts = response.data
           .map((product) => localizeProduct(product, language))
           .filter((product) => !needsOptionSelection(product))
-          .filter((product) => (product.status || 'ACTIVE') === 'ACTIVE' && (product.stock === undefined || product.stock > 0));
+          .filter((product) => product.stock === undefined || product.stock > 0);
         addOnCandidateCache.set(cacheKey, {
           expiresAt: Date.now() + ADD_ON_CACHE_TTL_MS,
           products: localizedProducts,
@@ -120,44 +121,49 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
         {insightBadges.map((badge) => <span key={badge}>{badge}</span>)}
       </div>
       <div className="add-on-assistant__list">
-        {suggestions.map((product) => (
-          <article key={product.id} className="add-on-assistant__item">
-            <img
-              src={getOptimizedImageUrl(resolveProductImage(product.imageUrl), 112)}
-              srcSet={buildResponsiveImageSrcSet(resolveProductImage(product.imageUrl), [80, 112, 160])}
-              sizes="56px"
-              alt={product.name}
-              width={56}
-              height={56}
-              loading="lazy"
-              decoding="async"
-              onError={(event) => {
-                if (event.currentTarget.src !== productImageFallback) {
-                  event.currentTarget.removeAttribute('srcset');
-                  event.currentTarget.src = productImageFallback;
-                }
-              }}
-            />
-            <div className="add-on-assistant__body">
-              <Text className="add-on-assistant__name">{product.name}</Text>
-              <div className="add-on-assistant__meta">
-                <Text strong className="add-on-assistant__price commerce-money">{formatMoney(getAddOnPrice(product))}</Text>
-                {getAddOnPrice(product) >= remainingAmount ? (
-                  <Text className="add-on-assistant__fit">{t('pages.addOnAssistant.coversGap')}</Text>
-                ) : null}
+        {suggestions.map((product) => {
+          const productName = (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id });
+          return (
+            <article key={product.id} className="add-on-assistant__item">
+              <img
+                src={getOptimizedImageUrl(resolveProductImage(product.imageUrl), 112)}
+                srcSet={buildResponsiveImageSrcSet(resolveProductImage(product.imageUrl), [80, 112, 160])}
+                sizes="56px"
+                alt={productName}
+                width={56}
+                height={56}
+                loading="lazy"
+                decoding="async"
+                onError={(event) => {
+                  if (event.currentTarget.src !== productImageFallback) {
+                    event.currentTarget.removeAttribute('srcset');
+                    event.currentTarget.src = productImageFallback;
+                  }
+                }}
+              />
+              <div className="add-on-assistant__body">
+                <Text className="add-on-assistant__name">{productName}</Text>
+                <div className="add-on-assistant__meta">
+                  <Text strong className="add-on-assistant__price commerce-money">{formatMoney(getAddOnPrice(product))}</Text>
+                  {getAddOnPrice(product) >= remainingAmount ? (
+                    <Text className="add-on-assistant__fit">{t('pages.addOnAssistant.coversGap')}</Text>
+                  ) : null}
+                </div>
               </div>
-            </div>
-            <Button
-              size="small"
-              type="primary"
-              icon={<PlusOutlined />}
-              loading={addingId === product.id}
-              onClick={() => handleAdd(product)}
-            >
-              {t('pages.addOnAssistant.add')}
-            </Button>
-          </article>
-        ))}
+              <Button
+                size="small"
+                type="primary"
+                icon={<PlusOutlined />}
+                loading={addingId === product.id}
+                aria-label={`${t('pages.addOnAssistant.add')}: ${productName}`}
+                title={`${t('pages.addOnAssistant.add')}: ${productName}`}
+                onClick={() => handleAdd(product)}
+              >
+                {t('pages.addOnAssistant.add')}
+              </Button>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

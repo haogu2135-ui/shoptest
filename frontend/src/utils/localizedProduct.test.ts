@@ -18,6 +18,29 @@ describe('localizeProduct', () => {
     );
   });
 
+  it('polishes Spanish fallback descriptions for demo catalog products', () => {
+    const product = {
+      ...baseProduct,
+      name: 'HydraWhisk Quiet Cat Water Fountain',
+    };
+
+    expect(localizeProduct(product, 'es').description).toBe(
+      'Fuente filtrada de bajo ruido que ayuda a los gatos a beber más agua.',
+    );
+  });
+
+  it('uses Chinese fallback names and descriptions for demo catalog products', () => {
+    const product = {
+      ...baseProduct,
+      name: 'PawPilot Smart Pet Feeder 4L',
+    };
+
+    expect(localizeProduct(product, 'zh')).toMatchObject({
+      name: 'PawPilot 4L 智能宠物喂食器',
+      description: '可编程自动喂食器，支持猫咪和小型犬分餐定量。',
+    });
+  });
+
   it('prefers backend i18n fields over fallback text', () => {
     const product = {
       ...baseProduct,

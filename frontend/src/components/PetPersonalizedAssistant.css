@@ -680,3 +680,11 @@
     white-space: nowrap !important;
   }
 }
+
+/* Final mobile/App personalized assistant touch-target guard */
+@media (max-width: 640px) {
+  .pet-personalized-assistant__actions .ant-btn,
+  .pet-personalized-assistant__foot .ant-btn {
+    min-height: 44px;
+  }
+}

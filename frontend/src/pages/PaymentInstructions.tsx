@@ -1,11 +1,14 @@
-import React, { useMemo } from 'react';
-import { Button, Card, Descriptions, Space, Tag, Typography } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Descriptions, Space, Spin, Tag, Typography } from 'antd';
 import { CreditCardOutlined, CustomerServiceOutlined, FileSearchOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
-import { isCurrencyCode, markets } from '../utils/market';
+import type { OrderCustomer, PaymentCustomer } from '../types';
+import { markets } from '../utils/market';
 import { dispatchDomEvent } from '../utils/domEvents';
-import { saveGuestSupportContext } from '../utils/guestSupportContext';
+import { loadGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
+import { getLocalStorageItem } from '../utils/safeStorage';
 import './PaymentInstructions.css';
 
 const { Text, Title } = Typography;
@@ -15,12 +18,6 @@ const cleanParam = (value: string | null, maxLength = 120) =>
     const code = char.charCodeAt(0);
     return code <= 31 || code === 127 ? ' ' : char;
   }).join('').trim().slice(0, maxLength);
-
-const normalizeAmount = (value: string | null) => {
-  const cleaned = cleanParam(value, 40).replace(/[^0-9.,-]/g, '').replace(/,/g, '');
-  const amount = Number(cleaned);
-  return Number.isFinite(amount) && amount >= 0 ? amount : null;
-};
 
 const formatPaymentAmount = (amount: number, currency: keyof typeof markets) => {
   const market = markets[currency] || markets.MXN;
@@ -32,14 +29,30 @@ const formatPaymentAmount = (amount: number, currency: keyof typeof markets) => 
 
 const PaymentInstructions: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { orderNo = '' } = useParams();
   const [searchParams] = useSearchParams();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [order, setOrder] = useState<OrderCustomer | null>(null);
+  const [payment, setPayment] = useState<PaymentCustomer | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
   const normalizedOrderNo = cleanParam(orderNo, 80);
-  const guestEmail = cleanParam(searchParams.get('guestEmail') || searchParams.get('email'), 120).toLowerCase();
+  const searchQuery = searchParams.toString();
+  const storedGuestContext = useMemo(() => {
+    const context = loadGuestSupportContext();
+    if (!context || !normalizedOrderNo) return null;
+    return context.orderNo.toUpperCase() === normalizedOrderNo.toUpperCase() ? context : null;
+  }, [normalizedOrderNo]);
+  const guestEmail = storedGuestContext?.email || '';
+  const isAuthenticated = Boolean(getLocalStorageItem('token'));
+  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const openTrackOrder = () => {
-    if (normalizedOrderNo && guestEmail) {
-      navigate(`/track-order?orderNo=${encodeURIComponent(normalizedOrderNo)}&email=${encodeURIComponent(guestEmail)}`);
+    if (normalizedOrderNo) {
+      if (guestEmail) {
+        saveGuestSupportContext({ orderNo: normalizedOrderNo, email: guestEmail });
+      }
+      navigate(`/track-order?orderNo=${encodeURIComponent(normalizedOrderNo)}`);
       return;
     }
     navigate('/track-order');
@@ -52,18 +65,78 @@ const PaymentInstructions: React.FC = () => {
     }
     dispatchDomEvent('shop:open-support');
   };
-  const channel = cleanParam(searchParams.get('channel'), 40) || t('pages.paymentInstructions.manualChannel');
-  const currencyParam = cleanParam(searchParams.get('currency'), 12).toUpperCase();
-  const currency = isCurrencyCode(currencyParam) ? currencyParam : 'MXN';
-  const amount = normalizeAmount(searchParams.get('amount'));
-  const amountText = amount == null ? '-' : formatPaymentAmount(amount, currency);
-  const expiresAt = cleanParam(searchParams.get('expiresAt'), 40);
+  useEffect(() => {
+    if (!searchQuery) return;
+    const sanitized = new URLSearchParams(searchQuery);
+    const hadGuestEmail = sanitized.has('guestEmail') || sanitized.has('email');
+    if (!hadGuestEmail) return;
+    sanitized.delete('guestEmail');
+    sanitized.delete('email');
+    const nextQuery = sanitized.toString();
+    navigate(`${location.pathname}${nextQuery ? `?${nextQuery}` : ''}`, { replace: true });
+  }, [location.pathname, navigate, searchQuery]);
+
+  useEffect(() => {
+    if (!normalizedOrderNo || (!guestEmail && !isAuthenticated)) {
+      setOrder(null);
+      setPayment(null);
+      setVerifyError('');
+      return;
+    }
+    let disposed = false;
+    const verifyPaymentDetails = async () => {
+      setVerifying(true);
+      setVerifyError('');
+      try {
+        let nextOrder: OrderCustomer | null = null;
+        if (guestEmail) {
+          const response = await orderApi.track(normalizedOrderNo, guestEmail);
+          nextOrder = response.data.order;
+        } else {
+          const response = await orderApi.getMine();
+          nextOrder = (response.data || []).find((item) => String(item.orderNo || '').toUpperCase() === normalizedOrderNo.toUpperCase()) || null;
+          if (!nextOrder) {
+            throw new Error('Order not found');
+          }
+        }
+        if (disposed) return;
+        setOrder(nextOrder);
+        if (!nextOrder?.id) {
+          setPayment(null);
+          return;
+        }
+        try {
+          const paymentResponse = await paymentApi.getLatestByOrder(nextOrder.id, guestEmail || undefined, nextOrder.orderNo || normalizedOrderNo);
+          if (!disposed) setPayment(paymentResponse.data);
+        } catch {
+          if (!disposed) setPayment(null);
+        }
+      } catch {
+        if (disposed) return;
+        setOrder(null);
+        setPayment(null);
+        setVerifyError(t('pages.paymentInstructions.verifyFailed'));
+      } finally {
+        if (!disposed) setVerifying(false);
+      }
+    };
+    void verifyPaymentDetails();
+    return () => {
+      disposed = true;
+    };
+  }, [guestEmail, isAuthenticated, normalizedOrderNo, t]);
+
+  const channel = payment?.channel || order?.paymentMethod || t('pages.paymentInstructions.manualChannel');
+  const currency: keyof typeof markets = 'MXN';
+  const verifiedAmount = Number(payment?.amount ?? order?.totalAmount);
+  const amountText = order && Number.isFinite(verifiedAmount) ? formatPaymentAmount(verifiedAmount, currency) : '-';
+  const expiresAt = payment?.expiresAt || '';
   const expiresText = useMemo(() => {
     if (!expiresAt) return t('pages.paymentInstructions.expiryFallback');
     const parsed = new Date(expiresAt);
     if (Number.isNaN(parsed.getTime())) return expiresAt;
-    return parsed.toLocaleString();
-  }, [expiresAt, t]);
+    return parsed.toLocaleString(dateLocale);
+  }, [dateLocale, expiresAt, t]);
 
   return (
     <main className="payment-instructions-page">
@@ -75,7 +148,13 @@ const PaymentInstructions: React.FC = () => {
 
       <div className="payment-instructions-page__grid">
         <Card className="payment-instructions-page__card">
-          <Space direction="vertical" size="middle" className="payment-instructions-page__stack">
+          <Spin spinning={verifying}>
+            <Space direction="vertical" size="middle" className="payment-instructions-page__stack">
+            {verifyError ? (
+              <Alert type="warning" showIcon message={verifyError} />
+            ) : !guestEmail && !isAuthenticated ? (
+              <Alert type="info" showIcon message={t('pages.paymentInstructions.verifyWithTrackOrder')} />
+            ) : null}
             <div className="payment-instructions-page__status">
               <CreditCardOutlined />
               <span>
@@ -96,7 +175,8 @@ const PaymentInstructions: React.FC = () => {
               <LockOutlined />
               <Text>{t('pages.paymentInstructions.notice')}</Text>
             </div>
-          </Space>
+            </Space>
+          </Spin>
         </Card>
 
         <Card className="payment-instructions-page__card">

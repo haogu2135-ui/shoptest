@@ -24,12 +24,12 @@ STRIPE_WEBHOOK_SECRET=
 STRIPE_CHECKOUT_SUCCESS_URL=
 STRIPE_CHECKOUT_CANCEL_URL=
 CONFIG_CENTER_APPLY_NACOS_ON_STARTUP=false
-DB_URL=jdbc:mysql://158.101.11.223:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+DB_URL=jdbc:mysql://db.internal.example:3306/shop?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&sslMode=VERIFY_IDENTITY&serverTimezone=UTC
 DB_USERNAME=shop
-DB_PASSWORD=shop_password
-REDIS_HOST=158.101.11.223
+DB_PASSWORD=replace-with-production-db-password
+REDIS_HOST=redis.internal.example
 REDIS_PORT=6379
-REDIS_PASSWORD=shop_redis_password
+REDIS_PASSWORD=replace-with-production-redis-password
 REDIS_DATABASE=0
 MAIL_CODE_REDIS_ENABLED=true
 MAIL_CODE_REDIS_KEY_PREFIX=shop:mail-code
@@ -55,7 +55,7 @@ HIBERNATE_BINDER_LOG_LEVEL=WARN
 MYBATIS_MAPPER_LOG_LEVEL=WARN
 NACOS_DISCOVERY_ENABLED=true
 NACOS_REGISTER_ENABLED=true
-NACOS_SERVER_ADDR=158.101.11.223:8848
+NACOS_SERVER_ADDR=nacos.internal.example:8848
 NACOS_NAMESPACE=
 NACOS_GROUP=DEFAULT_GROUP
 NACOS_CLUSTER_NAME=DEFAULT
@@ -77,15 +77,15 @@ The first successful deploy uploads `/opt/shoptest/shop.jar`, writes `/etc/syste
 
 If the deploy user is not `root`, configure passwordless sudo for `mkdir`, `mv`, `cp`, `chmod`, `chown`, `install`, `tee`, `systemctl`, `useradd`, and `groupadd`, or use `root` as `BACKEND_DEPLOY_USER`.
 
-For this deployment, MySQL, Redis, and Nacos all run on `158.101.11.223` with default ports. The backend will not register in Nacos until it has fully started, so a database login failure appears in Nacos as an empty `shop-backend` instance list. Use the dedicated MySQL user `shop` and grant it from the backend server source IP:
+For production, point MySQL, Redis, and Nacos to your internal hostnames or private IPs in `/etc/shoptest/backend.env`. The backend will not register in Nacos until it has fully started, so a database login failure appears in Nacos as an empty `shop-backend` instance list. Use the dedicated MySQL user `shop` and grant it from the backend server source IP:
 
 ```sql
-CREATE USER IF NOT EXISTS 'shop'@'BACKEND_SOURCE_IP' IDENTIFIED BY 'shop_password';
+CREATE USER IF NOT EXISTS 'shop'@'BACKEND_SOURCE_IP' IDENTIFIED BY 'replace-with-production-db-password';
 GRANT ALL PRIVILEGES ON shop.* TO 'shop'@'BACKEND_SOURCE_IP';
 FLUSH PRIVILEGES;
 ```
 
-Then set `DB_USERNAME=shop`, `DB_PASSWORD=shop_password`, and `REDIS_PASSWORD=shop_redis_password` in `/etc/shoptest/backend.env`. Configure either `PAYMENT_CHECKOUT_BASE_URL` with a real HTTPS payment provider or complete live Stripe settings (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CHECKOUT_SUCCESS_URL`, `STRIPE_CHECKOUT_CANCEL_URL`). Configure either `LOGISTICS_API_URL` with a real HTTPS tracking provider or `KUAIDI100_ENABLED=true` plus real `KUAIDI100_CUSTOMER` / `KUAIDI100_KEY`. Keep `ADMIN_BOOTSTRAP_TOKEN=` blank after the first admin account exists. Keep `PAYMENT_SIMULATION_ENABLED=false` and `PAYMENT_SIMULATION_ALLOW_PRODUCTION=false` in production; the deploy activation script refuses to replace the jar if the bootstrap token, payment simulation, CORS/WebSocket origins, SMTP, payment, or logistics configuration is not production-ready.
+Then set `DB_USERNAME=shop`, a generated `DB_PASSWORD`, and a generated `REDIS_PASSWORD` in `/etc/shoptest/backend.env`. Do not use repository placeholders or old sample values. Configure either `PAYMENT_CHECKOUT_BASE_URL` with a real HTTPS payment provider or complete live Stripe settings (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CHECKOUT_SUCCESS_URL`, `STRIPE_CHECKOUT_CANCEL_URL`). Configure either `LOGISTICS_API_URL` with a real HTTPS tracking provider or `KUAIDI100_ENABLED=true` plus real `KUAIDI100_CUSTOMER` / `KUAIDI100_KEY`. Keep `ADMIN_BOOTSTRAP_TOKEN=` blank after the first admin account exists. Keep `PAYMENT_SIMULATION_ENABLED=false` and `PAYMENT_SIMULATION_ALLOW_PRODUCTION=false` in production; the deploy activation script refuses to replace the jar if the bootstrap token, payment simulation, CORS/WebSocket origins, SMTP, payment, or logistics configuration is not production-ready.
 
 ## GitHub Secrets
 
@@ -124,12 +124,12 @@ The workflow `.github/workflows/deploy-backend.yml` runs on every push to `main`
 
 Nacos runtime values belong in the backend server file `/etc/shoptest/backend.env`, not in GitHub Secrets. GitHub Actions only needs SSH deployment credentials; the application reads Nacos configuration after systemd starts it on the backend server.
 
-For this deployment, Nacos runs on `158.101.11.223:8848`, so keep discovery and registration enabled:
+When Nacos is available at your internal registry host, keep discovery and registration enabled:
 
 ```text
 NACOS_DISCOVERY_ENABLED=true
 NACOS_REGISTER_ENABLED=true
-NACOS_SERVER_ADDR=158.101.11.223:8848
+NACOS_SERVER_ADDR=nacos.internal.example:8848
 ```
 
 When a gateway, frontend edge service, or another backend service should discover this API through Nacos, update `/etc/shoptest/backend.env` on the backend server:
@@ -138,7 +138,7 @@ When a gateway, frontend edge service, or another backend service should discove
 SPRING_APPLICATION_NAME=shop-backend
 NACOS_DISCOVERY_ENABLED=true
 NACOS_REGISTER_ENABLED=true
-NACOS_SERVER_ADDR=158.101.11.223:8848
+NACOS_SERVER_ADDR=nacos.internal.example:8848
 NACOS_NAMESPACE=prod
 NACOS_GROUP=DEFAULT_GROUP
 NACOS_CLUSTER_NAME=DEFAULT
@@ -159,7 +159,7 @@ After changing `/etc/shoptest/backend.env`, restart and verify:
 sudo systemctl restart shoptest-backend
 journalctl -u shoptest-backend -n 100 --no-pager | grep -Ei 'nacos|register|shop-backend'
 curl -fsS http://127.0.0.1:8081/app/config
-curl -fsS 'http://158.101.11.223:8848/nacos/v1/ns/instance/list?serviceName=shop-backend&groupName=DEFAULT_GROUP'
+curl -fsS 'http://nacos.internal.example:8848/nacos/v1/ns/instance/list?serviceName=shop-backend&groupName=DEFAULT_GROUP'
 ```
 
 In the Nacos console, check `Service Management -> Services` with namespace `prod`, group `DEFAULT_GROUP`, service `shop-backend`, and verify that the registered IP and port match the value your consumers can reach.

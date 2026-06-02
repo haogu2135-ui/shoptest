@@ -27,6 +27,14 @@
   border-radius: 8px;
 }
 
+.order-tracking-page__restrictedNotice {
+  border-radius: 8px;
+}
+
+.order-tracking-page__restrictedNotice .ant-alert-action {
+  align-self: center;
+}
+
 .order-tracking-page__journey {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.5fr);
@@ -1310,5 +1318,38 @@
 @media (max-width: 360px) {
   .order-tracking-page__returnModal .ant-modal-footer {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* UI issues pass: desktop tracking should use the available commercial workspace. */
+@media (min-width: 960px) {
+  .order-tracking-page {
+    width: min(1120px, calc(100% - 48px));
+  }
+
+  .order-tracking-page > .ant-card:first-of-type .ant-card-body {
+    display: grid;
+    gap: 18px;
+  }
+
+  .order-tracking-page__journey,
+  .order-tracking-page__assurance {
+    grid-template-columns: minmax(280px, 0.95fr) minmax(420px, 1.4fr);
+  }
+}
+
+/* Final mobile/App order tracking touch-target guard */
+@media (max-width: 640px) {
+  .order-tracking-page__lookupForm .ant-input,
+  .order-tracking-page__lookupForm .ant-input-affix-wrapper,
+  .order-tracking-page__lookupButton,
+  .order-tracking-page__emptyActions .ant-btn,
+  .order-tracking-page__nextActionButtons .ant-btn,
+  .order-tracking-page__restrictedNotice .ant-btn,
+  .order-tracking-page__assuranceActions .ant-btn,
+  .order-tracking-page__returnModal .ant-input,
+  .order-tracking-page__returnModal textarea.ant-input,
+  .order-tracking-page__returnModal .ant-modal-footer .ant-btn {
+    min-height: 44px;
   }
 }

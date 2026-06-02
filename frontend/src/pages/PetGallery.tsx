@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Empty, Modal, Popconfirm, Skeleton, Space, Statistic, Typography, message } from 'antd';
+import { Alert, Button, Empty, Modal, Popconfirm, Skeleton, Space, Statistic, Typography, message } from 'antd';
 import {
   CameraOutlined,
   DeleteOutlined,
@@ -15,11 +15,12 @@ import { useNavigate } from 'react-router-dom';
 import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
-import type { PetGalleryPhoto, PetGalleryQuota } from '../types';
+import type { PetGalleryPhotoPublic, PetGalleryQuota } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import './PetGallery.css';
+import '../styles/mobile-page-contrast.css';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -43,7 +44,7 @@ type GalleryItem = {
   likeCount: number;
   likedByMe: boolean;
   canDelete: boolean;
-  photo?: PetGalleryPhoto;
+  photo?: PetGalleryPhotoPublic;
 };
 
 const readLocalLikes = () => {
@@ -61,6 +62,11 @@ const writeLocalLikes = (likes: string[]) => {
 
 const resolvePhotoUrl = (imageUrl: string) => resolveApiAssetUrl(imageUrl, petGalleryImageFallback);
 const galleryCardImageSizes = '(max-width: 620px) 50vw, (max-width: 980px) 33vw, 25vw';
+const isWithinDays = (value: string | undefined, days: number) => {
+  if (!value) return false;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) && Date.now() - timestamp <= days * 24 * 60 * 60 * 1000;
+};
 
 const usePetGalleryImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
   if (event.currentTarget.src !== petGalleryImageFallback) {
@@ -72,13 +78,14 @@ const PetGallery: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const [photos, setPhotos] = useState<PetGalleryPhoto[]>([]);
+  const [photos, setPhotos] = useState<PetGalleryPhotoPublic[]>([]);
   const [quota, setQuota] = useState<PetGalleryQuota | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [localLikes, setLocalLikes] = useState<string[]>(() => readLocalLikes());
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
+  const [loadError, setLoadError] = useState(false);
 
   const isAuthenticated = hasStoredValue('token');
 
@@ -92,14 +99,15 @@ const PetGallery: React.FC = () => {
       setPhotos(photosRes.data);
       setQuota(quotaRes?.data || null);
       setLastUpdatedAt(new Date());
+      setLoadError(false);
     } catch {
       setPhotos([]);
       setQuota(null);
-      message.error(t('pages.petGallery.loadFailed'));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, t]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     refreshGallery();
@@ -128,15 +136,16 @@ const PetGallery: React.FC = () => {
     return [...apiItems, ...localItems].sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label));
   }, [localLikes, photos]);
 
-  const userUploadCount = photos.filter((photo) => photo.source !== 'SEED').length;
   const remainingUploads = quota ? Math.max(0, quota.remaining) : 3;
   const galleryInsights = useMemo(() => {
     const totalLikes = items.reduce((sum, item) => sum + item.likeCount, 0);
     const likedByMe = items.filter((item) => item.likedByMe).length;
     const topMoment = items[0];
-    const communityMoments = items.filter((item) => item.photo?.source !== 'SEED').length;
-    return { totalLikes, likedByMe, topMoment, communityMoments };
-  }, [items]);
+    const communityMoments = items.length;
+    const activeMembers = Math.max(0, new Set(items.map((item) => item.label.toLowerCase())).size);
+    const featuredMoments = photos.filter((photo) => isWithinDays(photo.createdAt, 7)).length || items.length;
+    return { totalLikes, likedByMe, topMoment, communityMoments, activeMembers, featuredMoments };
+  }, [items, photos]);
   const lastUpdated = useMemo(() => lastUpdatedAt.toLocaleTimeString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -190,8 +199,8 @@ const PetGallery: React.FC = () => {
     if (!file) return;
 
     const isSupportedImage =
-      ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) ||
-      /\.(jpe?g|png|webp|gif)$/i.test(file.name);
+      ['image/jpeg', 'image/png', 'image/gif'].includes(file.type) ||
+      /\.(jpe?g|png|gif)$/i.test(file.name);
     if (!isSupportedImage) {
       message.error(t('home.petUgcInvalidType'));
       return;
@@ -239,7 +248,7 @@ const PetGallery: React.FC = () => {
     }
   };
 
-  const handleDelete = async (photo: PetGalleryPhoto) => {
+  const handleDelete = async (photo: PetGalleryPhotoPublic) => {
     try {
       await petGalleryApi.delete(photo.id);
       setPhotos((current) => current.filter((item) => item.id !== photo.id));
@@ -268,14 +277,14 @@ const PetGallery: React.FC = () => {
           <input
             ref={uploadInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/jpeg,image/png,image/gif"
             className="pet-gallery-page__file"
             onChange={handleSelectedPhoto}
           />
         </div>
         <div className="pet-gallery-hero__stats" aria-label={t('pages.petGallery.stats')}>
           <Statistic title={t('pages.petGallery.totalPhotos')} value={items.length} />
-          <Statistic title={t('pages.petGallery.communityUploads')} value={userUploadCount} />
+          <Statistic title={t('pages.petGallery.communityUploads')} value={galleryInsights.activeMembers} />
           <Statistic title={t('pages.petGallery.remainingUploads')} value={remainingUploads} />
         </div>
       </section>
@@ -297,6 +306,15 @@ const PetGallery: React.FC = () => {
         </Space>
       </section>
 
+      {loadError && !loading ? (
+        <Alert
+          type={items.length > 0 ? 'info' : 'warning'}
+          showIcon
+          message={items.length > 0 ? t('pages.petGallery.catalogFallback') : t('pages.petGallery.loadFailed')}
+          className="pet-gallery-page__loadAlert"
+        />
+      ) : null}
+
       {!loading && items.length > 0 ? (
         <section className="pet-gallery-insights" aria-label={t('pages.petGallery.insightTitle')}>
           <div className="pet-gallery-insights__copy">
@@ -316,7 +334,7 @@ const PetGallery: React.FC = () => {
             </div>
             <div className="pet-gallery-insights__item is-warm">
               <RiseOutlined />
-              <strong>{galleryInsights.likedByMe}</strong>
+              <strong>{galleryInsights.featuredMoments}</strong>
               <span>{t('pages.petGallery.savedMoments')}</span>
             </div>
             <div className="pet-gallery-insights__item is-ok">
@@ -433,10 +451,11 @@ const PetGallery: React.FC = () => {
                 </button>
                 {item.canDelete && item.photo ? (
                   <Popconfirm
+                    popupClassName="shop-mobile-popup-layer pet-gallery-delete-popconfirm"
                     title={t('home.petUgcDeleteConfirm')}
                     okText={t('common.confirm')}
                     cancelText={t('common.cancel')}
-                    onConfirm={() => handleDelete(item.photo as PetGalleryPhoto)}
+                    onConfirm={() => handleDelete(item.photo as PetGalleryPhotoPublic)}
                   >
                     <button type="button" className="pet-gallery-card__delete" aria-label={t('home.petUgcDelete')}>
                       <DeleteOutlined />

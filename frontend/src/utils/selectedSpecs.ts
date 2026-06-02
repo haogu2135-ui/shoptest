@@ -1,3 +1,7 @@
+import type { Language } from '../i18n';
+import { getLocalizedOptionLabel } from './localizedProductOptions';
+import { formatProductSpecLabel } from './productSpecLabels';
+
 export const parseSelectedSpecs = (value?: string | null): Record<string, string> => {
   if (!value) return {};
   try {
@@ -24,6 +28,17 @@ export const isBundlePurchase = (value?: string | null) =>
 
 type Translate = (key: string, params?: Record<string, string | number>) => string;
 
+const formatSelectedSpecName = (name: string, t?: Translate, language?: Language | string) => {
+  if (language) {
+    const localizedOptionLabel = getLocalizedOptionLabel(name, language);
+    if (localizedOptionLabel !== name) return localizedOptionLabel;
+  }
+  return t ? formatProductSpecLabel(name, t) : name;
+};
+
+const formatSelectedSpecValue = (value: string, language?: Language | string) =>
+  language ? getLocalizedOptionLabel(value, language) : value;
+
 export const getSubscriptionIntervalLabel = (value?: string | null, t?: Translate) => {
   const interval = parseSelectedSpecs(value)._subscriptionInterval;
   if (interval === '2w') return t ? t('subscription.interval2w') : 'Deliver every 2 weeks';
@@ -32,14 +47,14 @@ export const getSubscriptionIntervalLabel = (value?: string | null, t?: Translat
   return t ? t('subscription.intervalMonthly') : 'Deliver every month';
 };
 
-export const formatSelectedSpecs = (value?: string | null, t?: Translate) =>
+export const formatSelectedSpecs = (value?: string | null, t?: Translate, language?: Language | string) =>
   {
     const specs = parseSelectedSpecs(value);
     return [
       ...Object.entries(specs)
     .filter(([name]) => !name.startsWith('_'))
     .filter(([, option]) => option)
-      .map(([name, option]) => `${name}: ${option}`),
+      .map(([name, option]) => `${formatSelectedSpecName(name, t, language)}: ${formatSelectedSpecValue(option, language)}`),
       ...(specs._purchaseMode === 'bundle'
       ? [
         t ? t('bundle.bundleDeal') : 'Bundle deal',

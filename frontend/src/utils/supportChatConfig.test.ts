@@ -7,9 +7,9 @@ describe('supportChatConfig', () => {
   });
 
   it('rejects non-object websocket payloads', () => {
-    expect(parseSupportSocketPayload('"hello"')).toEqual({ type: 'ERROR', message: 'Invalid support message' });
-    expect(parseSupportSocketPayload('[{\"type\":\"MESSAGE\"}]')).toEqual({ type: 'ERROR', message: 'Invalid support message' });
-    expect(parseSupportSocketPayload('not json')).toEqual({ type: 'ERROR', message: 'Invalid support message' });
+    expect(parseSupportSocketPayload('"hello"')).toEqual({ type: 'ERROR' });
+    expect(parseSupportSocketPayload('[{\"type\":\"MESSAGE\"}]')).toEqual({ type: 'ERROR' });
+    expect(parseSupportSocketPayload('not json')).toEqual({ type: 'ERROR' });
   });
 
   it('caps and strictly parses message length config', () => {

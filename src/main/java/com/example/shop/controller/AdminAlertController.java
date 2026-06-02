@@ -6,6 +6,9 @@ import com.example.shop.dto.SystemAlertBatchActionResponse;
 import com.example.shop.dto.SystemAlertPurgeResponse;
 import com.example.shop.dto.SystemAlertSummaryResponse;
 import com.example.shop.entity.SystemAlert;
+import com.example.shop.security.SecurityUtils;
+import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SystemAlertService;
 import org.springframework.http.HttpStatus;
@@ -28,10 +31,14 @@ import java.util.List;
 public class AdminAlertController {
     private final SystemAlertService systemAlertService;
     private final SecurityAuditLogService auditLogService;
+    private final AdminRoleService adminRoleService;
 
-    public AdminAlertController(SystemAlertService systemAlertService, SecurityAuditLogService auditLogService) {
+    public AdminAlertController(SystemAlertService systemAlertService,
+                                SecurityAuditLogService auditLogService,
+                                AdminRoleService adminRoleService) {
         this.systemAlertService = systemAlertService;
         this.auditLogService = auditLogService;
+        this.adminRoleService = adminRoleService;
     }
 
     @GetMapping
@@ -51,6 +58,7 @@ public class AdminAlertController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void runSelfCheck(Authentication authentication, HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.ALERTS_SELF_CHECK_PERMISSION);
             systemAlertService.runSelfCheck();
             auditLogService.record("ALERT_SELF_CHECK", "SUCCESS", authentication, "SYSTEM_ALERT", "self-check", request,
                     "System alert self-check executed", "");
@@ -67,6 +75,7 @@ public class AdminAlertController {
                                    Authentication authentication,
                                    HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.ALERTS_ACKNOWLEDGE_PERMISSION);
             SystemAlert alert = systemAlertService.acknowledge(id, actor(authentication))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found"));
             auditLogService.record("ALERT_ACKNOWLEDGE", "SUCCESS", authentication, "SYSTEM_ALERT", id, request,
@@ -85,6 +94,7 @@ public class AdminAlertController {
                                Authentication authentication,
                                HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.ALERTS_RESOLVE_PERMISSION);
             SystemAlert alert = systemAlertService.resolve(id, actor(authentication))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found"));
             auditLogService.record("ALERT_RESOLVE", "SUCCESS", authentication, "SYSTEM_ALERT", id, request,
@@ -102,6 +112,7 @@ public class AdminAlertController {
                                                            Authentication authentication,
                                                            HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.ALERTS_ACKNOWLEDGE_PERMISSION);
             SystemAlertBatchActionResponse response = systemAlertService.acknowledgeBatch(body == null ? null : body.getIds(), actor(authentication));
             auditLogService.record("ALERT_BATCH_ACKNOWLEDGE", "SUCCESS", authentication, "SYSTEM_ALERT", "batch", request,
                     "System alerts acknowledged in batch",
@@ -120,6 +131,7 @@ public class AdminAlertController {
                                                        Authentication authentication,
                                                        HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.ALERTS_RESOLVE_PERMISSION);
             SystemAlertBatchActionResponse response = systemAlertService.resolveBatch(body == null ? null : body.getIds(), actor(authentication));
             auditLogService.record("ALERT_BATCH_RESOLVE", "SUCCESS", authentication, "SYSTEM_ALERT", "batch", request,
                     "System alerts resolved in batch",
@@ -138,6 +150,7 @@ public class AdminAlertController {
                                                   Authentication authentication,
                                                   HttpServletRequest request) {
         try {
+            requireAdminActionPermission(authentication, AdminRoleService.ALERTS_PURGE_PERMISSION);
             SystemAlertPurgeResponse response = systemAlertService.purgeResolved(retentionDays);
             auditLogService.record("ALERT_PURGE_RESOLVED", "SUCCESS", authentication, "SYSTEM_ALERT", "resolved", request,
                     "Resolved system alerts purged",
@@ -149,6 +162,14 @@ public class AdminAlertController {
                     e.getMessage(), "retentionDays=" + retentionDays);
             throw e;
         }
+    }
+
+    private void requireAdminActionPermission(Authentication authentication, String permission) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (adminRoleService.hasPermission(user.getId(), permission)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
     }
 
     private String alertBatchMetadata(SystemAlertBatchActionRequest body) {

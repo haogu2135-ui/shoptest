@@ -9,20 +9,39 @@ import {
 } from './safeStorage';
 
 describe('safeStorage', () => {
-  const originalLocalStorage = window.localStorage;
-  const originalSessionStorage = window.sessionStorage;
+  const originalLocalStorageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+  const originalSessionStorageDescriptor = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+
+  const restoreStorage = () => {
+    if (originalLocalStorageDescriptor) {
+      Object.defineProperty(window, 'localStorage', originalLocalStorageDescriptor);
+    }
+    if (originalSessionStorageDescriptor) {
+      Object.defineProperty(window, 'sessionStorage', originalSessionStorageDescriptor);
+    }
+  };
+
+  const clearStorage = () => {
+    try {
+      window.localStorage.clear();
+    } catch {
+      // Individual tests replace storage with throwing mocks.
+    }
+    try {
+      window.sessionStorage.clear();
+    } catch {
+      // Individual tests replace storage with throwing mocks.
+    }
+  };
+
+  beforeEach(() => {
+    restoreStorage();
+    clearStorage();
+  });
 
   afterEach(() => {
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: originalLocalStorage,
-    });
-    Object.defineProperty(window, 'sessionStorage', {
-      configurable: true,
-      value: originalSessionStorage,
-    });
-    window.localStorage.clear();
-    window.sessionStorage.clear();
+    restoreStorage();
+    clearStorage();
   });
 
   it('reads, writes, removes, and checks stored values', () => {

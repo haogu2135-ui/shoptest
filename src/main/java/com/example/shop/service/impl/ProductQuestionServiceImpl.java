@@ -1,6 +1,7 @@
 package com.example.shop.service.impl;
 
 import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
+import com.example.shop.dto.ProductQuestionPublicResponse;
 import com.example.shop.entity.Product;
 import com.example.shop.entity.ProductQuestion;
 import com.example.shop.entity.User;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductQuestionServiceImpl implements ProductQuestionService {
@@ -41,30 +43,58 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductQuestion> getByProductId(Long productId) {
+    public List<ProductQuestionPublicResponse> getPublicByProductId(Long productId) {
         Product product = productRepository.findById(productId).orElse(null);
         if (product == null || (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus()))) {
             return List.of();
         }
-        return questionRepository.findByProduct_IdOrderByCreatedAtDesc(productId);
+        int limit = Math.max(1, Math.min(runtimeConfig.getInt("product-question.public-max-rows", 20), 100));
+        return questionRepository.findAnsweredByProductId(productId, PageRequest.of(0, limit)).stream()
+                .map(question -> ProductQuestionPublicResponse.from(question, productId))
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProductQuestion> getAdminQueue(String status, int limit) {
-        return questionRepository.findAdminQueue(normalizedAnsweredFilter(status), PageRequest.of(0, normalizedAdminLimit(limit)));
+        return getAdminQueue(status, null, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductQuestion> getAdminQueue(String status, String search, int limit) {
+        return questionRepository.findAdminQueue(
+                normalizedAnsweredFilter(status),
+                normalizeSearch(search),
+                PageRequest.of(0, normalizedAdminLimit(limit)));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ProductQuestionAdminSummaryResponse adminSummary() {
+        return adminSummary(null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductQuestionAdminSummaryResponse adminSummary(String status, String search) {
         int staleHours = normalizedStaleHours();
         int maxAdminRows = normalizedMaxAdminRows();
+        Boolean answeredFilter = normalizedAnsweredFilter(status);
+        String normalizedSearch = normalizeSearch(search);
         ProductQuestionAdminSummaryResponse response = new ProductQuestionAdminSummaryResponse();
-        response.setTotalQuestions(questionRepository.countAllQuestions());
-        response.setUnansweredQuestions(questionRepository.countUnansweredQuestions());
-        response.setAnsweredQuestions(questionRepository.countAnsweredQuestions());
-        response.setStaleUnansweredQuestions(questionRepository.countStaleUnansweredQuestions(LocalDateTime.now().minusHours(staleHours)));
+        if (answeredFilter == null && normalizedSearch == null) {
+            response.setTotalQuestions(questionRepository.countAllQuestions());
+            response.setUnansweredQuestions(questionRepository.countUnansweredQuestions());
+            response.setAnsweredQuestions(questionRepository.countAnsweredQuestions());
+            response.setStaleUnansweredQuestions(questionRepository.countStaleUnansweredQuestions(LocalDateTime.now().minusHours(staleHours)));
+        } else {
+            response.setTotalQuestions(questionRepository.countAdminQuestions(answeredFilter, normalizedSearch));
+            response.setUnansweredQuestions(questionRepository.countAdminUnansweredQuestions(answeredFilter, normalizedSearch));
+            response.setAnsweredQuestions(questionRepository.countAdminAnsweredQuestions(answeredFilter, normalizedSearch));
+            response.setStaleUnansweredQuestions(questionRepository.countAdminStaleUnansweredQuestions(
+                    answeredFilter, normalizedSearch, LocalDateTime.now().minusHours(staleHours)));
+        }
         response.setStaleHours(staleHours);
         response.setMaxAdminRows(maxAdminRows);
         response.setResponseScore(calculateResponseScore(response));
@@ -111,6 +141,15 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
         return questionRepository.save(question);
     }
 
+    @Override
+    @Transactional
+    public ProductQuestion delete(Long questionId) {
+        ProductQuestion question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new IllegalArgumentException("Question not found"));
+        questionRepository.delete(question);
+        return question;
+    }
+
     private String normalizeText(String value, int maxChars, String label) {
         String normalized = String.valueOf(value == null ? "" : value)
                 .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
@@ -120,6 +159,18 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
             throw new IllegalArgumentException(label + " is too long");
         }
         return normalized;
+    }
+
+    private String normalizeSearch(String value) {
+        String normalized = String.valueOf(value == null ? "" : value)
+                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
+                .replaceAll("\\s+", " ")
+                .trim()
+                .toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized.length() > 120 ? normalized.substring(0, 120).trim() : normalized;
     }
 
     private void consumeAskRate(Long userId) {

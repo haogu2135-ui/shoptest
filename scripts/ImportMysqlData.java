@@ -45,7 +45,7 @@ public class ImportMysqlData {
             }
         }
 
-        System.out.println("Imported schema and sample data into database `" + database + "`.");
+        System.out.println("Imported schema and catalog data into database `" + database + "`.");
     }
 
     private static String resolveProperty(String value) {

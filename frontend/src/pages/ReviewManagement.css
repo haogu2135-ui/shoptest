@@ -94,6 +94,39 @@
   overflow-wrap: anywhere;
 }
 
+.review-management-page__productCell {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.review-management-page__productCell img {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f2f6f1;
+}
+
+.review-management-page__productCell div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.review-management-page__productCell strong {
+  color: #173f2b;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.review-management-page__productCell span {
+  color: #6d786d;
+  font-size: 12px;
+}
+
 .review-management-page--es,
 .review-management-page--es .ant-btn,
 .review-management-page--es .ant-select,
@@ -294,6 +327,10 @@
   .review-management-page__toolbar .ant-select,
   .review-management-page__toolbar .ant-input-affix-wrapper,
   .review-management-page__toolbar .ant-btn {
+    width: 100% !important;
+  }
+
+  .review-management-page__toolbar .review-management-page__keywordInput {
     width: 100% !important;
   }
 
@@ -520,5 +557,17 @@
 
   .review-management-page__replyModal .ant-modal-footer .ant-btn {
     flex-basis: 100%;
+  }
+}
+
+/* Final mobile/App review-operations touch-target guard */
+@media (max-width: 760px) {
+  .review-management-page__toolbar .ant-btn,
+  .review-management-page__toolbar .ant-input-affix-wrapper,
+  .review-management-page__toolbar .ant-select-selector,
+  .review-management-page .ant-table-cell .ant-btn,
+  .review-management-page__replyModal .ant-modal-footer .ant-btn,
+  .review-management-page__replyModal textarea.ant-input {
+    min-height: 44px;
   }
 }

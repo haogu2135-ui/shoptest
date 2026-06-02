@@ -4,12 +4,14 @@ import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.PaymentCallbackRequest;
 import com.example.shop.dto.PaymentChannelResponse;
 import com.example.shop.dto.PaymentCreateRequest;
+import com.example.shop.dto.PaymentResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
-import com.example.shop.service.OrderService;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.IpBlacklistService;
+import com.example.shop.service.OrderService;
 import com.example.shop.service.PaymentChannelRecommendationService;
 import com.example.shop.service.PaymentService;
 import com.example.shop.service.SecurityAuditLogService;
@@ -24,10 +26,11 @@ import javax.validation.Valid;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/payments")
+@RequestMapping({"/payments", "/payment"})
 @RequiredArgsConstructor
 public class PaymentController {
     private final PaymentService paymentService;
@@ -36,6 +39,7 @@ public class PaymentController {
     private final PaymentChannelConfig paymentChannelConfig;
     private final PaymentChannelRecommendationService paymentChannelRecommendationService;
     private final IpBlacklistService ipBlacklistService;
+    private final AdminRoleService adminRoleService;
 
     @GetMapping("/channels")
     public List<PaymentChannelResponse> channels(HttpServletRequest request) {
@@ -43,6 +47,17 @@ public class PaymentController {
                 .filter(paymentService::isChannelAvailableForCheckout)
                 .collect(Collectors.toList());
         return paymentChannelRecommendationService.buildChannelResponses(channels, request);
+    }
+
+    @GetMapping({"", "/"})
+    public Map<String, Object> paymentInfo(HttpServletRequest request) {
+        return Map.of(
+                "status", "available",
+                "channels", channels(request),
+                "endpoints", Map.of(
+                        "create", "/payments",
+                        "channels", "/payments/channels",
+                        "order", "/payments/order/{orderId}"));
     }
 
     @PostMapping
@@ -56,16 +71,16 @@ public class PaymentController {
             auditLogService.record("PAYMENT_CREATE", "SUCCESS", authentication, "PAYMENT", payment.getId(), httpRequest,
                     "Payment created",
                     "orderId=" + request.getOrderId() + ",channel=" + payment.getChannel() + ",amount=" + payment.getAmount());
-            return ResponseEntity.ok(payment);
+            return ResponseEntity.ok(paymentResponse(payment));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_CREATE", "FAILURE", authentication, "ORDER", request.getOrderId(), httpRequest,
                     e.getMessage(), "channel=" + request.getChannel());
-            ipBlacklistService.recordPaymentFailure(httpRequest, e.getMessage());
+            recordPaymentBlacklistFailureIfSuspicious(httpRequest, e);
             throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_CREATE", "FAILURE", authentication, "ORDER", request.getOrderId(), httpRequest,
                     reasonOf(e), "channel=" + request.getChannel());
-            ipBlacklistService.recordPaymentFailure(httpRequest, reasonOf(e));
+            recordPaymentBlacklistFailureIfSuspicious(httpRequest, e);
             throw e;
         }
     }
@@ -84,12 +99,12 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SIMULATE_PAID", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
-            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
             throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SIMULATE_PAID", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
-            ipBlacklistService.recordPaymentFailure(request, reasonOf(e));
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
             throw e;
         }
     }
@@ -108,12 +123,12 @@ public class PaymentController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
-            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
             throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
-            ipBlacklistService.recordPaymentFailure(request, reasonOf(e));
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
             throw e;
         }
     }
@@ -128,16 +143,16 @@ public class PaymentController {
             Payment payment = paymentService.syncPayment(id);
             auditLogService.record("PAYMENT_SYNC", "SUCCESS", authentication, "PAYMENT", id, request,
                     "Payment state synced", payment.getOrderNo());
-            return ResponseEntity.ok(payment);
+            return ResponseEntity.ok(paymentResponse(payment));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
-            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
             throw e;
         } catch (ResponseStatusException e) {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
-            ipBlacklistService.recordPaymentFailure(request, reasonOf(e));
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
             throw e;
         }
     }
@@ -152,11 +167,11 @@ public class PaymentController {
             auditLogService.record("PAYMENT_CALLBACK", "SUCCESS", null, null, null, "PAYMENT", payment.getId(), httpRequest,
                     "Payment callback accepted",
                     "orderNo=" + request.getOrderNo() + ",channel=" + request.getChannel() + ",status=" + request.getStatus());
-            return ResponseEntity.ok(payment);
+            return ResponseEntity.ok(Map.of("received", true));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_CALLBACK", "FAILURE", null, null, null, "ORDER", request.getOrderNo(), httpRequest,
                     e.getMessage(), "channel=" + request.getChannel());
-            ipBlacklistService.recordPaymentFailure(httpRequest, e.getMessage());
+            recordPaymentBlacklistFailureIfSuspicious(httpRequest, e);
             throw e;
         }
     }
@@ -177,40 +192,57 @@ public class PaymentController {
             return ResponseEntity.ok(Map.of("received", true));
         } catch (IllegalArgumentException e) {
             auditLogService.record("STRIPE_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
-            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
             throw e;
         } catch (IllegalStateException e) {
             auditLogService.record("STRIPE_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
-            ipBlacklistService.recordPaymentFailure(request, e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment provider is temporarily unavailable", e);
         }
     }
 
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<List<Payment>> findByOrderId(@PathVariable Long orderId,
-                                                       @RequestParam(required = false) String guestEmail,
-                                                       @RequestParam(required = false) String orderNo,
-                                                       Authentication authentication) {
+    public ResponseEntity<List<PaymentResponse>> findByOrderId(@PathVariable Long orderId,
+                                                               @RequestParam(required = false) String guestEmail,
+                                                               @RequestParam(required = false) String orderNo,
+                                                               Authentication authentication) {
         assertCanSeeOrder(orderId, authentication, guestEmail, orderNo);
-        return ResponseEntity.ok(paymentService.findByOrderId(orderId));
+        List<Payment> payments = paymentService.findStoredByOrderId(orderId);
+        return ResponseEntity.ok(paymentResponses(payments));
+    }
+
+    @GetMapping("/guest/order/{orderId}")
+    public ResponseEntity<List<PaymentResponse>> findGuestByOrderId(@PathVariable Long orderId,
+                                                                    @RequestParam String guestEmail,
+                                                                    @RequestParam String orderNo,
+                                                                    HttpServletRequest request) {
+        assertCanSeeGuestOrder(orderId, guestEmail, orderNo, request);
+        return ResponseEntity.ok(paymentService.findStoredByOrderId(orderId).stream()
+                .map(PaymentResponse::from)
+                .collect(Collectors.toList()));
     }
 
     @GetMapping("/order/{orderId}/latest")
-    public ResponseEntity<Payment> findLatestByOrderId(@PathVariable Long orderId,
-                                                       @RequestParam(required = false) String guestEmail,
-                                                       @RequestParam(required = false) String orderNo,
-                                                       Authentication authentication) {
+    public ResponseEntity<PaymentResponse> findLatestByOrderId(@PathVariable Long orderId,
+                                                               @RequestParam(required = false) String guestEmail,
+                                                               @RequestParam(required = false) String orderNo,
+                                                               Authentication authentication) {
         assertCanSeeOrder(orderId, authentication, guestEmail, orderNo);
-        Payment payment = paymentService.findLatestByOrderId(orderId);
-        return payment != null ? ResponseEntity.ok(payment) : ResponseEntity.notFound().build();
+        Payment payment = paymentService.findStoredLatestByOrderId(orderId);
+        return payment != null ? ResponseEntity.ok(paymentResponse(payment)) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/guest/order/{orderId}/latest")
+    public ResponseEntity<PaymentResponse> findLatestGuestByOrderId(@PathVariable Long orderId,
+                                                                    @RequestParam String guestEmail,
+                                                                    @RequestParam String orderNo,
+                                                                    HttpServletRequest request) {
+        assertCanSeeGuestOrder(orderId, guestEmail, orderNo, request);
+        Payment payment = paymentService.findStoredLatestByOrderId(orderId);
+        return payment != null ? ResponseEntity.ok(PaymentResponse.from(payment)) : ResponseEntity.notFound().build();
     }
 
     private void assertCanSeeOrder(Long orderId, Authentication authentication) {
-        assertCanSeeOrder(orderId, authentication, null);
-    }
-
-    private void assertCanSeeOrder(Long orderId, Authentication authentication, String guestEmail) {
-        assertCanSeeOrder(orderId, authentication, guestEmail, null);
+        assertCanSeeOrder(orderId, authentication, null, null);
     }
 
     private void assertCanSeeOrder(Long orderId, Authentication authentication, String guestEmail, String orderNo) {
@@ -219,6 +251,18 @@ public class PaymentController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
         assertCanOperateOrder(order, authentication, guestEmail, orderNo, "Payment is not available for this order");
+    }
+
+    private void assertCanSeeGuestOrder(Long orderId, String guestEmail, String orderNo, HttpServletRequest request) {
+        Order order = orderService.getOrderById(orderId);
+        if (order == null) {
+            ipBlacklistService.recordPaymentFailure(request, "guest-payment order not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        if (!guestOrderAccessMatches(order, guestEmail, orderNo)) {
+            ipBlacklistService.recordPaymentFailure(request, "guest-payment credentials failed");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Guest payment access is not available for this order");
+        }
     }
 
     private void assertCanCreatePayment(PaymentCreateRequest request, Authentication authentication) {
@@ -249,31 +293,64 @@ public class PaymentController {
     }
 
     private void assertCanOperateOrder(Order order, Authentication authentication, String guestEmail, String orderNo, String forbiddenMessage) {
-        if (customerAccessMatches(order, guestEmail, orderNo)) {
+        if (guestOrderAccessMatches(order, guestEmail, orderNo)) {
             return;
         }
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
-            SecurityUtils.assertSelfOrAdmin(authentication, order.getUserId());
+            UserDetailsImpl user = (UserDetailsImpl) authentication.getPrincipal();
+            if (Objects.equals(user.getId(), order.getUserId())) {
+                return;
+            }
+            if (SecurityUtils.isAdmin(user)) {
+                assertAdminOrderPaymentAccess(user, forbiddenMessage);
+                return;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
+    }
+
+    private void assertAdminOrderPaymentAccess(UserDetailsImpl user, String forbiddenMessage) {
+        if (adminRoleService.canAccess(user.getId(), "/admin/orders")
+                && adminRoleService.hasPermission(user.getId(), AdminRoleService.ORDER_PAYMENT_PERMISSION)) {
             return;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
     }
 
-    private boolean customerAccessMatches(Order order, String email, String orderNo) {
-        return orderNoMatches(order, orderNo) && customerEmailMatches(order, email);
+    private boolean guestOrderAccessMatches(Order order, String email, String orderNo) {
+        return orderService.guestOrderAccessMatches(order, email, orderNo);
     }
 
-    private boolean orderNoMatches(Order order, String orderNo) {
-        return orderNo != null
-                && order.getOrderNo() != null
-                && order.getOrderNo().trim().equalsIgnoreCase(orderNo.trim());
+    private PaymentResponse paymentResponse(Payment payment) {
+        return PaymentResponse.from(payment);
     }
 
-    private boolean customerEmailMatches(Order order, String email) {
-        return orderService.orderEmailMatches(order, email) || orderService.guestOrderEmailMatches(order, email);
+    private List<PaymentResponse> paymentResponses(List<Payment> payments) {
+        return payments.stream().map(PaymentResponse::from).collect(Collectors.toList());
     }
 
     private String reasonOf(ResponseStatusException e) {
         return e.getReason() != null ? e.getReason() : e.getMessage();
+    }
+
+    private void recordPaymentBlacklistFailureIfSuspicious(HttpServletRequest request, RuntimeException e) {
+        if (!shouldRecordPaymentBlacklistFailure(e)) {
+            return;
+        }
+        String reason = e instanceof ResponseStatusException
+                ? reasonOf((ResponseStatusException) e)
+                : e.getMessage();
+        ipBlacklistService.recordPaymentFailure(request, reason);
+    }
+
+    private boolean shouldRecordPaymentBlacklistFailure(RuntimeException e) {
+        if (e instanceof IllegalArgumentException) {
+            return true;
+        }
+        if (e instanceof ResponseStatusException) {
+            HttpStatus status = ((ResponseStatusException) e).getStatus();
+            return status != null && status.is4xxClientError();
+        }
+        return false;
     }
 }

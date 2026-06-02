@@ -6,6 +6,10 @@
   margin-bottom: 16px;
 }
 
+.support-management__headerControls {
+  justify-content: flex-end;
+}
+
 .support-management__insightBar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 1.2fr) auto;
@@ -1084,6 +1088,11 @@
     width: 100% !important;
   }
 
+  .support-management__headerControls,
+  .support-management__headerControls .ant-input-search {
+    width: 100% !important;
+  }
+
   .support-management__insightBar,
   .support-management__layout {
     grid-template-columns: 1fr;
@@ -1770,4 +1779,21 @@
   overflow-wrap: normal;
   word-break: normal;
   white-space: nowrap;
+}
+
+/* Final mobile/App support-operations touch-target guard */
+@media (max-width: 900px) {
+  .support-management__headerControls .ant-btn,
+  .support-management__headerControls .ant-input-affix-wrapper,
+  .support-management__headerControls .ant-select-selector,
+  .support-management__insightActions .ant-btn,
+  .support-management__workflowActions .ant-btn,
+  .support-management__ticketActions .ant-btn,
+  .support-management__orderWorkflowJump .ant-btn,
+  .support-management__orderWorkflowActions .ant-btn,
+  .support-management__composerActions .ant-btn,
+  .support-management__orderLink.ant-btn,
+  .support-management__quickReplyChip {
+    min-height: 44px;
+  }
 }

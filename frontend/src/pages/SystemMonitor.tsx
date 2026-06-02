@@ -32,7 +32,7 @@ const formatLatency = (ms?: number) => {
   return `${Math.max(0, Math.round(Number(ms) || 0))} ms`;
 };
 
-const statusTag = (status?: string, ready?: boolean) => {
+const statusTag = (status: string | undefined, ready: boolean | undefined, labels: Record<string, string>) => {
   const value = (status || (ready ? 'UP' : 'UNKNOWN')).toUpperCase();
   const colorMap: Record<string, string> = {
     UP: 'green',
@@ -42,16 +42,24 @@ const statusTag = (status?: string, ready?: boolean) => {
     DISABLED: 'default',
     UNKNOWN: 'default',
   };
-  return <Tag color={colorMap[value] || 'default'}>{value}</Tag>;
+  return <Tag color={colorMap[value] || 'default'}>{labels[value] || value}</Tag>;
 };
 
-const readyTag = (ready?: boolean) => (
-  <Tag color={ready ? 'green' : 'red'}>{ready ? 'READY' : 'BLOCKED'}</Tag>
+const readyTag = (ready: boolean | undefined, labels: { ready: string; blocked: string }) => (
+  <Tag color={ready ? 'green' : 'red'}>{ready ? labels.ready : labels.blocked}</Tag>
 );
 
-const booleanTag = (enabled?: boolean) => (
-  <Tag color={enabled ? 'green' : 'default'}>{enabled ? 'ON' : 'OFF'}</Tag>
+const booleanTag = (enabled: boolean | undefined, labels: { on: string; off: string }) => (
+  <Tag color={enabled ? 'green' : 'default'}>{enabled ? labels.on : labels.off}</Tag>
 );
+
+const maskDatabaseUrl = (value?: string) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '-';
+  return raw
+    .replace(/\/\/([^:@/?#;]+):([^@/?#;]+)@/g, '//****:****@')
+    .replace(/([?&;](?:user|username|password|pwd)=)[^;&]+/gi, '$1****');
+};
 
 const renderMessages = (messages?: string[], tone: 'warning' | 'error' = 'warning') => {
   const values = (messages || []).filter(Boolean);
@@ -117,12 +125,28 @@ const SystemMonitor: React.FC = () => {
     hour: t('pages.systemMonitor.hour'),
     minute: t('pages.systemMonitor.minute'),
   }), [t]);
+  const statusLabels = useMemo(() => ({
+    UP: t('pages.systemMonitor.statusValues.UP'),
+    DOWN: t('pages.systemMonitor.statusValues.DOWN'),
+    DEGRADED: t('pages.systemMonitor.statusValues.DEGRADED'),
+    UNAVAILABLE: t('pages.systemMonitor.statusValues.UNAVAILABLE'),
+    DISABLED: t('pages.systemMonitor.statusValues.DISABLED'),
+    UNKNOWN: t('pages.systemMonitor.statusValues.UNKNOWN'),
+  }), [t]);
+  const readyLabels = useMemo(() => ({
+    ready: t('pages.systemMonitor.readyStatus'),
+    blocked: t('pages.systemMonitor.blockedStatus'),
+  }), [t]);
+  const booleanLabels = useMemo(() => ({
+    on: t('pages.systemMonitor.onStatus'),
+    off: t('pages.systemMonitor.offStatus'),
+  }), [t]);
 
   return (
     <div className="system-monitor">
       <div className="system-monitor__hero">
         <div>
-          <Text className="system-monitor__eyebrow">Operations Console</Text>
+          <Text className="system-monitor__eyebrow">{t('pages.systemMonitor.eyebrow')}</Text>
           <Title level={2}>{t('pages.systemMonitor.title')}</Title>
           <Text type="secondary">{t('pages.systemMonitor.description')}</Text>
         </div>
@@ -192,12 +216,12 @@ const SystemMonitor: React.FC = () => {
             <Card title={t('pages.systemMonitor.runtimeEnvironment')} className="system-monitor__card">
               <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} bordered size="small">
                 <Descriptions.Item label={t('pages.systemMonitor.backendStatus')}>
-                  <Space size={6}>{statusTag(status.status, status.ready)}{readyTag(status.ready)}</Space>
+                  <Space size={6}>{statusTag(status.status, status.ready, statusLabels)}{readyTag(status.ready, readyLabels)}</Space>
                 </Descriptions.Item>
                 <Descriptions.Item label={t('pages.systemMonitor.apiAddress')}>{apiBaseUrl}</Descriptions.Item>
                 <Descriptions.Item label={t('pages.systemMonitor.port')}>{status.application.serverPort}</Descriptions.Item>
                 <Descriptions.Item label={t('pages.systemMonitor.mode')}>{status.application.runtimeMode}</Descriptions.Item>
-                <Descriptions.Item label="Profile">
+                <Descriptions.Item label={t('pages.systemMonitor.profile')}>
                   {status.application.profiles?.length ? status.application.profiles.map((profile) => <Tag key={profile}>{profile}</Tag>) : <Tag>default</Tag>}
                 </Descriptions.Item>
                 <Descriptions.Item label="Java">{status.runtime.javaVersion}</Descriptions.Item>
@@ -207,14 +231,14 @@ const SystemMonitor: React.FC = () => {
 
             {productionConfig ? (
               <Card
-                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.productionConfig')} {statusTag(productionConfig.status, productionConfig.ready)}</Space>}
+                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.productionConfig')} {statusTag(productionConfig.status, productionConfig.ready, statusLabels)}</Space>}
                 className="system-monitor__card"
               >
                 <div className="system-monitor__productionConfig">
                   <SafetyCertificateOutlined className="system-monitor__largeIcon" />
                   <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small">
-                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(productionConfig.ready)}</Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(productionConfig.required)}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(productionConfig.ready, readyLabels)}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(productionConfig.required, booleanLabels)}</Descriptions.Item>
                     <Descriptions.Item label={t('pages.systemMonitor.mode')}>{productionConfig.runtimeMode || status.application.runtimeMode}</Descriptions.Item>
                     <Descriptions.Item label={t('pages.systemMonitor.mailAccounts')}>
                       {productionConfig.checks?.mail?.configuredAccountCount ?? '-'}
@@ -238,15 +262,15 @@ const SystemMonitor: React.FC = () => {
 
             <div className="system-monitor__resourceGrid">
               <Card
-                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.database')} {statusTag(status.database.status, status.database.ready)}</Space>}
+                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.database')} {statusTag(status.database.status, status.database.ready, statusLabels)}</Space>}
                 className="system-monitor__card"
               >
                 <Space direction="vertical" className="system-monitor__databaseInfo">
                   <DatabaseOutlined className="system-monitor__largeIcon" />
                   <Descriptions column={1} size="small">
-                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(status.database.ready)}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(status.database.ready, readyLabels)}</Descriptions.Item>
                     <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(status.database.latencyMs)}</Descriptions.Item>
-                    <Descriptions.Item label="URL"><Text copyable>{status.database.url || '-'}</Text></Descriptions.Item>
+                    <Descriptions.Item label="URL"><Text>{maskDatabaseUrl(status.database.url)}</Text></Descriptions.Item>
                     <Descriptions.Item label={t('pages.systemMonitor.driver')}>{status.database.driver || '-'}</Descriptions.Item>
                     {status.database.error ? (
                       <Descriptions.Item label={t('pages.systemMonitor.error')}>{status.database.error}</Descriptions.Item>
@@ -256,12 +280,12 @@ const SystemMonitor: React.FC = () => {
               </Card>
 
               <Card
-                title={<Space className="system-monitor__statusTitle">Redis {statusTag(redisStatus.status, redisStatus.ready)}</Space>}
+                title={<Space className="system-monitor__statusTitle">Redis {statusTag(redisStatus.status, redisStatus.ready, statusLabels)}</Space>}
                 className="system-monitor__card"
               >
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(redisStatus.ready)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(redisStatus.required)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(redisStatus.ready, readyLabels)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(redisStatus.required, booleanLabels)}</Descriptions.Item>
                   <Descriptions.Item label={t('pages.systemMonitor.address')}>{redisStatus.host || '-'}:{redisStatus.port || '-'}</Descriptions.Item>
                   <Descriptions.Item label="DB">{redisStatus.database || '0'}</Descriptions.Item>
                   <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(redisStatus.latencyMs)}</Descriptions.Item>
@@ -273,20 +297,20 @@ const SystemMonitor: React.FC = () => {
               </Card>
 
               <Card
-                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.nacosDiscovery')} {statusTag(status.nacos.status, status.nacos.ready)}</Space>}
+                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.nacosDiscovery')} {statusTag(status.nacos.status, status.nacos.ready, statusLabels)}</Space>}
                 className="system-monitor__card"
               >
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(status.nacos.ready)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(status.nacos.ready, readyLabels)}</Descriptions.Item>
                   <Descriptions.Item label={t('pages.systemMonitor.address')}>{status.nacos.serverAddr || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Namespace">{status.nacos.namespace || 'public'}</Descriptions.Item>
-                  <Descriptions.Item label="Group">{status.nacos.group || 'DEFAULT_GROUP'}</Descriptions.Item>
-                  <Descriptions.Item label="Config">{booleanTag(status.nacos.configEnabled)}</Descriptions.Item>
-                  <Descriptions.Item label="Discovery">
-                    {booleanTag(status.nacos.discoveryEnabled)}
+                  <Descriptions.Item label={t('pages.systemMonitor.namespace')}>{status.nacos.namespace || 'public'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.group')}>{status.nacos.group || 'DEFAULT_GROUP'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.config')}>{booleanTag(status.nacos.configEnabled, booleanLabels)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.discovery')}>
+                    {booleanTag(status.nacos.discoveryEnabled, booleanLabels)}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Register">
-                    {booleanTag(status.nacos.registerEnabled)}
+                  <Descriptions.Item label={t('pages.systemMonitor.register')}>
+                    {booleanTag(status.nacos.registerEnabled, booleanLabels)}
                   </Descriptions.Item>
                   <Descriptions.Item label={t('pages.systemMonitor.serviceStatus')}>{status.nacos.serverStatus || '-'}</Descriptions.Item>
                   <Descriptions.Item label="Data ID">{status.nacos.dataId || '-'}</Descriptions.Item>

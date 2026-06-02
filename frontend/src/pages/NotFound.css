@@ -1,0 +1,23 @@
+.not-found-page {
+  padding: 80px 24px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .not-found-page {
+    padding: 48px 12px;
+  }
+
+  .not-found-page .ant-result-extra {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .not-found-page .ant-result-extra .ant-btn {
+    width: 100%;
+    min-height: 44px;
+    margin-inline: 0;
+    touch-action: manipulation;
+  }
+}

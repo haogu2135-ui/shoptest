@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders } from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { User, UserAdminSummary, Product, Category, Brand, CartItem, Order, OrderItem, Review, DashboardStats, UserAddress, WishlistItem, AppNotification, Payment, AdminPayment, PaymentChannel, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview, ProductQuestion, ProductQuestionAdminSummary, SupportSession, SupportAdminSummary, SupportMessage, Coupon, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhoto, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminReviewPage, AdminOrderBatchShipResponse, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementAdminSummary, MembershipPlan, MembershipStatus } from '../types';
+import { User, UserProfile, UserAdminSummary, AdminUserPage, Product, AdminProductPage, ProductPublic, ProductPublicPage, Category, CategoryPublic, Brand, BrandPublic, CartItem, Order, OrderCustomer, OrderItem, OrderItemCustomer, OrderTrackResult, Review, PublicReview, ReviewableOrder, DashboardStats, UserAddress, WishlistItem, AppNotification, PaymentCustomer, AdminPayment, PaymentChannel, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview, ProductQuestion, ProductQuestionPublic, ProductQuestionAdminSummary, SupportSession, SupportSessionCustomer, SupportAdminSummary, SupportAdminSessionPage, SupportMessage, SupportMessageCustomer, Coupon, CouponPublic, AdminCouponPage, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhotoPublic, AdminPetGalleryPhoto, AdminPetGalleryPage, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminReviewPage, AdminOrderBatchShipResponse, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementPublic, SiteAnnouncementAdminPage, SiteAnnouncementAdminSummary } from '../types';
 import { buildLoginUrl, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { AUTH_SESSION_STORAGE_KEYS, dispatchAuthSessionChanged } from '../utils/authEvents';
 import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
@@ -138,7 +138,6 @@ const normalizeGuestCheckoutItems = (items: Array<{ productId: number; quantity:
         .slice(0, 100);
 
 const normalizeAddressPayload = (address: Partial<UserAddress>) => ({
-    userId: address.userId === undefined ? undefined : normalizePositiveInt(address.userId) || undefined,
     recipientName: normalizeTextParam(address.recipientName, 80),
     phone: normalizeTextParam(address.phone, 30),
     address: normalizeTextParam(address.address, 500),
@@ -236,16 +235,41 @@ const normalizeProductSpecifications = (value: unknown) => {
 const normalizeProductDetailContent = (value: unknown) => {
     if (!Array.isArray(value)) return [];
     const allowedTypes = new Set(['text', 'image', 'video']);
+    const isSafeRichMediaUrl = (rawValue: unknown) => {
+        const url = normalizeTextParam(rawValue, 2048);
+        const normalized = url.toLowerCase();
+        if (
+            !url
+            || url.startsWith('//')
+            || url.includes('\\')
+            || normalized.includes('%00')
+            || normalized.includes('%5c')
+        ) {
+            return '';
+        }
+        if (url.startsWith('/')) return url;
+        try {
+            const parsed = new URL(url);
+            const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+            return isHttp && !parsed.username && !parsed.password ? url : '';
+        } catch {
+            return '';
+        }
+    };
     return value.slice(0, 80).map((block) => {
         const rawBlock = block && typeof block === 'object' ? block as Record<string, unknown> : {};
         const type = normalizeTextParam(rawBlock.type, 20).toLowerCase();
+        const normalizedType = allowedTypes.has(type) ? type : 'text';
+        const mediaUrl = normalizedType === 'image' || normalizedType === 'video'
+            ? isSafeRichMediaUrl(rawBlock.url)
+            : undefined;
         return {
-            type: allowedTypes.has(type) ? type : 'text',
+            type: normalizedType,
             content: normalizeTextParam(rawBlock.content, 5000) || undefined,
-            url: normalizeTextParam(rawBlock.url, 2048) || undefined,
+            url: mediaUrl || undefined,
             caption: normalizeTextParam(rawBlock.caption, 300) || undefined,
         };
-    });
+    }).filter((block) => block.type === 'text' || block.url);
 };
 
 const normalizeProductVariants = (value: unknown) => {
@@ -291,7 +315,7 @@ const normalizeProductPayload = (product: Partial<Product>) => {
 };
 
 type ProductReviewSummary = {
-    reviews: Review[];
+    reviews: PublicReview[];
     averageRating: number;
 };
 
@@ -307,9 +331,11 @@ type AuthSessionResponse = {
 type AuthRetryConfig = AxiosRequestConfig & {
     _authRetry?: boolean;
     _anonymousRetry?: boolean;
+    _transientRetryCount?: number;
     skipAuthRefresh?: boolean;
     skipAuthHeader?: boolean;
     skipAuthRedirect?: boolean;
+    skipTransientRetry?: boolean;
     allowAnonymousRetry?: boolean;
 };
 
@@ -378,24 +404,7 @@ const PUBLIC_GET_PATHS = new Set([
     '/payments/channels',
     '/coupons/public',
     '/pet-gallery',
-    '/orders/track',
-    '/logistics/track',
 ]);
-
-const hasRequestParam = (config: AxiosRequestConfig, name: string) => {
-    const params = config.params;
-    if (params instanceof URLSearchParams) {
-        const value = params.get(name);
-        return value !== null && value !== '';
-    }
-    if (params && typeof params === 'object') {
-        const value = (params as Record<string, unknown>)[name];
-        return value !== undefined && value !== null && String(value) !== '';
-    }
-    const rawUrl = String(config.url || '');
-    const query = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?') + 1) : '';
-    return query ? new URLSearchParams(query).has(name) : false;
-};
 
 const isPublicGetRequest = (config?: AxiosRequestConfig) => {
     if (!config) return false;
@@ -409,11 +418,30 @@ const isPublicGetRequest = (config?: AxiosRequestConfig) => {
         ? gatewayNormalizedUrl.slice(4)
         : gatewayNormalizedUrl;
     const path = normalizedUrl.split(/[?#]/)[0] || '';
-    if (path === '/logistics/track' && hasRequestParam(config, 'orderId')) {
-        return false;
-    }
     if (PUBLIC_GET_PATHS.has(path)) return true;
     return PUBLIC_GET_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+};
+
+const TRANSIENT_RETRY_DELAYS_MS = [320, 900];
+
+const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const isRetryableMethod = (config?: AxiosRequestConfig) => {
+    const method = String(config?.method || 'get').toLowerCase();
+    return method === 'get' || method === 'head' || method === 'options';
+};
+
+const isTransientApiError = (error: AxiosError) => {
+    const status = Number(error.response?.status || 0);
+    if ([429, 500, 502, 503, 504].includes(status)) return true;
+    return !error.response && (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || error.message === 'Network Error');
+};
+
+const shouldRetryTransientError = (error: AxiosError, config?: AuthRetryConfig) => {
+    if (!config || config.skipTransientRetry || config.signal?.aborted) return false;
+    if (!isRetryableMethod(config) || !isTransientApiError(error)) return false;
+    const retryCount = config._transientRetryCount || 0;
+    return retryCount < TRANSIENT_RETRY_DELAYS_MS.length;
 };
 
 const getStoredItem = (key: string) => {
@@ -427,6 +455,16 @@ const removeStoredItems = (keys: string[]) => {
 const setStoredItem = (key: string, value: string) => {
     setLocalStorageItem(key, value);
 };
+
+const userCacheKeyFrom = (userIdValue?: unknown, tokenValue?: unknown) => {
+    const userId = normalizePositiveInt(userIdValue);
+    if (userId) return `user:${userId}`;
+    const token = normalizeTextParam(tokenValue, 2048);
+    if (token) return `token:${token.slice(-24)}`;
+    return 'anonymous';
+};
+
+const currentUserCacheKey = () => userCacheKeyFrom(getStoredItem('userId'), getStoredItem('token'));
 
 export const supportWebSocketUrl = (token: string) => {
     const normalizedToken = normalizeTextParam(token, 2048);
@@ -477,52 +515,54 @@ const ADMIN_ORDER_CACHE_MS = 15_000;
 const ADMIN_REVIEW_CACHE_MS = 20_000;
 const MAX_API_CACHE_ENTRIES = 80;
 const MAX_API_REQUEST_ENTRIES = 80;
-const productListCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
-const productListRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
-const productDetailCache = new Map<number, { expiresAt: number; response: AxiosResponse<Product> }>();
-const productDetailRequests = new Map<number, Promise<AxiosResponse<Product>>>();
-const productByIdsCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
-const productByIdsRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
-const orderTrackCache = new Map<string, { expiresAt: number; response: AxiosResponse<{ order: Order; items: OrderItem[] }> }>();
-const orderTrackRequests = new Map<string, Promise<AxiosResponse<{ order: Order; items: OrderItem[] }>>>();
-const petGalleryCache = new Map<string, { expiresAt: number; response: AxiosResponse<PetGalleryPhoto[]> | AxiosResponse<PetGalleryQuota> }>();
-const petGalleryRequests = new Map<string, Promise<AxiosResponse<PetGalleryPhoto[]> | AxiosResponse<PetGalleryQuota>>>();
+const productListCache = new Map<string, { expiresAt: number; response: AxiosResponse<ProductPublic[]> }>();
+const productListRequests = new Map<string, Promise<AxiosResponse<ProductPublic[]>>>();
+const productPageCache = new Map<string, { expiresAt: number; response: AxiosResponse<ProductPublicPage> }>();
+const productPageRequests = new Map<string, Promise<AxiosResponse<ProductPublicPage>>>();
+const productDetailCache = new Map<number, { expiresAt: number; response: AxiosResponse<ProductPublic> }>();
+const productDetailRequests = new Map<number, Promise<AxiosResponse<ProductPublic>>>();
+const productByIdsCache = new Map<string, { expiresAt: number; response: AxiosResponse<ProductPublic[]> }>();
+const productByIdsRequests = new Map<string, Promise<AxiosResponse<ProductPublic[]>>>();
+const orderTrackCache = new Map<string, { expiresAt: number; response: AxiosResponse<OrderTrackResult> }>();
+const orderTrackRequests = new Map<string, Promise<AxiosResponse<OrderTrackResult>>>();
+const petGalleryCache = new Map<string, { expiresAt: number; response: AxiosResponse<PetGalleryPhotoPublic[]> | AxiosResponse<PetGalleryQuota> }>();
+const petGalleryRequests = new Map<string, Promise<AxiosResponse<PetGalleryPhotoPublic[]> | AxiosResponse<PetGalleryQuota>>>();
 const petProfileCache = new Map<string, { expiresAt: number; response: AxiosResponse<PetProfile[]> }>();
 const petProfileRequests = new Map<string, Promise<AxiosResponse<PetProfile[]>>>();
 const notificationCache = new Map<string, { expiresAt: number; response: AxiosResponse<AppNotification[]> | AxiosResponse<{ count: number }> }>();
 const notificationRequests = new Map<string, Promise<AxiosResponse<AppNotification[]> | AxiosResponse<{ count: number }>>>();
-const personalizedRecommendationCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
-const personalizedRecommendationRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
-const productAddOnCache = new Map<string, { expiresAt: number; response: AxiosResponse<Product[]> }>();
-const productAddOnRequests = new Map<string, Promise<AxiosResponse<Product[]>>>();
-const productRecommendationsCache = new Map<number, { expiresAt: number; response: AxiosResponse<Product[]> }>();
-const productRecommendationsRequests = new Map<number, Promise<AxiosResponse<Product[]>>>();
-const publicCouponCache = new Map<string, { expiresAt: number; response: AxiosResponse<Coupon[]> }>();
-const publicCouponRequests = new Map<string, Promise<AxiosResponse<Coupon[]>>>();
+const personalizedRecommendationCache = new Map<string, { expiresAt: number; response: AxiosResponse<ProductPublic[]> }>();
+const personalizedRecommendationRequests = new Map<string, Promise<AxiosResponse<ProductPublic[]>>>();
+const productAddOnCache = new Map<string, { expiresAt: number; response: AxiosResponse<ProductPublic[]> }>();
+const productAddOnRequests = new Map<string, Promise<AxiosResponse<ProductPublic[]>>>();
+const productRecommendationsCache = new Map<number, { expiresAt: number; response: AxiosResponse<ProductPublic[]> }>();
+const productRecommendationsRequests = new Map<number, Promise<AxiosResponse<ProductPublic[]>>>();
+const publicCouponCache = new Map<string, { expiresAt: number; response: AxiosResponse<CouponPublic[]> }>();
+const publicCouponRequests = new Map<string, Promise<AxiosResponse<CouponPublic[]>>>();
 const userCouponCache = new Map<string, { expiresAt: number; response: AxiosResponse<UserCoupon[]> }>();
 const userCouponRequests = new Map<string, Promise<AxiosResponse<UserCoupon[]>>>();
 const addressCache = new Map<string, { expiresAt: number; response: AxiosResponse<UserAddress> | AxiosResponse<UserAddress[]> }>();
 const addressRequests = new Map<string, Promise<AxiosResponse<UserAddress> | AxiosResponse<UserAddress[]>>>();
-const orderItemsCache = new Map<string, { expiresAt: number; response: AxiosResponse<OrderItem[]> }>();
-const orderItemsRequests = new Map<string, Promise<AxiosResponse<OrderItem[]>>>();
+const orderItemsCache = new Map<string, { expiresAt: number; response: AxiosResponse<OrderItemCustomer[]> }>();
+const orderItemsRequests = new Map<string, Promise<AxiosResponse<OrderItemCustomer[]>>>();
 const logisticsTrackCache = new Map<string, { expiresAt: number; response: AxiosResponse<LogisticsTrackResponse> }>();
 const logisticsTrackRequests = new Map<string, Promise<AxiosResponse<LogisticsTrackResponse>>>();
 const reviewCache = new Map<number, { expiresAt: number; response: AxiosResponse<ProductReviewSummary> }>();
 const reviewRequests = new Map<number, Promise<AxiosResponse<ProductReviewSummary>>>();
-const questionCache = new Map<number, { expiresAt: number; response: AxiosResponse<ProductQuestion[]> }>();
-const questionRequests = new Map<number, Promise<AxiosResponse<ProductQuestion[]>>>();
+const questionCache = new Map<number, { expiresAt: number; response: AxiosResponse<ProductQuestionPublic[]> }>();
+const questionRequests = new Map<number, Promise<AxiosResponse<ProductQuestionPublic[]>>>();
 const logisticsCarrierCache = new Map<string, { expiresAt: number; response: AxiosResponse<LogisticsCarrier[]> }>();
 const logisticsCarrierRequests = new Map<string, Promise<AxiosResponse<LogisticsCarrier[]>>>();
-const categoryCache = new Map<string, { expiresAt: number; response: AxiosResponse<Category[]> }>();
-const categoryRequests = new Map<string, Promise<AxiosResponse<Category[]>>>();
-const brandCache = new Map<string, { expiresAt: number; response: AxiosResponse<Brand[]> }>();
-const brandRequests = new Map<string, Promise<AxiosResponse<Brand[]>>>();
+const categoryCache = new Map<string, { expiresAt: number; response: AxiosResponse<CategoryPublic[]> }>();
+const categoryRequests = new Map<string, Promise<AxiosResponse<CategoryPublic[]>>>();
+const brandCache = new Map<string, { expiresAt: number; response: AxiosResponse<BrandPublic[]> }>();
+const brandRequests = new Map<string, Promise<AxiosResponse<BrandPublic[]>>>();
 const adminRoleCache = new Map<string, { expiresAt: number; response: AxiosResponse<AdminRole[]> }>();
 const adminRoleRequests = new Map<string, Promise<AxiosResponse<AdminRole[]>>>();
-const adminUserCache = new Map<string, { expiresAt: number; response: AxiosResponse<User[]> }>();
-const adminUserRequests = new Map<string, Promise<AxiosResponse<User[]>>>();
-const adminOrderCache = new Map<string, { expiresAt: number; response: AxiosResponse<Order[]> | AxiosResponse<AdminOrderPage> }>();
-const adminOrderRequests = new Map<string, Promise<AxiosResponse<Order[]> | AxiosResponse<AdminOrderPage>>>();
+const adminUserCache = new Map<string, { expiresAt: number; response: AxiosResponse<AdminUserPage> }>();
+const adminUserRequests = new Map<string, Promise<AxiosResponse<AdminUserPage>>>();
+const adminOrderCache = new Map<string, { expiresAt: number; response: AxiosResponse<AdminOrderPage> }>();
+const adminOrderRequests = new Map<string, Promise<AxiosResponse<AdminOrderPage>>>();
 const adminReviewCache = new Map<string, { expiresAt: number; response: AxiosResponse<AdminReviewPage> }>();
 const adminReviewRequests = new Map<string, Promise<AxiosResponse<AdminReviewPage>>>();
 const adminQuestionCache = new Map<string, { expiresAt: number; response: AxiosResponse<ProductQuestion[]> }>();
@@ -610,7 +650,8 @@ const withArrayData = <T,>(response: AxiosResponse<T[]>): AxiosResponse<T[]> => 
 const parseMaybeJson = (value: unknown) => {
     if (typeof value !== 'string') return value;
     const text = value.trim();
-    if (!text || !/^[\[{]/.test(text)) return value;
+    const firstChar = text[0];
+    if (!text || (firstChar !== '{' && firstChar !== '[')) return value;
     try {
         return JSON.parse(text);
     } catch {
@@ -618,7 +659,7 @@ const parseMaybeJson = (value: unknown) => {
     }
 };
 
-const normalizeProductImages = (product: Product) => {
+const normalizeProductImages = (product: Partial<ProductPublic>) => {
     const rawImages = parseMaybeJson((product as any).images);
     const images = Array.isArray(rawImages)
         ? rawImages.map(String).map((image) => image.trim()).filter(Boolean)
@@ -637,42 +678,123 @@ const normalizeProductListField = <T,>(value: unknown): T[] => {
     return Array.isArray(parsed) ? parsed as T[] : [];
 };
 
-const normalizeProductPageData = (data: unknown): Product[] => {
+const normalizeProductOptionGroups = (value: unknown) =>
+    normalizeProductListField<Record<string, unknown>>(value)
+        .map((group) => {
+            const name = normalizeTextParam(group?.name, 80);
+            const values = Array.isArray(group?.values)
+                ? normalizeStringListParam(group.values, 40, 120)
+                : normalizeStringListParam((group as any)?.options, 40, 120);
+            return { name, values, options: values };
+        })
+        .filter((group) => group.name && group.values.length > 0);
+
+const normalizeProductPageData = <T extends ProductPublic>(data: unknown): T[] => {
     if (Array.isArray(data)) return data.map(normalizeProduct);
     const content = (data as { content?: unknown; items?: unknown })?.content
         ?? (data as { items?: unknown })?.items;
     return Array.isArray(content) ? content.map(normalizeProduct) : [];
 };
 
-const normalizeProduct = (product: Product): Product => ({
+const normalizeProduct = <T extends ProductPublic>(product: T): T => ({
     ...product,
     images: normalizeProductImages(product),
     imageUrl: (typeof product.imageUrl === 'string' && product.imageUrl.trim()) || normalizeProductImages(product)[0] || '',
     specifications: normalizeProductMap((product as any).specifications),
     detailContent: normalizeProductListField((product as any).detailContent),
     variants: normalizeProductListField((product as any).variants),
-    optionGroups: normalizeProductListField((product as any).optionGroups),
+    optionGroups: normalizeProductOptionGroups((product as any).optionGroups),
     bundle: product.bundle && typeof product.bundle === 'object' ? product.bundle : null,
     localizedContent: product.localizedContent && typeof product.localizedContent === 'object' ? product.localizedContent : null,
-});
+} as T);
 
-const withProductArrayData = (response: AxiosResponse<Product[]>): AxiosResponse<Product[]> => ({
+const withProductArrayData = <T extends ProductPublic>(response: AxiosResponse<T[] | ProductPublicPage>): AxiosResponse<T[]> => ({
     ...response,
-    data: normalizeProductPageData(response.data),
+    data: normalizeProductPageData<T>(response.data),
 });
 
-const cacheProductDetailFromList = (response: AxiosResponse<Product[]>) => {
+const normalizeProductPublicPageResponse = (response: AxiosResponse<ProductPublicPage | ProductPublic[]>): AxiosResponse<ProductPublicPage> => {
+    const raw = response.data as ProductPublicPage | ProductPublic[] | Record<string, unknown>;
+    const items = normalizeProductPageData<ProductPublic>(raw);
+    const rawPage = Array.isArray(raw) ? undefined : Number((raw as ProductPublicPage).page);
+    const rawSize = Array.isArray(raw) ? undefined : Number((raw as ProductPublicPage).size);
+    const page = typeof rawPage === 'number' && Number.isFinite(rawPage) && rawPage >= 0 ? rawPage : 0;
+    const size = typeof rawSize === 'number' && Number.isFinite(rawSize) && rawSize > 0 ? rawSize : Math.max(1, items.length);
+    const rawTotal = Array.isArray(raw)
+        ? items.length
+        : Number((raw as ProductPublicPage).total ?? (raw as any).totalElements ?? items.length);
+    const total = Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length;
+    const rawTotalPages = Array.isArray(raw) ? undefined : Number((raw as ProductPublicPage).totalPages);
+    const totalPages = typeof rawTotalPages === 'number' && Number.isFinite(rawTotalPages) && rawTotalPages >= 0
+        ? rawTotalPages
+        : (total === 0 ? 0 : Math.ceil(total / size));
+    const hasNext = Array.isArray(raw)
+        ? page + 1 < totalPages
+        : Boolean((raw as ProductPublicPage).hasNext ?? page + 1 < totalPages);
+    const hasPrevious = Array.isArray(raw)
+        ? page > 0
+        : Boolean((raw as ProductPublicPage).hasPrevious ?? page > 0);
+    return {
+        ...response,
+        data: {
+            items,
+            total,
+            page,
+            size,
+            totalPages,
+            hasNext,
+            hasPrevious,
+        },
+    } as AxiosResponse<ProductPublicPage>;
+};
+
+const normalizeProductAdminPageResponse = (response: AxiosResponse<AdminProductPage | Product[]>): AxiosResponse<AdminProductPage> => {
+    const raw = response.data as AdminProductPage | Product[] | Record<string, unknown>;
+    const items = normalizeProductPageData<Product>(raw);
+    const rawPage = Array.isArray(raw) ? undefined : Number((raw as AdminProductPage).page);
+    const rawSize = Array.isArray(raw) ? undefined : Number((raw as AdminProductPage).size);
+    const page = typeof rawPage === 'number' && Number.isFinite(rawPage) && rawPage >= 0 ? rawPage : 0;
+    const size = typeof rawSize === 'number' && Number.isFinite(rawSize) && rawSize > 0 ? rawSize : Math.max(1, items.length);
+    const rawTotal = Array.isArray(raw)
+        ? items.length
+        : Number((raw as AdminProductPage).total ?? (raw as any).totalElements ?? items.length);
+    const total = Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length;
+    const rawTotalPages = Array.isArray(raw) ? undefined : Number((raw as AdminProductPage).totalPages);
+    const totalPages = typeof rawTotalPages === 'number' && Number.isFinite(rawTotalPages) && rawTotalPages >= 0
+        ? rawTotalPages
+        : (total === 0 ? 0 : Math.ceil(total / size));
+    const hasNext = Array.isArray(raw)
+        ? page + 1 < totalPages
+        : Boolean((raw as AdminProductPage).hasNext ?? page + 1 < totalPages);
+    const hasPrevious = Array.isArray(raw)
+        ? page > 0
+        : Boolean((raw as AdminProductPage).hasPrevious ?? page > 0);
+    return {
+        ...response,
+        data: {
+            items,
+            total,
+            page,
+            size,
+            totalPages,
+            hasNext,
+            hasPrevious,
+        },
+    } as AxiosResponse<AdminProductPage>;
+};
+
+const cacheProductDetailFromList = (response: AxiosResponse<ProductPublic[]>) => {
     const expiresAt = Date.now() + PRODUCT_DETAIL_CACHE_MS;
     response.data.forEach((product) => {
         if (!product.id) return;
         setTimedCacheEntry(productDetailCache, product.id, {
-            response: { ...response, data: product } as unknown as AxiosResponse<Product>,
+            response: { ...response, data: product } as unknown as AxiosResponse<ProductPublic>,
             expiresAt,
         });
     });
 };
 
-const cacheProductListResponse = (cacheKey: string, response: AxiosResponse<Product[]>, ttlMs = PRODUCT_LIST_CACHE_MS) => {
+const cacheProductListResponse = (cacheKey: string, response: AxiosResponse<ProductPublic[]>, ttlMs = PRODUCT_LIST_CACHE_MS) => {
     setTimedCacheEntry(productListCache, cacheKey, {
         response,
         expiresAt: Date.now() + ttlMs,
@@ -680,9 +802,12 @@ const cacheProductListResponse = (cacheKey: string, response: AxiosResponse<Prod
     cacheProductDetailFromList(response);
 };
 
-const getFreshProductListCache = (cacheKey: string) => {
-    const cached = productListCache.get(cacheKey);
-    return cached && cached.expiresAt > Date.now() ? cached : null;
+const cacheProductPageResponse = (cacheKey: string, response: AxiosResponse<ProductPublicPage>, ttlMs = PRODUCT_LIST_CACHE_MS) => {
+    setTimedCacheEntry(productPageCache, cacheKey, {
+        response,
+        expiresAt: Date.now() + ttlMs,
+    });
+    cacheProductDetailFromList({ ...response, data: response.data.items } as AxiosResponse<ProductPublic[]>);
 };
 
 export const appConfigApi = {
@@ -707,7 +832,7 @@ export const appConfigApi = {
 };
 
 export const announcementApi = {
-    getActive: (limit = 5, options?: ApiRequestOptions) => api.get<SiteAnnouncement[]>('/announcements/active', anonymousGetConfig({ params: { limit: normalizeBoundedPositiveInt(limit, 5, 10) } }, options)).then(withArrayData),
+    getActive: (limit = 5, options?: ApiRequestOptions) => api.get<SiteAnnouncementPublic[]>('/announcements/active', anonymousGetConfig({ params: { limit: normalizeBoundedPositiveInt(limit, 5, 10) } }, options)).then(withArrayData),
 };
 
 const clearProductListCache = () => {
@@ -761,7 +886,7 @@ const clearNotificationCache = (userId?: number) => {
         notificationRequests.clear();
         return;
     }
-    [`list:${userId}`, `unread:${userId}`].forEach((key) => {
+    [`list:user:${userId}`, `unread:user:${userId}`, `list:${userId}`, `unread:${userId}`].forEach((key) => {
         notificationCache.delete(key);
         notificationRequests.delete(key);
     });
@@ -861,10 +986,208 @@ const clearAdminReviewCache = () => {
     clearAdminDashboardCache();
 };
 
+const normalizeAdminReviewPageResponse = (response: AxiosResponse<AdminReviewPage | Review[]>): AxiosResponse<AdminReviewPage> => {
+    if (Array.isArray(response.data)) {
+        return {
+            ...response,
+            data: {
+                items: response.data,
+                total: response.data.length,
+                page: 1,
+                size: response.data.length,
+                totalPages: response.data.length ? 1 : 0,
+            },
+        };
+    }
+    return {
+        ...response,
+        data: {
+            ...response.data,
+            items: Array.isArray(response.data?.items) ? response.data.items : [],
+            total: Number(response.data?.total || 0),
+            page: Number(response.data?.page || 1),
+            size: Number(response.data?.size || 20),
+            totalPages: Number(response.data?.totalPages || 0),
+            summary: response.data?.summary || {},
+        },
+    };
+};
+
+const normalizeAdminCouponPageResponse = (response: AxiosResponse<AdminCouponPage | Coupon[]>): AxiosResponse<AdminCouponPage> => {
+    if (Array.isArray(response.data)) {
+        const items = response.data;
+        response.data = {
+            items,
+            total: items.length,
+            page: 1,
+            size: Math.max(1, items.length || 20),
+            totalPages: items.length ? 1 : 0,
+        };
+        return response as AxiosResponse<AdminCouponPage>;
+    }
+    const items = Array.isArray(response.data?.items) ? response.data.items : [];
+    const total = Number(response.data?.total ?? items.length);
+    const page = Number(response.data?.page || 1);
+    const size = Number(response.data?.size || Math.max(1, items.length || 20));
+    const totalPages = Number(response.data?.totalPages ?? (total > 0 ? Math.ceil(total / size) : 0));
+    response.data = {
+        ...response.data,
+        items,
+        total: Number.isFinite(total) && total >= 0 ? total : items.length,
+        page: Number.isFinite(page) && page > 0 ? page : 1,
+        size: Number.isFinite(size) && size > 0 ? size : 20,
+        totalPages: Number.isFinite(totalPages) && totalPages >= 0 ? totalPages : 0,
+    };
+    return response as AxiosResponse<AdminCouponPage>;
+};
+
+const normalizeAdminPetGalleryPageResponse = (response: AxiosResponse<AdminPetGalleryPage | AdminPetGalleryPhoto[]>): AxiosResponse<AdminPetGalleryPage> => {
+    if (Array.isArray(response.data)) {
+        return {
+            ...response,
+            data: {
+                items: response.data,
+                total: response.data.length,
+                page: 1,
+                size: response.data.length,
+                totalPages: response.data.length ? 1 : 0,
+                summary: {
+                    visiblePhotos: response.data.length,
+                    userUploads: response.data.filter((photo) => (photo.source || 'USER_UPLOAD') === 'USER_UPLOAD').length,
+                    seedPhotos: response.data.filter((photo) => photo.source === 'SEED').length,
+                },
+            },
+        };
+    }
+    return {
+        ...response,
+        data: {
+            ...response.data,
+            items: Array.isArray(response.data?.items) ? response.data.items : [],
+            total: Number(response.data?.total || 0),
+            page: Number(response.data?.page || 1),
+            size: Number(response.data?.size || 12),
+            totalPages: Number(response.data?.totalPages || 0),
+            summary: response.data?.summary || {},
+        },
+    };
+};
+
+const normalizeAdminUserPageResponse = (response: AxiosResponse<AdminUserPage | User[]>): AxiosResponse<AdminUserPage> => {
+    if (Array.isArray(response.data)) {
+        const items = response.data;
+        response.data = {
+            items,
+            total: items.length,
+            page: 1,
+            size: Math.max(1, items.length || 20),
+            totalPages: items.length ? 1 : 0,
+        };
+        return response as AxiosResponse<AdminUserPage>;
+    }
+    response.data = {
+        items: Array.isArray(response.data?.items) ? response.data.items : [],
+        total: Number(response.data?.total || 0),
+        page: Number(response.data?.page || 1),
+        size: Number(response.data?.size || 20),
+        totalPages: Number(response.data?.totalPages || 0),
+    };
+    return response as AxiosResponse<AdminUserPage>;
+};
+
+const normalizeSiteAnnouncementPageResponse = (
+    response: AxiosResponse<SiteAnnouncementAdminPage | SiteAnnouncement[]>
+): AxiosResponse<SiteAnnouncementAdminPage> => {
+    if (Array.isArray(response.data)) {
+        const items = response.data;
+        response.data = {
+            items,
+            total: items.length,
+            page: 1,
+            size: Math.max(1, items.length || 20),
+            totalPages: items.length ? 1 : 0,
+            hasNext: false,
+            hasPrevious: false,
+        };
+        return response as AxiosResponse<SiteAnnouncementAdminPage>;
+    }
+    const items = Array.isArray(response.data?.items) ? response.data.items : [];
+    const total = Number(response.data?.total ?? items.length);
+    const page = Number(response.data?.page || 1);
+    const size = Number(response.data?.size || Math.max(1, items.length || 20));
+    const totalPages = Number(response.data?.totalPages ?? (total > 0 ? Math.ceil(total / size) : 0));
+    response.data = {
+        ...response.data,
+        items,
+        total: Number.isFinite(total) && total >= 0 ? total : items.length,
+        page: Number.isFinite(page) && page > 0 ? page : 1,
+        size: Number.isFinite(size) && size > 0 ? size : 20,
+        totalPages: Number.isFinite(totalPages) && totalPages >= 0 ? totalPages : 0,
+        hasNext: Boolean(response.data?.hasNext ?? page < totalPages),
+        hasPrevious: Boolean(response.data?.hasPrevious ?? page > 1),
+    };
+    return response as AxiosResponse<SiteAnnouncementAdminPage>;
+};
+
+const normalizeAdminSupportSessionPageResponse = (
+    response: AxiosResponse<SupportAdminSessionPage | SupportSession[]>
+): AxiosResponse<SupportAdminSessionPage> => {
+    if (Array.isArray(response.data)) {
+        const items = response.data;
+        response.data = {
+            items,
+            total: items.length,
+            page: 1,
+            size: Math.max(1, items.length || 20),
+            totalPages: items.length ? 1 : 0,
+            hasNext: false,
+            hasPrevious: false,
+        };
+        return response as AxiosResponse<SupportAdminSessionPage>;
+    }
+    const items = Array.isArray(response.data?.items) ? response.data.items : [];
+    const total = Number(response.data?.total ?? items.length);
+    const page = Number(response.data?.page || 1);
+    const size = Number(response.data?.size || Math.max(1, items.length || 20));
+    const totalPages = Number(response.data?.totalPages ?? (total > 0 ? Math.ceil(total / size) : 0));
+    response.data = {
+        ...response.data,
+        items,
+        total: Number.isFinite(total) && total >= 0 ? total : items.length,
+        page: Number.isFinite(page) && page > 0 ? page : 1,
+        size: Number.isFinite(size) && size > 0 ? size : 20,
+        totalPages: Number.isFinite(totalPages) && totalPages >= 0 ? totalPages : 0,
+        hasNext: Boolean(response.data?.hasNext ?? page < totalPages),
+        hasPrevious: Boolean(response.data?.hasPrevious ?? page > 1),
+    };
+    return response as AxiosResponse<SupportAdminSessionPage>;
+};
+
 const clearAdminQuestionCache = () => {
     adminQuestionCache.clear();
     adminQuestionRequests.clear();
     clearAdminDashboardCache();
+};
+
+const clearUserScopedCaches = () => {
+    clearAdminPermissionsCache();
+    clearAdminDashboardCache();
+    clearAdminRoleCache();
+    clearAdminUserCache();
+    clearAdminOrderCache();
+    clearAdminReviewCache();
+    clearAdminQuestionCache();
+    clearPetProfileCache();
+    clearPersonalizedRecommendationCache();
+    clearNotificationCache();
+    clearCouponCache();
+    clearAddressCache();
+    clearOrderItemsCache();
+    clearPetGalleryCache();
+    clearReviewCache();
+    clearOrderTrackCache();
+    logisticsTrackCache.clear();
+    logisticsTrackRequests.clear();
 };
 
 export const clearAdminPermissionsCache = () => {
@@ -876,12 +1199,11 @@ let refreshTokenRequest: Promise<string | null> | null = null;
 
 const clearAuthSession = () => {
     removeStoredItems(AUTH_SESSION_STORAGE_KEYS);
-    clearAdminPermissionsCache();
-    clearPetProfileCache();
-    clearPersonalizedRecommendationCache();
-    clearNotificationCache();
+    clearUserScopedCaches();
     dispatchAuthSessionChanged();
 };
+
+export const clearStoredAuthSession = clearAuthSession;
 
 const redirectToLogin = () => {
     if (window.location.pathname !== '/login') {
@@ -894,7 +1216,18 @@ export const persistAuthSession = (data: AuthSessionResponse) => {
     const refreshToken = normalizeTextParam(data?.refreshToken, 512);
     if (!token || !refreshToken) return null;
 
-    removeStoredItems(['adminDefaultPath']);
+    const currentScope = currentUserCacheKey();
+    const nextScope = userCacheKeyFrom(data.id, token);
+    const currentRole = normalizeTextParam(getStoredItem('role'), 80);
+    const nextRole = getEffectiveRole(data.role, data.roleCode);
+    const shouldClearUserCaches = currentScope !== nextScope || (nextRole && currentRole !== nextRole);
+    if (shouldClearUserCaches) {
+        clearUserScopedCaches();
+        removeStoredItems(AUTH_SESSION_STORAGE_KEYS);
+    } else {
+        clearAdminPermissionsCache();
+        removeStoredItems(AUTH_SESSION_STORAGE_KEYS.filter((key) => key !== 'adminDefaultPath'));
+    }
     setStoredItem('token', token);
     setStoredItem('refreshToken', refreshToken);
     if (data.id !== undefined && data.id !== null) {
@@ -904,9 +1237,8 @@ export const persistAuthSession = (data: AuthSessionResponse) => {
     if (username) {
         setStoredItem('username', username);
     }
-    const effectiveRole = getEffectiveRole(data.role, data.roleCode);
-    if (effectiveRole) {
-        setStoredItem('role', effectiveRole);
+    if (nextRole) {
+        setStoredItem('role', nextRole);
     }
     dispatchAuthSessionChanged();
     return token;
@@ -973,8 +1305,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
+        const originalRequest = error.config as AuthRetryConfig | undefined;
+        if (originalRequest && shouldRetryTransientError(error, originalRequest)) {
+            originalRequest._transientRetryCount = (originalRequest._transientRetryCount || 0) + 1;
+            await sleep(TRANSIENT_RETRY_DELAYS_MS[originalRequest._transientRetryCount - 1]);
+            return api.request(originalRequest);
+        }
         if (error.response?.status === 401 || error.response?.status === 403) {
-            const originalRequest = error.config as AuthRetryConfig | undefined;
             if (originalRequest && (originalRequest.allowAnonymousRetry || isPublicGetRequest(originalRequest)) && !originalRequest._anonymousRetry) {
                 originalRequest._anonymousRetry = true;
                 removeAuthorizationHeader(originalRequest);
@@ -1006,15 +1343,17 @@ api.interceptors.response.use(
 
 // 用户相关 API
 export const userApi = {
-    register: (user: Partial<User>) => api.post('/auth/register', {
+    register: (user: Partial<User> & { emailCode?: string }) => api.post('/auth/register', {
         username: normalizeLoginParam(user.username, 50),
         email: normalizeEmailParam(user.email) || '',
         phone: normalizePhoneParam(user.phone, 20),
         password: String(user.password || ''),
+        emailCode: normalizeEmailCodeParam(user.emailCode),
     }, anonymousRequestConfig()),
     login: (username: string, password: string) =>
         api.post('/auth/login', { username: normalizeLoginParam(username, 120), password }, anonymousRequestConfig()),
     sendEmailLoginCode: (email: string) => api.post('/auth/email-code', { email: normalizeEmailParam(email) || '' }, anonymousRequestConfig()),
+    sendPasswordResetCode: (email: string) => api.post('/auth/password-reset-code', { email: normalizeEmailParam(email) || '' }, anonymousRequestConfig()),
     emailLogin: (email: string, code: string) =>
         api.post('/auth/email-login', { email: normalizeEmailParam(email) || '', code: normalizeEmailCodeParam(code) }, anonymousRequestConfig()),
     logout: (refreshToken?: string | null) => api.post('/auth/logout', {
@@ -1027,7 +1366,7 @@ export const userApi = {
             code: normalizeEmailCodeParam(payload.code),
             newPassword: String(payload.newPassword || ''),
         }, anonymousRequestConfig()),
-    getProfile: () => api.get<User>('/users/profile'),
+    getProfile: () => api.get<UserProfile>('/users/profile'),
     sendProfileEmailCode: (email: string) => api.post('/users/profile/email-code', { email: normalizeEmailParam(email) || '' }),
     updateProfile: (user: Partial<User> & { emailCode?: string }) => api.put('/users/profile', {
         email: normalizeEmailParam(user.email) || '',
@@ -1038,28 +1377,90 @@ export const userApi = {
         api.put('/users/password', { oldPassword, newPassword })
 };
 
+type ProductListFilters = {
+    minPrice?: number;
+    maxPrice?: number;
+    petSizes?: string[];
+    materials?: string[];
+    colors?: string[];
+    collection?: string;
+    sort?: string;
+    page?: number;
+    size?: number;
+};
+
 // 商品相关 API
 export const productApi = {
-    getAll: (keyword?: string, categoryId?: number, discount?: boolean, options?: ApiRequestOptions) => {
+    getAll: (keyword?: string, categoryId?: number, discount?: boolean, filters?: ProductListFilters, options?: ApiRequestOptions) => {
         const normalizedKeyword = normalizeTextParam(keyword, 120);
         const normalizedCategoryId = normalizePositiveInt(categoryId);
+        const normalizedPetSizes = normalizeStringListParam(filters?.petSizes, 12, 40);
+        const normalizedMaterials = normalizeStringListParam(filters?.materials, 12, 40);
+        const normalizedColors = normalizeStringListParam(filters?.colors, 12, 40);
+        const normalizedCollection = normalizeTextParam(filters?.collection, 40);
+        const normalizedMinPrice = filters?.minPrice == null ? undefined : normalizeNonNegativeNumberParam(filters.minPrice);
+        const normalizedMaxPrice = filters?.maxPrice == null ? undefined : normalizeNonNegativeNumberParam(filters.maxPrice);
+        const normalizedSort = normalizeTextParam(filters?.sort, 80);
+        const normalizedPage = filters?.page == null ? undefined : normalizeNonNegativeIntParam(filters.page, 0, 1_000_000);
+        const normalizedSize = filters?.size == null ? undefined : normalizeBoundedPositiveInt(filters.size, 50, 500);
         const params = new URLSearchParams();
         if (normalizedKeyword) params.append('keyword', normalizedKeyword);
         if (normalizedCategoryId) params.append('categoryId', normalizedCategoryId.toString());
         if (discount) params.append('discount', 'true');
+        if (normalizedMinPrice !== undefined) params.append('minPrice', String(normalizedMinPrice));
+        if (normalizedMaxPrice !== undefined) params.append('maxPrice', String(normalizedMaxPrice));
+        normalizedPetSizes.forEach((value) => params.append('petSize', value));
+        normalizedMaterials.forEach((value) => params.append('material', value));
+        normalizedColors.forEach((value) => params.append('color', value));
+        if (normalizedCollection) params.append('collection', normalizedCollection);
+        if (normalizedSort) params.append('sort', normalizedSort);
+        if (normalizedPage !== undefined) params.append('page', String(normalizedPage));
+        if (normalizedSize !== undefined) params.append('size', String(normalizedSize));
         const query = params.toString();
         const cacheKey = query || '__all__';
         return cachedTypedGet(productListCache, productListRequests, cacheKey, () =>
-            api.get<Product[]>('/products', anonymousGetConfig({
-                params: {
-                    ...(normalizedKeyword ? { keyword: normalizedKeyword } : {}),
-                    ...(normalizedCategoryId ? { categoryId: normalizedCategoryId } : {}),
-                    ...(discount ? { discount: true } : {}),
-                },
+            api.get<ProductPublicPage | ProductPublic[]>('/products', anonymousGetConfig({
+                params,
             }, options))
                 .then((response) => {
                     const normalized = withProductArrayData(response);
                     cacheProductListResponse(cacheKey, normalized);
+                    return normalized;
+                }), options);
+    },
+    getPage: (keyword?: string, categoryId?: number, discount?: boolean, filters?: ProductListFilters, options?: ApiRequestOptions) => {
+        const normalizedKeyword = normalizeTextParam(keyword, 120);
+        const normalizedCategoryId = normalizePositiveInt(categoryId);
+        const normalizedPetSizes = normalizeStringListParam(filters?.petSizes, 12, 40);
+        const normalizedMaterials = normalizeStringListParam(filters?.materials, 12, 40);
+        const normalizedColors = normalizeStringListParam(filters?.colors, 12, 40);
+        const normalizedCollection = normalizeTextParam(filters?.collection, 40);
+        const normalizedMinPrice = filters?.minPrice == null ? undefined : normalizeNonNegativeNumberParam(filters.minPrice);
+        const normalizedMaxPrice = filters?.maxPrice == null ? undefined : normalizeNonNegativeNumberParam(filters.maxPrice);
+        const normalizedSort = normalizeTextParam(filters?.sort, 80);
+        const normalizedPage = filters?.page == null ? 0 : normalizeNonNegativeIntParam(filters.page, 0, 1_000_000);
+        const normalizedSize = filters?.size == null ? 12 : normalizeBoundedPositiveInt(filters.size, 12, 500);
+        const params = new URLSearchParams();
+        if (normalizedKeyword) params.append('keyword', normalizedKeyword);
+        if (normalizedCategoryId) params.append('categoryId', normalizedCategoryId.toString());
+        if (discount) params.append('discount', 'true');
+        if (normalizedMinPrice !== undefined) params.append('minPrice', String(normalizedMinPrice));
+        if (normalizedMaxPrice !== undefined) params.append('maxPrice', String(normalizedMaxPrice));
+        normalizedPetSizes.forEach((value) => params.append('petSize', value));
+        normalizedMaterials.forEach((value) => params.append('material', value));
+        normalizedColors.forEach((value) => params.append('color', value));
+        if (normalizedCollection) params.append('collection', normalizedCollection);
+        if (normalizedSort) params.append('sort', normalizedSort);
+        params.append('page', String(normalizedPage));
+        params.append('size', String(normalizedSize));
+        const cacheKey = params.toString();
+        return cachedTypedGet(productPageCache, productPageRequests, cacheKey, () =>
+            api.get<ProductPublicPage | ProductPublic[]>('/products', anonymousGetConfig({
+                params,
+            }, options))
+                .then((response) => {
+                    const normalized = normalizeProductPublicPageResponse(response);
+                    cacheProductPageResponse(cacheKey, normalized);
                     return normalized;
                 }), options);
     },
@@ -1071,7 +1472,7 @@ export const productApi = {
         normalizedKeywords.forEach((keyword) => params.append('keywords', keyword));
         params.append('limit', String(normalizedLimit));
         return cachedTypedGet(productListCache, productListRequests, cacheKey, () =>
-            api.get<Product[]>('/products/finder-candidates', anonymousGetConfig({ params }, options))
+            api.get<ProductPublic[]>('/products/finder-candidates', anonymousGetConfig({ params }, options))
                 .then((response) => {
                     const normalized = withProductArrayData(response);
                     cacheProductListResponse(cacheKey, normalized);
@@ -1082,7 +1483,7 @@ export const productApi = {
         const productId = normalizePositiveInt(id);
         if (!productId) return Promise.reject(new Error('Invalid product id'));
         return cachedTypedGet(productDetailCache, productDetailRequests, productId, () =>
-            api.get<Product>(`/products/${productId}`, anonymousGetConfig(undefined, options))
+            api.get<ProductPublic>(`/products/${productId}`, anonymousGetConfig(undefined, options))
                 .then((response) => {
                     setTimedCacheEntry(productDetailCache, productId, {
                         response,
@@ -1097,7 +1498,7 @@ export const productApi = {
         const cached = productDetailCache.get(productId);
         if (cached && cached.expiresAt > Date.now()) return Promise.resolve();
         return cachedTypedGet(productDetailCache, productDetailRequests, productId, () =>
-            api.get<Product>(`/products/${productId}`, anonymousGetConfig(undefined, options))
+            api.get<ProductPublic>(`/products/${productId}`, anonymousGetConfig(undefined, options))
                 .then((response) => {
                     setTimedCacheEntry(productDetailCache, productId, {
                         response,
@@ -1109,13 +1510,13 @@ export const productApi = {
     getByIds: (ids: number[], options?: ApiRequestOptions) => {
         const uniqueIds = normalizePositiveIntList(ids, 40);
         if (uniqueIds.length === 0) {
-            return Promise.resolve({ data: [] } as unknown as AxiosResponse<Product[]>);
+            return Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductPublic[]>);
         }
         const cacheKey = uniqueIds.join(',');
         const params = new URLSearchParams();
         uniqueIds.forEach((id) => params.append('ids', String(id)));
         return cachedTypedGet(productByIdsCache, productByIdsRequests, cacheKey, () =>
-            api.get<Product[]>('/products/by-ids', anonymousGetConfig({ params }, options))
+            api.get<ProductPublic[]>('/products/by-ids', anonymousGetConfig({ params }, options))
                 .then((response) => {
                     const normalized = withProductArrayData(response);
                     setTimedCacheEntry(productByIdsCache, cacheKey, {
@@ -1126,10 +1527,14 @@ export const productApi = {
                     return normalized;
                 }), options);
     },
-    getFeatured: (options?: ApiRequestOptions) => {
-        const cacheKey = '__featured__';
+    getFeatured: (limitOrOptions?: number | ApiRequestOptions, maybeOptions?: ApiRequestOptions) => {
+        const limit = typeof limitOrOptions === 'number'
+            ? normalizeBoundedPositiveInt(limitOrOptions, 12, 36)
+            : 12;
+        const options = typeof limitOrOptions === 'number' ? maybeOptions : limitOrOptions;
+        const cacheKey = `__featured__:${limit}`;
         return cachedTypedGet(productListCache, productListRequests, cacheKey, () =>
-            api.get<Product[]>('/products/featured', anonymousGetConfig(undefined, options))
+            api.get<ProductPublic[]>('/products/featured', anonymousGetConfig({ params: { limit } }, options))
                 .then((response) => {
                     const normalized = withProductArrayData(response);
                     cacheProductListResponse(cacheKey, normalized);
@@ -1137,10 +1542,9 @@ export const productApi = {
                 }), options);
     },
     getPersonalizedRecommendations: (options?: ApiRequestOptions) => {
-        const token = getStoredItem('token') || '';
-        const cacheKey = `personalized:${token.slice(-16) || 'guest'}`;
+        const cacheKey = `personalized:${currentUserCacheKey()}`;
         return cachedTypedGet(personalizedRecommendationCache, personalizedRecommendationRequests, cacheKey, () =>
-            api.get<Product[]>('/products/personalized-recommendations', optionalAnonymousGetConfig(undefined, options))
+            api.get<ProductPublic[]>('/products/personalized-recommendations', optionalAnonymousGetConfig(undefined, options))
                 .then((response) => {
                     const normalized = withProductArrayData(response);
                     setTimedCacheEntry(personalizedRecommendationCache, cacheKey, {
@@ -1162,7 +1566,7 @@ export const productApi = {
         });
         const cacheKey = params.toString();
         return cachedTypedGet(productAddOnCache, productAddOnRequests, cacheKey, () =>
-            api.get<Product[]>('/products/add-on-candidates', anonymousGetConfig({ params }, options))
+            api.get<ProductPublic[]>('/products/add-on-candidates', anonymousGetConfig({ params }, options))
                 .then((response) => {
                     const normalized = withProductArrayData(response);
                     setTimedCacheEntry(productAddOnCache, cacheKey, {
@@ -1178,9 +1582,9 @@ export const productApi = {
     delete: (id: number) => api.delete(`/products/${toPathId(id)}`).finally(() => clearProductCache(toPathId(id))),
     getRecommendations: (id: number, options?: ApiRequestOptions) => {
         const productId = normalizePositiveInt(id);
-        if (!productId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<Product[]>);
+        if (!productId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductPublic[]>);
         return cachedTypedGet(productRecommendationsCache, productRecommendationsRequests, productId, () =>
-            api.get<Product[]>(`/products/${productId}/recommendations`, anonymousGetConfig(undefined, options))
+            api.get<ProductPublic[]>(`/products/${productId}/recommendations`, anonymousGetConfig(undefined, options))
                 .then((response) => {
                     const normalized = withProductArrayData(response);
                     setTimedCacheEntry(productRecommendationsCache, productId, {
@@ -1196,24 +1600,6 @@ export const productApi = {
 // 购物车相关 API
 export const cartApi = {
     getItems: (_userId: number) => api.get<CartItem[]>('/cart/me').then(withArrayData),
-    quoteGuestItems: (items: Array<{ id: number; productId: number; quantity: number; selectedSpecs?: string }>) =>
-        api.post<CartItem[]>('/cart/guest/quote', {
-            items: items
-                .map((item) => ({
-                    id: normalizeSafeInt(item.id),
-                    productId: normalizePositiveInt(item.productId),
-                    quantity: normalizeQuantityParam(item.quantity),
-                    selectedSpecs: item.selectedSpecs ? normalizeTextParam(item.selectedSpecs, MAX_SELECTED_SPECS_LENGTH) : undefined,
-                }))
-                .filter((item) => item.id !== null && item.productId !== null)
-                .map((item) => ({
-                    id: item.id as number,
-                    productId: item.productId as number,
-                    quantity: item.quantity,
-                    selectedSpecs: item.selectedSpecs,
-                }))
-                .slice(0, 100),
-        }).then(withArrayData),
     addItem: (_userId: number, productId: number, quantity: number, selectedSpecs?: string) =>
         api.post('/cart/me/add', null, {
             params: {
@@ -1235,12 +1621,12 @@ export const cartApi = {
 
 // 订单相关 API
 export const orderApi = {
-    getAll: () => api.get<Order[]>('/orders').then(withArrayData),
-    getById: (id: number, guestEmail?: string, orderNo?: string) => api.get<Order>(guestOrderPath(id, guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo, {
+    getAll: () => api.get<OrderCustomer[]>('/orders').then(withArrayData),
+    getById: (id: number, guestEmail?: string, orderNo?: string) => api.get<OrderCustomer>(guestOrderPath(id, guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo, {
         params: guestParams(guestEmail, orderNo),
     })),
-    getByUser: (_userId: number) => api.get<Order[]>('/orders/me').then(withArrayData),
-    getMine: () => api.get<Order[]>('/orders/me').then(withArrayData),
+    getByUser: (_userId: number) => api.get<OrderCustomer[]>('/orders/me').then(withArrayData),
+    getMine: () => api.get<OrderCustomer[]>('/orders/me').then(withArrayData),
     track: (orderNo: string, email: string) => {
         const normalizedOrderNo = normalizeOrderTrackingNumber(orderNo);
         const normalizedEmail = normalizeEmailParam(email) || '';
@@ -1254,9 +1640,10 @@ export const orderApi = {
         }
         const pending = orderTrackRequests.get(cacheKey);
         if (pending) return pending;
-        const request = api.get<{ order: Order; items: OrderItem[] }>('/orders/track', anonymousGetConfig({
-            params: { orderNo: normalizedOrderNo, email: normalizedEmail },
-        }))
+        const request = api.post<OrderTrackResult>('/orders/track', {
+            orderNo: normalizedOrderNo,
+            email: normalizedEmail,
+        }, anonymousRequestConfig())
             .then((response) => {
                 setTimedCacheEntry(orderTrackCache, cacheKey, {
                     response,
@@ -1268,9 +1655,9 @@ export const orderApi = {
         setBoundedMapEntry(orderTrackRequests, cacheKey, request);
         return request;
     },
-    create: (order: Partial<Order>) => api.post<Order>('/orders', order),
+    create: (order: Partial<Order>) => api.post<OrderCustomer>('/orders', order),
     checkout: (payload: { cartItemIds: number[]; shippingAddress: string; paymentMethod: string; userCouponId?: number | null; recipientName?: string; recipientPhone?: string; contactEmail?: string }) =>
-        api.post<Order>('/orders/checkout/me', {
+        api.post<OrderCustomer>('/orders/checkout/me', {
             cartItemIds: normalizePositiveIntList(payload.cartItemIds, 100),
             shippingAddress: normalizeTextParam(payload.shippingAddress, 1000),
             recipientName: normalizeTextParam(payload.recipientName, 120),
@@ -1286,14 +1673,20 @@ export const orderApi = {
         shippingAddress: string;
         paymentMethod: string;
         items: Array<{ productId: number; quantity: number; selectedSpecs?: string }>;
-    }) => api.post<Order>('/orders/checkout/guest', {
-        guestEmail: normalizeEmailParam(payload.guestEmail) || '',
-        guestName: normalizeTextParam(payload.guestName, 120),
-        guestPhone: normalizeTextParam(payload.guestPhone, 60),
-        shippingAddress: normalizeTextParam(payload.shippingAddress, 1000),
-        paymentMethod: normalizeTextParam(payload.paymentMethod, 40),
-        items: normalizeGuestCheckoutItems(payload.items),
-    }),
+    }) => {
+        const guestEmail = normalizeEmailParam(payload.guestEmail);
+        if (!guestEmail) {
+            return Promise.reject(new Error('Guest email is required'));
+        }
+        return api.post<OrderCustomer>('/orders/checkout/guest', {
+            guestEmail,
+            guestName: normalizeTextParam(payload.guestName, 120),
+            guestPhone: normalizeTextParam(payload.guestPhone, 60),
+            shippingAddress: normalizeTextParam(payload.shippingAddress, 1000),
+            paymentMethod: normalizeTextParam(payload.paymentMethod, 40),
+            items: normalizeGuestCheckoutItems(payload.items),
+        });
+    },
     update: (id: number, order: Partial<Order>) => api.put<Order>(`/orders/${toPathId(id)}`, order),
     delete: (id: number) => api.delete(`/orders/${toPathId(id)}`),
     cancel: (id: number, guestEmail?: string, orderNo?: string) => api.put(`${guestOrderPath(id, guestEmail, orderNo)}/cancel`, guestParams(guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo)),
@@ -1318,14 +1711,14 @@ export const orderApi = {
     ship: (id: number) => api.put(`/orders/${toPathId(id)}/ship`),
     getItems: (orderId: number, guestEmail?: string, orderNo?: string) => {
         const normalizedOrderId = normalizePositiveInt(orderId);
-        if (!normalizedOrderId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<OrderItem[]>);
-        const guestKey = hasGuestCredentials(guestEmail, orderNo) ? `${normalizeEmailParam(guestEmail)}:${normalizeOrderTrackingNumber(orderNo || '')}` : 'auth';
+        if (!normalizedOrderId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<OrderItemCustomer[]>);
+        const guestKey = hasGuestCredentials(guestEmail, orderNo) ? `guest:${normalizeEmailParam(guestEmail)}:${normalizeOrderTrackingNumber(orderNo || '')}` : `auth:${currentUserCacheKey()}`;
         const cacheKey = `${normalizedOrderId}:${guestKey}`;
         const cached = orderItemsCache.get(cacheKey);
         if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
         const pending = orderItemsRequests.get(cacheKey);
         if (pending) return pending;
-        const request = api.get<OrderItem[]>(`${hasGuestCredentials(guestEmail, orderNo) ? `/orders/guest/${normalizedOrderId}` : `/orders/${normalizedOrderId}`}/items`, guestRequestConfig(guestEmail, orderNo, {
+        const request = api.get<OrderItemCustomer[]>(`${hasGuestCredentials(guestEmail, orderNo) ? `/orders/guest/${normalizedOrderId}` : `/orders/${normalizedOrderId}`}/items`, guestRequestConfig(guestEmail, orderNo, {
             params: guestParams(guestEmail, orderNo),
         }))
             .then((response) => {
@@ -1347,10 +1740,10 @@ export const orderApi = {
 };
 
 export const couponApi = {
-    getPublic: () => cachedGet(publicCouponCache, publicCouponRequests, 'public', COUPON_CACHE_MS, () => api.get<Coupon[]>('/coupons/public', anonymousGetConfig()).then(withArrayData)),
+    getPublic: () => cachedGet(publicCouponCache, publicCouponRequests, 'public', COUPON_CACHE_MS, () => api.get<CouponPublic[]>('/coupons/public', anonymousGetConfig()).then(withArrayData)),
     claim: (couponId: number, _userId: number) => api.post<UserCoupon>(`/coupons/me/${toPathId(couponId)}/claim`).finally(clearCouponCache),
-    getByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, 'mine', COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me').then(withArrayData)),
-    getAvailableByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, 'available', COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me/available').then(withArrayData)),
+    getByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, `mine:${currentUserCacheKey()}`, COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me').then(withArrayData)),
+    getAvailableByUser: (_userId: number) => cachedGet(userCouponCache, userCouponRequests, `available:${currentUserCacheKey()}`, COUPON_CACHE_MS, () => api.get<UserCoupon[]>('/coupons/me/available').then(withArrayData)),
     quote: (payload: { cartItemIds: number[]; userCouponId?: number | null }) =>
         api.post<CouponQuote>('/coupons/me/quote', {
             cartItemIds: normalizePositiveIntList(payload.cartItemIds, 100),
@@ -1375,14 +1768,14 @@ export const paymentApi = {
             });
         return paymentChannelRequest;
     },
-    create: (orderId: number, channel: string, guestEmail?: string, orderNo?: string) => api.post<Payment>('/payments', {
+    create: (orderId: number, channel: string, guestEmail?: string, orderNo?: string) => api.post<PaymentCustomer>('/payments', {
         orderId: toPathId(orderId),
         channel: normalizeTextParam(channel, 40).toUpperCase(),
         ...(hasGuestCredentials(guestEmail, orderNo) ? guestParams(guestEmail, orderNo) : {}),
     }, guestRequestConfig(guestEmail, orderNo)),
-    simulatePaid: (paymentId: number) => api.post<Payment>(`/payments/${toPathId(paymentId)}/simulate-paid`),
-    simulateCallback: (paymentId: number) => api.post<Payment>(`/payments/${toPathId(paymentId)}/simulate-callback`),
-    sync: (paymentId: number, guestEmail?: string, orderNo?: string) => api.post<Payment>(`/payments/${toPathId(paymentId)}/sync`, guestParams(guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo)),
+    simulatePaid: (paymentId: number) => api.post<AdminPayment>(`/payments/${toPathId(paymentId)}/simulate-paid`),
+    simulateCallback: (paymentId: number) => api.post<AdminPayment>(`/payments/${toPathId(paymentId)}/simulate-callback`),
+    sync: (paymentId: number, guestEmail?: string, orderNo?: string) => api.post<PaymentCustomer>(`/payments/${toPathId(paymentId)}/sync`, guestParams(guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo)),
     callback: (payload: {
         orderNo: string;
         channel: string;
@@ -1391,21 +1784,11 @@ export const paymentApi = {
         amount: number;
         callbackTimestamp: number;
         signature: string;
-    }) => api.post<Payment>('/payments/callback', payload),
+    }) => api.post<{ received: boolean }>('/payments/callback', payload),
     getByOrder: (orderId: number, guestEmail?: string, orderNo?: string) =>
-        api.get<Payment[]>(paymentOrderPath(orderId, guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo, { params: guestParams(guestEmail, orderNo) })).then(withArrayData),
+        api.get<PaymentCustomer[]>(paymentOrderPath(orderId, guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo, { params: guestParams(guestEmail, orderNo) })).then(withArrayData),
     getLatestByOrder: (orderId: number, guestEmail?: string, orderNo?: string) =>
-        api.get<Payment>(`${paymentOrderPath(orderId, guestEmail, orderNo)}/latest`, guestRequestConfig(guestEmail, orderNo, { params: guestParams(guestEmail, orderNo) })),
-};
-
-export const membershipApi = {
-    getPlans: () => api.get<MembershipPlan[]>('/membership/plans', anonymousGetConfig()).then(withArrayData),
-    getMine: () => api.get<MembershipStatus>('/membership/me'),
-    getMineOptional: () => api.get<MembershipStatus>('/membership/me', { skipAuthRedirect: true } as AuthRetryConfig),
-    createOrder: (planCode: string, paymentMethod: string) => api.post<Order>('/membership/orders', {
-        planCode: normalizeTextParam(planCode, 50).toUpperCase(),
-        paymentMethod: normalizeTextParam(paymentMethod, 40).toUpperCase(),
-    }),
+        api.get<PaymentCustomer>(`${paymentOrderPath(orderId, guestEmail, orderNo)}/latest`, guestRequestConfig(guestEmail, orderNo, { params: guestParams(guestEmail, orderNo) })),
 };
 
 // 评价相关 API
@@ -1413,6 +1796,10 @@ export const reviewApi = {
     getAll: (productId: number) => {
         const normalizedProductId = normalizePositiveInt(productId);
         if (!normalizedProductId) return Promise.resolve({ data: { reviews: [], averageRating: 0 } } as unknown as AxiosResponse<ProductReviewSummary>);
+        const hasToken = Boolean(getStoredItem('token'));
+        if (hasToken) {
+            return api.get<ProductReviewSummary>(`/reviews/product/${normalizedProductId}`, optionalAnonymousGetConfig());
+        }
         const cached = reviewCache.get(normalizedProductId);
         if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
         const pending = reviewRequests.get(normalizedProductId);
@@ -1426,9 +1813,9 @@ export const reviewApi = {
         setBoundedMapEntry(reviewRequests, normalizedProductId, request);
         return request;
     },
-    getReviewableOrders: (productId: number) => api.get<Order[]>(`/reviews/product/${toPathId(productId)}/reviewable-orders`).then(withArrayData),
+    getReviewableOrders: (productId: number) => api.get<ReviewableOrder[]>(`/reviews/product/${toPathId(productId)}/reviewable-orders`).then(withArrayData),
     create: (productId: number, orderId: number, rating: number, comment: string) =>
-        api.post(`/reviews/product/${toPathId(productId)}`, {
+        api.post<PublicReview>(`/reviews/product/${toPathId(productId)}`, {
             orderId: toPathId(orderId),
             rating: Math.max(1, Math.min(5, Math.floor(Number(rating) || 0))),
             comment: normalizeTextParam(comment, 2000),
@@ -1438,12 +1825,12 @@ export const reviewApi = {
 export const questionApi = {
     getByProduct: (productId: number) => {
         const normalizedProductId = normalizePositiveInt(productId);
-        if (!normalizedProductId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductQuestion[]>);
+        if (!normalizedProductId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductQuestionPublic[]>);
         const cached = questionCache.get(normalizedProductId);
         if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
         const pending = questionRequests.get(normalizedProductId);
         if (pending) return pending;
-        const request = api.get<ProductQuestion[]>(`/product-questions/product/${normalizedProductId}`, anonymousGetConfig())
+        const request = api.get<ProductQuestionPublic[]>(`/product-questions/product/${normalizedProductId}`, anonymousGetConfig())
             .then((response) => {
                 const normalized = withArrayData(response);
                 setTimedCacheEntry(questionCache, normalizedProductId, { response: normalized, expiresAt: Date.now() + QUESTION_CACHE_MS });
@@ -1454,14 +1841,8 @@ export const questionApi = {
         return request;
     },
     ask: (productId: number, question: string) =>
-        api.post<ProductQuestion>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, 1000) })
+        api.post<ProductQuestionPublic>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, 1000) })
             .finally(() => clearQuestionCache(toPathId(productId))),
-    answer: (questionId: number, answer: string) =>
-        api.post<ProductQuestion>(`/product-questions/${toPathId(questionId)}/answer`, { answer: normalizeTextParam(answer, 2000) })
-            .finally(() => {
-                clearQuestionCache();
-                clearAdminQuestionCache();
-            }),
 };
 
 export const categoryApi = {
@@ -1471,16 +1852,16 @@ export const categoryApi = {
             level: normalizePositiveInt(params.level) || undefined,
         } : undefined;
         const cacheKey = `all:${normalizedParams?.parentId || ''}:${normalizedParams?.level || ''}`;
-        return cachedGet(categoryCache, categoryRequests, cacheKey, CATEGORY_CACHE_MS, () => api.get<Category[]>('/categories', anonymousGetConfig({ params: normalizedParams })).then(withArrayData));
+        return cachedGet(categoryCache, categoryRequests, cacheKey, CATEGORY_CACHE_MS, () => api.get<CategoryPublic[]>('/categories', anonymousGetConfig({ params: normalizedParams })).then(withArrayData));
     },
-    getTopLevel: () => cachedGet(categoryCache, categoryRequests, 'top', CATEGORY_CACHE_MS, () => api.get<Category[]>('/categories', anonymousGetConfig({ params: { level: 1 } })).then(withArrayData)),
+    getTopLevel: () => cachedGet(categoryCache, categoryRequests, 'top', CATEGORY_CACHE_MS, () => api.get<CategoryPublic[]>('/categories', anonymousGetConfig({ params: { level: 1 } })).then(withArrayData)),
     getChildren: (parentId: number) => {
         const normalizedParentId = normalizePositiveInt(parentId);
-        if (!normalizedParentId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<Category[]>);
+        if (!normalizedParentId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<CategoryPublic[]>);
         return cachedGet(categoryCache, categoryRequests, `children:${normalizedParentId}`, CATEGORY_CACHE_MS, () =>
-            api.get<Category[]>('/categories', anonymousGetConfig({ params: { parentId: normalizedParentId } })).then(withArrayData));
+            api.get<CategoryPublic[]>('/categories', anonymousGetConfig({ params: { parentId: normalizedParentId } })).then(withArrayData));
     },
-    getById: (id: number) => api.get<Category>(`/categories/${toPathId(id)}`, anonymousGetConfig()),
+    getById: (id: number) => api.get<CategoryPublic>(`/categories/${toPathId(id)}`, anonymousGetConfig()),
     create: (category: Partial<Category>) => api.post<Category>('/categories', normalizeCategoryPayload(category)).finally(() => {
         clearCategoryCache();
         clearProductCache();
@@ -1496,9 +1877,10 @@ export const categoryApi = {
 };
 
 export const brandApi = {
-    getAll: (params?: { activeOnly?: boolean }) => {
+    getAll: (_params?: { activeOnly?: boolean }) => {
         const cacheKey = 'public-active';
-        return cachedGet(brandCache, brandRequests, cacheKey, BRAND_CACHE_MS, () => api.get<Brand[]>('/brands', anonymousGetConfig()).then(withArrayData));
+        return cachedGet(brandCache, brandRequests, cacheKey, BRAND_CACHE_MS, () =>
+            api.get<BrandPublic[]>('/brands', anonymousGetConfig()).then(withArrayData));
     },
     create: (brand: Partial<Brand>) => api.post<Brand>('/brands', normalizeBrandPayload(brand)).finally(() => {
         clearBrandCache();
@@ -1591,14 +1973,42 @@ export const adminApi = {
             ids: normalizePositiveIntList(ids, maxIds),
             note: normalizeTextParam(note, 200),
         }),
+    getPetGalleryPhotos: (params?: { page?: number; size?: number; status?: string; source?: string; keyword?: string }) => {
+        const normalizedParams = {
+            page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
+            size: normalizeBoundedPositiveInt(params?.size, 12, 100),
+            status: normalizeTextParam(params?.status, 40) || undefined,
+            source: normalizeTextParam(params?.source, 40) || undefined,
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+        };
+        return api.get<AdminPetGalleryPage | AdminPetGalleryPhoto[]>('/admin/pet-gallery', { params: normalizedParams })
+            .then(normalizeAdminPetGalleryPageResponse);
+    },
+    deletePetGalleryPhoto: (id: number) => api.delete(`/admin/pet-gallery/${toPathId(id)}`).finally(clearPetGalleryCache),
+    getUsersPage: (params?: { keyword?: string; role?: string; status?: string; page?: number; size?: number }) => {
+        const normalizedParams = {
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+            role: normalizeTextParam(params?.role, 40) || undefined,
+            status: normalizeTextParam(params?.status, 40) || undefined,
+            page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
+            size: normalizeBoundedPositiveInt(params?.size, 20, 100),
+        };
+        const cacheKey = `${normalizedParams.keyword || ''}:${normalizedParams.role || ''}:${normalizedParams.status || ''}:${normalizedParams.page}:${normalizedParams.size}`;
+        return cachedGet(adminUserCache, adminUserRequests, cacheKey, ADMIN_USER_CACHE_MS, () =>
+            api.get<AdminUserPage | User[]>('/admin/users', { params: normalizedParams }).then(normalizeAdminUserPageResponse));
+    },
     getUsers: (params?: { keyword?: string; role?: string; status?: string }) => {
         const normalizedParams = {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
             role: normalizeTextParam(params?.role, 40) || undefined,
             status: normalizeTextParam(params?.status, 40) || undefined,
+            page: 1,
+            size: 100,
         };
-        const cacheKey = `${normalizedParams.keyword || ''}:${normalizedParams.role || ''}:${normalizedParams.status || ''}`;
-        return cachedGet(adminUserCache, adminUserRequests, cacheKey, ADMIN_USER_CACHE_MS, () => api.get<User[]>('/admin/users', { params: normalizedParams }));
+        const cacheKey = `${normalizedParams.keyword || ''}:${normalizedParams.role || ''}:${normalizedParams.status || ''}:${normalizedParams.page}:${normalizedParams.size}`;
+        return cachedGet(adminUserCache, adminUserRequests, cacheKey, ADMIN_USER_CACHE_MS, () =>
+            api.get<AdminUserPage | User[]>('/admin/users', { params: normalizedParams }).then(normalizeAdminUserPageResponse))
+            .then((response) => ({ ...response, data: response.data.items }) as AxiosResponse<User[]>);
     },
     getUserSummary: (params?: { keyword?: string; role?: string; status?: string }) => api.get<UserAdminSummary>('/admin/users/summary', {
         params: {
@@ -1643,11 +2053,14 @@ export const adminApi = {
             dispatchDomEvent('shop:admin-permissions-updated');
             return response;
         }),
-    getMyPermissions: () => {
-        if (adminPermissionsCache && adminPermissionsCache.expiresAt > Date.now()) {
+    getMyPermissions: (options?: { bypassCache?: boolean }) => {
+        if (options?.bypassCache) {
+            clearAdminPermissionsCache();
+        }
+        if (!options?.bypassCache && adminPermissionsCache && adminPermissionsCache.expiresAt > Date.now()) {
             return Promise.resolve(adminPermissionsCache.response);
         }
-        if (adminPermissionsRequest) return adminPermissionsRequest;
+        if (!options?.bypassCache && adminPermissionsRequest) return adminPermissionsRequest;
         adminPermissionsRequest = api.get<{ role: string; roleCode?: string; permissions: string[] }>('/admin/me/permissions')
             .then((response) => {
                 adminPermissionsCache = { response, expiresAt: Date.now() + 30_000 };
@@ -1661,11 +2074,13 @@ export const adminApi = {
     getOrders: (status?: string) => {
         const normalizedStatus = normalizeTextParam(status, 40) || undefined;
         return cachedGet(
-            adminOrderCache as Map<string, { expiresAt: number; response: AxiosResponse<Order[]> }>,
-            adminOrderRequests as Map<string, Promise<AxiosResponse<Order[]>>>,
-            `list:${normalizedStatus || ''}`,
+            adminOrderCache,
+            adminOrderRequests,
+            `page-compat:${normalizedStatus || ''}`,
             ADMIN_ORDER_CACHE_MS,
-            () => api.get<Order[]>('/admin/orders', { params: normalizedStatus ? { status: normalizedStatus } : undefined }),
+            () => api.get<AdminOrderPage>('/admin/orders/page', {
+                params: { status: normalizedStatus, page: 1, size: 20 },
+            }),
         );
     },
     getOrdersPage: (params?: { status?: string; search?: string; quick?: string; page?: number; size?: number }) => {
@@ -1678,13 +2093,14 @@ export const adminApi = {
         };
         const cacheKey = `page:${normalizedParams.status || ''}:${normalizedParams.search || ''}:${normalizedParams.quick || ''}:${normalizedParams.page}:${normalizedParams.size}`;
         return cachedGet(
-            adminOrderCache as Map<string, { expiresAt: number; response: AxiosResponse<AdminOrderPage> }>,
-            adminOrderRequests as Map<string, Promise<AxiosResponse<AdminOrderPage>>>,
+            adminOrderCache,
+            adminOrderRequests,
             cacheKey,
             ADMIN_ORDER_CACHE_MS,
             () => api.get<AdminOrderPage>('/admin/orders/page', { params: normalizedParams }),
         );
     },
+    getOrder: (id: number) => api.get<Order>(`/admin/orders/${toPathId(id)}`),
     exportOrders: (status?: string, search?: string, quick?: string) => api.get('/admin/orders/export', {
         params: {
             status: normalizeTextParam(status, 40) || undefined,
@@ -1712,9 +2128,58 @@ export const adminApi = {
             trackingNumber: normalizeTextParam(trackingNumber, 120) || undefined,
             trackingCarrierCode: normalizeTextParam(trackingCarrierCode, 40) || undefined,
         }).finally(clearAdminOrderCache),
-    getProducts: () => api.get<Product[]>('/admin/products'),
+    getOrderItems: (orderId: number) => api.get<OrderItem[]>(`/admin/orders/${toPathId(orderId)}/items`).then(withArrayData),
+    getOrderPayments: (orderId: number) => api.get<AdminPayment[]>(`/admin/orders/${toPathId(orderId)}/payments`).then(withArrayData),
+    syncOrderPayment: (paymentId: number) => api.post<AdminPayment>(`/admin/orders/payments/${toPathId(paymentId)}/sync`),
+    getProducts: (params?: { keyword?: string; q?: string; categoryId?: number; status?: string; featured?: boolean; discount?: boolean; minPrice?: number; maxPrice?: number; page?: number; size?: number; sort?: string }) =>
+        api.get<AdminProductPage | Product[]>('/admin/products', {
+            params: params ? {
+                keyword: normalizeTextParam(params.keyword, 120) || undefined,
+                q: normalizeTextParam(params.q, 120) || undefined,
+                categoryId: normalizePositiveInt(params.categoryId) || undefined,
+                status: normalizeTextParam(params.status, 40).toUpperCase() || undefined,
+                featured: params.featured,
+                discount: params.discount,
+                minPrice: params.minPrice == null ? undefined : normalizeNonNegativeNumberParam(params.minPrice),
+                maxPrice: params.maxPrice == null ? undefined : normalizeNonNegativeNumberParam(params.maxPrice),
+                page: params.page == null ? undefined : normalizeNonNegativeIntParam(params.page, 0, 1_000_000),
+                size: params.size == null ? undefined : normalizeBoundedPositiveInt(params.size, 50, 500),
+                sort: normalizeTextParam(params.sort, 80) || undefined,
+            } : undefined,
+        }).then(normalizeProductAdminPageResponse),
+    createProduct: (product: Partial<Product>) =>
+        api.post<Product>('/admin/products', normalizeProductPayload(product)).finally(() => clearProductCache()),
+    updateProduct: (id: number, product: Partial<Product>) =>
+        api.put<Product>(`/admin/products/${toPathId(id)}`, normalizeProductPayload(product)).finally(() => clearProductCache(toPathId(id))),
+    deleteProduct: (id: number) =>
+        api.delete(`/admin/products/${toPathId(id)}`).finally(() => clearProductCache(toPathId(id))),
+    getCategories: () => api.get<Category[]>('/admin/categories').then(withArrayData),
+    createCategory: (category: Partial<Category>) => api.post<Category>('/admin/categories', normalizeCategoryPayload(category)).finally(() => {
+        clearCategoryCache();
+        clearProductCache();
+    }),
+    updateCategory: (id: number, category: Partial<Category>) => api.put<Category>(`/admin/categories/${toPathId(id)}`, normalizeCategoryPayload(category)).finally(() => {
+        clearCategoryCache();
+        clearProductCache();
+    }),
+    deleteCategory: (id: number) => api.delete(`/admin/categories/${toPathId(id)}`).finally(() => {
+        clearCategoryCache();
+        clearProductCache();
+    }),
     getBrands: (params?: { activeOnly?: boolean }) =>
         api.get<Brand[]>('/admin/brands', { params: params?.activeOnly ? { activeOnly: true } : undefined }),
+    createBrand: (brand: Partial<Brand>) => api.post<Brand>('/admin/brands', normalizeBrandPayload(brand)).finally(() => {
+        clearBrandCache();
+        clearProductCache();
+    }),
+    updateBrand: (id: number, brand: Partial<Brand>) => api.put<Brand>(`/admin/brands/${toPathId(id)}`, normalizeBrandPayload(brand)).finally(() => {
+        clearBrandCache();
+        clearProductCache();
+    }),
+    deleteBrand: (id: number) => api.delete(`/admin/brands/${toPathId(id)}`).finally(() => {
+        clearBrandCache();
+        clearProductCache();
+    }),
     refundOrder: (id: number, payload: { reason?: string; restock?: boolean; manualRefundReference?: string }) =>
         api.post<{ message: string; payment: AdminPayment }>(`/admin/orders/${toPathId(id)}/refund`, {
             reason: normalizeTextParam(payload.reason, 1000) || undefined,
@@ -1756,7 +2221,7 @@ export const adminApi = {
         };
         const cacheKey = `reviews:${normalizedParams.status || ''}:${normalizedParams.search || ''}:${normalizedParams.page}:${normalizedParams.size}`;
         return cachedGet(adminReviewCache, adminReviewRequests, cacheKey, ADMIN_REVIEW_CACHE_MS, () =>
-            api.get<AdminReviewPage>('/admin/reviews', { params: normalizedParams }));
+            api.get<AdminReviewPage | Review[]>('/admin/reviews', { params: normalizedParams }).then(normalizeAdminReviewPageResponse));
     },
     deleteReview: (id: number) => api.delete(`/admin/reviews/${toPathId(id)}`).finally(() => {
         clearReviewCache();
@@ -1770,13 +2235,20 @@ export const adminApi = {
         clearReviewCache();
         clearAdminReviewCache();
     }),
-    getQuestionSummary: () => api.get<ProductQuestionAdminSummary>('/admin/questions/summary'),
-    getQuestions: (params?: { status?: string; limit?: number }) => {
+    getQuestionSummary: (params?: { status?: string; search?: string }) => {
         const normalizedParams = {
             status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
+            search: normalizeTextParam(params?.search, 120) || undefined,
+        };
+        return api.get<ProductQuestionAdminSummary>('/admin/questions/summary', { params: normalizedParams });
+    },
+    getQuestions: (params?: { status?: string; search?: string; limit?: number }) => {
+        const normalizedParams = {
+            status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
+            search: normalizeTextParam(params?.search, 120) || undefined,
             limit: normalizeBoundedPositiveInt(params?.limit, 200, 1000),
         };
-        const cacheKey = `${normalizedParams.status || ''}:${normalizedParams.limit}`;
+        const cacheKey = `${normalizedParams.status || ''}:${normalizedParams.search || ''}:${normalizedParams.limit}`;
         return cachedGet(adminQuestionCache, adminQuestionRequests, cacheKey, ADMIN_REVIEW_CACHE_MS, () =>
             api.get<ProductQuestion[]>('/admin/questions', { params: normalizedParams }).then(withArrayData));
     },
@@ -1786,8 +2258,29 @@ export const adminApi = {
                 clearQuestionCache();
                 clearAdminQuestionCache();
             }),
-    getCouponSummary: () => api.get<CouponAdminSummary>('/admin/coupons/summary'),
-    getCoupons: () => api.get<Coupon[]>('/admin/coupons'),
+    deleteQuestion: (id: number) => api.delete(`/admin/questions/${toPathId(id)}`)
+        .finally(() => {
+            clearQuestionCache();
+            clearAdminQuestionCache();
+        }),
+    getCouponSummary: (params?: { keyword?: string; status?: string; scope?: string }) => api.get<CouponAdminSummary>('/admin/coupons/summary', {
+        params: {
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+            status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
+            scope: normalizeTextParam(params?.scope, 40).toUpperCase() || undefined,
+        },
+    }),
+    getCoupons: (params?: { keyword?: string; status?: string; scope?: string; page?: number; size?: number }) => {
+        const normalizedParams = {
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+            status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
+            scope: normalizeTextParam(params?.scope, 40).toUpperCase() || undefined,
+            page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
+            size: normalizeBoundedPositiveInt(params?.size, 20, 500),
+        };
+        return api.get<AdminCouponPage | Coupon[]>('/admin/coupons', { params: normalizedParams })
+            .then(normalizeAdminCouponPageResponse);
+    },
     createCoupon: (coupon: Partial<Coupon>) => api.post<Coupon>('/admin/coupons', coupon).finally(clearCouponCache),
     updateCoupon: (id: number, coupon: Partial<Coupon>) => api.put<Coupon>(`/admin/coupons/${toPathId(id)}`, coupon).finally(clearCouponCache),
     deleteCoupon: (id: number) => api.delete(`/admin/coupons/${toPathId(id)}`).finally(clearCouponCache),
@@ -1798,8 +2291,23 @@ export const adminApi = {
         api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config),
     broadcastNotification: (payload: { type: string; title: string; message: string; contentFormat: 'TEXT' | 'HTML' }) =>
         api.post<{ sent: number }>('/admin/notifications/broadcast', payload),
-    getAnnouncementSummary: () => api.get<SiteAnnouncementAdminSummary>('/admin/announcements/summary'),
-    getAnnouncements: () => api.get<SiteAnnouncement[]>('/admin/announcements'),
+    getAnnouncementSummary: (params?: { status?: string; keyword?: string }) => api.get<SiteAnnouncementAdminSummary>('/admin/announcements/summary', {
+        params: {
+            status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+        },
+    }),
+    getAnnouncements: (params?: { page?: number; size?: number; status?: string; keyword?: string }) => {
+        const normalizedParams = {
+            page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
+            size: normalizeBoundedPositiveInt(params?.size, 20, 100),
+            status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
+            keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+        };
+        const config = params ? { params: normalizedParams } : undefined;
+        return api.get<SiteAnnouncementAdminPage | SiteAnnouncement[]>('/admin/announcements', config)
+            .then(normalizeSiteAnnouncementPageResponse);
+    },
     createAnnouncement: (announcement: Partial<SiteAnnouncement>) => api.post<SiteAnnouncement>('/admin/announcements', normalizeAnnouncementPayload(announcement)),
     updateAnnouncement: (id: number, announcement: Partial<SiteAnnouncement>) => api.put<SiteAnnouncement>(`/admin/announcements/${toPathId(id)}`, normalizeAnnouncementPayload(announcement)),
     deleteAnnouncement: (id: number) => api.delete(`/admin/announcements/${toPathId(id)}`),
@@ -1818,10 +2326,10 @@ export const logisticsCarrierApi = {
 
 export const addressApi = {
     getByUser: (_userId: number) =>
-        cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress[]> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress[]>>>, 'list', ADDRESS_CACHE_MS, () => api.get<UserAddress[]>('/addresses/me').then(withArrayData)),
+        cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress[]> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress[]>>>, `list:${currentUserCacheKey()}`, ADDRESS_CACHE_MS, () => api.get<UserAddress[]>('/addresses/me').then(withArrayData)),
     getById: (id: number) => api.get<UserAddress>(`/addresses/${toPathId(id)}`),
     getDefault: (_userId: number) =>
-        cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress>>>, 'default', ADDRESS_CACHE_MS, () => api.get<UserAddress>('/addresses/me/default')),
+        cachedGet(addressCache as Map<string, { expiresAt: number; response: AxiosResponse<UserAddress> }>, addressRequests as Map<string, Promise<AxiosResponse<UserAddress>>>, `default:${currentUserCacheKey()}`, ADDRESS_CACHE_MS, () => api.get<UserAddress>('/addresses/me/default')),
     create: (address: Partial<UserAddress>) => api.post<UserAddress>('/addresses', normalizeAddressPayload(address)).finally(clearAddressCache),
     update: (id: number, address: Partial<UserAddress>) => api.put<UserAddress>(`/addresses/${toPathId(id)}`, normalizeAddressPayload(address)).finally(clearAddressCache),
     delete: (id: number) => api.delete(`/addresses/${toPathId(id)}`).finally(clearAddressCache),
@@ -1839,16 +2347,17 @@ export const wishlistApi = {
 };
 
 export const notificationApi = {
-    getByUser: (_userId = 0, force = false) => {
-        const token = getStoredItem('token') || '';
-        const cacheKey = `list:${token.slice(-16) || 'guest'}`;
+    getByUser: (_userId = 0, force = false, page = 1, size = 50) => {
+        const normalizedPage = Number.isSafeInteger(page) && page > 0 ? page : 1;
+        const normalizedSize = Number.isSafeInteger(size) && size > 0 ? Math.min(size, 100) : 50;
+        const cacheKey = `list:${currentUserCacheKey()}:${normalizedPage}:${normalizedSize}`;
         if (!force) {
             const cached = notificationCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<AppNotification[]> } | undefined;
             if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
             const pending = notificationRequests.get(cacheKey) as Promise<AxiosResponse<AppNotification[]>> | undefined;
             if (pending) return pending;
         }
-        const request = api.get<AppNotification[]>('/notifications/me')
+        const request = api.get<AppNotification[]>('/notifications/me', { params: { page: normalizedPage, size: normalizedSize } })
             .then((response) => {
                 const normalized = withArrayData(response);
                 setTimedCacheEntry(notificationCache, cacheKey, { response: normalized, expiresAt: Date.now() + NOTIFICATION_CACHE_MS });
@@ -1859,8 +2368,7 @@ export const notificationApi = {
         return request;
     },
     getUnreadCount: (_userId = 0, force = false) => {
-        const token = getStoredItem('token') || '';
-        const cacheKey = `unread:${token.slice(-16) || 'guest'}`;
+        const cacheKey = `unread:${currentUserCacheKey()}`;
         if (!force) {
             const cached = notificationCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<{ count: number }> } | undefined;
             if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
@@ -1883,8 +2391,7 @@ export const notificationApi = {
 
 export const petProfileApi = {
     getMine: () => {
-        const token = getStoredItem('token') || '';
-        const cacheKey = token.slice(-16) || 'guest';
+        const cacheKey = currentUserCacheKey();
         const cached = petProfileCache.get(cacheKey);
         if (cached && cached.expiresAt > Date.now()) {
             return Promise.resolve(cached.response);
@@ -1922,16 +2429,17 @@ export const petProfileApi = {
 
 export const petGalleryApi = {
     getAll: (force = false) => {
-        const cacheKey = 'photos';
+        const hasToken = Boolean(getStoredItem('token'));
+        const cacheKey = hasToken ? `photos:auth:${currentUserCacheKey()}` : 'photos:anon';
         if (!force) {
-            const cached = petGalleryCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<PetGalleryPhoto[]> } | undefined;
+            const cached = petGalleryCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<PetGalleryPhotoPublic[]> } | undefined;
             if (cached && cached.expiresAt > Date.now()) {
                 return Promise.resolve(cached.response);
             }
-            const pending = petGalleryRequests.get(cacheKey) as Promise<AxiosResponse<PetGalleryPhoto[]>> | undefined;
+            const pending = petGalleryRequests.get(cacheKey) as Promise<AxiosResponse<PetGalleryPhotoPublic[]>> | undefined;
             if (pending) return pending;
         }
-        const request = api.get<PetGalleryPhoto[]>('/pet-gallery', anonymousGetConfig())
+        const request = api.get<PetGalleryPhotoPublic[]>('/pet-gallery', hasToken ? optionalAnonymousGetConfig() : anonymousGetConfig())
             .then((response) => {
                 const normalized = withArrayData(response);
                 setTimedCacheEntry(petGalleryCache, cacheKey, {
@@ -1945,7 +2453,7 @@ export const petGalleryApi = {
         return request;
     },
     getQuota: (force = false) => {
-        const cacheKey = 'quota';
+        const cacheKey = `quota:${currentUserCacheKey()}`;
         if (!force) {
             const cached = petGalleryCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<PetGalleryQuota> } | undefined;
             if (cached && cached.expiresAt > Date.now()) {
@@ -1966,12 +2474,12 @@ export const petGalleryApi = {
         setBoundedMapEntry(petGalleryRequests, cacheKey, request);
         return request;
     },
-    like: (id: number) => api.post<PetGalleryPhoto>(`/pet-gallery/${toPathId(id)}/like`).finally(clearPetGalleryCache),
+    like: (id: number) => api.post<PetGalleryPhotoPublic>(`/pet-gallery/${toPathId(id)}/like`).finally(clearPetGalleryCache),
     delete: (id: number) => api.delete(`/pet-gallery/${toPathId(id)}`).finally(clearPetGalleryCache),
     upload: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
-        return api.post<PetGalleryPhoto>('/pet-gallery', formData).finally(clearPetGalleryCache);
+        return api.post<PetGalleryPhotoPublic>('/pet-gallery', formData).finally(clearPetGalleryCache);
     },
 };
 
@@ -1993,8 +2501,8 @@ export const logisticsApi = {
         const accessCacheKey = credentials
             ? `guest:${credentials.guestEmail}:${credentials.orderNo}`
             : normalizedOrderId
-                ? `auth:${getLocalStorageItem('userId') || 'current'}`
-                : 'public';
+                ? `auth:${currentUserCacheKey()}`
+                : `auth:${currentUserCacheKey()}`;
         const cacheKey = [
             params.trackingNumber,
             params.carrier || '',
@@ -2004,30 +2512,71 @@ export const logisticsApi = {
         const requestConfig = credentials
             ? anonymousGetConfig({ params })
             : normalizedOrderId
-                ? { params }
-                : anonymousGetConfig({ params });
+                ? { params, allowAnonymousRetry: false } as AuthRetryConfig
+                : { params, allowAnonymousRetry: false } as AuthRetryConfig;
         return cachedGet(logisticsTrackCache, logisticsTrackRequests, cacheKey, LOGISTICS_TRACK_CACHE_MS, () =>
             api.get<LogisticsTrackResponse>('/logistics/track', requestConfig));
     },
 };
 
+type SupportMessageQuery = { limit?: number; afterId?: number };
+type SupportSessionQuery = { limit?: number };
+type AdminSupportSessionQuery = {
+    status?: string;
+    needsReply?: boolean;
+    assignedAdminId?: number;
+    search?: string;
+    page?: number;
+    size?: number;
+};
+
+const normalizeSupportMessageParams = (options?: SupportMessageQuery) => {
+    const limit = Math.min(normalizePositiveInt(options?.limit) || 80, 120);
+    const afterId = normalizePositiveInt(options?.afterId) || undefined;
+    return { limit, afterId };
+};
+
+const normalizeSupportSessionParams = (options?: SupportSessionQuery) => {
+    const limit = Math.min(normalizePositiveInt(options?.limit) || 12, 30);
+    return { limit };
+};
+
+const normalizeAdminSupportSessionParams = (input?: string | AdminSupportSessionQuery) => {
+    const options: AdminSupportSessionQuery = typeof input === 'string' ? { status: input } : (input || {});
+    const status = normalizeTextParam(options.status, 40).toUpperCase() || undefined;
+    return {
+        status: status && status !== 'ALL' ? status : undefined,
+        needsReply: options.needsReply ? true : undefined,
+        assignedAdminId: normalizePositiveInt(options.assignedAdminId) || undefined,
+        search: normalizeTextParam(options.search, 120) || undefined,
+        page: normalizeBoundedPositiveInt(options.page, 1, 100000),
+        size: normalizeBoundedPositiveInt(options.size, 20, 50),
+    };
+};
+
 export const supportApi = {
-    getSession: () => api.get<SupportSession>('/support/session'),
-    getSessions: () => api.get<SupportSession[]>('/support/sessions'),
-    getMessages: (sessionId: number) => api.get<SupportMessage[]>(`/support/sessions/${toPathId(sessionId)}/messages`),
+    getSession: () => api.get<SupportSessionCustomer>('/support/session'),
+    getSessions: (options?: SupportSessionQuery) =>
+        api.get<SupportSessionCustomer[]>('/support/sessions', { params: normalizeSupportSessionParams(options) }),
+    getMessages: (sessionId: number, options?: SupportMessageQuery) =>
+        api.get<SupportMessageCustomer[]>(`/support/sessions/${toPathId(sessionId)}/messages`, { params: normalizeSupportMessageParams(options) }),
     sendMessage: (content: string, sessionId?: number) =>
-        api.post<{ message: SupportMessage; session: SupportSession }>('/support/messages', { content, sessionId: normalizePositiveInt(sessionId) || undefined }),
+        api.post<{ message: SupportMessageCustomer; session: SupportSessionCustomer }>('/support/messages', { content, sessionId: normalizePositiveInt(sessionId) || undefined }),
     markRead: (sessionId: number) => api.put(`/support/sessions/${toPathId(sessionId)}/read`),
-    closeSession: (sessionId: number) => api.put<SupportSession>(`/support/sessions/${toPathId(sessionId)}/close`),
+    closeSession: (sessionId: number) => api.put<SupportSessionCustomer>(`/support/sessions/${toPathId(sessionId)}/close`),
     getUnreadCount: () => api.get<{ count: number }>('/support/unread-count'),
-    getGuestSession: (orderNo: string, email: string) => api.get<SupportSession>('/support/guest/session', anonymousGetConfig({
+    getGuestSession: (orderNo: string, email: string) => api.get<SupportSessionCustomer>('/support/guest/session', anonymousGetConfig({
         params: { orderNo: normalizeOrderTrackingNumber(orderNo), email: normalizeEmailParam(email) || '' },
     })),
-    getGuestMessages: (sessionId: number, orderNo: string, email: string) => api.get<SupportMessage[]>(`/support/guest/sessions/${toPathId(sessionId)}/messages`, anonymousGetConfig({
-        params: { orderNo: normalizeOrderTrackingNumber(orderNo), email: normalizeEmailParam(email) || '' },
+    getGuestMessages: (sessionId: number, orderNo: string, email: string, options?: SupportMessageQuery) => api.get<SupportMessageCustomer[]>(`/support/guest/sessions/${toPathId(sessionId)}/messages`, anonymousGetConfig({
+        params: {
+            orderNo: normalizeOrderTrackingNumber(orderNo),
+            email: normalizeEmailParam(email) || '',
+            ...normalizeSupportMessageParams(options),
+        },
     })),
     sendGuestMessage: (content: string, orderNo: string, email: string, sessionId?: number) =>
-        api.post<{ message: SupportMessage; session: SupportSession }>('/support/guest/messages', {
+        api.post<{ message: SupportMessageCustomer; session: SupportSessionCustomer }>('/support/guest/messages', {
             content: String(content || '').slice(0, 4000),
             sessionId: normalizePositiveInt(sessionId) || undefined,
             orderNo: normalizeOrderTrackingNumber(orderNo),
@@ -2041,8 +2590,12 @@ export const supportApi = {
 
 export const adminSupportApi = {
     getSummary: () => api.get<SupportAdminSummary>('/admin/support/summary'),
-    getSessions: (status?: string) => api.get<SupportSession[]>('/admin/support/sessions', { params: status ? { status } : undefined }),
-    getMessages: (sessionId: number) => api.get<SupportMessage[]>(`/admin/support/sessions/${toPathId(sessionId)}/messages`),
+    getSessions: (params?: string | AdminSupportSessionQuery) =>
+        api.get<SupportAdminSessionPage | SupportSession[]>('/admin/support/sessions', {
+            params: normalizeAdminSupportSessionParams(params),
+        }).then(normalizeAdminSupportSessionPageResponse),
+    getMessages: (sessionId: number, options?: SupportMessageQuery) =>
+        api.get<SupportMessage[]>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, { params: normalizeSupportMessageParams(options) }),
     sendMessage: (sessionId: number, content: string) =>
         api.post<{ message: SupportMessage; session: SupportSession }>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, { content }),
     markRead: (sessionId: number) => api.put(`/admin/support/sessions/${toPathId(sessionId)}/read`),
