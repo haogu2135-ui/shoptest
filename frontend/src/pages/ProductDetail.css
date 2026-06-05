@@ -746,7 +746,7 @@
 
 .product-detail-disclosure > summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 24px;
   gap: 12px;
   align-items: center;
   min-height: 46px;
@@ -762,6 +762,8 @@
 
 .product-detail-disclosure > summary::after {
   content: '+';
+  grid-column: 2;
+  grid-row: 1;
   width: 24px;
   height: 24px;
   display: inline-grid;
@@ -778,18 +780,24 @@
 
 .product-detail-disclosure > summary > span:first-child {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   color: #173f2b;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .product-detail-disclosure > summary > .ant-typography,
 .product-detail-disclosure > summary > .ant-tag {
-  justify-self: end;
+  grid-column: 1 / -1;
+  justify-self: start;
   min-width: 0;
   max-width: 100%;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: normal;
 }
 
 .product-detail-disclosure[open] {
@@ -845,6 +853,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.product-size-calculator__header .ant-typography {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.product-size-calculator__header .ant-btn {
+  flex: 0 0 auto;
+  white-space: normal;
 }
 
 .product-size-calculator__inputs {
@@ -2251,7 +2270,7 @@
 
 .product-purchase-readiness {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   padding: 10px;
   border: 1px solid #dfe9e2;

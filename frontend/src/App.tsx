@@ -60,6 +60,7 @@ const AdminLayout = lazy(() => import('./components/AdminLayout'));
 const AlertManagement = lazy(() => import('./pages/AlertManagement'));
 const AnnouncementManagement = lazy(() => import('./pages/AnnouncementManagement'));
 const BrandManagement = lazy(() => import('./pages/BrandManagement'));
+const BugManagement = lazy(() => import('./pages/BugManagement'));
 const BrowsingHistory = lazy(() => import('./pages/BrowsingHistory'));
 const Cart = lazy(() => import('./pages/Cart'));
 const CategoryManagement = lazy(() => import('./pages/CategoryManagement'));
@@ -834,6 +835,7 @@ const App: React.FC = () => {
               <Route path="support" element={<SupportManagement />} />
               <Route path="audit-logs" element={<SecurityAuditLogManagement />} />
               <Route path="alerts" element={<AlertManagement />} />
+              <Route path="bugs" element={<BugManagement />} />
               <Route path="ip-blacklist" element={<IpBlacklistManagement />} />
               <Route path="logs" element={<LogManagement />} />
               <Route path="pet-gallery" element={<PetGalleryManagement />} />

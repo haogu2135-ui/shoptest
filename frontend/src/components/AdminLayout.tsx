@@ -1,17 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Badge, Layout, Menu, Spin, Button, Typography, message } from 'antd';
+import { Badge, Button, Drawer, Layout, Menu, Space, Spin, Tooltip, Typography, message } from 'antd';
 import {
   DashboardOutlined, ShopOutlined, AppstoreOutlined,
   ShoppingOutlined, TeamOutlined, StarOutlined, QuestionCircleOutlined,
   ArrowLeftOutlined, LogoutOutlined, CustomerServiceOutlined, GiftOutlined,
   NotificationOutlined, TagsOutlined, TruckOutlined, SoundOutlined,
   SafetyCertificateOutlined, ApiOutlined, SettingOutlined, CloudSyncOutlined, FileTextOutlined, ThunderboltOutlined, AlertOutlined, StopOutlined, CameraOutlined,
+  BugOutlined, MenuOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { adminApi, adminSupportApi, clearStoredAuthSession, userApi } from '../api';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
-import { getEffectiveRole, isAdminRole, isSuperAdminRole } from '../utils/roles';
+import {
+  BUGS_ACCESS_PERMISSIONS,
+  BUGS_WRITE_PERMISSION,
+  getEffectiveRole,
+  isAdminRole,
+  isSuperAdminRole,
+} from '../utils/roles';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import ErrorBoundary from './ErrorBoundary';
 import SkipToContentLink, { MAIN_CONTENT_ID } from './SkipToContentLink';
@@ -25,6 +32,7 @@ const AdminLayout: React.FC = () => {
   const location = useLocation();
   const [checking, setChecking] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
   const [currentRole, setCurrentRole] = useState<string>('');
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -35,6 +43,11 @@ const AdminLayout: React.FC = () => {
     (permission: string) => isSuperAdmin || permissions.includes(permission),
     [isSuperAdmin, permissions],
   );
+  const canSeeBugs = useMemo(
+    () => BUGS_ACCESS_PERMISSIONS.some((permission) => canSee(permission)),
+    [canSee],
+  );
+  const canSubmitBugs = canSee(BUGS_WRITE_PERMISSION);
   const menuItems = useMemo(() => [
     canSee('dashboard') ? { key: '/admin/dashboard', icon: <DashboardOutlined />, label: t('adminLayout.dashboard') } : null,
     canSee('products') ? { key: '/admin/products', icon: <ShopOutlined />, label: t('adminLayout.products') } : null,
@@ -53,6 +66,7 @@ const AdminLayout: React.FC = () => {
     canSee('announcements') ? { key: '/admin/announcements', icon: <SoundOutlined />, label: t('adminLayout.announcements') } : null,
     canSee('audit-logs') ? { key: '/admin/audit-logs', icon: <SafetyCertificateOutlined />, label: t('adminLayout.auditLogs') } : null,
     canSee('alerts') ? { key: '/admin/alerts', icon: <AlertOutlined />, label: t('adminLayout.alerts') } : null,
+    canSeeBugs ? { key: '/admin/bugs', icon: <BugOutlined />, label: t('adminLayout.bugs') } : null,
     canSee('ip-blacklist') ? { key: '/admin/ip-blacklist', icon: <StopOutlined />, label: t('adminLayout.ipBlacklist') } : null,
     canSee('logs') ? { key: '/admin/logs', icon: <FileTextOutlined />, label: t('adminLayout.logs') } : null,
     canSee('pet-gallery') ? { key: '/admin/pet-gallery', icon: <CameraOutlined />, label: t('adminLayout.petGallery') } : null,
@@ -70,7 +84,7 @@ const AdminLayout: React.FC = () => {
         </span>
       ),
     } : null,
-  ].filter(Boolean) as any[], [canSee, supportUnread, t]);
+  ].filter(Boolean) as any[], [canSee, canSeeBugs, supportUnread, t]);
   const defaultAdminPath = menuItems[0]?.key as string | undefined;
   const canSeeSupport = canSee('support');
 
@@ -106,6 +120,27 @@ const AdminLayout: React.FC = () => {
   useEffect(() => {
     void checkAdmin(checking);
   }, [checkAdmin, checking, location.pathname]);
+
+  useEffect(() => {
+    const refreshPermissions = () => {
+      void checkAdmin(false);
+    };
+    const refreshVisiblePermissions = () => {
+      if (document.visibilityState === 'visible') {
+        void checkAdmin(false);
+      }
+    };
+    window.addEventListener('shop:admin-permissions-updated', refreshPermissions);
+    document.addEventListener('visibilitychange', refreshVisiblePermissions);
+    return () => {
+      window.removeEventListener('shop:admin-permissions-updated', refreshPermissions);
+      document.removeEventListener('visibilitychange', refreshVisiblePermissions);
+    };
+  }, [checkAdmin]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (checking) return;
@@ -158,6 +193,14 @@ const AdminLayout: React.FC = () => {
     );
   }
 
+  if (!defaultAdminPath || (location.pathname !== '/admin' && !menuItems.some((item) => item.key === location.pathname))) {
+    return (
+      <div className="admin-layout__loading">
+        <Spin size="large" tip={t('adminLayout.checking')} />
+      </div>
+    );
+  }
+
   return (
     <Layout className="admin-layout">
       <SkipToContentLink />
@@ -185,15 +228,60 @@ const AdminLayout: React.FC = () => {
           className="admin-layout__menu"
         />
       </Sider>
+      <Drawer
+        placement="left"
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        width={288}
+        className="admin-layout__mobileDrawer"
+        classNames={{ body: 'admin-layout__mobileDrawerBody' }}
+        title={t('adminLayout.title')}
+      >
+        <Menu
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          onClick={({ key }) => {
+            setMobileNavOpen(false);
+            navigate(key);
+          }}
+          className="admin-layout__drawerMenu"
+        />
+      </Drawer>
       <Layout>
         <Header className="admin-layout__header">
+          <Button
+            icon={<MenuOutlined />}
+            onClick={() => setMobileNavOpen(true)}
+            type="text"
+            className="admin-layout__mobileMenuButton"
+            aria-label={t('adminLayout.openMenu')}
+            title={t('adminLayout.openMenu')}
+          />
           <Link to="/" className="admin-layout__storeLink">
             <ArrowLeftOutlined />
             <span>{t('adminLayout.backStore')}</span>
           </Link>
-          <Button icon={<LogoutOutlined />} onClick={handleLogout} type="text" danger>
-            {t('adminLayout.logout')}
-          </Button>
+          <Space className="admin-layout__headerActions" size={8} wrap>
+            {canSeeBugs ? (
+              <Tooltip title={canSubmitBugs ? undefined : t('adminLayout.noPermission')}>
+                <span className="admin-layout__submitBugWrap">
+                  <Button
+                    icon={<BugOutlined />}
+                    onClick={() => navigate('/admin/bugs?new=1')}
+                    type="primary"
+                    className="admin-layout__submitBug"
+                    disabled={!canSubmitBugs}
+                  >
+                    {t('adminLayout.submitBug')}
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : null}
+            <Button icon={<LogoutOutlined />} onClick={handleLogout} type="text" danger>
+              {t('adminLayout.logout')}
+            </Button>
+          </Space>
         </Header>
         <Content id={MAIN_CONTENT_ID} tabIndex={-1} className="admin-layout__content">
           <ErrorBoundary key={location.pathname} homePath="/admin/dashboard" homeLabel={t('adminLayout.dashboard')}>

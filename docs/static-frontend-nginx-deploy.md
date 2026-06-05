@@ -46,6 +46,9 @@ On Windows you can also build and prepare the static artifact:
 ```
 
 This creates `artifacts/frontend-build`.
+The frontend edge Compose file serves `../frontend/build` by default. If you
+want it to serve the prepared artifact directory instead, set
+`FRONTEND_STATIC_ROOT=../artifacts/frontend-build` before starting Compose.
 
 To build and upload directly to a server with rsync, create a private config file first:
 

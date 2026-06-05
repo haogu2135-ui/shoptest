@@ -113,6 +113,15 @@ const normalizeCheckoutText = (value: unknown, maxLength: number) =>
 const normalizeCheckoutEmail = (value: unknown) =>
   normalizeCheckoutText(value, 120).replace(/\s+/g, '').toLowerCase();
 
+const checkoutPhonePattern = /^(?=(?:.*\d){6,20})\+?[\d\s().-]{6,40}$/;
+const isLikelyPhone = (value: unknown) => checkoutPhonePattern.test(normalizeCheckoutText(value, 40));
+const normalizeCheckoutPhone = (value: unknown) => {
+  const normalized = normalizeCheckoutText(value, 40);
+  return normalized.startsWith('+') ? `+${normalized.slice(1).replace(/\D+/g, '')}` : normalized.replace(/\D+/g, '');
+};
+const normalizeLikelyCheckoutPhone = (value: unknown) =>
+  isLikelyPhone(value) ? normalizeCheckoutPhone(value) : normalizeCheckoutText(value, 40);
+
 const isAuthExpiredError = (error: any) => {
   const status = Number(error?.response?.status);
   return status === 401 || status === 403;
@@ -123,9 +132,6 @@ const clearExpiredCheckoutSession = () => {
 };
 
 const CHECKOUT_GUEST_DRAFT_KEY = 'checkoutGuestDraft';
-
-const isLikelyPhone = (value: unknown) =>
-  /^[+\d][\d\s().-]{5,38}$/.test(String(value || '').trim());
 
 const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: string) => {
   const backendRecommended = channels.find((channel) => channel.recommended)?.code;
@@ -235,6 +241,12 @@ const Checkout: React.FC = () => {
       target?.focus();
     });
   }, []);
+  const handleCheckoutPhoneBlur = useCallback((event: React.FocusEvent<HTMLInputElement>) => {
+    form.setFieldValue('phone', normalizeLikelyCheckoutPhone(event.target.value));
+    window.setTimeout(() => {
+      form.validateFields(['phone']).catch(() => undefined);
+    }, 0);
+  }, [form]);
   const handlePaymentMethodKeyDown = useCallback((event: React.KeyboardEvent<HTMLButtonElement>, methodValue: string) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -365,7 +377,7 @@ const Checkout: React.FC = () => {
       if (address) {
         form.setFieldsValue({
           recipientName: address.recipientName,
-          phone: address.phone,
+          phone: normalizeLikelyCheckoutPhone(address.phone),
           shippingAddress: address.address,
         });
       }
@@ -387,7 +399,7 @@ const Checkout: React.FC = () => {
         form.setFieldsValue({
           guestEmail: normalizeCheckoutText(draft.guestEmail, 120),
           recipientName: normalizeCheckoutText(draft.recipientName, 80),
-          phone: normalizeCheckoutText(draft.phone, 40),
+          phone: normalizeLikelyCheckoutPhone(draft.phone),
           region: Array.isArray(draft.region) ? draft.region : undefined,
           shippingAddress: normalizeCheckoutText(draft.shippingAddress, 260),
         });
@@ -402,7 +414,7 @@ const Checkout: React.FC = () => {
     const draft = {
       guestEmail: normalizeCheckoutText(watchedGuestEmail, 120),
       recipientName: normalizeCheckoutText(watchedRecipientName, 80),
-      phone: normalizeCheckoutText(watchedPhone, 40),
+      phone: normalizeLikelyCheckoutPhone(watchedPhone),
       region: Array.isArray(watchedRegion) ? watchedRegion : undefined,
       shippingAddress: normalizeCheckoutText(watchedShippingAddress, 260),
     };
@@ -583,6 +595,7 @@ const Checkout: React.FC = () => {
     ? `${selectedSavedAddress.recipientName || t('pages.checkout.address')}: ${selectedSavedAddress.address}`
     : t('pages.checkout.useNewAddress');
   const checkoutAddressGroupLabel = `${t('pages.checkout.address')}: ${selectedAddressLabel}`;
+  const checkoutRegionInputLabel = `${t('pages.checkout.region')}: ${t('pages.checkout.regionRequired')}`;
   const newAddressReady = Boolean(
     normalizeCheckoutText(watchedRecipientName, 80)
       && isLikelyPhone(watchedPhone)
@@ -595,6 +608,7 @@ const Checkout: React.FC = () => {
     : Boolean(
       selectedSavedAddress
         && normalizeCheckoutText(selectedSavedAddress.recipientName, 80)
+        && isLikelyPhone(selectedSavedAddress.phone)
         && normalizeCheckoutText(selectedSavedAddress.address, 260),
     );
   const selectedPaymentDetail = paymentMethodDetails.find((method) => method.value === watchedPaymentMethod);
@@ -825,10 +839,10 @@ const Checkout: React.FC = () => {
     if (selectedAddressId !== 'new') {
       const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
       if (!address) throw new Error(t('pages.checkout.addressRequired'));
-      return normalizeCheckoutText(`${address.recipientName} / ${address.phone} / ${address.address}`, 500);
+      return normalizeCheckoutText(`${address.recipientName} / ${normalizeCheckoutPhone(address.phone)} / ${address.address}`, 500);
     }
     const recipientName = normalizeCheckoutText(values.recipientName, 80);
-    const phone = normalizeCheckoutText(values.phone, 40);
+    const phone = normalizeCheckoutPhone(values.phone);
     const region = values.region ? values.region.join(' ') : '';
     const postalCode = normalizeCheckoutText(values.postalCode, 20);
     const detail = normalizeCheckoutText(values.shippingAddress, 260);
@@ -892,14 +906,14 @@ const Checkout: React.FC = () => {
             cartItemIds: cartItems.map((item) => item.id),
             shippingAddress,
             recipientName: normalizeCheckoutText(values.recipientName, 80),
-            recipientPhone: normalizeCheckoutText(values.phone, 40),
+            recipientPhone: normalizeCheckoutPhone(values.phone),
             paymentMethod: normalizedPaymentMethod,
             userCouponId: selectedUserCouponId,
           })
         : await orderApi.guestCheckout({
             guestEmail: normalizedGuestEmail as string,
             guestName: normalizeCheckoutText(values.recipientName, 80),
-            guestPhone: normalizeCheckoutText(values.phone, 40),
+            guestPhone: normalizeCheckoutPhone(values.phone),
             shippingAddress,
             paymentMethod: normalizedPaymentMethod,
             items: cartItems.map((item) => ({
@@ -1059,6 +1073,7 @@ const Checkout: React.FC = () => {
       cancelText: t('common.cancel'),
       okButtonProps: { danger: true, 'aria-label': rollbackActionLabel, title: rollbackActionLabel },
       cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${rollbackActionLabel}`, title: `${t('common.cancel')}: ${rollbackActionLabel}` },
+      className: 'profile-mobile-safe-modal checkout-page__rollbackConfirmModal',
       async onOk() {
         setCancelingPayment(true);
         try {
@@ -1714,7 +1729,7 @@ const Checkout: React.FC = () => {
         {isGuestCheckout ? (
           <Card title={t('pages.checkout.contact')} className="checkout-page__sectionCard">
             <Form.Item name="guestEmail" label={t('pages.checkout.email')} rules={[{ required: true, message: t('pages.checkout.emailRequired') }, { type: 'email', message: t('pages.checkout.emailInvalid') }]}>
-              <Input placeholder="customer@shopmx.pet" autoComplete="email" inputMode="email" maxLength={120} />
+              <Input placeholder={t('pages.checkout.guestEmailPlaceholder')} autoComplete="email" inputMode="email" maxLength={120} />
             </Form.Item>
             <Text type="secondary">{t('pages.checkout.guestHint')}</Text>
           </Card>
@@ -1763,16 +1778,24 @@ const Checkout: React.FC = () => {
                 label={t('pages.profile.phone')}
                 rules={[
                   { required: true, message: t('pages.checkout.phoneRequired') },
-                  { validator: (_, value) => (!value || isLikelyPhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.checkout.phoneRequired')))) },
+                  { validator: (_, value) => (!value || isLikelyPhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.checkout.phoneInvalid')))) },
                 ]}
               >
-                <Input placeholder={t('pages.checkout.phoneRequired')} maxLength={40} autoComplete="tel" inputMode="tel" />
+                <Input
+                  placeholder={t('pages.checkout.phoneRequired')}
+                  maxLength={40}
+                  autoComplete="tel"
+                  inputMode="tel"
+                  onBlur={handleCheckoutPhoneBlur}
+                />
               </Form.Item>
               <Form.Item name="region" label={t('pages.checkout.region')} rules={[{ required: true, message: t('pages.checkout.regionRequired') }]}>
                 <Cascader
                   options={regionData}
                   placeholder={t('pages.checkout.regionPlaceholder')}
                   showSearch
+                  aria-label={checkoutRegionInputLabel}
+                  title={checkoutRegionInputLabel}
                   classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                   getPopupContainer={() => document.body}
                 />

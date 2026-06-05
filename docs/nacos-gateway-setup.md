@@ -97,13 +97,20 @@ Create private env files:
 ```powershell
 Copy-Item deploy\backend.env.example deploy\backend.env
 Copy-Item deploy\gateway.env.example deploy\gateway.env
+Copy-Item deploy\nacos-gateway.env.example deploy\nacos-gateway.env
 Copy-Item frontend\.env.gateway.example frontend\.env.local
 ```
 
-Edit `deploy/backend.env` and fill database/JWT/payment secrets. Then run:
+Edit `deploy/backend.env` and fill database/JWT/payment/Redis secrets. Edit
+`deploy/gateway.env` with Gateway discovery settings. Edit
+`deploy/nacos-gateway.env` with Compose-level Nacos auth and port binding values.
+
+Do not duplicate backend runtime secrets in the Compose shell environment; the
+backend and Redis containers read those values from `deploy/backend.env`.
+Then run:
 
 ```powershell
-docker compose -f deploy/docker-compose.nacos-gateway.yml up -d --build
+docker compose --env-file deploy\nacos-gateway.env -f deploy/docker-compose.nacos-gateway.yml up -d --build
 ```
 
 This starts:

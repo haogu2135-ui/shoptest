@@ -413,3 +413,80 @@
     min-height: 44px;
   }
 }
+
+/* Mobile system statistics can contain long service/status names. */
+@media (max-width: 720px) {
+  .system-monitor__stats .ant-card {
+    flex-basis: 170px;
+    overflow: visible;
+  }
+
+  .system-monitor__stats .ant-statistic-title,
+  .system-monitor__stats .ant-statistic-content,
+  .system-monitor__stats .ant-statistic-content-value {
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .system-monitor__stats .ant-statistic-content {
+    display: block;
+  }
+
+  .system-monitor__stats .ant-statistic-content-value {
+    display: inline;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 360px) {
+  .system-monitor__stats .ant-card {
+    flex-basis: 156px;
+  }
+}
+
+/* Final mobile readability pass: operational values can be long hostnames,
+   JDBC URLs, or comma-separated blockers. Stack labels above values so they do
+   not collapse into unreadable vertical text columns. */
+@media (max-width: 720px) {
+  .system-monitor .ant-descriptions-item {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+  }
+
+  .system-monitor .ant-descriptions-item-label,
+  .system-monitor .ant-descriptions-item-content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .system-monitor .ant-descriptions-item-label {
+    padding-bottom: 2px;
+    border-bottom: 0;
+    color: #6f7f74;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .system-monitor .ant-descriptions-item-content {
+    padding-top: 2px;
+  }
+
+  .system-monitor__messages,
+  .system-monitor__message,
+  .system-monitor .ant-descriptions-item-content .ant-typography {
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .system-monitor .ant-tag {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.25;
+  }
+}

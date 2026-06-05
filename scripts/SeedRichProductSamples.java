@@ -80,12 +80,12 @@ public class SeedRichProductSamples {
         seeds.add(product(9205, "PawPilot Smart Feeder Mini 2L", "Automatic Feeders", "PawPilot", "hot",
                 "Compact automatic feeder for cats and small dogs with app schedules.", "118.90", "149.90", "21",
                 "https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=1000&q=80",
-                "https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=1000&q=80",
+                "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=1000&q=80",
                 "App schedule", "Schedule up to six meals a day, tune portion size and keep kibble sealed between feedings.",
                 "Cat, Small dog", "2 L", "Dry food", "USB-C"));
         seeds.add(product(9206, "PawPilot Dual Bowl Slow Feeder Station", "Bowls, Feeders & Waterers", "PawPilot", "discount",
                 "Raised feeding station with stainless bowls and a slow-feeder insert.", "72.90", "94.90", "23",
-                "https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=1000&q=80",
+                "https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=1000&q=80",
                 "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=1000&q=80",
                 "Better posture", "The raised stand keeps food and water organized while the insert slows fast eaters.",
                 "Cat, Dog", "2 bowls", "Stainless steel", "Dishwasher safe"));
@@ -122,7 +122,7 @@ public class SeedRichProductSamples {
         seeds.add(product(9212, "PurePaws Aloe Grooming Wipes 120 Count", "Grooming & Hygiene", "PurePaws", "hot",
                 "Large aloe wipes for paws, coat touch-ups and travel cleanups.", "32.90", "42.90", "23",
                 "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=1000&q=80",
-                "https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=1000&q=80",
+                "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=1000&q=80",
                 "Daily cleanup", "Use after walks, before getting into the car or between full baths.",
                 "Cat, Dog", "120 wipes", "Aloe", "Alcohol free"));
         seeds.add(product(9213, "PurePaws Deshedding Brush Pro", "Grooming & Hygiene", "PurePaws", "new",
@@ -146,7 +146,7 @@ public class SeedRichProductSamples {
         seeds.add(product(9216, "PawPilot Pet Supplies Starter Crate", "Pet Supplies", "PawPilot", "discount",
                 "A broad starter crate with bowls, wipes, toys and walking basics.", "199.90", "249.90", "20",
                 "https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=1000&q=80",
-                "https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=1000&q=80",
+                "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=1000&q=80",
                 "Starter bundle", "A high-value starter set that brings everyday care essentials together in one box.",
                 "Cat, Dog", "8 items", "Mixed", "Giftable box"));
         return seeds;

@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders } from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { User, UserProfile, UserAdminSummary, AdminUserPage, Product, AdminProductPage, ProductPublic, ProductPublicPage, Category, CategoryPublic, Brand, BrandPublic, CartItem, Order, OrderCustomer, OrderItem, OrderItemCustomer, OrderTrackResult, Review, PublicReview, ReviewableOrder, DashboardStats, UserAddress, WishlistItem, AppNotification, PaymentCustomer, AdminPayment, PaymentChannel, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview, ProductQuestion, ProductQuestionPublic, ProductQuestionAdminSummary, SupportSession, SupportSessionCustomer, SupportAdminSummary, SupportAdminSessionPage, SupportMessage, SupportMessageCustomer, Coupon, CouponPublic, AdminCouponPage, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhotoPublic, AdminPetGalleryPhoto, AdminPetGalleryPage, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminReviewPage, AdminOrderBatchShipResponse, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementPublic, SiteAnnouncementAdminPage, SiteAnnouncementAdminSummary } from '../types';
+import { User, UserProfile, UserAdminSummary, AdminUserPage, Product, AdminProductPage, ProductPublic, ProductPublicPage, Category, CategoryPublic, Brand, BrandPublic, CartItem, Order, OrderCustomer, OrderItem, OrderItemCustomer, OrderTrackResult, Review, PublicReview, ReviewableOrder, DashboardStats, UserAddress, WishlistItem, AppNotification, PaymentCustomer, AdminPayment, PaymentChannel, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview, ProductQuestion, ProductQuestionPublic, ProductQuestionAdminSummary, SupportSession, SupportSessionCustomer, SupportAdminSummary, SupportAdminSessionPage, SupportMessage, SupportMessageCustomer, Coupon, CouponPublic, AdminCouponPage, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhotoPublic, AdminPetGalleryPhoto, AdminPetGalleryPage, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminReviewPage, AdminOrderBatchShipResponse, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, AdminBugReport, AdminBugReportPage, AdminBugReportSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementPublic, SiteAnnouncementAdminPage, SiteAnnouncementAdminSummary } from '../types';
 import { buildLoginUrl, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { AUTH_SESSION_STORAGE_KEYS, dispatchAuthSessionChanged } from '../utils/authEvents';
 import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
@@ -69,6 +69,22 @@ const stripControlChars = (value: string) =>
 
 const normalizeTextParam = (value: unknown, maxLength = 120) =>
     stripControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
+
+const normalizeMultilineTextParam = (value: unknown, maxLength = 120) => {
+    const normalized = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    return Array.from(normalized, (char) => {
+        const code = char.charCodeAt(0);
+        if (code === 10) return '\n';
+        return code <= 31 || code === 127 ? ' ' : char;
+    })
+        .join('')
+        .split('\n')
+        .map((line) => line.trim().replace(/ {2,}/g, ' '))
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+        .slice(0, maxLength);
+};
 
 const normalizeImageUrlParam = (value: unknown, maxLength = 2048) => {
     const url = normalizeTextParam(value, maxLength);
@@ -176,6 +192,30 @@ const normalizeAnnouncementPayload = (announcement: Partial<SiteAnnouncement>) =
     sortOrder: normalizeSafeInt(announcement.sortOrder) ?? 0,
     startsAt: announcement.startsAt || undefined,
     endsAt: announcement.endsAt || undefined,
+});
+
+const normalizeBugReportPayload = (bug: Partial<AdminBugReport>) => ({
+    title: normalizeTextParam(bug.title, 160),
+    description: normalizeMultilineTextParam(bug.description, 4000),
+    module: normalizeTextParam(bug.module, 40).toUpperCase() || 'GENERAL',
+    severity: normalizeTextParam(bug.severity, 20).toUpperCase() || 'MEDIUM',
+    priority: normalizeTextParam(bug.priority, 20).toUpperCase() || 'P2',
+    pageUrl: bug.pageUrl === undefined || bug.pageUrl === null ? null : normalizeTextParam(bug.pageUrl, 500),
+    environment: bug.environment === undefined || bug.environment === null ? null : normalizeTextParam(bug.environment, 120),
+    reproductionSteps: bug.reproductionSteps === undefined || bug.reproductionSteps === null ? null : normalizeMultilineTextParam(bug.reproductionSteps, 4000),
+    expectedResult: bug.expectedResult === undefined || bug.expectedResult === null ? null : normalizeMultilineTextParam(bug.expectedResult, 4000),
+    actualResult: bug.actualResult === undefined || bug.actualResult === null ? null : normalizeMultilineTextParam(bug.actualResult, 4000),
+    attachmentUrls: bug.attachmentUrls === undefined || bug.attachmentUrls === null ? null : normalizeMultilineTextParam(bug.attachmentUrls, 2000),
+    assignedTo: bug.assignedTo === undefined || bug.assignedTo === null ? null : normalizeTextParam(bug.assignedTo, 120),
+});
+
+const normalizeBugStatusPayload = (payload: Partial<AdminBugReport> & { note?: string }) => ({
+    status: normalizeTextParam(payload.status, 40).toUpperCase(),
+    note: normalizeMultilineTextParam(payload.note, 2000) || undefined,
+    assignedTo: payload.assignedTo === undefined || payload.assignedTo === null ? undefined : normalizeTextParam(payload.assignedTo, 120),
+    scanNote: payload.scanNote === undefined || payload.scanNote === null ? undefined : normalizeMultilineTextParam(payload.scanNote, 2000),
+    fixSummary: payload.fixSummary === undefined || payload.fixSummary === null ? undefined : normalizeMultilineTextParam(payload.fixSummary, 2000),
+    regressionNote: payload.regressionNote === undefined || payload.regressionNote === null ? undefined : normalizeMultilineTextParam(payload.regressionNote, 2000),
 });
 
 const normalizeAdminRolePayload = (role: Partial<AdminRole>) => ({
@@ -637,6 +677,11 @@ const withArrayData = <T,>(response: AxiosResponse<T[]>): AxiosResponse<T[]> => 
     ...response,
     data: Array.isArray(response.data) ? response.data : [],
 });
+
+const isMissingAdminOptionEndpointError = (error: unknown) => {
+    const status = Number((error as AxiosError | undefined)?.response?.status || 0);
+    return status === 404 || status === 405;
+};
 
 const parseMaybeJson = (value: unknown) => {
     if (typeof value !== 'string') return value;
@@ -1953,6 +1998,26 @@ export const adminApi = {
         api.post<SystemAlertPurgeResponse>('/admin/alerts/purge-resolved', null, {
             params: { retentionDays: normalizeBoundedPositiveInt(retentionDays, 30, 3650) },
         }),
+    getBugs: (params?: { page?: number; size?: number; status?: string; severity?: string; module?: string; keyword?: string; scanQueueOnly?: boolean }) =>
+        api.get<AdminBugReportPage>('/admin/bugs', {
+            params: {
+                page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
+                size: normalizeBoundedPositiveInt(params?.size, 20, 100),
+                status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
+                severity: normalizeTextParam(params?.severity, 20).toUpperCase() || undefined,
+                module: normalizeTextParam(params?.module, 40).toUpperCase() || undefined,
+                keyword: normalizeTextParam(params?.keyword, 120) || undefined,
+                scanQueueOnly: Boolean(params?.scanQueueOnly),
+            },
+        }),
+    getBugSummary: () => api.get<AdminBugReportSummary>('/admin/bugs/summary'),
+    createBug: (bug: Partial<AdminBugReport>) => api.post<AdminBugReport>('/admin/bugs', normalizeBugReportPayload(bug)),
+    updateBug: (id: number, bug: Partial<AdminBugReport>) =>
+        api.put<AdminBugReport>(`/admin/bugs/${toPathId(id)}`, normalizeBugReportPayload(bug)),
+    updateBugStatus: (id: number, payload: Partial<AdminBugReport> & { note?: string }) =>
+        api.post<AdminBugReport>(`/admin/bugs/${toPathId(id)}/status`, normalizeBugStatusPayload(payload)),
+    markBugScanned: (id: number, payload?: Partial<AdminBugReport> & { note?: string }) =>
+        api.post<AdminBugReport>(`/admin/bugs/${toPathId(id)}/scan`, normalizeBugStatusPayload({ status: 'FIXING', ...(payload || {}) })),
     getIpBlacklist: (params?: { status?: string; source?: string; ipAddress?: string; limit?: number }) =>
         api.get<IpBlacklistEntry[]>('/admin/ip-blacklist', {
             params: {
@@ -2155,6 +2220,19 @@ export const adminApi = {
         api.put<Product>(`/admin/products/${toPathId(id)}`, normalizeProductPayload(product)).finally(() => clearProductCache(toPathId(id))),
     deleteProduct: (id: number) =>
         api.delete(`/admin/products/${toPathId(id)}`).finally(() => clearProductCache(toPathId(id))),
+    getProductCategories: () => api.get<Category[]>('/admin/products/categories/options', { params: { limit: 500 } })
+        .then(withArrayData)
+        .catch((error) => {
+            if (!isMissingAdminOptionEndpointError(error)) throw error;
+            return api.get<Category[]>('/admin/categories', { params: { limit: 500 } }).then(withArrayData);
+        }),
+    getProductBrands: (params?: { activeOnly?: boolean }) =>
+        api.get<Brand[]>('/admin/products/brands/options', { params: { activeOnly: params?.activeOnly ? true : undefined, limit: 500 } })
+            .then(withArrayData)
+            .catch((error) => {
+                if (!isMissingAdminOptionEndpointError(error)) throw error;
+                return api.get<Brand[]>('/admin/brands', { params: { activeOnly: params?.activeOnly ? true : undefined, limit: 500 } }).then(withArrayData);
+            }),
     getCategories: () => api.get<Category[]>('/admin/categories').then(withArrayData),
     createCategory: (category: Partial<Category>) => api.post<Category>('/admin/categories', normalizeCategoryPayload(category)).finally(() => {
         clearCategoryCache();

@@ -102,6 +102,10 @@ const normalizeProfilePhone = (value: unknown) => {
   const raw = stripProfileControlChars(value).trim();
   return raw.startsWith('+') ? `+${raw.slice(1).replace(/\D+/g, '')}` : raw.replace(/\D+/g, '');
 };
+const profilePhonePattern = /^(?=(?:.*\d){6,20})\+?[\d\s().-]{6,32}$/;
+const isLikelyProfilePhone = (value: unknown) => profilePhonePattern.test(stripProfileControlChars(value).trim());
+const normalizeLikelyProfilePhone = (value: unknown) =>
+  isLikelyProfilePhone(value) ? normalizeProfilePhone(value) : stripProfileControlChars(value).trim();
 const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
 const scrollProfileAddressFieldIntoMobileView = (target: EventTarget | null) => {
   if (typeof window === 'undefined' || window.innerWidth > 780 || !(target instanceof HTMLElement)) return;
@@ -622,6 +626,7 @@ const Profile: React.FC = () => {
       cancelText: t('common.cancel'),
       okButtonProps: { 'aria-label': confirmReceiptActionLabel, title: confirmReceiptActionLabel },
       cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${confirmReceiptActionLabel}`, title: `${t('common.cancel')}: ${confirmReceiptActionLabel}` },
+      className: 'profile-mobile-safe-modal profile-page__receiptConfirmModal',
       onOk: () => handleConfirmReceipt(order.id),
     });
   };
@@ -1100,6 +1105,9 @@ const Profile: React.FC = () => {
     ? [editingAddress.recipientName, editingAddress.phone, editingAddress.address].filter(Boolean).join(' / ') || `#${editingAddress.id}`
     : t('pages.profile.addAddressTitle');
   const saveAddressActionLabel = `${t('common.save')}: ${addressEditorTargetLabel}`;
+  const profilePhoneInputLabel = `${t('pages.profile.editProfileTitle')}: ${t('pages.profile.phone')}`;
+  const addressPhoneInputLabel = `${saveAddressActionLabel}: ${t('pages.profile.phone')}`;
+  const addressRegionInputLabel = `${saveAddressActionLabel}: ${t('pages.profile.regionRequired')}`;
   const petEditorTargetLabel = editingPet?.name || (editingPet ? `#${editingPet.id}` : t('pages.profile.addPet'));
   const savePetActionLabel = `${t('common.save')}: ${petEditorTargetLabel}`;
   const returnShipmentOrderLabel = returnShipmentOrder ? profileOrderLabel(returnShipmentOrder) : t('pages.profile.submitReturnShipment');
@@ -1797,8 +1805,22 @@ const Profile: React.FC = () => {
               }
             />
           </Form.Item>
-          <Form.Item name="phone" label={t('pages.profile.phone')}>
-            <Input maxLength={20} />
+          <Form.Item
+            name="phone"
+            label={t('pages.profile.phone')}
+            rules={[
+              { validator: (_, value) => (!value || isLikelyProfilePhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.auth.phoneInvalid')))) },
+            ]}
+          >
+            <Input
+              maxLength={32}
+              placeholder={t('pages.auth.phonePlaceholder')}
+              autoComplete="tel"
+              inputMode="tel"
+              aria-label={profilePhoneInputLabel}
+              title={profilePhoneInputLabel}
+              onBlur={(event) => editForm.setFieldValue('phone', normalizeLikelyProfilePhone(event.target.value))}
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -1863,14 +1885,31 @@ const Profile: React.FC = () => {
           <Form.Item name="recipientName" label={t('pages.profile.recipient')} rules={[{ required: true, message: t('pages.profile.recipientRequired') }]}>
             <Input placeholder={t('pages.profile.recipientRequired')} autoComplete="name" maxLength={80} />
           </Form.Item>
-          <Form.Item name="phone" label={t('pages.profile.phone')} rules={[{ required: true, message: t('pages.profile.phoneRequired') }]}>
-            <Input placeholder={t('pages.profile.phoneRequired')} autoComplete="tel" inputMode="tel" maxLength={40} />
+          <Form.Item
+            name="phone"
+            label={t('pages.profile.phone')}
+            rules={[
+              { required: true, message: t('pages.profile.phoneRequired') },
+              { validator: (_, value) => (!value || isLikelyProfilePhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.auth.phoneInvalid')))) },
+            ]}
+          >
+            <Input
+              placeholder={t('pages.auth.phonePlaceholder')}
+              autoComplete="tel"
+              inputMode="tel"
+              maxLength={32}
+              aria-label={addressPhoneInputLabel}
+              title={addressPhoneInputLabel}
+              onBlur={(event) => addressForm.setFieldValue('phone', normalizeLikelyProfilePhone(event.target.value))}
+            />
           </Form.Item>
           <Form.Item name="region" label={t('pages.profile.region')} rules={[{ required: true, message: t('pages.profile.regionRequired') }]}>
             <Cascader
               options={regionData}
-              placeholder={t('pages.profile.region')}
+              placeholder={t('pages.profile.regionPlaceholder')}
               showSearch
+              aria-label={addressRegionInputLabel}
+              title={addressRegionInputLabel}
               classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
               getPopupContainer={() => document.body}
             />

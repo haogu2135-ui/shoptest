@@ -428,18 +428,23 @@ public class AdminSystemController {
     private Map<String, Object> corsConfigCheck(List<String> issues) {
         String corsRaw = property("app.cors.allowed-origin-patterns", "");
         String websocketRaw = property("app.websocket.allowed-origin-patterns", "");
+        String websocketEffectiveRaw = hasText(websocketRaw) ? websocketRaw : corsRaw;
         List<String> corsPatterns = splitPatterns(corsRaw);
-        List<String> websocketPatterns = splitPatterns(websocketRaw);
+        List<String> websocketPatterns = splitPatterns(websocketEffectiveRaw);
         List<String> unsafeCors = unsafeProductionOrigins(corsPatterns);
         List<String> unsafeWebsocket = unsafeProductionOrigins(websocketPatterns);
 
         Map<String, Object> check = new LinkedHashMap<>();
-        check.put("status", unsafeCors.isEmpty() && unsafeWebsocket.isEmpty() && !corsPatterns.isEmpty() ? "PASS" : "FAIL");
+        check.put("status", unsafeCors.isEmpty() && unsafeWebsocket.isEmpty() && !corsPatterns.isEmpty() && !websocketPatterns.isEmpty() ? "PASS" : "FAIL");
         check.put("corsOriginCount", corsPatterns.size());
         check.put("websocketOriginCount", websocketPatterns.size());
+        check.put("websocketOriginSource", hasText(websocketRaw) ? "explicit" : "corsFallback");
 
         if (corsPatterns.isEmpty()) {
             issues.add("app.cors.allowed-origin-patterns must list deployed HTTPS storefront and admin origins");
+        }
+        if (websocketPatterns.isEmpty()) {
+            issues.add("app.websocket.allowed-origin-patterns must list deployed HTTPS storefront and admin origins or inherit them from CORS");
         }
         if (!unsafeCors.isEmpty()) {
             issues.add("app.cors.allowed-origin-patterns contains local, private, wildcard, or non-HTTPS origins");

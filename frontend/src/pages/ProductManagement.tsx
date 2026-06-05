@@ -8,8 +8,8 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
   SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined, LinkOutlined,
 } from '@ant-design/icons';
-import { adminApi, brandApi } from '../api';
-import type { Product, CategoryPublic, BrandPublic, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview } from '../types';
+import { adminApi } from '../api';
+import type { Product, CategoryPublic, Brand, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview } from '../types';
 import { buildCategoryTree, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import dayjs from 'dayjs';
@@ -524,7 +524,9 @@ const ProductManagement: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryPublic[]>([]);
-  const [brands, setBrands] = useState<BrandPublic[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [categoryOptionsTruncated, setCategoryOptionsTruncated] = useState(false);
+  const [brandOptionsTruncated, setBrandOptionsTruncated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [productSubmitting, setProductSubmitting] = useState(false);
   const [importSubmitting, setImportSubmitting] = useState(false);
@@ -688,8 +690,9 @@ const ProductManagement: React.FC = () => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await adminApi.getCategories();
+      const response = await adminApi.getProductCategories();
       setCategories(response.data);
+      setCategoryOptionsTruncated(String(response.headers?.['x-admin-list-truncated'] || '').toLowerCase() === 'true');
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchCategoriesFailed'), language));
     }
@@ -697,8 +700,9 @@ const ProductManagement: React.FC = () => {
 
   const fetchBrands = useCallback(async () => {
     try {
-      const response = await brandApi.getAll();
+      const response = await adminApi.getProductBrands({ activeOnly: false });
       setBrands(response.data);
+      setBrandOptionsTruncated(String(response.headers?.['x-admin-list-truncated'] || '').toLowerCase() === 'true');
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchBrandsFailed'), language));
     }
@@ -1237,7 +1241,7 @@ const ProductManagement: React.FC = () => {
       'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping', 'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
     const primaryImage = 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80';
-    const galleryImage = 'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80';
+    const galleryImage = 'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80';
     const detailImage = 'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80';
     const templateRow = [
       '', 'Smart pet feeder with stainless bowl', 'Programmable feeder for cats and small dogs with sealed dry-food storage.', '99.90', '100', '', templateCategoryName,
@@ -1911,6 +1915,9 @@ const ProductManagement: React.FC = () => {
   return (
     <div className="product-management-page">
       <Title level={3} style={{ marginBottom: 0 }}>{t('pages.productAdmin.title')}</Title>
+      {(categoryOptionsTruncated || brandOptionsTruncated) ? (
+        <Alert type="warning" showIcon message={t('pages.productAdmin.optionListTruncated')} />
+      ) : null}
       <Divider />
 
       <div className="product-management-page__toolbar">

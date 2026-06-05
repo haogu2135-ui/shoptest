@@ -257,3 +257,49 @@
     min-height: 44px;
   }
 }
+
+/* Mobile log statistics should show operational identifiers, not ellipses. */
+@media (max-width: 720px) {
+  .log-management__actions .ant-btn {
+    height: auto;
+    overflow: visible;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .log-management__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .log-management__stats .ant-card {
+    flex-basis: 170px;
+    overflow: visible;
+  }
+
+  .log-management__stats .ant-statistic-title,
+  .log-management__stats .ant-statistic-content,
+  .log-management__stats .ant-statistic-content-value {
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .log-management__stats .ant-statistic-content {
+    display: block;
+  }
+
+  .log-management__stats .ant-statistic-content-value {
+    display: inline;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 380px) {
+  .log-management__stats .ant-card {
+    flex-basis: 158px;
+  }
+}

@@ -350,6 +350,7 @@ const OrderTracking: React.FC = () => {
       cancelText: t('common.cancel'),
       okButtonProps: { danger: true, 'aria-label': rollbackActionLabel, title: rollbackActionLabel },
       cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${rollbackActionLabel}`, title: `${t('common.cancel')}: ${rollbackActionLabel}` },
+      className: 'profile-mobile-safe-modal order-tracking-page__rollbackConfirmModal',
       async onOk() {
         setCanceling(true);
         try {
@@ -396,6 +397,7 @@ const OrderTracking: React.FC = () => {
       cancelText: t('common.cancel'),
       okButtonProps: { 'aria-label': confirmReceiptActionLabel, title: confirmReceiptActionLabel },
       cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${confirmReceiptActionLabel}`, title: `${t('common.cancel')}: ${confirmReceiptActionLabel}` },
+      className: 'profile-mobile-safe-modal order-tracking-page__receiptConfirmModal',
       onOk: confirmReceipt,
     });
   };
@@ -464,10 +466,10 @@ const OrderTracking: React.FC = () => {
         </div>
         <Form form={form} className="order-tracking-page__lookupForm" layout="vertical" onFinish={onFinish}>
           <Form.Item name="orderNo" label={t('pages.orderTracking.orderNo')} rules={[{ required: true, message: t('pages.orderTracking.orderNoRequired') }]}>
-            <Input placeholder="SO202605..." autoComplete="off" inputMode="text" maxLength={80} />
+            <Input placeholder={t('pages.orderTracking.orderNoPlaceholder')} autoComplete="off" inputMode="text" maxLength={80} />
           </Form.Item>
           <Form.Item name="email" label={t('pages.orderTracking.email')} rules={[{ required: true, message: t('pages.orderTracking.emailRequired') }, { type: 'email', message: t('pages.auth.emailInvalid') }]}>
-            <Input placeholder="customer@shopmx.pet" autoComplete="email" inputMode="email" maxLength={120} />
+            <Input placeholder={t('pages.orderTracking.emailPlaceholder')} autoComplete="email" inputMode="email" maxLength={120} />
           </Form.Item>
           <Button className="order-tracking-page__lookupButton" type="primary" htmlType="submit" loading={loading} icon={<SearchOutlined />} block>
             {t('pages.orderTracking.search')}

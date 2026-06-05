@@ -18,6 +18,9 @@ const hasUnsafeUrlCharacter = (value: string) =>
   });
 
 const IPV4_HOST_PATTERN = /^\d{1,3}(?:\.\d{1,3}){3}$/;
+const unreliableRemoteImageRules = [
+  { hostname: 'images.unsplash.com', pathIncludes: '/photo-1601758123927-1967a0d5f11b' },
+];
 
 const isPrivateIpv4Host = (hostname: string) => {
   if (!IPV4_HOST_PATTERN.test(hostname)) return false;
@@ -68,6 +71,14 @@ const isUnsafeImageHost = (hostname: string) => {
     || normalized.startsWith('fc')
     || normalized.startsWith('fd')
     || normalized.startsWith('ff');
+};
+
+const isKnownUnreliableRemoteImageUrl = (url: URL) => {
+  const hostname = url.hostname.toLowerCase();
+  const pathname = url.pathname.toLowerCase();
+  return unreliableRemoteImageRules.some((rule) =>
+    hostname === rule.hostname && pathname.includes(rule.pathIncludes),
+  );
 };
 
 const isSafeImageUrlValue = (value: string) => {
@@ -135,6 +146,7 @@ export const normalizePersistentImageUrl = (assetUrl?: string | null) => {
       return !url.username
         && !url.password
         && standardPort
+        && !isKnownUnreliableRemoteImageUrl(url)
         && !isUnsafeImageHost(url.hostname)
         ? url.toString()
         : '';

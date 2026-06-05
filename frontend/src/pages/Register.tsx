@@ -31,6 +31,9 @@ const normalizePhone = (value: unknown) => {
   const normalized = stripControlChars(value).trim();
   return normalized.startsWith('+') ? `+${normalized.slice(1).replace(/\D+/g, '')}` : normalized.replace(/\D+/g, '');
 };
+const normalizeLikelyPhone = (value: unknown) => (
+  phonePattern.test(stripControlChars(value).trim()) ? normalizePhone(value) : stripControlChars(value).trim()
+);
 const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
 const maskEmail = (value: unknown) => {
   const email = normalizeEmail(value);
@@ -401,7 +404,7 @@ const Register: React.FC = () => {
               maxLength={20}
               aria-label={phoneInputLabel}
               title={phoneInputLabel}
-              onBlur={(event) => form.setFieldValue('phone', normalizePhone(event.target.value))}
+              onBlur={(event) => form.setFieldValue('phone', normalizeLikelyPhone(event.target.value))}
             />
           </Form.Item>
 

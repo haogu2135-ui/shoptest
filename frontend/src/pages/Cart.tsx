@@ -855,8 +855,12 @@ const Cart: React.FC = () => {
                 {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
               </Button>
             )}
-            <Button aria-label={browseAllProductsActionLabel} title={browseAllProductsActionLabel} onClick={() => navigate('/products')}>
-              {t('pages.cart.browse')}
+            <Button
+              aria-label={cartItems.length > 0 ? browseAllProductsActionLabel : emptyCouponsActionLabel}
+              title={cartItems.length > 0 ? browseAllProductsActionLabel : emptyCouponsActionLabel}
+              onClick={() => navigate(cartItems.length > 0 ? '/products' : '/coupons')}
+            >
+              {cartItems.length > 0 ? t('pages.cart.browse') : t('nav.coupons')}
             </Button>
           </div>
         </div>

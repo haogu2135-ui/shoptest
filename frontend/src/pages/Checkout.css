@@ -3449,3 +3449,43 @@
     min-height: 44px;
   }
 }
+
+/* Final mobile checkout copy readability pass: savings/readiness cards carry
+   business guidance, so those lines must wrap instead of being clipped. */
+@media (max-width: 780px) {
+  .checkout-page__savingsCoachItem,
+  .checkout-page__readinessItem,
+  .checkout-page__nextAction,
+  .checkout-page__couponOpportunity .ant-card-body {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .checkout-page__savingsCoachItem > span:last-child,
+  .checkout-page__readinessItem > span,
+  .checkout-page__nextAction > span,
+  .checkout-page__couponOpportunity .ant-card-body > div {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .checkout-page__savingsCoachItem .ant-typography,
+  .checkout-page__readinessItem .ant-typography,
+  .checkout-page__nextAction .ant-typography,
+  .checkout-page__couponOpportunity .ant-typography,
+  .checkout-page__paymentConfidence .ant-typography {
+    display: block;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    -webkit-line-clamp: unset;
+  }
+
+  .checkout-page__savingsCoachItem > span:last-child > .ant-typography:last-child {
+    display: block;
+    -webkit-box-orient: initial;
+  }
+}

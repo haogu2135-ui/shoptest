@@ -53,11 +53,33 @@
 
 .browsing-history__tools {
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 10px;
+  min-width: 0;
 }
 
 .browsing-history__tools .ant-input-affix-wrapper {
+  flex: 1 1 240px;
   min-width: 0;
+  max-width: 420px;
+}
+
+.browsing-history__tools .ant-btn {
+  flex: 0 0 auto;
+  min-width: 128px;
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) and (min-width: 641px) {
+  .browsing-history__tools {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .browsing-history__tools .ant-input-affix-wrapper {
+    flex-basis: min(100%, 360px);
+  }
 }
 
 .browsing-history__grid {

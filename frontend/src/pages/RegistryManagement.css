@@ -318,6 +318,39 @@
   }
 }
 
+/* Mobile registry statistics carry service names; keep the values readable. */
+@media (max-width: 720px) {
+  .registry-management__stats .ant-card {
+    flex-basis: 170px;
+    overflow: visible;
+  }
+
+  .registry-management__stats .ant-statistic-title,
+  .registry-management__stats .ant-statistic-content,
+  .registry-management__stats .ant-statistic-content-value {
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .registry-management__stats .ant-statistic-content {
+    display: block;
+  }
+
+  .registry-management__stats .ant-statistic-content-value {
+    display: inline;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 360px) {
+  .registry-management__stats .ant-card {
+    flex-basis: 156px;
+  }
+}
+
 @media (max-width: 430px) {
   .registry-management__hero {
     top: 58px;

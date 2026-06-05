@@ -20,7 +20,9 @@ services:
     image: redis:7-alpine
     container_name: shop-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    env_file:
+      - ./backend.env
+    command: sh -c 'redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"'
     expose:
       - "6379"
     volumes:
@@ -35,33 +37,6 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend.env
-    environment:
-      SPRING_APPLICATION_NAME: shop-backend
-      APP_RUNTIME_MODE: ${APP_RUNTIME_MODE:-production}
-      JWT_SECRET: ${JWT_SECRET:-}
-      PAYMENT_CALLBACK_SECRET: ${PAYMENT_CALLBACK_SECRET:-}
-      NACOS_DISCOVERY_ENABLED: "true"
-      NACOS_REGISTER_ENABLED: ${NACOS_REGISTER_ENABLED:-true}
-      NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-nacos:8848}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
-      NACOS_GROUP: ${NACOS_GROUP:-DEFAULT_GROUP}
-      NACOS_DISCOVERY_IP: ${NACOS_DISCOVERY_IP:-}
-      NACOS_DISCOVERY_PORT: ${NACOS_DISCOVERY_PORT:-8081}
-      NACOS_SERVICE_NAME: ${NACOS_SERVICE_NAME:-shop-backend}
-      NACOS_USERNAME: ${NACOS_USERNAME:?NACOS_USERNAME is required}
-      NACOS_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
-      DB_URL: "${DB_URL:-}"
-      DB_USERNAME: ${DB_USERNAME:-shop}
-      DB_PASSWORD: ${DB_PASSWORD:-}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      REDIS_DATABASE: ${REDIS_DATABASE:-0}
-      PAYMENT_SIMULATION_ENABLED: ${PAYMENT_SIMULATION_ENABLED:-false}
-      PAYMENT_SIMULATION_ALLOW_PRODUCTION: ${PAYMENT_SIMULATION_ALLOW_PRODUCTION:-false}
-      CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-https://pet.686888666.xyz,http://localhost:*,http://127.0.0.1:*,http://10.*:*,http://172.*:*,http://192.168.*:*}
-      WEBSOCKET_ALLOWED_ORIGIN_PATTERNS: ${WEBSOCKET_ALLOWED_ORIGIN_PATTERNS:-https://pet.686888666.xyz}
-      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-127.0.0.1,::1,0:0:0:0:0:0:0:1}
     ports:
       - "${BACKEND_BIND_IP:-127.0.0.1}:${BACKEND_HOST_PORT:-8081}:8081"
     volumes:
@@ -81,11 +56,6 @@ services:
     restart: unless-stopped
     env_file:
       - ./gateway.env
-    environment:
-      NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-nacos:8848}
-      NACOS_USERNAME: ${NACOS_USERNAME:?NACOS_USERNAME is required}
-      NACOS_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
-      GATEWAY_PORT: 8080
     ports:
       - "${GATEWAY_BIND_IP:-127.0.0.1}:${GATEWAY_HOST_PORT:-8080}:8080"
     depends_on:

@@ -339,6 +339,62 @@ export interface SystemAlertPurgeResponse {
     purgedBefore: string;
 }
 
+export interface AdminBugReport {
+    id: number;
+    title: string;
+    description: string;
+    module: string;
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
+    priority: 'P0' | 'P1' | 'P2' | 'P3' | string;
+    status: 'OPEN' | 'FIXING' | 'FIXED_PENDING_REGRESSION' | 'REGRESSION_PASSED' | 'REGRESSION_FAILED' | 'CLOSED' | 'NON_ISSUE' | string;
+    pageUrl?: string;
+    environment?: string;
+    reproductionSteps?: string;
+    expectedResult?: string;
+    actualResult?: string;
+    attachmentUrls?: string;
+    reporterId?: number;
+    reporterName?: string;
+    assignedTo?: string;
+    scanNote?: string;
+    fixSummary?: string;
+    regressionNote?: string;
+    lastScannedAt?: string;
+    fixedAt?: string;
+    fixedBy?: string;
+    regressionAt?: string;
+    regressionBy?: string;
+    closedAt?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface AdminBugReportPage {
+    items: AdminBugReport[];
+    total: number;
+    page: number;
+    size: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+}
+
+export interface AdminBugReportSummary {
+    totalBugs: number;
+    openCount: number;
+    fixingCount: number;
+    fixedPendingRegressionCount: number;
+    regressionPassedCount: number;
+    regressionFailedCount: number;
+    closedCount: number;
+    dueForScanCount: number;
+    scanIntervalMinutes: number;
+    nextScanAt?: string;
+    checkedAt?: string;
+    byStatus: Record<string, number>;
+    bySeverity: Record<string, number>;
+}
+
 export interface IpBlacklistEntry {
     id: number;
     ipAddress: string;

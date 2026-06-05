@@ -37,7 +37,7 @@ const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
     categoryName: 'Automatic Feeders',
     imageUrl: 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80',
     images: [
-      'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80',
       'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80',
     ],
     brand: 'PawPilot',

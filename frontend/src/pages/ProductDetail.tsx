@@ -29,6 +29,7 @@ import { useNativeBackHandler } from '../utils/nativeBack';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import { syncHiddenCarouselSlideFocus } from '../utils/carouselAccessibility';
+import { productImageFallback } from '../utils/productMedia';
 import './ProductDetail.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -36,7 +37,7 @@ const { Title, Text } = Typography;
 const ProductRichDetail = React.lazy(() => import('../components/ProductRichDetail'));
 const ProductReview = React.lazy(() => import('../components/ProductReview').then((module) => ({ default: module.ProductReview })));
 
-const fallbackProductImage = 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=900&q=80';
+const fallbackProductImage = productImageFallback;
 const resolveDetailImage = (imageUrl?: string | null) => resolveApiAssetUrl(imageUrl, fallbackProductImage);
 const PRODUCT_RECOMMENDATIONS_CACHE_TTL = 2 * 60 * 1000;
 

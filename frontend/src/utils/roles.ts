@@ -26,6 +26,18 @@ export const ALERTS_PURGE_PERMISSION = 'alerts:purge';
 export const ALERTS_SELF_CHECK_PERMISSION = 'alerts:self-check';
 export const ALERTS_ACKNOWLEDGE_PERMISSION = 'alerts:acknowledge';
 export const ALERTS_RESOLVE_PERMISSION = 'alerts:resolve';
+export const BUGS_PAGE_PERMISSION = 'bugs';
+export const BUGS_READ_PERMISSION = 'bugs:read';
+export const BUGS_WRITE_PERMISSION = 'bugs:write';
+export const BUGS_STATUS_PERMISSION = 'bugs:status';
+export const BUGS_SCAN_PERMISSION = 'bugs:scan';
+export const BUGS_ACCESS_PERMISSIONS = [
+  BUGS_PAGE_PERMISSION,
+  BUGS_READ_PERMISSION,
+  BUGS_WRITE_PERMISSION,
+  BUGS_STATUS_PERMISSION,
+  BUGS_SCAN_PERMISSION,
+] as const;
 export const NOTIFICATIONS_BROADCAST_PERMISSION = 'notifications:broadcast';
 export const IP_BLACKLIST_BLOCK_PERMISSION = 'ip-blacklist:block';
 export const IP_BLACKLIST_RELEASE_PERMISSION = 'ip-blacklist:release';
@@ -93,6 +105,10 @@ export const ADMIN_ACTION_PERMISSIONS = [
   ALERTS_SELF_CHECK_PERMISSION,
   ALERTS_ACKNOWLEDGE_PERMISSION,
   ALERTS_RESOLVE_PERMISSION,
+  BUGS_READ_PERMISSION,
+  BUGS_WRITE_PERMISSION,
+  BUGS_STATUS_PERMISSION,
+  BUGS_SCAN_PERMISSION,
   IP_BLACKLIST_BLOCK_PERMISSION,
   IP_BLACKLIST_RELEASE_PERMISSION,
   IP_BLACKLIST_RECORD_FAILURE_PERMISSION,
@@ -134,7 +150,7 @@ export const ADMIN_ACTION_PERMISSIONS = [
   QUESTIONS_DELETE_PERMISSION,
 ];
 
-export const ADMIN_PAGE_PERMISSIONS = [
+export const ADMIN_NAV_PAGE_PERMISSIONS = [
   'dashboard',
   'products',
   'brands',
@@ -150,6 +166,7 @@ export const ADMIN_PAGE_PERMISSIONS = [
   'announcements',
   'audit-logs',
   'alerts',
+  BUGS_PAGE_PERMISSION,
   'ip-blacklist',
   'logs',
   'support',
@@ -158,6 +175,10 @@ export const ADMIN_PAGE_PERMISSIONS = [
   'config-center',
   'traffic-control',
   'system',
+];
+
+export const ADMIN_PAGE_PERMISSIONS = [
+  ...ADMIN_NAV_PAGE_PERMISSIONS,
   ...ADMIN_ACTION_PERMISSIONS,
 ];
 
@@ -183,6 +204,10 @@ const ADMIN_PERMISSION_LABEL_KEYS: Record<string, string> = {
   [ALERTS_SELF_CHECK_PERMISSION]: 'alertSelfCheckActions',
   [ALERTS_ACKNOWLEDGE_PERMISSION]: 'alertAcknowledgeActions',
   [ALERTS_RESOLVE_PERMISSION]: 'alertResolveActions',
+  [BUGS_READ_PERMISSION]: 'bugReadActions',
+  [BUGS_WRITE_PERMISSION]: 'bugWriteActions',
+  [BUGS_STATUS_PERMISSION]: 'bugStatusActions',
+  [BUGS_SCAN_PERMISSION]: 'bugScanActions',
   [IP_BLACKLIST_BLOCK_PERMISSION]: 'ipBlacklistBlockActions',
   [IP_BLACKLIST_RELEASE_PERMISSION]: 'ipBlacklistReleaseActions',
   [IP_BLACKLIST_RECORD_FAILURE_PERMISSION]: 'ipBlacklistRecordFailureActions',

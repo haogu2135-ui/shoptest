@@ -62,6 +62,11 @@ public class AdminRoleService {
     public static final String ALERTS_SELF_CHECK_PERMISSION = "alerts:self-check";
     public static final String ALERTS_ACKNOWLEDGE_PERMISSION = "alerts:acknowledge";
     public static final String ALERTS_RESOLVE_PERMISSION = "alerts:resolve";
+    public static final String BUGS_PAGE_PERMISSION = "bugs";
+    public static final String BUGS_READ_PERMISSION = "bugs:read";
+    public static final String BUGS_WRITE_PERMISSION = "bugs:write";
+    public static final String BUGS_STATUS_PERMISSION = "bugs:status";
+    public static final String BUGS_SCAN_PERMISSION = "bugs:scan";
     public static final String IP_BLACKLIST_BLOCK_PERMISSION = "ip-blacklist:block";
     public static final String IP_BLACKLIST_RELEASE_PERMISSION = "ip-blacklist:release";
     public static final String IP_BLACKLIST_RECORD_FAILURE_PERMISSION = "ip-blacklist:record-failure";
@@ -82,7 +87,7 @@ public class AdminRoleService {
 
     public static final List<String> ADMIN_PAGES = List.of(
             "dashboard", "products", "brands", "categories", "orders", "logistics-carriers",
-            "users", "permissions", "reviews", "questions", "coupons", "notifications", "announcements", "audit-logs", "alerts", "ip-blacklist", "logs", "support", "pet-gallery", "registry", "config-center", "traffic-control", "system");
+            "users", "permissions", "reviews", "questions", "coupons", "notifications", "announcements", "audit-logs", "alerts", BUGS_PAGE_PERMISSION, "ip-blacklist", "logs", "support", "pet-gallery", "registry", "config-center", "traffic-control", "system");
     public static final List<String> ADMIN_ACTION_PERMISSIONS = List.of(
             ORDER_STATUS_PERMISSION,
             ORDER_FULFILLMENT_PERMISSION,
@@ -121,6 +126,10 @@ public class AdminRoleService {
             ALERTS_SELF_CHECK_PERMISSION,
             ALERTS_ACKNOWLEDGE_PERMISSION,
             ALERTS_RESOLVE_PERMISSION,
+            BUGS_READ_PERMISSION,
+            BUGS_WRITE_PERMISSION,
+            BUGS_STATUS_PERMISSION,
+            BUGS_SCAN_PERMISSION,
             IP_BLACKLIST_BLOCK_PERMISSION,
             IP_BLACKLIST_RELEASE_PERMISSION,
             IP_BLACKLIST_RECORD_FAILURE_PERMISSION,
@@ -139,6 +148,12 @@ public class AdminRoleService {
             QUESTIONS_ANSWER_PERMISSION,
             QUESTIONS_DELETE_PERMISSION);
     private static final List<String> ALL_ADMIN_PERMISSIONS = allAdminPermissions();
+    private static final Set<String> BUG_PERMISSION_KEYS = Set.of(
+            BUGS_PAGE_PERMISSION,
+            BUGS_READ_PERMISSION,
+            BUGS_WRITE_PERMISSION,
+            BUGS_STATUS_PERMISSION,
+            BUGS_SCAN_PERMISSION);
 
     private static final Map<String, String> PATH_PERMISSIONS = Map.ofEntries(
             Map.entry("/dashboard", "dashboard"),
@@ -157,6 +172,7 @@ public class AdminRoleService {
             Map.entry("/announcements", "announcements"),
             Map.entry("/audit-logs", "audit-logs"),
             Map.entry("/alerts", "alerts"),
+            Map.entry("/bugs", BUGS_PAGE_PERMISSION),
             Map.entry("/ip-blacklist", "ip-blacklist"),
             Map.entry("/logs", "logs"),
             Map.entry("/support", "support"),
@@ -273,7 +289,22 @@ public class AdminRoleService {
 
     public boolean hasPermission(Long userId, String permission) {
         String normalizedPermission = normalizePermission(permission);
-        return !normalizedPermission.isEmpty() && getPermissionsForUser(userId).contains(normalizedPermission);
+        if (normalizedPermission.isEmpty()) {
+            return false;
+        }
+        List<String> permissions = getPermissionsForUser(userId);
+        if (permissions.contains(normalizedPermission)) {
+            return true;
+        }
+        if (BUGS_PAGE_PERMISSION.equals(normalizedPermission)
+                || BUGS_READ_PERMISSION.equals(normalizedPermission)) {
+            return containsBugPermission(permissions);
+        }
+        return false;
+    }
+
+    public boolean hasAnyBugPermission(Long userId) {
+        return containsBugPermission(getPermissionsForUser(userId));
     }
 
     public boolean canAccess(Long userId, String servletPath) {
@@ -284,7 +315,11 @@ public class AdminRoleService {
         if (permission == null) {
             return servletPath == null || !servletPath.startsWith("/admin");
         }
-        return getPermissionsForUser(userId).contains(permission);
+        List<String> permissions = getPermissionsForUser(userId);
+        if (BUGS_PAGE_PERMISSION.equals(permission) && containsBugPermission(permissions)) {
+            return true;
+        }
+        return permissions.contains(permission);
     }
 
     @Transactional
@@ -472,6 +507,10 @@ public class AdminRoleService {
                 .collect(Collectors.toCollection(ArrayList::new));
         permissions.addAll(ADMIN_ACTION_PERMISSIONS);
         return List.copyOf(new LinkedHashSet<>(permissions));
+    }
+
+    private static boolean containsBugPermission(List<String> permissions) {
+        return permissions != null && permissions.stream().anyMatch(BUG_PERMISSION_KEYS::contains);
     }
 
     private String normalizePermission(String permission) {

@@ -23,6 +23,7 @@ const shouldUpdateRuntimeConfig = process.env.MOBILE_RELEASE_UPDATE_RUNTIME_CONF
 const allowEmptyApkBootstrap = process.env.MOBILE_RELEASE_ALLOW_EMPTY_APK === 'true';
 const skipGeneration = process.env.MOBILE_RELEASE_SKIP_GENERATION === 'true';
 const releaseSigned = process.env.MOBILE_RELEASE_SIGNED === 'true';
+const forceUnsignedRelease = process.env.MOBILE_RELEASE_FORCE_UNSIGNED === 'true';
 
 const apkPattern = /^shoptest-(\d+)\.(\d+)\.(\d+)\.apk$/;
 const ANDROID_DEBUG_CERT_SHA256 = 'A59C1DF808784AF870705AC1FB13B0A12E5099AB3D140A26052A885AD66687F1';
@@ -75,6 +76,36 @@ const sha256 = (filePath) => crypto.createHash('sha256').update(fs.readFileSync(
 
 const normalizeCertificateFingerprint = (value) => String(value || '').replace(/[^a-f0-9]/gi, '').toUpperCase();
 const cleanString = (value) => String(value || '').trim();
+
+const isPublishableSignedManifest = (manifest) => Boolean(
+  manifest
+    && manifest.releaseSigned === true
+    && cleanString(manifest.apkUrl)
+    && cleanString(manifest.legacyApkUrl)
+    && /^[A-F0-9]{64}$/.test(normalizeCertificateFingerprint(manifest.certificateSha256))
+    && normalizeCertificateFingerprint(manifest.certificateSha256) !== ANDROID_DEBUG_CERT_SHA256
+    && cleanString(manifest.fileName)
+    && isPositiveSafeInteger(Number(manifest.sizeBytes))
+    && /^[a-f0-9]{64}$/i.test(cleanString(manifest.sha256)),
+);
+
+const signedManifestFileExists = (manifest) => Boolean(
+  manifest
+    && cleanString(manifest.fileName)
+    && fs.existsSync(path.join(downloadsDir, manifest.fileName)),
+);
+
+const isSignedManifestForApk = (manifest, apkMetadata) => {
+  if (!isPublishableSignedManifest(manifest) || !apkMetadata || !fs.existsSync(apkMetadata.filePath)) {
+    return false;
+  }
+  const stat = fs.statSync(apkMetadata.filePath);
+  return manifest.fileName === apkMetadata.fileName
+    && manifest.versionName === apkMetadata.versionName
+    && Number(manifest.versionCode) === toVersionCode(apkMetadata.versionName)
+    && Number(manifest.sizeBytes) === stat.size
+    && cleanString(manifest.sha256).toLowerCase() === sha256(apkMetadata.filePath).toLowerCase();
+};
 
 const compareVersionPartsDesc = (left, right) => {
   const leftParts = left.split('.').map((part) => Number(part) || 0);
@@ -250,10 +281,15 @@ const apkFiles = explicitApk ? [explicitApk] : (fs.existsSync(downloadsDir)
 
 const latestApk = apkFiles.sort(compareVersion).pop();
 if (!latestApk) {
+  const existingManifest = readJsonFile(manifestPath) || {};
+  if (!releaseSigned && !forceUnsignedRelease && isPublishableSignedManifest(existingManifest) && signedManifestFileExists(existingManifest)) {
+    writeMobileReleaseOutputs(existingManifest);
+    console.log('Preserved existing signed mobile release metadata because no replacement APK was provided');
+    process.exit(0);
+  }
   if (!allowEmptyApkBootstrap && releaseSigned) {
     throw new Error(`No release APK matching ${apkPattern} found in ${downloadsDir}`);
   }
-  const existingManifest = readJsonFile(manifestPath) || {};
   const versionName = cleanString(
     process.env.MOBILE_VERSION_NAME
       || process.env.SHOPTEST_MOBILE_ANDROID_VERSION_NAME
@@ -296,6 +332,13 @@ if (!latestApk) {
       ? 'Bootstrapped mobile release metadata without an APK because MOBILE_RELEASE_ALLOW_EMPTY_APK=true'
       : 'Bootstrapped unsigned mobile release metadata without a public APK',
   );
+  process.exit(0);
+}
+
+const existingManifest = readJsonFile(manifestPath) || {};
+if (!releaseSigned && !forceUnsignedRelease && isSignedManifestForApk(existingManifest, latestApk)) {
+  writeMobileReleaseOutputs(existingManifest);
+  console.log('Preserved existing signed mobile release metadata because MOBILE_RELEASE_SIGNED was not set');
   process.exit(0);
 }
 

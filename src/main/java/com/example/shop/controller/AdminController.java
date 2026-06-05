@@ -157,6 +157,19 @@ public class AdminController {
                 result.getSize()));
     }
 
+    @GetMapping("/products/categories/options")
+    public ResponseEntity<List<Category>> getProductCategoryOptions(@RequestParam(required = false) Integer limit) {
+        int safeLimit = resolveAdminListLimit("admin.categories.list-max-rows", limit, 500);
+        return limitedAdminListResponse(categoryService.findAll(safeLimit + 1), safeLimit);
+    }
+
+    @GetMapping("/products/brands/options")
+    public ResponseEntity<List<Brand>> getProductBrandOptions(@RequestParam(required = false, defaultValue = "false") boolean activeOnly,
+                                                              @RequestParam(required = false) Integer limit) {
+        int safeLimit = resolveAdminListLimit("admin.brands.list-max-rows", limit, 500);
+        return limitedAdminListResponse(brandService.findAll(activeOnly, safeLimit + 1), safeLimit);
+    }
+
     @PostMapping("/products")
     public ResponseEntity<?> createProduct(@RequestBody(required = false) Product product,
                                            Authentication authentication,

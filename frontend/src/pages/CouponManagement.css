@@ -631,4 +631,13 @@
   .coupon-management-page__grantConfirmModal .ant-modal-confirm-btns .ant-btn {
     min-height: 44px;
   }
+
+  .coupon-management-page .ant-table-cell .ant-tag {
+    max-width: none;
+    min-height: 28px;
+    overflow: visible;
+    line-height: 1.2;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
 }

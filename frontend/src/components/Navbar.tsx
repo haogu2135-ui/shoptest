@@ -31,7 +31,13 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { useMarket } from '../hooks/useMarket';
 import { getGuestCartItems } from '../utils/guestCart';
 import { readCompareProductIds } from '../utils/productCompare';
-import { getEffectiveRole, isAdminRole } from '../utils/roles';
+import {
+  ADMIN_NAV_PAGE_PERMISSIONS,
+  BUGS_ACCESS_PERMISSIONS,
+  BUGS_PAGE_PERMISSION,
+  getEffectiveRole,
+  isAdminRole,
+} from '../utils/roles';
 import { readStockAlerts } from '../utils/stockAlerts';
 import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
@@ -317,7 +323,9 @@ const Navbar: React.FC = () => {
           const effectiveRole = getEffectiveRole(permissionsRes.data.role, permissionsRes.data.roleCode);
           setLocalStorageItem('role', effectiveRole);
           setNavRole(effectiveRole);
-          const nextDefault = permissions[0] ? `/admin/${permissions[0]}` : '/admin';
+          const defaultPage = ADMIN_NAV_PAGE_PERMISSIONS.find((permission) => permissions.includes(permission))
+            || (BUGS_ACCESS_PERMISSIONS.some((permission) => permissions.includes(permission)) ? BUGS_PAGE_PERMISSION : undefined);
+          const nextDefault = defaultPage ? `/admin/${defaultPage}` : '/admin';
           setLocalStorageItem('adminDefaultPath', nextDefault);
           setAdminPath(nextDefault);
         })

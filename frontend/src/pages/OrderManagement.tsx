@@ -492,20 +492,28 @@ const OrderManagement: React.FC = () => {
   const handleViewItems = async (order: Order) => {
     setDetailOrder(order);
     setItemsLoading(true);
-    setPaymentsLoading(true);
+    setPaymentsLoading(canSyncOrderPayments);
+    setOrderPayments([]);
     try {
-      const [itemsRes, paymentsRes] = await Promise.all([
-        adminApi.getOrderItems(order.id),
-        adminApi.getOrderPayments(order.id),
-      ]);
+      const itemsRes = await adminApi.getOrderItems(order.id);
       setOrderItems(itemsRes.data);
-      setOrderPayments(paymentsRes.data || []);
     } catch (error: any) {
       setOrderItems([]);
-      setOrderPayments([]);
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
       setItemsLoading(false);
+    }
+    if (!canSyncOrderPayments) {
+      setPaymentsLoading(false);
+      return;
+    }
+    try {
+      const paymentsRes = await adminApi.getOrderPayments(order.id);
+      setOrderPayments(paymentsRes.data || []);
+    } catch (error: any) {
+      setOrderPayments([]);
+      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
+    } finally {
       setPaymentsLoading(false);
     }
   };
@@ -525,7 +533,10 @@ const OrderManagement: React.FC = () => {
     setRefundReason(order.returnReason || '');
     setRefundRestock(order.status === 'PENDING_SHIPMENT');
     setRefundPayments([]);
-    setRefundPaymentsLoading(true);
+    setRefundPaymentsLoading(canSyncOrderPayments);
+    if (!canSyncOrderPayments) {
+      return;
+    }
     try {
       const res = await adminApi.getOrderPayments(order.id);
       setRefundPayments(res.data || []);
@@ -578,7 +589,7 @@ const OrderManagement: React.FC = () => {
     }
   };
 
-  const hasLoadedRefundPayments = Boolean(refundOrder) && !refundPaymentsLoading;
+  const hasLoadedRefundPayments = Boolean(refundOrder) && canSyncOrderPayments && !refundPaymentsLoading;
   const hasPaidRefundPayment = refundPayments.some((payment) => normalizeStatusCode(payment.status) === 'PAID');
   const hasReconcileRequiredRefundPayment = refundPayments.some((payment) => normalizeStatusCode(payment.status) === 'RECONCILE_REQUIRED');
   const refundAlreadyProcessing = refundPayments.some((payment) => normalizeStatusCode(payment.status) === 'REFUNDING');
@@ -1364,76 +1375,84 @@ const OrderManagement: React.FC = () => {
               message={t('pages.adminOrders.noPaidPaymentForRefund')}
             />
           ) : null}
-          <div>
-            <Typography.Text strong>{t('pages.adminOrders.refundPaymentEvidence')}</Typography.Text>
-            <Table
-              rowKey="id"
-              loading={refundPaymentsLoading}
-              dataSource={refundPayments}
-              pagination={false}
-              size="small"
-              columns={[
-                {
-                  title: t('pages.adminOrders.paymentMethod'),
-                  dataIndex: 'channel',
-                  key: 'channel',
-                  render: (channel: string) => paymentMethodLabel(channel, t),
-                },
-                {
-                  title: t('common.status'),
-                  dataIndex: 'status',
-                  key: 'status',
-                  width: 104,
-                  render: (status: string) => <Tag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</Tag>,
-                },
-                {
-                  title: t('common.amount'),
-                  dataIndex: 'amount',
-                  key: 'amount',
-                  width: 112,
-                  render: (value: number) => <span className="commerce-money">{formatMoney(value)}</span>,
-                },
-                {
-                  title: t('pages.adminOrders.refundReference'),
-                  dataIndex: 'refundReference',
-                  key: 'refundReference',
-                  render: (value: string) => value || '-',
-                },
-                {
-                  title: t('common.actions'),
-                  key: 'actions',
-                  width: 120,
-                  render: (_: any, payment: AdminPayment) => {
-                    if (!canSyncOrderPayments) return '-';
-                    const syncActionLabel = `${t('pages.adminOrders.syncPayment')}: ${paymentDisplayLabel(payment)}`;
-                    return (
-                      <Popconfirm
-                        classNames={mobilePopconfirmClassNames}
-                        title={t('pages.adminOrders.syncPaymentConfirm', { id: payment.id })}
-                        onConfirm={() => handleSyncPayment(payment, 'refund')}
-                        okText={t('pages.adminOrders.syncPayment')}
-                        cancelText={t('common.cancel')}
-                        okButtonProps={{ 'aria-label': syncActionLabel, title: syncActionLabel }}
-                        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${syncActionLabel}`, title: `${t('common.cancel')}: ${syncActionLabel}` }}
-                        disabled={payment.status !== 'PENDING' || syncingPaymentIds.includes(payment.id)}
-                      >
-                        <Button
-                          size="small"
-                          type="link"
-                          aria-label={syncActionLabel}
-                          title={syncActionLabel}
-                          loading={syncingPaymentIds.includes(payment.id)}
-                          disabled={payment.status !== 'PENDING'}
-                        >
-                          {t('pages.adminOrders.syncPayment')}
-                        </Button>
-                      </Popconfirm>
-                    );
-                  },
-                },
-              ]}
+          {!canSyncOrderPayments ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={t('pages.adminOrders.refundPaymentPermissionHint')}
             />
-          </div>
+          ) : null}
+          {canSyncOrderPayments ? (
+            <div>
+              <Typography.Text strong>{t('pages.adminOrders.refundPaymentEvidence')}</Typography.Text>
+              <Table
+                rowKey="id"
+                loading={refundPaymentsLoading}
+                dataSource={refundPayments}
+                pagination={false}
+                size="small"
+                columns={[
+                  {
+                    title: t('pages.adminOrders.paymentMethod'),
+                    dataIndex: 'channel',
+                    key: 'channel',
+                    render: (channel: string) => paymentMethodLabel(channel, t),
+                  },
+                  {
+                    title: t('common.status'),
+                    dataIndex: 'status',
+                    key: 'status',
+                    width: 104,
+                    render: (status: string) => <Tag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</Tag>,
+                  },
+                  {
+                    title: t('common.amount'),
+                    dataIndex: 'amount',
+                    key: 'amount',
+                    width: 112,
+                    render: (value: number) => <span className="commerce-money">{formatMoney(value)}</span>,
+                  },
+                  {
+                    title: t('pages.adminOrders.refundReference'),
+                    dataIndex: 'refundReference',
+                    key: 'refundReference',
+                    render: (value: string) => value || '-',
+                  },
+                  {
+                    title: t('common.actions'),
+                    key: 'actions',
+                    width: 120,
+                    render: (_: any, payment: AdminPayment) => {
+                      const syncActionLabel = `${t('pages.adminOrders.syncPayment')}: ${paymentDisplayLabel(payment)}`;
+                      return (
+                        <Popconfirm
+                          classNames={mobilePopconfirmClassNames}
+                          title={t('pages.adminOrders.syncPaymentConfirm', { id: payment.id })}
+                          onConfirm={() => handleSyncPayment(payment, 'refund')}
+                          okText={t('pages.adminOrders.syncPayment')}
+                          cancelText={t('common.cancel')}
+                          okButtonProps={{ 'aria-label': syncActionLabel, title: syncActionLabel }}
+                          cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${syncActionLabel}`, title: `${t('common.cancel')}: ${syncActionLabel}` }}
+                          disabled={payment.status !== 'PENDING' || syncingPaymentIds.includes(payment.id)}
+                        >
+                          <Button
+                            size="small"
+                            type="link"
+                            aria-label={syncActionLabel}
+                            title={syncActionLabel}
+                            loading={syncingPaymentIds.includes(payment.id)}
+                            disabled={payment.status !== 'PENDING'}
+                          >
+                            {t('pages.adminOrders.syncPayment')}
+                          </Button>
+                        </Popconfirm>
+                      );
+                    },
+                  },
+                ]}
+              />
+            </div>
+          ) : null}
         </Space>
       </Modal>
       <Modal
@@ -1529,78 +1548,79 @@ const OrderManagement: React.FC = () => {
               },
             ]}
           />
-          <div>
-            <Typography.Text strong>{t('pages.adminOrders.paymentHistory')}</Typography.Text>
-            <Table
-              rowKey="id"
-              loading={paymentsLoading}
-              dataSource={orderPayments}
-              pagination={false}
-              size="small"
-              columns={[
-                { title: t('pages.adminOrders.paymentMethod'), dataIndex: 'channel', key: 'channel', width: 120 },
-                {
-                  title: t('common.status'),
-                  dataIndex: 'status',
-                  key: 'status',
-                  width: 110,
-                  render: (status: string) => <Tag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</Tag>,
-                },
-                {
-                  title: t('common.amount'),
-                  dataIndex: 'amount',
-                  key: 'amount',
-                  width: 120,
-                  render: (value: number) => <span className="commerce-money">{formatMoney(value)}</span>,
-                },
-                {
-                  title: t('pages.adminOrders.refundReference'),
-                  dataIndex: 'refundReference',
-                  key: 'refundReference',
-                  render: (value: string) => value || '-',
-                },
-                {
-                  title: t('pages.adminOrders.createdAt'),
-                  dataIndex: 'createdAt',
-                  key: 'createdAt',
-                  width: 145,
-                  render: (value: string) => value ? new Date(value).toLocaleString(dateLocale) : '-',
-                },
-                {
-                  title: t('common.actions'),
-                  key: 'actions',
-                  width: 120,
-                  render: (_: any, payment: AdminPayment) => {
-                    if (!canSyncOrderPayments) return '-';
-                    const syncActionLabel = `${t('pages.adminOrders.syncPayment')}: ${paymentDisplayLabel(payment)}`;
-                    return (
-                      <Popconfirm
-                        classNames={mobilePopconfirmClassNames}
-                        title={t('pages.adminOrders.syncPaymentConfirm', { id: payment.id })}
-                        onConfirm={() => handleSyncPayment(payment, 'detail')}
-                        okText={t('pages.adminOrders.syncPayment')}
-                        cancelText={t('common.cancel')}
-                        okButtonProps={{ 'aria-label': syncActionLabel, title: syncActionLabel }}
-                        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${syncActionLabel}`, title: `${t('common.cancel')}: ${syncActionLabel}` }}
-                        disabled={payment.status !== 'PENDING' || syncingPaymentIds.includes(payment.id)}
-                      >
-                        <Button
-                          size="small"
-                          type="link"
-                          aria-label={syncActionLabel}
-                          title={syncActionLabel}
-                          loading={syncingPaymentIds.includes(payment.id)}
-                          disabled={payment.status !== 'PENDING'}
-                        >
-                          {t('pages.adminOrders.syncPayment')}
-                        </Button>
-                      </Popconfirm>
-                    );
+          {canSyncOrderPayments ? (
+            <div>
+              <Typography.Text strong>{t('pages.adminOrders.paymentHistory')}</Typography.Text>
+              <Table
+                rowKey="id"
+                loading={paymentsLoading}
+                dataSource={orderPayments}
+                pagination={false}
+                size="small"
+                columns={[
+                  { title: t('pages.adminOrders.paymentMethod'), dataIndex: 'channel', key: 'channel', width: 120 },
+                  {
+                    title: t('common.status'),
+                    dataIndex: 'status',
+                    key: 'status',
+                    width: 110,
+                    render: (status: string) => <Tag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</Tag>,
                   },
-                },
-              ]}
-            />
-          </div>
+                  {
+                    title: t('common.amount'),
+                    dataIndex: 'amount',
+                    key: 'amount',
+                    width: 120,
+                    render: (value: number) => <span className="commerce-money">{formatMoney(value)}</span>,
+                  },
+                  {
+                    title: t('pages.adminOrders.refundReference'),
+                    dataIndex: 'refundReference',
+                    key: 'refundReference',
+                    render: (value: string) => value || '-',
+                  },
+                  {
+                    title: t('pages.adminOrders.createdAt'),
+                    dataIndex: 'createdAt',
+                    key: 'createdAt',
+                    width: 145,
+                    render: (value: string) => value ? new Date(value).toLocaleString(dateLocale) : '-',
+                  },
+                  {
+                    title: t('common.actions'),
+                    key: 'actions',
+                    width: 120,
+                    render: (_: any, payment: AdminPayment) => {
+                      const syncActionLabel = `${t('pages.adminOrders.syncPayment')}: ${paymentDisplayLabel(payment)}`;
+                      return (
+                        <Popconfirm
+                          classNames={mobilePopconfirmClassNames}
+                          title={t('pages.adminOrders.syncPaymentConfirm', { id: payment.id })}
+                          onConfirm={() => handleSyncPayment(payment, 'detail')}
+                          okText={t('pages.adminOrders.syncPayment')}
+                          cancelText={t('common.cancel')}
+                          okButtonProps={{ 'aria-label': syncActionLabel, title: syncActionLabel }}
+                          cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${syncActionLabel}`, title: `${t('common.cancel')}: ${syncActionLabel}` }}
+                          disabled={payment.status !== 'PENDING' || syncingPaymentIds.includes(payment.id)}
+                        >
+                          <Button
+                            size="small"
+                            type="link"
+                            aria-label={syncActionLabel}
+                            title={syncActionLabel}
+                            loading={syncingPaymentIds.includes(payment.id)}
+                            disabled={payment.status !== 'PENDING'}
+                          >
+                            {t('pages.adminOrders.syncPayment')}
+                          </Button>
+                        </Popconfirm>
+                      );
+                    },
+                  },
+                ]}
+              />
+            </div>
+          ) : null}
         </Space>
       </Modal>
     </div>

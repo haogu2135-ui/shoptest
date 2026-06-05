@@ -431,6 +431,41 @@ CREATE TABLE IF NOT EXISTS support_messages (
     INDEX idx_support_messages_unread_user (is_read_by_user, sender_role)
 );
 
+CREATE TABLE IF NOT EXISTS admin_bug_reports (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(160) NOT NULL,
+    description TEXT NOT NULL,
+    module VARCHAR(40) NOT NULL DEFAULT 'GENERAL',
+    severity VARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
+    priority VARCHAR(20) NOT NULL DEFAULT 'P2',
+    status VARCHAR(40) NOT NULL DEFAULT 'OPEN',
+    page_url VARCHAR(500),
+    environment VARCHAR(120),
+    reproduction_steps TEXT,
+    expected_result TEXT,
+    actual_result TEXT,
+    attachment_urls TEXT,
+    reporter_id BIGINT,
+    reporter_name VARCHAR(120),
+    assigned_to VARCHAR(120) DEFAULT 'CODEX',
+    scan_note TEXT,
+    fix_summary TEXT,
+    regression_note TEXT,
+    last_scanned_at TIMESTAMP NULL,
+    fixed_at TIMESTAMP NULL,
+    fixed_by VARCHAR(120),
+    regression_at TIMESTAMP NULL,
+    regression_by VARCHAR(120),
+    closed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_admin_bug_status_updated (status, updated_at),
+    INDEX idx_admin_bug_scan_due (status, last_scanned_at),
+    INDEX idx_admin_bug_severity_status (severity, status),
+    INDEX idx_admin_bug_module_status (module, status),
+    INDEX idx_admin_bug_created (created_at)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Fix existing columns to TEXT (idempotent with continue-on-error)
 ALTER TABLE products MODIFY COLUMN image_url TEXT;
 ALTER TABLE products MODIFY COLUMN images TEXT;
@@ -555,7 +590,7 @@ INSERT IGNORE INTO logistics_carriers (id, name, tracking_code, status, sort_ord
 INSERT IGNORE INTO categories (id, name, description, parent_id, level, image_url) VALUES
 (1, 'Pet Supplies', 'Main catalog root for pet food, care and accessories.', NULL, 1, 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=900&q=80'),
 (2, 'Pet Food', 'Dry food, wet food, treats and supplements for dogs and cats.', 1, 2, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80'),
-(3, 'Bowls, Feeders & Waterers', 'Automatic feeders, slow feeders, bowls and fountains.', 1, 2, 'https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80'),
+(3, 'Bowls, Feeders & Waterers', 'Automatic feeders, slow feeders, bowls and fountains.', 1, 2, 'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80'),
 (4, 'Beds & Furniture', 'Comfort beds, crates, mats and calming furniture.', 1, 2, 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80'),
 (5, 'Toys & Enrichment', 'Chew toys, puzzles, teaser toys and training rewards.', 1, 2, 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80'),
 (6, 'Grooming & Hygiene', 'Shampoo, brushes, litter, pads and daily care.', 1, 2, 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=900&q=80'),
@@ -573,7 +608,7 @@ INSERT IGNORE INTO products (
     tag, images, specifications, detail_content, warranty, shipping, free_shipping,
     free_shipping_threshold, is_featured
 ) VALUES
-(1, 'PawPilot Smart Pet Feeder 4L', 'Programmable automatic feeder with portion control, sealed food storage and a clear schedule for cats and small dogs.', 129.90, 42, 10, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'PawPilot', 159.90, 19, 109.90, '2026-05-01 00:00:00', '2026-06-30 23:59:59', 'hot', '["https://images.unsplash.com/photo-1601758123927-1967a0d5f11b?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium","Capacity":"4 L","Material":"BPA-free ABS","Color":"White","options.Size":"Small,Medium","options.Color":"White,Black","i18n.es.name":"Comedero inteligente PawPilot 4L","i18n.es.description":"Comedero automático programable con control de porciones para gatos y perros pequeños.","i18n.zh.name":"PawPilot 4L \\u667a\\u80fd\\u5ba0\\u7269\\u5582\\u98df\\u5668","i18n.zh.description":"\\u652f\\u6301\\u5b9a\\u65f6\\u4e0e\\u5206\\u91cf\\u63a7\\u5236\\u7684\\u81ea\\u52a8\\u5582\\u98df\\u5668\\uff0c\\u9002\\u5408\\u732b\\u548c\\u5c0f\\u578b\\u72ac\\u3002"}', '[{"type":"text","content":"Set up to six meals per day and keep dry food fresh with the sealed hopper."},{"type":"text","content":"Localized product copy is maintained for shoppers who switch language from the storefront."}]', '1 year limited warranty', 'Ships in a protective box; free over threshold.', TRUE, 899.00, TRUE),
+(1, 'PawPilot Smart Pet Feeder 4L', 'Programmable automatic feeder with portion control, sealed food storage and a clear schedule for cats and small dogs.', 129.90, 42, 10, 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'PawPilot', 159.90, 19, 109.90, '2026-05-01 00:00:00', '2026-06-30 23:59:59', 'hot', '["https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium","Capacity":"4 L","Material":"BPA-free ABS","Color":"White","options.Size":"Small,Medium","options.Color":"White,Black","i18n.es.name":"Comedero inteligente PawPilot 4L","i18n.es.description":"Comedero automático programable con control de porciones para gatos y perros pequeños.","i18n.zh.name":"PawPilot 4L \\u667a\\u80fd\\u5ba0\\u7269\\u5582\\u98df\\u5668","i18n.zh.description":"\\u652f\\u6301\\u5b9a\\u65f6\\u4e0e\\u5206\\u91cf\\u63a7\\u5236\\u7684\\u81ea\\u52a8\\u5582\\u98df\\u5668\\uff0c\\u9002\\u5408\\u732b\\u548c\\u5c0f\\u578b\\u72ac\\u3002"}', '[{"type":"text","content":"Set up to six meals per day and keep dry food fresh with the sealed hopper."},{"type":"text","content":"Localized product copy is maintained for shoppers who switch language from the storefront."}]', '1 year limited warranty', 'Ships in a protective box; free over threshold.', TRUE, 899.00, TRUE),
 (2, 'HydraWhisk Quiet Cat Water Fountain', 'Low-noise filtered water fountain that encourages cats to drink more throughout the day.', 49.90, 75, 11, 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'HydraWhisk', 64.90, 23, NULL, NULL, NULL, 'new', '["https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Cat","Capacity":"2.5 L","Material":"Stainless steel, ABS","Color":"Blue","options.Color":"Blue,White","Filter":"Replace every 30 days","i18n.es.name":"Fuente silenciosa HydraWhisk para gato","i18n.es.description":"Fuente filtrada de bajo ruido que ayuda a los gatos a beber mas agua."}', '[{"type":"text","content":"Circulating water and replaceable filters help keep every sip fresh."}]', '6 month warranty', 'Standard shipping', FALSE, NULL, TRUE),
 (3, 'TrailTails Walking Starter Bundle', 'Leash, collar and waste-bag holder bundled for safer daily walks at one special set price.', 34.90, 120, 13, 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'TrailTails', 54.90, 27, NULL, NULL, NULL, 'hot', '["https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Small, Medium, Large","Material":"Nylon","Color":"Black","options.Size":"Small,Medium,Large","options.Color":"Black,Red,Blue","Closure":"Quick-release buckles","bundle.enabled":"true","bundle.title":"Leash + Collar + Waste Bags","bundle.price":"39.90","bundle.items":"[{\"name\":\"Adjustable leash\",\"quantity\":1},{\"name\":\"Matching collar\",\"quantity\":1},{\"name\":\"Waste-bag roll\",\"quantity\":2}]","i18n.es.name":"Kit TrailTails de paseo inicial","i18n.es.description":"Correa, collar y bolsas en un kit para paseos diarios mas seguros."}', '[{"type":"text","content":"Adjustable neck and chest straps help the harness fit growing pets and different breeds."},{"type":"text","content":"Bundle includes a matching walking set for first-time pet parents."}]', '1 year limited warranty', 'Standard shipping', FALSE, NULL, FALSE),
 (4, 'CloudNap Orthopedic Calming Bed', 'Bolstered pet bed with orthopedic foam support and a washable cover for deep everyday rest.', 89.90, 36, 4, 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80', 'ACTIVE', 'CloudNap', 109.90, 18, 79.90, '2026-05-01 00:00:00', '2026-05-31 23:59:59', 'discount', '["https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80"]', '{"Pet Size":"Medium, Large","Material":"Orthopedic foam, plush cover","Color":"Gray","options.Size":"Medium,Large","options.Color":"Gray,Brown","Care":"Machine-washable cover","i18n.es.name":"Cama ortopédica CloudNap relajante","i18n.es.description":"Cama con bordes, espuma ortopédica y funda lavable para descanso diario."}', '[{"type":"text","content":"The raised edge supports curled sleepers while the foam base cushions joints."}]', '1 year limited warranty', 'Ships compressed; allow 24 hours to expand.', TRUE, 899.00, TRUE),
