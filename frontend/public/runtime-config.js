@@ -7,6 +7,6 @@ window.__SHOP_RUNTIME_CONFIG__ = window.__SHOP_RUNTIME_CONFIG__ || {
   apiGatewayEnabled: false,
   apiGatewayPrefix: "/gateway",
   mobileVersionManifestUrl: "/downloads/mobile-version.json",
-  mobileCurrentVersionName: "1.0.23",
-  mobileCurrentVersionCode: 10023,
+  mobileCurrentVersionName: "1.0.24",
+  mobileCurrentVersionCode: 10024,
 };

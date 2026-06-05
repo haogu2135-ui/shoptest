@@ -3,21 +3,21 @@ export const CURRENT_MOBILE_RELEASE = {
   "platform": "android",
   "appId": "com.shoptest.mobile",
   "appName": "ShopMX",
-  "versionName": "1.0.23",
-  "versionCode": 10023,
+  "versionName": "1.0.24",
+  "versionCode": 10024,
   "minSupportedVersionCode": 0,
   "mandatory": false,
-  "apkUrl": "",
-  "legacyApkUrl": "",
-  "releaseSigned": false,
-  "certificateSha256": "",
-  "fileName": "",
-  "sizeBytes": 0,
-  "sha256": "",
+  "apkUrl": "/downloads/shoptest-1.0.24.apk",
+  "legacyApkUrl": "/downloads/shoptest.apk?v=1.0.24",
+  "releaseSigned": true,
+  "certificateSha256": "9962289890D74A1FE9DA3E4D6471D2C00B21C76FC9C0622FB93348CF825D880A",
+  "fileName": "shoptest-1.0.24.apk",
+  "sizeBytes": 5271338,
+  "sha256": "032adb43d5cb348c07694ecc0bfa50efd1ab1a526e76cae5b85a4a0c71d081c4",
   "releaseNotes": [
     "Performance and storefront stability improvements."
   ],
-  "generatedAt": "2026-06-05T00:08:14.090Z"
+  "generatedAt": "2026-06-05T00:21:28.246Z"
 } as const;
 
 export type CurrentMobileRelease = typeof CURRENT_MOBILE_RELEASE;
