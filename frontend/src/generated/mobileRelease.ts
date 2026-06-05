@@ -17,7 +17,7 @@ export const CURRENT_MOBILE_RELEASE = {
   "releaseNotes": [
     "Performance and storefront stability improvements."
   ],
-  "generatedAt": "2026-06-04T23:48:10.092Z"
+  "generatedAt": "2026-06-05T00:08:14.090Z"
 } as const;
 
 export type CurrentMobileRelease = typeof CURRENT_MOBILE_RELEASE;
