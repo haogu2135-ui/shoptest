@@ -50,5 +50,13 @@ describe('locale coverage', () => {
     expect(spanishCopy).not.toContain('t.me/');
     expect(spanishCopy).not.toContain('通 知 群');
     expect(spanishCopy).not.toContain('通知群');
+    expect(spanishCopy).not.toMatch(/\b[Mm]etodos\b/);
+  });
+
+  it('keeps English customer and operator copy free of internal QA labels', () => {
+    const englishCopy = flattenStrings(en).join('\n');
+
+    expect(englishCopy).not.toMatch(/\bQA\b/i);
+    expect(en.pages.checkout.readinessEyebrow).not.toMatch(/\bQA\b/i);
   });
 });

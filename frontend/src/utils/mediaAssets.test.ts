@@ -30,7 +30,7 @@ describe('mediaAssets', () => {
     expect(placeholder).not.toContain('onload');
   });
 
-  it('rejects unsafe asset URL protocols and credentials', () => {
+  it('rejects unsafe and non-persistent asset URL shapes', () => {
     const { resolveApiAssetUrl } = require('./mediaAssets');
 
     expect(resolveApiAssetUrl('javascript:alert(1)', 'fallback')).toBe('fallback');
@@ -40,16 +40,26 @@ describe('mediaAssets', () => {
     expect(resolveApiAssetUrl('https://cdn.example.com/%5cadmin.png', 'fallback')).toBe('fallback');
     expect(resolveApiAssetUrl('https://cdn.example.com/image%00.png', 'fallback')).toBe('fallback');
     expect(resolveApiAssetUrl('data:text/html;base64,xxx', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('data:image/svg+xml,<svg></svg>', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('data:image/png;base64,abc', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('blob:https://app.example.com/id', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('http://localhost/image.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('https://192.168.1.10/image.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('http://[::ffff:127.0.0.1]/image.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('http://2130706433/image.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('http://0177.0.0.1/image.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('https://cdn.example.com:8443/image.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('/assets/product.png', 'fallback')).toBe('fallback');
+    expect(resolveApiAssetUrl('assets/product.png', 'fallback')).toBe('fallback');
   });
 
-  it('keeps safe remote, image data, blob, and relative asset URLs', () => {
+  it('keeps safe remote and uploads asset URLs', () => {
     window.__SHOP_RUNTIME_CONFIG__ = { apiBaseUrl: 'https://api.example.com' };
     const { resolveApiAssetUrl } = require('./mediaAssets');
 
     expect(resolveApiAssetUrl('https://cdn.example.com/a.png')).toBe('https://cdn.example.com/a.png');
-    expect(resolveApiAssetUrl('data:image/png;base64,abc')).toBe('data:image/png;base64,abc');
-    expect(resolveApiAssetUrl('blob:https://app.example.com/id')).toBe('blob:https://app.example.com/id');
     expect(resolveApiAssetUrl('/uploads/a.png')).toBe('/uploads/a.png');
+    expect(resolveApiAssetUrl('uploads/a.png')).toBe('/uploads/a.png');
   });
 
   it('resolves relative asset URLs from runtime API config without loading the API client', () => {
@@ -62,7 +72,7 @@ describe('mediaAssets', () => {
 
     expect(resolveApiAssetUrl('/uploads/product.png')).toBe('/uploads/product.png');
     expect(resolveApiAssetUrl('uploads/product.png')).toBe('/uploads/product.png');
-    expect(resolveApiAssetUrl('/assets/product.png')).toBe('https://api.example.com/store/assets/product.png');
+    expect(resolveApiAssetUrl('/assets/product.png', 'fallback')).toBe('fallback');
   });
 
   it('builds responsive next-gen image candidates only for resize-aware URLs', () => {
@@ -77,10 +87,12 @@ describe('mediaAssets', () => {
     expect(buildResponsiveImageSrcSet('https://cdn.example.com/pet.jpg')).toBeUndefined();
     expect(buildResponsiveImageSrcSet('data:image/png;base64,abc')).toBeUndefined();
     expect(buildResponsiveImageSrcSet('https://images.unsplash.com/%5cadmin?w=900')).toBeUndefined();
+    expect(buildResponsiveImageSrcSet('https://192.168.1.10/pet.jpg?w=900')).toBeUndefined();
+    expect(buildResponsiveImageSrcSet('http://[::ffff:127.0.0.1]/pet.jpg?w=900')).toBeUndefined();
   });
 
   it('returns optimized primary image URLs for resize-aware providers', () => {
-    const { getOptimizedImageUrl } = require('./mediaAssets');
+    const { getOptimizedImageUrl, imageFallbacks } = require('./mediaAssets');
     const optimized = getOptimizedImageUrl('https://images.unsplash.com/photo-1?fit=crop&w=900&q=80', 640);
 
     expect(optimized).toContain('auto=format');
@@ -88,6 +100,9 @@ describe('mediaAssets', () => {
     expect(optimized).toContain('q=76');
     expect(getOptimizedImageUrl('https://cdn.example.com/pet.jpg', 640)).toBe('https://cdn.example.com/pet.jpg');
     expect(getOptimizedImageUrl('https:\\\\images.unsplash.com\\photo-1?w=900', 640)).toBe('');
+    expect(getOptimizedImageUrl('data:image/png;base64,abc', 640)).toBe('');
+    expect(getOptimizedImageUrl('blob:https://app.example.com/id', 640)).toBe('');
+    expect(getOptimizedImageUrl(imageFallbacks.product, 640)).toBe(imageFallbacks.product);
   });
 });
 

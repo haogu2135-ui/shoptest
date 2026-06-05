@@ -143,6 +143,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const supportOrderItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
+    (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
+  );
+  const supportOrderLabel = useCallback((order: Pick<SupportOrderContext, 'id' | 'orderNo'>) => (
+    order.orderNo || `${t('pages.support.order')} #${order.id}`
+  ), [t]);
+  const supportSessionLabel = useCallback((item: Pick<SupportSessionCustomer, 'id' | 'status' | 'lastMessageAt'>) => (
+    `${item.status === 'OPEN' ? t('status.OPEN') : t('status.CLOSED')} - ${formatSafeDateTime(item.lastMessageAt, dateLocale, `#${item.id}`)}`
+  ), [dateLocale, t]);
   const formatOrderStatusLabel = useCallback((status?: string) => {
     const rawStatus = String(status || '').trim();
     const normalizedStatus = rawStatus.toUpperCase();
@@ -368,8 +377,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   const orderOptions = useMemo(() => orders.map((order) => ({
     value: order.id,
-    label: `${formatSafeDate(order.createdAt, dateLocale, '') ? `${formatSafeDate(order.createdAt, dateLocale)} - ` : ''}${order.orderNo || `#${order.id}`} - ${formatMoney(order.totalAmount)}`,
-  })), [orders, formatMoney, dateLocale]);
+    label: `${formatSafeDate(order.createdAt, dateLocale, '') ? `${formatSafeDate(order.createdAt, dateLocale)} - ` : ''}${supportOrderLabel(order)} - ${formatMoney(order.totalAmount)}`,
+  })), [orders, formatMoney, dateLocale, supportOrderLabel]);
 
   useEffect(() => {
     if (!open || !token) return;
@@ -378,13 +387,14 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
     const load = async () => {
       try {
-        const sessionRes = await supportApi.getSession();
+        const sessionRes = await supportApi.createSession();
         if (disposed) return;
         setSession(sessionRes.data);
         upsertSessionHistory(sessionRes.data);
         const messagesRes = await supportApi.getMessages(sessionRes.data.id, { limit: SUPPORT_MESSAGE_WINDOW });
         if (disposed) return;
         setMessages(mergeSupportMessages([], messagesRes.data));
+        supportApi.markRead(sessionRes.data.id).catch(() => undefined);
         supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW })
           .then((res) => {
             if (!disposed) setSessionHistory(sortSupportSessions(res.data || []));
@@ -485,7 +495,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     const load = async () => {
       try {
         const [sessionRes, orderTrackRes] = await Promise.all([
-          supportApi.getGuestSession(activeGuestContext.orderNo, activeGuestContext.email),
+          supportApi.createGuestSession(activeGuestContext.orderNo, activeGuestContext.email),
           orderApi.track(activeGuestContext.orderNo, activeGuestContext.email).catch(() => null),
         ]);
         if (disposed) return;
@@ -542,6 +552,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setUnread(0);
         if (activeGuestContext) {
           supportApi.markGuestRead(activeSessionId, activeGuestContext.orderNo, activeGuestContext.email).catch(() => undefined);
+        } else {
+          supportApi.markRead(activeSessionId).catch(() => undefined);
         }
       } catch {
         // The socket path handles transient failures; polling is best-effort.
@@ -811,8 +823,18 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   const sessionOptions = sessionHistory.map((item) => ({
     value: item.id,
-    label: `${item.status === 'OPEN' ? t('status.OPEN') : t('status.CLOSED')} - ${formatSafeDateTime(item.lastMessageAt, dateLocale, `#${item.id}`)}`,
+    label: supportSessionLabel(item),
   }));
+  const supportPanelCloseLabel = `${t('common.close')}: ${t('pages.support.title')}`;
+  const supportSessionSelectLabel = `${t('pages.support.conversationBrief')}: ${assignedAgentText}`;
+  const supportOrderSelectLabel = `${t('pages.support.sendOrder')}: ${t('pages.support.title')}`;
+  const supportMessageInputLabel = canSendSupportMessage ? t('pages.support.inputPlaceholder') : t('pages.support.loginOrOrderRequired');
+  const supportCloseSessionLabel = `${t('pages.support.closeSession')}: ${session ? supportSessionLabel(session) : t('pages.support.title')}`;
+  const supportSendLabel = `${canSendSupportMessage ? t('common.send') : t('pages.auth.login')}: ${supportIntent.label}`;
+  const supportQuickReplyLabel = (reply: string) => `${reply}: ${t('pages.support.triageTitle')}`;
+  const supportWorkflowActionLabel = (action: SupportOrderWorkflowAction, order: SupportOrderContext) => `${action.label}: ${supportOrderLabel(order)}`;
+  const supportViewOrderLabel = (order: Pick<SupportOrderContext, 'id' | 'orderNo'>) => `${t('pages.support.viewOrder')}: ${supportOrderLabel(order)}`;
+  const supportShareOrderLabel = (order: Pick<SupportOrderContext, 'id' | 'orderNo'>) => `${t('pages.support.shareLatestOrder')}: ${supportOrderLabel(order)}`;
 
   const switchSession = async (sessionId: number) => {
     if (!Number.isSafeInteger(sessionId) || sessionId <= 0) return;
@@ -830,6 +852,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW })
           .then((res) => setSessionHistory(sortSupportSessions(res.data || [])))
           .catch(() => undefined);
+        supportApi.markRead(sessionId).catch(() => undefined);
+      } else {
+        supportApi.markGuestRead(sessionId, activeGuestContext.orderNo, activeGuestContext.email).catch(() => undefined);
       }
     } catch {
       message.error(t('pages.support.loadFailed'));
@@ -890,7 +915,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               </span>
               <Badge status={supportOnline ? 'success' : 'default'} text={<span className="customer-support-widget__presenceText">{supportPresenceText}</span>} />
             </Space>
-            <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<CloseOutlined />} aria-label={t('common.close')} onClick={() => setOpen(false)} />
+            <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<CloseOutlined />} aria-label={supportPanelCloseLabel} title={supportPanelCloseLabel} onClick={() => setOpen(false)} />
           </div>
           <div className="customer-support-widget__mobileStatus" aria-label={t('pages.support.conversationBrief')}>
             <span className={supportOnline ? 'is-online' : ''}>{supportPresenceText}</span>
@@ -903,10 +928,12 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 size="small"
                 className="customer-support-widget__sessionSelect"
                 value={session?.id}
+                aria-label={supportSessionSelectLabel}
+                title={supportSessionSelectLabel}
                 onChange={(value) => switchSession(Number(value))}
                 options={sessionOptions}
                 optionFilterProp="label"
-                popupClassName="shop-mobile-popup-layer"
+                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                 getPopupContainer={() => document.body}
               />
             </div>
@@ -942,6 +969,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                       <button
                         key={reply}
                         type="button"
+                        aria-label={supportQuickReplyLabel(reply)}
+                        title={supportQuickReplyLabel(reply)}
                         onClick={() => setContent(reply)}
                       >
                         {reply}
@@ -980,7 +1009,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                                     <Tag color="blue">{formatOrderStatusLabel(order.status)}</Tag>
                                     {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
                                   </div>
-                                  <Button className="customer-support-widget__linkButton" type="link" size="small" onClick={() => openOrderDetail(order.id)}>
+                                  <Button className="customer-support-widget__linkButton" type="link" size="small" aria-label={supportViewOrderLabel(order)} title={supportViewOrderLabel(order)} onClick={() => openOrderDetail(order.id)}>
                                     {t('pages.support.viewOrder')}
                                   </Button>
                                 </div>
@@ -1031,6 +1060,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   ghost
                   icon={<ShoppingOutlined />}
                   loading={sendingOrderId === latestOrder.id}
+                  aria-label={supportShareOrderLabel(latestOrder)}
+                  title={supportShareOrderLabel(latestOrder)}
                   onClick={() => sendOrder(latestOrder.id)}
                 >
                   {t('pages.support.shareLatestOrder')}
@@ -1049,6 +1080,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                       type="button"
                       className="customer-support-widget__workflowChip"
                       disabled={sendingOrderId !== null}
+                      aria-label={supportWorkflowActionLabel(action, workflowOrder)}
+                      title={supportWorkflowActionLabel(action, workflowOrder)}
                       onClick={() => applyWorkflowAction(action, workflowOrder)}
                     >
                       <strong>{action.label}</strong>
@@ -1063,6 +1096,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 <Button
                   key={reply}
                   size="small"
+                  aria-label={supportQuickReplyLabel(reply)}
+                  title={supportQuickReplyLabel(reply)}
                   onClick={() => setContent((current) => current.trim() ? `${current.trim()}\n${reply}` : reply)}
                 >
                   {reply}
@@ -1079,6 +1114,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 optionFilterProp="label"
                 className="customer-support-widget__orderSelect"
                 placeholder={t('pages.support.pickOrder')}
+                aria-label={supportOrderSelectLabel}
+                title={supportOrderSelectLabel}
                 options={orderOptions}
                 listHeight={isMobileViewport ? 220 : 256}
                 popupMatchSelectWidth={!isMobileViewport}
@@ -1093,8 +1130,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                     fetchSupportOrders();
                   }
                 }}
-                classNames={{ popup: { root: 'support-order-select-popup' } }}
-                popupClassName="shop-mobile-popup-layer"
+                classNames={{ popup: { root: 'shop-mobile-popup-layer support-order-select-popup' } }}
                 getPopupContainer={() => document.body}
                 notFoundContent={ordersLoading ? <Spin size="small" /> : ordersLoadFailed ? t('messages.operationFailed') : t('pages.support.noOrderItems')}
                 loading={ordersLoading || sendingOrderId !== null}
@@ -1113,11 +1149,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               }}
               placeholder={canSendSupportMessage ? t('pages.support.inputPlaceholder') : t('pages.support.loginOrOrderRequired')}
               className="customer-support-widget__messageInput"
+              aria-label={supportMessageInputLabel}
+              title={supportMessageInputLabel}
               autoSize={{ minRows: 2, maxRows: 4 }}
             />
             <div className="customer-support-widget__actions">
-              <Button className="customer-support-widget__secondaryAction" disabled={Boolean(activeGuestContext) || !session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
-              <Button className="customer-support-widget__primaryAction" type="primary" icon={<SendOutlined />} loading={sending} disabled={messageTooLong || messageLength === 0 || sending} onClick={send}>{canSendSupportMessage ? t('common.send') : t('pages.auth.login')}</Button>
+              <Button className="customer-support-widget__secondaryAction" aria-label={supportCloseSessionLabel} title={supportCloseSessionLabel} disabled={Boolean(activeGuestContext) || !session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
+              <Button className="customer-support-widget__primaryAction" type="primary" icon={<SendOutlined />} aria-label={supportSendLabel} title={supportSendLabel} loading={sending} disabled={messageTooLong || messageLength === 0 || sending} onClick={send}>{canSendSupportMessage ? t('common.send') : t('pages.auth.login')}</Button>
             </div>
           </div>
         </div>
@@ -1143,35 +1181,38 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             <List
               dataSource={detailItems}
               locale={{ emptyText: t('pages.support.noOrderItems') }}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    avatar={
-                      <img
-                        src={resolveSupportOrderImage(item.imageUrl)}
-                        alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
-                        className="customer-support-widget__orderItemImage"
-                        onError={(event) => {
-                          if (event.currentTarget.src !== supportOrderImageFallback) {
-                            event.currentTarget.src = supportOrderImageFallback;
-                          }
-                        }}
-                      />
-                    }
-                    title={item.productName || t('pages.profile.productFallback', { id: item.productId })}
-                    description={
-                      <Space direction="vertical" size={0}>
-                        {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
-                        <Text type="secondary" className="customer-support-widget__itemUnit commerce-atomic commerce-price-quantity">
-                          <span className="commerce-money">{formatMoney(item.price)}</span>
-                          <span className="commerce-quantity">x {item.quantity}</span>
-                        </Text>
-                      </Space>
-                    }
-                  />
-                  <Text strong className="customer-support-widget__itemTotal commerce-money">{formatMoney(item.price * item.quantity)}</Text>
-                </List.Item>
-              )}
+              renderItem={(item) => {
+                const productName = supportOrderItemName(item);
+                return (
+                  <List.Item>
+                    <List.Item.Meta
+                      avatar={
+                        <img
+                          src={resolveSupportOrderImage(item.imageUrl)}
+                          alt={productName}
+                          className="customer-support-widget__orderItemImage"
+                          onError={(event) => {
+                            if (event.currentTarget.src !== supportOrderImageFallback) {
+                              event.currentTarget.src = supportOrderImageFallback;
+                            }
+                          }}
+                        />
+                      }
+                      title={productName}
+                      description={
+                        <Space direction="vertical" size={0}>
+                          {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
+                          <Text type="secondary" className="customer-support-widget__itemUnit commerce-atomic commerce-price-quantity">
+                            <span className="commerce-money">{formatMoney(item.price)}</span>
+                            <span className="commerce-quantity">x {item.quantity}</span>
+                          </Text>
+                        </Space>
+                      }
+                    />
+                    <Text strong className="customer-support-widget__itemTotal commerce-money">{formatMoney(item.price * item.quantity)}</Text>
+                  </List.Item>
+                );
+              }}
             />
           </Space>
         ) : null}

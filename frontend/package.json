@@ -23,6 +23,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "serve:build": "node scripts/serve-build.js",
     "prebuild": "node scripts/generate-mobile-version.js",
     "build": "GENERATE_SOURCEMAP=false react-scripts build",
     "postbuild": "node scripts/restore-build-ownership.js",

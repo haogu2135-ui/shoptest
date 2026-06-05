@@ -20,6 +20,7 @@ export const orderStatusColors: Record<string, string> = {
   RETURNED: 'purple',
   REFUNDING: 'magenta',
   REFUNDED: 'purple',
+  RECONCILE_REQUIRED: 'magenta',
 };
 
 export const orderValidTransitions: Record<string, string[]> = {
@@ -53,7 +54,7 @@ export const orderPriority: Record<string, number> = {
 export const orderSlaHours: Record<string, number> = {
   PENDING_SHIPMENT: 24,
   RETURN_REQUESTED: 24,
-  RETURN_SHIPPED: 72,
+  RETURN_SHIPPED: 24,
 };
 
 export type AdminOrderNextActionTone = 'urgent' | 'warning' | 'info' | 'success' | 'neutral';

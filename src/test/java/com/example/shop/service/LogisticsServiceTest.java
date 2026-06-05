@@ -81,10 +81,22 @@ class LogisticsServiceTest {
     @Test
     void rejectsMockTrackingInProductionWhenProviderIsMissing() {
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("production");
+        when(runtimeConfig.getBoolean("logistics.mock-enabled", false)).thenReturn(true);
 
         IllegalStateException error = assertThrows(IllegalStateException.class, () -> service.track("TN123", "DHL"));
 
         assertEquals("Production logistics tracking provider is not configured", error.getMessage());
+    }
+
+    @Test
+    void allowsMockTrackingOnlyOutsideProductionWhenExplicitlyEnabled() {
+        when(runtimeConfig.getBoolean("logistics.mock-enabled", false)).thenReturn(true);
+
+        LogisticsTrackResponse response = service.track("TN123", "DHL");
+
+        assertEquals("IN_TRANSIT", response.getStatus());
+        assertEquals("Shipment is in transit", response.getSummary());
+        assertEquals(3, response.getEvents().size());
     }
 
     @Test

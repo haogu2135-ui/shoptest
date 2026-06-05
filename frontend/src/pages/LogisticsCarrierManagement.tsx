@@ -14,6 +14,7 @@ import {
 import './LogisticsCarrierManagement.css';
 
 const { Title, Text } = Typography;
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const LogisticsCarrierManagement: React.FC = () => {
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
@@ -87,6 +88,17 @@ const LogisticsCarrierManagement: React.FC = () => {
         .some((value) => String(value || '').toLowerCase().includes(text));
     });
   }, [carriers, keyword, statusFilter]);
+  const carrierEditorLabel = editingCarrier?.name || editingCarrier?.trackingCode || t('pages.logisticsCarriers.addCarrier');
+  const saveCarrierActionLabel = `${t('common.save')}: ${carrierEditorLabel}`;
+  const cancelCarrierActionLabel = `${t('common.cancel')}: ${carrierEditorLabel}`;
+  const activeCarrierStatusLabel = statusFilter ? formatCarrierStatus(statusFilter) : t('common.all');
+  const carrierSearchInputLabel = `${t('common.search')}: ${t('pages.logisticsCarriers.title')}, ${keyword.trim() || t('common.all')}`;
+  const carrierStatusFilterLabel = `${t('common.status')}: ${t('pages.logisticsCarriers.title')}, ${activeCarrierStatusLabel}`;
+  const addCarrierActionLabel = `${t('pages.logisticsCarriers.addCarrier')}: ${t('pages.logisticsCarriers.title')}`;
+  const carrierNameInputLabel = `${t('pages.logisticsCarriers.name')}: ${carrierEditorLabel}`;
+  const carrierCodeInputLabel = `${t('pages.logisticsCarriers.trackingCode')}: ${carrierEditorLabel}`;
+  const carrierModalStatusLabel = `${t('common.status')}: ${carrierEditorLabel}`;
+  const carrierSortInputLabel = `${t('pages.logisticsCarriers.sortOrder')}: ${carrierEditorLabel}`;
 
   const fetchCarriers = useCallback(async () => {
     setLoading(true);
@@ -180,31 +192,35 @@ const LogisticsCarrierManagement: React.FC = () => {
       <Card className="logistics-carrier-page__intro">
         <Space wrap>
           <Text type="secondary">{t('pages.logisticsCarriers.description')}</Text>
-          <Input
-            allowClear
-            prefix={<SearchOutlined />}
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder={t('common.search')}
-            className="logistics-carrier-page__keywordInput"
-          />
-          <Select
-            allowClear
-            value={statusFilter}
-            onChange={setStatusFilter}
-            placeholder={t('common.status')}
-            className="logistics-carrier-page__statusFilter"
-            popupClassName="shop-mobile-popup-layer"
-            getPopupContainer={() => document.body}
-            options={[
-              { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
-              { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
-            ]}
-          />
-          {canWriteCarriers ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-              {t('pages.logisticsCarriers.addCarrier')}
-            </Button>
+	          <Input
+	            allowClear
+	            prefix={<SearchOutlined />}
+	            value={keyword}
+	            onChange={(event) => setKeyword(event.target.value)}
+	            placeholder={t('common.search')}
+	            className="logistics-carrier-page__keywordInput"
+	            aria-label={carrierSearchInputLabel}
+	            title={carrierSearchInputLabel}
+	          />
+	          <Select
+	            allowClear
+	            value={statusFilter}
+	            onChange={setStatusFilter}
+	            placeholder={t('common.status')}
+	            className="logistics-carrier-page__statusFilter"
+	            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+	            getPopupContainer={() => document.body}
+	            aria-label={carrierStatusFilterLabel}
+	            title={carrierStatusFilterLabel}
+	            options={[
+	              { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
+	              { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
+	            ]}
+	          />
+	          {canWriteCarriers ? (
+	            <Button type="primary" icon={<PlusOutlined />} aria-label={addCarrierActionLabel} title={addCarrierActionLabel} onClick={() => openModal()}>
+	              {t('pages.logisticsCarriers.addCarrier')}
+	            </Button>
           ) : null}
         </Space>
       </Card>
@@ -293,7 +309,16 @@ const LogisticsCarrierManagement: React.FC = () => {
                 <Space>
                   {canWriteCarriers ? <Button size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(carrier)}>{t('common.edit')}</Button> : null}
                   {canDeleteCarriers ? (
-                    <Popconfirm title={t('pages.logisticsCarriers.deleteConfirm')} onConfirm={() => handleDelete(carrier.id)}>
+                    <Popconfirm
+                      classNames={mobilePopconfirmClassNames}
+                      title={t('pages.logisticsCarriers.deleteConfirm')}
+                      description={carrierName}
+                      onConfirm={() => handleDelete(carrier.id)}
+                      okText={t('common.confirm')}
+                      cancelText={t('common.cancel')}
+                      okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+                    >
                       <Button size="small" danger aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
                     </Popconfirm>
                   ) : null}
@@ -311,28 +336,34 @@ const LogisticsCarrierManagement: React.FC = () => {
         onOk={handleSave}
         confirmLoading={saving}
         onCancel={closeModal}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ 'aria-label': saveCarrierActionLabel, title: saveCarrierActionLabel }}
+        cancelButtonProps={{ 'aria-label': cancelCarrierActionLabel, title: cancelCarrierActionLabel }}
         destroyOnHidden
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label={t('pages.logisticsCarriers.name')} rules={[{ required: true, message: t('pages.logisticsCarriers.nameRequired') }]}>
-            <Input placeholder="DHL Express" />
-          </Form.Item>
-          <Form.Item name="trackingCode" label={t('pages.logisticsCarriers.trackingCode')} rules={[{ required: true, message: t('pages.logisticsCarriers.codeRequired') }]}>
-            <Input placeholder="100001" />
-          </Form.Item>
-          <Form.Item name="status" label={t('common.status')} rules={[{ required: true }]}>
-            <Select
-              popupClassName="shop-mobile-popup-layer"
-              getPopupContainer={() => document.body}
-              options={[
-                { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
-                { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="sortOrder" label={t('pages.logisticsCarriers.sortOrder')}>
-            <InputNumber min={0} precision={0} className="logistics-carrier-page__sortInput" />
-          </Form.Item>
+	          <Form.Item name="name" label={t('pages.logisticsCarriers.name')} rules={[{ required: true, message: t('pages.logisticsCarriers.nameRequired') }]}>
+	            <Input placeholder="DHL Express" aria-label={carrierNameInputLabel} title={carrierNameInputLabel} />
+	          </Form.Item>
+	          <Form.Item name="trackingCode" label={t('pages.logisticsCarriers.trackingCode')} rules={[{ required: true, message: t('pages.logisticsCarriers.codeRequired') }]}>
+	            <Input placeholder="100001" aria-label={carrierCodeInputLabel} title={carrierCodeInputLabel} />
+	          </Form.Item>
+	          <Form.Item name="status" label={t('common.status')} rules={[{ required: true }]}>
+	            <Select
+	              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+	              getPopupContainer={() => document.body}
+	              aria-label={carrierModalStatusLabel}
+	              title={carrierModalStatusLabel}
+	              options={[
+	                { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
+	                { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
+	              ]}
+	            />
+	          </Form.Item>
+	          <Form.Item name="sortOrder" label={t('pages.logisticsCarriers.sortOrder')}>
+	            <InputNumber min={0} precision={0} className="logistics-carrier-page__sortInput" aria-label={carrierSortInputLabel} title={carrierSortInputLabel} />
+	          </Form.Item>
         </Form>
       </Modal>
     </div>

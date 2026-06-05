@@ -4,6 +4,7 @@ import com.example.shop.entity.Category;
 import com.example.shop.repository.CategoryRepository;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.service.CategoryService;
+import com.example.shop.util.ImageUrlValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -88,6 +89,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public Category save(Category category) {
+        category.setImageUrl(ImageUrlValidator.normalizePersistentImageUrl(category.getImageUrl(), "imageUrl"));
         if (category.getId() != null && category.getParentId() != null && category.getId().equals(category.getParentId())) {
             throw new IllegalArgumentException("Category cannot be its own parent");
         }

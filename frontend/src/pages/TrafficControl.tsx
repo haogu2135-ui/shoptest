@@ -15,6 +15,7 @@ import {
 import './TrafficControl.css';
 
 const { Text, Title } = Typography;
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 type CircuitRow = AdminTrafficControlStatus['circuits'][number];
 
@@ -154,23 +155,31 @@ const TrafficControl: React.FC = () => {
         title: t('common.actions'),
         key: 'action',
         width: 110,
-        render: (_, row) => (
-          <Popconfirm
-            title={`${t('pages.trafficControl.reset')} ${row.name}?`}
-            description={t('pages.trafficControl.resetCircuitConfirmDescription')}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-            onConfirm={() => resetCircuit(row.name)}
-          >
-            <Button
-              size="small"
-              icon={<UndoOutlined />}
-              loading={acting === row.name}
+        render: (_, row) => {
+          const resetActionLabel = `${t('pages.trafficControl.reset')}: ${row.name}`;
+          return (
+            <Popconfirm
+              classNames={mobilePopconfirmClassNames}
+              title={`${t('pages.trafficControl.reset')} ${row.name}?`}
+              description={t('pages.trafficControl.resetCircuitConfirmDescription')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ 'aria-label': resetActionLabel, title: resetActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resetActionLabel}`, title: `${t('common.cancel')}: ${resetActionLabel}` }}
+              onConfirm={() => resetCircuit(row.name)}
             >
-              {t('pages.trafficControl.reset')}
-            </Button>
-          </Popconfirm>
-        ),
+              <Button
+                size="small"
+                icon={<UndoOutlined />}
+                aria-label={resetActionLabel}
+                title={resetActionLabel}
+                loading={acting === row.name}
+              >
+                {t('pages.trafficControl.reset')}
+              </Button>
+            </Popconfirm>
+          );
+        },
       });
     }
 
@@ -179,6 +188,9 @@ const TrafficControl: React.FC = () => {
 
   const rateLimit = status?.rateLimit;
   const circuitConfig = status?.circuitBreakerConfig;
+  const refreshTrafficActionLabel = `${t('common.refresh')}: ${t('pages.trafficControl.title')}`;
+  const clearRateLimitActionLabel = `${t('pages.trafficControl.clearRateLimit')}: ${t('pages.trafficControl.activeBuckets')} ${rateLimit?.activeBuckets || 0}`;
+  const resetAllCircuitsActionLabel = `${t('pages.trafficControl.resetAllCircuits')}: ${t('pages.trafficControl.circuitBreakers')} ${status?.circuits?.length || 0}`;
 
   return (
     <div className="traffic-control">
@@ -189,31 +201,37 @@ const TrafficControl: React.FC = () => {
           <Text type="secondary">{t('pages.trafficControl.description')}</Text>
         </div>
         <Space className="traffic-control__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={loadStatus}>
+          <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshTrafficActionLabel} title={refreshTrafficActionLabel} onClick={loadStatus}>
             {t('common.refresh')}
           </Button>
           {canClearRateLimit ? (
             <Popconfirm
+              classNames={mobilePopconfirmClassNames}
               title={`${t('pages.trafficControl.clearRateLimit')}?`}
               description={t('pages.trafficControl.clearRateLimitConfirmDescription')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
+              okButtonProps={{ danger: true, 'aria-label': clearRateLimitActionLabel, title: clearRateLimitActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearRateLimitActionLabel}`, title: `${t('common.cancel')}: ${clearRateLimitActionLabel}` }}
               onConfirm={clearRateLimit}
             >
-              <Button icon={<ClearOutlined />} loading={acting === 'rate-limit'}>
+              <Button icon={<ClearOutlined />} loading={acting === 'rate-limit'} aria-label={clearRateLimitActionLabel} title={clearRateLimitActionLabel}>
                 {t('pages.trafficControl.clearRateLimit')}
               </Button>
             </Popconfirm>
           ) : null}
           {canResetCircuit ? (
             <Popconfirm
+              classNames={mobilePopconfirmClassNames}
               title={`${t('pages.trafficControl.resetAllCircuits')}?`}
               description={t('pages.trafficControl.resetAllCircuitsConfirmDescription')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
+              okButtonProps={{ 'aria-label': resetAllCircuitsActionLabel, title: resetAllCircuitsActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resetAllCircuitsActionLabel}`, title: `${t('common.cancel')}: ${resetAllCircuitsActionLabel}` }}
               onConfirm={() => resetCircuit()}
             >
-              <Button type="primary" icon={<UndoOutlined />} loading={acting === 'all'}>
+              <Button type="primary" icon={<UndoOutlined />} loading={acting === 'all'} aria-label={resetAllCircuitsActionLabel} title={resetAllCircuitsActionLabel}>
                 {t('pages.trafficControl.resetAllCircuits')}
               </Button>
             </Popconfirm>

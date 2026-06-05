@@ -184,6 +184,11 @@
   overflow-wrap: anywhere;
 }
 
+.system-monitor__hero > div:first-child {
+  min-width: 0;
+  max-width: 100%;
+}
+
 @media (max-width: 720px) {
   .system-monitor {
     gap: 12px;
@@ -204,7 +209,9 @@
 
   .system-monitor__hero .ant-btn {
     width: 100%;
+    max-width: 100%;
     min-height: 38px;
+    min-width: 0;
     white-space: normal;
   }
 

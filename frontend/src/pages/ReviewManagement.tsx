@@ -18,6 +18,7 @@ import './ReviewManagement.css';
 const { Title, Paragraph } = Typography;
 const DEFAULT_PAGE_SIZE = 20;
 const REVIEW_STATUS_KEYS = new Set(['PENDING', 'APPROVED', 'HIDDEN']);
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const ReviewManagement: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -37,6 +38,10 @@ const ReviewManagement: React.FC = () => {
   const canModerateReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_MODERATE_PERMISSION);
   const canReplyReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_REPLY_PERMISSION);
   const canDeleteReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_DELETE_PERMISSION);
+  const adminReviewProductName = (record: Review) => (
+    (record.productName || record.product?.name || '').trim()
+      || t('pages.profile.productFallback', { id: record.productId || record.product?.id || record.id })
+  );
 
   const statusColors: Record<string, string> = {
     PENDING: 'orange',
@@ -60,6 +65,14 @@ const ReviewManagement: React.FC = () => {
     const averageRating = summaryNumber('AVERAGE_RATING');
     return { pending, lowRating, needsReply, approved, averageRating };
   }, [reviewSummary]);
+  const currentReviewStatusLabel = statusFilter ? formatReviewStatus(statusFilter) : t('common.all');
+  const currentReviewSearchLabel = keyword.trim() || debouncedKeyword || t('common.search');
+  const reviewKeywordInputLabel = `${t('pages.adminReviews.title')} ${t('common.search')}: ${currentReviewSearchLabel}`;
+  const reviewStatusFilterLabel = `${t('pages.adminReviews.statusFilter')}: ${currentReviewStatusLabel}`;
+  const reviewSearchActionLabel = `${t('common.search')}: ${currentReviewStatusLabel}, ${currentReviewSearchLabel}`;
+  const replyTargetLabel = replyTarget ? adminReviewProductName(replyTarget) : t('pages.adminReviews.title');
+  const replyInputLabel = `${t('pages.adminReviews.replyAction')}: ${replyTargetLabel}`;
+  const replySubmitActionLabel = `${t('pages.adminReviews.replyAction')}: ${replyTargetLabel}`;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
@@ -194,7 +207,7 @@ const ReviewManagement: React.FC = () => {
       width: 220,
       render: (_: any, record: Review) => {
         const productId = record.productId || (record as any).product?.id;
-        const productName = record.productName || (record as any).product?.name;
+        const productName = adminReviewProductName(record);
         const rawProductImageUrl = record.productImageUrl || (record as any).product?.imageUrl;
         const productImageUrl = rawProductImageUrl ? resolveProductImage(rawProductImageUrl) : '';
         return (
@@ -212,7 +225,7 @@ const ReviewManagement: React.FC = () => {
               />
             ) : null}
             <div>
-              <strong>{productName || '-'}</strong>
+              <strong>{productName}</strong>
               <span>{productId ? `#${productId}` : '-'}</span>
             </div>
           </div>
@@ -230,7 +243,15 @@ const ReviewManagement: React.FC = () => {
       dataIndex: 'rating',
       key: 'rating',
       width: 150,
-      render: (rating: number) => <Rate disabled defaultValue={rating} />,
+      render: (rating: number, record: Review) => {
+        const reviewLabel = adminReviewProductName(record) || record.username || `#${record.id}`;
+        const ratingLabel = `${t('pages.adminReviews.rating')}: ${reviewLabel}, ${rating || 0}`;
+        return (
+          <span role="group" aria-label={ratingLabel} title={ratingLabel}>
+            <Rate disabled value={rating || 0} />
+          </span>
+        );
+      },
     },
     {
       title: t('pages.adminReviews.statusFilter'),
@@ -246,6 +267,7 @@ const ReviewManagement: React.FC = () => {
       title: t('pages.adminReviews.content'),
       dataIndex: 'comment',
       key: 'comment',
+      width: 360,
       ellipsis: true,
       render: (text: string) => <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0 }}>{text}</Paragraph>,
     },
@@ -253,6 +275,7 @@ const ReviewManagement: React.FC = () => {
       title: t('pages.adminReviews.reply'),
       dataIndex: 'adminReply',
       key: 'adminReply',
+      width: 300,
       ellipsis: true,
       render: (text: string) => text ? <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0 }}>{text}</Paragraph> : '-',
     },
@@ -268,30 +291,62 @@ const ReviewManagement: React.FC = () => {
       key: 'action',
       width: 260,
       render: (_: any, record: Review) => {
-        const reviewLabel = record.productName || record.username || `#${record.id}`;
+        const reviewLabel = adminReviewProductName(record) || record.username || `#${record.id}`;
+        const approveActionLabel = `${t('pages.adminReviews.approve')}: ${reviewLabel}`;
+        const hideActionLabel = `${t('pages.adminReviews.hide')}: ${reviewLabel}`;
+        const replyActionLabel = `${t('pages.adminReviews.replyAction')}: ${reviewLabel}`;
+        const deleteActionLabel = `${t('common.delete')}: ${reviewLabel}`;
         const actions = [
           canModerateReviews && (record.status || 'PENDING') !== 'APPROVED' ? (
-            <Popconfirm key="approve" title={t('pages.adminReviews.approveConfirm', { review: reviewLabel })} onConfirm={() => handleStatus(record, 'APPROVED')}>
-              <Button size="small" icon={<CheckOutlined />}>
+            <Popconfirm
+              classNames={mobilePopconfirmClassNames}
+              key="approve"
+              title={t('pages.adminReviews.approveConfirm', { review: reviewLabel })}
+              onConfirm={() => handleStatus(record, 'APPROVED')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ 'aria-label': approveActionLabel, title: approveActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${approveActionLabel}`, title: `${t('common.cancel')}: ${approveActionLabel}` }}
+            >
+              <Button size="small" icon={<CheckOutlined />} aria-label={approveActionLabel} title={approveActionLabel}>
                 {t('pages.adminReviews.approve')}
               </Button>
             </Popconfirm>
           ) : null,
           canModerateReviews && (record.status || 'PENDING') !== 'HIDDEN' ? (
-            <Popconfirm key="hide" title={t('pages.adminReviews.hideConfirm', { review: reviewLabel })} onConfirm={() => handleStatus(record, 'HIDDEN')}>
-              <Button size="small" icon={<EyeInvisibleOutlined />}>
+            <Popconfirm
+              classNames={mobilePopconfirmClassNames}
+              key="hide"
+              title={t('pages.adminReviews.hideConfirm', { review: reviewLabel })}
+              onConfirm={() => handleStatus(record, 'HIDDEN')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ danger: true, 'aria-label': hideActionLabel, title: hideActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${hideActionLabel}`, title: `${t('common.cancel')}: ${hideActionLabel}` }}
+            >
+              <Button size="small" icon={<EyeInvisibleOutlined />} aria-label={hideActionLabel} title={hideActionLabel}>
                 {t('pages.adminReviews.hide')}
               </Button>
             </Popconfirm>
           ) : null,
           canReplyReviews ? (
-          <Button key="reply" size="small" style={{ marginRight: 8 }} onClick={() => openReply(record)}>
+          <Button key="reply" size="small" style={{ marginRight: 8 }} aria-label={replyActionLabel} title={replyActionLabel} onClick={() => openReply(record)}>
             {t('pages.adminReviews.replyAction')}
           </Button>
           ) : null,
           canDeleteReviews ? (
-          <Popconfirm key="delete" title={t('pages.adminReviews.deleteConfirm')} onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
+	          <Popconfirm
+	            classNames={mobilePopconfirmClassNames}
+	            key="delete"
+            title={t('pages.adminReviews.deleteConfirm')}
+            description={reviewLabel}
+            onConfirm={() => handleDelete(record.id)}
+            okText={t('common.confirm')}
+            cancelText={t('common.cancel')}
+            okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+            cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
           </Popconfirm>
           ) : null,
         ].filter(Boolean);
@@ -341,6 +396,8 @@ const ReviewManagement: React.FC = () => {
           onChange={(event) => setKeyword(event.target.value)}
           placeholder={t('common.search')}
           className="review-management-page__keywordInput"
+          aria-label={reviewKeywordInputLabel}
+          title={reviewKeywordInputLabel}
         />
         <Select
           allowClear
@@ -348,15 +405,17 @@ const ReviewManagement: React.FC = () => {
           className="review-management-page__statusFilter"
           value={statusFilter}
           onChange={setStatusFilter}
-          popupClassName="shop-mobile-popup-layer"
+          classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
           getPopupContainer={() => document.body}
+          aria-label={reviewStatusFilterLabel}
+          title={reviewStatusFilterLabel}
           options={[
             { value: 'PENDING', label: t('pages.adminReviews.status.PENDING') },
             { value: 'APPROVED', label: t('pages.adminReviews.status.APPROVED') },
             { value: 'HIDDEN', label: t('pages.adminReviews.status.HIDDEN') },
           ]}
         />
-        <Button icon={<SearchOutlined />} onClick={() => fetchReviews(1, pageSizeRef.current)}>
+        <Button icon={<SearchOutlined />} aria-label={reviewSearchActionLabel} title={reviewSearchActionLabel} onClick={() => fetchReviews(1, pageSizeRef.current)}>
           {t('common.search')}
         </Button>
       </Space>
@@ -375,14 +434,17 @@ const ReviewManagement: React.FC = () => {
         }}
         bordered
         size="middle"
-        scroll={{ x: 1180 }}
+        scroll={{ x: 1730 }}
       />
       <Modal
         className="profile-mobile-safe-modal review-management-page__replyModal"
         open={!!replyTarget}
         onCancel={closeReplyModal}
         onOk={handleReply}
-        okButtonProps={{ disabled: !canReplyReviews }}
+        okText={t('pages.adminReviews.replyAction')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: !canReplyReviews, 'aria-label': replySubmitActionLabel, title: replySubmitActionLabel }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${replySubmitActionLabel}`, title: `${t('common.cancel')}: ${replySubmitActionLabel}` }}
         confirmLoading={replying}
         title={t('pages.adminReviews.replyAction')}
         destroyOnHidden
@@ -392,6 +454,8 @@ const ReviewManagement: React.FC = () => {
           value={replyText}
           onChange={(e) => setReplyText(e.target.value)}
           placeholder={t('pages.adminReviews.replyPlaceholder')}
+          aria-label={replyInputLabel}
+          title={replyInputLabel}
         />
       </Modal>
     </div>

@@ -1,4 +1,5 @@
 import type { ProductPublic, ProductVariant } from '../types';
+import { normalizePersistentImageUrl } from './mediaAssets';
 
 export type ProductOptionGroup = {
   name: string;
@@ -84,7 +85,7 @@ export const getProductVariants = (product?: ProductOptionInput | null): Product
         options: normalizeVariantOptions(variant),
         price: Number(variant?.price || 0),
         stock: Number.isFinite(Number(variant?.stock)) ? Math.max(0, Math.floor(Number(variant.stock))) : undefined,
-        imageUrl: variant?.imageUrl ? String(variant.imageUrl).trim() : undefined,
+        imageUrl: normalizePersistentImageUrl(variant?.imageUrl) || undefined,
       }))
       .filter((variant) => Object.keys(variant.options).length > 0 && Number.isFinite(variant.price) && variant.price > 0);
   if (Array.isArray(rawVariants)) return normalizeVariants(rawVariants);

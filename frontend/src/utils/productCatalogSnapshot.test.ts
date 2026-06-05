@@ -29,7 +29,7 @@ describe('productCatalogSnapshot', () => {
       id: index + 1,
       name: `Product ${index + 1}`,
       specifications: Object.fromEntries(Array.from({ length: 40 }, (_unused, specIndex) => [`spec-${specIndex}`, 'value'])),
-      images: Array.from({ length: 10 }, (_unused, imageIndex) => `/image-${imageIndex}.jpg`),
+      images: Array.from({ length: 10 }, (_unused, imageIndex) => `/uploads/products/image-${imageIndex}.jpg`),
     }));
 
     saveProductCatalogSnapshot(products, 1_000);
@@ -69,10 +69,13 @@ describe('productCatalogSnapshot', () => {
       stock: -4,
       discount: 240,
       positiveRate: 150,
+      imageUrl: 'data:image/png;base64,abc',
+      images: ['/uploads/products/alt.jpg', 'assets/products/local.jpg', 'https://cdn.example.com/gallery.jpg'],
       sizes: ['Small', 'Small', 'Medium'],
       variants: [
-        { sku: ' sku-1 ', options: { Size: 'Small', Color: 'Blue' }, price: 139, stock: 3 },
+        { sku: ' sku-1 ', options: { Size: 'Small', Color: 'Blue' }, price: 139, stock: 3, imageUrl: 'blob:https://app.example.com/id' },
         { sku: 'bad', options: {}, price: 139 },
+        { sku: ' sku-2 ', options: { Size: 'Medium' }, price: 149, imageUrl: 'https://cdn.example.com/variant.jpg' },
       ],
       specifications: {
         ' options.Size ': 'Small, Medium',
@@ -87,10 +90,14 @@ describe('productCatalogSnapshot', () => {
       stock: 0,
       discount: 100,
       positiveRate: 100,
+      imageUrl: '',
+      images: ['/uploads/products/alt.jpg', 'https://cdn.example.com/gallery.jpg'],
       sizes: ['Small', 'Medium'],
     });
-    expect(normalized?.variants).toHaveLength(1);
+    expect(normalized?.variants).toHaveLength(2);
     expect(normalized?.variants?.[0].sku).toBe('sku-1');
+    expect(normalized?.variants?.[0].imageUrl).toBeUndefined();
+    expect(normalized?.variants?.[1].imageUrl).toBe('https://cdn.example.com/variant.jpg');
     expect(normalized?.specifications).toEqual({ 'options.Size': 'Small, Medium' });
   });
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, DatePicker, Descriptions, Empty, Input, Select, Space, Spin, Statistic, Switch, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, DatePicker, Descriptions, Empty, Input, Popconfirm, Select, Space, Spin, Statistic, Switch, Tag, Typography, message } from 'antd';
 import { BugOutlined, ClockCircleOutlined, DownloadOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { adminApi } from '../api';
@@ -115,6 +115,20 @@ const LogManagement: React.FC = () => {
       setDownloading(false);
     }
   };
+  const activeLoggerName = loggerName.trim() || DEFAULT_LOGGER;
+  const logDownloadContext = `${t('pages.logAdmin.loggerName')} ${activeLoggerName}, ${t('pages.logAdmin.currentLevel')} ${level}${keyword.trim() ? `, ${keyword.trim()}` : ''}`;
+  const refreshLogsActionLabel = `${t('common.refresh')}: ${t('pages.logAdmin.loggerName')} ${activeLoggerName}`;
+  const downloadLogsActionLabel = `${t('pages.logAdmin.downloadLogs')}: ${logDownloadContext}`;
+  const loggerNameInputLabel = `${t('pages.logAdmin.loggerName')}: ${t('pages.logAdmin.loadLogger')}`;
+  const debugSwitchActionLabel = `${t('pages.logAdmin.debugLogs')}: ${activeLoggerName}`;
+  const loadLoggerActionLabel = `${t('pages.logAdmin.loadLogger')}: ${activeLoggerName}`;
+  const logRangePickerLabel = `${t('pages.logAdmin.rangeDownload')}: ${range[0].format('YYYY-MM-DD HH:mm')} - ${range[1].format('YYYY-MM-DD HH:mm')}`;
+  const logLevelSelectLabel = `${t('pages.logAdmin.currentLevel')}: ${t('pages.logAdmin.rangeDownload')}`;
+  const logKeywordInputLabel = `${t('pages.logAdmin.keywordPlaceholder')}: ${t('pages.logAdmin.rangeDownload')}`;
+  const downloadSelectedRangeActionLabel = `${t('pages.logAdmin.downloadSelectedRange')}: ${logDownloadContext}`;
+  const nextDebugEnabled = !Boolean(status?.debugEnabled);
+  const debugTargetStatusLabel = nextDebugEnabled ? t('pages.logAdmin.debugEnabled') : t('pages.logAdmin.debugDisabled');
+  const debugConfirmActionLabel = `${debugTargetStatusLabel}: ${activeLoggerName}`;
 
   return (
     <div className="log-management">
@@ -125,11 +139,11 @@ const LogManagement: React.FC = () => {
           <Text type="secondary">{t('pages.logAdmin.description')}</Text>
         </div>
         <Space className="log-management__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => loadStatus(loggerName)}>
+          <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshLogsActionLabel} title={refreshLogsActionLabel} onClick={() => loadStatus(loggerName)}>
             {t('common.refresh')}
           </Button>
           {canDownloadLogs ? (
-            <Button type="primary" icon={<DownloadOutlined />} loading={downloading} onClick={downloadLogs}>
+            <Button type="primary" icon={<DownloadOutlined />} loading={downloading} aria-label={downloadLogsActionLabel} title={downloadLogsActionLabel} onClick={downloadLogs}>
               {t('pages.logAdmin.downloadLogs')}
             </Button>
           ) : null}
@@ -171,24 +185,40 @@ const LogManagement: React.FC = () => {
                   onChange={(event) => setLoggerName(event.target.value)}
                   onPressEnter={() => loadStatus(loggerName)}
                   placeholder={DEFAULT_LOGGER}
+                  aria-label={loggerNameInputLabel}
+                  title={loggerNameInputLabel}
                 />
               </label>
               {canToggleDebug ? (
-                <div className="log-management__switchRow">
+                <div className="log-management__switchRow" role="group" aria-label={debugSwitchActionLabel} title={debugSwitchActionLabel}>
                   <div>
                     <Text strong>{t('pages.logAdmin.debugLogs')}</Text>
                     <Text type="secondary">{t('pages.logAdmin.runtimeOnly')}</Text>
                   </div>
-                  <Switch
-                    checked={Boolean(status?.debugEnabled)}
-                    loading={switching}
-                    onChange={toggleDebug}
-                    checkedChildren={t('pages.logAdmin.on')}
-                    unCheckedChildren={t('pages.logAdmin.off')}
-                  />
+                  <Popconfirm
+                    title={`${debugTargetStatusLabel}?`}
+                    description={t('pages.logAdmin.debugHint')}
+                    disabled={switching}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
+                    classNames={{ root: 'shop-mobile-popup-layer' }}
+                    okButtonProps={{ 'aria-label': debugConfirmActionLabel, title: debugConfirmActionLabel }}
+                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${debugConfirmActionLabel}`, title: `${t('common.cancel')}: ${debugConfirmActionLabel}` }}
+                    onConfirm={() => toggleDebug(nextDebugEnabled)}
+                  >
+                    <Switch
+                      checked={Boolean(status?.debugEnabled)}
+                      loading={switching}
+                      disabled={switching}
+                      aria-label={debugConfirmActionLabel}
+                      title={debugConfirmActionLabel}
+                      checkedChildren={t('pages.logAdmin.on')}
+                      unCheckedChildren={t('pages.logAdmin.off')}
+                    />
+                  </Popconfirm>
                 </div>
               ) : null}
-              <Button onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />}>
+              <Button onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />} aria-label={loadLoggerActionLabel} title={loadLoggerActionLabel}>
                 {t('pages.logAdmin.loadLogger')}
               </Button>
             </div>
@@ -196,35 +226,41 @@ const LogManagement: React.FC = () => {
 
           <Card title={t('pages.logAdmin.rangeDownload')} className="log-management__card">
             <div className="log-management__download">
-              <RangePicker
-                showTime
-                allowClear={false}
-                popupClassName="shop-mobile-popup-layer"
-                getPopupContainer={() => document.body}
-                value={range}
-                onChange={(values) => {
-                  if (values?.[0] && values?.[1]) {
-                    setRange([values[0], values[1]]);
-                  }
-                }}
-              />
-              <Space.Compact block>
-                <Select
-                  value={level}
-                  onChange={setLevel}
-                  popupClassName="shop-mobile-popup-layer"
+              <div role="group" aria-label={logRangePickerLabel} title={logRangePickerLabel}>
+                <RangePicker
+                  showTime
+                  allowClear={false}
+                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                   getPopupContainer={() => document.body}
-                  options={['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'].map((value) => ({ value, label: value }))}
-                  style={{ width: 110 }}
+                  value={range}
+                  onChange={(values) => {
+                    if (values?.[0] && values?.[1]) {
+                      setRange([values[0], values[1]]);
+                    }
+                  }}
                 />
-                <Input
-                  value={keyword}
-                  onChange={(event) => setKeyword(event.target.value)}
-                  placeholder={t('pages.logAdmin.keywordPlaceholder')}
-                />
-              </Space.Compact>
+              </div>
+              <div role="group" aria-label={logLevelSelectLabel} title={logLevelSelectLabel}>
+                <Space.Compact block>
+                  <Select
+                    value={level}
+                    onChange={setLevel}
+                    classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                    getPopupContainer={() => document.body}
+                    options={['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'].map((value) => ({ value, label: value }))}
+                    style={{ width: 110 }}
+                  />
+                  <Input
+                    value={keyword}
+                    onChange={(event) => setKeyword(event.target.value)}
+                    placeholder={t('pages.logAdmin.keywordPlaceholder')}
+                    aria-label={logKeywordInputLabel}
+                    title={logKeywordInputLabel}
+                  />
+                </Space.Compact>
+              </div>
               {canDownloadLogs ? (
-                <Button type="primary" icon={<DownloadOutlined />} loading={downloading} onClick={downloadLogs}>
+                <Button type="primary" icon={<DownloadOutlined />} loading={downloading} aria-label={downloadSelectedRangeActionLabel} title={downloadSelectedRangeActionLabel} onClick={downloadLogs}>
                   {t('pages.logAdmin.downloadSelectedRange')}
                 </Button>
               ) : null}

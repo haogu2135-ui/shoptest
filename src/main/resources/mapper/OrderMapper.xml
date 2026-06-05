@@ -66,8 +66,8 @@
     <select id="dashboardOrderStats" resultType="java.util.HashMap">
         SELECT
             COUNT(*) AS totalOrders,
-            COUNT(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED') THEN 1 END) AS paidOrders,
-            COALESCE(SUM(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED') THEN total_amount ELSE 0 END), 0) AS netRevenue,
+            COUNT(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING') THEN 1 END) AS paidOrders,
+            COALESCE(SUM(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING') THEN total_amount ELSE 0 END), 0) AS netRevenue,
             COUNT(CASE WHEN status IN ('REFUNDED', 'RETURNED') OR refunded_at IS NOT NULL THEN 1 END) AS refundedOrders,
             COALESCE(SUM(CASE WHEN status IN ('REFUNDED', 'RETURNED') OR refunded_at IS NOT NULL THEN total_amount ELSE 0 END), 0) AS refundedAmount,
             COALESCE(SUM(COALESCE(original_amount, total_amount, 0)), 0) AS grossOrderAmount,
@@ -89,7 +89,7 @@
         SELECT
             DATE(created_at) AS trendDate,
             COUNT(*) AS orderCount,
-            COALESCE(SUM(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED') THEN total_amount ELSE 0 END), 0) AS revenue
+            COALESCE(SUM(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING') THEN total_amount ELSE 0 END), 0) AS revenue
         FROM orders
         WHERE created_at &gt;= #{start}
         GROUP BY DATE(created_at)
@@ -99,7 +99,7 @@
     <select id="dashboardPaymentMethodBreakdown" resultType="java.util.HashMap">
         SELECT payment_method AS paymentMethod, COUNT(*) AS orderCount
         FROM orders
-        WHERE status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED')
+        WHERE status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING')
           AND payment_method IS NOT NULL
           AND payment_method != ''
         GROUP BY payment_method
@@ -142,7 +142,7 @@
                             OR (orders.status = 'PENDING_SHIPMENT' AND COALESCE(orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
                             OR (orders.status = 'RETURN_REQUESTED' AND COALESCE(orders.return_requested_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
                             OR (orders.status = 'RETURN_APPROVED' AND COALESCE(orders.return_approved_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
-                            OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
+                            OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
                         )
                     </when>
                     <when test="quick == 'SLA_OVERDUE_PAYMENT'">
@@ -167,7 +167,7 @@
                             OR (orders.status = 'PENDING_SHIPMENT' AND COALESCE(orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
                             OR (orders.status = 'RETURN_REQUESTED' AND COALESCE(orders.return_requested_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
                             OR (orders.status = 'RETURN_APPROVED' AND COALESCE(orders.return_approved_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 2 DAY))
-                            OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 66 HOUR))
+                            OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
                         )
                     </when>
                     <when test="quick == 'MISSING_TRACKING'">
@@ -178,11 +178,14 @@
                         AND (orders.status IN ('REFUNDED', 'RETURNED') OR orders.refunded_at IS NOT NULL)
                     </when>
                     <when test="quick == 'REFUNDING'">
-                        AND EXISTS (
-                            SELECT 1
-                            FROM payments p
-                            WHERE p.order_id = orders.id
-                              AND p.status = 'REFUNDING'
+                        AND (
+                            orders.status = 'RETURN_REFUNDING'
+                            OR EXISTS (
+                                SELECT 1
+                                FROM payments p
+                                WHERE p.order_id = orders.id
+                                  AND p.status = 'REFUNDING'
+                            )
                         )
                     </when>
                     <when test="quick == 'AFTER_SALES'">
@@ -293,14 +296,14 @@
                 OR (orders.status = 'PENDING_SHIPMENT' AND COALESCE(orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
                 OR (orders.status = 'RETURN_REQUESTED' AND COALESCE(orders.return_requested_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
                 OR (orders.status = 'RETURN_APPROVED' AND COALESCE(orders.return_approved_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
-                OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 3 DAY))
+                OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR))
             ) THEN 1 END) AS SLA_OVERDUE,
             COUNT(CASE WHEN (
                 (orders.status = 'PENDING_PAYMENT' AND orders.created_at BETWEEN DATE_SUB(NOW(), INTERVAL 30 MINUTE) AND DATE_SUB(NOW(), INTERVAL 20 MINUTE))
                 OR (orders.status = 'PENDING_SHIPMENT' AND COALESCE(orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
                 OR (orders.status = 'RETURN_REQUESTED' AND COALESCE(orders.return_requested_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
                 OR (orders.status = 'RETURN_APPROVED' AND COALESCE(orders.return_approved_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 2 DAY))
-                OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 3 DAY) AND DATE_SUB(NOW(), INTERVAL 66 HOUR))
+                OR (orders.status = 'RETURN_SHIPPED' AND COALESCE(orders.return_shipped_at, orders.updated_at, orders.created_at) BETWEEN DATE_SUB(NOW(), INTERVAL 24 HOUR) AND DATE_SUB(NOW(), INTERVAL 18 HOUR))
             ) THEN 1 END) AS SLA_DUE_SOON,
             COUNT(CASE WHEN orders.status = 'SHIPPED' AND (orders.tracking_number IS NULL OR TRIM(orders.tracking_number) = '') THEN 1 END) AS MISSING_TRACKING,
             COUNT(CASE WHEN orders.status = 'PENDING_SHIPMENT' THEN 1 END) AS PENDING_SHIPMENT,
@@ -315,11 +318,14 @@
                       AND p.status = 'REFUNDING'
                 )
             ) THEN 1 END) AS AFTER_SALES,
-            COUNT(CASE WHEN EXISTS (
-                SELECT 1
-                FROM payments p
-                WHERE p.order_id = orders.id
-                  AND p.status = 'REFUNDING'
+            COUNT(CASE WHEN (
+                orders.status = 'RETURN_REFUNDING'
+                OR EXISTS (
+                    SELECT 1
+                    FROM payments p
+                    WHERE p.order_id = orders.id
+                      AND p.status = 'REFUNDING'
+                )
             ) THEN 1 END) AS REFUNDING,
             COUNT(CASE WHEN (orders.status IN ('REFUNDED', 'RETURNED') OR orders.refunded_at IS NOT NULL) THEN 1 END) AS REFUNDED
         FROM orders
@@ -477,14 +483,15 @@
 
     <update id="updateShipping">
         UPDATE orders
-        SET status = #{status},
-            tracking_number = #{trackingNumber},
-            tracking_carrier_code = #{trackingCarrierCode},
-            tracking_carrier_name = #{trackingCarrierName},
-            shipped_at = NOW(),
-            updated_at = NOW()
-        WHERE id = #{id}
-    </update>
+	        SET status = #{status},
+	            tracking_number = #{trackingNumber},
+	            tracking_carrier_code = #{trackingCarrierCode},
+	            tracking_carrier_name = #{trackingCarrierName},
+	            shipped_at = NOW(),
+	            updated_at = NOW()
+	        WHERE id = #{id}
+	          AND status = #{currentStatus}
+	    </update>
 
     <update id="updateReturnTrackingIfCurrent">
         UPDATE orders

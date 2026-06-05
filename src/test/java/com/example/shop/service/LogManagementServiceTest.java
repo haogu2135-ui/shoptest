@@ -101,6 +101,29 @@ class LogManagementServiceTest {
     }
 
     @Test
+    void previewAndDownloadMaskSensitiveLogValues() throws Exception {
+        Files.writeString(tempDir.resolve("shop-backend.log"),
+                "2026-05-24 10:00:00.000 ERROR [requestId:s] password=secret123 token=Bearer abcdef1234567890\n"
+                        + "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signaturevalue\n",
+                StandardCharsets.UTF_8);
+        LocalDateTime start = LocalDateTime.of(2026, 5, 24, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 5, 24, 10, 30);
+
+        LogPreviewResponse preview = service.preview(start, end, "password", null, 10);
+        String previewBody = String.join("\n", preview.getLines());
+        String downloadBody = new String(service.download(start, end, "password", null), StandardCharsets.UTF_8);
+
+        assertTrue(previewBody.contains("password=******"));
+        assertTrue(previewBody.contains("token=Bearer ******"));
+        assertTrue(previewBody.contains("Authorization: Bearer ******"));
+        assertTrue(downloadBody.contains("password=******"));
+        assertTrue(downloadBody.contains("token=Bearer ******"));
+        assertTrue(downloadBody.contains("Authorization: Bearer ******"));
+        assertTrue(!previewBody.contains("secret123"));
+        assertTrue(!downloadBody.contains("abcdef1234567890"));
+    }
+
+    @Test
     void downloadStopsAtConfiguredByteLimitAndAddsMarker() throws Exception {
         environment.setProperty("admin.logs.max-download-bytes", "1024");
         Files.writeString(tempDir.resolve("shop-backend.log"),

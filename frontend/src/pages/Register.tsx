@@ -57,6 +57,22 @@ const Register: React.FC = () => {
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
   const codeInputRef = useRef<any>(null);
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
+  const registerPageLabel = t('pages.auth.registerTitle');
+  const registerLoginActionLabel = `${t('pages.auth.loginNow')}: ${registerPageLabel}`;
+  const registerTrackOrderActionLabel = `${t('nav.trackOrder')}: ${registerPageLabel}`;
+  const usernameInputLabel = `${registerPageLabel}: ${t('pages.auth.usernameShort')}`;
+  const passwordInputLabel = `${registerPageLabel}: ${t('pages.auth.password')}`;
+  const confirmPasswordInputLabel = `${registerPageLabel}: ${t('pages.auth.confirmPassword')}`;
+  const emailInputLabel = `${registerPageLabel}: ${t('pages.auth.email')}`;
+  const emailCodeInputLabel = `${registerPageLabel}: ${t('pages.auth.verificationCode')}`;
+  const phoneInputLabel = `${registerPageLabel}: ${t('pages.auth.phone')}`;
+  const registerCodeActionText = codeSending
+    ? t('pages.auth.emailCodeSending')
+    : sendCodeCountdown > 0
+    ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
+    : t('pages.auth.sendCode');
+  const registerSendCodeActionLabel = `${registerPageLabel}: ${registerCodeActionText}`;
+  const registerSubmitActionLabel = `${registerPageLabel}: ${t('pages.auth.register')}`;
 
   useEffect(() => {
     if (sendCodeCountdown <= 0) return undefined;
@@ -213,10 +229,10 @@ const Register: React.FC = () => {
             </div>
           </div>
           <div className="register-page__actions">
-            <Button type="primary" size="large" onClick={() => navigate('/login')}>
+            <Button type="primary" size="large" aria-label={registerLoginActionLabel} title={registerLoginActionLabel} onClick={() => navigate('/login')}>
               {t('pages.auth.loginNow')}
             </Button>
-            <Button ghost size="large" onClick={() => navigate('/track-order')}>
+            <Button ghost size="large" aria-label={registerTrackOrderActionLabel} title={registerTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
               {t('nav.trackOrder')}
             </Button>
           </div>
@@ -249,6 +265,8 @@ const Register: React.FC = () => {
               autoComplete="username"
               inputMode="text"
               maxLength={50}
+              aria-label={usernameInputLabel}
+              title={usernameInputLabel}
               onBlur={(event) => form.setFieldValue('username', normalizeUsername(event.target.value))}
             />
           </Form.Item>
@@ -266,6 +284,8 @@ const Register: React.FC = () => {
               placeholder={t('pages.auth.password')}
               autoComplete="new-password"
               maxLength={128}
+              aria-label={passwordInputLabel}
+              title={passwordInputLabel}
             />
           </Form.Item>
 
@@ -289,6 +309,8 @@ const Register: React.FC = () => {
               placeholder={t('pages.auth.confirmPassword')}
               autoComplete="new-password"
               maxLength={128}
+              aria-label={confirmPasswordInputLabel}
+              title={confirmPasswordInputLabel}
             />
           </Form.Item>
 
@@ -305,6 +327,8 @@ const Register: React.FC = () => {
               autoComplete="email"
               inputMode="email"
               maxLength={100}
+              aria-label={emailInputLabel}
+              title={emailInputLabel}
               onBlur={(event) => form.setFieldValue('email', normalizeEmail(event.target.value))}
             />
           </Form.Item>
@@ -337,12 +361,16 @@ const Register: React.FC = () => {
                   inputMode="numeric"
                   maxLength={6}
                   disabled={!emailCodeRequired}
+                  aria-label={emailCodeInputLabel}
+                  title={emailCodeInputLabel}
                   addonAfter={
                     <Button
                       type="link"
                       size="small"
                       loading={codeSending}
                       disabled={registering || codeSending || sendCodeCountdown > 0 || !emailCodeEnabled}
+                      aria-label={registerSendCodeActionLabel}
+                      title={registerSendCodeActionLabel}
                       onClick={sendRegisterCode}
                     >
                       {codeSending
@@ -371,12 +399,14 @@ const Register: React.FC = () => {
               autoComplete="tel"
               inputMode="tel"
               maxLength={20}
+              aria-label={phoneInputLabel}
+              title={phoneInputLabel}
               onBlur={(event) => form.setFieldValue('phone', normalizePhone(event.target.value))}
             />
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={registering} disabled={registering}>
+            <Button type="primary" htmlType="submit" block loading={registering} disabled={registering} aria-label={registerSubmitActionLabel} title={registerSubmitActionLabel}>
               {t('pages.auth.register')}
             </Button>
           </Form.Item>

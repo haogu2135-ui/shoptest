@@ -1,10 +1,11 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
-import { Button, Layout, Modal, Space, Spin, Typography } from 'antd';
-import { CustomerServiceOutlined, GiftOutlined, UserAddOutlined, FileSearchOutlined } from '@ant-design/icons';
+import { Button, Layout, Modal, Space, Spin, Typography, message } from 'antd';
+import { CustomerServiceOutlined, GiftOutlined, UserAddOutlined, FileSearchOutlined, CopyOutlined } from '@ant-design/icons';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
 import CustomerSupportWidget from './components/CustomerSupportWidget';
+import SkipToContentLink, { MAIN_CONTENT_ID } from './components/SkipToContentLink';
 import { useLanguage } from './i18n';
 import type { CartItem } from './types';
 import { dispatchDomEvent } from './utils/domEvents';
@@ -18,12 +19,15 @@ import {
   currentMobileVersionCode,
   fetchLatestMobileRelease,
   isMobileReleaseDownloadAllowed,
+  isNativeAndroidApp,
   isNativeMobileApp,
   openMobileReleaseDownload,
+  resolveMobileReleaseDownloadUrl,
   type MobileReleaseManifest,
 } from './utils/mobileUpdate';
 import './App.css';
 import './mobile-app.css';
+import './styles/admin-table-selection.css';
 
 const { Content, Footer } = Layout;
 const { Text } = Typography;
@@ -37,8 +41,8 @@ declare global {
       Plugins?: {
         App?: {
           addListener?: (
-            eventName: 'backButton',
-            listener: (event?: { canGoBack?: boolean }) => void,
+            eventName: 'backButton' | 'appStateChange' | 'resume',
+            listener: (event?: { canGoBack?: boolean; isActive?: boolean }) => void,
           ) => Promise<{ remove: () => Promise<void> | void }> | { remove: () => Promise<void> | void };
           minimizeApp?: () => Promise<void>;
           exitApp?: () => Promise<void>;
@@ -182,16 +186,19 @@ const NativeAppClassHost: React.FC = () => {
       || window.location.protocol === 'capacitor:';
     if (!isNative) return undefined;
 
+    const body = document.body;
+    if (!body) return undefined;
+
     document.documentElement.classList.add('shop-mobile-app-root');
-    document.body.classList.add('shop-mobile-app');
+    body.classList.add('shop-mobile-app');
     if (platform) {
-      document.body.classList.add(`shop-mobile-app--${platform}`);
+      body.classList.add(`shop-mobile-app--${platform}`);
       document.documentElement.dataset.shopPlatform = platform;
     }
 
     return () => {
       document.documentElement.classList.remove('shop-mobile-app-root');
-      document.body.classList.remove('shop-mobile-app', 'shop-mobile-app--android', 'shop-mobile-app--ios');
+      body.classList.remove('shop-mobile-app', 'shop-mobile-app--android', 'shop-mobile-app--ios');
       delete document.documentElement.dataset.shopPlatform;
     };
   }, []);
@@ -207,32 +214,104 @@ const NativeMobileUpdateGate: React.FC = () => {
   const installedVersionCode = currentMobileVersionCode();
   const latestVersionCode = release?.versionCode || 0;
   const updateRequired = Boolean(release && (release.mandatory || (release.minSupportedVersionCode || 0) > installedVersionCode));
+  const downloadUrl = resolveMobileReleaseDownloadUrl(release);
 
   useEffect(() => {
-    if (!isNativeMobileApp()) return undefined;
+    if (!isNativeAndroidApp()) return undefined;
 
     let disposed = false;
-    fetchLatestMobileRelease().then((latestRelease) => {
-      const latestReleaseVersionCode = latestRelease?.versionCode || 0;
-      if (
-        disposed
-        || !latestRelease
-        || latestReleaseVersionCode <= installedVersionCode
-        || !isMobileReleaseDownloadAllowed(latestRelease)
-      ) {
-        return;
+    let checking = false;
+    let retryTimer: number | null = null;
+    const listenerRemovers: Array<() => Promise<void> | void> = [];
+
+    const clearRetryTimer = () => {
+      if (retryTimer !== null) {
+        window.clearTimeout(retryTimer);
+        retryTimer = null;
       }
-      const required = latestRelease.mandatory || (latestRelease.minSupportedVersionCode || 0) > installedVersionCode;
-      const dismissed = getLocalStorageItem(`${MOBILE_UPDATE_DISMISSED_KEY_PREFIX}:${latestReleaseVersionCode}`) === '1';
-      if (!required && dismissed) {
-        return;
+    };
+
+    const checkLatestRelease = async () => {
+      if (disposed || checking) return;
+      checking = true;
+      try {
+        const latestRelease = await fetchLatestMobileRelease();
+        if (disposed) return;
+        const latestReleaseVersionCode = latestRelease?.versionCode || 0;
+        if (
+          !latestRelease
+          || latestReleaseVersionCode <= installedVersionCode
+          || !isMobileReleaseDownloadAllowed(latestRelease)
+        ) {
+          return;
+        }
+        const required = latestRelease.mandatory || (latestRelease.minSupportedVersionCode || 0) > installedVersionCode;
+        const dismissed = getLocalStorageItem(`${MOBILE_UPDATE_DISMISSED_KEY_PREFIX}:${latestReleaseVersionCode}`) === '1';
+        if (!required && dismissed) {
+          return;
+        }
+        setDownloadFailed(false);
+        setRelease(latestRelease);
+      } finally {
+        checking = false;
       }
-      setDownloadFailed(false);
-      setRelease(latestRelease);
-    });
+    };
+
+    const scheduleReleaseCheck = () => {
+      if (disposed) return;
+      clearRetryTimer();
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null;
+        void checkLatestRelease();
+      }, 300);
+    };
+
+    void checkLatestRelease();
+    window.addEventListener('online', scheduleReleaseCheck);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        scheduleReleaseCheck();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const appPlugin = window.Capacitor?.Plugins?.App;
+    if (appPlugin && typeof appPlugin.addListener === 'function') {
+      const addNativeListener = (
+        eventName: 'appStateChange' | 'resume',
+        listener: (event?: { isActive?: boolean }) => void,
+      ) => {
+        try {
+          const registration = appPlugin.addListener?.(eventName, listener);
+          Promise.resolve(registration).then((handle) => {
+            if (!handle || typeof handle.remove !== 'function') return;
+            if (disposed) {
+              void handle.remove();
+              return;
+            }
+            listenerRemovers.push(() => handle.remove());
+          });
+        } catch {
+          // Browser-like Capacitor shims may expose only backButton; skip update retry hooks.
+        }
+      };
+
+      addNativeListener('appStateChange', (event) => {
+        if (event?.isActive !== false) {
+          scheduleReleaseCheck();
+        }
+      });
+      addNativeListener('resume', scheduleReleaseCheck);
+    }
 
     return () => {
       disposed = true;
+      clearRetryTimer();
+      window.removeEventListener('online', scheduleReleaseCheck);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      listenerRemovers.forEach((remove) => {
+        void remove();
+      });
     };
   }, [installedVersionCode]);
 
@@ -267,11 +346,25 @@ const NativeMobileUpdateGate: React.FC = () => {
     }
   };
 
+  const handleCopyDownloadLink = async () => {
+    if (!downloadUrl) return;
+    try {
+      await navigator.clipboard.writeText(downloadUrl);
+      message.success(t('appUpdate.copyDownloadLinkSuccess'));
+    } catch {
+      message.error(t('appUpdate.copyDownloadLinkFailed'));
+    }
+  };
+
   if (!release) return null;
 
   const releaseNotes = release.releaseNotes || [];
   const currentVersionLabel = currentMobileVersionName();
   const latestVersionLabel = release.versionName || String(latestVersionCode);
+  const updateTargetLabel = `${latestVersionLabel} (${currentVersionLabel} -> ${latestVersionLabel})`;
+  const updateLaterActionLabel = `${t('appUpdate.later')}: ${updateTargetLabel}`;
+  const updateDownloadActionLabel = `${t('appUpdate.download')}: ${updateTargetLabel}`;
+  const copyDownloadActionLabel = `${t('appUpdate.copyDownloadLink')}: ${latestVersionLabel}`;
 
   return (
     <Modal
@@ -284,9 +377,9 @@ const NativeMobileUpdateGate: React.FC = () => {
       footer={(
         <Space wrap>
           {!updateRequired ? (
-            <Button onClick={handleDismiss}>{t('appUpdate.later')}</Button>
+            <Button aria-label={updateLaterActionLabel} title={updateLaterActionLabel} onClick={handleDismiss}>{t('appUpdate.later')}</Button>
           ) : null}
-          <Button type="primary" loading={openingDownload} onClick={handleDownload}>
+          <Button type="primary" loading={openingDownload} aria-label={updateDownloadActionLabel} title={updateDownloadActionLabel} onClick={handleDownload}>
             {t('appUpdate.download')}
           </Button>
         </Space>
@@ -298,7 +391,24 @@ const NativeMobileUpdateGate: React.FC = () => {
           {t('appUpdate.versionSummary', { current: currentVersionLabel, latest: latestVersionLabel })}
         </Text>
         {downloadFailed ? (
-          <Text type="danger">{t('appUpdate.downloadFailed')}</Text>
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Text type="danger">{t('appUpdate.downloadFailed')}</Text>
+            <Button
+              icon={<CopyOutlined />}
+              aria-label={copyDownloadActionLabel}
+              title={copyDownloadActionLabel}
+              onClick={handleCopyDownloadLink}
+              disabled={!downloadUrl}
+              block
+            >
+              {t('appUpdate.copyDownloadLink')}
+            </Button>
+            {downloadUrl ? (
+              <Text code copyable={{ text: downloadUrl }} style={{ maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                {downloadUrl}
+              </Text>
+            ) : null}
+          </Space>
         ) : null}
         {releaseNotes.length ? (
           <div>
@@ -319,14 +429,14 @@ const NativeMobileContrastGuard: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (!isNativeMobileApp() && !document.body.classList.contains('shop-mobile-app')) {
+    if (!isNativeMobileApp() && !document.body?.classList.contains('shop-mobile-app')) {
       return undefined;
     }
     return installMobileContrastGuard();
   }, []);
 
   useEffect(() => {
-    if (!isNativeMobileApp() && !document.body.classList.contains('shop-mobile-app')) {
+    if (!isNativeMobileApp() && !document.body?.classList.contains('shop-mobile-app')) {
       return undefined;
     }
 
@@ -582,8 +692,10 @@ const StorefrontLayout: React.FC = () => {
     location.pathname === '/products' || location.pathname.startsWith('/products/') ? 'shop-app-shell--product-area' : '',
     location.pathname.startsWith('/products/') ? 'shop-app-shell--product-detail' : '',
     location.pathname === '/cart' ? 'shop-app-shell--cart' : '',
+    location.pathname === '/coupons' ? 'shop-app-shell--coupon-center' : '',
     location.pathname === '/checkout' ? 'shop-app-shell--checkout' : '',
     location.pathname === '/history' ? 'shop-app-shell--history' : '',
+    location.pathname === '/pet-finder' ? 'shop-app-shell--pet-finder' : '',
     location.pathname === '/checkout' ? 'shop-app-shell--checkout-flow' : '',
     ['/login', '/register', '/forgot-password'].includes(location.pathname) ? 'shop-app-shell--auth-flow' : '',
   ].filter(Boolean).join(' ');
@@ -621,8 +733,9 @@ const StorefrontLayout: React.FC = () => {
 
   return (
     <Layout className={shellClassName} style={{ minHeight: '100vh' }}>
+      <SkipToContentLink />
       <Navbar />
-      <Content style={{ marginTop: 0, padding: 0 }}>
+      <Content id={MAIN_CONTENT_ID} tabIndex={-1} style={{ marginTop: 0, padding: 0 }}>
         <ErrorBoundary key={location.pathname}>
           <Outlet />
         </ErrorBoundary>

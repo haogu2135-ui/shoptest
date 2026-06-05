@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -21,6 +22,7 @@ class IpBlacklistServiceTest {
     private JdbcTemplate jdbcTemplate;
     private RuntimeConfigService runtimeConfig;
     private ClientIpResolver clientIpResolver;
+    private TokenBlacklistService tokenBlacklistService;
     private IpBlacklistService service;
 
     @BeforeEach
@@ -28,13 +30,15 @@ class IpBlacklistServiceTest {
         jdbcTemplate = mock(JdbcTemplate.class);
         runtimeConfig = mock(RuntimeConfigService.class);
         clientIpResolver = mock(ClientIpResolver.class);
+        tokenBlacklistService = mock(TokenBlacklistService.class);
         service = new IpBlacklistService(
                 jdbcTemplate,
                 runtimeConfig,
                 mock(SystemAlertService.class),
                 clientIpResolver,
-                mock(TokenBlacklistService.class));
+                tokenBlacklistService);
         when(runtimeConfig.getBoolean("security.ip-blacklist.enabled", true)).thenReturn(true);
+        when(tokenBlacklistService.findLoginIpFailures()).thenReturn(List.of());
     }
 
     @Test
@@ -119,5 +123,25 @@ class IpBlacklistServiceTest {
                 () -> service.releaseBatch(List.of(3L, 2L, 2L, -1L, 1L, 4L), "admin"));
 
         verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void searchDoesNotReleaseExpiredRowsDuringRead() {
+        service.search(null, null, null, 200);
+
+        verify(jdbcTemplate, never()).update(
+                startsWith("UPDATE ip_blacklist_entries SET status = ?, released_at"),
+                any(),
+                any());
+    }
+
+    @Test
+    void statusDoesNotReleaseExpiredRowsDuringRead() {
+        service.status();
+
+        verify(jdbcTemplate, never()).update(
+                startsWith("UPDATE ip_blacklist_entries SET status = ?, released_at"),
+                any(),
+                any());
     }
 }

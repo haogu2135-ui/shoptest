@@ -7,6 +7,7 @@ import com.example.shop.dto.AdminReviewResponse;
 import com.example.shop.dto.CouponAdminSummaryResponse;
 import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
+import com.example.shop.dto.PaymentResponse;
 import com.example.shop.dto.ProductAdminPageResponse;
 import com.example.shop.dto.ProductImportHistoryEntry;
 import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
@@ -477,7 +478,8 @@ public class AdminController {
         stats.put("totalProducts", productService.countProducts());
         stats.putAll(orderService.getDashboardOrderStats(orderService.currentDatabaseTime(), 7, 5));
         stats.put("totalUsers", userService.count());
-        stats.put("refundingPayments", paymentRepository.countByStatus("REFUNDING"));
+        Map<String, Long> orderSummary = orderService.countAdminOrderSummary(null);
+        stats.put("refundingPayments", orderSummary.getOrDefault("REFUNDING", 0L));
         stats.put("activeProducts", productService.countActiveProducts());
         stats.put("pendingProducts", productService.countPendingReviewProducts());
         stats.put("lowStockProducts", productService.countLowStockProducts());
@@ -1081,11 +1083,15 @@ public class AdminController {
     }
 
     @GetMapping("/orders/{id}/payments")
-    public ResponseEntity<List<Payment>> getOrderPayments(@PathVariable Long id) {
+    public ResponseEntity<List<PaymentResponse>> getOrderPayments(@PathVariable Long id,
+                                                                  Authentication authentication,
+                                                                  HttpServletRequest request) {
+        requireAdminActionPermission(authentication, AdminRoleService.ORDER_PAYMENT_PERMISSION,
+                "PAYMENT_VIEW", "ORDER", id, request, null);
         if (orderService.getOrderById(id) == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(paymentService.findStoredByOrderId(id));
+        return ResponseEntity.ok(paymentResponses(paymentService.findStoredByOrderId(id)));
     }
 
     @PostMapping("/orders/payments/{paymentId}/sync")
@@ -1104,7 +1110,7 @@ public class AdminController {
             Payment payment = paymentService.syncPayment(paymentId);
             auditLogService.record("PAYMENT_SYNC", "SUCCESS", authentication, "PAYMENT", paymentId, request,
                     "Admin payment state synced", payment == null ? null : payment.getOrderNo());
-            return ResponseEntity.ok(payment);
+            return ResponseEntity.ok(PaymentResponse.from(payment));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", paymentId, request,
                     e.getMessage(), existing.getOrderNo());
@@ -1165,7 +1171,7 @@ public class AdminController {
                 response.put("message", "status updated");
                 response.put("status", newStatus);
                 if (payment != null) {
-                    response.put("payment", payment);
+                    response.put("payment", PaymentResponse.from(payment));
                 }
                 return ResponseEntity.ok(response);
             }
@@ -1192,13 +1198,17 @@ public class AdminController {
         boolean restock = body != null && Boolean.parseBoolean(String.valueOf(body.getOrDefault("restock", "false")));
         String manualRefundReference = body == null || body.get("manualRefundReference") == null ? null : String.valueOf(body.get("manualRefundReference"));
         try {
-            Payment payment = orderService.refundOrder(id, reason, restock, manualRefundReference);
+            Order order = orderService.getOrderById(id);
+            boolean effectiveRestock = restock || (order != null && "PENDING_SHIPMENT".equals(order.getStatus()));
+            Payment payment = orderService.refundOrder(id, reason, effectiveRestock, manualRefundReference);
+            String restockAudit = "restock=" + effectiveRestock
+                    + (effectiveRestock != restock ? ",requestedRestock=" + restock : "");
             auditLogService.record("REFUND_COMPLETE", "SUCCESS", authentication, "ORDER", id, request,
                     "Order refunded",
-                    "paymentId=" + payment.getId() + ",channel=" + payment.getChannel() + ",reference=" + payment.getRefundReference() + ",restock=" + restock);
+                    "paymentId=" + payment.getId() + ",channel=" + payment.getChannel() + ",reference=" + payment.getRefundReference() + "," + restockAudit);
             return ResponseEntity.ok(Map.of(
                     "message", "Refund completed",
-                    "payment", payment
+                    "payment", PaymentResponse.from(payment)
             ));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("REFUND_COMPLETE", "FAILURE", authentication, "ORDER", id, request,
@@ -2246,6 +2256,10 @@ public class AdminController {
                 + ",validDays=" + request.getValidDays()
                 + ",maxBenefitsPerUser=" + request.getMaxBenefitsPerUser()
                 + ",totalQuantityPerCoupon=" + request.getTotalQuantityPerCoupon();
+    }
+
+    private List<PaymentResponse> paymentResponses(List<Payment> payments) {
+        return payments.stream().map(PaymentResponse::from).collect(Collectors.toList());
     }
 
     private String paymentMetadata(Payment payment) {

@@ -16,6 +16,7 @@ public interface PaymentRepository {
     Payment findPendingByOrderId(Long orderId);
     Payment findLatestByOrderId(Long orderId);
     Payment findLatestPaidByOrderId(Long orderId);
+    Payment findLatestReconcileRequiredByOrderId(Long orderId);
     Payment findLatestRefundedByOrderId(Long orderId);
     long countByStatus(String status);
     long countActivePendingByOrderId(Long orderId);
@@ -28,9 +29,13 @@ public interface PaymentRepository {
                          @Param("transactionId") String transactionId,
                          @Param("providerReference") String providerReference,
                          @Param("callbackAt") java.time.LocalDateTime callbackAt);
+    int markReconcileRequired(@Param("id") Long id,
+                              @Param("transactionId") String transactionId,
+                              @Param("providerReference") String providerReference,
+                              @Param("callbackAt") java.time.LocalDateTime callbackAt);
     int markRefunding(@Param("id") Long id);
     int markRefunded(@Param("id") Long id, @Param("refundReference") String refundReference);
-    int revertRefunding(@Param("id") Long id);
+    int revertRefunding(@Param("id") Long id, @Param("status") String status);
     int markFailed(@Param("id") Long id);
     int markExpired(@Param("id") Long id);
     int markPendingCancelledByOrderId(Long orderId);

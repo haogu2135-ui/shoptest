@@ -14,6 +14,7 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getEffectiveRole, isAdminRole, isSuperAdminRole } from '../utils/roles';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import ErrorBoundary from './ErrorBoundary';
+import SkipToContentLink, { MAIN_CONTENT_ID } from './SkipToContentLink';
 import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
@@ -159,6 +160,7 @@ const AdminLayout: React.FC = () => {
 
   return (
     <Layout className="admin-layout">
+      <SkipToContentLink />
       <Sider
         collapsible
         collapsed={collapsed}
@@ -193,7 +195,7 @@ const AdminLayout: React.FC = () => {
             {t('adminLayout.logout')}
           </Button>
         </Header>
-        <Content className="admin-layout__content">
+        <Content id={MAIN_CONTENT_ID} tabIndex={-1} className="admin-layout__content">
           <ErrorBoundary key={location.pathname} homePath="/admin/dashboard" homeLabel={t('adminLayout.dashboard')}>
             <Outlet />
           </ErrorBoundary>

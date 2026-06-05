@@ -30,6 +30,8 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 const brandImageFallback = imageFallbacks.brand;
 const resolveBrandImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, brandImageFallback);
+const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const statusColors: Record<string, string> = {
   ACTIVE: 'green',
@@ -81,6 +83,36 @@ const BrandManagement: React.FC = () => {
       score,
     };
   }, [brands]);
+  const getBrandLabel = (brand?: Pick<Brand, 'id' | 'name'> | null) => {
+    const name = String(brand?.name || '').trim();
+    if (name) return name;
+    return brand?.id ? `${t('pages.brandAdmin.brand')} #${brand.id}` : t('pages.brandAdmin.addTitle');
+  };
+  const brandPageLabel = t('pages.brandAdmin.title');
+  const brandSearchRegionLabel = `${brandPageLabel} - ${t('common.search')}`;
+  const brandSearchInputLabel = `${t('common.search')}: ${brandPageLabel}`;
+  const selectedStatusLabel = statusFilter === 'ACTIVE'
+    ? t('status.ACTIVE')
+    : statusFilter === 'INACTIVE'
+      ? t('status.INACTIVE')
+      : t('common.all');
+  const brandStatusFilterLabel = `${t('common.status')}: ${brandPageLabel} - ${selectedStatusLabel}`;
+  const addBrandActionLabel = `${t('pages.brandAdmin.addBrand')}: ${brandPageLabel}`;
+  const editorTitle = editingBrand ? t('pages.brandAdmin.editTitle') : t('pages.brandAdmin.addTitle');
+  const editorTargetLabel = editingBrand ? `${editorTitle}: ${getBrandLabel(editingBrand)}` : editorTitle;
+  const brandNameFieldLabel = `${editorTargetLabel} - ${t('pages.brandAdmin.brandName')}`;
+  const logoUrlFieldLabel = `${editorTargetLabel} - ${t('pages.brandAdmin.logoUrl')}`;
+  const websiteUrlFieldLabel = `${editorTargetLabel} - ${t('pages.brandAdmin.websiteUrl')}`;
+  const descriptionFieldLabel = `${editorTargetLabel} - ${t('pages.brandAdmin.description')}`;
+  const statusFieldLabel = `${editorTargetLabel} - ${t('common.status')}`;
+  const sortOrderFieldLabel = `${editorTargetLabel} - ${t('pages.brandAdmin.sortOrder')}`;
+  const saveBrandActionLabel = `${t('common.save')}: ${editorTargetLabel}`;
+  const cancelBrandActionLabel = `${t('common.cancel')}: ${editorTargetLabel}`;
+  const healthScoreLabel = `${t('pages.brandAdmin.healthScore')}: ${brandHealth.score}`;
+  const activeBrandsMetricLabel = `${t('pages.brandAdmin.activeBrands')}: ${brandHealth.active}`;
+  const missingLogoMetricLabel = `${t('pages.brandAdmin.missingLogo')}: ${brandHealth.missingLogo}`;
+  const missingWebsiteMetricLabel = `${t('pages.brandAdmin.missingWebsite')}: ${brandHealth.missingWebsite}`;
+  const weakDescriptionMetricLabel = `${t('pages.brandAdmin.weakDescription')}: ${brandHealth.weakDescription}`;
 
   const getBrandReadiness = (brand: Brand) => [
     brand.name?.trim(),
@@ -212,12 +244,16 @@ const BrandManagement: React.FC = () => {
       dataIndex: 'logoUrl',
       key: 'logoUrl',
       width: 88,
-      render: (url?: string, record?: Brand) =>
-        url ? (
-          <Image src={resolveBrandImage(url)} alt={record?.name || t('pages.brandAdmin.logo')} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
+      render: (url?: string, record?: Brand) => {
+        const brandLabel = getBrandLabel(record);
+        const logoLabel = `${t('pages.brandAdmin.logo')}: ${brandLabel}`;
+        const missingLogoLabel = `${logoLabel} - ${t('pages.brandAdmin.missingLogo')}`;
+        return url ? (
+          <Image src={resolveBrandImage(url)} alt={logoLabel} title={logoLabel} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
         ) : (
-          <div className="brand-management-page__imagePlaceholder" />
-        ),
+          <div className="brand-management-page__imagePlaceholder" role="img" aria-label={missingLogoLabel} title={missingLogoLabel} />
+        );
+      },
     },
     {
       title: t('pages.brandAdmin.brand'),
@@ -271,7 +307,7 @@ const BrandManagement: React.FC = () => {
       key: 'actions',
       width: 180,
       render: (_: unknown, record: Brand) => {
-        const brandName = record.name || `#${record.id}`;
+        const brandName = getBrandLabel(record);
         const editActionLabel = `${t('common.edit')}: ${brandName}`;
         const deleteActionLabel = `${t('common.delete')}: ${brandName}`;
         return (
@@ -280,7 +316,16 @@ const BrandManagement: React.FC = () => {
               {t('common.edit')}
             </Button> : null}
             {canDeleteBrands ? (
-              <Popconfirm title={t('pages.brandAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+              <Popconfirm
+                classNames={mobilePopconfirmClassNames}
+                title={t('pages.brandAdmin.deleteConfirm')}
+                description={brandName}
+                onConfirm={() => handleDelete(record.id)}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+              >
                 <Button icon={<DeleteOutlined />} danger size="small" aria-label={deleteActionLabel} title={deleteActionLabel}>
                   {t('common.delete')}
                 </Button>
@@ -298,7 +343,7 @@ const BrandManagement: React.FC = () => {
       <Divider />
 
       <Card className="brand-management-page__toolbar">
-        <Space wrap>
+        <Space wrap role="search" aria-label={brandSearchRegionLabel} title={brandSearchRegionLabel}>
           <Text type="secondary">{t('pages.brandAdmin.healthSubtitle')}</Text>
           <Input
             allowClear
@@ -306,6 +351,8 @@ const BrandManagement: React.FC = () => {
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('common.search')}
+            aria-label={brandSearchInputLabel}
+            title={brandSearchInputLabel}
             className="brand-management-page__keywordInput"
           />
           <Select
@@ -313,8 +360,10 @@ const BrandManagement: React.FC = () => {
             value={statusFilter}
             onChange={setStatusFilter}
             placeholder={t('common.status')}
+            aria-label={brandStatusFilterLabel}
+            title={brandStatusFilterLabel}
             className="brand-management-page__statusFilterSelect"
-            popupClassName="shop-mobile-popup-layer"
+            classNames={mobilePopupClassNames}
             getPopupContainer={() => document.body}
             options={[
               { value: 'ACTIVE', label: t('status.ACTIVE') },
@@ -322,7 +371,7 @@ const BrandManagement: React.FC = () => {
             ]}
           />
           {canWriteBrands ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+            <Button type="primary" icon={<PlusOutlined />} aria-label={addBrandActionLabel} title={addBrandActionLabel} onClick={() => openModal()}>
               {t('pages.brandAdmin.addBrand')}
             </Button>
           ) : null}
@@ -335,33 +384,33 @@ const BrandManagement: React.FC = () => {
           <Title level={5}>{t('pages.brandAdmin.healthTitle')}</Title>
           <Text type="secondary">{t('pages.brandAdmin.healthDescription')}</Text>
         </div>
-        <div className="brand-management-page__score">
+        <div className="brand-management-page__score" aria-label={healthScoreLabel} title={healthScoreLabel}>
           <Progress
             type="circle"
             percent={brandHealth.score}
-            width={86}
+            size={86}
             strokeColor={brandHealth.score >= 80 ? '#2f855a' : brandHealth.score >= 60 ? '#d97706' : '#dc2626'}
             format={(value) => `${value || 0}`}
           />
           <Text type="secondary">{t('pages.brandAdmin.healthScore')}</Text>
         </div>
         <div className="brand-management-page__healthGrid">
-          <div className="brand-management-page__healthItem is-ok">
+          <div className="brand-management-page__healthItem is-ok" aria-label={activeBrandsMetricLabel} title={activeBrandsMetricLabel}>
             <CheckCircleOutlined />
             <strong>{brandHealth.active}</strong>
             <span>{t('pages.brandAdmin.activeBrands')}</span>
           </div>
-          <div className={`brand-management-page__healthItem ${brandHealth.missingLogo ? 'is-risk' : 'is-ok'}`}>
+          <div className={`brand-management-page__healthItem ${brandHealth.missingLogo ? 'is-risk' : 'is-ok'}`} aria-label={missingLogoMetricLabel} title={missingLogoMetricLabel}>
             <PictureOutlined />
             <strong>{brandHealth.missingLogo}</strong>
             <span>{t('pages.brandAdmin.missingLogo')}</span>
           </div>
-          <div className={`brand-management-page__healthItem ${brandHealth.missingWebsite ? 'is-risk' : 'is-ok'}`}>
+          <div className={`brand-management-page__healthItem ${brandHealth.missingWebsite ? 'is-risk' : 'is-ok'}`} aria-label={missingWebsiteMetricLabel} title={missingWebsiteMetricLabel}>
             <GlobalOutlined />
             <strong>{brandHealth.missingWebsite}</strong>
             <span>{t('pages.brandAdmin.missingWebsite')}</span>
           </div>
-          <div className={`brand-management-page__healthItem ${brandHealth.weakDescription ? 'is-risk' : 'is-ok'}`}>
+          <div className={`brand-management-page__healthItem ${brandHealth.weakDescription ? 'is-risk' : 'is-ok'}`} aria-label={weakDescriptionMetricLabel} title={weakDescriptionMetricLabel}>
             <EditOutlined />
             <strong>{brandHealth.weakDescription}</strong>
             <span>{t('pages.brandAdmin.weakDescription')}</span>
@@ -373,40 +422,44 @@ const BrandManagement: React.FC = () => {
 
       <Modal
         className="profile-mobile-safe-modal brand-management-page__editorModal"
-        title={editingBrand ? t('pages.brandAdmin.editTitle') : t('pages.brandAdmin.addTitle')}
+        title={editorTitle}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={closeModal}
+        okButtonProps={{ 'aria-label': saveBrandActionLabel, title: saveBrandActionLabel }}
+        cancelButtonProps={{ 'aria-label': cancelBrandActionLabel, title: cancelBrandActionLabel }}
         confirmLoading={saving}
         destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.brandAdmin.brandName')} rules={[{ required: true, message: t('pages.brandAdmin.nameRequired') }]}>
-            <Input placeholder="PawPilot" />
+            <Input placeholder="PawPilot" aria-label={brandNameFieldLabel} title={brandNameFieldLabel} />
           </Form.Item>
 
           <Form.Item name="logoUrl" label={t('pages.brandAdmin.logoUrl')}>
-            <Input placeholder="https://..." onChange={(event) => setLogoPreviewUrl(event.target.value)} />
+            <Input placeholder="https://..." aria-label={logoUrlFieldLabel} title={logoUrlFieldLabel} onChange={(event) => setLogoPreviewUrl(event.target.value)} />
           </Form.Item>
 
           {logoPreviewUrl ? (
             <div className="brand-management-page__preview">
-              <Image src={resolveBrandImage(logoPreviewUrl)} alt={editingBrand?.name || t('pages.brandAdmin.logo')} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
+              <Image src={resolveBrandImage(logoPreviewUrl)} alt={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} title={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
             </div>
           ) : null}
 
           <Form.Item name="websiteUrl" label={t('pages.brandAdmin.websiteUrl')}>
-            <Input placeholder="https://..." />
+            <Input placeholder="https://..." aria-label={websiteUrlFieldLabel} title={websiteUrlFieldLabel} />
           </Form.Item>
 
           <Form.Item name="description" label={t('pages.brandAdmin.description')}>
-            <TextArea rows={3} placeholder={t('pages.brandAdmin.descriptionPlaceholder')} />
+            <TextArea rows={3} placeholder={t('pages.brandAdmin.descriptionPlaceholder')} aria-label={descriptionFieldLabel} title={descriptionFieldLabel} />
           </Form.Item>
 
           <Space className="brand-management-page__formRow" align="start">
             <Form.Item name="status" label={t('common.status')} className="brand-management-page__statusField">
               <Select
-                popupClassName="shop-mobile-popup-layer"
+                aria-label={statusFieldLabel}
+                title={statusFieldLabel}
+                classNames={mobilePopupClassNames}
                 getPopupContainer={() => document.body}
                 options={[
                   { value: 'ACTIVE', label: t('status.ACTIVE') },
@@ -415,7 +468,7 @@ const BrandManagement: React.FC = () => {
               />
             </Form.Item>
             <Form.Item name="sortOrder" label={t('pages.brandAdmin.sortOrder')}>
-              <InputNumber min={0} precision={0} />
+              <InputNumber min={0} precision={0} aria-label={sortOrderFieldLabel} title={sortOrderFieldLabel} />
             </Form.Item>
           </Space>
         </Form>

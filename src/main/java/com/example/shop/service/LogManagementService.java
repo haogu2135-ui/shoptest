@@ -2,6 +2,7 @@ package com.example.shop.service;
 
 import com.example.shop.dto.LogManagementStatusResponse;
 import com.example.shop.dto.LogPreviewResponse;
+import com.example.shop.util.SensitiveDataMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.logging.LogLevel;
@@ -173,7 +174,7 @@ public class LogManagementService {
                     includeCurrentEvent = includeContinuation && matchesFilters(line, keyword, level);
                 }
                 if (includeContinuation && includeCurrentEvent) {
-                    output.addLine(line);
+                    output.addLine(maskLogLine(line));
                     if (output.isTruncated()) {
                         return;
                     }
@@ -194,7 +195,7 @@ public class LogManagementService {
                     includeCurrentEvent = includeContinuation && matchesFilters(line, keyword, level);
                 }
                 if (includeContinuation && includeCurrentEvent) {
-                    accumulator.add(line);
+                    accumulator.add(maskLogLine(line));
                     if (accumulator.isTruncated()) {
                         return;
                     }
@@ -209,6 +210,10 @@ public class LogManagementService {
             return false;
         }
         return level == null || normalizedLine.contains(" " + level + " ") || normalizedLine.contains(level + " [");
+    }
+
+    private String maskLogLine(String line) {
+        return SensitiveDataMasker.mask(line);
     }
 
     private String normalizeKeyword(String keyword) {

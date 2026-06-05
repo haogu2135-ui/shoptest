@@ -136,6 +136,18 @@ class SiteAnnouncementServiceTest {
     }
 
     @Test
+    void saveRejectsHttpAnnouncementLinkBeforePersisting() {
+        SiteAnnouncement announcement = new SiteAnnouncement();
+        announcement.setTitle("Risky");
+        announcement.setContent("Insecure link");
+        announcement.setLinkUrl("http://example.com/deal");
+
+        assertThrows(IllegalArgumentException.class, () -> service.save(announcement));
+
+        verify(repository, never()).save(any(SiteAnnouncement.class));
+    }
+
+    @Test
     void saveRejectsCredentialAnnouncementLinkBeforePersisting() {
         SiteAnnouncement announcement = new SiteAnnouncement();
         announcement.setTitle("Risky");

@@ -38,9 +38,10 @@ const RichVideoPreview: React.FC<{ block: ProductDetailBlock; previewTitle: stri
   const mediaUrl = resolveRichMediaUrl(block.url);
   if (!mediaUrl) return null;
   const videoUrl = toEmbeddableVideoUrl(mediaUrl);
+  const previewLabel = block.caption || previewTitle;
   if (!canEmbedVideoUrl(mediaUrl)) {
     return (
-      <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
+      <a href={mediaUrl} target="_blank" rel="noopener noreferrer" aria-label={previewLabel} title={previewLabel}>
         {block.caption || block.url}
       </a>
     );
@@ -49,11 +50,14 @@ const RichVideoPreview: React.FC<{ block: ProductDetailBlock; previewTitle: stri
   return (
     <div className="product-rich-detail-editor__videoPreview">
       {isDirectVideo(videoUrl) ? (
-        <video src={videoUrl} controls aria-label={block.caption || previewTitle} className="product-rich-detail-editor__videoFrame" />
+        <video src={videoUrl} controls aria-label={previewLabel} className="product-rich-detail-editor__videoFrame" />
       ) : (
         <iframe
           src={videoUrl}
-          title={block.caption || previewTitle}
+          title={previewLabel}
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allow="fullscreen; picture-in-picture"
           allowFullScreen
           className="product-rich-detail-editor__videoFrame"
         />
@@ -95,105 +99,135 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
     emit(compactBlocks(blocks));
   };
 
+  const editorLabel = t('pages.productAdmin.richContent');
+  const addRichTextLabel = `${t('pages.productAdmin.addRichText')}: ${editorLabel}`;
+  const addRichImageLabel = `${t('pages.productAdmin.addRichImage')}: ${editorLabel}`;
+  const addRichVideoLabel = `${t('pages.productAdmin.addRichVideo')}: ${editorLabel}`;
+
   return (
-    <Space className="product-rich-detail-editor" direction="vertical" size="middle">
-      <Space className="product-rich-detail-editor__toolbar" wrap>
-        <Button icon={<FontSizeOutlined />} onClick={() => addBlock('text')}>{t('pages.productAdmin.addRichText')}</Button>
-        <Button icon={<FileImageOutlined />} onClick={() => addBlock('image')}>{t('pages.productAdmin.addRichImage')}</Button>
-        <Button icon={<VideoCameraOutlined />} onClick={() => addBlock('video')}>{t('pages.productAdmin.addRichVideo')}</Button>
+    <Space className="product-rich-detail-editor" direction="vertical" size="middle" aria-label={editorLabel}>
+      <Space className="product-rich-detail-editor__toolbar" wrap aria-label={`${editorLabel}: ${blocks.length}`}>
+        <Button icon={<FontSizeOutlined />} aria-label={addRichTextLabel} title={addRichTextLabel} onClick={() => addBlock('text')}>{t('pages.productAdmin.addRichText')}</Button>
+        <Button icon={<FileImageOutlined />} aria-label={addRichImageLabel} title={addRichImageLabel} onClick={() => addBlock('image')}>{t('pages.productAdmin.addRichImage')}</Button>
+        <Button icon={<VideoCameraOutlined />} aria-label={addRichVideoLabel} title={addRichVideoLabel} onClick={() => addBlock('video')}>{t('pages.productAdmin.addRichVideo')}</Button>
       </Space>
 
       {blocks.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.productAdmin.richContent')} />
       ) : (
         <Space className="product-rich-detail-editor__blocks" direction="vertical" size="middle">
-          {blocks.map((block, index) => (
-            <Card
-              className="product-rich-detail-editor__block"
-              key={`${block.type}-${index}`}
-              size="small"
-              title={
-                <Space className="product-rich-detail-editor__blockTitle">
-                  <Select
-                    className="product-rich-detail-editor__typeSelect"
-                    value={block.type}
-                    popupClassName="shop-mobile-popup-layer"
-                    getPopupContainer={() => document.body}
-                    options={[
-                      { value: 'text', label: t('pages.productAdmin.richText') },
-                      { value: 'image', label: t('pages.productAdmin.richImage') },
-                      { value: 'video', label: t('pages.productAdmin.richVideo') },
-                    ]}
-                    onChange={(type) => updateBlock(index, createBlock(type))}
-                  />
-                  <Text type="secondary">#{index + 1}</Text>
-                </Space>
-              }
-              extra={
-                <Space className="product-rich-detail-editor__blockActions">
-                  <Button
-                    icon={<ArrowUpOutlined />}
-                    disabled={index === 0}
-                    aria-label={t('pages.productAdmin.moveRichBlockUp')}
-                    title={t('pages.productAdmin.moveRichBlockUp')}
-                    onClick={() => moveBlock(index, -1)}
-                  />
-                  <Button
-                    icon={<ArrowDownOutlined />}
-                    disabled={index === blocks.length - 1}
-                    aria-label={t('pages.productAdmin.moveRichBlockDown')}
-                    title={t('pages.productAdmin.moveRichBlockDown')}
-                    onClick={() => moveBlock(index, 1)}
-                  />
-                  <Button
-                    danger
-                    icon={<DeleteOutlined />}
-                    aria-label={t('pages.productAdmin.deleteRichBlock')}
-                    title={t('pages.productAdmin.deleteRichBlock')}
-                    onClick={() => removeBlock(index)}
-                  />
-                </Space>
-              }
-            >
-              {block.type === 'text' ? (
-                <TextArea
-                  rows={5}
-                  value={block.content}
-                  placeholder={t('pages.productAdmin.richTextPlaceholder')}
-                  onChange={(event) => updateBlock(index, { content: event.target.value })}
-                  onBlur={normalizeBeforeBlur}
-                />
-              ) : (
-                <Space className="product-rich-detail-editor__mediaFields" direction="vertical" size="middle">
-                  <Input
-                    value={block.url}
-                    placeholder={block.type === 'image' ? t('pages.productAdmin.richImagePlaceholder') : t('pages.productAdmin.richVideoPlaceholder')}
-                    onChange={(event) => updateBlock(index, { url: event.target.value })}
+          {blocks.map((block, index) => {
+            const blockNumber = index + 1;
+            const blockTypeLabel = block.type === 'image'
+              ? t('pages.productAdmin.richImage')
+              : block.type === 'video'
+                ? t('pages.productAdmin.richVideo')
+                : t('pages.productAdmin.richText');
+            const blockLabel = `${editorLabel} #${blockNumber}: ${blockTypeLabel}`;
+            const typeSelectLabel = `${blockLabel}: ${blockTypeLabel}`;
+            const moveUpLabel = `${t('pages.productAdmin.moveRichBlockUp')}: ${blockLabel}`;
+            const moveDownLabel = `${t('pages.productAdmin.moveRichBlockDown')}: ${blockLabel}`;
+            const deleteLabel = `${t('pages.productAdmin.deleteRichBlock')}: ${blockLabel}`;
+            const textInputLabel = `${t('pages.productAdmin.richText')}: ${blockLabel}`;
+            const urlInputLabel = `${block.type === 'image' ? t('pages.productAdmin.richImagePlaceholder') : t('pages.productAdmin.richVideoPlaceholder')}: ${blockLabel}`;
+            const captionInputLabel = `${t('pages.productAdmin.richCaptionPlaceholder')}: ${blockLabel}`;
+
+            return (
+              <Card
+                className="product-rich-detail-editor__block"
+                key={`${block.type}-${index}`}
+                size="small"
+                title={
+                  <Space className="product-rich-detail-editor__blockTitle" aria-label={blockLabel}>
+                    <Select
+                      className="product-rich-detail-editor__typeSelect"
+                      value={block.type}
+                      aria-label={typeSelectLabel}
+                      title={typeSelectLabel}
+                      classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                      getPopupContainer={() => document.body}
+                      options={[
+                        { value: 'text', label: t('pages.productAdmin.richText') },
+                        { value: 'image', label: t('pages.productAdmin.richImage') },
+                        { value: 'video', label: t('pages.productAdmin.richVideo') },
+                      ]}
+                      onChange={(type) => updateBlock(index, createBlock(type))}
+                    />
+                    <Text type="secondary">#{blockNumber}</Text>
+                  </Space>
+                }
+                extra={
+                  <Space className="product-rich-detail-editor__blockActions" aria-label={`${blockLabel}: ${t('common.actions')}`}>
+                    <Button
+                      icon={<ArrowUpOutlined />}
+                      disabled={index === 0}
+                      aria-label={moveUpLabel}
+                      title={moveUpLabel}
+                      onClick={() => moveBlock(index, -1)}
+                    />
+                    <Button
+                      icon={<ArrowDownOutlined />}
+                      disabled={index === blocks.length - 1}
+                      aria-label={moveDownLabel}
+                      title={moveDownLabel}
+                      onClick={() => moveBlock(index, 1)}
+                    />
+                    <Button
+                      danger
+                      icon={<DeleteOutlined />}
+                      aria-label={deleteLabel}
+                      title={deleteLabel}
+                      onClick={() => removeBlock(index)}
+                    />
+                  </Space>
+                }
+              >
+                {block.type === 'text' ? (
+                  <TextArea
+                    rows={5}
+                    value={block.content}
+                    placeholder={t('pages.productAdmin.richTextPlaceholder')}
+                    aria-label={textInputLabel}
+                    title={textInputLabel}
+                    onChange={(event) => updateBlock(index, { content: event.target.value })}
                     onBlur={normalizeBeforeBlur}
                   />
-                  <Input
-                    value={block.caption}
-                    placeholder={t('pages.productAdmin.richCaptionPlaceholder')}
-                    onChange={(event) => updateBlock(index, { caption: event.target.value })}
-                  />
-                  {block.url && !isHttpMediaUrl(block.url) ? (
-                    <Text type="danger">{t('pages.productAdmin.richInvalidUrl')}</Text>
-                  ) : null}
-                  {block.type === 'image' && block.url && isHttpMediaUrl(block.url) ? (
-                      <Image
-                        className="product-rich-detail-editor__imagePreview"
-                        src={resolveRichMediaUrl(block.url) || undefined}
-                        alt={block.caption || `${t('pages.productAdmin.mediaPreview')} #${index + 1}`}
-                        fallback={imageFallbacks.media}
-                      />
-                  ) : null}
-                  {block.type === 'video' && block.url && isHttpMediaUrl(block.url) ? (
-                    <RichVideoPreview block={block} previewTitle={`${t('pages.productAdmin.richPreview')} #${index + 1}`} />
-                  ) : null}
-                </Space>
-              )}
-            </Card>
-          ))}
+                ) : (
+                  <Space className="product-rich-detail-editor__mediaFields" direction="vertical" size="middle" aria-label={blockLabel}>
+                    <Input
+                      value={block.url}
+                      placeholder={block.type === 'image' ? t('pages.productAdmin.richImagePlaceholder') : t('pages.productAdmin.richVideoPlaceholder')}
+                      aria-label={urlInputLabel}
+                      title={urlInputLabel}
+                      onChange={(event) => updateBlock(index, { url: event.target.value })}
+                      onBlur={normalizeBeforeBlur}
+                    />
+                    <Input
+                      value={block.caption}
+                      placeholder={t('pages.productAdmin.richCaptionPlaceholder')}
+                      aria-label={captionInputLabel}
+                      title={captionInputLabel}
+                      onChange={(event) => updateBlock(index, { caption: event.target.value })}
+                    />
+                    {block.url && !isHttpMediaUrl(block.url) ? (
+                      <Text type="danger">{t('pages.productAdmin.richInvalidUrl')}</Text>
+                    ) : null}
+                    {block.type === 'image' && block.url && isHttpMediaUrl(block.url) ? (
+                        <Image
+                          className="product-rich-detail-editor__imagePreview"
+                          src={resolveRichMediaUrl(block.url) || undefined}
+                          alt={block.caption || `${t('pages.productAdmin.mediaPreview')} #${blockNumber}`}
+                          fallback={imageFallbacks.media}
+                        />
+                    ) : null}
+                    {block.type === 'video' && block.url && isHttpMediaUrl(block.url) ? (
+                      <RichVideoPreview block={block} previewTitle={`${t('pages.productAdmin.richPreview')} #${blockNumber}`} />
+                    ) : null}
+                  </Space>
+                )}
+              </Card>
+            );
+          })}
         </Space>
       )}
     </Space>

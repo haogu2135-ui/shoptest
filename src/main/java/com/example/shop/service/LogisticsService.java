@@ -85,7 +85,11 @@ public class LogisticsService {
         if (!isBlank(runtimeConfig.getString("logistics.api-url", ""))) {
             return trackWithProvider(normalizedTrackingNumber, normalizedCarrier);
         }
-        if (runtimeConfig.getBoolean("logistics.mock-enabled", false)) {
+        boolean mockEnabled = runtimeConfig.getBoolean("logistics.mock-enabled", false);
+        if (mockEnabled) {
+            if (isProductionMode()) {
+                throw new IllegalStateException("Production logistics tracking provider is not configured");
+            }
             return mockTrack(normalizedTrackingNumber, normalizedCarrier);
         }
         if (isProductionMode()) {

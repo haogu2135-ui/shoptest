@@ -113,6 +113,9 @@ const PetFinder: React.FC = () => {
     const highestPrice = products.reduce((max, product) => Math.max(max, productPrice(product)), DEFAULT_BUDGET[1]);
     return Math.max(DEFAULT_BUDGET[1], Math.ceil(highestPrice / 50) * 50);
   }, [products]);
+  const finderProductName = (product: Pick<Product, 'id' | 'name'>) => (
+    (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id })
+  );
 
   useEffect(() => {
     let isCurrent = true;
@@ -240,7 +243,9 @@ const PetFinder: React.FC = () => {
                     value={petType}
                     onChange={setPetType}
                     className="pet-finder-page__fieldControl"
-                    popupClassName="shop-mobile-popup-layer"
+                    aria-label={t('pages.petFinder.petType')}
+                    title={t('pages.petFinder.petType')}
+                    classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                     getPopupContainer={() => document.body}
                     options={(['all', 'dog', 'cat', 'small'] as PetType[]).map((value) => ({ value, label: t(`pages.petFinder.petTypes.${value}`) }))}
                   />
@@ -251,7 +256,9 @@ const PetFinder: React.FC = () => {
                     value={need}
                     onChange={setNeed}
                     className="pet-finder-page__fieldControl"
-                    popupClassName="shop-mobile-popup-layer"
+                    aria-label={t('pages.petFinder.need')}
+                    title={t('pages.petFinder.need')}
+                    classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                     getPopupContainer={() => document.body}
                     options={(['all', 'play', 'walk', 'sleep', 'smart', 'groom', 'food'] as NeedType[]).map((value) => ({ value, label: t(`pages.petFinder.needs.${value}`) }))}
                   />
@@ -264,6 +271,10 @@ const PetFinder: React.FC = () => {
                     max={maxBudget}
                     step={maxBudget > 1000 ? 50 : 10}
                     value={budget}
+                    ariaLabelForHandle={[
+                      `${t('pages.petFinder.budget')} ${formatMoney(budget[0])}`,
+                      `${t('pages.petFinder.budget')} ${formatMoney(budget[1])}`,
+                    ]}
                     onChange={(value) => setBudget(normalizeBudget(value, maxBudget))}
                   />
                   <Text type="secondary" className="commerce-atomic">{formatMoney(budget[0])} - {formatMoney(budget[1])}</Text>
@@ -274,7 +285,9 @@ const PetFinder: React.FC = () => {
                     value={priority}
                     onChange={setPriority}
                     className="pet-finder-page__fieldControl"
-                    popupClassName="shop-mobile-popup-layer"
+                    aria-label={t('pages.petFinder.priority')}
+                    title={t('pages.petFinder.priority')}
+                    classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                     getPopupContainer={() => document.body}
                     options={(['best', 'rating', 'deal', 'budget'] as Priority[]).map((value) => ({ value, label: t(`pages.petFinder.priorities.${value}`) }))}
                   />
@@ -286,7 +299,7 @@ const PetFinder: React.FC = () => {
 
         <Card
           title={t('pages.petFinder.results', { count: matches.length })}
-          extra={<Button icon={<SearchOutlined />} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>}
+          extra={<Button className="pet-finder-page__searchAllButton" icon={<SearchOutlined />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>}
         >
           {(loadError || usingCatalogFallback) && !loading ? (
             <Alert
@@ -303,7 +316,7 @@ const PetFinder: React.FC = () => {
                 <Title level={4}>{t('pages.petFinder.insightTitle')}</Title>
                 <Text type="secondary">
                   {finderInsights.bestMatch
-                    ? t('pages.petFinder.insightBest', { name: finderInsights.bestMatch.name })
+                    ? t('pages.petFinder.insightBest', { name: finderProductName(finderInsights.bestMatch) })
                     : t('pages.petFinder.insightSubtitle')}
                 </Text>
               </div>
@@ -334,7 +347,7 @@ const PetFinder: React.FC = () => {
                 <Text type="secondary">
                   {finderInsights.bestMatch
                     ? t('pages.petFinder.nextStepBest', {
-                      name: finderInsights.bestMatch.name,
+                      name: finderProductName(finderInsights.bestMatch),
                       price: formatMoney(finderInsights.bestMatchPrice),
                     })
                     : t('pages.petFinder.nextStepSearch')}
@@ -347,11 +360,16 @@ const PetFinder: React.FC = () => {
               </div>
               <Space wrap className="pet-finder-page__nextStepActions">
                 {finderInsights.bestMatch && finderInsights.nextAction === 'view' ? (
-                  <Button type="primary" onClick={() => navigate(`/products/${finderInsights.bestMatch!.id}`)}>
+                  <Button
+                    type="primary"
+                    onClick={() => navigate(`/products/${finderInsights.bestMatch!.id}`)}
+                    aria-label={`${t('pages.petFinder.viewBest')}: ${finderProductName(finderInsights.bestMatch)}`}
+                    title={`${t('pages.petFinder.viewBest')}: ${finderProductName(finderInsights.bestMatch)}`}
+                  >
                     {t('pages.petFinder.viewBest')}
                   </Button>
                 ) : null}
-                <Button icon={<SearchOutlined />} onClick={applyAsSearch}>
+                <Button className="pet-finder-page__searchAllButton" icon={<SearchOutlined />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>
                   {t('pages.petFinder.searchAll')}
                 </Button>
               </Space>
@@ -363,40 +381,45 @@ const PetFinder: React.FC = () => {
             <Empty description={t('pages.petFinder.empty')} />
           ) : (
             <Row gutter={[16, 16]}>
-              {matches.map(({ product, score }) => (
-                <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
-                  <Card
-                    hoverable
-                    className="pet-finder-page__productCard"
-                    cover={
-                      <Image
-                        className="pet-finder-page__productImage"
-                        src={resolveProductImage(product.imageUrl)}
-                        alt={product.name}
-                        preview={false}
-                        height={180}
-                        onClick={() => navigate(`/products/${product.id}`)}
-                        fallback={productImageFallback}
-                      />
-                    }
-                    actions={[
-                      <Button type="link" onClick={() => navigate(`/products/${product.id}`)}>
-                        {t('pages.petFinder.view')}
-                      </Button>,
-                    ]}
-                  >
-                    <Space direction="vertical" size={6} className="pet-finder-page__productBody">
-                      <Text strong ellipsis={{ tooltip: product.name }}>{product.name}</Text>
-                      <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(productPrice(product))}</Text>
-                      <Space wrap size={[4, 4]}>
-                        {isInStock(product) ? <Tag color="green">{t('pages.productDetail.enough')}</Tag> : <Tag color="red">{t('pages.productList.soldOut')}</Tag>}
-                        {(product.effectiveDiscountPercent || product.discount || 0) > 0 ? <Tag color="volcano">{t('pages.productList.sale')}</Tag> : null}
-                        <Tag color="blue">{t('pages.petFinder.matchScore', { score: Math.max(0, Math.round(score)) })}</Tag>
+              {matches.map(({ product, score }) => {
+                const productName = finderProductName(product);
+                const viewLabel = `${t('pages.petFinder.view')}: ${productName}`;
+                return (
+                  <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
+                    <Card
+                      hoverable
+                      className="pet-finder-page__productCard"
+                      cover={
+                        <button type="button" className="pet-finder-page__productImageButton" aria-label={viewLabel} title={viewLabel} onClick={() => navigate(`/products/${product.id}`)}>
+                          <Image
+                            className="pet-finder-page__productImage"
+                            src={resolveProductImage(product.imageUrl)}
+                            alt={productName}
+                            preview={false}
+                            height={180}
+                            fallback={productImageFallback}
+                          />
+                        </button>
+                      }
+                      actions={[
+                        <Button type="link" onClick={() => navigate(`/products/${product.id}`)} aria-label={viewLabel} title={viewLabel}>
+                          {t('pages.petFinder.view')}
+                        </Button>,
+                      ]}
+                    >
+                      <Space direction="vertical" size={6} className="pet-finder-page__productBody">
+                        <Text strong className="pet-finder-page__productName" title={productName}>{productName}</Text>
+                        <Text strong className="commerce-money pet-finder-page__productPrice">{formatMoney(productPrice(product))}</Text>
+                        <Space wrap size={[4, 4]}>
+                          {isInStock(product) ? <Tag color="green">{t('pages.productDetail.enough')}</Tag> : <Tag color="red">{t('pages.productList.soldOut')}</Tag>}
+                          {(product.effectiveDiscountPercent || product.discount || 0) > 0 ? <Tag color="volcano">{t('pages.productList.sale')}</Tag> : null}
+                          <Tag color="blue">{t('pages.petFinder.matchScore', { score: Math.max(0, Math.round(score)) })}</Tag>
+                        </Space>
                       </Space>
-                    </Space>
-                  </Card>
-                </Col>
-              ))}
+                    </Card>
+                  </Col>
+                );
+              })}
             </Row>
           )}
         </Card>

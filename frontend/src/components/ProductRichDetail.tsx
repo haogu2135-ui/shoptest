@@ -1,17 +1,11 @@
 import React from 'react';
 import { Empty, Typography } from 'antd';
 import type { ProductDetailBlock } from '../types';
-import { buildResponsiveImageSrcSet, resolveApiAssetUrl } from '../utils/mediaAssets';
+import { buildResponsiveImageSrcSet, normalizePersistentImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import './ProductRichDetail.css';
 import '../styles/mobile-page-contrast.css';
 
 const { Paragraph, Text } = Typography;
-
-const hasUnsafeUrlCharacter = (value: string) =>
-  Array.from(value).some((char) => {
-    const code = char.charCodeAt(0);
-    return code <= 31 || code === 127;
-  });
 
 type ProductRichDetailProps = {
   detailContent?: ProductDetailBlock[] | string | null;
@@ -28,22 +22,7 @@ type ProductRichDetailProps = {
 export const isHttpMediaUrl = (value?: string): value is string => {
   const trimmed = String(value || '').trim();
   if (!trimmed) return false;
-  const normalized = trimmed.toLowerCase();
-  if (
-    trimmed.startsWith('//')
-    || hasUnsafeUrlCharacter(trimmed)
-    || trimmed.includes('\\')
-    || normalized.includes('%00')
-    || normalized.includes('%5c')
-  ) {
-    return false;
-  }
-  try {
-    const url = new URL(trimmed, window.location.origin);
-    return (url.protocol === 'http:' || url.protocol === 'https:') && !url.username && !url.password;
-  } catch {
-    return false;
-  }
+  return Boolean(normalizePersistentImageUrl(trimmed));
 };
 
 export const resolveRichMediaUrl = (value?: string) => {

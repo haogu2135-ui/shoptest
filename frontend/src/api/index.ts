@@ -5,6 +5,7 @@ import { buildLoginUrl, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { AUTH_SESSION_STORAGE_KEYS, dispatchAuthSessionChanged } from '../utils/authEvents';
 import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { normalizePersistentImageUrl } from '../utils/mediaAssets';
 import { resolveApiBaseUrl, resolveSupportWebSocketUrl } from '../utils/runtimeConfig';
 import { getEffectiveRole } from '../utils/roles';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
@@ -17,6 +18,7 @@ const api = axios.create({
 export const apiBaseUrl = String(api.defaults.baseURL || window.location.origin).replace(/\/$/, '');
 const MAX_CART_QUANTITY = 99;
 const MAX_SELECTED_SPECS_LENGTH = 2000;
+const MAX_PRODUCT_QUESTION_LENGTH = 500;
 
 const normalizePositiveInt = (value: unknown) => {
     const numeric = Number(value);
@@ -67,6 +69,11 @@ const stripControlChars = (value: string) =>
 
 const normalizeTextParam = (value: unknown, maxLength = 120) =>
     stripControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
+
+const normalizeImageUrlParam = (value: unknown, maxLength = 2048) => {
+    const url = normalizeTextParam(value, maxLength);
+    return normalizePersistentImageUrl(url);
+};
 
 const getJwtExpiryMs = (token: string) => {
     try {
@@ -147,7 +154,7 @@ const normalizeAddressPayload = (address: Partial<UserAddress>) => ({
 const normalizeCategoryPayload = (category: Partial<Category>) => ({
     name: normalizeTextParam(category.name, 255),
     parentId: category.parentId === undefined || category.parentId === null ? null : normalizePositiveInt(category.parentId) || null,
-    imageUrl: category.imageUrl === undefined || category.imageUrl === null ? null : normalizeTextParam(category.imageUrl, 2048),
+    imageUrl: category.imageUrl === undefined || category.imageUrl === null ? null : normalizeImageUrlParam(category.imageUrl, 2048) || null,
     description: category.description === undefined || category.description === null ? null : normalizeTextParam(category.description, 1000),
     localizedContent: category.localizedContent ?? null,
 });
@@ -155,7 +162,7 @@ const normalizeCategoryPayload = (category: Partial<Category>) => ({
 const normalizeBrandPayload = (brand: Partial<Brand>) => ({
     name: normalizeTextParam(brand.name, 100),
     description: brand.description === undefined || brand.description === null ? null : normalizeTextParam(brand.description, 1000),
-    logoUrl: brand.logoUrl === undefined || brand.logoUrl === null ? null : normalizeTextParam(brand.logoUrl, 1000),
+    logoUrl: brand.logoUrl === undefined || brand.logoUrl === null ? null : normalizeImageUrlParam(brand.logoUrl, 1000) || null,
     websiteUrl: brand.websiteUrl === undefined || brand.websiteUrl === null ? null : normalizeTextParam(brand.websiteUrl, 1000),
     status: normalizeTextParam(brand.status, 20).toUpperCase() || 'ACTIVE',
     sortOrder: normalizeSafeInt(brand.sortOrder) ?? 0,
@@ -220,6 +227,11 @@ const normalizeStringListParam = (values: unknown, limit = 30, maxLength = 500) 
         ? Array.from(new Set(values.map((value) => normalizeTextParam(value, maxLength)).filter(Boolean))).slice(0, limit)
         : [];
 
+const normalizeImageListParam = (values: unknown, limit = 30, maxLength = 2048) =>
+    Array.isArray(values)
+        ? Array.from(new Set(values.map((value) => normalizeImageUrlParam(value, maxLength)).filter(Boolean))).slice(0, limit)
+        : [];
+
 const normalizeProductSpecifications = (value: unknown) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
     return Object.entries(value as Record<string, unknown>).slice(0, 80).reduce<Record<string, string>>((acc, [key, rawValue]) => {
@@ -235,33 +247,12 @@ const normalizeProductSpecifications = (value: unknown) => {
 const normalizeProductDetailContent = (value: unknown) => {
     if (!Array.isArray(value)) return [];
     const allowedTypes = new Set(['text', 'image', 'video']);
-    const isSafeRichMediaUrl = (rawValue: unknown) => {
-        const url = normalizeTextParam(rawValue, 2048);
-        const normalized = url.toLowerCase();
-        if (
-            !url
-            || url.startsWith('//')
-            || url.includes('\\')
-            || normalized.includes('%00')
-            || normalized.includes('%5c')
-        ) {
-            return '';
-        }
-        if (url.startsWith('/')) return url;
-        try {
-            const parsed = new URL(url);
-            const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
-            return isHttp && !parsed.username && !parsed.password ? url : '';
-        } catch {
-            return '';
-        }
-    };
     return value.slice(0, 80).map((block) => {
         const rawBlock = block && typeof block === 'object' ? block as Record<string, unknown> : {};
         const type = normalizeTextParam(rawBlock.type, 20).toLowerCase();
         const normalizedType = allowedTypes.has(type) ? type : 'text';
         const mediaUrl = normalizedType === 'image' || normalizedType === 'video'
-            ? isSafeRichMediaUrl(rawBlock.url)
+            ? normalizeImageUrlParam(rawBlock.url, 2048)
             : undefined;
         return {
             type: normalizedType,
@@ -281,7 +272,7 @@ const normalizeProductVariants = (value: unknown) => {
             options: normalizeProductSpecifications(rawVariant.options),
             price: normalizeNonNegativeNumberParam(rawVariant.price),
             stock: rawVariant.stock === undefined ? undefined : normalizeNonNegativeIntParam(rawVariant.stock),
-            imageUrl: normalizeTextParam(rawVariant.imageUrl, 2048) || undefined,
+            imageUrl: normalizeImageUrlParam(rawVariant.imageUrl, 2048) || undefined,
         };
     });
 };
@@ -294,7 +285,7 @@ const normalizeProductPayload = (product: Partial<Product>) => {
     if (hasOwn(product, 'stock')) payload.stock = normalizeNullableProductValue(product.stock, normalizeNonNegativeIntParam) as Product['stock'];
     if (hasOwn(product, 'categoryId')) payload.categoryId = normalizeNullableProductValue(product.categoryId, (value) => normalizePositiveInt(value) || 0) as Product['categoryId'];
     if (hasOwn(product, 'isFeatured')) payload.isFeatured = Boolean(product.isFeatured);
-    if (hasOwn(product, 'imageUrl')) payload.imageUrl = normalizeNullableProductValue(product.imageUrl, (value) => normalizeTextParam(value, 2048)) as Product['imageUrl'];
+    if (hasOwn(product, 'imageUrl')) payload.imageUrl = normalizeNullableProductValue(product.imageUrl, (value) => normalizeImageUrlParam(value, 2048)) as Product['imageUrl'];
     if (hasOwn(product, 'status')) payload.status = normalizeNullableProductValue(product.status, (value) => normalizeTextParam(value, 40).toUpperCase()) as Product['status'];
     if (hasOwn(product, 'brand')) payload.brand = normalizeNullableProductValue(product.brand, (value) => normalizeTextParam(value, 120)) as Product['brand'];
     if (hasOwn(product, 'tag')) payload.tag = normalizeNullableProductValue(product.tag, (value) => normalizeTextParam(value, 80)) as Product['tag'];
@@ -307,7 +298,7 @@ const normalizeProductPayload = (product: Partial<Product>) => {
     if (hasOwn(product, 'limitedTimeEndAt')) payload.limitedTimeEndAt = normalizeNullableProductValue(product.limitedTimeEndAt, (value) => normalizeTextParam(value, 40)) as Product['limitedTimeEndAt'];
     if (hasOwn(product, 'freeShipping')) payload.freeShipping = Boolean(product.freeShipping);
     if (hasOwn(product, 'freeShippingThreshold')) payload.freeShippingThreshold = normalizeNullableProductValue(product.freeShippingThreshold, normalizeNonNegativeNumberParam) as Product['freeShippingThreshold'];
-    if (hasOwn(product, 'images')) payload.images = normalizeNullableProductValue(product.images, (value) => normalizeStringListParam(value, 40, 2048)) as Product['images'];
+    if (hasOwn(product, 'images')) payload.images = normalizeNullableProductValue(product.images, (value) => normalizeImageListParam(value, 40, 2048)) as Product['images'];
     if (hasOwn(product, 'specifications')) payload.specifications = normalizeNullableProductValue(product.specifications, normalizeProductSpecifications) as Product['specifications'];
     if (hasOwn(product, 'detailContent')) payload.detailContent = normalizeNullableProductValue(product.detailContent, normalizeProductDetailContent) as Product['detailContent'];
     if (hasOwn(product, 'variants')) payload.variants = normalizeNullableProductValue(product.variants, normalizeProductVariants) as Product['variants'];
@@ -1133,7 +1124,7 @@ const normalizeAdminSupportSessionPageResponse = (
     response: AxiosResponse<SupportAdminSessionPage | SupportSession[]>
 ): AxiosResponse<SupportAdminSessionPage> => {
     if (Array.isArray(response.data)) {
-        const items = response.data;
+        const items = response.data.map(normalizeAdminSupportSession);
         response.data = {
             items,
             total: items.length,
@@ -1145,7 +1136,9 @@ const normalizeAdminSupportSessionPageResponse = (
         };
         return response as AxiosResponse<SupportAdminSessionPage>;
     }
-    const items = Array.isArray(response.data?.items) ? response.data.items : [];
+    const items = Array.isArray(response.data?.items)
+        ? response.data.items.map(normalizeAdminSupportSession)
+        : [];
     const total = Number(response.data?.total ?? items.length);
     const page = Number(response.data?.page || 1);
     const size = Number(response.data?.size || Math.max(1, items.length || 20));
@@ -1161,6 +1154,13 @@ const normalizeAdminSupportSessionPageResponse = (
         hasPrevious: Boolean(response.data?.hasPrevious ?? page > 1),
     };
     return response as AxiosResponse<SupportAdminSessionPage>;
+};
+
+const normalizeAdminSupportSession = (
+    session: SupportSession & { contextKey?: unknown }
+): SupportSession => {
+    const { contextKey: _contextKey, ...safeSession } = session || {};
+    return safeSession as SupportSession;
 };
 
 const clearAdminQuestionCache = () => {
@@ -1689,7 +1689,9 @@ export const orderApi = {
     },
     update: (id: number, order: Partial<Order>) => api.put<Order>(`/orders/${toPathId(id)}`, order),
     delete: (id: number) => api.delete(`/orders/${toPathId(id)}`),
-    cancel: (id: number, guestEmail?: string, orderNo?: string) => api.put(`${guestOrderPath(id, guestEmail, orderNo)}/cancel`, guestParams(guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo)),
+    cancel: (id: number, guestEmail?: string, orderNo?: string) =>
+        api.put(`${guestOrderPath(id, guestEmail, orderNo)}/cancel`, guestParams(guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo))
+            .finally(clearOrderTrackCache),
     confirm: (id: number, guestEmail?: string, orderNo?: string) =>
         api.put(`${guestOrderPath(id, guestEmail, orderNo)}/confirm`, guestParams(guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo))
             .finally(clearOrderTrackCache),
@@ -1841,7 +1843,7 @@ export const questionApi = {
         return request;
     },
     ask: (productId: number, question: string) =>
-        api.post<ProductQuestionPublic>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, 1000) })
+        api.post<ProductQuestionPublic>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, MAX_PRODUCT_QUESTION_LENGTH) })
             .finally(() => clearQuestionCache(toPathId(productId))),
 };
 
@@ -2556,6 +2558,7 @@ const normalizeAdminSupportSessionParams = (input?: string | AdminSupportSession
 
 export const supportApi = {
     getSession: () => api.get<SupportSessionCustomer>('/support/session'),
+    createSession: () => api.post<SupportSessionCustomer>('/support/session'),
     getSessions: (options?: SupportSessionQuery) =>
         api.get<SupportSessionCustomer[]>('/support/sessions', { params: normalizeSupportSessionParams(options) }),
     getMessages: (sessionId: number, options?: SupportMessageQuery) =>
@@ -2568,6 +2571,10 @@ export const supportApi = {
     getGuestSession: (orderNo: string, email: string) => api.get<SupportSessionCustomer>('/support/guest/session', anonymousGetConfig({
         params: { orderNo: normalizeOrderTrackingNumber(orderNo), email: normalizeEmailParam(email) || '' },
     })),
+    createGuestSession: (orderNo: string, email: string) => api.post<SupportSessionCustomer>('/support/guest/session', {
+        orderNo: normalizeOrderTrackingNumber(orderNo),
+        email: normalizeEmailParam(email) || '',
+    }, anonymousRequestConfig()),
     getGuestMessages: (sessionId: number, orderNo: string, email: string, options?: SupportMessageQuery) => api.get<SupportMessageCustomer[]>(`/support/guest/sessions/${toPathId(sessionId)}/messages`, anonymousGetConfig({
         params: {
             orderNo: normalizeOrderTrackingNumber(orderNo),

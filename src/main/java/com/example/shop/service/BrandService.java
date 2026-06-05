@@ -2,6 +2,7 @@ package com.example.shop.service;
 
 import com.example.shop.entity.Brand;
 import com.example.shop.repository.BrandRepository;
+import com.example.shop.util.ImageUrlValidator;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -53,6 +54,7 @@ public class BrandService {
                     throw new IllegalArgumentException("Brand name already exists");
                 });
         brand.setName(name);
+        brand.setLogoUrl(ImageUrlValidator.normalizePersistentImageUrl(brand.getLogoUrl(), "logoUrl"));
         brand.setStatus(normalizeStatus(brand.getStatus()));
         if (brand.getSortOrder() == null) {
             brand.setSortOrder(0);

@@ -1681,12 +1681,12 @@
 .coupon-wallet__filter--empty:not(.coupon-wallet__filter--active) {
   border-color: #e5e9e6;
   background: #fbfcfb;
-  color: #7d877f;
+  color: #4f5b52;
 }
 
 .coupon-wallet__filter--empty:not(.coupon-wallet__filter--active) strong {
   background: #eef2ef;
-  color: #7d877f;
+  color: #4f5b52;
 }
 
 .coupon-wallet__item {
@@ -1755,13 +1755,13 @@
 
 .coupon-wallet__coupon--used .coupon-wallet__value,
 .coupon-wallet__coupon--expired .coupon-wallet__value {
-  color: #7d877f;
+  color: #4f5b52;
 }
 
 .coupon-wallet__coupon--used .coupon-wallet__couponIcon,
 .coupon-wallet__coupon--expired .coupon-wallet__couponIcon {
   background: #eef2ef;
-  color: #7d877f;
+  color: #4f5b52;
 }
 
 .coupon-wallet__coupon--used .coupon-wallet__quickFacts span,
@@ -1923,7 +1923,7 @@
 .coupon-wallet__expiryPill--muted {
   border-color: #e5e7eb;
   background: #f8faf9;
-  color: #7d877f;
+  color: #4f5b52;
 }
 
 .coupon-wallet__quickFacts {
@@ -1940,13 +1940,13 @@
   border-radius: 999px;
   background: #eef7f1;
   color: #124734;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
 }
 
 .coupon-wallet__quickFact--empty {
   background: #f1f3f2 !important;
-  color: #7d877f !important;
+  color: #4f5b52 !important;
 }
 
 .coupon-wallet__quickFact--closed {
@@ -3035,7 +3035,7 @@
     min-width: 112px;
     min-height: 44px;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .coupon-wallet__filter--empty {
@@ -3163,7 +3163,7 @@
     width: 100%;
     justify-content: center;
     border-radius: 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -3271,6 +3271,14 @@
 .coupon-center-page--es .coupon-center-page__couponMicroFacts span {
   min-height: 36px;
   white-space: normal;
+}
+
+@media (max-width: 768px) {
+  .coupon-center-page--es .coupon-center-page__mobileActionBar .ant-btn,
+  .coupon-center-page--es .coupon-claim-section__filterButton,
+  .coupon-center-page--es .coupon-wallet__filter {
+    min-height: 44px;
+  }
 }
 
 .coupon-center-page--es .coupon-center-page__couponMeta,
@@ -5068,5 +5076,299 @@
   .coupon-claim-section__search .ant-input-clear-icon {
     min-width: 44px;
     min-height: 44px;
+  }
+}
+
+/* Final mobile Web coupon audit guard: avoid hidden horizontal rails and keep
+   coupon calls to action at touch size. */
+@media (max-width: 560px) {
+  .coupon-center-page__quickNav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-inline: 0;
+    padding: 6px 0;
+    overflow: visible;
+    scroll-snap-type: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .coupon-center-page__quickNav button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    white-space: normal;
+  }
+
+  .coupon-priority-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+    cursor: default;
+  }
+
+  .coupon-priority-grid::after {
+    content: none;
+  }
+
+  .coupon-priority-card {
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .coupon-priority-card h3,
+  .coupon-priority-card p {
+    display: block;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    -webkit-line-clamp: unset;
+  }
+
+  .coupon-priority-card .ant-btn,
+  .coupon-center-page__quickNav button,
+  .coupon-center-page__mobileActionBar .ant-btn,
+  .coupon-center-page button[aria-label="Log in: 3"],
+  .coupon-center-page button[aria-label="Shop now"],
+  .coupon-next-action > .ant-btn,
+  .coupon-savings-path > .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+  }
+
+  .coupon-claim-section__filterButtons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .coupon-claim-section__filterButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .coupon-center-page__quickNav,
+  .coupon-claim-section__filterButtons {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final narrow mobile coupon guard: 360px devices have enough room for a
+   two-column quick nav, which keeps the bottom row clear of fixed navigation. */
+@media (min-width: 341px) and (max-width: 380px) {
+  .coupon-center-page__quickNav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Final narrow mobile coupon layout guard: remove hidden overflow from guidance and card headers. */
+@media (max-width: 560px) {
+  .coupon-guidance-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible;
+  }
+
+  .coupon-savings-path,
+  .coupon-savings-path * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .coupon-savings-path {
+    width: 100%;
+    overflow: visible;
+  }
+
+  .coupon-savings-path p,
+  .coupon-savings-path__steps span {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .coupon-center-page__coupon .ant-card-head-wrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    align-items: start;
+  }
+
+  .coupon-center-page__coupon .ant-card-head-title,
+  .coupon-center-page__coupon .ant-card-extra {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .coupon-center-page__coupon .ant-card-extra {
+    margin-inline-start: 0;
+  }
+
+  .coupon-center-page__couponTitle {
+    width: 100%;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    white-space: normal;
+  }
+
+  .coupon-center-page__couponTitle > span:first-child {
+    flex: 1 0 100%;
+    min-width: 0;
+    overflow: visible;
+    line-height: 1.2;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .coupon-center-page__couponTags {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .coupon-center-page__couponTags .ant-space-item,
+  .coupon-center-page__couponTags .ant-tag {
+    max-width: 100%;
+  }
+
+  .coupon-center-page__couponTags .ant-tag {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+}
+
+/* Final mobile coupon rail guard: hero badges and quick navigation should wrap
+   inside the viewport instead of relying on clipped horizontal rails. */
+@media (max-width: 560px) {
+  .coupon-center-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 152px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .coupon-center-page__hero {
+    overflow: visible;
+  }
+
+  .coupon-center-page__heroBadges {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+    scroll-snap-type: none;
+  }
+
+  .coupon-center-page__heroBadges span {
+    width: 100%;
+    max-width: 100%;
+    min-height: 36px;
+    flex: initial;
+    justify-content: flex-start;
+    overflow: visible;
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: left;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .coupon-center-page__quickNav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-inline: 0;
+    padding: 6px 0;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+    scroll-snap-type: none;
+  }
+
+  .coupon-center-page__quickNav button {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto !important;
+    min-height: 48px !important;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 6px;
+    align-items: center;
+    justify-content: stretch;
+    padding: 8px 9px;
+    overflow: visible;
+    font-size: 12px;
+    line-height: 1.15;
+    text-align: left;
+    text-overflow: clip;
+    white-space: normal !important;
+  }
+
+  .coupon-center-page__quickNav button > .anticon {
+    min-width: 0;
+    width: auto;
+    height: auto;
+    display: inline-flex;
+    padding: 0;
+    background: transparent !important;
+    color: inherit !important;
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .coupon-center-page__quickNavLabel {
+    min-width: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    display: block !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    color: inherit !important;
+    font-size: inherit !important;
+    line-height: 1.15 !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  .coupon-center-page__quickNavCount {
+    min-width: 24px !important;
+    width: auto !important;
+    height: 24px !important;
+    display: inline-grid !important;
+    padding: 0 7px !important;
+    place-items: center;
+    border-radius: 999px;
+    background: #124734 !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    line-height: 24px !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (min-width: 341px) and (max-width: 380px) {
+  .coupon-center-page__quickNav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -85,6 +85,8 @@ const ProductCompare: React.FC = () => {
     onlyDifferent: t('pages.compare.onlyDifferent'),
     summary: (count: number) => t('pages.compare.summary', { count }),
   }), [t]);
+  const compareProductName = useCallback((product: Product) =>
+    (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id }), [t]);
 
   const fetchComparedProducts = useCallback(async () => {
     const ids = readCompareProductIds();
@@ -302,7 +304,7 @@ const ProductCompare: React.FC = () => {
         <Link to={`/products/${product.id}`}>
           <Image
             src={resolveCompareImage(product.imageUrl)}
-            alt={product.name}
+            alt={compareProductName(product)}
             width={120}
             height={120}
             preview={false}
@@ -316,7 +318,10 @@ const ProductCompare: React.FC = () => {
       key: 'name',
       label: t('pages.compare.product'),
       alwaysVisible: true,
-      render: (product: Product) => <Link className="product-compare__productLink" to={`/products/${product.id}`}>{product.name}</Link>,
+      render: (product: Product) => {
+        const productName = compareProductName(product);
+        return <Link className="product-compare__productLink" to={`/products/${product.id}`}>{productName}</Link>;
+      },
     },
     {
       key: 'price',
@@ -367,12 +372,19 @@ const ProductCompare: React.FC = () => {
       render: (product: Product) => {
         const isSoldOut = product.stock !== undefined && product.stock <= 0;
         const needsSelection = needsOptionSelection(product);
+        const productName = compareProductName(product);
+        const selectActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
+        const addActionText = isSoldOut ? t('pages.productList.soldOut') : t('pages.productList.addToCart');
+        const addActionLabel = `${addActionText}: ${productName}`;
+        const removeActionLabel = `${t('pages.compare.remove')}: ${productName}`;
         return (
           <Space direction="vertical">
             {needsSelection && !isSoldOut ? (
               <Button
                 type="primary"
                 icon={<SettingOutlined />}
+                aria-label={selectActionLabel}
+                title={selectActionLabel}
                 onClick={() => navigate(`/products/${product.id}`)}
               >
                 {t('pages.wishlist.selectOptions')}
@@ -382,13 +394,15 @@ const ProductCompare: React.FC = () => {
                 type="primary"
                 icon={<ShoppingCartOutlined />}
                 className={isSoldOut ? 'product-compare__soldoutButton' : undefined}
+                aria-label={addActionLabel}
+                title={addActionLabel}
                 onClick={() => addToCart(product)}
                 disabled={isSoldOut}
               >
-                {isSoldOut ? t('pages.productList.soldOut') : t('pages.productList.addToCart')}
+                {addActionText}
               </Button>
             )}
-            <Button icon={<DeleteOutlined />} onClick={() => removeProduct(product.id)}>
+            <Button icon={<DeleteOutlined />} aria-label={removeActionLabel} title={removeActionLabel} onClick={() => removeProduct(product.id)}>
               {t('pages.compare.remove')}
             </Button>
           </Space>
@@ -405,6 +419,11 @@ const ProductCompare: React.FC = () => {
   const differentSpecNames = specRows
     .filter((row) => row.isDifferent && row.rawLabel)
     .map((row) => row.rawLabel as string);
+  const compareAddAllActionLabel = `${t('pages.wishlist.addAllToCart')}: ${directReadyProducts.length}`;
+  const compareAddMoreActionLabel = `${t('pages.compare.addMore')}: ${comparedIds.length}`;
+  const compareClearActionLabel = `${t('pages.compare.clear')}: ${products.length}`;
+  const compareBrowseActionLabel = t('pages.compare.browse');
+  const compareDifferenceToggleLabel = `${compareCopy.onlyDifferent}: ${differentRows.length}`;
 
   const dataSource = visibleRows.map((row) => ({
     key: row.key,
@@ -423,7 +442,7 @@ const ProductCompare: React.FC = () => {
       render: (value: React.ReactNode) => <Text strong className="product-compare__attribute">{value}</Text>,
     },
     ...products.map((product) => ({
-      title: product.name,
+      title: compareProductName(product),
       dataIndex: `product-${product.id}`,
       key: `product-${product.id}`,
       width: 240,
@@ -443,17 +462,23 @@ const ProductCompare: React.FC = () => {
               type="primary"
               icon={<ShoppingCartOutlined />}
               disabled={directReadyProducts.length === 0}
+              aria-label={compareAddAllActionLabel}
+              title={compareAddAllActionLabel}
               onClick={addDirectReadyProductsToCart}
             >
               {t('pages.wishlist.addAllToCart')}
             </Button>
-            <Button onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
+            <Button aria-label={compareAddMoreActionLabel} title={compareAddMoreActionLabel} onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
             <Popconfirm
-              popupClassName="shop-mobile-popup-layer product-compare-clear-popconfirm"
+              classNames={{ root: 'shop-mobile-popup-layer product-compare-clear-popconfirm' }}
               title={t('pages.compare.clearConfirm')}
               onConfirm={clearAll}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ danger: true, 'aria-label': compareClearActionLabel, title: compareClearActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${compareClearActionLabel}`, title: `${t('common.cancel')}: ${compareClearActionLabel}` }}
             >
-              <Button danger disabled={products.length === 0}>{t('pages.compare.clear')}</Button>
+              <Button danger disabled={products.length === 0} aria-label={compareClearActionLabel} title={compareClearActionLabel}>{t('pages.compare.clear')}</Button>
             </Popconfirm>
           </Space>
         </div>
@@ -461,7 +486,7 @@ const ProductCompare: React.FC = () => {
           <div className="product-compare__loading"><Spin size="large" /></div>
         ) : products.length === 0 ? (
           <Empty description={t('pages.compare.empty')}>
-            <Button type="primary" onClick={() => navigate('/products')}>{t('pages.compare.browse')}</Button>
+            <Button type="primary" aria-label={compareBrowseActionLabel} title={compareBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.compare.browse')}</Button>
           </Empty>
         ) : (
           <>
@@ -481,7 +506,12 @@ const ProductCompare: React.FC = () => {
               </div>
               <Space className="product-compare__difference-toggle">
                 <Text>{compareCopy.onlyDifferent}</Text>
-                <Switch checked={showOnlyDifferences} onChange={setShowOnlyDifferences} />
+                <Switch
+                  checked={showOnlyDifferences}
+                  aria-label={compareDifferenceToggleLabel}
+                  title={compareDifferenceToggleLabel}
+                  onChange={setShowOnlyDifferences}
+                />
               </Space>
             </div>
             <section className="product-compare__decision" aria-label={t('pages.compare.decisionTitle')}>
@@ -490,7 +520,7 @@ const ProductCompare: React.FC = () => {
                 <Title level={4}>{t('pages.compare.decisionTitle')}</Title>
                 <Text type="secondary">
                   {compareDecision.bestValue
-                    ? t('pages.compare.decisionSubtitleBest', { name: compareDecision.bestValue.name })
+                    ? t('pages.compare.decisionSubtitleBest', { name: compareProductName(compareDecision.bestValue) })
                     : t('pages.compare.decisionSubtitle')}
                 </Text>
               </div>
@@ -522,7 +552,7 @@ const ProductCompare: React.FC = () => {
                 <Text className="product-compare__eyebrow">{t('pages.compare.recommendationEyebrow')}</Text>
                 <Title level={4}>
                   {compareDecision.recommended
-                    ? t('pages.compare.recommendationTitleWithName', { name: compareDecision.recommended.name })
+                    ? t('pages.compare.recommendationTitleWithName', { name: compareProductName(compareDecision.recommended) })
                     : t('pages.compare.recommendationTitle')}
                 </Title>
                 <Text type="secondary">
@@ -535,22 +565,33 @@ const ProductCompare: React.FC = () => {
                 </Text>
                 <Space wrap>
                   {compareDecision.recommended ? (
-                    needsOptionSelection(compareDecision.recommended) ? (
-                      <Button type="primary" icon={<SettingOutlined />} onClick={() => navigate(`/products/${compareDecision.recommended!.id}`)}>
-                        {t('pages.wishlist.selectOptions')}
-                      </Button>
-                    ) : (
-                      <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => addToCart(compareDecision.recommended!)}>
-                        {t('pages.compare.addRecommended')}
-                      </Button>
-                    )
+                    (() => {
+                      const recommended = compareDecision.recommended!;
+                      const productName = compareProductName(recommended);
+                      const selectActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
+                      const addActionLabel = `${t('pages.compare.addRecommended')}: ${productName}`;
+                      return needsOptionSelection(recommended) ? (
+                        <Button type="primary" icon={<SettingOutlined />} aria-label={selectActionLabel} title={selectActionLabel} onClick={() => navigate(`/products/${recommended.id}`)}>
+                          {t('pages.wishlist.selectOptions')}
+                        </Button>
+                      ) : (
+                        <Button type="primary" icon={<ShoppingCartOutlined />} aria-label={addActionLabel} title={addActionLabel} onClick={() => addToCart(recommended)}>
+                          {t('pages.compare.addRecommended')}
+                        </Button>
+                      );
+                    })()
                   ) : null}
                   {directReadyProducts.length > 1 ? (
-                    <Button icon={<ShoppingCartOutlined />} onClick={addDirectReadyProductsToCart}>
+                    <Button
+                      icon={<ShoppingCartOutlined />}
+                      aria-label={compareAddAllActionLabel}
+                      title={compareAddAllActionLabel}
+                      onClick={addDirectReadyProductsToCart}
+                    >
                       {t('pages.wishlist.addAllToCart')}
                     </Button>
                   ) : null}
-                  <Button onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
+                  <Button aria-label={compareAddMoreActionLabel} title={compareAddMoreActionLabel} onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
                 </Space>
               </div>
               <div className="product-compare__riskGrid">
@@ -574,7 +615,7 @@ const ProductCompare: React.FC = () => {
                   <Text className="product-compare__eyebrow">{t('pages.compare.checkoutPathEyebrow')}</Text>
                   <Title level={4}>{t('pages.compare.checkoutPathTitle')}</Title>
                   <Text type="secondary">
-                    {t('pages.compare.checkoutPathSubtitle', { name: compareDecision.recommended.name })}
+                    {t('pages.compare.checkoutPathSubtitle', { name: compareProductName(compareDecision.recommended) })}
                   </Text>
                 </div>
                 <div className="product-compare__checkoutSteps">
@@ -589,13 +630,25 @@ const ProductCompare: React.FC = () => {
                   </span>
                 </div>
                 {compareDecision.recommendedNeedsSelection ? (
-                  <Button type="primary" icon={<SettingOutlined />} onClick={() => navigate(`/products/${compareDecision.recommended!.id}`)}>
-                    {t('pages.wishlist.selectOptions')}
-                  </Button>
+                  (() => {
+                    const productName = compareProductName(compareDecision.recommended!);
+                    const selectActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
+                    return (
+                      <Button type="primary" icon={<SettingOutlined />} aria-label={selectActionLabel} title={selectActionLabel} onClick={() => navigate(`/products/${compareDecision.recommended!.id}`)}>
+                        {t('pages.wishlist.selectOptions')}
+                      </Button>
+                    );
+                  })()
                 ) : (
-                  <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => addToCart(compareDecision.recommended!)}>
-                    {t('pages.compare.checkoutPathCta')}
-                  </Button>
+                  (() => {
+                    const productName = compareProductName(compareDecision.recommended!);
+                    const addActionLabel = `${t('pages.compare.checkoutPathCta')}: ${productName}`;
+                    return (
+                      <Button type="primary" icon={<ShoppingCartOutlined />} aria-label={addActionLabel} title={addActionLabel} onClick={() => addToCart(compareDecision.recommended!)}>
+                        {t('pages.compare.checkoutPathCta')}
+                      </Button>
+                    );
+                  })()
                 )}
               </section>
             ) : null}

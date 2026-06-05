@@ -66,8 +66,8 @@ const resolveProductPrimaryImage = (product: Product) => {
   return resolveProductListImage(product.imageUrl || galleryImage || '');
 };
 const productListImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 33vw, 25vw';
-const eagerImagePriorityProps = { fetchPriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
-const lazyImagePriorityProps = { fetchPriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
+const eagerImagePriorityProps = { fetchpriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
+const lazyImagePriorityProps = { fetchpriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
 const shouldShowCatalogFallbackToast = process.env.NODE_ENV !== 'production';
 
 const readSearchHistory = () => {
@@ -280,6 +280,9 @@ const ProductList: React.FC = () => {
   const previousProductsRef = useRef<Product[]>([]);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const productSearchActionLabel = `${t('common.search')}: ${t('pages.productList.searchPlaceholder')}`;
+  const productListProductName = (product: Pick<Product, 'id' | 'name'>) =>
+    (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id });
   useNativeBackHandler(filterDrawerOpen, () => {
     setFilterDrawerOpen(false);
     return true;
@@ -920,6 +923,12 @@ const ProductList: React.FC = () => {
     navigate(buildProductsUrl({ keyword: trimmed }));
   };
 
+  const handleSearchTermKeyDown = (event: React.KeyboardEvent<HTMLElement>, term: string) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleSearch(term);
+  };
+
   const clearSearchHistory = () => {
     setSearchHistory([]);
     writeSearchHistory([]);
@@ -1004,23 +1013,37 @@ const ProductList: React.FC = () => {
     <>
       <Text type="secondary">{t('pages.productList.quickAddHint')}</Text>
       {quickAddOptionGroups.map((group) => (
-        <Select
-          key={group.name}
-          placeholder={getLocalizedOptionLabel(group.name, language)}
-          value={quickAddOptions[group.name] || undefined}
-          onChange={(value) => selectQuickAddOption(group.name, value)}
-          options={group.values.map((value) => ({
-            value,
-            label: getLocalizedOptionLabel(value, language),
-        disabled: !optionValueIsCompatible(quickAddVariants, quickAddOptions, group.name, value),
-      }))}
-          className="product-list__quickAddSelect"
-          popupClassName="shop-mobile-popup-layer"
-          getPopupContainer={() => document.body}
-        />
+        (() => {
+          const groupLabel = getLocalizedOptionLabel(group.name, language);
+          const quickAddOptionLabel = `${groupLabel}: ${quickAddProductName || t('pages.productList.quickAdd')}`;
+          return (
+            <Select
+              key={group.name}
+              placeholder={groupLabel}
+              value={quickAddOptions[group.name] || undefined}
+              aria-label={quickAddOptionLabel}
+              title={quickAddOptionLabel}
+              onChange={(value) => selectQuickAddOption(group.name, value)}
+              options={group.values.map((value) => ({
+                value,
+                label: getLocalizedOptionLabel(value, language),
+                disabled: !optionValueIsCompatible(quickAddVariants, quickAddOptions, group.name, value),
+              }))}
+              className="product-list__quickAddSelect"
+              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+              getPopupContainer={() => document.body}
+            />
+          );
+        })()
       ))}
       {Object.keys(quickAddOptions).length > 0 && (
-        <Button type="link" onClick={() => setQuickAddOptions({})} className="product-list__quickAddReset">
+        <Button
+          type="link"
+          onClick={() => setQuickAddOptions({})}
+          className="product-list__quickAddReset"
+          aria-label={quickAddResetActionLabel}
+          title={quickAddResetActionLabel}
+        >
           {t('common.reset')}
         </Button>
       )}
@@ -1258,6 +1281,24 @@ const ProductList: React.FC = () => {
         : '',
     ].filter(Boolean).join(' / ')
     : t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount });
+  const heroProductName = heroProduct ? productListProductName(heroProduct) : '';
+  const quickAddProductName = quickAddProduct ? productListProductName(quickAddProduct) : '';
+  const quickAddSubmitActionLabel = `${t('pages.productList.addToCart')}: ${quickAddProductName || t('pages.productList.quickAdd')}`;
+  const quickAddResetActionLabel = `${t('common.reset')}: ${quickAddProductName || t('pages.productList.quickAdd')}`;
+  const previewProductName = previewProduct ? productListProductName(previewProduct) : '';
+  const previewProductWishlisted = previewProduct ? wishlistedProductIds.has(previewProduct.id) : false;
+  const previewProductStockAlerted = previewProduct ? alertedStockProductIds.has(previewProduct.id) : false;
+  const previewPrimaryLabel = previewProduct
+    ? isQuickAddReady(previewProduct) ? t('pages.productList.quickAdd') : t('pages.productList.chooseOptionsAction')
+    : '';
+  const previewPrimaryActionLabel = previewProduct ? `${previewPrimaryLabel}: ${previewProductName}` : '';
+  const previewStockAlertActionLabel = previewProduct
+    ? `${previewProductStockAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}: ${previewProductName}`
+    : '';
+  const previewViewActionLabel = previewProduct ? `${t('pages.productList.viewDetails')}: ${previewProductName}` : '';
+  const previewWishlistActionLabel = previewProduct
+    ? `${previewProductWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${previewProductName}`
+    : '';
   const renderProductAmountText = (label: string, amount: string) => {
     const parts = label.split(amount);
     if (parts.length <= 1) return label;
@@ -1441,6 +1482,29 @@ const ProductList: React.FC = () => {
       },
     ];
   const currentSortLabel = sortOptions.find((option) => option.value === sortBy)?.label || t('pages.productList.defaultSort');
+  const productListFilterContextLabel = `${t('pages.productList.filters')}: ${activeRefinementCount > 0 ? t('pages.productList.activeFilters', { count: activeRefinementCount }) : t('pages.productList.allCategories')}, ${t('pages.productList.count', { count: productCountForUi })}`;
+  const openFilterDrawerActionLabel = productListFilterContextLabel;
+  const resetRefinementsActionLabel = `${t('pages.productList.resetFilters')}: ${productListFilterContextLabel}`;
+  const applyRefinementsActionLabel = `${t('pages.productList.applyFilters')}: ${productListFilterContextLabel}`;
+  const shopBestDealsActionLabel = `${t('pages.productList.shopBestDeals')}: ${t('pages.productList.count', { count: productCountForUi })}`;
+  const shopQuickAddActionLabel = `${t('pages.productList.shopQuickAdd')}: ${t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}`;
+  const loadRecoveryContextLabel = `${t('pages.productList.fetchFailed')}: ${productListFilterContextLabel}`;
+  const refreshCatalogActionLabel = `${t('common.refresh')}: ${loadRecoveryContextLabel}`;
+  const allCategoriesRecoveryActionLabel = `${t('pages.productList.allCategories')}: ${loadRecoveryContextLabel}`;
+  const couponsRecoveryActionLabel = `${t('pages.productList.loadRecoveryCoupons')}: ${loadRecoveryContextLabel}`;
+  const supportRecoveryActionLabel = `${t('pages.productList.loadRecoverySupport')}: ${loadRecoveryContextLabel}`;
+  const emptyAllCategoriesActionLabel = `${t('pages.productList.allCategories')}: ${t('pages.productList.empty')}`;
+  const emptyResetFiltersActionLabel = `${t('pages.productList.resetFilters')}: ${t('pages.productList.empty')}, ${productListFilterContextLabel}`;
+  const mobilePrimaryActionLabel = heroProduct
+    ? `${isQuickAddReady(heroProduct) ? t('pages.productList.addToCart') : t('pages.productList.chooseOptionsAction')}: ${heroProductName}`
+    : filteredProducts.length > 0
+      ? shopQuickAddActionLabel
+      : `${t('pages.productList.loadRecoveryCoupons')}: ${t('pages.productList.empty')}`;
+  const mobileSecondaryActionLabel = filteredProducts.length > 0
+    ? shopBestDealsActionLabel
+    : activeRefinementCount > 0
+      ? resetRefinementsActionLabel
+      : `${t('pages.productList.allCategories')}: ${t('pages.productList.empty')}`;
   const mobileContextActions = [
     keyword.trim()
       ? {
@@ -1528,16 +1592,18 @@ const ProductList: React.FC = () => {
   };
 
   const renderPrimaryAction = (product: Product) => {
+    const productName = productListProductName(product);
     const soldOut = product.stock !== undefined && product.stock <= 0;
     if (soldOut) {
       const alerted = alertedStockProductIds.has(product.id);
-      const stockAlertActionLabel = `${alerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}: ${product.name}`;
+      const stockAlertActionLabel = `${alerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}: ${productName}`;
       return (
         <Button
           key="stock-alert"
           icon={<BellOutlined />}
           size="small"
           className="product-list__actionButton product-list__alertButton"
+          aria-pressed={alerted}
           aria-label={stockAlertActionLabel}
           title={stockAlertActionLabel}
           onClick={(e) => handleStockAlert(e, product)}
@@ -1549,7 +1615,7 @@ const ProductList: React.FC = () => {
       );
     }
     const quickAddLabel = isQuickAddReady(product) ? t('pages.productList.quickAdd') : t('pages.productList.chooseOptionsAction');
-    const quickAddActionLabel = `${quickAddLabel}: ${product.name}`;
+    const quickAddActionLabel = `${quickAddLabel}: ${productName}`;
     return (
       <Button
         key="quick-add"
@@ -1597,21 +1663,36 @@ const ProductList: React.FC = () => {
 
   const renderCategoryPanel = () => (
     <div className="product-list__categoryStack">
-      <Button type={!categoryId ? 'primary' : 'text'} block onClick={() => handleCategoryChange(undefined)} className="product-list__categoryButton">
+      <Button
+        type={!categoryId ? 'primary' : 'text'}
+        block
+        aria-pressed={!categoryId}
+        aria-label={t('pages.productList.allCategories')}
+        title={t('pages.productList.allCategories')}
+        onClick={() => handleCategoryChange(undefined)}
+        className="product-list__categoryButton"
+      >
         {t('pages.productList.allCategories')}
       </Button>
-      {categoryRows.map(cat => (
-        <Button
-          key={cat.id}
-          type={categoryId === cat.id ? 'primary' : 'text'}
-          block
-          onClick={() => handleCategoryChange(cat.id)}
-          className="product-list__categoryButton"
-          style={{ paddingLeft: 12 + ((categoryDepthById.get(cat.id) || 1) - 1) * 14 }}
-        >
-          {normalizeCategoryTitle(cat)}
-        </Button>
-      ))}
+      {categoryRows.map((cat) => {
+        const categoryTitle = normalizeCategoryTitle(cat);
+        const selected = categoryId === cat.id;
+        return (
+          <Button
+            key={cat.id}
+            type={selected ? 'primary' : 'text'}
+            block
+            aria-pressed={selected}
+            aria-label={categoryTitle}
+            title={categoryTitle}
+            onClick={() => handleCategoryChange(cat.id)}
+            className="product-list__categoryButton"
+            style={{ paddingLeft: 12 + ((categoryDepthById.get(cat.id) || 1) - 1) * 14 }}
+          >
+            {categoryTitle}
+          </Button>
+        );
+      })}
     </div>
   );
 
@@ -1625,6 +1706,10 @@ const ProductList: React.FC = () => {
           max={maxCatalogPrice}
           step={priceStep}
           value={displayedPriceRange}
+          ariaLabelForHandle={[
+            `${t('pages.productList.price')} ${formatMoney(displayedPriceRange[0])}`,
+            `${t('pages.productList.price')} ${formatMoney(displayedPriceRange[1])}`,
+          ]}
           onChange={(value) => {
             setPriceFilterTouched(true);
             setPriceRange(value as [number, number]);
@@ -1638,6 +1723,7 @@ const ProductList: React.FC = () => {
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterSize')}</Text>
         <Checkbox.Group
           value={petSizes}
+          aria-label={`${t('pages.productList.filterSize')}: ${t('pages.productList.filters')}`}
           onChange={(value) => updatePetSizes(value.map(String))}
           options={petSizeOptions}
         />
@@ -1646,6 +1732,7 @@ const ProductList: React.FC = () => {
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterMaterial')}</Text>
         <Checkbox.Group
           value={materials}
+          aria-label={`${t('pages.productList.filterMaterial')}: ${t('pages.productList.filters')}`}
           onChange={(value) => updateMaterials(value.map(String))}
           options={materialOptions}
         />
@@ -1654,6 +1741,7 @@ const ProductList: React.FC = () => {
         <Text strong className="product-list__filterLabel">{t('pages.productList.filterColor')}</Text>
         <Checkbox.Group
           value={colors}
+          aria-label={`${t('pages.productList.filterColor')}: ${t('pages.productList.filters')}`}
           onChange={(value) => updateColors(value.map(String))}
           options={colorOptions}
         />
@@ -1666,6 +1754,7 @@ const ProductList: React.FC = () => {
       icon: <FilterOutlined />,
       title: activeRefinementCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.allCategories'),
       text: t('pages.productList.loadRecoveryTipFilters'),
+      ariaLabel: activeRefinementCount > 0 ? resetRefinementsActionLabel : emptyAllCategoriesActionLabel,
       primary: true,
       onClick: () => {
         if (activeRefinementCount > 0) {
@@ -1680,6 +1769,7 @@ const ProductList: React.FC = () => {
       icon: <FireOutlined />,
       title: t('pages.productList.shopBestDeals'),
       text: t('pages.productList.guideStart'),
+      ariaLabel: `${t('pages.productList.shopBestDeals')}: ${t('pages.productList.empty')}`,
       onClick: () => navigate('/products?discount=true'),
     },
     {
@@ -1687,6 +1777,7 @@ const ProductList: React.FC = () => {
       icon: <GiftOutlined />,
       title: t('pages.productList.loadRecoveryCoupons'),
       text: t('pages.productList.loadRecoveryText'),
+      ariaLabel: `${t('pages.productList.loadRecoveryCoupons')}: ${t('pages.productList.empty')}`,
       onClick: () => navigate('/coupons'),
     },
     {
@@ -1694,6 +1785,7 @@ const ProductList: React.FC = () => {
       icon: <CustomerServiceOutlined />,
       title: t('pages.productList.loadRecoverySupport'),
       text: t('pages.productList.loadRecoveryTipSupport'),
+      ariaLabel: `${t('pages.productList.loadRecoverySupport')}: ${t('pages.productList.empty')}`,
       onClick: openSupport,
     },
   ];
@@ -1704,6 +1796,8 @@ const ProductList: React.FC = () => {
           key={action.key}
           type="button"
           className={`product-list__emptyDiscoveryCard${action.primary ? ' product-list__emptyDiscoveryCard--primary' : ''}`}
+          aria-label={action.ariaLabel}
+          title={action.ariaLabel}
           onClick={action.onClick}
         >
           <span className="product-list__emptyDiscoveryIcon">{action.icon}</span>
@@ -1765,8 +1859,10 @@ const ProductList: React.FC = () => {
                 onMouseEnter={() => prefetchProduct(heroProduct.id)}
                 onFocus={() => prefetchProduct(heroProduct.id)}
                 onClick={() => openProductDetail(heroProduct.id)}
+                aria-label={`${t('pages.productList.viewPick')}: ${heroProductName}`}
+                title={`${t('pages.productList.viewPick')}: ${heroProductName}`}
               >
-                <strong>{heroProduct.name}</strong>
+                <strong>{heroProductName}</strong>
                 <Text className="commerce-money">{formatMoney(getPrice(heroProduct))}</Text>
                 <span>{renderBadges(heroProduct).slice(0, 2).map((badge) => badge.label).join(' / ') || t('pages.productList.viewPick')}</span>
                 {heroProductHighlights.length ? (
@@ -1784,6 +1880,8 @@ const ProductList: React.FC = () => {
               <Col xs={24} sm={12} md={14} flex="auto">
                 <Input.Search
                   placeholder={t('pages.productList.searchPlaceholder')}
+                  aria-label={productSearchActionLabel}
+                  title={productSearchActionLabel}
                   value={keyword}
                   maxLength={MAX_SEARCH_LENGTH}
                   onChange={e => setKeyword(e.target.value.slice(0, MAX_SEARCH_LENGTH))}
@@ -1792,8 +1890,8 @@ const ProductList: React.FC = () => {
                   enterButton={(
                     <Button
                       type="primary"
-                      aria-label={t('common.search')}
-                      title={t('common.search')}
+                      aria-label={productSearchActionLabel}
+                      title={productSearchActionLabel}
                       icon={<SearchOutlined />}
                     />
                   )}
@@ -1804,15 +1902,17 @@ const ProductList: React.FC = () => {
                   value={sortBy}
                   onChange={applySort}
                   className="product-list__sortSelect"
+                  aria-label={`${t('pages.productList.defaultSort')}: ${currentSortLabel}`}
+                  title={`${t('pages.productList.defaultSort')}: ${currentSortLabel}`}
                   options={sortOptions}
-                  popupClassName="shop-mobile-popup-layer"
+                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                   getPopupContainer={() => document.body}
                 />
               </Col>
               <Col xs={12} sm={7} md={4}>
                 <div className="product-list__toolbarMeta">
                   <Text type="secondary">{t('pages.productList.count', { count: productCountForUi })}</Text>
-                  <Button className="product-list__filterButton" icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
+                  <Button className="product-list__filterButton" icon={<FilterOutlined />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
                     <span>{t('pages.productList.filters')}</span>
                     {activeRefinementCount > 0 ? (
                       <span className="product-list__filterCount">{activeRefinementCount > 99 ? '99+' : activeRefinementCount}</span>
@@ -1835,7 +1935,7 @@ const ProductList: React.FC = () => {
                     {tag.label}
                   </Tag>
                 ))}
-                <Button type="link" size="small" onClick={resetFilters}>
+                <Button type="link" size="small" aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetFilters}>
                   {t('pages.productList.resetFilters')}
                 </Button>
               </div>
@@ -1844,11 +1944,20 @@ const ProductList: React.FC = () => {
               <Space wrap size={[8, 8]} className="product-list__recentSearches">
                 <Text type="secondary">{t('pages.productList.recentSearches')}</Text>
                 {searchHistory.map((term) => (
-                  <Tag key={term} style={{ cursor: 'pointer' }} onClick={() => handleSearch(term)}>
+                  <Tag
+                    key={term}
+                    style={{ cursor: 'pointer' }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${t('common.search')}: ${term}`}
+                    title={`${t('common.search')}: ${term}`}
+                    onClick={() => handleSearch(term)}
+                    onKeyDown={(event) => handleSearchTermKeyDown(event, term)}
+                  >
                     {term}
                   </Tag>
                 ))}
-                <Button type="link" size="small" onClick={clearSearchHistory}>
+                <Button type="link" size="small" aria-label={`${t('pages.productList.clearSearches')}: ${t('pages.productList.recentSearches')}`} title={`${t('pages.productList.clearSearches')}: ${t('pages.productList.recentSearches')}`} onClick={clearSearchHistory}>
                   {t('pages.productList.clearSearches')}
                 </Button>
               </Space>
@@ -1862,6 +1971,7 @@ const ProductList: React.FC = () => {
                   type="button"
                   className="product-list__mobileContextChip"
                   onClick={action.onClear}
+                  aria-label={`${t('common.reset')}: ${action.label}`}
                   title={action.label}
                 >
                   <span className="product-list__mobileContextIcon">{action.icon}</span>
@@ -1872,6 +1982,8 @@ const ProductList: React.FC = () => {
               <button
                 type="button"
                 className="product-list__mobileContextChip product-list__mobileContextChip--clear"
+                aria-label={resetRefinementsActionLabel}
+                title={resetRefinementsActionLabel}
                 onClick={resetCatalogView}
               >
                 <ReloadOutlined />
@@ -1886,6 +1998,8 @@ const ProductList: React.FC = () => {
                 type="button"
                 className={action.active ? 'product-list__mobileDiscoveryButton product-list__mobileDiscoveryButton--active' : 'product-list__mobileDiscoveryButton'}
                 aria-pressed={action.active}
+                aria-label={`${action.label}: ${t('home.categories')}`}
+                title={`${action.label}: ${t('home.categories')}`}
                 onClick={action.onClick}
               >
                 <span className="product-list__mobileDiscoveryIcon">{action.icon}</span>
@@ -1910,6 +2024,8 @@ const ProductList: React.FC = () => {
                     size="small"
                     type={action.primary ? 'primary' : 'default'}
                     icon={action.icon}
+                    aria-label={`${action.label}: ${mobileNextStepTitle}`}
+                    title={`${action.label}: ${mobileNextStepTitle}`}
                     onClick={action.onClick}
                   >
                     {action.label}
@@ -1933,10 +2049,10 @@ const ProductList: React.FC = () => {
                 </span>
               </div>
               <div className="product-list__mobileConversionActions">
-                <Button icon={<FilterOutlined />} onClick={() => setFilterDrawerOpen(true)}>
+                <Button icon={<FilterOutlined />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
                   {t('pages.productList.filters')}
                 </Button>
-                <Button onClick={filteredProducts.length > 0 ? () => applySort('discount-desc') : activeRefinementCount > 0 ? resetMobileRefinements : () => navigate('/products')}>
+                <Button aria-label={mobileSecondaryActionLabel} title={mobileSecondaryActionLabel} onClick={filteredProducts.length > 0 ? () => applySort('discount-desc') : activeRefinementCount > 0 ? resetMobileRefinements : () => navigate('/products')}>
                   {filteredProducts.length > 0
                     ? t('pages.productList.shopBestDeals')
                     : activeRefinementCount > 0
@@ -1946,6 +2062,8 @@ const ProductList: React.FC = () => {
                 <Button
                   type="primary"
                   icon={heroProduct || filteredProducts.length > 0 ? <ShoppingCartOutlined /> : <GiftOutlined />}
+                  aria-label={mobilePrimaryActionLabel}
+                  title={mobilePrimaryActionLabel}
                   onClick={(event) => {
                     if (heroProduct) {
                       if (isQuickAddReady(heroProduct)) {
@@ -1984,6 +2102,8 @@ const ProductList: React.FC = () => {
                   <Button
                     size="small"
                     icon={<ReloadOutlined />}
+                    aria-label={refreshCatalogActionLabel}
+                    title={refreshCatalogActionLabel}
                     onClick={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
                   >
                     {t('common.refresh')}
@@ -2009,16 +2129,18 @@ const ProductList: React.FC = () => {
                       className="product-list__smartPick"
                       onMouseEnter={() => prefetchProduct(heroProduct.id)}
                       onFocus={() => prefetchProduct(heroProduct.id)}
+                      aria-label={`${t('pages.productList.viewPick')}: ${heroProductName}`}
+                      title={`${t('pages.productList.viewPick')}: ${heroProductName}`}
                       onClick={() => openProductDetail(heroProduct.id)}
                     >
                       <span>{t('pages.productList.viewPick')}</span>
-                      <strong>{heroProduct.name}</strong>
+                      <strong>{heroProductName}</strong>
                     </Button>
                   ) : null}
-                  <Button className="product-list__smartAction" onClick={() => applySort('discount-desc')}>
+                  <Button className="product-list__smartAction" aria-label={shopBestDealsActionLabel} title={shopBestDealsActionLabel} onClick={() => applySort('discount-desc')}>
                     {t('pages.productList.shopBestDeals')}
                   </Button>
-                  <Button className="product-list__smartPersonal" onClick={() => applySort('quick-add-desc')}>
+                  <Button className="product-list__smartPersonal" aria-label={shopQuickAddActionLabel} title={shopQuickAddActionLabel} onClick={() => applySort('quick-add-desc')}>
                     {t('pages.productList.shopQuickAdd')}
                   </Button>
                 </Space>
@@ -2033,9 +2155,9 @@ const ProductList: React.FC = () => {
                   <span>{renderProductAmountText(t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) }), formatMoney(productListInsights.averageSavings))}</span>
                   <span>{t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount })}</span>
                   {activeFilterCount > 0 ? (
-                    <Button type="link" onClick={resetFilters}>{t('pages.productList.resetFilters')}</Button>
+                    <Button type="link" aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetFilters}>{t('pages.productList.resetFilters')}</Button>
                   ) : (
-                    <Button type="link" onClick={() => applySort('positive-rate-desc')}>{t('pages.productList.shopTopRated')}</Button>
+                    <Button type="link" aria-label={`${t('pages.productList.shopTopRated')}: ${topCategoryName}`} title={`${t('pages.productList.shopTopRated')}: ${topCategoryName}`} onClick={() => applySort('positive-rate-desc')}>{t('pages.productList.shopTopRated')}</Button>
                   )}
                 </div>
               </section>
@@ -2048,6 +2170,7 @@ const ProductList: React.FC = () => {
                   </div>
                   <div className="product-list__checkoutPathItems">
                     {checkoutPathProducts.map((product) => {
+                      const productName = productListProductName(product);
                       const quickReady = isQuickAddReady(product);
                       const lowStock = getLowStockCount(product.stock);
                       const tagLabel = quickReady
@@ -2062,7 +2185,8 @@ const ProductList: React.FC = () => {
                           key={product.id}
                           type="button"
                           className="product-list__checkoutPathItem"
-                          aria-label={`${t('pages.productList.viewPick')}: ${product.name}`}
+                          aria-label={`${t('pages.productList.viewPick')}: ${productName}`}
+                          title={`${t('pages.productList.viewPick')}: ${productName}`}
                           onMouseEnter={() => prefetchProduct(product.id)}
                           onFocus={() => prefetchProduct(product.id)}
                           onClick={(event) => {
@@ -2074,7 +2198,7 @@ const ProductList: React.FC = () => {
                           }}
                         >
                           <span>
-                            <strong>{product.name}</strong>
+                            <strong>{productName}</strong>
                             <small className="commerce-atomic">
                               <span className="commerce-money">{formatMoney(getPrice(product))}</span>
                               {savings > 0 ? <span> - {renderSavingsText(savings)}</span> : null}
@@ -2105,17 +2229,19 @@ const ProductList: React.FC = () => {
                     <Button
                       type="primary"
                       icon={<ReloadOutlined />}
+                      aria-label={refreshCatalogActionLabel}
+                      title={refreshCatalogActionLabel}
                       onClick={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
                     >
                       {t('common.refresh')}
                     </Button>
-                    <Button icon={<FilterOutlined />} onClick={() => navigate('/products')}>
+                    <Button icon={<FilterOutlined />} aria-label={allCategoriesRecoveryActionLabel} title={allCategoriesRecoveryActionLabel} onClick={() => navigate('/products')}>
                       {t('pages.productList.allCategories')}
                     </Button>
-                    <Button icon={<GiftOutlined />} onClick={() => navigate('/coupons')}>
+                    <Button icon={<GiftOutlined />} aria-label={couponsRecoveryActionLabel} title={couponsRecoveryActionLabel} onClick={() => navigate('/coupons')}>
                       {t('pages.productList.loadRecoveryCoupons')}
                     </Button>
-                    <Button icon={<CustomerServiceOutlined />} onClick={openSupport}>
+                    <Button icon={<CustomerServiceOutlined />} aria-label={supportRecoveryActionLabel} title={supportRecoveryActionLabel} onClick={openSupport}>
                       {t('pages.productList.loadRecoverySupport')}
                     </Button>
                   </div>
@@ -2134,10 +2260,10 @@ const ProductList: React.FC = () => {
                 {renderDiscoveryActions()}
                 {(keyword || categoryId || collection || activeFilterCount > 0) ? (
                   <Space wrap className="product-list__emptyActions">
-                    <Button type="link" onClick={() => navigate('/products')}>
+                    <Button type="link" aria-label={emptyAllCategoriesActionLabel} title={emptyAllCategoriesActionLabel} onClick={() => navigate('/products')}>
                       {t('pages.productList.allCategories')}
                     </Button>
-                    <Button type="link" onClick={resetFilters}>
+                    <Button type="link" aria-label={emptyResetFiltersActionLabel} title={emptyResetFiltersActionLabel} onClick={resetFilters}>
                       {t('pages.productList.resetFilters')}
                     </Button>
                   </Space>
@@ -2148,56 +2274,56 @@ const ProductList: React.FC = () => {
             <>
               <Row gutter={[16, 16]} className="product-list__grid">
                 {paginatedProducts.map((product, index) => {
+                  const productName = productListProductName(product);
                   const imageUrl = resolveProductPrimaryImage(product);
                   const priorityImage = currentPage === 1 && index < 4;
-                  const previewActionLabel = `${t('pages.productList.quickPreview')}: ${product.name}`;
-                  const wishlistActionLabel = `${wishlistedProductIds.has(product.id) ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${product.name}`;
-                  const compareActionLabel = `${isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}: ${product.name}`;
+                  const viewDetailsActionLabel = `${t('pages.productList.viewDetails')}: ${productName}`;
+                  const previewActionLabel = `${t('pages.productList.quickPreview')}: ${productName}`;
+                  const wishlistActionLabel = `${wishlistedProductIds.has(product.id) ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${productName}`;
+                  const compareActionLabel = `${isProductCompared(product.id) ? t('pages.productList.viewCompare') : t('pages.productList.compare')}: ${productName}`;
                   return (
                   <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
                     <Card
                       className="product-list__card"
                       hoverable
-                      role="button"
-                      tabIndex={0}
                       onMouseEnter={() => prefetchProduct(product.id)}
                       onFocus={() => prefetchProduct(product.id)}
-                      onClick={() => openProductDetail(product.id)}
-                      onKeyDown={(event) => {
-                        if (event.target !== event.currentTarget) return;
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          openProductDetail(product.id);
-                        }
-                      }}
                       cover={
                         <div className="product-list__imageWrap">
-                          <img
-                            alt={product.name}
-                            src={getOptimizedImageUrl(imageUrl, priorityImage ? 520 : 360)}
-                            srcSet={buildResponsiveImageSrcSet(imageUrl, [240, 360, 520, 720])}
-                            sizes={productListImageSizes}
-                            className="product-list__image"
-                            width={520}
-                            height={480}
-                            loading={priorityImage ? 'eager' : 'lazy'}
-                            decoding="async"
-                            {...(priorityImage ? eagerImagePriorityProps : lazyImagePriorityProps)}
-                            onError={(event) => {
-                              if (event.currentTarget.src !== productImageFallback) {
-                                event.currentTarget.removeAttribute('srcset');
-                                event.currentTarget.src = productImageFallback;
-                              }
-                            }}
-                          />
-                          <div className="product-list__badges" aria-label={t('pages.productList.productBadges')}>
-                            {renderBadges(product).slice(0, 3).map((badge) => <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>)}
-                          </div>
-                          {product.stock !== undefined && product.stock <= 0 && (
-                            <div className="product-list__soldOut">
-                              {t('pages.productList.soldOut')}
-                            </div>
-                          )}
+                          <button
+                            type="button"
+                            className="product-list__imageButton"
+                            aria-label={viewDetailsActionLabel}
+                            title={viewDetailsActionLabel}
+                            onClick={() => openProductDetail(product.id)}
+                          >
+                            <img
+                              alt={productName}
+                              src={getOptimizedImageUrl(imageUrl, priorityImage ? 520 : 360)}
+                              srcSet={buildResponsiveImageSrcSet(imageUrl, [240, 360, 520, 720])}
+                              sizes={productListImageSizes}
+                              className="product-list__image"
+                              width={520}
+                              height={480}
+                              loading={priorityImage ? 'eager' : 'lazy'}
+                              decoding="async"
+                              {...(priorityImage ? eagerImagePriorityProps : lazyImagePriorityProps)}
+                              onError={(event) => {
+                                if (event.currentTarget.src !== productImageFallback) {
+                                  event.currentTarget.removeAttribute('srcset');
+                                  event.currentTarget.src = productImageFallback;
+                                }
+                              }}
+                            />
+                            <span className="product-list__badges" aria-label={t('pages.productList.productBadges')}>
+                              {renderBadges(product).slice(0, 3).map((badge) => <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>)}
+                            </span>
+                            {product.stock !== undefined && product.stock <= 0 && (
+                              <span className="product-list__soldOut">
+                                {t('pages.productList.soldOut')}
+                              </span>
+                            )}
+                          </button>
                           <div className="product-list__imageOverlay">
                             <Button
                               size="small"
@@ -2221,6 +2347,7 @@ const ProductList: React.FC = () => {
                           className={wishlistedProductIds.has(product.id)
                             ? 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton product-list__favoriteButton--active'
                             : 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton'}
+                          aria-pressed={wishlistedProductIds.has(product.id)}
                           aria-label={wishlistActionLabel}
                           title={wishlistActionLabel}
                           onClick={(e) => handleWishlistToggle(e, product)}
@@ -2245,7 +2372,7 @@ const ProductList: React.FC = () => {
                       ]}
                     >
                       <Card.Meta
-                        title={<Text ellipsis={{ tooltip: product.name }}>{product.name}</Text>}
+                        title={<Text ellipsis={{ tooltip: productName }}>{productName}</Text>}
                         description={
                           <div>
                             <div className="product-list__priceLine">
@@ -2315,7 +2442,7 @@ const ProductList: React.FC = () => {
         height="82vh"
         className="profile-mobile-safe-modal product-list__mobileDrawer"
         extra={
-          <Button type="link" disabled={activeRefinementCount === 0} onClick={resetMobileRefinements}>
+          <Button type="link" disabled={activeRefinementCount === 0} aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetMobileRefinements}>
             {t('pages.productList.resetFilters')}
           </Button>
         }
@@ -2338,17 +2465,17 @@ const ProductList: React.FC = () => {
             </Card>
           </div>
           <div className="product-list__drawerFooter">
-            <Button size="large" disabled={activeRefinementCount === 0} onClick={resetMobileRefinements}>
+            <Button size="large" disabled={activeRefinementCount === 0} aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetMobileRefinements}>
               {t('pages.productList.resetFilters')}
             </Button>
-            <Button type="primary" size="large" onClick={() => setFilterDrawerOpen(false)}>
+            <Button type="primary" size="large" aria-label={applyRefinementsActionLabel} title={applyRefinementsActionLabel} onClick={() => setFilterDrawerOpen(false)}>
               {t('pages.productList.applyFilters')}
             </Button>
           </div>
         </div>
       </Drawer>
       <Modal
-        title={quickAddProduct ? t('pages.productList.quickAddTitle', { name: quickAddProduct.name }) : t('pages.productList.quickAdd')}
+        title={quickAddProduct ? t('pages.productList.quickAddTitle', { name: quickAddProductName }) : t('pages.productList.quickAdd')}
         open={!!quickAddProduct}
         onCancel={() => {
           if (quickAddSubmitting) return;
@@ -2357,8 +2484,8 @@ const ProductList: React.FC = () => {
         onOk={submitQuickAdd}
         okText={t('pages.productList.addToCart')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ disabled: quickAddSubmitDisabled || quickAddSubmitting, loading: quickAddSubmitting }}
-        cancelButtonProps={{ disabled: quickAddSubmitting }}
+        okButtonProps={{ disabled: quickAddSubmitDisabled || quickAddSubmitting, loading: quickAddSubmitting, 'aria-label': quickAddSubmitActionLabel, title: quickAddSubmitActionLabel }}
+        cancelButtonProps={{ disabled: quickAddSubmitting, 'aria-label': `${t('common.cancel')}: ${quickAddSubmitActionLabel}`, title: `${t('common.cancel')}: ${quickAddSubmitActionLabel}` }}
         className="profile-mobile-safe-modal product-list__quickAddModal"
       >
         <Space direction="vertical" className="product-list__quickAddContent">
@@ -2402,13 +2529,13 @@ const ProductList: React.FC = () => {
         onCancel={() => setPreviewProduct(null)}
         width={860}
         className="profile-mobile-safe-modal product-list__previewModal"
-        destroyOnClose
+        destroyOnHidden
       >
         {previewProduct ? (
           <div className="product-list__preview">
             <div className="product-list__previewMedia">
               <img
-                alt={previewProduct.name}
+                alt={previewProductName}
                 src={getOptimizedImageUrl(resolveProductPrimaryImage(previewProduct), 720)}
                 srcSet={buildResponsiveImageSrcSet(resolveProductPrimaryImage(previewProduct), [360, 520, 720, 960])}
                 sizes="(max-width: 720px) 100vw, 420px"
@@ -2434,7 +2561,7 @@ const ProductList: React.FC = () => {
               <Text type="secondary" className="product-list__previewBrand">
                 {previewProduct.brand || topCategoryName}
               </Text>
-              <h2>{previewProduct.name}</h2>
+              <h2>{previewProductName}</h2>
               <Text className="product-list__previewDescription">
                 {previewProduct.description || t('pages.productList.previewNoDescription')}
               </Text>
@@ -2466,29 +2593,40 @@ const ProductList: React.FC = () => {
               </div>
               <div className="product-list__previewActions">
                 {isProductSoldOut(previewProduct) ? (
-                  <Button icon={<BellOutlined />} onClick={(event) => handleStockAlert(event, previewProduct)}>
-                    {alertedStockProductIds.has(previewProduct.id) ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
+                  <Button
+                    icon={<BellOutlined />}
+                    aria-pressed={previewProductStockAlerted}
+                    aria-label={previewStockAlertActionLabel}
+                    title={previewStockAlertActionLabel}
+                    onClick={(event) => handleStockAlert(event, previewProduct)}
+                  >
+                    {previewProductStockAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
                   </Button>
                 ) : (
                   <Button
                     type="primary"
                     icon={<ShoppingCartOutlined />}
+                    aria-label={previewPrimaryActionLabel}
+                    title={previewPrimaryActionLabel}
                     onClick={(event) => {
                       openQuickAdd(event, previewProduct);
                       setPreviewProduct(null);
                     }}
                   >
-                    {isQuickAddReady(previewProduct) ? t('pages.productList.quickAdd') : t('pages.productList.chooseOptionsAction')}
+                    {previewPrimaryLabel}
                   </Button>
                 )}
-                <Button onClick={() => openProductDetail(previewProduct.id)}>
+                <Button aria-label={previewViewActionLabel} title={previewViewActionLabel} onClick={() => openProductDetail(previewProduct.id)}>
                   {t('pages.productList.viewDetails')}
                 </Button>
                 <Button
-                  icon={wishlistedProductIds.has(previewProduct.id) ? <HeartFilled /> : <HeartOutlined />}
+                  icon={previewProductWishlisted ? <HeartFilled /> : <HeartOutlined />}
+                  aria-pressed={previewProductWishlisted}
+                  aria-label={previewWishlistActionLabel}
+                  title={previewWishlistActionLabel}
                   onClick={(event) => handleWishlistToggle(event, previewProduct)}
                 >
-                  {wishlistedProductIds.has(previewProduct.id) ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
+                  {previewProductWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
                 </Button>
               </div>
             </div>

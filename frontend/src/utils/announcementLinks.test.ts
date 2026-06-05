@@ -1,14 +1,14 @@
 import { isSafeAnnouncementLink, normalizeAnnouncementLink } from './announcementLinks';
 
 describe('announcement link helpers', () => {
-  it('normalizes safe internal and http links', () => {
+  it('normalizes safe internal and https links', () => {
     expect(normalizeAnnouncementLink(' /coupons ')).toBe('/coupons');
     expect(normalizeAnnouncementLink('https://example.com/deals')).toBe('https://example.com/deals');
-    expect(normalizeAnnouncementLink('http://example.com')).toBe('http://example.com');
   });
 
   it('drops unsafe announcement links', () => {
     expect(normalizeAnnouncementLink('javascript:alert(1)')).toBe('');
+    expect(normalizeAnnouncementLink('http://example.com')).toBe('');
     expect(normalizeAnnouncementLink('//evil.example')).toBe('');
     expect(normalizeAnnouncementLink('https://user:pass@example.com/deals')).toBe('');
     expect(normalizeAnnouncementLink('https://example.com\\@evil.example')).toBe('');
@@ -19,6 +19,7 @@ describe('announcement link helpers', () => {
     expect(isSafeAnnouncementLink('')).toBe(true);
     expect(isSafeAnnouncementLink('   ')).toBe(true);
     expect(isSafeAnnouncementLink('/pet-finder')).toBe(true);
+    expect(isSafeAnnouncementLink('http://example.com')).toBe(false);
     expect(isSafeAnnouncementLink('javascript:alert(1)')).toBe(false);
   });
 });

@@ -111,6 +111,14 @@ const PermissionManagement: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const pageLabel = t('pages.permissions.title');
+  const roleEditorLabel = editingRole?.name || editingRole?.code || t('pages.permissions.newRole');
+  const searchLabel = `${pageLabel}: ${t('pages.permissions.searchPlaceholder')}`;
+  const newRoleActionLabel = `${pageLabel}: ${t('pages.permissions.newRole')}`;
+  const exportActionLabel = `${pageLabel}: ${t('pages.permissions.export')}`;
+  const saveRoleActionLabel = `${t('common.save')}: ${roleEditorLabel}`;
+  const cancelRoleActionLabel = `${t('common.cancel')}: ${roleEditorLabel}`;
+
   return (
     <div className="permission-management-page">
       <Title level={4}>{t('pages.permissions.title')}</Title>
@@ -124,12 +132,14 @@ const PermissionManagement: React.FC = () => {
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('pages.permissions.searchPlaceholder')}
+            aria-label={searchLabel}
+            title={searchLabel}
             className="permission-management-page__searchInput"
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openRoleModal()}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openRoleModal()} aria-label={newRoleActionLabel} title={newRoleActionLabel}>
             {t('pages.permissions.newRole')}
           </Button>
-          <Button icon={<DownloadOutlined />} onClick={exportRoles}>
+          <Button icon={<DownloadOutlined />} onClick={exportRoles} aria-label={exportActionLabel} title={exportActionLabel}>
             {t('pages.permissions.export')}
           </Button>
         </Space>
@@ -168,13 +178,16 @@ const PermissionManagement: React.FC = () => {
           {
             title: t('common.actions'),
             width: 120,
-            render: (_, role) => isReservedRole(role)
-              ? <Tag>{t('pages.permissions.systemRole')}</Tag>
-              : (
-                <Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => openRoleModal(role)}>
+            render: (_, role) => {
+              if (isReservedRole(role)) return <Tag>{t('pages.permissions.systemRole')}</Tag>;
+              const roleLabel = role.name || role.code;
+              const editActionLabel = `${t('common.edit')}: ${roleLabel}`;
+              return (
+                <Button size="small" icon={<SafetyCertificateOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => openRoleModal(role)}>
                   {t('common.edit')}
                 </Button>
-              ),
+              );
+            },
           },
         ]}
       />
@@ -187,28 +200,32 @@ const PermissionManagement: React.FC = () => {
         confirmLoading={saving}
         width={720}
         className="profile-mobile-safe-modal permission-management-page__modal"
+        okButtonProps={{ 'aria-label': saveRoleActionLabel, title: saveRoleActionLabel }}
+        cancelButtonProps={{ 'aria-label': cancelRoleActionLabel, title: cancelRoleActionLabel }}
         destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="code" label={t('pages.permissions.roleCode')} rules={[{ required: true }]}>
-            <Input disabled={Boolean(editingRole)} placeholder="CUSTOMER_SERVICE" />
+            <Input disabled={Boolean(editingRole)} placeholder="CUSTOMER_SERVICE" aria-label={`${roleEditorLabel}: ${t('pages.permissions.roleCode')}`} title={`${roleEditorLabel}: ${t('pages.permissions.roleCode')}`} />
           </Form.Item>
           <Form.Item name="name" label={t('pages.permissions.roleName')} rules={[{ required: true }]}>
-            <Input />
+            <Input aria-label={`${roleEditorLabel}: ${t('pages.permissions.roleName')}`} title={`${roleEditorLabel}: ${t('pages.permissions.roleName')}`} />
           </Form.Item>
           <Form.Item name="description" label={t('pages.permissions.description')}>
-            <Input />
+            <Input aria-label={`${roleEditorLabel}: ${t('pages.permissions.description')}`} title={`${roleEditorLabel}: ${t('pages.permissions.description')}`} />
           </Form.Item>
           <Form.Item name="permissions" label={t('pages.permissions.permissionPages')} rules={[{ required: true }]}>
-            <Checkbox.Group className="permission-management-page__checkboxGroup">
-              <Space wrap className="permission-management-page__permissionGrid">
-                {ADMIN_PAGE_PERMISSIONS.map((permission) => (
-                  <Checkbox key={permission} value={permission}>
-                    {t(adminPermissionLabelKey(permission))}
-                  </Checkbox>
-                ))}
-              </Space>
-            </Checkbox.Group>
+	            <div role="group" aria-label={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`} title={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`}>
+	              <Checkbox.Group className="permission-management-page__checkboxGroup" aria-label={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`}>
+                <Space wrap className="permission-management-page__permissionGrid">
+                  {ADMIN_PAGE_PERMISSIONS.map((permission) => (
+                    <Checkbox key={permission} value={permission} title={`${roleEditorLabel}: ${t(adminPermissionLabelKey(permission))}`}>
+                      {t(adminPermissionLabelKey(permission))}
+                    </Checkbox>
+                  ))}
+                </Space>
+              </Checkbox.Group>
+            </div>
           </Form.Item>
         </Form>
       </Modal>

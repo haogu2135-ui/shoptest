@@ -48,6 +48,18 @@ public class SupportService {
         return getOrCreateOpenSession(userId, normalizedContextKey, session);
     }
 
+    public SupportSession findOpenSession(Long userId) {
+        return supportSessionMapper.findOpenByUserId(userId);
+    }
+
+    public SupportSession findOpenSession(Long userId, String contextKey) {
+        String normalizedContextKey = normalizeContextKey(contextKey);
+        if (normalizedContextKey == null) {
+            return findOpenSession(userId);
+        }
+        return supportSessionMapper.findOpenByUserIdAndContextKey(userId, normalizedContextKey);
+    }
+
     private SupportSession getOrCreateOpenSession(Long userId, String contextKey, SupportSession existingSession) {
         SupportSession session = existingSession;
         if (session != null) {

@@ -9,8 +9,8 @@ declare global {
       Plugins?: {
         App?: {
           addListener?: (
-            eventName: 'backButton',
-            listener: (event?: { canGoBack?: boolean }) => void,
+            eventName: 'backButton' | 'appStateChange' | 'resume',
+            listener: (event?: { canGoBack?: boolean; isActive?: boolean }) => void,
           ) => Promise<{ remove: () => Promise<void> | void }> | { remove: () => Promise<void> | void };
           minimizeApp?: () => Promise<void>;
           exitApp?: () => Promise<void>;
@@ -43,7 +43,6 @@ export type MobileReleaseManifest = {
   manifestUrl?: string;
 };
 
-const DEFAULT_ANDROID_APK_URL = '/downloads/shoptest.apk';
 const DEFAULT_MOBILE_VERSION_MANIFEST_URL = '/downloads/mobile-version.json';
 const DEFAULT_MOBILE_APP_ID = 'com.shoptest.mobile';
 const EXPECTED_MOBILE_PLATFORM = 'android';
@@ -174,15 +173,24 @@ export const currentMobileVersionName = () => {
   return runtimeVersionName || CURRENT_MOBILE_RELEASE.versionName || String(currentMobileVersionCode());
 };
 
+export const currentNativeMobilePlatform = () => {
+  if (!isBrowser()) return '';
+  const platform = cleanString(window.Capacitor?.getPlatform?.()).toLowerCase();
+  if (platform === 'android' || platform === 'ios') return platform;
+  if (window.location.protocol === 'capacitor:') return EXPECTED_MOBILE_PLATFORM;
+  return '';
+};
+
 export const isNativeMobileApp = () => {
   if (!isBrowser()) return false;
   const capacitor = window.Capacitor;
-  const platform = capacitor?.getPlatform?.();
+  const platform = currentNativeMobilePlatform();
   return capacitor?.isNativePlatform?.() === true
-    || platform === 'android'
-    || platform === 'ios'
+    || Boolean(platform)
     || window.location.protocol === 'capacitor:';
 };
+
+export const isNativeAndroidApp = () => currentNativeMobilePlatform() === EXPECTED_MOBILE_PLATFORM;
 
 export const resolveMobileManifestUrl = () => {
   const configured = normalizeMobileUrlValue(
@@ -211,8 +219,8 @@ export const resolveMobileManifestUrl = () => {
 
 export const resolveMobileAssetUrl = (assetUrl: unknown, manifestUrl = resolveMobileManifestUrl()) => {
   const normalizedAssetUrl = normalizeMobileUrlValue(assetUrl);
-  if (normalizedAssetUrl === null) return '';
-  const value = normalizedAssetUrl || DEFAULT_ANDROID_APK_URL;
+  if (!normalizedAssetUrl) return '';
+  const value = normalizedAssetUrl;
   if (isHttpUrl(value)) return normalizeSafeMobileHttpUrl(value);
 
   if (value.startsWith('/') && !value.startsWith('//')) {

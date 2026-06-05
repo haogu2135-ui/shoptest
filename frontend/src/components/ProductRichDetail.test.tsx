@@ -7,22 +7,42 @@ import ProductRichDetail, {
   toEmbeddableVideoUrl,
 } from './ProductRichDetail';
 
-jest.mock('../utils/mediaAssets', () => ({
-  buildResponsiveImageSrcSet: (value: string) => `${value}?w=480 480w, ${value}?w=960 960w`,
-  resolveApiAssetUrl: (value: string) => value,
-}));
+jest.mock('../utils/mediaAssets', () => {
+  const actual = jest.requireActual('../utils/mediaAssets');
+  return {
+    ...actual,
+    buildResponsiveImageSrcSet: (value: string) => `${value}?w=480 480w, ${value}?w=960 960w`,
+    resolveApiAssetUrl: (value: string) => value.startsWith('uploads/') ? `/${value}` : value,
+  };
+});
 
 describe('ProductRichDetail helpers', () => {
   it('trims media urls and rejects credentialed urls', () => {
     expect(isHttpMediaUrl(' https://cdn.example.com/image.jpg ')).toBe(true);
+    expect(isHttpMediaUrl('/uploads/products/detail.jpg')).toBe(true);
+    expect(isHttpMediaUrl('uploads/products/detail.jpg')).toBe(true);
     expect(resolveRichMediaUrl(' https://cdn.example.com/image.jpg ')).toBe('https://cdn.example.com/image.jpg');
+    expect(resolveRichMediaUrl(' uploads/products/detail.jpg ')).toBe('/uploads/products/detail.jpg');
     expect(isHttpMediaUrl('https://user:pass@example.com/image.jpg')).toBe(false);
   });
 
   it('rejects obfuscated rich media urls', () => {
+    expect(isHttpMediaUrl('assets/products/detail.jpg')).toBe(false);
+    expect(isHttpMediaUrl('/assets/products/detail.jpg')).toBe(false);
+    expect(isHttpMediaUrl('/Uploads/products/detail.jpg')).toBe(false);
+    expect(resolveRichMediaUrl('/assets/products/detail.jpg')).toBeNull();
     expect(isHttpMediaUrl('https:\\\\cdn.example.com/image.jpg')).toBe(false);
     expect(isHttpMediaUrl('/uploads/products%5csecret.jpg')).toBe(false);
     expect(isHttpMediaUrl('https://cdn.example.com/video.mp4%00.jpg')).toBe(false);
+  });
+
+  it('rejects rich media urls that the backend media contract refuses', () => {
+    expect(isHttpMediaUrl('http://localhost/image.jpg')).toBe(false);
+    expect(isHttpMediaUrl('https://192.168.1.10/image.jpg')).toBe(false);
+    expect(isHttpMediaUrl('https://[::ffff:192.168.1.10]/image.jpg')).toBe(false);
+    expect(isHttpMediaUrl('https://[::ffff:7f00:1]/image.jpg')).toBe(false);
+    expect(isHttpMediaUrl('https://cdn.example.com:8443/image.jpg')).toBe(false);
+    expect(isHttpMediaUrl('https://cdn.example.com/image.jpg')).toBe(true);
   });
 
   it('normalizes rich detail blocks and drops unsupported entries', () => {

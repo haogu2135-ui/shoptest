@@ -126,6 +126,10 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   const events = result?.events || [];
   const status = result?.status || '';
   const trackingUnavailable = status === 'TRACKING_UNAVAILABLE';
+  const trackingContext = value.trim() || result?.trackingNumber || trackingNumber.trim() || orderNo || t('pages.orderTracking.title');
+  const trackingInputLabel = `${t('pages.orderTracking.trackingNumber')}: ${trackingContext}`;
+  const trackActionLabel = `${t('pages.orderTracking.trackShipment')}: ${trackingContext}`;
+  const trackingResultsLabel = `${t('pages.orderTracking.logistics')}: ${trackingContext}`;
 
   return (
     <Space className="seventeen-track-widget" direction="vertical" size="middle">
@@ -135,9 +139,18 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
           onChange={(event) => setValue(event.target.value)}
           onPressEnter={runTrack}
           placeholder={t('pages.orderTracking.trackingNumber')}
+          aria-label={trackingInputLabel}
+          title={trackingInputLabel}
           autoComplete="off"
         />
-        <Button type="primary" icon={<SearchOutlined />} loading={loading} onClick={runTrack}>
+        <Button
+          type="primary"
+          icon={<SearchOutlined />}
+          loading={loading}
+          aria-label={trackActionLabel}
+          title={trackActionLabel}
+          onClick={runTrack}
+        >
           {t('pages.adminOrders.track')}
         </Button>
       </Space.Compact>
@@ -145,9 +158,11 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         className="seventeen-track-widget__results"
         style={{ minHeight: resultsMinHeight }}
         aria-live="polite"
+        role="region"
+        aria-label={trackingResultsLabel}
       >
         {loading ? (
-          <Typography.Text type="secondary" className="seventeen-track-widget__empty">
+          <Typography.Text type="secondary" className="seventeen-track-widget__empty" role="status">
             {t('common.loading')}
           </Typography.Text>
         ) : error ? (
@@ -171,18 +186,28 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
               ) : null}
             </div>
             {events.length > 0 ? (
-              <div className="seventeen-track-widget__events">
-                {events.map((event, index) => (
-                  <div className="seventeen-track-widget__event" key={`${event.time || 'event'}-${index}`}>
-                    <span className="seventeen-track-widget__eventDot" aria-hidden="true" />
-                    <div className="seventeen-track-widget__eventBody">
-                      <Typography.Text strong>{event.description || t('pages.orderTracking.noTrackingData')}</Typography.Text>
-                      <Typography.Text type="secondary" className="seventeen-track-widget__eventMeta">
-                        {[formatEventTime(event.time, dateLocale), event.location].filter(Boolean).join(' · ')}
-                      </Typography.Text>
+              <div className="seventeen-track-widget__events" role="list" aria-label={trackingResultsLabel}>
+                {events.map((event, index) => {
+                  const eventDescription = event.description || t('pages.orderTracking.noTrackingData');
+                  const eventMeta = [formatEventTime(event.time, dateLocale), event.location].filter(Boolean).join(' · ');
+                  const eventLabel = eventMeta ? `${eventDescription} · ${eventMeta}` : eventDescription;
+                  return (
+                    <div
+                      className="seventeen-track-widget__event"
+                      key={`${event.time || 'event'}-${index}`}
+                      role="listitem"
+                      aria-label={eventLabel}
+                    >
+                      <span className="seventeen-track-widget__eventDot" aria-hidden="true" />
+                      <div className="seventeen-track-widget__eventBody">
+                        <Typography.Text strong>{eventDescription}</Typography.Text>
+                        <Typography.Text type="secondary" className="seventeen-track-widget__eventMeta">
+                          {eventMeta}
+                        </Typography.Text>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : trackingUnavailable ? (
               <Alert

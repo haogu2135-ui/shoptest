@@ -570,4 +570,22 @@
   .review-management-page__replyModal textarea.ant-input {
     min-height: 44px;
   }
+
+  .review-management-page .ant-pagination-item,
+  .review-management-page .ant-pagination-prev,
+  .review-management-page .ant-pagination-next {
+    min-width: 44px !important;
+    height: 44px !important;
+    line-height: 42px !important;
+  }
+
+  .review-management-page .ant-pagination-item a,
+  .review-management-page .ant-pagination-prev .ant-pagination-item-link,
+  .review-management-page .ant-pagination-next .ant-pagination-item-link {
+    min-width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }

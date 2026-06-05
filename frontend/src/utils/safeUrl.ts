@@ -11,10 +11,10 @@ export const isSafeHttpUrl = (value?: string | null) => {
   if (hasUnsafeControlCharacter(trimmed) || trimmed.includes('\\') || normalized.includes('%00') || normalized.includes('%5c')) {
     return false;
   }
-  if (!/^https?:\/\//i.test(trimmed)) return false;
+  if (!/^https:\/\//i.test(trimmed)) return false;
   try {
     const url = new URL(trimmed);
-    return (url.protocol === 'http:' || url.protocol === 'https:') && !url.username && !url.password;
+    return url.protocol === 'https:' && !url.username && !url.password;
   } catch {
     return false;
   }

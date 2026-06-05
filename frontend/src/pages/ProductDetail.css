@@ -539,6 +539,16 @@
   margin-bottom: 16px;
 }
 
+.product-qa-pending {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.product-qa-pending-list .ant-list-item {
+  padding-inline: 0;
+}
+
 .product-summary-space,
 .product-question-answer-form {
   width: 100%;
@@ -564,6 +574,16 @@
   border: 1px solid #b7eb8f;
   border-radius: 6px;
   padding: 10px;
+}
+
+.product-question-item--pending {
+  border-color: #b7eb8f;
+  background: #fbfffa;
+}
+
+.product-answer-box--pending {
+  background: #f6ffed;
+  border-color: #b7eb8f;
 }
 
 .product-recommendations {
@@ -595,6 +615,21 @@
   object-fit: contain;
   cursor: zoom-in;
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+.product-detail-main-image__button {
+  width: 100%;
+  height: 100%;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.product-detail-main-image__button:focus-visible {
+  outline: 3px solid rgba(238, 77, 45, 0.72);
+  outline-offset: -4px;
 }
 
 .product-detail-main-image__img:hover {
@@ -1001,12 +1036,16 @@
   color: #ee4d2d;
 }
 
-.product-quantity__value,
-.product-quantity__value:hover,
-.product-quantity__value:focus {
+.product-quantity__value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 42px;
+  padding: 4px 12px;
   color: #173f2b;
   cursor: default;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .product-quantity-row {
@@ -1373,6 +1412,25 @@
   display: block;
   object-fit: cover;
   border-radius: 8px;
+}
+
+.product-recommendations__imageButton {
+  width: 100%;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.product-recommendations .slick-slide[aria-hidden="true"] {
+  pointer-events: none;
+}
+
+.product-recommendations__imageButton:focus-visible,
+.product-recommendations__card:focus-visible {
+  outline: 3px solid rgba(238, 77, 45, 0.72);
+  outline-offset: 3px;
 }
 
 .product-recommendations__content {
@@ -1872,7 +1930,7 @@
     bottom: 0;
     left: 0;
     z-index: 1000;
-    grid-template-columns: 44px 44px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 44px 44px 44px minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto minmax(44px, auto);
     gap: 5px;
     align-items: stretch;
@@ -2496,6 +2554,7 @@
 .product-quantity__value {
   color: #123f2c;
   background: #ffffff !important;
+  border-radius: 999px;
   box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
 }
 
@@ -2712,7 +2771,7 @@
   }
 
   .product-mobile-buybar {
-    grid-template-columns: 42px 42px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 42px 42px 42px minmax(0, 1fr) minmax(0, 1fr);
     gap: 6px;
   }
 
@@ -2956,7 +3015,7 @@
   }
 
   .product-mobile-buybar {
-    grid-template-columns: 36px 36px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 36px 36px 36px minmax(0, 1fr) minmax(0, 1fr);
     gap: 5px;
   }
 
@@ -4115,6 +4174,7 @@
   .product-purchase-mode .ant-segmented-item-label,
   .product-purchase-mode__details .ant-radio-button-wrapper,
   .product-quantity-row .ant-btn,
+  .product-quantity__value,
   .product-complete-set__item .ant-btn,
   .product-tabs-card .ant-tabs-tab,
   .product-qa-card textarea.ant-input,
@@ -4127,6 +4187,7 @@
   }
 
   .product-quantity-row .ant-btn,
+  .product-quantity__value,
   .product-complete-set__item .ant-btn,
   .product-mobile-buybar__tool {
     min-width: 44px;
@@ -4152,5 +4213,242 @@
 
   .product-mobile-buybar__buy {
     grid-column: 1 / -1;
+  }
+}
+
+/* Commercial UI guard: keep purchase-path support text readable. */
+.product-detail-page .ant-typography-secondary,
+.product-brand-text,
+.product-purchase-readiness__copy .ant-typography:last-child,
+.product-recommendations__proof,
+.product-delivery-promise .ant-typography,
+.product-trust-card .ant-typography {
+  color: #40564a !important;
+}
+
+.product-price-line,
+.product-price-line__current,
+.product-recommendations__price,
+.product-mobile-buybar__meta strong {
+  color: #8f2d17 !important;
+}
+
+.product-purchase-readiness__item--pending .product-purchase-readiness__icon {
+  background: #8f2d17 !important;
+  color: #fff7f0 !important;
+}
+
+.product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled),
+.product-purchase-mode__details .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  border-color: #8f2d17 !important;
+  color: #8f2d17 !important;
+}
+
+/* Commercial mobile buybar guard: keep all five purchase actions stable. */
+@media (max-width: 768px) {
+  .product-detail-main-image__button {
+    display: none;
+  }
+
+  .product-mobile-buybar {
+    grid-template-columns: 44px 44px 44px minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "meta meta meta meta meta"
+      "home favorite compare cart buy";
+    grid-template-rows: auto minmax(44px, auto);
+  }
+
+  .product-mobile-buybar__meta {
+    grid-area: meta;
+  }
+
+  .product-mobile-buybar__tool--home {
+    grid-area: home;
+  }
+
+  .product-mobile-buybar__tool--favorite {
+    grid-area: favorite;
+  }
+
+  .product-mobile-buybar__tool--compare {
+    grid-area: compare;
+  }
+
+  .product-mobile-buybar__cart {
+    grid-area: cart;
+  }
+
+  .product-mobile-buybar__buy {
+    grid-area: buy;
+    grid-column: auto;
+  }
+
+  .product-mobile-buybar__tool {
+    width: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .product-detail-page {
+    padding-bottom: calc(166px + env(safe-area-inset-bottom));
+  }
+
+  .product-mobile-buybar {
+    grid-template-columns: 44px 44px 44px minmax(0, 1fr) !important;
+    grid-template-areas:
+      "meta meta meta meta"
+      "home favorite compare cart"
+      "buy buy buy buy";
+    grid-template-rows: auto minmax(44px, auto) minmax(44px, auto);
+  }
+
+  .product-mobile-buybar__buy {
+    grid-column: auto;
+  }
+}
+
+/* Commercial mobile guard: reduce card nesting inside the purchase summary. */
+@media (max-width: 768px) {
+  .product-summary-card .product-price-panel,
+  .product-summary-card .product-purchase-readiness,
+  .product-summary-card .product-purchase-mode,
+  .product-summary-card .product-selected-summary,
+  .product-summary-card .product-size-calculator,
+  .product-summary-card .product-purchase-mode__details,
+  .product-summary-card .product-purchase-summary,
+  .product-summary-card .product-detail-disclosure {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .product-summary-card .product-price-panel {
+    padding: 0 0 12px;
+    border-top: 0;
+    border-bottom: 1px solid #e4ebe4;
+  }
+
+  .product-summary-card .product-purchase-readiness {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .product-summary-card .product-purchase-readiness__item {
+    min-height: 0;
+    padding: 10px 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .product-summary-card .product-purchase-readiness__item--pending {
+    background: transparent;
+  }
+
+  .product-summary-card .product-purchase-mode,
+  .product-summary-card .product-selected-summary,
+  .product-summary-card .product-size-calculator,
+  .product-summary-card .product-purchase-summary {
+    padding: 12px 0 0;
+    border-top: 1px solid #e4ebe4;
+    border-bottom: 0;
+  }
+
+  .product-summary-card .product-purchase-mode__details {
+    padding: 8px 0 0;
+    border: 0;
+  }
+
+  .product-summary-card .product-detail-disclosure {
+    border-top: 1px solid #e4ebe4;
+    border-bottom: 0;
+  }
+
+  .product-summary-card .product-detail-disclosure > summary {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .product-summary-card .product-detail-disclosure > :not(summary) {
+    margin-right: 0;
+    margin-left: 0;
+  }
+}
+
+/* Final mobile buybar readability guard: labels must not be ellipsized inside purchase controls. */
+@media (max-width: 430px) {
+  .product-mobile-buybar__tool > span:not(.anticon):not(.ant-btn-icon),
+  .product-mobile-buybar__cart > span:not(.anticon):not(.ant-btn-icon),
+  .product-mobile-buybar__buy > span:not(.anticon):not(.ant-btn-icon) {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+    -webkit-line-clamp: unset;
+  }
+
+  .product-mobile-buybar__tool > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: 9px;
+    line-height: 1.05;
+  }
+
+  .product-mobile-buybar__cart,
+  .product-mobile-buybar__buy {
+    padding-inline: 6px;
+    font-size: 12px;
+    line-height: 1.12;
+  }
+}
+
+/* Final narrow-phone buybar guard: keep Buy now readable instead of collapsing to an icon cell. */
+@media (max-width: 380px) {
+  .product-mobile-buybar {
+    grid-template-columns: 44px 44px 44px minmax(0, 1fr) !important;
+    grid-template-areas:
+      "meta meta meta meta"
+      "home favorite compare cart"
+      "buy buy buy buy" !important;
+    grid-template-rows: auto minmax(44px, auto) minmax(44px, auto) !important;
+  }
+
+  .product-mobile-buybar__cart.ant-btn,
+  .product-mobile-buybar__buy.ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-self: stretch !important;
+  }
+
+  .product-mobile-buybar__buy.ant-btn {
+    grid-area: buy !important;
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Final mobile detail price-signal guard: do not clip trust/delivery chips
+   inside the price panel on 360-430px viewports. */
+@media (max-width: 768px) {
+  .product-summary-card .product-price-panel,
+  .product-price-panel {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .product-summary-card .product-price-panel .product-compact-signals,
+  .product-price-panel .product-compact-signals {
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+    padding-right: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 }

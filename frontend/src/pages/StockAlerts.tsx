@@ -32,6 +32,9 @@ const StockAlerts: React.FC = () => {
   const [alerts, setAlerts] = useState<StockAlertItem[]>(() => readStockAlerts());
   const [products, setProducts] = useState<Record<number, Product>>({});
   const [loading, setLoading] = useState(false);
+  const stockAlertProductName = (item: { productId: number; productName?: string; product?: Pick<Product, 'id' | 'name'> }) => (
+    (item.product?.name || item.productName || '').trim() || t('pages.profile.productFallback', { id: item.product?.id || item.productId })
+  );
 
   useEffect(() => {
     const refresh = () => setAlerts(readStockAlerts());
@@ -156,7 +159,7 @@ const StockAlerts: React.FC = () => {
       return {
         tone: 'options',
         title: t('pages.stockAlerts.nextActionOptionsTitle'),
-        text: t('pages.stockAlerts.nextActionOptionsText', { name: nextItem.product?.name || nextItem.productName }),
+        text: t('pages.stockAlerts.nextActionOptionsText', { name: stockAlertProductName(nextItem) }),
         label: t('pages.stockAlerts.selectOptions'),
         action: () => navigate(`/products/${nextItem.productId}`),
       };
@@ -178,6 +181,10 @@ const StockAlerts: React.FC = () => {
       action: () => navigate('/products?sort=personalized-desc'),
     };
   })();
+  const addReadyActionLabel = `${t('pages.stockAlerts.addReadyToCart')}: ${t('pages.stockAlerts.directReady', { count: stockAlertInsights.directAddItems.length })}`;
+  const restockNextActionLabel = `${restockNextAction.label}: ${restockNextAction.title}`;
+  const browseStockAlertsActionLabel = `${t('pages.stockAlerts.browse')}: ${t('pages.stockAlerts.title')}`;
+  const clearStockAlertsActionLabel = `${t('pages.stockAlerts.clear')}: ${alerts.length}`;
 
   return (
     <div className={`stock-alerts stock-alerts--${language}`}>
@@ -192,13 +199,17 @@ const StockAlerts: React.FC = () => {
             </Text>
           </div>
           <Space wrap>
-            <Button onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
+            <Button aria-label={browseStockAlertsActionLabel} title={browseStockAlertsActionLabel} onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
             <Popconfirm
-              popupClassName="shop-mobile-popup-layer stock-alerts-popconfirm"
+              classNames={{ root: 'shop-mobile-popup-layer stock-alerts-popconfirm' }}
               title={t('pages.stockAlerts.clearConfirm')}
               onConfirm={clearAll}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ danger: true, 'aria-label': clearStockAlertsActionLabel, title: clearStockAlertsActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearStockAlertsActionLabel}`, title: `${t('common.cancel')}: ${clearStockAlertsActionLabel}` }}
             >
-              <Button danger disabled={alerts.length === 0}>{t('pages.stockAlerts.clear')}</Button>
+              <Button danger disabled={alerts.length === 0} aria-label={clearStockAlertsActionLabel} title={clearStockAlertsActionLabel}>{t('pages.stockAlerts.clear')}</Button>
             </Popconfirm>
           </Space>
         </div>
@@ -210,7 +221,7 @@ const StockAlerts: React.FC = () => {
               <Title level={4}>{t('pages.stockAlerts.assistantTitle')}</Title>
               <Text type="secondary">
                 {stockAlertInsights.bestReadyItem?.product
-                  ? t('pages.stockAlerts.assistantSubtitleBest', { name: stockAlertInsights.bestReadyItem.product.name })
+                  ? t('pages.stockAlerts.assistantSubtitleBest', { name: stockAlertProductName(stockAlertInsights.bestReadyItem) })
                   : t('pages.stockAlerts.assistantSubtitle')}
               </Text>
             </div>
@@ -242,7 +253,7 @@ const StockAlerts: React.FC = () => {
               <Text type="secondary">
                 {stockAlertInsights.bestReadyItem?.product
                   ? t('pages.stockAlerts.recoverySubtitleBest', {
-                    name: stockAlertInsights.bestReadyItem.product.name,
+                    name: stockAlertProductName(stockAlertInsights.bestReadyItem),
                     price: formatMoney(stockAlertInsights.bestReadyItem.product.effectivePrice ?? stockAlertInsights.bestReadyItem.product.price),
                   })
                   : t('pages.stockAlerts.recoverySubtitle', { count: stockAlertInsights.backInStockItems.length })}
@@ -250,11 +261,21 @@ const StockAlerts: React.FC = () => {
             </div>
             <Space wrap className="stock-alerts__recoveryActions">
               {stockAlertInsights.bestReadyItem?.product ? (
-                <Button onClick={() => navigate(`/products/${stockAlertInsights.bestReadyItem!.productId}`)}>
+                <Button
+                  onClick={() => navigate(`/products/${stockAlertInsights.bestReadyItem!.productId}`)}
+                  aria-label={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(stockAlertInsights.bestReadyItem)}`}
+                  title={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(stockAlertInsights.bestReadyItem)}`}
+                >
                   {t('pages.stockAlerts.viewBestReady')}
                 </Button>
               ) : null}
-              <Button type="primary" icon={<ShoppingCartOutlined />} onClick={addReadyItemsToCart}>
+              <Button
+                type="primary"
+                icon={<ShoppingCartOutlined />}
+                aria-label={addReadyActionLabel}
+                title={addReadyActionLabel}
+                onClick={addReadyItemsToCart}
+              >
                 {t('pages.stockAlerts.addReadyToCart')}
               </Button>
             </Space>
@@ -280,6 +301,8 @@ const StockAlerts: React.FC = () => {
             <Button
               type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
               icon={<ShoppingCartOutlined />}
+              aria-label={restockNextActionLabel}
+              title={restockNextActionLabel}
               onClick={restockNextAction.action}
             >
               {restockNextAction.label}
@@ -302,6 +325,8 @@ const StockAlerts: React.FC = () => {
             <Button
               type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
               icon={<ShoppingCartOutlined />}
+              aria-label={restockNextActionLabel}
+              title={restockNextActionLabel}
               onClick={restockNextAction.action}
             >
               {restockNextAction.label}
@@ -311,7 +336,9 @@ const StockAlerts: React.FC = () => {
 
         {alerts.length === 0 ? (
           <Empty description={t('pages.stockAlerts.empty')}>
-            <Button type="primary" onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
+            <Button type="primary" aria-label={browseStockAlertsActionLabel} title={browseStockAlertsActionLabel} onClick={() => navigate('/products')}>
+              {t('pages.stockAlerts.browse')}
+            </Button>
           </Empty>
         ) : (
           <List
@@ -319,9 +346,18 @@ const StockAlerts: React.FC = () => {
             dataSource={stockAlertInsights.items}
             renderItem={(item) => {
               const product = item.product;
+              const productName = stockAlertProductName(item);
+              const productLinkLabel = `${t('pages.productList.viewDetails')}: ${productName}`;
               const ready = isBackInStock(product);
               const needsSelection = Boolean(product && needsOptionSelection(product));
               const lowStock = Boolean(ready && product?.stock !== undefined && product.stock > 0 && product.stock <= 5);
+              const addActionText = ready
+                ? needsSelection
+                  ? t('pages.stockAlerts.selectOptions')
+                  : t('pages.stockAlerts.addToCart')
+                : t('pages.productList.soldOut');
+              const addActionLabel = `${addActionText}: ${productName}`;
+              const removeActionLabel = `${t('pages.stockAlerts.remove')}: ${productName}`;
               return (
                 <List.Item
                   className={[
@@ -336,31 +372,33 @@ const StockAlerts: React.FC = () => {
                       type="primary"
                       icon={<ShoppingCartOutlined />}
                       className={ready ? undefined : 'stock-alerts__soldoutButton'}
+                      aria-label={addActionLabel}
+                      title={addActionLabel}
                       onClick={() => product && addToCart(product)}
                       disabled={!ready}
                     >
-                      {ready
-                        ? needsSelection
-                          ? t('pages.stockAlerts.selectOptions')
-                          : t('pages.stockAlerts.addToCart')
-                        : t('pages.productList.soldOut')}
+                      {addActionText}
                     </Button>,
                     <Popconfirm
                       key="remove"
-                      popupClassName="shop-mobile-popup-layer stock-alerts-popconfirm"
+                      classNames={{ root: 'shop-mobile-popup-layer stock-alerts-popconfirm' }}
                       title={t('pages.stockAlerts.removeConfirm')}
                       onConfirm={() => removeAlert(item.productId)}
+                      okText={t('common.confirm')}
+                      cancelText={t('common.cancel')}
+                      okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
+                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
                     >
-                      <Button icon={<DeleteOutlined />}>{t('pages.stockAlerts.remove')}</Button>
+                      <Button icon={<DeleteOutlined />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</Button>
                     </Popconfirm>,
                   ]}
                 >
                   <List.Item.Meta
                     avatar={
-                      <Link to={`/products/${item.productId}`}>
+                      <Link to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>
                         <Image
                           src={resolveStockAlertImage(product?.imageUrl || item.imageUrl)}
-                          alt={product?.name || item.productName}
+                          alt={productName}
                           fallback={stockAlertImageFallback}
                           width={72}
                           height={72}
@@ -369,7 +407,7 @@ const StockAlerts: React.FC = () => {
                         />
                       </Link>
                     }
-                    title={<Link to={`/products/${item.productId}`}>{product?.name || item.productName}</Link>}
+                    title={<Link to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>{productName}</Link>}
                     description={
                       <div className="stock-alerts__itemDetails">
                         <Text type="secondary" className="stock-alerts__watchTime">

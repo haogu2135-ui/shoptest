@@ -42,6 +42,7 @@ public interface OrderRepository {
     int approveReturnIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus);
     int rejectReturnIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus);
     int updateShipping(@Param("id") Long id,
+                       @Param("currentStatus") String currentStatus,
                        @Param("status") String status,
                        @Param("trackingNumber") String trackingNumber,
                        @Param("trackingCarrierCode") String trackingCarrierCode,

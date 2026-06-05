@@ -58,6 +58,10 @@ public class PaymentService {
     private static final String PAID = "PAID";
     private static final String FAILED = "FAILED";
     private static final String EXPIRED = "EXPIRED";
+    private static final String CANCELLED = "CANCELLED";
+    private static final String REFUNDING = "REFUNDING";
+    private static final String REFUNDED = "REFUNDED";
+    private static final String RECONCILE_REQUIRED = "RECONCILE_REQUIRED";
     private static final long DEFAULT_CALLBACK_MAX_SKEW_SECONDS = 300L;
 
     @Autowired
@@ -144,9 +148,14 @@ public class PaymentService {
             throw new IllegalStateException("Only pending payments can be paid");
         }
         String transactionId = newTransactionId();
+        claimOrderForPaymentSuccess(payment.getOrderId());
         int updated = paymentRepository.markPaidDetailed(paymentId, transactionId, transactionId, LocalDateTime.now(ZoneOffset.UTC));
-        if (updated > 0) {
-            orderService.updateOrderStatus(payment.getOrderId(), "PENDING_SHIPMENT");
+        if (updated == 0) {
+            Payment latest = paymentRepository.findById(paymentId);
+            if (latest != null && PAID.equals(latest.getStatus())) {
+                return latest;
+            }
+            throw new IllegalStateException("Payment state update failed");
         }
         return paymentRepository.findById(paymentId);
     }
@@ -191,22 +200,32 @@ public class PaymentService {
             throw new IllegalArgumentException("Payment amount mismatch");
         }
         assertMatchingPaidCallback(payment, request);
-        if (PAID.equals(payment.getStatus())) {
-            return payment;
-        }
-        if (EXPIRED.equals(payment.getStatus())) {
-            throw new IllegalStateException("Payment has expired");
-        }
-        if (!PENDING.equals(payment.getStatus())) {
-            throw new IllegalStateException("Payment is not pending");
-        }
-
         String callbackStatus = request.getStatus().toUpperCase(Locale.ROOT);
         if (PAID.equals(callbackStatus) || "SUCCESS".equals(callbackStatus)) {
-            assertOrderStillAwaitingPayment(payment.getOrderId());
+            if (isProviderPaidAlreadyAcknowledged(payment) || RECONCILE_REQUIRED.equals(payment.getStatus())) {
+                return payment;
+            }
+            if (requiresProviderPaidReconciliation(payment)) {
+                return markProviderPaidReconciliationRequired(
+                        payment,
+                        request.getTransactionId(),
+                        firstNonBlank(request.getProviderReference(), request.getTransactionId()),
+                        callbackAt);
+            }
+            if (!PENDING.equals(payment.getStatus())) {
+                throw new IllegalStateException("Payment is not pending");
+            }
             if (isExpired(payment)) {
                 expirePayment(payment);
                 throw new IllegalStateException("Payment has expired");
+            }
+            Payment reconcilePayment = claimOrderForProviderPaidSuccessOrReconcile(
+                    payment,
+                    request.getTransactionId(),
+                    firstNonBlank(request.getProviderReference(), request.getTransactionId()),
+                    callbackAt);
+            if (reconcilePayment != null) {
+                return reconcilePayment;
             }
             int updated = paymentRepository.markPaidDetailed(
                     payment.getId(),
@@ -220,8 +239,13 @@ public class PaymentService {
                 }
                 throw new IllegalStateException("Payment state update failed");
             }
-            orderService.updateOrderStatus(payment.getOrderId(), "PENDING_SHIPMENT");
         } else if (FAILED.equals(callbackStatus)) {
+            if (EXPIRED.equals(payment.getStatus())) {
+                throw new IllegalStateException("Payment has expired");
+            }
+            if (!PENDING.equals(payment.getStatus())) {
+                throw new IllegalStateException("Payment is not pending");
+            }
             paymentRepository.markFailed(payment.getId());
         } else {
             throw new IllegalArgumentException("Unsupported payment callback status");
@@ -254,15 +278,29 @@ public class PaymentService {
             throw new IllegalArgumentException("Payment not found");
         }
         if ("checkout.session.completed".equals(event.getType())) {
-            if (PAID.equals(payment.getStatus())) {
+            if (isProviderPaidAlreadyAcknowledged(payment) || RECONCILE_REQUIRED.equals(payment.getStatus())) {
                 return payment;
+            }
+            PaymentChannelConfig.Channel channel = requireStripePaymentChannel(payment);
+            validateStripePaidSession(payment, channel, session);
+            if (requiresProviderPaidReconciliation(payment)) {
+                return markProviderPaidReconciliationRequired(
+                        payment,
+                        firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
+                        session.getId(),
+                        LocalDateTime.now(ZoneOffset.UTC));
             }
             if (!PENDING.equals(payment.getStatus())) {
                 throw new IllegalStateException("Payment is not pending");
             }
-            PaymentChannelConfig.Channel channel = requireStripePaymentChannel(payment);
-            validateStripePaidSession(payment, channel, session);
-            assertOrderStillAwaitingPayment(payment.getOrderId());
+            Payment reconcilePayment = claimOrderForProviderPaidSuccessOrReconcile(
+                    payment,
+                    firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
+                    session.getId(),
+                    LocalDateTime.now(ZoneOffset.UTC));
+            if (reconcilePayment != null) {
+                return reconcilePayment;
+            }
             int updated = paymentRepository.markPaidDetailed(
                     payment.getId(),
                     firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
@@ -275,7 +313,6 @@ public class PaymentService {
                 }
                 throw new IllegalStateException("Stripe payment state update failed");
             }
-            orderService.updateOrderStatus(payment.getOrderId(), "PENDING_SHIPMENT");
         } else if (PENDING.equals(payment.getStatus())) {
             expirePayment(payment);
         }
@@ -398,13 +435,26 @@ public class PaymentService {
     }
 
     private void expirePayment(Payment payment) {
-        int updated = paymentRepository.markExpired(payment.getId());
-        if (updated > 0 && paymentRepository.countActivePendingByOrderId(payment.getOrderId()) == 0) {
+        boolean cancelOrder = paymentRepository.countActivePendingByOrderId(payment.getOrderId()) == 0;
+        if (cancelOrder) {
             try {
-                orderService.cancelOrder(payment.getOrderId());
+                if (!orderService.cancelOrderForPaymentExpiry(payment.getOrderId())) {
+                    return;
+                }
             } catch (IllegalStateException ignored) {
                 // Order may already have moved on due to another idempotent callback.
+                return;
             }
+        }
+        int updated = paymentRepository.markExpired(payment.getId());
+        if (updated == 0) {
+            if (cancelOrder) {
+                throw new IllegalStateException("Payment expiry update failed");
+            }
+            return;
+        }
+        if (cancelOrder) {
+            paymentRepository.markPendingCancelledByOrderId(payment.getOrderId());
         }
     }
 
@@ -783,7 +833,10 @@ public class PaymentService {
 
     private Payment syncProviderPaymentState(Payment payment) {
         String secretKey = stripeSecretKey();
-        if (payment == null || !PENDING.equals(payment.getStatus()) || isBlank(secretKey)) {
+        if (payment == null || isBlank(secretKey)) {
+            return null;
+        }
+        if (!PENDING.equals(payment.getStatus()) && !requiresProviderPaidReconciliation(payment)) {
             return null;
         }
         PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
@@ -800,14 +853,33 @@ public class PaymentService {
             String paymentStatus = session.getPaymentStatus() == null ? "" : session.getPaymentStatus().toLowerCase(Locale.ROOT);
             if ("complete".equals(sessionStatus) && "paid".equals(paymentStatus)) {
                 validateStripePaidSession(payment, channel, session);
-                assertOrderStillAwaitingPayment(payment.getOrderId());
+                if (requiresProviderPaidReconciliation(payment)) {
+                    return markProviderPaidReconciliationRequired(
+                            payment,
+                            firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
+                            session.getId(),
+                            LocalDateTime.now(ZoneOffset.UTC));
+                }
+                LocalDateTime callbackAt = LocalDateTime.now(ZoneOffset.UTC);
+                Payment reconcilePayment = claimOrderForProviderPaidSuccessOrReconcile(
+                        payment,
+                        firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
+                        session.getId(),
+                        callbackAt);
+                if (reconcilePayment != null) {
+                    return reconcilePayment;
+                }
                 int updated = paymentRepository.markPaidDetailed(
                         payment.getId(),
                         firstNonBlank(session.getPaymentIntent(), payment.getTransactionId(), session.getId()),
                         session.getId(),
-                        LocalDateTime.now(ZoneOffset.UTC));
-                if (updated > 0) {
-                    orderService.updateOrderStatus(payment.getOrderId(), "PENDING_SHIPMENT");
+                        callbackAt);
+                if (updated == 0) {
+                    Payment latest = paymentRepository.findById(payment.getId());
+                    if (latest != null && PAID.equals(latest.getStatus())) {
+                        return latest;
+                    }
+                    throw new IllegalStateException("Stripe payment state update failed");
                 }
                 return paymentRepository.findById(payment.getId());
             }
@@ -882,6 +954,55 @@ public class PaymentService {
                 .build();
     }
 
+    private boolean isProviderPaidAlreadyAcknowledged(Payment payment) {
+        if (payment == null) {
+            return false;
+        }
+        String status = payment.getStatus();
+        return PAID.equals(status) || REFUNDING.equals(status) || REFUNDED.equals(status);
+    }
+
+    private boolean requiresProviderPaidReconciliation(Payment payment) {
+        if (payment == null) {
+            return false;
+        }
+        String status = payment.getStatus();
+        return CANCELLED.equals(status) || EXPIRED.equals(status) || FAILED.equals(status);
+    }
+
+    private Payment markProviderPaidReconciliationRequired(Payment payment,
+                                                           String transactionId,
+                                                           String providerReference,
+                                                           LocalDateTime callbackAt) {
+        String effectiveTransactionId = trimToNull(firstNonBlank(transactionId, payment.getTransactionId(), providerReference));
+        String effectiveProviderReference = trimToNull(firstNonBlank(providerReference, payment.getProviderReference(), effectiveTransactionId));
+        int updated = paymentRepository.markReconcileRequired(
+                payment.getId(),
+                effectiveTransactionId,
+                effectiveProviderReference,
+                callbackAt);
+        if (updated == 0) {
+            Payment latest = paymentRepository.findById(payment.getId());
+            if (latest != null && (RECONCILE_REQUIRED.equals(latest.getStatus()) || isProviderPaidAlreadyAcknowledged(latest))) {
+                return latest;
+            }
+            throw new IllegalStateException("Payment reconciliation state update failed");
+        }
+        return paymentRepository.findById(payment.getId());
+    }
+
+    private Payment claimOrderForProviderPaidSuccessOrReconcile(Payment payment,
+                                                                 String transactionId,
+                                                                 String providerReference,
+                                                                 LocalDateTime callbackAt) {
+        try {
+            claimOrderForPaymentSuccess(payment.getOrderId());
+            return null;
+        } catch (IllegalStateException e) {
+            return markProviderPaidReconciliationRequired(payment, transactionId, providerReference, callbackAt);
+        }
+    }
+
     private boolean verifySignature(PaymentCallbackRequest request) {
         String signature = trimToNull(request.getSignature());
         if (signature == null) {
@@ -906,7 +1027,7 @@ public class PaymentService {
         }
     }
 
-    private void assertOrderStillAwaitingPayment(Long orderId) {
+    private void claimOrderForPaymentSuccess(Long orderId) {
         Order order = orderService.getOrderById(orderId);
         if (order == null) {
             throw new IllegalStateException("Order not found");
@@ -915,6 +1036,16 @@ public class PaymentService {
             throw new IllegalStateException("Order is no longer awaiting payment");
         }
         validateOrderReadyForPayment(order);
+
+        boolean updated;
+        try {
+            updated = orderService.updateOrderStatus(orderId, "PENDING_SHIPMENT");
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("Order is no longer awaiting payment", e);
+        }
+        if (!updated) {
+            throw new IllegalStateException("Order is no longer awaiting payment");
+        }
     }
 
     private void validateOrderReadyForPayment(Order order) {

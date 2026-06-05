@@ -154,6 +154,17 @@ const PetGallery: React.FC = () => {
     () => (previewItem ? items.find((item) => item.key === previewItem.key) || previewItem : null),
     [items, previewItem],
   );
+  const galleryUploadActionLabel = isAuthenticated
+    ? `${t('home.petUgcUploadRemaining', { count: remainingUploads })}: ${t('pages.petGallery.title')}`
+    : `${t('pages.petGallery.loginToUpload')}: ${t('pages.petGallery.title')}`;
+  const galleryShopFeedActionLabel = `${t('home.petUgcShopFeed')}: ${t('pages.petGallery.title')}`;
+  const galleryLoginActionLabel = `${t('pages.petGallery.loginToUpload')}: ${t('pages.petGallery.title')}`;
+  const galleryRefreshActionLabel = `${t('common.refresh')}: ${t('pages.petGallery.latest')}`;
+  const shopInspiredActionLabel = `${t('pages.petGallery.shopInspired')}: ${t('pages.petGallery.conversionTitle')}`;
+  const galleryItemPreviewLabel = (item: Pick<GalleryItem, 'label'>) => `${t('pages.petGallery.preview')}: ${item.label}`;
+  const galleryItemShopLabel = (item: Pick<GalleryItem, 'label'>) => `${t('home.petUgcShopFeed')}: ${item.label}`;
+  const galleryItemLikeLabel = (item: Pick<GalleryItem, 'label' | 'likeCount'>) => `${t('home.petUgcLikes', { count: item.likeCount })}: ${item.label}`;
+  const galleryItemDeleteLabel = (item: Pick<GalleryItem, 'label'>) => `${t('home.petUgcDelete')}: ${item.label}`;
 
   const handleUploadClick = useCallback(() => {
     if (!isAuthenticated) {
@@ -192,6 +203,7 @@ const PetGallery: React.FC = () => {
       onClick: handleUploadClick,
     };
   }, [handleUploadClick, isAuthenticated, navigate, quota, remainingUploads, t]);
+  const uploadReadinessActionLabel = `${uploadReadiness.action}: ${uploadReadiness.title}`;
 
   const handleSelectedPhoto: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
     const file = event.target.files?.[0];
@@ -267,10 +279,18 @@ const PetGallery: React.FC = () => {
           <Title level={1}>{t('pages.petGallery.title')}</Title>
           <Paragraph>{t('pages.petGallery.subtitle')}</Paragraph>
           <Space wrap>
-            <Button type="primary" size="large" icon={<UploadOutlined />} loading={uploading} onClick={handleUploadClick}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<UploadOutlined />}
+              loading={uploading}
+              aria-label={galleryUploadActionLabel}
+              title={galleryUploadActionLabel}
+              onClick={handleUploadClick}
+            >
               {isAuthenticated ? t('home.petUgcUploadRemaining', { count: remainingUploads }) : t('pages.petGallery.loginToUpload')}
             </Button>
-            <Button size="large" icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
+            <Button size="large" icon={<ShopOutlined />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
               {t('home.petUgcShopFeed')}
             </Button>
           </Space>
@@ -296,11 +316,11 @@ const PetGallery: React.FC = () => {
         </div>
         <Space wrap>
           {!isAuthenticated ? (
-            <Button icon={<UserAddOutlined />} onClick={() => navigate(buildLoginUrlFromWindow())}>
+            <Button icon={<UserAddOutlined />} aria-label={galleryLoginActionLabel} title={galleryLoginActionLabel} onClick={() => navigate(buildLoginUrlFromWindow())}>
               {t('pages.petGallery.loginToUpload')}
             </Button>
           ) : null}
-          <Button icon={<ReloadOutlined />} onClick={() => refreshGallery(true)}>
+          <Button icon={<ReloadOutlined />} aria-label={galleryRefreshActionLabel} title={galleryRefreshActionLabel} onClick={() => refreshGallery(true)}>
             {t('common.refresh')}
           </Button>
         </Space>
@@ -352,7 +372,7 @@ const PetGallery: React.FC = () => {
             <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.uploadPlanEyebrow')}</Text>
             <Title level={4}>{uploadReadiness.title}</Title>
             <Text type="secondary">{uploadReadiness.text}</Text>
-            <Button type="primary" icon={<UploadOutlined />} loading={uploading} onClick={uploadReadiness.onClick}>
+            <Button type="primary" icon={<UploadOutlined />} loading={uploading} aria-label={uploadReadinessActionLabel} title={uploadReadinessActionLabel} onClick={uploadReadiness.onClick}>
               {uploadReadiness.action}
             </Button>
           </div>
@@ -367,11 +387,11 @@ const PetGallery: React.FC = () => {
               {t('pages.petGallery.shopMomentText', { count: galleryInsights.communityMoments })}
             </Text>
             <Space wrap>
-              <Button icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
+              <Button icon={<ShopOutlined />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
                 {t('home.petUgcShopFeed')}
               </Button>
               {galleryInsights.topMoment ? (
-                <Button onClick={() => setPreviewItem(galleryInsights.topMoment)}>
+                <Button aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment)}>
                   {t('pages.petGallery.previewTop')}
                 </Button>
               ) : null}
@@ -397,11 +417,11 @@ const PetGallery: React.FC = () => {
             <span><RiseOutlined /> {t('pages.petGallery.conversionCommunity', { count: galleryInsights.communityMoments })}</span>
           </div>
           <Space wrap className="pet-gallery-conversion__actions">
-            <Button type="primary" icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
+            <Button type="primary" icon={<ShopOutlined />} aria-label={shopInspiredActionLabel} title={shopInspiredActionLabel} onClick={() => navigate('/products?keyword=pet')}>
               {t('pages.petGallery.shopInspired')}
             </Button>
             {galleryInsights.topMoment ? (
-              <Button onClick={() => setPreviewItem(galleryInsights.topMoment)}>
+              <Button aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment)}>
                 {t('pages.petGallery.previewTop')}
               </Button>
             ) : null}
@@ -424,14 +444,15 @@ const PetGallery: React.FC = () => {
               <button
                 type="button"
                 className="pet-gallery-card__imageButton"
-                aria-label={`${t('pages.petGallery.preview')} ${item.label}`}
+                aria-label={galleryItemPreviewLabel(item)}
+                title={galleryItemPreviewLabel(item)}
                 onClick={() => setPreviewItem(item)}
               >
                 <img
                   src={getOptimizedImageUrl(item.image, 520)}
                   srcSet={buildResponsiveImageSrcSet(item.image, [320, 520, 720])}
                   sizes={galleryCardImageSizes}
-                  alt={`${t('pages.petGallery.photoAlt')} ${index + 1}`}
+                  alt={`${t('pages.petGallery.photoAlt')} ${index + 1}: ${item.label}`}
                   width={520}
                   height={650}
                   loading="lazy"
@@ -444,6 +465,9 @@ const PetGallery: React.FC = () => {
                 <button
                   type="button"
                   className={item.likedByMe ? 'pet-gallery-card__like pet-gallery-card__like--active' : 'pet-gallery-card__like'}
+                  aria-pressed={item.likedByMe}
+                  aria-label={galleryItemLikeLabel(item)}
+                  title={galleryItemLikeLabel(item)}
                   onClick={() => handleLike(item)}
                 >
                   {item.likedByMe ? <HeartFilled /> : <HeartOutlined />}
@@ -451,13 +475,15 @@ const PetGallery: React.FC = () => {
                 </button>
                 {item.canDelete && item.photo ? (
                   <Popconfirm
-                    popupClassName="shop-mobile-popup-layer pet-gallery-delete-popconfirm"
+                    classNames={{ root: 'shop-mobile-popup-layer pet-gallery-delete-popconfirm' }}
                     title={t('home.petUgcDeleteConfirm')}
                     okText={t('common.confirm')}
                     cancelText={t('common.cancel')}
+                    okButtonProps={{ danger: true, 'aria-label': galleryItemDeleteLabel(item), title: galleryItemDeleteLabel(item) }}
+                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${galleryItemDeleteLabel(item)}`, title: `${t('common.cancel')}: ${galleryItemDeleteLabel(item)}` }}
                     onConfirm={() => handleDelete(item.photo as PetGalleryPhotoPublic)}
                   >
-                    <button type="button" className="pet-gallery-card__delete" aria-label={t('home.petUgcDelete')}>
+                    <button type="button" className="pet-gallery-card__delete" aria-label={galleryItemDeleteLabel(item)} title={galleryItemDeleteLabel(item)}>
                       <DeleteOutlined />
                     </button>
                   </Popconfirm>
@@ -494,10 +520,17 @@ const PetGallery: React.FC = () => {
             <figcaption>
               <span>{activePreviewItem.label}</span>
               <Space wrap>
-                <Button icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
+                <Button icon={<ShopOutlined />} aria-label={galleryItemShopLabel(activePreviewItem)} title={galleryItemShopLabel(activePreviewItem)} onClick={() => navigate('/products?keyword=pet')}>
                   {t('home.petUgcShopFeed')}
                 </Button>
-                <Button type="primary" icon={activePreviewItem.likedByMe ? <HeartFilled /> : <HeartOutlined />} onClick={() => handleLike(activePreviewItem)}>
+                <Button
+                  type="primary"
+                  icon={activePreviewItem.likedByMe ? <HeartFilled /> : <HeartOutlined />}
+                  aria-pressed={activePreviewItem.likedByMe}
+                  aria-label={galleryItemLikeLabel(activePreviewItem)}
+                  title={galleryItemLikeLabel(activePreviewItem)}
+                  onClick={() => handleLike(activePreviewItem)}
+                >
                   {t('home.petUgcLikes', { count: activePreviewItem.likeCount })}
                 </Button>
               </Space>

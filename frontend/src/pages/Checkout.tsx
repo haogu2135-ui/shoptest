@@ -33,7 +33,7 @@ const checkoutImageFallback = productImageFallback;
 const resolveCheckoutImage = resolveProductImage;
 const mobileCheckoutQuery = '(max-width: 780px)';
 
-const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED']);
+const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED', 'RECONCILE_REQUIRED']);
 const paymentStatusColors: Record<string, string> = {
   PENDING: 'orange',
   PAID: 'green',
@@ -41,6 +41,7 @@ const paymentStatusColors: Record<string, string> = {
   EXPIRED: 'volcano',
   REFUNDING: 'purple',
   REFUNDED: 'purple',
+  RECONCILE_REQUIRED: 'magenta',
 };
 
 const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
@@ -177,6 +178,9 @@ const Checkout: React.FC = () => {
   const supportPanelDismissedKeyRef = React.useRef<string | null>(null);
   const couponQuoteSeqRef = React.useRef(0);
   const { t, language } = useLanguage();
+  const checkoutCartItemName = (item: Pick<CartItem, 'productId' | 'productName'>) => (
+    (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
+  );
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const formatPaymentStatusLabel = useCallback((status?: string) => {
     const rawStatus = String(status || '').trim();
@@ -217,6 +221,45 @@ const Checkout: React.FC = () => {
     () => getRecommendedPaymentMethod(paymentChannels, currency),
     [currency, paymentChannels],
   );
+  const selectCheckoutPaymentMethod = useCallback((methodValue: string) => {
+    if (!paymentMethodDetails.some((method) => method.value === methodValue)) {
+      return;
+    }
+    form.setFieldsValue({ paymentMethod: methodValue });
+    setSessionStorageItem('checkoutPaymentMethod', methodValue);
+  }, [form, paymentMethodDetails]);
+  const focusCheckoutPaymentMethod = useCallback((methodValue: string) => {
+    window.requestAnimationFrame(() => {
+      const target = Array.from(document.querySelectorAll<HTMLButtonElement>('.checkout-page__paymentMethod'))
+        .find((button) => button.dataset.paymentMethod === methodValue);
+      target?.focus();
+    });
+  }, []);
+  const handlePaymentMethodKeyDown = useCallback((event: React.KeyboardEvent<HTMLButtonElement>, methodValue: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      selectCheckoutPaymentMethod(methodValue);
+      return;
+    }
+
+    const directionByKey: Record<string, number> = {
+      ArrowRight: 1,
+      ArrowDown: 1,
+      ArrowLeft: -1,
+      ArrowUp: -1,
+    };
+    const direction = directionByKey[event.key];
+    if (!direction || paymentMethodDetails.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    const currentIndex = Math.max(0, paymentMethodDetails.findIndex((method) => method.value === methodValue));
+    const nextIndex = (currentIndex + direction + paymentMethodDetails.length) % paymentMethodDetails.length;
+    const nextValue = paymentMethodDetails[nextIndex].value;
+    selectCheckoutPaymentMethod(nextValue);
+    focusCheckoutPaymentMethod(nextValue);
+  }, [focusCheckoutPaymentMethod, paymentMethodDetails, selectCheckoutPaymentMethod]);
 
   useEffect(() => {
     const runtimeMode = String(appConfig.runtimeMode || '').trim().toLowerCase();
@@ -263,10 +306,6 @@ const Checkout: React.FC = () => {
       }
       setCartItems(purchasableItems);
       setAddresses([]);
-      const preferredPaymentMethod = getSessionStorageItem('checkoutPaymentMethod');
-      if (preferredPaymentMethod) {
-        form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(preferredPaymentMethod, paymentChannels, currency) });
-      }
       setLoading(false);
       return;
     }
@@ -291,10 +330,6 @@ const Checkout: React.FC = () => {
         setAddresses(addressRes.data);
         const defaultAddress = addressRes.data.find((address) => address.isDefault) || addressRes.data[0];
         if (defaultAddress) setSelectedAddressId(defaultAddress.id);
-        const preferredPaymentMethod = getSessionStorageItem('checkoutPaymentMethod');
-        if (preferredPaymentMethod) {
-          form.setFieldsValue({ paymentMethod: resolveCheckoutPaymentMethod(preferredPaymentMethod, paymentChannels, currency) });
-        }
       } catch (error: any) {
         if (isAuthExpiredError(error)) {
           clearExpiredCheckoutSession();
@@ -322,7 +357,7 @@ const Checkout: React.FC = () => {
     };
 
     loadCheckout();
-  }, [currency, form, paymentChannels, selectedCartItemIds, t]);
+  }, [selectedCartItemIds, t]);
 
   useEffect(() => {
     if (selectedAddressId !== 'new') {
@@ -454,6 +489,8 @@ const Checkout: React.FC = () => {
   const giftRemaining = Math.max(0, giftThreshold - cartTotal);
   const giftUnlocked = giftThreshold > 0 && giftRemaining <= 0;
   const giftProgress = giftThreshold > 0 ? Math.min(100, Math.round((cartTotal / giftThreshold) * 100)) : 100;
+  const giftName = t(conversionConfig.giftAtCheckout.giftNameKey);
+  const giftConfirmActionLabel = `${t('common.confirm')}: ${t('pages.checkout.giftModalTitle')}, ${giftName}`;
   const addOnTarget = useMemo(
     () => getNearestCartBenefitTarget(cartTotal, market.freeShippingThreshold, currency),
     [cartTotal, currency, market.freeShippingThreshold],
@@ -542,6 +579,10 @@ const Checkout: React.FC = () => {
   const selectedSavedAddress = selectedAddressId === 'new'
     ? null
     : addresses.find((address) => String(address.id) === String(selectedAddressId)) || null;
+  const selectedAddressLabel = selectedSavedAddress
+    ? `${selectedSavedAddress.recipientName || t('pages.checkout.address')}: ${selectedSavedAddress.address}`
+    : t('pages.checkout.useNewAddress');
+  const checkoutAddressGroupLabel = `${t('pages.checkout.address')}: ${selectedAddressLabel}`;
   const newAddressReady = Boolean(
     normalizeCheckoutText(watchedRecipientName, 80)
       && isLikelyPhone(watchedPhone)
@@ -681,6 +722,19 @@ const Checkout: React.FC = () => {
         : checkoutNextAction.key === 'payment'
           ? t('pages.checkout.nextActionPayment')
           : t('pages.checkout.nextActionSavings');
+  const selectedPaymentMethodLabel = selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault');
+  const checkoutSubmitActionLabel = `${t('pages.checkout.submitWithAmount', { amount: formatMoney(payableAmount) })}: ${t('pages.checkout.paymentMethod')} ${selectedPaymentMethodLabel}`;
+  const checkoutConfirmationActionLabel = checkoutNextAction
+    ? `${t('pages.checkout.nextActionTitle')}: ${checkoutNextActionLabel}`
+    : `${t('pages.checkout.nextActionReadyTitle')}: ${checkoutSubmitActionLabel}`;
+  const checkoutReadinessActionLabel = `${t('pages.checkout.readinessTitle')}: ${checkoutNextActionLabel}`;
+  const checkoutCouponSelectLabel = `${t('pages.checkout.coupon')}: ${t('pages.checkout.selectCoupon')}`;
+  const checkoutSavingsAddOnsActionLabel = addOnTarget
+    ? `${t('pages.checkout.savingsShopAddOns')}: ${t('pages.checkout.savingsCoachTitle')}, ${formatMoney(addOnTarget.remainingAmount)}`
+    : `${t('pages.checkout.savingsShopAddOns')}: ${t('pages.checkout.savingsCoachTitle')}`;
+  const checkoutCouponOpportunityActionLabel = couponOpportunity
+    ? `${couponOpportunity.action}: ${couponOpportunity.title}`
+    : `${t('pages.checkout.coupon')}: ${t('pages.checkout.selectCoupon')}`;
   const renderSubmitWithAmount = () => {
     const amountText = formatMoney(payableAmount);
     const label = t('pages.checkout.submitWithAmount', { amount: amountText });
@@ -985,7 +1039,7 @@ const Checkout: React.FC = () => {
     cartItems.forEach((item) => {
       addGuestCartItem({
         id: item.productId,
-        name: item.productName,
+        name: checkoutCartItemName(item),
         imageUrl: item.imageUrl,
         price: item.price,
         stock: item.stock,
@@ -996,12 +1050,15 @@ const Checkout: React.FC = () => {
 
   const rollbackPendingPayment = () => {
     if (!createdOrder || createdOrder.status !== 'PENDING_PAYMENT') return;
+    const orderDisplayNo = createdOrder.orderNo || String(createdOrder.id);
+    const rollbackActionLabel = `${t('pages.checkout.rollbackPaymentAction')}: ${t('pages.paymentInstructions.orderNo')} ${orderDisplayNo}, ${formatMoney(createdOrder.totalAmount)}`;
     Modal.confirm({
       title: t('pages.checkout.rollbackPaymentTitle'),
       content: t('pages.checkout.rollbackPaymentContent'),
       okText: t('pages.checkout.rollbackPaymentAction'),
       cancelText: t('common.cancel'),
-      okButtonProps: { danger: true },
+      okButtonProps: { danger: true, 'aria-label': rollbackActionLabel, title: rollbackActionLabel },
+      cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${rollbackActionLabel}`, title: `${t('common.cancel')}: ${rollbackActionLabel}` },
       async onOk() {
         setCancelingPayment(true);
         try {
@@ -1087,6 +1144,13 @@ const Checkout: React.FC = () => {
   }
 
   if (createdOrder && !payment) {
+    const orderDisplayNo = createdOrder.orderNo || String(createdOrder.id);
+    const orderPaymentContext = `${t('pages.paymentInstructions.orderNo')}: ${orderDisplayNo} · ${formatMoney(createdOrder.totalAmount)}`;
+    const retryPaymentActionLabel = `${t('pages.checkout.retryPayment')}: ${orderPaymentContext}`;
+    const rollbackPaymentActionLabel = `${t('pages.checkout.rollbackPaymentAction')}: ${orderPaymentContext}`;
+    const viewOrderActionLabel = `${t('pages.checkout.viewOrder')}: ${orderPaymentContext}`;
+    const trackOrderActionLabel = `${t('pages.orderTracking.title')}: ${orderPaymentContext}`;
+    const backHomeActionLabel = `${t('pages.checkout.backHome')}: ${orderPaymentContext}`;
     return (
       <div className={`checkout-page checkout-page--result checkout-page--${language}`}>
         <Result
@@ -1094,11 +1158,11 @@ const Checkout: React.FC = () => {
           title={t('pages.checkout.orderCreatedPaymentPending')}
           subTitle={t('pages.checkout.paymentPendingSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
           extra={[
-            <Button type="primary" key="retry" loading={paying} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>,
-            <Button danger key="rollback" icon={<RollbackOutlined />} loading={cancelingPayment} onClick={rollbackPendingPayment}>{t('pages.checkout.rollbackPaymentAction')}</Button>,
-            <Button key="profile" onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
-            <Button key="track" onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>,
-            <Button key="home" onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
+            <Button type="primary" key="retry" loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>,
+            <Button danger key="rollback" icon={<RollbackOutlined />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>{t('pages.checkout.rollbackPaymentAction')}</Button>,
+            <Button key="profile" aria-label={viewOrderActionLabel} title={viewOrderActionLabel} onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
+            <Button key="track" aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>,
+            <Button key="home" aria-label={backHomeActionLabel} title={backHomeActionLabel} onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
           ]}
         />
         {paymentCreateError ? (
@@ -1110,6 +1174,16 @@ const Checkout: React.FC = () => {
 
   if (createdOrder && payment) {
     const paid = payment.status === 'PAID';
+    const orderDisplayNo = createdOrder.orderNo || String(createdOrder.id);
+    const orderPaymentContext = `${t('pages.paymentInstructions.orderNo')}: ${orderDisplayNo} · ${formatMoney(createdOrder.totalAmount)}`;
+    const openPaymentActionLabel = `${t('pages.checkout.openPayment')}: ${orderPaymentContext}`;
+    const retryPaymentActionLabel = `${t('pages.checkout.retryPayment')}: ${orderPaymentContext}`;
+    const rollbackPaymentActionLabel = `${t('pages.checkout.rollbackPaymentAction')}: ${orderPaymentContext}`;
+    const viewOrderActionLabel = `${t('pages.checkout.viewOrder')}: ${orderPaymentContext}`;
+    const trackOrderActionLabel = `${t('pages.orderTracking.title')}: ${orderPaymentContext}`;
+    const backHomeActionLabel = `${t('pages.checkout.backHome')}: ${orderPaymentContext}`;
+    const supportActionLabel = `${t('pages.checkout.nextActionSupport')}: ${orderPaymentContext}`;
+    const simulatePaymentActionLabel = `${t('pages.checkout.simulatePay')}: ${orderPaymentContext}`;
     const paymentRecovery = getPaymentRecoveryState(payment);
     const paymentRecoveryTone = paid
       ? 'success'
@@ -1118,6 +1192,21 @@ const Checkout: React.FC = () => {
         : paymentRecovery.isExpiringSoon
           ? 'warning'
           : 'processing';
+    const paymentRecoveryStatusText = paid
+      ? t('pages.checkout.paymentRecoveryPaid')
+      : paymentRecovery.isExpired
+        ? t('pages.checkout.paymentRecoveryExpired')
+        : t('pages.checkout.paymentRecoveryPending');
+    const paymentRecoveryWindowText = paymentRecovery.minutesLeft === null
+      ? t('pages.checkout.paymentRecoveryWindowUnknown')
+      : paymentRecovery.isExpired
+        ? t('pages.checkout.paymentRecoveryWindowExpired')
+        : t('pages.checkout.paymentRecoveryWindowMinutes', { count: paymentRecovery.minutesLeft });
+    const paymentRecoveryNextText = paid
+      ? t('pages.checkout.paymentRecoveryNextPaid')
+      : payment.paymentUrl
+        ? t('pages.checkout.paymentRecoveryNextOpen')
+        : t('pages.checkout.paymentRecoveryNextRetry');
     return (
       <div className={`checkout-page checkout-page--result checkout-page--${language}`}>
         <Result
@@ -1126,59 +1215,51 @@ const Checkout: React.FC = () => {
           subTitle={t('pages.checkout.resultSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
           extra={[
             !paid && payment.paymentUrl && (
-              <Button type="primary" key="pay" loading={paying} onClick={openPaymentUrl}>
+              <Button type="primary" key="pay" loading={paying} aria-label={openPaymentActionLabel} title={openPaymentActionLabel} onClick={openPaymentUrl}>
                 {t('pages.checkout.openPayment')}
               </Button>
             ),
-            <Button key="profile" onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
-            <Button key="track" onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>,
-            <Button key="home" onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
+            <Button key="profile" aria-label={viewOrderActionLabel} title={viewOrderActionLabel} onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
+            <Button key="track" aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>,
+            <Button key="home" aria-label={backHomeActionLabel} title={backHomeActionLabel} onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
           ].filter(Boolean)}
         />
         <Card className="checkout-page__paymentRecovery" title={t('pages.checkout.paymentRecoveryTitle')}>
-          <div className="checkout-page__paymentRecoveryGrid">
-            <div>
+          <div className="checkout-page__paymentRecoveryGrid" role="list" aria-label={`${t('pages.checkout.paymentRecoveryTitle')}: ${orderPaymentContext}`}>
+            <div role="listitem" aria-label={`${t('pages.checkout.paymentRecoveryStatus')}: ${paymentRecoveryStatusText}`}>
               <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
               <Tag color={paid ? 'green' : paymentRecovery.isExpired ? 'red' : paymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
-                {paid ? t('pages.checkout.paymentRecoveryPaid') : paymentRecovery.isExpired ? t('pages.checkout.paymentRecoveryExpired') : t('pages.checkout.paymentRecoveryPending')}
+                {paymentRecoveryStatusText}
               </Tag>
             </div>
-            <div>
+            <div role="listitem" aria-label={`${t('pages.checkout.paymentRecoveryWindow')}: ${paymentRecoveryWindowText}`}>
               <Text strong>{t('pages.checkout.paymentRecoveryWindow')}</Text>
               <Text type={paymentRecoveryTone === 'error' ? 'danger' : paymentRecoveryTone === 'warning' ? 'warning' : 'secondary'}>
-                {paymentRecovery.minutesLeft === null
-                  ? t('pages.checkout.paymentRecoveryWindowUnknown')
-                  : paymentRecovery.isExpired
-                    ? t('pages.checkout.paymentRecoveryWindowExpired')
-                    : t('pages.checkout.paymentRecoveryWindowMinutes', { count: paymentRecovery.minutesLeft })}
+                {paymentRecoveryWindowText}
               </Text>
             </div>
-            <div>
+            <div role="listitem" aria-label={`${t('pages.checkout.paymentRecoveryNext')}: ${paymentRecoveryNextText}`}>
               <Text strong>{t('pages.checkout.paymentRecoveryNext')}</Text>
               <Text type="secondary">
-                {paid
-                  ? t('pages.checkout.paymentRecoveryNextPaid')
-                  : payment.paymentUrl
-                    ? t('pages.checkout.paymentRecoveryNextOpen')
-                    : t('pages.checkout.paymentRecoveryNextRetry')}
+                {paymentRecoveryNextText}
               </Text>
             </div>
           </div>
           {!paid ? (
             <Space wrap className="checkout-page__paymentRecoveryActions">
-              {payment.paymentUrl ? <Button type="primary" onClick={openPaymentUrl}>{t('pages.checkout.openPayment')}</Button> : null}
+              {payment.paymentUrl ? <Button type="primary" aria-label={openPaymentActionLabel} title={openPaymentActionLabel} onClick={openPaymentUrl}>{t('pages.checkout.openPayment')}</Button> : null}
               {paymentSimulationEnabled ? (
-                <Button loading={simulatingPayment} onClick={simulatePayment}>
+                <Button loading={simulatingPayment} aria-label={simulatePaymentActionLabel} title={simulatePaymentActionLabel} onClick={simulatePayment}>
                   {t('pages.checkout.simulatePay')}
                 </Button>
               ) : null}
-              <Button loading={paying} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>
+              <Button loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>
               {createdOrder.status === 'PENDING_PAYMENT' ? (
-                <Button danger icon={<RollbackOutlined />} loading={cancelingPayment} onClick={rollbackPendingPayment}>
+                <Button danger icon={<RollbackOutlined />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>
                   {t('pages.checkout.rollbackPaymentAction')}
                 </Button>
               ) : null}
-              <Button onClick={openSupport}>{t('pages.checkout.nextActionSupport')}</Button>
+              <Button aria-label={supportActionLabel} title={supportActionLabel} onClick={openSupport}>{t('pages.checkout.nextActionSupport')}</Button>
             </Space>
           ) : null}
         </Card>
@@ -1211,16 +1292,37 @@ const Checkout: React.FC = () => {
             <Text>{t('pages.checkout.savingsCoachSubtitle')}</Text>
           </div>
           <div className="checkout-page__emptyActions">
-            <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => navigate('/cart')}>
+            <Button
+              type="primary"
+              icon={<ShoppingCartOutlined />}
+              onClick={() => navigate('/cart')}
+              aria-label={t('pages.checkout.emptyBackCartAction')}
+              title={t('pages.checkout.emptyBackCartAction')}
+            >
               {t('pages.checkout.backCart')}
             </Button>
-            <Button icon={<ShoppingOutlined />} onClick={() => navigate('/products')}>
+            <Button
+              icon={<ShoppingOutlined />}
+              onClick={() => navigate('/products')}
+              aria-label={t('pages.checkout.emptyBrowseAction')}
+              title={t('pages.checkout.emptyBrowseAction')}
+            >
               {t('pages.cart.browse')}
             </Button>
-            <Button icon={<GiftOutlined />} onClick={() => navigate('/coupons')}>
+            <Button
+              icon={<GiftOutlined />}
+              onClick={() => navigate('/coupons')}
+              aria-label={t('pages.checkout.emptyCouponsAction')}
+              title={t('pages.checkout.emptyCouponsAction')}
+            >
               {t('nav.coupons')}
             </Button>
-            <Button icon={<HistoryOutlined />} onClick={() => navigate('/history')}>
+            <Button
+              icon={<HistoryOutlined />}
+              onClick={() => navigate('/history')}
+              aria-label={t('pages.checkout.emptyHistoryAction')}
+              title={t('pages.checkout.emptyHistoryAction')}
+            >
               {t('nav.history')}
             </Button>
           </div>
@@ -1295,6 +1397,8 @@ const Checkout: React.FC = () => {
           onClick={checkoutNextAction ? handleCheckoutNextAction : () => form.submit()}
           loading={submitting}
           disabled={!checkoutNextAction && checkoutSubmitDisabled}
+          aria-label={checkoutConfirmationActionLabel}
+          title={checkoutConfirmationActionLabel}
         >
           {checkoutNextAction ? checkoutNextActionLabel : t('pages.checkout.submitWithAmount', { amount: formatMoney(payableAmount) })}
         </Button>
@@ -1330,27 +1434,40 @@ const Checkout: React.FC = () => {
             {({ getFieldValue }) => {
               const selectedPaymentMethod = getFieldValue('paymentMethod');
               return (
-        <div className="checkout-page__paymentGrid">
+        <div className="checkout-page__paymentGrid" role="radiogroup" aria-label={t('pages.payment.title')} aria-required="true">
           {!paymentChannelsAvailable ? (
             <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
           ) : null}
-          {paymentMethodDetails.map((method) => (
-            <button
-              type="button"
-              key={method.value}
-              className={`checkout-page__paymentMethod${selectedPaymentMethod === method.value ? ' checkout-page__paymentMethod--selected' : ''}`}
-              onClick={() => form.setFieldsValue({ paymentMethod: method.value })}
-            >
-              <span className="checkout-page__paymentMethodTop">
-                <strong className="checkout-page__paymentMethodTitle">{method.title}</strong>
-                <span className="checkout-page__paymentBadges">
-                  {recommendedPaymentMethod === method.value ? <Tag color="gold">{t('pages.checkout.recommendedPayment')}</Tag> : null}
-                  <Tag color={method.market === 'CN' ? 'red' : method.value === 'OXXO' ? 'orange' : method.value === 'SPEI' ? 'blue' : 'green'}>{t(method.badgeKey)}</Tag>
+          {paymentMethodDetails.map((method, index) => {
+            const checked = selectedPaymentMethod === method.value;
+            const defaultTabStop = !selectedPaymentMethod
+              && method.value === (recommendedPaymentMethod || paymentMethodDetails[0]?.value);
+            const methodActionLabel = `${method.title}: ${t(method.descriptionKey)}`;
+            return (
+              <button
+                type="button"
+                key={method.value}
+                role="radio"
+                aria-checked={checked}
+                aria-label={methodActionLabel}
+                title={methodActionLabel}
+                tabIndex={checked || defaultTabStop || (!selectedPaymentMethod && !recommendedPaymentMethod && index === 0) ? 0 : -1}
+                data-payment-method={method.value}
+                className={`checkout-page__paymentMethod${checked ? ' checkout-page__paymentMethod--selected' : ''}`}
+                onClick={() => selectCheckoutPaymentMethod(method.value)}
+                onKeyDown={(event) => handlePaymentMethodKeyDown(event, method.value)}
+              >
+                <span className="checkout-page__paymentMethodTop">
+                  <strong className="checkout-page__paymentMethodTitle">{method.title}</strong>
+                  <span className="checkout-page__paymentBadges">
+                    {recommendedPaymentMethod === method.value ? <Tag color="gold">{t('pages.checkout.recommendedPayment')}</Tag> : null}
+                    <Tag color={method.market === 'CN' ? 'red' : method.value === 'OXXO' ? 'orange' : method.value === 'SPEI' ? 'blue' : 'green'}>{t(method.badgeKey)}</Tag>
+                  </span>
                 </span>
-              </span>
-              <span className="checkout-page__paymentMethodDescription">{t(method.descriptionKey)}</span>
-            </button>
-          ))}
+                <span className="checkout-page__paymentMethodDescription">{t(method.descriptionKey)}</span>
+              </button>
+            );
+          })}
         </div>
               );
             }}
@@ -1405,7 +1522,7 @@ const Checkout: React.FC = () => {
         open={giftCelebrationOpen}
         title={t('pages.checkout.giftModalTitle')}
         onCancel={() => setGiftCelebrationOpen(false)}
-        footer={<Button type="primary" onClick={() => setGiftCelebrationOpen(false)}>{t('common.confirm')}</Button>}
+        footer={<Button type="primary" aria-label={giftConfirmActionLabel} title={giftConfirmActionLabel} onClick={() => setGiftCelebrationOpen(false)}>{t('common.confirm')}</Button>}
         className="profile-mobile-safe-modal checkout-page__giftCelebrationModal"
       >
         <Space align="start" className="checkout-page__giftModal">
@@ -1435,7 +1552,14 @@ const Checkout: React.FC = () => {
               <Text type="secondary">{t('pages.checkout.savingsCoachSubtitle')}</Text>
             </div>
             {addOnTarget ? (
-              <Button size="small" icon={<SwapOutlined />} className="checkout-page__addOnButton" onClick={scrollToAddOns}>
+              <Button
+                size="small"
+                icon={<SwapOutlined />}
+                className="checkout-page__addOnButton"
+                aria-label={checkoutSavingsAddOnsActionLabel}
+                title={checkoutSavingsAddOnsActionLabel}
+                onClick={scrollToAddOns}
+              >
                 {t('pages.checkout.savingsShopAddOns')}
               </Button>
             ) : null}
@@ -1475,6 +1599,8 @@ const Checkout: React.FC = () => {
               type={couponOpportunity.type === 'ready' ? 'default' : 'primary'}
               icon={couponOpportunity.type === 'build' && addOnTarget ? <SwapOutlined /> : undefined}
               className="checkout-page__addOnButton"
+              aria-label={checkoutCouponOpportunityActionLabel}
+              title={checkoutCouponOpportunityActionLabel}
               onClick={handleCouponOpportunityAction}
             >
               {couponOpportunity.action}
@@ -1514,7 +1640,7 @@ const Checkout: React.FC = () => {
                   : t('pages.checkout.nextActionReadyText')}
               </Text>
             </span>
-            <Button size="small" type={checkoutNextAction ? 'primary' : 'default'} onClick={handleCheckoutNextAction}>
+            <Button size="small" type={checkoutNextAction ? 'primary' : 'default'} aria-label={checkoutReadinessActionLabel} title={checkoutReadinessActionLabel} onClick={handleCheckoutNextAction}>
               {checkoutNextActionLabel}
             </Button>
           </div>
@@ -1524,44 +1650,58 @@ const Checkout: React.FC = () => {
       <Card title={t('pages.checkout.itemList')} className="checkout-page__itemsCard checkout-page__sectionCard">
         <List
           dataSource={cartItems}
-          renderItem={(item) => (
-            <List.Item className="checkout-page__item">
-              <List.Item.Meta
-                avatar={
-                  <img
-                    src={resolveCheckoutImage(item.imageUrl)}
-                    alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
-                    className="checkout-page__itemImage"
-                    loading="lazy"
-                    decoding="async"
-                    onError={(event) => {
-                      if (event.currentTarget.src !== checkoutImageFallback) {
-                        event.currentTarget.src = checkoutImageFallback;
-                      }
-                    }}
-                  />
-                }
-                title={<button type="button" className="checkout-page__itemLink" onClick={() => navigate(`/products/${item.productId}`)}>{item.productName || t('pages.profile.productFallback', { id: item.productId })}</button>}
-                description={
-                  <div className="checkout-page__itemDescription">
-                    {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
-                    {getCartItemLowStockCount(item) !== null ? (
-                      <Text type="warning" className="checkout-page__urgency">
-                        {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
-                      </Text>
-                    ) : null}
-                    <div className="checkout-page__itemCommerce">
-                      <Text type="secondary" className="checkout-page__itemUnit commerce-atomic commerce-price-quantity">
-                        <span className="commerce-money">{formatMoney(item.price)}</span>
-                        <span className="commerce-quantity">x {item.quantity}</span>
-                      </Text>
-                      <Text strong className="checkout-page__itemTotal commerce-money">{formatMoney(item.price * item.quantity)}</Text>
+          renderItem={(item) => {
+            const itemName = checkoutCartItemName(item);
+            const itemActionLabel = `${t('pages.productList.viewDetails')}: ${itemName}`;
+            return (
+              <List.Item className="checkout-page__item">
+                <List.Item.Meta
+                  avatar={
+                    <img
+                      src={resolveCheckoutImage(item.imageUrl)}
+                      alt={itemName}
+                      className="checkout-page__itemImage"
+                      loading="lazy"
+                      decoding="async"
+                      onError={(event) => {
+                        if (event.currentTarget.src !== checkoutImageFallback) {
+                          event.currentTarget.src = checkoutImageFallback;
+                        }
+                      }}
+                    />
+                  }
+                  title={
+                    <button
+                      type="button"
+                      className="checkout-page__itemLink"
+                      aria-label={itemActionLabel}
+                      title={itemActionLabel}
+                      onClick={() => navigate(`/products/${item.productId}`)}
+                    >
+                      {itemName}
+                    </button>
+                  }
+                  description={
+                    <div className="checkout-page__itemDescription">
+                      {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
+                      {getCartItemLowStockCount(item) !== null ? (
+                        <Text type="warning" className="checkout-page__urgency">
+                          {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
+                        </Text>
+                      ) : null}
+                      <div className="checkout-page__itemCommerce">
+                        <Text type="secondary" className="checkout-page__itemUnit commerce-atomic commerce-price-quantity">
+                          <span className="commerce-money">{formatMoney(item.price)}</span>
+                          <span className="commerce-quantity">x {item.quantity}</span>
+                        </Text>
+                        <Text strong className="checkout-page__itemTotal commerce-money">{formatMoney(item.price * item.quantity)}</Text>
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-            </List.Item>
-          )}
+                  }
+                />
+              </List.Item>
+            );
+          }}
         />
         <Divider />
         <div className="checkout-page__summaryLine">
@@ -1586,30 +1726,32 @@ const Checkout: React.FC = () => {
           className="checkout-page__sectionCard"
           onFocusCapture={(event) => scrollCheckoutFieldIntoMobileView(event.target, 'checkout-address-card', 'auto')}
         >
-          {addresses.length > 0 && (
-            <Radio.Group value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)} className="checkout-page__addressGroup">
-              {addresses.map((address) => (
-                <Radio
-                  key={address.id}
-                  value={address.id}
-                  className={String(selectedAddressId) === String(address.id) ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
-                >
-                  <Space className="checkout-page__addressHeader">
-                    <Text strong>{address.recipientName}</Text>
-                    <Text type="secondary">{address.phone}</Text>
-                    {address.isDefault && <Tag color="orange">{t('pages.checkout.defaultAddress')}</Tag>}
-                  </Space>
-                  <div className="checkout-page__addressText">{address.address}</div>
-                </Radio>
-              ))}
-              <Radio
-                value="new"
-                className={selectedAddressId === 'new' ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
-              >
-                <Text strong>{t('pages.checkout.useNewAddress')}</Text>
-              </Radio>
-            </Radio.Group>
-          )}
+	          {addresses.length > 0 && (
+	            <div role="group" aria-label={checkoutAddressGroupLabel} title={checkoutAddressGroupLabel}>
+	              <Radio.Group value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)} className="checkout-page__addressGroup" aria-label={checkoutAddressGroupLabel}>
+	                {addresses.map((address) => (
+	                  <Radio
+	                    key={address.id}
+	                    value={address.id}
+	                    className={String(selectedAddressId) === String(address.id) ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
+	                  >
+	                    <Space className="checkout-page__addressHeader">
+	                      <Text strong>{address.recipientName}</Text>
+	                      <Text type="secondary">{address.phone}</Text>
+	                      {address.isDefault && <Tag color="orange">{t('pages.checkout.defaultAddress')}</Tag>}
+	                    </Space>
+	                    <div className="checkout-page__addressText">{address.address}</div>
+	                  </Radio>
+	                ))}
+	                <Radio
+	                  value="new"
+	                  className={selectedAddressId === 'new' ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
+	                >
+	                  <Text strong>{t('pages.checkout.useNewAddress')}</Text>
+	                </Radio>
+	              </Radio.Group>
+	            </div>
+	          )}
 
           {(selectedAddressId === 'new' || addresses.length === 0) && (
             <>
@@ -1631,7 +1773,7 @@ const Checkout: React.FC = () => {
                   options={regionData}
                   placeholder={t('pages.checkout.regionPlaceholder')}
                   showSearch
-                  popupClassName="shop-mobile-popup-layer"
+                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                   getPopupContainer={() => document.body}
                 />
               </Form.Item>
@@ -1651,8 +1793,10 @@ const Checkout: React.FC = () => {
             className="checkout-page__couponSelect"
             placeholder={t('pages.checkout.selectCoupon')}
             value={selectedUserCouponId ?? undefined}
-            popupClassName="shop-mobile-popup-layer"
+            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
             getPopupContainer={() => document.body}
+            aria-label={checkoutCouponSelectLabel}
+            title={checkoutCouponSelectLabel}
             onChange={(value) => {
               setCouponManuallyChanged(true);
               setSelectedUserCouponId(value ?? null);
@@ -1733,7 +1877,7 @@ const Checkout: React.FC = () => {
               <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
             </div>
             <Form.Item className="checkout-page__submitAction">
-              <Button className="checkout-page__submitButton" type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large">
+              <Button className="checkout-page__submitButton" type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large" aria-label={checkoutSubmitActionLabel} title={checkoutSubmitActionLabel}>
                 {renderSubmitWithAmount()}
               </Button>
             </Form.Item>
@@ -1743,7 +1887,7 @@ const Checkout: React.FC = () => {
               <Text type="secondary">{t('pages.checkout.payable')}</Text>
               <Text strong className="commerce-money">{formatMoney(payableAmount)}</Text>
             </span>
-            <Button type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled}>
+            <Button type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} aria-label={checkoutSubmitActionLabel} title={checkoutSubmitActionLabel}>
               {renderSubmitWithAmount()}
             </Button>
           </div>

@@ -11,6 +11,7 @@ import './SecurityAuditLogManagement.css';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const actionColors: Record<string, string> = {
   LOGIN: 'blue',
@@ -1054,6 +1055,7 @@ const SecurityAuditLogManagement: React.FC = () => {
 
   const localizedOpsCopy = auditOpsCopy[language] || auditOpsCopy.en;
   const localizedAdminCopy = auditAdminCopy[language] || auditAdminCopy.en;
+  const auditPurgeActionLabel = `${localizedAdminCopy.purge}: ${retentionDays} ${localizedAdminCopy.days}`;
   const actionLabel = useCallback((value?: string) => localizedMapValue(auditActionLabels, language, value), [language]);
   const resourceLabel = useCallback((value?: string) => localizedMapValue(resourceTypeLabels, language, value), [language]);
   const messageLabel = useCallback((value?: string) => localizedMapValue(auditMessageLabels, language, value), [language]);
@@ -1119,6 +1121,40 @@ const SecurityAuditLogManagement: React.FC = () => {
   const summaryFailures = summary?.failureCount ?? auditInsights.failures;
   const summaryFailureRate = summaryTotal ? Math.round((summaryFailures / summaryTotal) * 100) : auditInsights.failureRate;
   const summaryRangeHours = summary ? Math.max(1, Math.round((new Date(summary.endAt).getTime() - new Date(summary.startAt).getTime()) / 3600000)) : 0;
+  const activeAuditView = searchParams.get('view') || '';
+  const paymentFailureMetricLabel = `${localizedOpsCopy.paymentFailures}: ${auditInsights.paymentFailures}`;
+  const refundMetricLabel = `${localizedOpsCopy.refundEvents}: ${auditInsights.refundEvents}`;
+  const callbackMetricLabel = `${localizedOpsCopy.callbackEvents}: ${auditInsights.callbackEvents}`;
+  const paymentOpsMetricLabel = `${localizedOpsCopy.highRiskEvents}: ${auditInsights.paymentOpsEvents}`;
+  const accountFailureMetricLabel = `${localizedOpsCopy.accountFailures}: ${auditInsights.accountFailures}`;
+  const passwordChangeMetricLabel = `${localizedOpsCopy.passwordChanges}: ${auditInsights.passwordChanges}`;
+  const emailCodeMetricLabel = `${localizedOpsCopy.emailCodeEvents}: ${auditInsights.emailCodeEvents}`;
+  const accountSecurityMetricLabel = `${localizedOpsCopy.accountEvents}: ${auditInsights.accountSecurityEvents}`;
+  const showPaymentFailuresLabel = `${localizedOpsCopy.showPaymentFailures}: ${auditInsights.paymentFailures}`;
+  const showRefundsLabel = `${localizedOpsCopy.showRefunds}: ${auditInsights.refundEvents}`;
+  const showCallbacksLabel = `${localizedOpsCopy.showCallbacks}: ${auditInsights.callbackEvents}`;
+  const showAccountFailuresLabel = `${localizedOpsCopy.showAccountFailures}: ${auditInsights.accountFailures}`;
+  const showPasswordChangesLabel = `${localizedOpsCopy.showPasswordChanges}: ${auditInsights.passwordChanges}`;
+  const showEmailCodesLabel = `${localizedOpsCopy.showEmailCodes}: ${auditInsights.emailCodeEvents}`;
+  const showAccountEventsLabel = `${localizedOpsCopy.showAccountEvents}: ${auditInsights.accountSecurityEvents}`;
+  const selectedAuditActionLabel = action ? actionLabel(action) : t('common.all');
+  const selectedAuditResultLabel = result === 'SUCCESS'
+    ? t('pages.auditLogs.success')
+    : result === 'FAILURE'
+      ? t('pages.auditLogs.failure')
+      : t('common.all');
+  const selectedAuditResourceLabel = resourceType ? resourceLabel(resourceType) : t('common.all');
+  const selectedAuditActorLabel = actorUsername.trim() || t('common.all');
+  const selectedAuditRangeLabel = range?.[0] && range?.[1]
+    ? `${range[0].format('YYYY-MM-DD HH:mm')} - ${range[1].format('YYYY-MM-DD HH:mm')}`
+    : t('common.all');
+  const auditActionFilterLabel = `${t('pages.auditLogs.action')}: ${t('pages.auditLogs.title')}, ${selectedAuditActionLabel}`;
+  const auditResultFilterLabel = `${t('pages.auditLogs.result')}: ${t('pages.auditLogs.title')}, ${selectedAuditResultLabel}`;
+  const auditResourceFilterLabel = `${t('pages.auditLogs.resource')}: ${t('pages.auditLogs.title')}, ${selectedAuditResourceLabel}`;
+  const auditActorFilterLabel = `${t('pages.auditLogs.actor')}: ${t('pages.auditLogs.title')}, ${selectedAuditActorLabel}`;
+  const auditRangeFilterLabel = `${t('common.time')}: ${t('pages.auditLogs.title')}, ${selectedAuditRangeLabel}`;
+  const auditToolbarSearchLabel = `${t('common.search')}: ${selectedAuditActionLabel}, ${selectedAuditResultLabel}, ${selectedAuditResourceLabel}, ${selectedAuditActorLabel}`;
+  const auditExportToolbarLabel = `${t('pages.auditLogs.export')}: ${selectedAuditActionLabel}, ${selectedAuditResultLabel}, ${selectedAuditResourceLabel}`;
 
   useEffect(() => {
     const view = searchParams.get('view');
@@ -1406,12 +1442,19 @@ const SecurityAuditLogManagement: React.FC = () => {
                 value={retentionDays}
                 onChange={(value) => setRetentionDays(Number(value || 180))}
                 addonAfter={localizedAdminCopy.days}
+                aria-label={`${localizedAdminCopy.retentionTitle}: ${retentionDays} ${localizedAdminCopy.days}`}
+                title={`${localizedAdminCopy.retentionTitle}: ${retentionDays} ${localizedAdminCopy.days}`}
               />
               <Popconfirm
+                classNames={mobilePopconfirmClassNames}
                 title={localizedAdminCopy.purgeConfirm}
                 onConfirm={purgeOldLogs}
+                okText={localizedAdminCopy.purge}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ danger: true, 'aria-label': auditPurgeActionLabel, title: auditPurgeActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${auditPurgeActionLabel}`, title: `${t('common.cancel')}: ${auditPurgeActionLabel}` }}
               >
-                <Button danger icon={<DeleteOutlined />} loading={purging}>
+                <Button danger icon={<DeleteOutlined />} aria-label={auditPurgeActionLabel} title={auditPurgeActionLabel} loading={purging}>
                   {localizedAdminCopy.purge}
                 </Button>
               </Popconfirm>
@@ -1425,22 +1468,48 @@ const SecurityAuditLogManagement: React.FC = () => {
           <Text type="secondary">{localizedOpsCopy.subtitle}</Text>
         </div>
         <div className="audit-log-page__opsMetrics">
-          <button type="button" className={auditInsights.paymentFailures > 0 ? 'is-risk' : ''} onClick={applyPaymentFailureFilter}>
+          <button
+            type="button"
+            className={auditInsights.paymentFailures > 0 ? 'is-risk' : ''}
+            aria-label={paymentFailureMetricLabel}
+            aria-pressed={activeAuditView === 'payment-failures'}
+            title={paymentFailureMetricLabel}
+            onClick={applyPaymentFailureFilter}
+          >
             <AlertOutlined />
             <strong>{auditInsights.paymentFailures}</strong>
             <span>{localizedOpsCopy.paymentFailures}</span>
           </button>
-          <button type="button" onClick={applyRefundFilter}>
+          <button
+            type="button"
+            aria-label={refundMetricLabel}
+            aria-pressed={activeAuditView === 'refunds'}
+            title={refundMetricLabel}
+            onClick={applyRefundFilter}
+          >
             <SafetyCertificateOutlined />
             <strong>{auditInsights.refundEvents}</strong>
             <span>{localizedOpsCopy.refundEvents}</span>
           </button>
-          <button type="button" onClick={applyCallbackFilter}>
+          <button
+            type="button"
+            aria-label={callbackMetricLabel}
+            aria-pressed={activeAuditView === 'callbacks'}
+            title={callbackMetricLabel}
+            onClick={applyCallbackFilter}
+          >
             <SearchOutlined />
             <strong>{auditInsights.callbackEvents}</strong>
             <span>{localizedOpsCopy.callbackEvents}</span>
           </button>
-          <button type="button" className={auditInsights.sensitiveActions > 0 ? 'is-watch' : ''} onClick={applyPaymentOpsFilter}>
+          <button
+            type="button"
+            className={auditInsights.sensitiveActions > 0 ? 'is-watch' : ''}
+            aria-label={paymentOpsMetricLabel}
+            aria-pressed={activeAuditView === 'payment-ops'}
+            title={paymentOpsMetricLabel}
+            onClick={applyPaymentOpsFilter}
+          >
             <AlertOutlined />
             <strong>{auditInsights.paymentOpsEvents}</strong>
             <span>{localizedOpsCopy.highRiskEvents}</span>
@@ -1452,10 +1521,10 @@ const SecurityAuditLogManagement: React.FC = () => {
             <Text type="secondary">{localizedOpsCopy.guideText}</Text>
           </div>
           <Space wrap>
-            <Button size="small" onClick={applyPaymentFailureFilter}>{localizedOpsCopy.showPaymentFailures}</Button>
-            <Button size="small" onClick={applyRefundFilter}>{localizedOpsCopy.showRefunds}</Button>
-            <Button size="small" onClick={applyCallbackFilter}>{localizedOpsCopy.showCallbacks}</Button>
-            <Button size="small" onClick={clearOpsFilters}>{localizedOpsCopy.clear}</Button>
+            <Button size="small" aria-label={showPaymentFailuresLabel} title={showPaymentFailuresLabel} onClick={applyPaymentFailureFilter}>{localizedOpsCopy.showPaymentFailures}</Button>
+            <Button size="small" aria-label={showRefundsLabel} title={showRefundsLabel} onClick={applyRefundFilter}>{localizedOpsCopy.showRefunds}</Button>
+            <Button size="small" aria-label={showCallbacksLabel} title={showCallbacksLabel} onClick={applyCallbackFilter}>{localizedOpsCopy.showCallbacks}</Button>
+            <Button size="small" aria-label={localizedOpsCopy.clear} title={localizedOpsCopy.clear} onClick={clearOpsFilters}>{localizedOpsCopy.clear}</Button>
           </Space>
         </div>
       </section>
@@ -1465,22 +1534,48 @@ const SecurityAuditLogManagement: React.FC = () => {
           <Text type="secondary">{localizedOpsCopy.accountGuideText}</Text>
         </div>
         <div className="audit-log-page__opsMetrics">
-          <button type="button" className={auditInsights.accountFailures > 0 ? 'is-risk' : ''} onClick={applyAccountFailureFilter}>
+          <button
+            type="button"
+            className={auditInsights.accountFailures > 0 ? 'is-risk' : ''}
+            aria-label={accountFailureMetricLabel}
+            aria-pressed={activeAuditView === 'account-failures'}
+            title={accountFailureMetricLabel}
+            onClick={applyAccountFailureFilter}
+          >
             <AlertOutlined />
             <strong>{auditInsights.accountFailures}</strong>
             <span>{localizedOpsCopy.accountFailures}</span>
           </button>
-          <button type="button" className={auditInsights.passwordChanges > 0 ? 'is-watch' : ''} onClick={applyPasswordChangeFilter}>
+          <button
+            type="button"
+            className={auditInsights.passwordChanges > 0 ? 'is-watch' : ''}
+            aria-label={passwordChangeMetricLabel}
+            aria-pressed={activeAuditView === 'password-changes'}
+            title={passwordChangeMetricLabel}
+            onClick={applyPasswordChangeFilter}
+          >
             <KeyOutlined />
             <strong>{auditInsights.passwordChanges}</strong>
             <span>{localizedOpsCopy.passwordChanges}</span>
           </button>
-          <button type="button" onClick={applyEmailCodeFilter}>
+          <button
+            type="button"
+            aria-label={emailCodeMetricLabel}
+            aria-pressed={activeAuditView === 'email-codes'}
+            title={emailCodeMetricLabel}
+            onClick={applyEmailCodeFilter}
+          >
             <MailOutlined />
             <strong>{auditInsights.emailCodeEvents}</strong>
             <span>{localizedOpsCopy.emailCodeEvents}</span>
           </button>
-          <button type="button" onClick={applyAccountSecurityFilter}>
+          <button
+            type="button"
+            aria-label={accountSecurityMetricLabel}
+            aria-pressed={activeAuditView === 'account-security'}
+            title={accountSecurityMetricLabel}
+            onClick={applyAccountSecurityFilter}
+          >
             <UserOutlined />
             <strong>{auditInsights.accountSecurityEvents}</strong>
             <span>{localizedOpsCopy.accountEvents}</span>
@@ -1492,64 +1587,74 @@ const SecurityAuditLogManagement: React.FC = () => {
             <Text type="secondary">{localizedOpsCopy.accountGuideText}</Text>
           </div>
           <Space wrap>
-            <Button size="small" onClick={applyAccountFailureFilter}>{localizedOpsCopy.showAccountFailures}</Button>
-            <Button size="small" onClick={applyPasswordChangeFilter}>{localizedOpsCopy.showPasswordChanges}</Button>
-            <Button size="small" onClick={applyEmailCodeFilter}>{localizedOpsCopy.showEmailCodes}</Button>
-            <Button size="small" onClick={applyAccountSecurityFilter}>{localizedOpsCopy.showAccountEvents}</Button>
-            <Button size="small" onClick={clearOpsFilters}>{localizedOpsCopy.clear}</Button>
+            <Button size="small" aria-label={showAccountFailuresLabel} title={showAccountFailuresLabel} onClick={applyAccountFailureFilter}>{localizedOpsCopy.showAccountFailures}</Button>
+            <Button size="small" aria-label={showPasswordChangesLabel} title={showPasswordChangesLabel} onClick={applyPasswordChangeFilter}>{localizedOpsCopy.showPasswordChanges}</Button>
+            <Button size="small" aria-label={showEmailCodesLabel} title={showEmailCodesLabel} onClick={applyEmailCodeFilter}>{localizedOpsCopy.showEmailCodes}</Button>
+            <Button size="small" aria-label={showAccountEventsLabel} title={showAccountEventsLabel} onClick={applyAccountSecurityFilter}>{localizedOpsCopy.showAccountEvents}</Button>
+            <Button size="small" aria-label={localizedOpsCopy.clear} title={localizedOpsCopy.clear} onClick={clearOpsFilters}>{localizedOpsCopy.clear}</Button>
           </Space>
         </div>
       </section>
       <Card className="audit-log-page__toolbar">
         <Space wrap>
-          <Select
-            allowClear
-            value={action}
-            onChange={(value) => updateAuditFilters({ action: value, result, resourceType })}
-            placeholder={t('pages.auditLogs.action')}
-            className="audit-log-page__actionFilter"
-            popupClassName="shop-mobile-popup-layer"
-            getPopupContainer={() => document.body}
-            options={auditActionOptions.map((value) => ({ value, label: actionLabel(value) }))}
-          />
-          <Select
-            allowClear
-            value={result}
-            onChange={(value) => updateAuditFilters({ action, result: value, resourceType })}
-            placeholder={t('pages.auditLogs.result')}
-            className="audit-log-page__resultFilter"
-            popupClassName="shop-mobile-popup-layer"
-            getPopupContainer={() => document.body}
-            options={[
-              { value: 'SUCCESS', label: t('pages.auditLogs.success') },
-              { value: 'FAILURE', label: t('pages.auditLogs.failure') },
-            ]}
-          />
+	          <Select
+	            allowClear
+	            value={action}
+	            onChange={(value) => updateAuditFilters({ action: value, result, resourceType })}
+	            placeholder={t('pages.auditLogs.action')}
+	            className="audit-log-page__actionFilter"
+	            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+	            getPopupContainer={() => document.body}
+	            aria-label={auditActionFilterLabel}
+	            title={auditActionFilterLabel}
+	            options={auditActionOptions.map((value) => ({ value, label: actionLabel(value) }))}
+	          />
+	          <Select
+	            allowClear
+	            value={result}
+	            onChange={(value) => updateAuditFilters({ action, result: value, resourceType })}
+	            placeholder={t('pages.auditLogs.result')}
+	            className="audit-log-page__resultFilter"
+	            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+	            getPopupContainer={() => document.body}
+	            aria-label={auditResultFilterLabel}
+	            title={auditResultFilterLabel}
+	            options={[
+	              { value: 'SUCCESS', label: t('pages.auditLogs.success') },
+	              { value: 'FAILURE', label: t('pages.auditLogs.failure') },
+	            ]}
+	          />
           <Select
             allowClear
             value={resourceType}
             onChange={(value) => updateAuditFilters({ action, result, resourceType: value })}
-            placeholder={t('pages.auditLogs.resource')}
-            className="audit-log-page__resourceFilter"
-            popupClassName="shop-mobile-popup-layer"
-            getPopupContainer={() => document.body}
-            options={auditResourceTypeOptions.map((value) => ({ value, label: resourceLabel(value) }))}
-          />
-          <Input
-            allowClear
-            value={actorUsername}
-            onChange={(event) => setActorUsername(event.target.value)}
-            placeholder={t('pages.auditLogs.actor')}
-            className="audit-log-page__actorInput"
-          />
-          <RangePicker showTime value={range} onChange={setRange} popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} />
-          <Button icon={<SearchOutlined />} type="primary" onClick={fetchLogs}>
-            {t('common.search')}
-          </Button>
-          {canExportAuditLogs ? (
-            <Button icon={<DownloadOutlined />} loading={exporting} onClick={exportLogs}>
-              {t('pages.auditLogs.export')}
-            </Button>
+	            placeholder={t('pages.auditLogs.resource')}
+	            className="audit-log-page__resourceFilter"
+	            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+	            getPopupContainer={() => document.body}
+	            aria-label={auditResourceFilterLabel}
+	            title={auditResourceFilterLabel}
+	            options={auditResourceTypeOptions.map((value) => ({ value, label: resourceLabel(value) }))}
+	          />
+	          <Input
+	            allowClear
+	            value={actorUsername}
+	            onChange={(event) => setActorUsername(event.target.value)}
+	            placeholder={t('pages.auditLogs.actor')}
+	            className="audit-log-page__actorInput"
+	            aria-label={auditActorFilterLabel}
+	            title={auditActorFilterLabel}
+	          />
+	          <div role="group" aria-label={auditRangeFilterLabel} title={auditRangeFilterLabel}>
+	            <RangePicker showTime value={range} onChange={setRange} classNames={{ popup: { root: 'shop-mobile-popup-layer' } }} getPopupContainer={() => document.body} />
+	          </div>
+	          <Button icon={<SearchOutlined />} type="primary" aria-label={auditToolbarSearchLabel} title={auditToolbarSearchLabel} onClick={fetchLogs}>
+	            {t('common.search')}
+	          </Button>
+	          {canExportAuditLogs ? (
+	            <Button icon={<DownloadOutlined />} loading={exporting} aria-label={auditExportToolbarLabel} title={auditExportToolbarLabel} onClick={exportLogs}>
+	              {t('pages.auditLogs.export')}
+	            </Button>
           ) : null}
         </Space>
       </Card>

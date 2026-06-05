@@ -9,6 +9,7 @@ import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { PET_GALLERY_DELETE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
+import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './PetGalleryManagement.css';
 
 const { Text, Title } = Typography;
@@ -87,6 +88,16 @@ const PetGalleryManagement: React.FC = () => {
     }
     return rawValue;
   }, [t]);
+  const pageLabel = t('pages.petGalleryAdmin.title');
+  const refreshActionLabel = `${t('common.refresh')}: ${pageLabel}`;
+  const keywordSearchLabel = `${t('common.search')}: ${pageLabel}`;
+  const statusFilterLabel = `${t('common.status')}: ${pageLabel} - ${getStatusLabel(statusFilter)}`;
+  const sourceFilterLabel = `${t('pages.petGalleryAdmin.source')}: ${pageLabel} - ${getSourceLabel(sourceFilter)}`;
+  const resetFiltersActionLabel = `${t('common.reset')}: ${pageLabel}`;
+  const galleryPaginationItemRender = useMemo(() => buildPaginationItemRender(
+    `${t('common.previousPage')}: ${pageLabel}`,
+    `${t('common.nextPage')}: ${pageLabel}`,
+  ), [pageLabel, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
@@ -262,19 +273,30 @@ const PetGalleryManagement: React.FC = () => {
         key: 'actions',
         width: 130,
         fixed: 'right',
-        render: (_, record) => (
-          <Popconfirm
-            title={t('pages.petGalleryAdmin.deleteConfirm')}
-            description={t('pages.petGalleryAdmin.deleteDescription')}
-            okText={t('common.delete')}
-            cancelText={t('common.cancel')}
-            onConfirm={() => handleDelete(record)}
-          >
-            <Button danger size="small" icon={<DeleteOutlined />} loading={deletingId === record.id}>
-              {t('pages.petGalleryAdmin.remove')}
-            </Button>
-          </Popconfirm>
-        ),
+        render: (_, record) => {
+          const photoLabel = record.originalFilename || record.username || `#${record.id}`;
+          const removeActionLabel = `${t('pages.petGalleryAdmin.remove')}: ${photoLabel}`;
+          return (
+            <Popconfirm
+              title={t('pages.petGalleryAdmin.deleteConfirmTarget', { photo: photoLabel })}
+              description={t('pages.petGalleryAdmin.deleteDescriptionTarget', {
+                photo: photoLabel,
+                id: record.id,
+                owner: record.username || t('common.unknown'),
+              })}
+              okText={t('common.delete')}
+              cancelText={t('common.cancel')}
+              classNames={{ root: 'shop-mobile-popup-layer' }}
+              okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
+              onConfirm={() => handleDelete(record)}
+            >
+              <Button danger size="small" icon={<DeleteOutlined />} aria-label={removeActionLabel} title={removeActionLabel} loading={deletingId === record.id}>
+                {t('pages.petGalleryAdmin.remove')}
+              </Button>
+            </Popconfirm>
+          );
+        },
       });
     }
 
@@ -289,12 +311,12 @@ const PetGalleryManagement: React.FC = () => {
           <Title level={4}>{t('pages.petGalleryAdmin.title')}</Title>
           <Text type="secondary">{t('pages.petGalleryAdmin.description')}</Text>
         </div>
-        <Button icon={<ReloadOutlined />} loading={loading} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
+        <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshActionLabel} title={refreshActionLabel} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
           {t('common.refresh')}
         </Button>
       </div>
 
-      <section className="pet-gallery-management-page__stats" aria-label={t('pages.petGalleryAdmin.title')}>
+      <section className="pet-gallery-management-page__stats" aria-label={pageLabel}>
         <Card>
           <Statistic title={t('pages.petGalleryAdmin.visiblePhotos')} value={galleryStats.visiblePhotos} prefix={<CameraOutlined />} />
         </Card>
@@ -326,22 +348,28 @@ const PetGalleryManagement: React.FC = () => {
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('pages.petGalleryAdmin.keywordPlaceholder')}
+            aria-label={keywordSearchLabel}
+            title={keywordSearchLabel}
           />
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
             options={STATUS_OPTIONS.map((value) => ({ value, label: getStatusLabel(value) }))}
-            popupClassName="shop-mobile-popup-layer"
+            aria-label={statusFilterLabel}
+            title={statusFilterLabel}
+            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
             getPopupContainer={() => document.body}
           />
           <Select
             value={sourceFilter}
             onChange={setSourceFilter}
             options={SOURCE_OPTIONS.map((value) => ({ value, label: getSourceLabel(value) }))}
-            popupClassName="shop-mobile-popup-layer"
+            aria-label={sourceFilterLabel}
+            title={sourceFilterLabel}
+            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
             getPopupContainer={() => document.body}
           />
-          <Button onClick={() => { setKeyword(''); setStatusFilter('ALL'); setSourceFilter('ALL'); }}>
+          <Button aria-label={resetFiltersActionLabel} title={resetFiltersActionLabel} onClick={() => { setKeyword(''); setStatusFilter('ALL'); setSourceFilter('ALL'); }}>
             {t('common.reset')}
           </Button>
           {lastLoadedAt ? <Text type="secondary">{t('pages.petGalleryAdmin.loadedAt', { time: lastLoadedAt.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' }) })}</Text> : null}
@@ -359,6 +387,7 @@ const PetGalleryManagement: React.FC = () => {
             showSizeChanger: true,
             pageSizeOptions: ['12', '24', '48'],
             showTotal: (total) => `${total} | ${pageState.totalPages ? `${pageState.page}/${pageState.totalPages}` : '0/0'}`,
+            itemRender: galleryPaginationItemRender,
           }}
           onChange={handleTableChange}
           scroll={{ x: 1230 }}

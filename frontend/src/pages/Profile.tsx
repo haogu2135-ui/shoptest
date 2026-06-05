@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Tabs, Tag, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -56,6 +56,7 @@ const statusColors: Record<string, string> = {
   REFUNDED: 'purple',
   FAILED: 'red',
   EXPIRED: 'volcano',
+  RECONCILE_REQUIRED: 'magenta',
   DELIVERED: 'green',
 };
 
@@ -74,7 +75,7 @@ const ORDER_STATUS_LABEL_KEYS = new Set([
   'REFUNDED',
   'DELIVERED',
 ]);
-const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED']);
+const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED', 'RECONCILE_REQUIRED']);
 
 const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
 
@@ -83,12 +84,15 @@ const getOrderSortTime = (order: OrderCustomer) => {
   return Number.isNaN(createdAt) ? 0 : createdAt;
 };
 
+const profileOrderLabel = (order: Pick<OrderCustomer, 'id' | 'orderNo'>) => order.orderNo || `#${order.id}`;
+
 const sortOrdersNewestFirst = (items: OrderCustomer[]) =>
   [...items].sort((left, right) => getOrderSortTime(right) - getOrderSortTime(left) || right.id - left.id);
 
 const normalizeProfileTab = (value: string | null) =>
   value === 'info' || value === 'addresses' || value === 'orders' || value === 'pets' ? value : null;
 
+const normalizeProfileOrderNo = (value: unknown) => String(value || '').trim().toUpperCase();
 const normalizeProfileEmail = (value: unknown) => String(value || '').trim().toLowerCase();
 const stripProfileControlChars = (value: unknown) => Array.from(String(value || ''), (char) => {
   const code = char.charCodeAt(0);
@@ -117,8 +121,11 @@ type OrderActionHint = {
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedProfileTab = normalizeProfileTab(searchParams.get('tab'));
+  const paymentReturnStatus = String(searchParams.get('payment') || '').trim().toLowerCase();
+  const paymentReturnOrderNo = normalizeProfileOrderNo(searchParams.get('orderNo'));
+  const paymentReturnOrderId = Number(searchParams.get('orderId') || '');
   const { t, language } = useLanguage();
   const { config: appConfig } = useAppConfig();
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -162,9 +169,13 @@ const Profile: React.FC = () => {
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState('');
   const [selectedTrackingCarrierCode, setSelectedTrackingCarrierCode] = useState<string | undefined>();
   const [selectedTrackingOrderId, setSelectedTrackingOrderId] = useState<number | undefined>();
-  const [profileActiveTab, setProfileActiveTab] = useState(requestedProfileTab || 'info');
+  const [profileActiveTab, setProfileActiveTab] = useState(requestedProfileTab || (paymentReturnStatus === 'success' ? 'orders' : 'info'));
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [orderSearchText, setOrderSearchText] = useState('');
+  const handledPaymentReturnRef = useRef('');
+  const profileOrderItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
+    (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
+  );
   const [editForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [addressForm] = Form.useForm();
@@ -237,6 +248,35 @@ const Profile: React.FC = () => {
     }
   }, [t]);
 
+  const syncPaymentReturnState = useCallback(async (order: OrderCustomer) => {
+    const paymentListRes = await paymentApi.getByOrder(order.id);
+    const paymentList = paymentListRes.data || [];
+    const syncedById = new Map<number, PaymentCustomer>();
+    await Promise.all(paymentList.map(async (payment) => {
+      try {
+        const synced = await paymentApi.sync(payment.id);
+        syncedById.set(payment.id, synced.data);
+      } catch {
+        // A single provider sync failure should not block order refresh after returning from checkout.
+      }
+    }));
+    const mergedPayments = paymentList.map((payment) => syncedById.get(payment.id) || payment);
+    const latestPayment = mergedPayments[0] || null;
+    setOrderPayments(mergedPayments);
+    if (latestPayment) {
+      setSelectedPayment(latestPayment);
+      setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
+    }
+    await fetchOrders();
+    if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'RECONCILE_REQUIRED')) {
+      message.warning(t('pages.profile.paymentReturnReconcileRequired'));
+    } else if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'PAID')) {
+      message.success(t('pages.profile.paymentReturnSynced'));
+    } else {
+      message.info(t('pages.profile.paymentReturnPending'));
+    }
+  }, [fetchOrders, paymentChannels, t]);
+
   const fetchAddresses = useCallback(async () => {
     try {
       const response = await addressApi.getByUser(0);
@@ -277,10 +317,34 @@ const Profile: React.FC = () => {
   }, [addressModalVisible, editingAddress?.id]);
 
   useEffect(() => {
-    if (requestedProfileTab) {
-      setProfileActiveTab((current) => requestedProfileTab === current ? current : requestedProfileTab);
+    if (requestedProfileTab || paymentReturnStatus === 'success') {
+      const nextTab = requestedProfileTab || 'orders';
+      setProfileActiveTab((current) => nextTab === current ? current : nextTab);
     }
-  }, [requestedProfileTab]);
+  }, [paymentReturnStatus, requestedProfileTab]);
+
+  useEffect(() => {
+    if (paymentReturnStatus !== 'success') return;
+    const targetOrderId = Number.isFinite(paymentReturnOrderId) && paymentReturnOrderId > 0 ? paymentReturnOrderId : null;
+    const targetOrder = orders.find((order) => paymentReturnOrderNo && normalizeProfileOrderNo(order.orderNo) === paymentReturnOrderNo)
+      || orders.find((order) => targetOrderId !== null && order.id === targetOrderId);
+    if (!targetOrder) return;
+    const returnKey = `${paymentReturnStatus}:${targetOrder.id}:${paymentReturnOrderNo || targetOrder.orderNo || ''}`;
+    if (handledPaymentReturnRef.current === returnKey) return;
+    handledPaymentReturnRef.current = returnKey;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('payment');
+    nextParams.delete('orderNo');
+    nextParams.delete('orderId');
+    if (!normalizeProfileTab(nextParams.get('tab'))) {
+      nextParams.set('tab', 'orders');
+    }
+    setSearchParams(nextParams, { replace: true });
+    syncPaymentReturnState(targetOrder).catch(() => {
+      message.error(t('pages.profile.paymentReturnSyncFailed'));
+      fetchOrders();
+    });
+  }, [fetchOrders, orders, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState, t]);
 
   useEffect(() => {
     if (profileEmailCodeCountdown <= 0) return undefined;
@@ -450,9 +514,10 @@ const Profile: React.FC = () => {
     try {
       await orderApi.cancel(orderId);
       message.success(t('pages.profile.orderCancelled'));
-      fetchOrders();
     } catch (err: any) {
       message.error(getApiErrorMessage(err, t('pages.profile.cancelFailed'), language));
+    } finally {
+      fetchOrders();
     }
   };
 
@@ -548,11 +613,15 @@ const Profile: React.FC = () => {
   };
 
   const confirmReceiptOrder = (order: OrderCustomer) => {
+    const orderLabel = profileOrderLabel(order);
+    const confirmReceiptActionLabel = `${t('pages.profile.confirmReceipt')}: ${orderLabel}`;
     Modal.confirm({
       title: t('pages.profile.confirmReceiptTitle'),
       content: t('pages.profile.confirmReceiptContent', { orderNo: order.orderNo || order.id }),
       okText: t('pages.profile.confirmReceipt'),
       cancelText: t('common.cancel'),
+      okButtonProps: { 'aria-label': confirmReceiptActionLabel, title: confirmReceiptActionLabel },
+      cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${confirmReceiptActionLabel}`, title: `${t('common.cancel')}: ${confirmReceiptActionLabel}` },
       onOk: () => handleConfirmReceipt(order.id),
     });
   };
@@ -766,22 +835,30 @@ const Profile: React.FC = () => {
   };
 
   const afterSaleStatuses = ['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED'];
+  const orderFilterStatusMap: Record<string, string[]> = {
+    PENDING_PAYMENT: ['PENDING_PAYMENT'],
+    PENDING_SHIPMENT: ['PENDING_SHIPMENT'],
+    SHIPPED: ['SHIPPED'],
+    COMPLETED: ['COMPLETED'],
+    RETURN_APPROVED: ['RETURN_APPROVED'],
+    AFTER_SALE: afterSaleStatuses,
+    CANCELLED: ['CANCELLED'],
+  };
   const isReturnableOrder = (order: OrderCustomer) => order.status === 'COMPLETED' && Boolean(order.returnable);
   const orderStatusTabs = [
     { key: 'all', label: t('pages.profile.allOrders') },
-    { key: 'PENDING_PAYMENT', label: t('status.PENDING_PAYMENT'), statuses: ['PENDING_PAYMENT'] },
-    { key: 'PENDING_SHIPMENT', label: t('status.PENDING_SHIPMENT'), statuses: ['PENDING_SHIPMENT'] },
-    { key: 'SHIPPED', label: t('status.SHIPPED'), statuses: ['SHIPPED'] },
-    { key: 'COMPLETED', label: t('status.COMPLETED'), statuses: ['COMPLETED'] },
+    { key: 'PENDING_PAYMENT', label: t('status.PENDING_PAYMENT'), statuses: orderFilterStatusMap.PENDING_PAYMENT },
+    { key: 'PENDING_SHIPMENT', label: t('status.PENDING_SHIPMENT'), statuses: orderFilterStatusMap.PENDING_SHIPMENT },
+    { key: 'SHIPPED', label: t('status.SHIPPED'), statuses: orderFilterStatusMap.SHIPPED },
+    { key: 'COMPLETED', label: t('status.COMPLETED'), statuses: orderFilterStatusMap.COMPLETED },
     { key: 'RETURNABLE', label: t('pages.profile.afterSaleReturnable') },
-    { key: 'AFTER_SALE', label: t('pages.profile.afterSale'), statuses: afterSaleStatuses },
-    { key: 'CANCELLED', label: t('status.CANCELLED'), statuses: ['CANCELLED'] },
+    { key: 'AFTER_SALE', label: t('pages.profile.afterSale'), statuses: orderFilterStatusMap.AFTER_SALE },
+    { key: 'CANCELLED', label: t('status.CANCELLED'), statuses: orderFilterStatusMap.CANCELLED },
   ];
   const matchesOrderFilter = (order: OrderCustomer) => {
     if (orderStatusFilter === 'all') return true;
     if (orderStatusFilter === 'RETURNABLE') return isReturnableOrder(order);
-    const currentTab = orderStatusTabs.find((tab) => tab.key === orderStatusFilter);
-    return currentTab?.statuses?.includes(order.status) || false;
+    return orderFilterStatusMap[orderStatusFilter]?.includes(order.status) || false;
   };
   const normalizedSearchText = orderSearchText.trim().toLowerCase();
   const filteredOrders = sortOrdersNewestFirst(orders.filter(matchesOrderFilter))
@@ -793,7 +870,7 @@ const Profile: React.FC = () => {
         order.id,
         order.trackingNumber,
         order.shippingAddress,
-        ...items.map((item) => item.productName),
+        ...items.map((item) => profileOrderItemName(item)),
       ].some((value) => String(value || '').toLowerCase().includes(normalizedSearchText));
     });
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'en' ? 'en-US' : 'es-MX';
@@ -801,6 +878,9 @@ const Profile: React.FC = () => {
   const paymentOptions = createPaymentMethodOptions(t, paymentChannels);
   const paymentMethodDetails = createPaymentMethodDetails(paymentChannels);
   const selectedPaymentMethodDetail = paymentMethodDetails.find((method) => method.value === selectedPaymentMethod);
+  const selectedPaymentStatus = normalizeStatusCode(selectedPayment?.status);
+  const selectedPaymentPaid = selectedPaymentStatus === 'PAID';
+  const selectedPaymentReconcileRequired = selectedPaymentStatus === 'RECONCILE_REQUIRED';
   const selectedPaymentRecovery = getPaymentRecoveryState(selectedPayment);
   const pendingPaymentCount = orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
   const inTransitCount = orders.filter((order) => order.status === 'SHIPPED').length;
@@ -1009,6 +1089,43 @@ const Profile: React.FC = () => {
     return <div className="profile-loading">{t('common.loading')}</div>;
   }
 
+  const selectedOrderLabel = selectedOrder ? profileOrderLabel(selectedOrder) : '';
+  const selectedOrderTrackActionLabel = selectedOrder?.trackingNumber
+    ? `${t('pages.adminOrders.track')}: ${selectedOrderLabel} / ${selectedOrder.trackingNumber}`
+    : `${t('pages.adminOrders.track')}: ${selectedOrderLabel}`;
+  const profileTargetLabel = user.username || user.email || user.phone || t('pages.profile.title');
+  const editProfileActionLabel = `${t('common.save')}: ${t('pages.profile.editProfileTitle')}, ${profileTargetLabel}`;
+  const changePasswordActionLabel = `${t('pages.profile.changePassword')}: ${profileTargetLabel}`;
+  const addressEditorTargetLabel = editingAddress
+    ? [editingAddress.recipientName, editingAddress.phone, editingAddress.address].filter(Boolean).join(' / ') || `#${editingAddress.id}`
+    : t('pages.profile.addAddressTitle');
+  const saveAddressActionLabel = `${t('common.save')}: ${addressEditorTargetLabel}`;
+  const petEditorTargetLabel = editingPet?.name || (editingPet ? `#${editingPet.id}` : t('pages.profile.addPet'));
+  const savePetActionLabel = `${t('common.save')}: ${petEditorTargetLabel}`;
+  const returnShipmentOrderLabel = returnShipmentOrder ? profileOrderLabel(returnShipmentOrder) : t('pages.profile.submitReturnShipment');
+  const submitReturnShipmentActionLabel = `${t('pages.profile.submitReturnShipment')}: ${returnShipmentOrderLabel}`;
+  const returnRequestOrderLabel = returnRequestOrder ? profileOrderLabel(returnRequestOrder) : t('pages.profile.returnOrder');
+  const submitReturnRequestActionLabel = `${t('pages.profile.returnOrder')}: ${returnRequestOrderLabel}`;
+  const paymentOrderLabel = selectedOrder ? profileOrderLabel(selectedOrder) : t('pages.profile.continuePay');
+  const openPaymentActionLabel = `${t('pages.checkout.openPayment')}: ${paymentOrderLabel}`;
+  const refreshPaymentActionLabel = `${t('pages.profile.refreshPayment')}: ${paymentOrderLabel}`;
+  const closePaymentActionLabel = `${t('common.cancel')}: ${t('pages.profile.continuePay')}, ${paymentOrderLabel}`;
+  const profilePendingPayActionLabel = `${t('pages.profile.actionPendingPay')}: ${pendingPaymentCount}`;
+  const profileInTransitActionLabel = `${t('pages.profile.actionInTransit')}: ${inTransitCount}`;
+  const profileAfterSaleActionLabel = `${t('pages.profile.actionAfterSale')}: ${afterSaleCount}`;
+  const profileCompletionActionLabel = defaultAddressReady
+    ? `${t('pages.profile.actionPetProfile')}: ${petProfileProgress}%`
+    : `${t('pages.profile.actionDefaultAddress')}: ${addressReadinessProgress}%`;
+  const currentOrderFilterLabel = orderStatusTabs.find((tab) => tab.key === orderStatusFilter)?.label || t('pages.profile.allOrders');
+  const orderListContextLabel = `${t('pages.profile.orders', { count: orders.length })}: ${currentOrderFilterLabel}, ${filteredOrders.length}`;
+  const orderSearchInputLabel = `${t('common.search')}: ${orderListContextLabel}`;
+  const refreshOrdersActionLabel = `${t('common.refresh')}: ${orderListContextLabel}`;
+  const reorderSelectedOrderActionLabel = `${t('pages.profile.reorder')}: ${selectedOrderLabel}`;
+  const returnTrackingInputLabel = `${t('pages.profile.returnTrackingPlaceholder')}: ${returnShipmentOrderLabel}`;
+  const returnReasonInputLabel = `${t('pages.profile.returnReasonPlaceholder')}: ${returnRequestOrderLabel}`;
+  const paymentMethodSelectLabel = `${t('pages.checkout.paymentMethod')}: ${paymentOrderLabel}`;
+  const paymentLinkActionLabel = `${t('pages.checkout.paymentLink')}: ${paymentOrderLabel}`;
+
   return (
     <div className={`profile-page profile-page--${language}`}>
       <div className="profile-overview">
@@ -1058,28 +1175,28 @@ const Profile: React.FC = () => {
           </div>
         </div>
         <div className="profile-action-center__cards">
-          <button type="button" className="profile-action-center__card profile-action-center__card--pay" onClick={() => openOrdersWithFilter('PENDING_PAYMENT')}>
+          <button type="button" className="profile-action-center__card profile-action-center__card--pay" aria-label={profilePendingPayActionLabel} title={profilePendingPayActionLabel} onClick={() => openOrdersWithFilter('PENDING_PAYMENT')}>
             <ShoppingCartOutlined />
             <span>
               <strong>{pendingPaymentCount}</strong>
               <Text>{t('pages.profile.actionPendingPay')}</Text>
             </span>
           </button>
-          <button type="button" className="profile-action-center__card" onClick={() => openOrdersWithFilter('SHIPPED')}>
+          <button type="button" className="profile-action-center__card" aria-label={profileInTransitActionLabel} title={profileInTransitActionLabel} onClick={() => openOrdersWithFilter('SHIPPED')}>
             <EnvironmentOutlined />
             <span>
               <strong>{inTransitCount}</strong>
               <Text>{t('pages.profile.actionInTransit')}</Text>
             </span>
           </button>
-          <button type="button" className="profile-action-center__card profile-action-center__card--return" onClick={() => openOrdersWithFilter('AFTER_SALE')}>
+          <button type="button" className="profile-action-center__card profile-action-center__card--return" aria-label={profileAfterSaleActionLabel} title={profileAfterSaleActionLabel} onClick={() => openOrdersWithFilter('AFTER_SALE')}>
             <HeartOutlined />
             <span>
               <strong>{afterSaleCount}</strong>
               <Text>{t('pages.profile.actionAfterSale')}</Text>
             </span>
           </button>
-          <button type="button" className="profile-action-center__card" onClick={() => (defaultAddressReady ? setProfileActiveTab('pets') : openAddressSetup())}>
+          <button type="button" className="profile-action-center__card" aria-label={profileCompletionActionLabel} title={profileCompletionActionLabel} onClick={() => (defaultAddressReady ? setProfileActiveTab('pets') : openAddressSetup())}>
             {defaultAddressReady ? <HeartOutlined /> : <EnvironmentOutlined />}
             <span>
               <strong>{defaultAddressReady ? `${petProfileProgress}%` : '!'}</strong>
@@ -1090,19 +1207,39 @@ const Profile: React.FC = () => {
       </div>
 
       <div className="profile-mobile-entry">
-        <button type="button" className={profileActiveTab === 'orders' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'} onClick={() => openProfileTab('orders')}>
+        <button
+          type="button"
+          className={profileActiveTab === 'orders' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
+          aria-pressed={profileActiveTab === 'orders'}
+          onClick={() => openProfileTab('orders')}
+        >
           <ShoppingCartOutlined />
           <span>{t('pages.profile.orders', { count: orders.length })}</span>
         </button>
-        <button type="button" className={profileActiveTab === 'addresses' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'} onClick={() => openProfileTab('addresses')}>
+        <button
+          type="button"
+          className={profileActiveTab === 'addresses' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
+          aria-pressed={profileActiveTab === 'addresses'}
+          onClick={() => openProfileTab('addresses')}
+        >
           <EnvironmentOutlined />
           <span>{t('pages.profile.addresses', { count: addresses.length })}</span>
         </button>
-        <button type="button" className={profileActiveTab === 'info' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'} onClick={() => openProfileTab('info')}>
+        <button
+          type="button"
+          className={profileActiveTab === 'info' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
+          aria-pressed={profileActiveTab === 'info'}
+          onClick={() => openProfileTab('info')}
+        >
           <UserOutlined />
           <span>{t('pages.profile.info')}</span>
         </button>
-        <button type="button" className={profileActiveTab === 'pets' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'} onClick={() => openProfileTab('pets')}>
+        <button
+          type="button"
+          className={profileActiveTab === 'pets' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
+          aria-pressed={profileActiveTab === 'pets'}
+          onClick={() => openProfileTab('pets')}
+        >
           <HeartOutlined />
           <span>{t('pages.profile.pets', { count: petProfiles.length })}</span>
         </button>
@@ -1178,7 +1315,12 @@ const Profile: React.FC = () => {
                 ) : (
                   <List
                     dataSource={addresses}
-                    renderItem={(address) => (
+                    renderItem={(address) => {
+                      const addressLabel = [address.recipientName, address.phone, address.address].filter(Boolean).join(' / ') || `#${address.id}`;
+                      const defaultActionLabel = `${t('pages.profile.setDefault')}: ${addressLabel}`;
+                      const editActionLabel = `${t('common.edit')}: ${addressLabel}`;
+                      const deleteActionLabel = `${t('common.delete')}: ${addressLabel}`;
+                      return (
                       <Card key={address.id} className="profile-section-card profile-address-card">
                         <div className="profile-address-card__content">
                           <div>
@@ -1191,24 +1333,27 @@ const Profile: React.FC = () => {
                           </div>
                           <Space wrap>
                             {!address.isDefault ? (
-                              <Button size="small" icon={<StarOutlined />} onClick={() => handleSetDefault(address.id)}>{t('pages.profile.setDefault')}</Button>
+                              <Button size="small" icon={<StarOutlined />} aria-label={defaultActionLabel} title={defaultActionLabel} onClick={() => handleSetDefault(address.id)}>{t('pages.profile.setDefault')}</Button>
                             ) : (
                               <Button size="small" icon={<StarFilled />} disabled type="primary">{t('pages.profile.defaultAddressButton')}</Button>
                             )}
-                            <Button size="small" icon={<EditOutlined />} onClick={() => openAddressModal(address)}>{t('common.edit')}</Button>
+                            <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => openAddressModal(address)}>{t('common.edit')}</Button>
                             <Popconfirm
-                              popupClassName="shop-mobile-popup-layer profile-popconfirm"
+                              classNames={{ root: 'shop-mobile-popup-layer profile-popconfirm' }}
                               title={t('pages.profile.deleteAddressConfirm')}
                               onConfirm={() => handleDeleteAddress(address.id)}
                               okText={t('common.confirm')}
                               cancelText={t('common.cancel')}
+                              okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                             >
-                              <Button size="small" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
+                              <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
                             </Popconfirm>
                           </Space>
                         </div>
                       </Card>
-                    )}
+                      );
+                    }}
                   />
                 )}
               </div>
@@ -1229,15 +1374,33 @@ const Profile: React.FC = () => {
                     <Text type="secondary">{afterSaleFocusText}</Text>
                   </div>
                   <div className="profile-after-sale-panel__metrics">
-                    <button type="button" onClick={() => setOrderStatusFilter('RETURNABLE')}>
+                    <button
+                      type="button"
+                      className={orderStatusFilter === 'RETURNABLE' ? 'is-active' : ''}
+                      aria-pressed={orderStatusFilter === 'RETURNABLE'}
+                      aria-label={`${t('pages.profile.afterSaleReturnable')}: ${returnableOrdersCount}`}
+                      onClick={() => setOrderStatusFilter('RETURNABLE')}
+                    >
                       <strong>{returnableOrdersCount}</strong>
                       <span>{t('pages.profile.afterSaleReturnable')}</span>
                     </button>
-                    <button type="button" onClick={() => setOrderStatusFilter('AFTER_SALE')}>
+                    <button
+                      type="button"
+                      className={orderStatusFilter === 'AFTER_SALE' ? 'is-active' : ''}
+                      aria-pressed={orderStatusFilter === 'AFTER_SALE'}
+                      aria-label={`${t('pages.profile.afterSaleActiveCases')}: ${afterSaleCount}`}
+                      onClick={() => setOrderStatusFilter('AFTER_SALE')}
+                    >
                       <strong>{afterSaleCount}</strong>
                       <span>{t('pages.profile.afterSaleActiveCases')}</span>
                     </button>
-                    <button type="button" onClick={() => setOrderStatusFilter('AFTER_SALE')}>
+                    <button
+                      type="button"
+                      className={orderStatusFilter === 'RETURN_APPROVED' ? 'is-active' : ''}
+                      aria-pressed={orderStatusFilter === 'RETURN_APPROVED'}
+                      aria-label={`${t('pages.profile.afterSaleNeedShipment')}: ${returnApprovedCount}`}
+                      onClick={() => setOrderStatusFilter('RETURN_APPROVED')}
+                    >
                       <strong>{returnApprovedCount}</strong>
                       <span>{t('pages.profile.afterSaleNeedShipment')}</span>
                     </button>
@@ -1255,23 +1418,26 @@ const Profile: React.FC = () => {
                         key={tab.key}
                         type="button"
                         className={orderStatusFilter === tab.key ? 'profile-orders__tab profile-orders__tab--active' : 'profile-orders__tab'}
+                        aria-pressed={orderStatusFilter === tab.key}
                         onClick={() => setOrderStatusFilter(tab.key)}
                       >
                         {tab.label}{tab.key !== 'all' && count > 0 ? ` ${count}` : ''}
                       </button>
                     );
                   })}
-                </div>
-                <div className="profile-orders__toolbar">
-                  <Input.Search
-                    className="profile-orders__searchInput"
-                    allowClear
-                    value={orderSearchText}
-                    onChange={(event) => setOrderSearchText(event.target.value)}
-                    placeholder={t('pages.profile.orderSearchPlaceholder')}
-                  />
-                  <Button onClick={() => fetchOrders()}>{t('common.refresh')}</Button>
-                </div>
+	                </div>
+	                <div className="profile-orders__toolbar">
+	                  <Input.Search
+	                    className="profile-orders__searchInput"
+	                    allowClear
+	                    value={orderSearchText}
+	                    onChange={(event) => setOrderSearchText(event.target.value)}
+	                    placeholder={t('pages.profile.orderSearchPlaceholder')}
+	                    aria-label={orderSearchInputLabel}
+	                    title={orderSearchInputLabel}
+	                  />
+	                  <Button aria-label={refreshOrdersActionLabel} title={refreshOrdersActionLabel} onClick={() => fetchOrders()}>{t('common.refresh')}</Button>
+	                </div>
                 <div className="profile-orders__header">
                   <span>{t('pages.profile.orderInfo')}</span>
                   <span>{t('pages.profile.goodsAmount')}</span>
@@ -1284,7 +1450,20 @@ const Profile: React.FC = () => {
                   filteredOrders.map((order) => {
                     const items = orderItemsByOrderId[order.id] || [];
                     const primaryItem = items[0];
+                    const primaryItemName = primaryItem ? profileOrderItemName(primaryItem) : '';
+                    const primaryItemActionLabel = primaryItem ? `${t('pages.productList.viewDetails')}: ${primaryItemName}` : '';
                     const actionHint = getOrderActionHint(order);
+                    const orderLabel = profileOrderLabel(order);
+                    const detailActionLabel = `${t('pages.profile.detail')}: ${orderLabel}`;
+                    const continuePayActionLabel = `${t('pages.profile.continuePay')}: ${orderLabel}`;
+                    const confirmReceiptActionLabel = `${t('pages.profile.confirmReceipt')}: ${orderLabel}`;
+                    const returnActionLabel = `${t('pages.profile.returnOrder')}: ${orderLabel}`;
+                    const submitReturnShipmentActionLabel = `${t('pages.profile.submitReturnShipment')}: ${orderLabel}`;
+                    const contactSupportActionLabel = `${t('pages.profile.contactSupport')}: ${orderLabel}`;
+                    const trackShipmentActionLabel = order.trackingNumber
+                      ? `${t('pages.orderTracking.trackShipment')}: ${orderLabel} / ${order.trackingNumber}`
+                      : `${t('pages.orderTracking.trackShipment')}: ${orderLabel}`;
+                    const cancelOrderActionLabel = `${t('pages.profile.cancelOrder')}: ${orderLabel}`;
                     return (
                       <div className="profile-order-card" key={order.id}>
                         <div className="profile-order-card__top">
@@ -1292,7 +1471,7 @@ const Profile: React.FC = () => {
                             <Text>{order.createdAt ? new Date(order.createdAt).toLocaleDateString(dateLocale) : '-'}</Text>
                             <Text strong>{t('pages.profile.orderNo')}{order.orderNo || order.id}</Text>
                             <Tag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</Tag>
-                            <button type="button" className="profile-order-card__link" onClick={() => handleViewOrder(order)}>
+                            <button type="button" className="profile-order-card__link" aria-label={detailActionLabel} title={detailActionLabel} onClick={() => handleViewOrder(order)}>
                               {t('pages.profile.detail')}
                             </button>
                           </Space>
@@ -1305,19 +1484,26 @@ const Profile: React.FC = () => {
                                 <button
                                   type="button"
                                   className="profile-order-item__imageButton"
+                                  aria-label={primaryItemActionLabel}
+                                  title={primaryItemActionLabel}
                                   onClick={() => openProductDetail(primaryItem.productId)}
                                 >
                                   <img
                                     src={resolveOrderImage(primaryItem.imageUrl)}
-                                    alt={primaryItem.productName || t('pages.profile.productFallback', { id: primaryItem.productId })}
+                                    alt={primaryItemName}
                                     loading="lazy"
                                     decoding="async"
                                     onError={useImageFallback}
                                   />
                                 </button>
                                 <div className="profile-order-item__main">
-                                  <button type="button" onClick={() => openProductDetail(primaryItem.productId)}>
-                                    {primaryItem.productName || t('pages.profile.productFallback', { id: primaryItem.productId })}
+                                  <button
+                                    type="button"
+                                    aria-label={primaryItemActionLabel}
+                                    title={primaryItemActionLabel}
+                                    onClick={() => openProductDetail(primaryItem.productId)}
+                                  >
+                                    {primaryItemName}
                                   </button>
                                   <Text type="secondary" className="profile-order-item__unit commerce-atomic commerce-price-quantity">
                                     <span className="commerce-money">{formatMoney(primaryItem.price)}</span>
@@ -1353,21 +1539,21 @@ const Profile: React.FC = () => {
                               <Text type="secondary">{actionHint.text}</Text>
                             </div>
                             {order.status === 'PENDING_PAYMENT' && (
-                              <Button type="primary" loading={payingOrderId === order.id} onClick={() => handleContinuePayment(order)}>
+                              <Button type="primary" aria-label={continuePayActionLabel} title={continuePayActionLabel} loading={payingOrderId === order.id} onClick={() => handleContinuePayment(order)}>
                                 {t('pages.profile.continuePay')}
                               </Button>
                             )}
                             {order.status === 'SHIPPED' && (
-                              <Button type="primary" onClick={() => confirmReceiptOrder(order)}>{t('pages.profile.confirmReceipt')}</Button>
+                              <Button type="primary" aria-label={confirmReceiptActionLabel} title={confirmReceiptActionLabel} onClick={() => confirmReceiptOrder(order)}>{t('pages.profile.confirmReceipt')}</Button>
                             )}
                             {isReturnableOrder(order) && (
-                              <Button danger onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</Button>
+                              <Button danger aria-label={returnActionLabel} title={returnActionLabel} onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</Button>
                             )}
                             {order.status === 'RETURN_REQUESTED' && (
                               <Tag color="gold">{t('status.RETURN_REQUESTED')}</Tag>
                             )}
                             {order.status === 'RETURN_APPROVED' && (
-                              <Button type="link" onClick={() => { setReturnShipmentOrder(order); setReturnTrackingNumber(order.returnTrackingNumber || ''); }}>
+                              <Button type="link" aria-label={submitReturnShipmentActionLabel} title={submitReturnShipmentActionLabel} onClick={() => { setReturnShipmentOrder(order); setReturnTrackingNumber(order.returnTrackingNumber || ''); }}>
                                 {t('pages.profile.submitReturnShipment')}
                               </Button>
                             )}
@@ -1375,19 +1561,21 @@ const Profile: React.FC = () => {
                               <Tag color="cyan">{t('status.RETURN_SHIPPED')}</Tag>
                             )}
                             {(isReturnableOrder(order) || afterSaleStatuses.includes(order.status)) && (
-                              <Button type="link" onClick={openSupport}>{t('pages.profile.contactSupport')}</Button>
+                              <Button type="link" aria-label={contactSupportActionLabel} title={contactSupportActionLabel} onClick={openSupport}>{t('pages.profile.contactSupport')}</Button>
                             )}
-                            <Button type="link" onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</Button>
-                            {order.trackingNumber ? <Button type="link" onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode, order.id)}>{t('pages.orderTracking.trackShipment')}</Button> : null}
+                            <Button type="link" aria-label={detailActionLabel} title={detailActionLabel} onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</Button>
+                            {order.trackingNumber ? <Button type="link" aria-label={trackShipmentActionLabel} title={trackShipmentActionLabel} onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode, order.id)}>{t('pages.orderTracking.trackShipment')}</Button> : null}
                             {order.status === 'PENDING_PAYMENT' && (
                               <Popconfirm
-                                popupClassName="shop-mobile-popup-layer profile-popconfirm"
+                                classNames={{ root: 'shop-mobile-popup-layer profile-popconfirm' }}
                                 title={t('pages.profile.cancelOrderConfirm')}
                                 onConfirm={() => handleCancelOrder(order.id)}
                                 okText={t('common.confirm')}
                                 cancelText={t('common.cancel')}
+                                okButtonProps={{ danger: true, 'aria-label': cancelOrderActionLabel, title: cancelOrderActionLabel }}
+                                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cancelOrderActionLabel}`, title: `${t('common.cancel')}: ${cancelOrderActionLabel}` }}
                               >
-                                <Button type="link" danger>{t('pages.profile.cancelOrder')}</Button>
+                                <Button type="link" danger aria-label={cancelOrderActionLabel} title={cancelOrderActionLabel}>{t('pages.profile.cancelOrder')}</Button>
                               </Popconfirm>
                             )}
                           </div>
@@ -1475,20 +1663,29 @@ const Profile: React.FC = () => {
                   <List
                     grid={{ gutter: 16, xs: 1, sm: 2, md: 2 }}
                     dataSource={petProfiles}
-                    renderItem={(pet) => (
+                    renderItem={(pet) => {
+                      const petLabel = pet.name || `#${pet.id}`;
+                      const editActionLabel = `${t('common.edit')}: ${petLabel}`;
+                      const deleteActionLabel = `${t('common.delete')}: ${petLabel}`;
+                      const shopActionLabel = `${t('pages.profile.shopForThisPet')}: ${petLabel}`;
+                      return (
                       <List.Item>
                         <Card
                           className="profile-section-card profile-pet-card"
                           title={pet.name}
                           extra={<Tag color="green">{petTypeLabel(pet.petType)}</Tag>}
                           actions={[
-                            <Button type="link" icon={<EditOutlined />} onClick={() => openPetModal(pet)}>{t('common.edit')}</Button>,
+                            <Button type="link" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => openPetModal(pet)}>{t('common.edit')}</Button>,
                             <Popconfirm
-                              popupClassName="shop-mobile-popup-layer profile-popconfirm"
+                              classNames={{ root: 'shop-mobile-popup-layer profile-popconfirm' }}
                               title={t('pages.profile.deletePetConfirm')}
                               onConfirm={() => handleDeletePet(pet.id)}
+                              okText={t('common.confirm')}
+                              cancelText={t('common.cancel')}
+                              okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                             >
-                              <Button type="link" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
+                              <Button type="link" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
                             </Popconfirm>,
                           ]}
                         >
@@ -1498,13 +1695,14 @@ const Profile: React.FC = () => {
                             <Text>{t('pages.profile.petWeight')}: {pet.weight ? `${pet.weight} kg` : t('common.unset')}</Text>
                             <Text>{t('pages.profile.petSize')}: {petSizeLabel(pet.size)}</Text>
                             {pet.birthday ? <Tag color="gold">{t('pages.profile.birthdayCouponEnabled')}</Tag> : null}
-                            <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => openPetShoppingPath(pet)}>
+                            <Button size="small" icon={<ShoppingCartOutlined />} aria-label={shopActionLabel} title={shopActionLabel} onClick={() => openPetShoppingPath(pet)}>
                               {t('pages.profile.shopForThisPet')}
                             </Button>
                           </Space>
                         </Card>
                       </List.Item>
-                    )}
+                      );
+                    }}
                   />
                 )}
               </div>
@@ -1524,6 +1722,10 @@ const Profile: React.FC = () => {
           setProfileEmailCodeCountdown(0);
         }}
         confirmLoading={profileSubmitting}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ 'aria-label': editProfileActionLabel, title: editProfileActionLabel }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${editProfileActionLabel}`, title: `${t('common.cancel')}: ${editProfileActionLabel}` }}
         className="profile-mobile-safe-modal"
       >
         <Form form={editForm} layout="vertical">
@@ -1601,7 +1803,19 @@ const Profile: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal title={t('pages.profile.changePassword')} open={passwordModalVisible} onOk={handleChangePassword} onCancel={closePasswordModal} confirmLoading={passwordSubmitting} className="profile-mobile-safe-modal" destroyOnHidden>
+      <Modal
+        title={t('pages.profile.changePassword')}
+        open={passwordModalVisible}
+        onOk={handleChangePassword}
+        onCancel={closePasswordModal}
+        confirmLoading={passwordSubmitting}
+        okText={t('pages.profile.changePassword')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ 'aria-label': changePasswordActionLabel, title: changePasswordActionLabel }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${changePasswordActionLabel}`, title: `${t('common.cancel')}: ${changePasswordActionLabel}` }}
+        className="profile-mobile-safe-modal"
+        destroyOnHidden
+      >
         <Form form={passwordForm} layout="vertical">
           <Form.Item name="oldPassword" label={t('pages.profile.oldPassword')} rules={[{ required: true, message: t('pages.profile.oldPasswordRequired') }]}>
             <Input.Password />
@@ -1637,6 +1851,10 @@ const Profile: React.FC = () => {
         onOk={handleSaveAddress}
         onCancel={closeAddressModal}
         confirmLoading={addressSubmitting}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ 'aria-label': saveAddressActionLabel, title: saveAddressActionLabel }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${saveAddressActionLabel}`, title: `${t('common.cancel')}: ${saveAddressActionLabel}` }}
         width={560}
         className="profile-mobile-safe-modal profile-address-modal"
         destroyOnHidden
@@ -1653,7 +1871,7 @@ const Profile: React.FC = () => {
               options={regionData}
               placeholder={t('pages.profile.region')}
               showSearch
-              popupClassName="shop-mobile-popup-layer"
+              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
               getPopupContainer={() => document.body}
             />
           </Form.Item>
@@ -1672,6 +1890,10 @@ const Profile: React.FC = () => {
         onOk={handleSavePet}
         onCancel={closePetModal}
         confirmLoading={petSubmitting}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ 'aria-label': savePetActionLabel, title: savePetActionLabel }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${savePetActionLabel}`, title: `${t('common.cancel')}: ${savePetActionLabel}` }}
         className="profile-mobile-safe-modal"
         destroyOnHidden
       >
@@ -1686,7 +1908,7 @@ const Profile: React.FC = () => {
                 { value: 'CAT', label: t('pages.profile.petCat') },
                 { value: 'SMALL_PET', label: t('pages.profile.petSmall') },
               ]}
-              popupClassName="shop-mobile-popup-layer"
+              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
               getPopupContainer={() => document.body}
             />
           </Form.Item>
@@ -1694,7 +1916,7 @@ const Profile: React.FC = () => {
             <Input placeholder={t('pages.profile.petBreedPlaceholder')} />
           </Form.Item>
           <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
-            <DatePicker className="profile-pet-modal__field" popupClassName="shop-mobile-popup-layer" getPopupContainer={() => document.body} />
+            <DatePicker className="profile-pet-modal__field" classNames={{ popup: { root: 'shop-mobile-popup-layer' } }} getPopupContainer={() => document.body} />
           </Form.Item>
           <Form.Item name="weight" label={t('pages.profile.petWeightKg')}>
             <InputNumber min={0} precision={2} className="profile-pet-modal__field" />
@@ -1707,7 +1929,7 @@ const Profile: React.FC = () => {
                 { value: 'MEDIUM', label: t('pages.profile.petSizeMedium') },
                 { value: 'LARGE', label: t('pages.profile.petSizeLarge') },
               ]}
-              popupClassName="shop-mobile-popup-layer"
+              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
               getPopupContainer={() => document.body}
             />
           </Form.Item>
@@ -1731,7 +1953,7 @@ const Profile: React.FC = () => {
                   <Space>
                     <span>{selectedOrder.trackingNumber}</span>
                     {selectedOrder.trackingCarrierName ? <Tag>{selectedOrder.trackingCarrierName}</Tag> : null}
-                    <Button size="small" onClick={() => handleTrackShipment(selectedOrder.trackingNumber, selectedOrder.trackingCarrierCode, selectedOrder.id)}>{t('pages.adminOrders.track')}</Button>
+                    <Button size="small" aria-label={selectedOrderTrackActionLabel} title={selectedOrderTrackActionLabel} onClick={() => handleTrackShipment(selectedOrder.trackingNumber, selectedOrder.trackingCarrierCode, selectedOrder.id)}>{t('pages.adminOrders.track')}</Button>
                   </Space>
                 ) : '-'}
               </Descriptions.Item>
@@ -1764,54 +1986,62 @@ const Profile: React.FC = () => {
             </Descriptions>
             <div className="profile-order-detail__itemsHeader">
               <Title level={5} className="profile-order-detail__itemsTitle">{t('pages.profile.orderItems')}</Title>
-              <Button icon={<ShoppingCartOutlined />} loading={reordering} disabled={orderItems.length === 0} onClick={handleReorder}>
+	              <Button icon={<ShoppingCartOutlined />} loading={reordering} disabled={orderItems.length === 0} aria-label={reorderSelectedOrderActionLabel} title={reorderSelectedOrderActionLabel} onClick={handleReorder}>
                 {t('pages.profile.reorder')}
               </Button>
             </div>
             {orderItems.length > 0 ? (
               <List
                 dataSource={orderItems}
-                renderItem={(item) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      avatar={
-                        <button
-                          type="button"
-                          onClick={() => openProductDetail(item.productId)}
-                          className="profile-order-detail__imageButton"
-                        >
-                          <img
-                            src={resolveOrderImage(item.imageUrl)}
-                            alt={item.productName || t('pages.profile.productFallback', { id: item.productId })}
-                            className="profile-order-detail__image"
-                            loading="lazy"
-                            decoding="async"
-                            onError={useImageFallback}
-                          />
-                        </button>
-                      }
-                      title={
-                        <button
-                          type="button"
-                          onClick={() => openProductDetail(item.productId)}
-                          className="profile-order-detail__productButton"
-                        >
-                          {item.productName || t('pages.profile.productFallback', { id: item.productId })}
-                        </button>
-                      }
-                      description={
-                        <Space direction="vertical" size={0}>
-                          {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
-                          <Text type="secondary" className="profile-order-detail__unit commerce-atomic commerce-price-quantity">
-                            <span className="commerce-money">{formatMoney(item.price)}</span>
-                            <span className="commerce-quantity">x {item.quantity}</span>
-                          </Text>
-                        </Space>
-                      }
-                    />
-                    <Text strong className="profile-price-text commerce-money">{formatMoney(item.price * item.quantity)}</Text>
-                  </List.Item>
-                )}
+                renderItem={(item) => {
+                  const itemName = profileOrderItemName(item);
+                  const itemActionLabel = `${t('pages.productList.viewDetails')}: ${itemName}`;
+                  return (
+                    <List.Item>
+                      <List.Item.Meta
+                        avatar={
+                          <button
+                            type="button"
+                            aria-label={itemActionLabel}
+                            title={itemActionLabel}
+                            onClick={() => openProductDetail(item.productId)}
+                            className="profile-order-detail__imageButton"
+                          >
+                            <img
+                              src={resolveOrderImage(item.imageUrl)}
+                              alt={itemName}
+                              className="profile-order-detail__image"
+                              loading="lazy"
+                              decoding="async"
+                              onError={useImageFallback}
+                            />
+                          </button>
+                        }
+                        title={
+                          <button
+                            type="button"
+                            aria-label={itemActionLabel}
+                            title={itemActionLabel}
+                            onClick={() => openProductDetail(item.productId)}
+                            className="profile-order-detail__productButton"
+                          >
+                            {itemName}
+                          </button>
+                        }
+                        description={
+                          <Space direction="vertical" size={0}>
+                            {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
+                            <Text type="secondary" className="profile-order-detail__unit commerce-atomic commerce-price-quantity">
+                              <span className="commerce-money">{formatMoney(item.price)}</span>
+                              <span className="commerce-quantity">x {item.quantity}</span>
+                            </Text>
+                          </Space>
+                        }
+                      />
+                      <Text strong className="profile-price-text commerce-money">{formatMoney(item.price * item.quantity)}</Text>
+                    </List.Item>
+                  );
+                }}
               />
             ) : (
               <Text type="secondary">{t('pages.profile.noOrderItems')}</Text>
@@ -1824,26 +2054,34 @@ const Profile: React.FC = () => {
         title={t('pages.profile.submitReturnShipment')}
         open={!!returnShipmentOrder}
         confirmLoading={submittingReturnShipment}
+        okText={t('pages.profile.submitReturnShipment')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ 'aria-label': submitReturnShipmentActionLabel, title: submitReturnShipmentActionLabel }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnShipmentActionLabel}`, title: `${t('common.cancel')}: ${submitReturnShipmentActionLabel}` }}
         onOk={handleSubmitReturnShipment}
-        onCancel={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
-        className="profile-mobile-safe-modal"
-      >
-        <Input
-          value={returnTrackingNumber}
-          onChange={(e) => setReturnTrackingNumber(e.target.value)}
-          placeholder={t('pages.profile.returnTrackingPlaceholder')}
-          autoComplete="off"
-          inputMode="text"
-          maxLength={100}
-        />
+	        onCancel={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
+	        className="profile-mobile-safe-modal"
+	      >
+	        <Input
+	          value={returnTrackingNumber}
+	          onChange={(e) => setReturnTrackingNumber(e.target.value)}
+	          placeholder={t('pages.profile.returnTrackingPlaceholder')}
+	          autoComplete="off"
+	          inputMode="text"
+	          maxLength={100}
+	          aria-label={returnTrackingInputLabel}
+	          title={returnTrackingInputLabel}
+	        />
       </Modal>
 
       <Modal
         title={t('pages.profile.returnOrder')}
         open={!!returnRequestOrder}
         confirmLoading={requestingReturn}
-        okText={t('common.confirm')}
+        okText={t('pages.profile.returnOrder')}
         cancelText={t('common.cancel')}
+        okButtonProps={{ 'aria-label': submitReturnRequestActionLabel, title: submitReturnRequestActionLabel }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnRequestActionLabel}`, title: `${t('common.cancel')}: ${submitReturnRequestActionLabel}` }}
         onOk={handleReturnOrder}
         onCancel={() => { setReturnRequestOrder(null); setReturnReason(''); }}
         className="profile-mobile-safe-modal"
@@ -1853,16 +2091,18 @@ const Profile: React.FC = () => {
           {returnRequestOrder?.returnDeadline ? (
             <Text type="secondary">
               {t('pages.profile.returnAvailableUntil', { time: new Date(returnRequestOrder.returnDeadline).toLocaleString(dateLocale) })}
-            </Text>
-          ) : null}
-          <Input.TextArea
-            rows={4}
-            maxLength={500}
-            showCount
-            value={returnReason}
-            onChange={(event) => setReturnReason(event.target.value)}
-            placeholder={t('pages.profile.returnReasonPlaceholder')}
-          />
+	            </Text>
+	          ) : null}
+	          <Input.TextArea
+	            rows={4}
+	            maxLength={500}
+	            showCount
+	            value={returnReason}
+	            onChange={(event) => setReturnReason(event.target.value)}
+	            placeholder={t('pages.profile.returnReasonPlaceholder')}
+	            aria-label={returnReasonInputLabel}
+	            title={returnReasonInputLabel}
+	          />
         </Space>
       </Modal>
 
@@ -1887,6 +2127,8 @@ const Profile: React.FC = () => {
             <Button
               key="pay"
               type="primary"
+              aria-label={openPaymentActionLabel}
+              title={openPaymentActionLabel}
               onClick={() => {
                 if (!navigateToSafeUrl(selectedPayment.paymentUrl)) {
                   message.error(t('pages.payment.failed'));
@@ -1896,12 +2138,12 @@ const Profile: React.FC = () => {
               {t('pages.checkout.openPayment')}
             </Button>
           ),
-          selectedPayment && selectedPayment.status !== 'PAID' && (
-            <Button key="refresh" loading={refreshingPayment} disabled={paymentOptions.length === 0} onClick={handleRefreshPayment}>
+          selectedPayment && !selectedPaymentPaid && !selectedPaymentReconcileRequired && (
+            <Button key="refresh" loading={refreshingPayment} disabled={paymentOptions.length === 0} aria-label={refreshPaymentActionLabel} title={refreshPaymentActionLabel} onClick={handleRefreshPayment}>
               {t('pages.profile.refreshPayment')}
             </Button>
           ),
-          <Button key="close" onClick={() => setPaymentModalVisible(false)}>{t('common.cancel')}</Button>,
+          <Button key="close" aria-label={closePaymentActionLabel} title={closePaymentActionLabel} onClick={() => setPaymentModalVisible(false)}>{t('common.cancel')}</Button>,
         ].filter(Boolean)}
       >
         {selectedOrder && selectedPayment && (
@@ -1909,8 +2151,10 @@ const Profile: React.FC = () => {
             <div className="profile-payment-recovery">
               <div>
                 <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
-                <Tag color={selectedPayment.status === 'PAID' ? 'green' : selectedPaymentRecovery.isExpired ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
-                  {selectedPayment.status === 'PAID'
+                <Tag color={selectedPaymentReconcileRequired ? 'magenta' : selectedPaymentPaid ? 'green' : selectedPaymentRecovery.isExpired ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
+                  {selectedPaymentReconcileRequired
+                    ? t('pages.checkout.paymentRecoveryReconcileRequired')
+                    : selectedPaymentPaid
                     ? t('pages.checkout.paymentRecoveryPaid')
                     : selectedPaymentRecovery.isExpired
                       ? t('pages.checkout.paymentRecoveryExpired')
@@ -1930,7 +2174,9 @@ const Profile: React.FC = () => {
               <div>
                 <Text strong>{t('pages.checkout.paymentRecoveryNext')}</Text>
                 <Text type="secondary">
-                  {selectedPayment.status === 'PAID'
+                  {selectedPaymentReconcileRequired
+                    ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
+                    : selectedPaymentPaid
                     ? t('pages.checkout.paymentRecoveryNextPaid')
                     : selectedPayment.paymentUrl
                       ? t('pages.checkout.paymentRecoveryNextOpen')
@@ -1942,17 +2188,19 @@ const Profile: React.FC = () => {
               <Descriptions.Item label={t('pages.profile.orderNo')}>{selectedOrder.orderNo || selectedOrder.id}</Descriptions.Item>
               <Descriptions.Item label={t('common.amount')}>
                 <Text strong className="profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
-                <Select
-                  className="profile-payment-modal__methodSelect"
-                  value={selectedPaymentMethod}
-                  options={paymentOptions}
-                  onChange={setSelectedPaymentMethod}
-                  popupClassName="shop-mobile-popup-layer"
-                  getPopupContainer={() => document.body}
-                  disabled={selectedPayment.status === 'PAID' || paymentOptions.length === 0}
-                />
+	              </Descriptions.Item>
+	              <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
+	                <Select
+	                  className="profile-payment-modal__methodSelect"
+	                  value={selectedPaymentMethod}
+	                  options={paymentOptions}
+	                  onChange={setSelectedPaymentMethod}
+	                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+	                  getPopupContainer={() => document.body}
+		                  disabled={selectedPaymentPaid || selectedPaymentReconcileRequired || paymentOptions.length === 0}
+	                  aria-label={paymentMethodSelectLabel}
+	                  title={paymentMethodSelectLabel}
+	                />
                 {paymentOptions.length === 0 ? (
                   <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
                 ) : null}
@@ -1970,12 +2218,14 @@ const Profile: React.FC = () => {
                   {formatPaymentStatusLabel(selectedPayment.status)}
                 </Tag>
               </Descriptions.Item>
-              <Descriptions.Item label={t('pages.checkout.paymentLink')}>
-                {selectedPayment.paymentUrl ? (
-                  <Button
-                    type="link"
-                    className="profile-payment-link"
-                    onClick={() => {
+	              <Descriptions.Item label={t('pages.checkout.paymentLink')}>
+	                {selectedPayment.paymentUrl ? (
+	                  <Button
+	                    type="link"
+	                    className="profile-payment-link"
+	                    aria-label={paymentLinkActionLabel}
+	                    title={paymentLinkActionLabel}
+	                    onClick={() => {
                       if (!navigateToSafeUrl(selectedPayment.paymentUrl)) {
                         message.error(t('pages.payment.failed'));
                       }

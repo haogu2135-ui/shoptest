@@ -14,6 +14,7 @@ import {
 import './ProductQuestionManagement.css';
 
 const { Title, Paragraph } = Typography;
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 type QuestionStatus = 'UNANSWERED' | 'ANSWERED' | 'ALL';
 
@@ -35,6 +36,10 @@ const ProductQuestionManagement: React.FC = () => {
   const canDeleteQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_DELETE_PERMISSION);
 
   const locale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const adminQuestionProductName = (record: ProductQuestion) => (
+    (record.productName || record.product?.name || '').trim()
+      || t('pages.profile.productFallback', { id: record.productId || record.product?.id || record.id })
+  );
 
   const normalizeStatus = useCallback(
     (status: QuestionStatus) => (status === 'ALL' ? undefined : status),
@@ -87,6 +92,19 @@ const ProductQuestionManagement: React.FC = () => {
   const responseScore = summary?.responseScore ?? Math.max(0, 100 - unansweredCount * 8);
   const staleHours = summary?.staleHours ?? 24;
   const staleCount = summary?.staleUnansweredQuestions ?? 0;
+  const currentQuestionStatusLabel = statusFilter === 'ALL'
+    ? t('pages.adminQuestions.statusAll')
+    : statusFilter === 'ANSWERED'
+      ? t('pages.adminQuestions.statusAnswered')
+      : t('pages.adminQuestions.statusUnanswered');
+  const currentQuestionSearchLabel = keyword.trim() || searchText || t('common.search');
+  const questionSearchInputLabel = `${t('pages.adminQuestions.title')} ${t('common.search')}: ${currentQuestionSearchLabel}`;
+  const questionStatusFilterLabel = `${t('pages.adminQuestions.statusFilter')}: ${currentQuestionStatusLabel}`;
+  const answerTargetLabel = answerTarget
+    ? `${adminQuestionProductName(answerTarget)}: ${String(answerTarget.question || '').trim().replace(/\s+/g, ' ').slice(0, 60) || `#${answerTarget.id}`}`
+    : t('pages.adminQuestions.title');
+  const answerInputLabel = `${t('pages.adminQuestions.answerAction')}: ${answerTargetLabel}`;
+  const answerSubmitActionLabel = `${t('pages.adminQuestions.answerAction')}: ${answerTargetLabel}`;
 
   const openAnswer = (question: ProductQuestion) => {
     if (!canAnswerQuestions) {
@@ -153,7 +171,7 @@ const ProductQuestionManagement: React.FC = () => {
       width: 180,
       render: (_: unknown, record: ProductQuestion) => (
         <Space direction="vertical" size={0}>
-          <strong>{record.productName || record.product?.name || '-'}</strong>
+          <strong>{adminQuestionProductName(record)}</strong>
           <span className="product-question-management-page__muted">#{record.productId || record.product?.id || '-'}</span>
         </Space>
       ),
@@ -199,22 +217,30 @@ const ProductQuestionManagement: React.FC = () => {
       key: 'actions',
       width: 210,
       render: (_: unknown, record: ProductQuestion) => {
+        const productName = adminQuestionProductName(record);
+        const questionSnippet = String(record.question || '').trim().replace(/\s+/g, ' ').slice(0, 60) || `#${record.id}`;
+        const questionLabel = `${productName}: ${questionSnippet}`;
+        const answerActionLabel = `${t('pages.adminQuestions.answerAction')}: ${questionLabel}`;
+        const deleteActionLabel = `${t('common.delete')}: ${questionLabel}`;
         const actions = [
           canAnswerQuestions ? (
-          <Button key="answer" size="small" icon={<MessageOutlined />} onClick={() => openAnswer(record)}>
+          <Button key="answer" size="small" icon={<MessageOutlined />} aria-label={answerActionLabel} title={answerActionLabel} onClick={() => openAnswer(record)}>
             {t('pages.adminQuestions.answerAction')}
           </Button>
           ) : null,
           canDeleteQuestions ? (
-          <Popconfirm
-            key="delete"
+	          <Popconfirm
+	            classNames={mobilePopconfirmClassNames}
+	            key="delete"
             title={t('pages.adminQuestions.deleteConfirm')}
             description={t('pages.adminQuestions.deleteConfirmDescription')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
+            okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+            cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             onConfirm={() => deleteQuestion(record)}
           >
-            <Button size="small" danger icon={<DeleteOutlined />} loading={deletingId === record.id}>
+            <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} loading={deletingId === record.id}>
               {t('common.delete')}
             </Button>
           </Popconfirm>
@@ -273,13 +299,17 @@ const ProductQuestionManagement: React.FC = () => {
           onSearch={(value) => setSearchText(value.trim())}
           placeholder={t('common.search')}
           className="product-question-management-page__keywordInput"
+          aria-label={questionSearchInputLabel}
+          title={questionSearchInputLabel}
         />
         <Select
           className="product-question-management-page__statusFilter"
           value={statusFilter}
           onChange={setStatusFilter}
-          popupClassName="shop-mobile-popup-layer"
+          classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
           getPopupContainer={() => document.body}
+          aria-label={questionStatusFilterLabel}
+          title={questionStatusFilterLabel}
           options={[
             { value: 'UNANSWERED', label: t('pages.adminQuestions.statusUnanswered') },
             { value: 'ANSWERED', label: t('pages.adminQuestions.statusAnswered') },
@@ -305,7 +335,10 @@ const ProductQuestionManagement: React.FC = () => {
         open={!!answerTarget}
         onCancel={closeAnswerModal}
         onOk={handleAnswer}
-        okButtonProps={{ disabled: !canAnswerQuestions }}
+        okText={t('pages.adminQuestions.answerAction')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: !canAnswerQuestions, 'aria-label': answerSubmitActionLabel, title: answerSubmitActionLabel }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${answerSubmitActionLabel}`, title: `${t('common.cancel')}: ${answerSubmitActionLabel}` }}
         confirmLoading={answering}
         title={t('pages.adminQuestions.answerAction')}
         destroyOnHidden
@@ -317,6 +350,8 @@ const ProductQuestionManagement: React.FC = () => {
           placeholder={t('pages.adminQuestions.answerPlaceholder')}
           maxLength={2000}
           showCount
+          aria-label={answerInputLabel}
+          title={answerInputLabel}
         />
       </Modal>
     </div>

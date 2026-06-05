@@ -182,6 +182,8 @@ const Home: React.FC = () => {
   const { formatMoney: formatPrice, market } = useMarket();
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
+  const homeProductName = (product: Pick<Product, 'id' | 'name'>) =>
+    (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id });
 
   const searchKeyword = (keyword: string) => navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
   const openDiscountProducts = () => navigate('/products?discount=true');
@@ -768,6 +770,9 @@ const Home: React.FC = () => {
     },
   ];
   const heroFeaturedProduct = personalizedDisplayProducts[0] || bestSellers[0] || promoProducts[0] || featured[0] || products[0] || null;
+  const heroFeaturedProductName = heroFeaturedProduct ? homeProductName(heroFeaturedProduct) : '';
+  const editorialFeatureProduct = bestSellers[0] || null;
+  const editorialFeatureName = editorialFeatureProduct ? homeProductName(editorialFeatureProduct) : '';
   const heroFeaturedTag = heroFeaturedProduct
     ? [
       heroFeaturedProduct.brand,
@@ -821,12 +826,14 @@ const Home: React.FC = () => {
     },
   ];
 
-  const ProductTile: React.FC<{ product: Product; index: number; compact?: boolean; viewedAt?: number }> = ({
+  const ProductTile: React.FC<{ product: Product; index: number; compact?: boolean; viewedAt?: number; sectionLabel: string }> = ({
     product,
     index,
     compact = false,
     viewedAt,
+    sectionLabel,
   }) => {
+    const productName = homeProductName(product);
     const images = normalizeProductImages(product, index);
     const primaryImage = images[0];
     const fallbackImage = images[images.length - 1];
@@ -845,9 +852,11 @@ const Home: React.FC = () => {
         ? t('pages.cart.lowStockLeft', { count: product.stock })
         : t('home.stockAvailable', { count: product.stock })
       : t('home.inStock');
-    const viewActionLabel = `${t('pages.productList.viewDetails')}: ${product.name}`;
-    const cartActionLabel = `${t('pages.productList.addToCart')}: ${product.name}`;
-    const wishlistActionLabel = `${isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${product.name}`;
+    const tileContextLabel = `${sectionLabel} #${index + 1}`;
+    const imageViewActionLabel = `${t('pages.productList.viewDetails')}: ${productName} - image - ${tileContextLabel}`;
+    const quickViewActionLabel = `${t('pages.productList.viewDetails')}: ${productName} - quick action - ${tileContextLabel}`;
+    const cartActionLabel = `${t('pages.productList.addToCart')}: ${productName}`;
+    const wishlistActionLabel = `${isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${productName}`;
     return (
     <article
       className={[
@@ -855,47 +864,45 @@ const Home: React.FC = () => {
         compact ? 'shopee-product--compact' : '',
         isSoldOut ? 'shopee-product--soldOut' : '',
       ].filter(Boolean).join(' ')}
-      role="button"
-      tabIndex={0}
       onMouseEnter={() => prefetchProduct(product.id)}
       onFocus={() => prefetchProduct(product.id)}
-      onClick={() => openProduct(product.id)}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          openProduct(product.id);
-        }
-      }}
     >
       <span className="shopee-product__imageWrap">
-        <img
-          src={getOptimizedImageUrl(primaryImage, imageWidth)}
-          srcSet={buildResponsiveImageSrcSet(primaryImage, compact ? [180, 240, 360, 520] : [240, 360, 520, 720])}
-          sizes={compact ? productTileImageSizes : discoveryTileImageSizes}
-          alt={product.name}
-          className="shopee-product__image"
-          width={imageWidth}
-          height={imageWidth}
-          loading="lazy"
-          decoding="async"
-          onError={(event) => {
-            if (event.currentTarget.src !== fallbackImage) {
-              event.currentTarget.removeAttribute('srcset');
-              event.currentTarget.src = fallbackImage;
-            }
-          }}
-        />
-        {getDiscountPercent(product) > 0 ? (
-          <span className="shopee-product__discount">-{getDiscountPercent(product)}%</span>
-        ) : null}
-        {product.isFeatured ? <span className="shopee-product__mall">{t('common.mall')}</span> : null}
-        {isSoldOut ? <span className="shopee-product__soldOut">{t('pages.productList.soldOut')}</span> : null}
+        <button
+          type="button"
+          className="shopee-product__imageButton"
+          aria-label={imageViewActionLabel}
+          title={imageViewActionLabel}
+          onClick={() => openProduct(product.id)}
+        >
+          <img
+            src={getOptimizedImageUrl(primaryImage, imageWidth)}
+            srcSet={buildResponsiveImageSrcSet(primaryImage, compact ? [180, 240, 360, 520] : [240, 360, 520, 720])}
+            sizes={compact ? productTileImageSizes : discoveryTileImageSizes}
+            alt={productName}
+            className="shopee-product__image"
+            width={imageWidth}
+            height={imageWidth}
+            loading="lazy"
+            decoding="async"
+            onError={(event) => {
+              if (event.currentTarget.src !== fallbackImage) {
+                event.currentTarget.removeAttribute('srcset');
+                event.currentTarget.src = fallbackImage;
+              }
+            }}
+          />
+          {getDiscountPercent(product) > 0 ? (
+            <span className="shopee-product__discount">-{getDiscountPercent(product)}%</span>
+          ) : null}
+          {product.isFeatured ? <span className="shopee-product__mall">{t('common.mall')}</span> : null}
+          {isSoldOut ? <span className="shopee-product__soldOut">{t('pages.productList.soldOut')}</span> : null}
+        </button>
         <span className="shopee-product__quickActions">
           <button
             type="button"
-            aria-label={viewActionLabel}
-            title={viewActionLabel}
+            aria-label={quickViewActionLabel}
+            title={quickViewActionLabel}
             onMouseEnter={() => prefetchProduct(product.id)}
             onFocus={() => prefetchProduct(product.id)}
             onClick={(event) => {
@@ -926,7 +933,7 @@ const Home: React.FC = () => {
         </span>
       </span>
       <span className="shopee-product__body">
-        <span className="shopee-product__name">{product.name}</span>
+        <span className="shopee-product__name">{productName}</span>
         {hasRatingSignal || hasPositiveSignal ? (
           <span className="shopee-product__socialProof">
             {hasRatingSignal ? (
@@ -1026,6 +1033,22 @@ const Home: React.FC = () => {
     );
   }
 
+  const homeSectionActionLabel = (section: string, action: string, detail?: string | number) => (
+    detail !== undefined && String(detail).trim()
+      ? `${section}: ${action}, ${detail}`
+      : `${section}: ${action}`
+  );
+  const clearRecentlyViewedActionLabel = `${t('home.clearRecentlyViewed')}: ${recentlyViewedProducts.length}`;
+  const bestSellersShopAllLabel = homeSectionActionLabel(t('home.bestSellers'), t('home.shopAll'), bestSellers.length);
+  const recommendationsMoreProductsLabel = homeSectionActionLabel(t('home.petRecommendations'), t('home.moreProducts'), bestSellers.length);
+  const managePetProfilesActionLabel = homeSectionActionLabel(t('home.petRecommendations'), t('home.managePetProfiles'), t('home.petRecommendationReady', { count: personalizedReadyCount }));
+  const personalizedAddAllActionLabel = homeSectionActionLabel(t('home.petRecommendations'), t('pages.wishlist.addAllToCart'), t('home.petRecommendationReady', { count: personalizedReadyCount }));
+  const categoriesViewAllLabel = homeSectionActionLabel(t('home.categories'), t('home.viewAll'), categoryTiles.length);
+  const recentlyViewedMoreProductsLabel = homeSectionActionLabel(t('home.recentlyViewed'), t('home.moreProducts'), recentlyViewedProducts.length);
+  const flashOffersViewAllLabel = homeSectionActionLabel(t('home.flashOffers'), t('home.viewAll'), promoProducts.length);
+  const dailyDiscoveryMoreProductsLabel = homeSectionActionLabel(t('home.dailyDiscovery'), t('home.moreProducts'), discoveryProducts.length);
+  const petGalleryActionLabel = homeSectionActionLabel(t('home.petUgcTitle'), t('nav.petGallery'), petGalleryItems.length);
+
   return (
     <main className={homeLanguageClass}>
       <section className="shopee-hero">
@@ -1091,7 +1114,7 @@ const Home: React.FC = () => {
             {heroFeaturedProduct ? (
               <article className="shopee-hero__featuredCard">
                 <span className="shopee-hero__featuredEyebrow">{t('pages.productList.viewPick')}</span>
-                <strong>{heroFeaturedProduct.name}</strong>
+                <strong>{heroFeaturedProductName}</strong>
                 <p>{heroFeaturedProduct.description || t('home.petRecommendationsHint')}</p>
                 <div className="shopee-hero__featuredMeta">
                   <span className="commerce-money">{formatPrice(getPrice(heroFeaturedProduct))}</span>
@@ -1102,11 +1125,13 @@ const Home: React.FC = () => {
                   type="primary"
                   onMouseEnter={() => prefetchProduct(heroFeaturedProduct.id)}
                   onFocus={() => prefetchProduct(heroFeaturedProduct.id)}
+                  aria-label={`${t('home.buyNow')}: ${heroFeaturedProductName}`}
+                  title={`${t('home.buyNow')}: ${heroFeaturedProductName}`}
                   onClick={() => openProduct(heroFeaturedProduct.id)}
                 >
                     {t('home.buyNow')}
                   </Button>
-                  <Button onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, heroFeaturedProduct)}>
+                  <Button aria-label={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} title={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, heroFeaturedProduct)}>
                     {t('pages.productList.addToCart')}
                   </Button>
                 </div>
@@ -1119,7 +1144,7 @@ const Home: React.FC = () => {
                   <strong>{card.title}</strong>
                   <p>{card.summary}</p>
                 </div>
-                <Button type="default" onClick={card.action} disabled={card.disabled}>
+                <Button type="default" aria-label={homeSectionActionLabel(card.title, card.actionLabel, card.summary)} title={homeSectionActionLabel(card.title, card.actionLabel, card.summary)} onClick={card.action} disabled={card.disabled}>
                   {card.actionLabel}
                 </Button>
               </article>
@@ -1160,7 +1185,7 @@ const Home: React.FC = () => {
           {!isAuthenticated ? (
             <div className="shopee-conversion-band" aria-label={t('nav.account')}>
               {guestJourneyActions.map((item) => (
-                <button key={item.key} className="shopee-conversion-band__card" onClick={item.action}>
+                <button type="button" key={item.key} className="shopee-conversion-band__card" onClick={item.action}>
                   <span className="shopee-conversion-band__icon">{item.icon}</span>
                   <span className="shopee-conversion-band__body">
                     <strong>{item.title}</strong>
@@ -1179,14 +1204,14 @@ const Home: React.FC = () => {
               </article>
             ))}
           </div>
-          <button className="shopee-coupon-entry" onClick={() => navigate('/coupons')}>
+          <button type="button" className="shopee-coupon-entry" onClick={() => navigate('/coupons')}>
             <span className="shopee-coupon-entry__icon"><GiftOutlined /></span>
             <span>
               <strong>{t('home.couponsExtra')}</strong>
               <Text>{t('nav.coupons')}</Text>
             </span>
           </button>
-          <button className="shopee-coupon-entry shopee-coupon-entry--deal" onClick={openDiscountProducts}>
+          <button type="button" className="shopee-coupon-entry shopee-coupon-entry--deal" onClick={openDiscountProducts}>
             <span className="shopee-coupon-entry__icon"><FireOutlined /></span>
             <span>
               <strong>{t('home.flashOffers')}</strong>
@@ -1216,12 +1241,12 @@ const Home: React.FC = () => {
               <h2>
                 <StarFilled /> {t('home.bestSellers')}
               </h2>
-              <button onClick={() => navigate('/products')}>{t('home.shopAll')}</button>
+	              <button type="button" aria-label={bestSellersShopAllLabel} title={bestSellersShopAllLabel} onClick={() => navigate('/products')}>{t('home.shopAll')}</button>
             </div>
             <Row gutter={[12, 12]}>
               {bestSellers.map((product, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
-                  <ProductTile product={product} index={index} compact />
+                  <ProductTile product={product} index={index} compact sectionLabel={t('home.bestSellers')} />
                 </Col>
               ))}
             </Row>
@@ -1234,37 +1259,42 @@ const Home: React.FC = () => {
               <h2>
                 <HeartOutlined /> {t('home.petRecommendations')}
               </h2>
-              <button onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
+	              <button type="button" aria-label={recommendationsMoreProductsLabel} title={recommendationsMoreProductsLabel} onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
             </div>
             <div className="shopee-editorial-band__grid">
               <article className="shopee-editorial-band__feature">
                 <span className="shopee-editorial-band__eyebrow">{t('home.heroEyebrow')}</span>
-                <strong>{bestSellers[0]?.name}</strong>
-                <Text>{bestSellers[0]?.description || t('home.petRecommendationsHint')}</Text>
+                <strong>{editorialFeatureName}</strong>
+                <Text>{editorialFeatureProduct?.description || t('home.petRecommendationsHint')}</Text>
                 <div className="shopee-editorial-band__actions">
-                  <Button type="primary" onClick={() => openProduct(bestSellers[0].id)}>
+                  <Button type="primary" aria-label={`${t('home.buyNow')}: ${editorialFeatureName}`} title={`${t('home.buyNow')}: ${editorialFeatureName}`} onClick={() => openProduct(bestSellers[0].id)}>
                     {t('home.buyNow')}
                   </Button>
-                  <Button onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, bestSellers[0])}>
+                  <Button aria-label={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} title={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, bestSellers[0])}>
                     {t('pages.productList.addToCart')}
                   </Button>
                 </div>
               </article>
               <div className="shopee-editorial-band__stack">
-                {bestSellers.slice(1, 3).map((product, index) => (
+                {bestSellers.slice(1, 3).map((product, index) => {
+                  const productName = homeProductName(product);
+                  return (
                   <button
                     key={product.id}
                     type="button"
                     className="shopee-editorial-band__miniCard"
+                    aria-label={`${t('pages.productList.viewDetails')}: ${productName}`}
+                    title={`${t('pages.productList.viewDetails')}: ${productName}`}
                     onClick={() => openProduct(product.id)}
                   >
                     <span className="shopee-editorial-band__miniIndex">0{index + 2}</span>
                     <span className="shopee-editorial-band__miniBody">
-                      <strong>{product.name}</strong>
+                      <strong>{productName}</strong>
                       <Text className="commerce-money">{formatPrice(getPrice(product))}</Text>
                     </span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -1276,7 +1306,7 @@ const Home: React.FC = () => {
               <h2>
                 <CompassOutlined /> {t('home.petRecommendations')}
               </h2>
-              <button onClick={() => navigate('/profile?tab=pets')}>{t('home.managePetProfiles')}</button>
+	              <button type="button" aria-label={managePetProfilesActionLabel} title={managePetProfilesActionLabel} onClick={() => navigate('/profile?tab=pets')}>{t('home.managePetProfiles')}</button>
             </div>
             <div className="shopee-personalized-insight">
               <div>
@@ -1293,19 +1323,21 @@ const Home: React.FC = () => {
                 <span>{t('home.petRecommendationReady', { count: personalizedReadyCount })}</span>
                 <span>{t('home.petRecommendationDeals', { count: personalizedDealCount })}</span>
               </div>
-              <Button
-                type="primary"
-                icon={<ShoppingCartOutlined />}
-                disabled={personalizedReadyProducts.length === 0}
-                onClick={addPersonalizedReadyProducts}
-              >
+	              <Button
+	                type="primary"
+	                icon={<ShoppingCartOutlined />}
+	                disabled={personalizedReadyProducts.length === 0}
+	                aria-label={personalizedAddAllActionLabel}
+	                title={personalizedAddAllActionLabel}
+	                onClick={addPersonalizedReadyProducts}
+	              >
                 {t('pages.wishlist.addAllToCart')}
               </Button>
             </div>
             <Row gutter={[12, 12]}>
               {personalizedDisplayProducts.slice(0, 8).map((product, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
-                  <ProductTile product={product} index={index} compact />
+                  <ProductTile product={product} index={index} compact sectionLabel={t('home.petRecommendations')} />
                 </Col>
               ))}
             </Row>
@@ -1315,12 +1347,12 @@ const Home: React.FC = () => {
         <section className="shopee-section shopee-categories-section">
           <div className="shopee-section__header">
             <h2>{t('home.categories')}</h2>
-            <button onClick={() => navigate('/products')}>{t('home.viewAll')}</button>
+	            <button type="button" aria-label={categoriesViewAllLabel} title={categoriesViewAllLabel} onClick={() => navigate('/products')}>{t('home.viewAll')}</button>
           </div>
           {categoryTiles.length ? (
             <div className="shopee-categories">
               {categoryTiles.map((category, index) => (
-                <button key={category.id} onClick={() => navigate(`/products?categoryId=${category.id}`)}>
+                <button type="button" key={category.id} onClick={() => navigate(`/products?categoryId=${category.id}`)}>
                   <span>
                     {category.imageUrl ? (
                       <img
@@ -1353,25 +1385,27 @@ const Home: React.FC = () => {
             <div className="shopee-section__header shopee-section__header--with-actions">
               <h2>{t('home.recentlyViewed')}</h2>
               <div className="shopee-section__actions">
-                <button onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
+	                <button type="button" aria-label={recentlyViewedMoreProductsLabel} title={recentlyViewedMoreProductsLabel} onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
                 <Popconfirm
-                  popupClassName="shop-mobile-popup-layer shopee-home-popconfirm"
+                  classNames={{ root: 'shop-mobile-popup-layer shopee-home-popconfirm' }}
                   title={t('home.clearRecentlyViewedConfirm')}
                   okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
+                  okButtonProps={{ danger: true, 'aria-label': clearRecentlyViewedActionLabel, title: clearRecentlyViewedActionLabel }}
+                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearRecentlyViewedActionLabel}`, title: `${t('common.cancel')}: ${clearRecentlyViewedActionLabel}` }}
                   onConfirm={() => {
                     clearProductViewHistory();
                     setViewPreferences(loadProductViewPreferences());
                   }}
                 >
-                  <button type="button">{t('home.clearRecentlyViewed')}</button>
+                  <button type="button" aria-label={clearRecentlyViewedActionLabel} title={clearRecentlyViewedActionLabel}>{t('home.clearRecentlyViewed')}</button>
                 </Popconfirm>
               </div>
             </div>
             <Row gutter={[12, 12]}>
               {recentlyViewedProducts.map(({ product, viewedAt }, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
-                  <ProductTile product={product} index={index} compact viewedAt={viewedAt} />
+                  <ProductTile product={product} index={index} compact viewedAt={viewedAt} sectionLabel={t('home.recentlyViewed')} />
                 </Col>
               ))}
             </Row>
@@ -1384,12 +1418,12 @@ const Home: React.FC = () => {
               <h2>
                 <FireOutlined /> {t('home.flashOffers')}
               </h2>
-              <button onClick={openDiscountProducts}>{t('home.viewAll')}</button>
+	              <button type="button" aria-label={flashOffersViewAllLabel} title={flashOffersViewAllLabel} onClick={openDiscountProducts}>{t('home.viewAll')}</button>
             </div>
             <Row gutter={[12, 12]}>
               {promoProducts.map((product, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
-                  <ProductTile product={product} index={index} compact />
+                  <ProductTile product={product} index={index} compact sectionLabel={t('home.flashOffers')} />
                 </Col>
               ))}
             </Row>
@@ -1399,14 +1433,14 @@ const Home: React.FC = () => {
         <section className="shopee-section shopee-discovery">
           <div className="shopee-section__header shopee-section__header--accent">
             <h2>{t('home.dailyDiscovery')}</h2>
-            <button onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
+	            <button type="button" aria-label={dailyDiscoveryMoreProductsLabel} title={dailyDiscoveryMoreProductsLabel} onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
           </div>
           {discoveryProducts.length ? (
             <>
             <Row gutter={[12, 12]}>
               {visibleDiscoveryProducts.map((product, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
-                  <ProductTile product={product} index={index} />
+                  <ProductTile product={product} index={index} sectionLabel={t('home.dailyDiscovery')} />
                 </Col>
               ))}
             </Row>
@@ -1440,57 +1474,65 @@ const Home: React.FC = () => {
               >
                 <CameraOutlined /> {petUploadButtonLabel}
               </button>
-              <button type="button" onClick={() => navigate('/pet-gallery')}>{t('nav.petGallery')}</button>
+	              <button type="button" aria-label={petGalleryActionLabel} title={petGalleryActionLabel} onClick={() => navigate('/pet-gallery')}>{t('nav.petGallery')}</button>
             </div>
           </div>
           <div className="pet-ugc__grid">
-            {petGalleryItems.map((item, index) => (
-              <div key={item.key} className="pet-ugc__card">
-                <button
-                  className="pet-ugc__imageButton"
-                  type="button"
-                  aria-label={`${t('home.petUgcTitle')} ${item.label}`}
-                  onClick={() => setPetPreviewItem(item)}
-                >
-                  <img
-                    src={getOptimizedImageUrl(item.image, 360)}
-                    srcSet={buildResponsiveImageSrcSet(item.image, [240, 360, 520])}
-                    sizes={petGalleryImageSizes}
-                    alt={t('home.petUgcImageAlt', { count: index + 1 })}
-                    width={360}
-                    height={360}
-                    loading="lazy"
-                    decoding="async"
-                    onError={usePetGalleryImageFallback}
-                  />
-                  <span>{item.label}</span>
-                </button>
-                <div className="pet-ugc__meta">
+            {petGalleryItems.map((item, index) => {
+              const likeActionLabel = `${t('home.petUgcLikes', { count: item.likeCount })}: ${item.label}`;
+              const deleteActionLabel = `${t('home.petUgcDelete')}: ${item.label}`;
+              return (
+                <div key={item.key} className="pet-ugc__card">
                   <button
+                    className="pet-ugc__imageButton"
                     type="button"
-                    className={item.likedByMe ? 'pet-ugc__like pet-ugc__like--active' : 'pet-ugc__like'}
-                    aria-pressed={item.likedByMe}
-                    onClick={() => handlePetGalleryLike(item)}
+                    aria-label={`${t('home.petUgcTitle')} ${item.label}`}
+                    onClick={() => setPetPreviewItem(item)}
                   >
-                    {item.likedByMe ? <HeartFilled /> : <HeartOutlined />}
-                    {t('home.petUgcLikes', { count: item.likeCount })}
+                    <img
+                      src={getOptimizedImageUrl(item.image, 360)}
+                      srcSet={buildResponsiveImageSrcSet(item.image, [240, 360, 520])}
+                      sizes={petGalleryImageSizes}
+                      alt={t('home.petUgcImageAlt', { count: index + 1 })}
+                      width={360}
+                      height={360}
+                      loading="lazy"
+                      decoding="async"
+                      onError={usePetGalleryImageFallback}
+                    />
+                    <span>{item.label}</span>
                   </button>
-                  {item.canDelete && item.photo ? (
-                    <Popconfirm
-                      popupClassName="shop-mobile-popup-layer shopee-home-popconfirm"
-                      title={t('home.petUgcDeleteConfirm')}
-                      okText={t('common.confirm')}
-                      cancelText={t('common.cancel')}
-                      onConfirm={() => handleDeletePetPhoto(item.photo as PetGalleryPhotoPublic)}
+                  <div className="pet-ugc__meta">
+                    <button
+                      type="button"
+                      className={item.likedByMe ? 'pet-ugc__like pet-ugc__like--active' : 'pet-ugc__like'}
+                      aria-pressed={item.likedByMe}
+                      aria-label={likeActionLabel}
+                      title={likeActionLabel}
+                      onClick={() => handlePetGalleryLike(item)}
                     >
-                      <button type="button" className="pet-ugc__delete" aria-label={t('home.petUgcDelete')}>
-                        <DeleteOutlined />
-                      </button>
-                    </Popconfirm>
-                  ) : null}
+                      {item.likedByMe ? <HeartFilled /> : <HeartOutlined />}
+                      {t('home.petUgcLikes', { count: item.likeCount })}
+                    </button>
+                    {item.canDelete && item.photo ? (
+                      <Popconfirm
+                        classNames={{ root: 'shop-mobile-popup-layer shopee-home-popconfirm' }}
+                        title={t('home.petUgcDeleteConfirm')}
+                        okText={t('common.confirm')}
+                        cancelText={t('common.cancel')}
+                        okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+                        onConfirm={() => handleDeletePetPhoto(item.photo as PetGalleryPhotoPublic)}
+                      >
+                        <button type="button" className="pet-ugc__delete" aria-label={deleteActionLabel} title={deleteActionLabel}>
+                          <DeleteOutlined />
+                        </button>
+                      </Popconfirm>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </div>

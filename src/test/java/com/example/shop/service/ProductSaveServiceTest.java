@@ -79,6 +79,35 @@ class ProductSaveServiceTest {
     }
 
     @Test
+    void saveRejectsNonUploadRootRelativeImageUrlBeforePersisting() {
+        Product product = validProduct();
+        product.setImageUrl("/assets/products/bowl.jpg");
+
+        assertThrows(IllegalArgumentException.class, () -> service.save(product));
+
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void saveNormalizesLegacyUploadedProductImageUrlsBeforePersisting() {
+        Product product = validProduct();
+        product.setImageUrl("uploads/products/bowl.jpg");
+        product.setImages("[\"uploads/products/alt.jpg\",\"/uploads/products/extra.jpg\"]");
+        product.setDetailContent("[{\"type\":\"image\",\"url\":\"uploads/products/detail.jpg\"},{\"type\":\"text\",\"content\":\"Specs\"}]");
+        product.setVariants("[{\"sku\":\"BOWL-S\",\"options\":{\"Size\":\"S\"},\"price\":19.99,\"stock\":2,\"imageUrl\":\"uploads/products/variant.jpg\"}]");
+
+        service.save(product);
+
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("/uploads/products/bowl.jpg", saved.getImageUrl());
+        assertEquals("[\"/uploads/products/alt.jpg\",\"/uploads/products/extra.jpg\"]", saved.getImages());
+        assertEquals("[{\"type\":\"image\",\"url\":\"/uploads/products/detail.jpg\"},{\"type\":\"text\",\"content\":\"Specs\"}]", saved.getDetailContent());
+        assertEquals("[{\"sku\":\"BOWL-S\",\"options\":{\"Size\":\"S\"},\"price\":19.99,\"stock\":2,\"imageUrl\":\"/uploads/products/variant.jpg\"}]", saved.getVariants());
+    }
+
+    @Test
     void saveRejectsInvalidDetailContentBeforePersisting() {
         Product product = validProduct();
         product.setDetailContent("[{\"type\":\"image\",\"url\":\"ftp://example.com/image.jpg\"}]");

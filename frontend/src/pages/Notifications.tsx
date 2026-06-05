@@ -168,6 +168,16 @@ const Notifications: React.FC = () => {
     if (quickFilter === 'ALL') return notifications;
     return notifications.filter((item) => item.type === quickFilter);
   }, [notifications, quickFilter]);
+  const notificationQuickFilterLabels = {
+    ALL: t('common.all'),
+    UNREAD: t('pages.notifications.unreadCount'),
+    PROMOTION: t('pages.notifications.promotionCount'),
+    ORDER: t('pages.notifications.orderCount'),
+    DELIVERY: t('pages.notifications.deliveryCount'),
+  };
+  const markAllActionLabel = `${t('pages.notifications.markAll')}: ${notificationInsights.unread}`;
+  const clearFilterActionLabel = `${t('pages.notifications.clearFilter')}: ${notificationQuickFilterLabels[quickFilter]}`;
+  const notificationActionPlanLabel = `${actionPlan.label}: ${actionPlan.title}`;
 
   if (loading) {
     return <div className="notifications-page notifications-page--loading"><Spin size="large" /></div>;
@@ -181,7 +191,7 @@ const Notifications: React.FC = () => {
           <Title level={3}>{t('pages.notifications.title')}</Title>
         </div>
         {notifications.some(n => !n.isRead) && (
-          <Button icon={<CheckOutlined />} onClick={handleMarkAllAsRead}>{t('pages.notifications.markAll')}</Button>
+          <Button icon={<CheckOutlined />} aria-label={markAllActionLabel} title={markAllActionLabel} onClick={handleMarkAllAsRead}>{t('pages.notifications.markAll')}</Button>
         )}
       </div>
       {notifications.length > 0 ? (
@@ -192,29 +202,57 @@ const Notifications: React.FC = () => {
             <Text type="secondary">{t('pages.notifications.assistantSubtitle')}</Text>
           </div>
           <div className="notifications-page__signalGrid">
-            <button type="button" className={`notifications-page__signal ${quickFilter === 'UNREAD' ? 'is-active' : ''}`} onClick={() => setQuickFilter('UNREAD')}>
+            <button
+              type="button"
+              className={`notifications-page__signal ${quickFilter === 'UNREAD' ? 'is-active' : ''}`}
+              aria-pressed={quickFilter === 'UNREAD'}
+              aria-label={`${t('pages.notifications.unreadCount')}: ${notificationInsights.unread}`}
+              title={`${t('pages.notifications.unreadCount')}: ${notificationInsights.unread}`}
+              onClick={() => setQuickFilter('UNREAD')}
+            >
               <BellOutlined />
               <strong>{notificationInsights.unread}</strong>
               <span>{t('pages.notifications.unreadCount')}</span>
             </button>
-            <button type="button" className={`notifications-page__signal ${quickFilter === 'PROMOTION' ? 'is-active' : ''}`} onClick={() => setQuickFilter('PROMOTION')}>
+            <button
+              type="button"
+              className={`notifications-page__signal ${quickFilter === 'PROMOTION' ? 'is-active' : ''}`}
+              aria-pressed={quickFilter === 'PROMOTION'}
+              aria-label={`${t('pages.notifications.promotionCount')}: ${notificationInsights.promotions}`}
+              title={`${t('pages.notifications.promotionCount')}: ${notificationInsights.promotions}`}
+              onClick={() => setQuickFilter('PROMOTION')}
+            >
               <GiftOutlined />
               <strong>{notificationInsights.promotions}</strong>
               <span>{t('pages.notifications.promotionCount')}</span>
             </button>
-            <button type="button" className={`notifications-page__signal ${quickFilter === 'ORDER' ? 'is-active' : ''}`} onClick={() => setQuickFilter('ORDER')}>
+            <button
+              type="button"
+              className={`notifications-page__signal ${quickFilter === 'ORDER' ? 'is-active' : ''}`}
+              aria-pressed={quickFilter === 'ORDER'}
+              aria-label={`${t('pages.notifications.orderCount')}: ${notificationInsights.orders}`}
+              title={`${t('pages.notifications.orderCount')}: ${notificationInsights.orders}`}
+              onClick={() => setQuickFilter('ORDER')}
+            >
               <ShoppingOutlined />
               <strong>{notificationInsights.orders}</strong>
               <span>{t('pages.notifications.orderCount')}</span>
             </button>
-            <button type="button" className={`notifications-page__signal ${quickFilter === 'DELIVERY' ? 'is-active' : ''}`} onClick={() => setQuickFilter('DELIVERY')}>
+            <button
+              type="button"
+              className={`notifications-page__signal ${quickFilter === 'DELIVERY' ? 'is-active' : ''}`}
+              aria-pressed={quickFilter === 'DELIVERY'}
+              aria-label={`${t('pages.notifications.deliveryCount')}: ${notificationInsights.deliveries}`}
+              title={`${t('pages.notifications.deliveryCount')}: ${notificationInsights.deliveries}`}
+              onClick={() => setQuickFilter('DELIVERY')}
+            >
               <TruckOutlined />
               <strong>{notificationInsights.deliveries}</strong>
               <span>{t('pages.notifications.deliveryCount')}</span>
             </button>
           </div>
           {quickFilter !== 'ALL' ? (
-            <Button size="small" onClick={() => setQuickFilter('ALL')}>{t('pages.notifications.clearFilter')}</Button>
+            <Button size="small" aria-label={clearFilterActionLabel} title={clearFilterActionLabel} onClick={() => setQuickFilter('ALL')}>{t('pages.notifications.clearFilter')}</Button>
           ) : null}
         </section>
       ) : null}
@@ -230,7 +268,7 @@ const Notifications: React.FC = () => {
             <span><GiftOutlined /> {t('pages.notifications.actionSignalOffers', { count: notificationInsights.promotions })}</span>
             <span><TruckOutlined /> {t('pages.notifications.actionSignalDelivery', { count: notificationInsights.deliveries })}</span>
           </div>
-          <Button type="primary" onClick={actionPlan.onClick}>{actionPlan.label}</Button>
+          <Button type="primary" aria-label={notificationActionPlanLabel} title={notificationActionPlanLabel} onClick={actionPlan.onClick}>{actionPlan.label}</Button>
         </section>
       ) : null}
       {notifications.length === 0 ? (
@@ -252,9 +290,13 @@ const Notifications: React.FC = () => {
                 ),
                 <Popconfirm
                   key="delete"
-                  popupClassName="shop-mobile-popup-layer notifications-delete-popconfirm"
+                  classNames={{ root: 'shop-mobile-popup-layer notifications-delete-popconfirm' }}
                   title={t('pages.notifications.deleteConfirm')}
                   onConfirm={() => handleDelete(item.id)}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
+                  okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                 >
                   <Button size="small" type="link" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
                 </Popconfirm>,

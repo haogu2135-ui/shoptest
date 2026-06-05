@@ -4,6 +4,40 @@
   min-height: 100vh;
 }
 
+.shop-skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 4000;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 2px solid #ffffff;
+  border-radius: 8px;
+  background: #123f2d;
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.24);
+  transform: translateY(-140%);
+  transition: transform 0.16s ease;
+}
+
+.shop-skip-link:focus,
+.shop-skip-link:focus-visible {
+  color: #ffffff;
+  outline: 3px solid #ee4d2d;
+  outline-offset: 2px;
+  transform: translateY(0);
+}
+
+#shop-main-content:focus {
+  outline: none;
+}
+
 /* 鈹€鈹€ Primary button: coral accent 鈹€鈹€ */
 .ant-btn-primary {
   background: #ee4d2d;
@@ -1803,6 +1837,107 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   }
 }
 
+/* Final mobile support-entry closure: mobile users open support from the bottom
+   navigation or More menu, preventing fixed launchers from covering CTAs. */
+@media (max-width: 780px) {
+  .app-support-launcher,
+  .customer-support-widget__button {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+/* Absolute final mobile modal control guard. Shared operational modals use
+   this class across storefront, profile, and admin flows. */
+@media (max-width: 780px) {
+  body .ant-modal-root .profile-mobile-safe-modal .ant-modal-close {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    top: 6px !important;
+    right: 6px !important;
+  }
+
+  body .ant-modal-root .profile-mobile-safe-modal .ant-modal-close-x {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+  }
+
+  body .ant-modal-root .profile-mobile-safe-modal :where(
+    .ant-btn,
+    .ant-input,
+    .ant-input-affix-wrapper,
+    textarea.ant-input,
+    .ant-select-selector,
+    .ant-picker,
+    .ant-input-number
+  ) {
+    min-height: 44px !important;
+  }
+
+  body .ant-modal-root .profile-mobile-safe-modal :where(
+    .ant-input-number-input,
+    .ant-picker-input > input,
+    .ant-select-selection-search-input,
+    .ant-select-selection-item,
+    .ant-select-selection-placeholder
+  ) {
+    min-height: 44px !important;
+    height: 44px !important;
+    line-height: 44px !important;
+  }
+
+  body .ant-modal-root .profile-mobile-safe-modal .ant-input-number-handler-wrap {
+    display: none !important;
+  }
+}
+
+/* Final mobile modal viewport closure. Page-level CSS can render after the
+   shared guard, so keep the body-portal modal budget tight at the app root. */
+@media (max-width: 780px) {
+  body .ant-modal-root .profile-mobile-safe-modal.ant-modal:not(.ant-modal-confirm) {
+    top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 0 !important;
+  }
+
+  body .ant-modal-root .profile-mobile-safe-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Final mobile footer text-link target guard. */
+@media (max-width: 780px) {
+  .shop-footer__columns a,
+  .shop-footer__columns button {
+    min-height: 44px;
+    padding-block: 8px;
+  }
+}
+
+/* Mobile uses the bottom navigation and More menu for support so fixed launchers
+   cannot cover checkout, coupon, comparison, history, or gallery actions. */
+@media (max-width: 780px) {
+  .app-support-launcher,
+  .customer-support-widget__button {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
 .shop-nav__bottomBar .shop-nav__bottomItem:nth-last-child(2) {
   display: inline-flex !important;
   visibility: visible !important;
@@ -2928,6 +3063,10 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 @media (max-width: 780px) {
   .app-support-launcher,
   .customer-support-widget__button {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
     right: calc(12px + env(safe-area-inset-right, 0px)) !important;
     bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 22px + env(safe-area-inset-bottom, 0px)) !important;
     width: 48px !important;
@@ -2961,5 +3100,17 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
     height: 44px !important;
     min-width: 44px !important;
     min-height: 44px !important;
+  }
+}
+
+/* Absolute final mobile support-entry closure. Mobile support remains available
+   through navigation, so fixed launchers cannot cover page actions. */
+@media (max-width: 780px) {
+  .app-support-launcher,
+  .customer-support-widget__button {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 }

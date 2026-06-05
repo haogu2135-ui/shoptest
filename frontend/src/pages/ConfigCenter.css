@@ -137,7 +137,7 @@
 
   .config-center__hero {
     position: sticky;
-    top: 0;
+    top: calc(var(--shop-admin-safe-top, 0px) + var(--shop-admin-header-height, 58px) + 8px);
     z-index: 5;
     gap: 12px;
     padding: 14px;

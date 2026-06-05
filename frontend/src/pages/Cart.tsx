@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, InputNumber, message, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Checkbox, Empty, message, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -78,7 +78,10 @@ const Cart: React.FC = () => {
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
   const getCartItemName = useCallback((item: Pick<CartItem, 'productId' | 'productName'>) => (
-    item.productName || t('pages.profile.productFallback', { id: item.productId })
+    (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
+  ), [t]);
+  const getCartProductName = useCallback((product: Pick<Product, 'id' | 'name'>) => (
+    (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id })
   ), [t]);
 
   const fetchCartItems = useCallback(async () => {
@@ -190,6 +193,48 @@ const Cart: React.FC = () => {
     }
   };
 
+  const renderQuantityControl = (item: CartItem) => {
+    const itemName = getCartItemName(item);
+    const quantityLabel = `${t('common.quantity')}: ${itemName}`;
+    const decreaseLabel = `${t('pages.cart.decreaseQuantity')}: ${itemName}`;
+    const increaseLabel = `${t('pages.cart.increaseQuantity')}: ${itemName}`;
+    const limit = getCartQuantityLimit(item.stock);
+    const disabled = !isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id);
+    const quantity = getLineQuantity(item.quantity);
+
+    return (
+      <div className="cart-page__quantityStepper" role="group" aria-label={quantityLabel} title={quantityLabel}>
+        <Button
+          size="small"
+          icon={<MinusOutlined />}
+          aria-label={decreaseLabel}
+          title={decreaseLabel}
+          disabled={disabled || quantity <= 1}
+          onClick={() => updateQuantity(item.id, quantity - 1)}
+        />
+        <input
+          className="cart-page__quantityInput"
+          type="number"
+          min={1}
+          max={limit}
+          value={quantity}
+          disabled={disabled}
+          aria-label={quantityLabel}
+          title={quantityLabel}
+          onChange={(event) => updateQuantity(item.id, Number(event.currentTarget.value) || 1)}
+        />
+        <Button
+          size="small"
+          icon={<PlusOutlined />}
+          aria-label={increaseLabel}
+          title={increaseLabel}
+          disabled={disabled || quantity >= limit}
+          onClick={() => updateQuantity(item.id, quantity + 1)}
+        />
+      </div>
+    );
+  };
+
   const removeItem = async (itemId: number) => {
     if (removingItemIds.includes(itemId)) return;
     try {
@@ -244,7 +289,7 @@ const Cart: React.FC = () => {
           {
             ...item,
             id: item.productId,
-            name: item.productName,
+            name: getCartItemName(item),
             status: item.productStatus,
           },
           item.quantity,
@@ -290,7 +335,7 @@ const Cart: React.FC = () => {
             {
               ...item,
               id: item.productId,
-              name: item.productName,
+              name: getCartItemName(item),
               status: item.productStatus,
             },
             item.quantity,
@@ -515,6 +560,20 @@ const Cart: React.FC = () => {
       text: `${savedItems.length}`,
     },
   ];
+  const retryCartLoadActionLabel = `${t('messages.retry')}: ${t('pages.cart.fetchFailed')}`;
+  const emptyBrowseActionLabel = `${t('pages.cart.browse')}: ${t('pages.cart.empty')}`;
+  const emptyCouponsActionLabel = `${t('nav.coupons')}: ${t('pages.cart.empty')}`;
+  const emptyPetFinderActionLabel = `${t('nav.petFinder')}: ${t('pages.cart.empty')}`;
+  const emptyHistoryActionLabel = `${t('nav.history')}: ${t('pages.cart.recentRecoveryTitle')}`;
+  const cartNextActionLabel = `${cartNextAction.label}: ${cartNextAction.title}`;
+  const browseAllProductsActionLabel = `${t('pages.cart.browse')}: ${t('pages.productList.allCategories')}`;
+  const recentRecoveryBrowseActionLabel = `${t('pages.cart.browse')}: ${t('pages.cart.recentRecoveryTitle')}`;
+  const deleteSelectedActionLabel = `${t('pages.cart.deleteSelected')}: ${t('pages.cart.selectedSummary', { count: selectedIds.length })}`;
+  const clearUnavailableActionLabel = `${t('pages.cart.clearUnavailable')}: ${t('pages.cart.blockedItems', { count: unavailableItems.length })}`;
+  const selectReadyActionLabel = `${t('pages.cart.selectCheckoutReady')}: ${t('pages.cart.readyItems', { count: purchasableItems.length })}`;
+  const checkoutActionLabel = `${t('pages.cart.checkout')}: ${t('pages.cart.selectedSummary', { count: selectedUnitCount })}, ${formatMoney(selectedTotal)}`;
+  const moveAllSavedActionLabel = `${t('pages.cart.moveAllToCart')}: ${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`;
+  const restoreSavedReminderActionLabel = `${t('pages.cart.restoreReminder')}: ${t('pages.cart.savedReminderTitle', { count: savedReminderItems.length })}`;
 
   const addSuggestedProduct = async (product: Product) => {
     const authenticated = hasAuthenticatedCartSession();
@@ -564,13 +623,19 @@ const Cart: React.FC = () => {
       ),
       key: 'select',
       width: 90,
-      render: (_: unknown, record: CartItem) => (
-        <Checkbox
-          disabled={!canCheckout(record)}
-          checked={selectedIds.includes(record.id)}
-          onChange={(e) => toggleOne(record.id, e.target.checked)}
-        />
-      ),
+      render: (_: unknown, record: CartItem) => {
+        const itemName = getCartItemName(record);
+        const selectItemLabel = `${t('pages.cart.selectAll')}: ${itemName}`;
+        return (
+          <Checkbox
+            disabled={!canCheckout(record)}
+            checked={selectedIds.includes(record.id)}
+            aria-label={selectItemLabel}
+            title={selectItemLabel}
+            onChange={(e) => toggleOne(record.id, e.target.checked)}
+          />
+        );
+      },
     },
     {
       title: t('pages.cart.product'),
@@ -620,16 +685,7 @@ const Cart: React.FC = () => {
       dataIndex: 'quantity',
       key: 'quantity',
       width: 130,
-      render: (_: unknown, record: CartItem) => (
-        <InputNumber
-          min={1}
-          max={record.stock ?? undefined}
-          disabled={!isAvailable(record) || updatingItemIds.includes(record.id) || removingItemIds.includes(record.id)}
-          value={record.quantity}
-          size="small"
-          onChange={(value) => updateQuantity(record.id, value || 1)}
-        />
-      ),
+      render: (_: unknown, record: CartItem) => renderQuantityControl(record),
     },
     {
       title: t('common.subtotal'),
@@ -651,9 +707,13 @@ const Cart: React.FC = () => {
               {t('pages.cart.saveForLater')}
             </Button>
             <Popconfirm
-              popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+              classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
               title={t('pages.cart.deleteConfirm')}
               onConfirm={() => removeItem(record.id)}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             >
               <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(record.id)} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
             </Popconfirm>
@@ -701,7 +761,12 @@ const Cart: React.FC = () => {
             description={t('pages.cart.fetchFailed')}
             style={{ maxWidth: 480, margin: '0 auto 24px' }}
             action={
-              <Button type="primary" onClick={() => { setLoading(true); fetchCartItems(); }}>
+              <Button
+                type="primary"
+                aria-label={retryCartLoadActionLabel}
+                title={retryCartLoadActionLabel}
+                onClick={() => { setLoading(true); fetchCartItems(); }}
+              >
                 {t('messages.retry')}
               </Button>
             }
@@ -724,16 +789,16 @@ const Cart: React.FC = () => {
             <Text>{t('pages.cart.recentRecoverySubtitle')}</Text>
           </div>
           <div className="cart-page__emptyActions">
-            <Button type="primary" icon={<ShoppingOutlined />} onClick={() => navigate('/products')}>
+            <Button type="primary" icon={<ShoppingOutlined />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
               {t('pages.cart.browse')}
             </Button>
-            <Button icon={<ShoppingOutlined />} onClick={() => navigate('/coupons')}>
+            <Button icon={<ShoppingOutlined />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
               {t('nav.coupons')}
             </Button>
-            <Button icon={<ShoppingOutlined />} onClick={() => navigate('/pet-finder')}>
+            <Button icon={<ShoppingOutlined />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
               {t('nav.petFinder')}
             </Button>
-            <Button icon={<ClockCircleOutlined />} onClick={() => navigate('/history')}>
+            <Button icon={<ClockCircleOutlined />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
               {t('nav.history')}
             </Button>
           </div>
@@ -768,20 +833,29 @@ const Cart: React.FC = () => {
           <div className="cart-page__heroActions">
             {cartItems.length > 0 && cartNextAction.key === 'clear' ? (
               <Popconfirm
-                popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                 title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                 onConfirm={cartNextAction.action}
+                okText={cartNextAction.label}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ danger: true, 'aria-label': cartNextActionLabel, title: cartNextActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cartNextActionLabel}`, title: `${t('common.cancel')}: ${cartNextActionLabel}` }}
               >
-                <Button type="primary">
+                <Button type="primary" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
                   {cartNextAction.label}
                 </Button>
               </Popconfirm>
             ) : (
-              <Button type={cartItems.length > 0 ? 'primary' : 'default'} onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}>
+              <Button
+                type={cartItems.length > 0 ? 'primary' : 'default'}
+                aria-label={cartItems.length > 0 ? cartNextActionLabel : emptyBrowseActionLabel}
+                title={cartItems.length > 0 ? cartNextActionLabel : emptyBrowseActionLabel}
+                onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}
+              >
                 {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
               </Button>
             )}
-            <Button onClick={() => navigate('/products')}>
+            <Button aria-label={browseAllProductsActionLabel} title={browseAllProductsActionLabel} onClick={() => navigate('/products')}>
               {t('pages.cart.browse')}
             </Button>
           </div>
@@ -810,42 +884,50 @@ const Cart: React.FC = () => {
               <Text strong>{t('pages.cart.recentRecoveryTitle')}</Text>
               <Text type="secondary">{t('pages.cart.recentRecoverySubtitle')}</Text>
             </div>
-            <Button size="small" onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
+            <Button size="small" aria-label={recentRecoveryBrowseActionLabel} title={recentRecoveryBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
           </div>
           <div className="cart-page__recentGrid">
-            {recentProducts.map((product) => (
-              <article
-                key={product.id}
-                className="cart-page__recentItem"
-              >
-                <button type="button" className="cart-page__recentLink" onClick={() => navigate(`/products/${product.id}`)}>
-                  <img
-                    src={resolveCartImage(product.imageUrl)}
-                    alt={product.name || t('pages.profile.productFallback', { id: product.id })}
-                    loading="lazy"
-                    decoding="async"
-                    onError={(event) => {
-                      if (event.currentTarget.src !== cartImageFallback) {
-                        event.currentTarget.src = cartImageFallback;
-                      }
-                    }}
-                  />
-                  <span>
-                    <Text strong>{product.name || t('pages.profile.productFallback', { id: product.id })}</Text>
-                    <Text type="secondary" className="commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</Text>
-                  </span>
-                </button>
-                <Button
-                  size="small"
-                  type={needsOptionSelection(product) ? 'default' : 'primary'}
-                  icon={<ShoppingCartOutlined />}
-                  loading={addingRecentId === product.id}
-                  onClick={() => addRecentProduct(product)}
+            {recentProducts.map((product) => {
+              const productName = getCartProductName(product);
+              const recentLinkLabel = `${t('pages.productList.viewPick')}: ${productName}`;
+              const recentActionText = needsOptionSelection(product) ? t('pages.wishlist.selectOptions') : t('pages.cart.recentAddToCart');
+              const recentActionLabel = `${recentActionText}: ${productName}`;
+              return (
+                <article
+                  key={product.id}
+                  className="cart-page__recentItem"
                 >
-                  {needsOptionSelection(product) ? t('pages.wishlist.selectOptions') : t('pages.cart.recentAddToCart')}
-                </Button>
-              </article>
-            ))}
+                  <button type="button" className="cart-page__recentLink" aria-label={recentLinkLabel} title={recentLinkLabel} onClick={() => navigate(`/products/${product.id}`)}>
+                    <img
+                      src={resolveCartImage(product.imageUrl)}
+                      alt={productName}
+                      loading="lazy"
+                      decoding="async"
+                      onError={(event) => {
+                        if (event.currentTarget.src !== cartImageFallback) {
+                          event.currentTarget.src = cartImageFallback;
+                        }
+                      }}
+                    />
+                    <span>
+                      <Text strong>{productName}</Text>
+                      <Text type="secondary" className="commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</Text>
+                    </span>
+                  </button>
+                  <Button
+                    size="small"
+                    type={needsOptionSelection(product) ? 'default' : 'primary'}
+                    icon={<ShoppingCartOutlined />}
+                    loading={addingRecentId === product.id}
+                    aria-label={recentActionLabel}
+                    title={recentActionLabel}
+                    onClick={() => addRecentProduct(product)}
+                  >
+                    {recentActionText}
+                  </Button>
+                </article>
+              );
+            })}
           </div>
         </Card>
       ) : null}
@@ -854,22 +936,42 @@ const Cart: React.FC = () => {
           <Card size="small" className="cart-page__bulkActions">
             <Space wrap>
               <Popconfirm
-                popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                 title={t('pages.cart.deleteSelectedConfirm', { count: selectedIds.length })}
                 disabled={selectedIds.length === 0}
                 onConfirm={removeSelectedItems}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ danger: true, 'aria-label': deleteSelectedActionLabel, title: deleteSelectedActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteSelectedActionLabel}`, title: `${t('common.cancel')}: ${deleteSelectedActionLabel}` }}
               >
-                <Button danger icon={<DeleteOutlined />} disabled={selectedIds.length === 0} loading={selectedIds.some((id) => removingItemIds.includes(id))}>
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  disabled={selectedIds.length === 0}
+                  loading={selectedIds.some((id) => removingItemIds.includes(id))}
+                  aria-label={deleteSelectedActionLabel}
+                  title={deleteSelectedActionLabel}
+                >
                   {t('pages.cart.deleteSelected')}
                 </Button>
               </Popconfirm>
               <Popconfirm
-                popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                 title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                 disabled={unavailableItems.length === 0}
                 onConfirm={clearUnavailableItems}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ danger: true, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
               >
-                <Button disabled={unavailableItems.length === 0} loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}>
+                <Button
+                  disabled={unavailableItems.length === 0}
+                  loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}
+                  aria-label={clearUnavailableActionLabel}
+                  title={clearUnavailableActionLabel}
+                >
                   {t('pages.cart.clearUnavailable')}
                 </Button>
               </Popconfirm>
@@ -902,16 +1004,31 @@ const Cart: React.FC = () => {
               ) : null}
             </div>
             <div className="cart-page__readinessActions">
-              <Button size="small" onClick={() => toggleAll(true)} disabled={purchasableItems.length === 0 || allSelected}>
+              <Button
+                size="small"
+                aria-label={selectReadyActionLabel}
+                title={selectReadyActionLabel}
+                onClick={() => toggleAll(true)}
+                disabled={purchasableItems.length === 0 || allSelected}
+              >
                 {t('pages.cart.selectCheckoutReady')}
               </Button>
               {unavailableItems.length > 0 ? (
                 <Popconfirm
-                  popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                  classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                   title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                   onConfirm={clearUnavailableItems}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
+                  okButtonProps={{ danger: true, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
+                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
                 >
-                  <Button size="small" loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}>
+                  <Button
+                    size="small"
+                    loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}
+                    aria-label={clearUnavailableActionLabel}
+                    title={clearUnavailableActionLabel}
+                  >
                     {t('pages.cart.clearUnavailable')}
                   </Button>
                 </Popconfirm>
@@ -927,17 +1044,23 @@ const Cart: React.FC = () => {
               </span>
               {cartNextAction.key === 'clear' ? (
                 <Popconfirm
-                  popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                  classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                   title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                   onConfirm={cartNextAction.action}
+                  okText={cartNextAction.label}
+                  cancelText={t('common.cancel')}
+                  okButtonProps={{ danger: true, 'aria-label': cartNextActionLabel, title: cartNextActionLabel }}
+                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cartNextActionLabel}`, title: `${t('common.cancel')}: ${cartNextActionLabel}` }}
                 >
-                  <Button type="default">
+                  <Button type="default" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
                     {cartNextAction.label}
                   </Button>
                 </Popconfirm>
               ) : (
                 <Button
                   type="default"
+                  aria-label={cartNextActionLabel}
+                  title={cartNextActionLabel}
                   onClick={cartNextAction.action}
                   loading={cartNextAction.key === 'saved' && restoringSaved}
                 >
@@ -994,14 +1117,7 @@ const Cart: React.FC = () => {
                 </div>
                 <div className="cart-page__mobileItemBottom">
                   <div className="cart-page__mobileItemCommerce">
-                    <InputNumber
-                      min={1}
-                      max={item.stock ?? undefined}
-                      disabled={!isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id)}
-                      value={item.quantity}
-                      size="small"
-                      onChange={(value) => updateQuantity(item.id, value || 1)}
-                    />
+                    {renderQuantityControl(item)}
                     <Text strong className="cart-page__priceText commerce-money">{formatMoney(getLineTotal(item))}</Text>
                   </div>
                   <div className="cart-page__mobileItemActions">
@@ -1009,9 +1125,13 @@ const Cart: React.FC = () => {
                       {t('pages.cart.saveForLaterShort')}
                     </Button>
                     <Popconfirm
-                      popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                      classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                       title={t('pages.cart.deleteConfirm')}
                       onConfirm={() => removeItem(item.id)}
+                      okText={t('common.confirm')}
+                      cancelText={t('common.cancel')}
+                      okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                     >
                       <Button
                         type="text"
@@ -1045,7 +1165,7 @@ const Cart: React.FC = () => {
                   {t('common.total')}: <Text strong className="cart-page__totalAmount commerce-money">{formatMoney(selectedTotal)}</Text>
                 </Text>
               </div>
-              <Button type="primary" size="large" onClick={goCheckout} disabled={checkoutBlocked}>
+              <Button type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={checkoutBlocked}>
                 {t('pages.cart.checkout')}
               </Button>
             </div>
@@ -1066,7 +1186,7 @@ const Cart: React.FC = () => {
       ) : (
         <Card className="cart-page__emptyPanel">
           <Empty image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />} description={t('pages.cart.empty')}>
-            <Button type="primary" onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
+            <Button type="primary" aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
           </Empty>
         </Card>
       )}
@@ -1078,6 +1198,8 @@ const Cart: React.FC = () => {
             size="small"
             icon={<ShoppingCartOutlined />}
             loading={restoringSaved}
+            aria-label={moveAllSavedActionLabel}
+            title={moveAllSavedActionLabel}
             onClick={() => moveSavedItemsToCart(savedItems)}
           >
             {t('pages.cart.moveAllToCart')}
@@ -1101,7 +1223,14 @@ const Cart: React.FC = () => {
             message={t('pages.cart.savedReminderTitle', { count: savedReminderItems.length })}
             description={t('pages.cart.savedReminderText')}
             action={(
-              <Button size="small" type="primary" loading={restoringSaved} onClick={() => moveSavedItemsToCart(savedReminderItems)}>
+              <Button
+                size="small"
+                type="primary"
+                loading={restoringSaved}
+                aria-label={restoreSavedReminderActionLabel}
+                title={restoreSavedReminderActionLabel}
+                onClick={() => moveSavedItemsToCart(savedReminderItems)}
+              >
                 {t('pages.cart.restoreReminder')}
               </Button>
             )}
@@ -1144,9 +1273,13 @@ const Cart: React.FC = () => {
                     {t('pages.cart.moveToCart')}
                   </Button>
                   <Popconfirm
-                    popupClassName="shop-mobile-popup-layer cart-page-popconfirm"
+                    classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                     title={t('pages.cart.deleteSavedConfirm')}
                     onConfirm={() => removeSavedItem(item.id)}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
+                    okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
                     <Button danger type="text" icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
                   </Popconfirm>

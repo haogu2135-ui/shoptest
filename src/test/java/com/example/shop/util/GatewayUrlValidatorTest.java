@@ -31,4 +31,12 @@ class GatewayUrlValidatorTest {
                 GatewayUrlValidator.requireOutboundHttpUrl("http://[::1]/pay", true, "Create payment URL")
         );
     }
+
+    @Test
+    void rejectsPublicHttpGatewayUrlsEvenWhenLocalGatewaysAreEnabled() {
+        assertThrows(IllegalStateException.class,
+                () -> GatewayUrlValidator.requireOutboundHttpUrl("http://payments.example.com/pay", false, "Create payment URL"));
+        assertThrows(IllegalStateException.class,
+                () -> GatewayUrlValidator.requireOutboundHttpUrl("http://payments.example.com/pay", true, "Create payment URL"));
+    }
 }

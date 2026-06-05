@@ -52,13 +52,17 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class OrderService {
+    private static final String RETURN_REFUNDING = "RETURN_REFUNDING";
+    private static final Set<String> RECONCILIATION_REFUNDABLE_STATUSES = Set.of("PENDING_PAYMENT", "CANCELLED");
+
     private static final List<String> DASHBOARD_REVENUE_STATUSES = List.of(
             "PENDING_SHIPMENT",
             "SHIPPED",
             "COMPLETED",
             "RETURN_REQUESTED",
             "RETURN_APPROVED",
-            "RETURN_SHIPPED");
+            "RETURN_SHIPPED",
+            RETURN_REFUNDING);
 
     private static final List<String> ADMIN_ORDER_SUMMARY_KEYS = List.of(
             "NEEDS_ACTION",
@@ -72,7 +76,6 @@ public class OrderService {
             "REFUNDING",
             "REFUNDED");
 
-    private static final String RETURN_REFUNDING = "RETURN_REFUNDING";
     private static final String GUEST_USERNAME_PREFIX = "guest_";
     private static final int GUEST_USERNAME_MAX_LENGTH = 50;
     private static final int GUEST_USERNAME_TOKEN_LENGTH = 32;
@@ -961,6 +964,12 @@ public class OrderService {
         if (payment == null) {
             payment = paymentRepository.findLatestByOrderId(id);
         }
+
+        int updated = orderRepository.updateStatusIfCurrent(id, "PENDING_PAYMENT", "PENDING_SHIPMENT");
+        if (updated == 0) {
+            throw new IllegalStateException("Order payment confirmation failed");
+        }
+
         if (payment != null && !"PAID".equals(payment.getStatus()) && !"REFUNDED".equals(payment.getStatus())) {
             payment.setAmount(order.getTotalAmount());
             payment.setChannel(resolveManualPaymentChannel(order, payment));
@@ -972,7 +981,9 @@ public class OrderService {
             payment.setPaidAt(now);
             payment.setCallbackAt(now);
             payment.setUpdatedAt(now);
-            paymentRepository.update(payment);
+            if (paymentRepository.update(payment) == 0) {
+                throw new IllegalStateException("Payment confirmation update failed");
+            }
         } else {
             payment = new Payment();
             payment.setOrderId(order.getId());
@@ -986,20 +997,26 @@ public class OrderService {
             payment.setCallbackAt(now);
             payment.setCreatedAt(now);
             payment.setUpdatedAt(now);
-            paymentRepository.insert(payment);
-        }
-
-        int updated = orderRepository.updateStatusIfCurrent(id, "PENDING_PAYMENT", "PENDING_SHIPMENT");
-        if (updated == 0) {
-            throw new IllegalStateException("Order payment confirmation failed");
+            if (paymentRepository.insert(payment) == 0) {
+                throw new IllegalStateException("Payment confirmation insert failed");
+            }
         }
         Payment latest = paymentRepository.findById(payment.getId());
         notifyPaymentConfirmed(order, latest != null ? latest : payment);
-        return latest;
+        return latest != null ? latest : payment;
     }
 
     @Transactional
     public boolean cancelOrder(Long id) {
+        return cancelPendingPaymentOrder(id, true);
+    }
+
+    @Transactional
+    public boolean cancelOrderForPaymentExpiry(Long id) {
+        return cancelPendingPaymentOrder(id, false);
+    }
+
+    private boolean cancelPendingPaymentOrder(Long id, boolean closePendingPayments) {
         Order order = orderRepository.findById(id);
         if (order == null) {
             return false;
@@ -1016,7 +1033,9 @@ public class OrderService {
         for (OrderItem item : items) {
             restoreStock(item);
         }
-        paymentRepository.markPendingCancelledByOrderId(id);
+        if (closePendingPayments) {
+            paymentRepository.markPendingCancelledByOrderId(id);
+        }
         if ("PENDING_PAYMENT".equals(order.getStatus())) {
             releaseOrderCoupon(order);
         }
@@ -1230,22 +1249,27 @@ public class OrderService {
             }
             throw new IllegalStateException("Order is marked refunded but no refunded payment was found");
         }
-        if (!refundableStatuses.contains(order.getStatus())) {
+        boolean reconciliationRefund = isReconciliationRefund(order);
+        if (!refundableStatuses.contains(order.getStatus()) && !reconciliationRefund) {
             throw new IllegalStateException("Order is not refundable in current status: " + order.getStatus());
         }
         String cleanedReason = normalizeOptionalText(reason, "Refund reason", runtimeConfig.getInt("order.return-reason-max-chars", 500));
 
-        Payment refundedPayment = refundService.refundPaidPayment(order, cleanedReason, manualRefundReference);
         int updated = orderRepository.markRefunded(order.getId(), order.getStatus(), cleanedReason);
         if (updated == 0) {
             Order latest = orderRepository.findById(order.getId());
             if (latest != null && ("REFUNDED".equals(latest.getStatus()) || "RETURNED".equals(latest.getStatus()))) {
                 releaseOrderCoupon(order);
-                return refundedPayment;
+                Payment refunded = paymentRepository.findLatestRefundedByOrderId(order.getId());
+                if (refunded != null) {
+                    return refunded;
+                }
             }
             throw new IllegalStateException("Order refund finalization failed");
         }
-        if (restock || "PENDING_SHIPMENT".equals(order.getStatus())) {
+        Payment refundedPayment = refundService.refundPaidPayment(order, cleanedReason, manualRefundReference);
+        boolean shouldRestock = restock || "PENDING_SHIPMENT".equals(order.getStatus());
+        if (shouldRestock) {
             List<OrderItem> items = orderItemRepository.findByOrderId(id);
             for (OrderItem item : items) {
                 restoreStock(item);
@@ -1258,6 +1282,12 @@ public class OrderService {
                 "Refund for order " + safeOrderNo(order) + " has been completed."
         );
         return refundedPayment;
+    }
+
+    private boolean isReconciliationRefund(Order order) {
+        return order != null
+                && RECONCILIATION_REFUNDABLE_STATUSES.contains(order.getStatus())
+                && paymentRepository.findLatestReconcileRequiredByOrderId(order.getId()) != null;
     }
 
     private void releaseOrderCoupon(Order order) {
@@ -1308,7 +1338,7 @@ public class OrderService {
             carrierName = carrier.getName();
         }
         assertNextStatus(order.getStatus(), "SHIPPED");
-        boolean updated = orderRepository.updateShipping(id, "SHIPPED", cleanedTrackingNumber, carrierCode, carrierName) > 0;
+        boolean updated = orderRepository.updateShipping(id, order.getStatus(), "SHIPPED", cleanedTrackingNumber, carrierCode, carrierName) > 0;
         if (updated) {
             String carrierLabel = trimToNull(carrierName) == null ? "" : " via " + carrierName;
             notifyCustomer(

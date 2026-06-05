@@ -40,6 +40,7 @@ import { normalizeAnnouncementLink } from '../utils/announcementLinks';
 import {
   currentMobileVersionCode,
   fetchLatestMobileRelease,
+  isNativeAndroidApp,
   isNativeMobileApp,
   openMobileReleaseDownload,
   resolveMobileReleaseDownloadUrl,
@@ -125,8 +126,10 @@ const Navbar: React.FC = () => {
   const [androidApkUrl, setAndroidApkUrl] = useState<string>('');
   const [openingAndroidApk, setOpeningAndroidApk] = useState(false);
   const [nativeBottomNav, setNativeBottomNav] = useState(() => isNativeMobileApp());
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
   const { language, setLanguage, t } = useLanguage();
   const { currency, setCurrency, market, formatMoney } = useMarket();
+  const navSearchActionLabel = `${t('common.search')}: ${t('nav.searchPlaceholder')}`;
   const languageOptions = [
     { value: 'es', label: 'Español' },
     { value: 'zh', label: '中文' },
@@ -148,6 +151,12 @@ const Navbar: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (isNativeMobileApp() && !isNativeAndroidApp()) {
+      setMobileRelease(null);
+      setAndroidApkUrl('');
+      return undefined;
+    }
+
     let disposed = false;
     fetchLatestMobileRelease().then((release) => {
       if (!disposed) {
@@ -162,7 +171,7 @@ const Navbar: React.FC = () => {
 
   useEffect(() => {
     const refreshNativeBottomNav = () => {
-      setNativeBottomNav(isNativeMobileApp() || document.body.classList.contains('shop-mobile-app'));
+      setNativeBottomNav(isNativeMobileApp() || Boolean(document.body?.classList.contains('shop-mobile-app')));
     };
     refreshNativeBottomNav();
     const refreshTimer = window.setTimeout(refreshNativeBottomNav, 0);
@@ -181,12 +190,15 @@ const Navbar: React.FC = () => {
   const utilityMenuCount = token ? communitySignalCount : safeCompareCount + safeAlertCount;
   const nativeAndroidReleaseAvailable = Boolean(
     nativeBottomNav
+    && isNativeAndroidApp()
     && mobileRelease
     && androidApkUrl
     && (mobileRelease.versionCode || 0) > currentMobileVersionCode(),
   );
-  const browserAndroidReleaseAvailable = Boolean(!nativeBottomNav && androidApkUrl);
+  const browserAndroidReleaseAvailable = !nativeBottomNav;
   const showAndroidDownloadLink = nativeAndroidReleaseAvailable || browserAndroidReleaseAvailable;
+  const androidDownloadActionLabel = androidApkUrl ? t('nav.downloadAndroid') : t('nav.mobileAppUnavailable');
+  const bottomAccountLabel = t('nav.accountShort', { defaultValue: t('nav.account') });
   const renderNavAmountText = (label: string, amount: string) => {
     const parts = label.split(amount);
     if (parts.length <= 1) return label;
@@ -220,6 +232,10 @@ const Navbar: React.FC = () => {
       {label}
     </span>
   );
+  const setDropdownOpen = useCallback((key: string, open: boolean) => {
+    setOpenDropdowns((current) => ({ ...current, [key]: open }));
+  }, []);
+  const isDropdownOpen = useCallback((key: string) => Boolean(openDropdowns[key]), [openDropdowns]);
 
   const openSupport = () => {
     if (!token) {
@@ -235,7 +251,7 @@ const Navbar: React.FC = () => {
   };
 
   const openNativeAndroidDownload = async () => {
-    if (!mobileRelease || openingAndroidApk) return;
+    if (!mobileRelease || openingAndroidApk || (nativeBottomNav && !isNativeAndroidApp())) return;
     setOpeningAndroidApk(true);
     try {
       const opened = await openMobileReleaseDownload(mobileRelease);
@@ -247,6 +263,10 @@ const Navbar: React.FC = () => {
     } finally {
       setOpeningAndroidApk(false);
     }
+  };
+
+  const handleAndroidDownloadUnavailable = () => {
+    message.warning(t('nav.mobileAppUnavailable'));
   };
 
   const androidDownloadMenuItem = showAndroidDownloadLink
@@ -263,7 +283,10 @@ const Navbar: React.FC = () => {
       : {
         key: 'android-app',
         icon: <DownloadOutlined />,
-        label: <a href={androidApkUrl} download>{t('nav.downloadAndroid')}</a>,
+        label: androidApkUrl
+          ? <a href={androidApkUrl} download>{t('nav.downloadAndroid')}</a>
+          : t('nav.downloadAndroid'),
+        onClick: androidApkUrl ? undefined : handleAndroidDownloadUnavailable,
       }
     : null;
 
@@ -517,11 +540,15 @@ const Navbar: React.FC = () => {
     { key: 'pet-gallery', label: t('nav.petGallery'), active: isPathActive(['/pet-gallery']), to: '/pet-gallery' },
   ];
 
-  const renderPetNavButton = (item: typeof petNavItems[number]) => (
+  const renderPetNavButton = (item: typeof petNavItems[number], expanded?: boolean) => {
+    const hasMenu = 'children' in item && Boolean(item.children);
+    return (
     <button
       key={item.key}
       type="button"
       aria-current={item.active ? 'page' : undefined}
+      aria-haspopup={hasMenu ? 'menu' : undefined}
+      aria-expanded={hasMenu ? expanded === true : undefined}
       className={item.active ? 'shop-nav__megaButton shop-nav__megaButton--active' : 'shop-nav__megaButton'}
       onClick={() => {
         if ('to' in item && item.to) {
@@ -535,7 +562,8 @@ const Navbar: React.FC = () => {
     >
       {item.label}
     </button>
-  );
+    );
+  };
 
   const renderAnnouncement = (announcement: SiteAnnouncementPublic) => {
     const text = announcement.content || announcement.title;
@@ -582,49 +610,74 @@ const Navbar: React.FC = () => {
       <div className="shop-nav__top">
         <div className="shop-nav__inner">
           <div className="shop-nav__links">
-            <Link className={!canAccessAdmin && isProductsActive ? 'shop-nav__linkActive' : undefined} to={canAccessAdmin ? adminPath : '/products'}>{t('nav.sell')}</Link>
-            <Link className={isPathActive(['/pet-finder']) ? 'shop-nav__linkActive' : undefined} to="/pet-finder">{t('nav.petFinder')}</Link>
-            <Link className={isPathActive(['/pet-gallery']) ? 'shop-nav__linkActive' : undefined} to="/pet-gallery">{t('nav.petGallery')}</Link>
-            <Link className={isPathActive(['/coupons']) ? 'shop-nav__linkActive' : undefined} to="/coupons">{t('nav.download')}</Link>
+            <Link className={!canAccessAdmin && isProductsActive ? 'shop-nav__linkActive' : undefined} to={canAccessAdmin ? adminPath : '/products'} aria-current={!canAccessAdmin && isProductsActive ? 'page' : undefined}>{t('nav.sell')}</Link>
+            <Link className={isPathActive(['/pet-finder']) ? 'shop-nav__linkActive' : undefined} to="/pet-finder" aria-current={isPathActive(['/pet-finder']) ? 'page' : undefined}>{t('nav.petFinder')}</Link>
+            <Link className={isPathActive(['/pet-gallery']) ? 'shop-nav__linkActive' : undefined} to="/pet-gallery" aria-current={isPathActive(['/pet-gallery']) ? 'page' : undefined}>{t('nav.petGallery')}</Link>
+            <Link className={isPathActive(['/coupons']) ? 'shop-nav__linkActive' : undefined} to="/coupons" aria-current={isPathActive(['/coupons']) ? 'page' : undefined}>{t('nav.download')}</Link>
             {showAndroidDownloadLink ? (
               nativeBottomNav ? (
-                <button type="button" className="shop-nav__downloadLink" onClick={openNativeAndroidDownload} disabled={openingAndroidApk}>
-                  <DownloadOutlined /> {t('nav.mobileApp')}
+                <button
+                  type="button"
+                  className="shop-nav__downloadLink"
+                  onClick={openNativeAndroidDownload}
+                  disabled={openingAndroidApk}
+                  aria-label={t('nav.downloadAndroid')}
+                  title={t('nav.downloadAndroid')}
+                >
+                  <DownloadOutlined /> {t('nav.downloadAndroid')}
                 </button>
               ) : (
-                <a href={androidApkUrl} download className="shop-nav__downloadLink">
-                  <DownloadOutlined /> {t('nav.mobileApp')}
-                </a>
+                androidApkUrl ? (
+                  <a href={androidApkUrl} download className="shop-nav__downloadLink" aria-label={t('nav.downloadAndroid')} title={t('nav.downloadAndroid')}>
+                    <DownloadOutlined /> {t('nav.downloadAndroid')}
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    className="shop-nav__downloadLink"
+                    onClick={handleAndroidDownloadUnavailable}
+                    aria-label={androidDownloadActionLabel}
+                    title={androidDownloadActionLabel}
+                  >
+                    <DownloadOutlined /> {t('nav.downloadAndroid')}
+                  </button>
+                )
               )
             ) : null}
-            <Link className={isDealsActive ? 'shop-nav__linkActive' : undefined} to="/products?discount=true">{t('nav.followDeals')}</Link>
+            <Link className={isDealsActive ? 'shop-nav__linkActive' : undefined} to="/products?discount=true" aria-current={isDealsActive ? 'page' : undefined}>{t('nav.followDeals')}</Link>
           </div>
           <div className="shop-nav__links shop-nav__links--right">
-            <Link className={isPathActive(['/track-order']) ? 'shop-nav__linkActive' : undefined} to="/track-order">{t('nav.trackOrder')}</Link>
+            <Link className={isPathActive(['/track-order']) ? 'shop-nav__linkActive' : undefined} to="/track-order" aria-current={isPathActive(['/track-order']) ? 'page' : undefined}>{t('nav.trackOrder')}</Link>
             <button type="button" onClick={openSupport}>{t('nav.help')}</button>
             <Select
               aria-label={t('nav.language')}
+              aria-expanded={isDropdownOpen('top-language')}
+              aria-haspopup="listbox"
               className="shop-nav__language"
               size="small"
               value={language}
+              open={isDropdownOpen('top-language')}
+              onOpenChange={(open) => setDropdownOpen('top-language', open)}
               onChange={(value) => setLanguage(value as Language)}
               classNames={{ popup: { root: 'shop-nav__select-popup' } }}
-              popupClassName="shop-nav__select-popup"
               styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
               getPopupContainer={() => document.body}
               options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
             <Select
               aria-label={t('nav.currency')}
+              aria-expanded={isDropdownOpen('top-currency')}
+              aria-haspopup="listbox"
               className="shop-nav__currency"
               size="small"
               value={currency}
+              open={isDropdownOpen('top-currency')}
+              onOpenChange={(open) => setDropdownOpen('top-currency', open)}
               onChange={(value) => {
                 const nextCurrency = value as CurrencyCode;
                 setCurrency(nextCurrency);
               }}
               classNames={{ popup: { root: 'shop-nav__select-popup' } }}
-              popupClassName="shop-nav__select-popup"
               styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
               getPopupContainer={() => document.body}
               options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
@@ -634,7 +687,7 @@ const Navbar: React.FC = () => {
                 <Link to="/profile">
                   <UserOutlined /> {username || t('nav.account')}
                 </Link>
-                <button onClick={handleLogout}>{t('nav.logout')}</button>
+                <button type="button" onClick={handleLogout}>{t('nav.logout')}</button>
               </>
             ) : (
               <>
@@ -648,7 +701,7 @@ const Navbar: React.FC = () => {
 
       <div className="shop-nav__main">
         <div className="shop-nav__inner shop-nav__inner--main">
-          <Link to="/" className={location.pathname === '/' ? 'shop-nav__brand shop-nav__brand--active' : 'shop-nav__brand'} aria-label={t('nav.ariaHome')}>
+          <Link to="/" className={location.pathname === '/' ? 'shop-nav__brand shop-nav__brand--active' : 'shop-nav__brand'} aria-label={t('nav.ariaHome')} aria-current={location.pathname === '/' ? 'page' : undefined}>
             <span className="shop-nav__brandIcon"><ShopOutlined /></span>
             <span className="shop-nav__brandCopy">
               <strong>{t('common.brand')}</strong>
@@ -672,12 +725,14 @@ const Navbar: React.FC = () => {
               <div className="shop-nav__searchBar">
                 <Search
                   placeholder={t('nav.searchPlaceholder')}
+                  aria-label={navSearchActionLabel}
+                  title={navSearchActionLabel}
                   onSearch={handleSearch}
                   enterButton={(
                     <Button
                       type="primary"
-                      aria-label={t('common.search')}
-                      title={t('common.search')}
+                      aria-label={navSearchActionLabel}
+                      title={navSearchActionLabel}
                       icon={<SearchOutlined />}
                     />
                   )}
@@ -687,10 +742,10 @@ const Navbar: React.FC = () => {
               </div>
             </div>
             <div className="shop-nav__suggestions">
-              <button onClick={() => searchBySuggestion('nav.suggestions.dogToys')}>{t('nav.suggestions.dogToys')}</button>
-              <button onClick={() => searchBySuggestion('nav.suggestions.catLitter')}>{t('nav.suggestions.catLitter')}</button>
-              <button onClick={() => searchBySuggestion('nav.suggestions.petBeds')}>{t('nav.suggestions.petBeds')}</button>
-              <button onClick={() => searchBySuggestion('nav.suggestions.leashes')}>{t('nav.suggestions.leashes')}</button>
+              <button type="button" onClick={() => searchBySuggestion('nav.suggestions.dogToys')}>{t('nav.suggestions.dogToys')}</button>
+              <button type="button" onClick={() => searchBySuggestion('nav.suggestions.catLitter')}>{t('nav.suggestions.catLitter')}</button>
+              <button type="button" onClick={() => searchBySuggestion('nav.suggestions.petBeds')}>{t('nav.suggestions.petBeds')}</button>
+              <button type="button" onClick={() => searchBySuggestion('nav.suggestions.leashes')}>{t('nav.suggestions.leashes')}</button>
             </div>
             <div className="shop-nav__searchSignals" aria-label={t('nav.help')}>
               <span>{trustFreeShippingText}</span>
@@ -700,24 +755,30 @@ const Navbar: React.FC = () => {
             <div className="shop-nav__mobile-tools">
               <Select
                 aria-label={t('nav.language')}
+                aria-expanded={isDropdownOpen('mobile-language')}
+                aria-haspopup="listbox"
                 className="shop-nav__language"
                 size="small"
                 value={language}
+                open={isDropdownOpen('mobile-language')}
+                onOpenChange={(open) => setDropdownOpen('mobile-language', open)}
                 onChange={(value) => setLanguage(value as Language)}
                 classNames={{ popup: { root: 'shop-nav__select-popup' } }}
-                popupClassName="shop-nav__select-popup"
                 styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
                 getPopupContainer={() => document.body}
                 options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
               <Select
                 aria-label={t('nav.currency')}
+                aria-expanded={isDropdownOpen('mobile-currency')}
+                aria-haspopup="listbox"
                 className="shop-nav__currency"
                 size="small"
                 value={currency}
+                open={isDropdownOpen('mobile-currency')}
+                onOpenChange={(open) => setDropdownOpen('mobile-currency', open)}
                 onChange={(value) => setCurrency(value as CurrencyCode)}
                 classNames={{ popup: { root: 'shop-nav__select-popup' } }}
-                popupClassName="shop-nav__select-popup"
                 styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
                 getPopupContainer={() => document.body}
                 options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
@@ -731,13 +792,17 @@ const Navbar: React.FC = () => {
           </div>
 
           <nav className="shop-nav__mega" aria-label={t('home.categories')}>
-            {petNavItems.map((item) => (
-              'children' in item && item.children ? (
+            {petNavItems.map((item) => {
+              if ('children' in item && item.children) {
+                const dropdownKey = `pet-${item.key}`;
+                return (
                 <Dropdown
                   key={item.key}
                   getPopupContainer={() => document.body}
                   overlayClassName="shop-nav__dropdown-popup"
                   overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
+                  open={isDropdownOpen(dropdownKey)}
+                  onOpenChange={(open) => setDropdownOpen(dropdownKey, open)}
                   menu={{
                     items: item.children.map((child) => ({
                       key: child.key,
@@ -761,23 +826,29 @@ const Navbar: React.FC = () => {
                     })),
                   }}
                 >
-                  {renderPetNavButton(item)}
+                  {renderPetNavButton(item, isDropdownOpen(dropdownKey))}
                 </Dropdown>
-              ) : renderPetNavButton(item)
-            ))}
+                );
+              }
+              return renderPetNavButton(item);
+            })}
           </nav>
 
           <div className="shop-nav__actions">
             {token ? (
-              <button type="button" className="shop-nav__actionSummary" onClick={() => navigate('/profile')} aria-label={t('nav.account')}>
-                <span>{username || t('nav.account')}</span>
-                <strong>{communitySignalCount}</strong>
-              </button>
+              !nativeBottomNav ? (
+                <button type="button" className="shop-nav__actionSummary" onClick={() => navigate('/profile')} aria-label={t('nav.account')}>
+                  <span>{username || t('nav.account')}</span>
+                  <strong>{communitySignalCount}</strong>
+                </button>
+              ) : null
             ) : (
-              <button type="button" className="shop-nav__actionSummary shop-nav__actionSummary--guest" onClick={() => navigate('/register')} aria-label={t('nav.register')}>
-                <span>{t('nav.register')}</span>
-                <strong>{t('home.couponsExtra')}</strong>
-              </button>
+              !nativeBottomNav ? (
+                <button type="button" className="shop-nav__actionSummary shop-nav__actionSummary--guest" onClick={() => navigate('/register')} aria-label={t('nav.register')}>
+                  <span>{t('nav.register')}</span>
+                  <strong>{t('home.couponsExtra')}</strong>
+                </button>
+              ) : null
             )}
             {!token ? (
               <div className="shop-nav__guestCtas" aria-label={t('nav.account')}>
@@ -798,6 +869,8 @@ const Navbar: React.FC = () => {
               overlayClassName="shop-nav__dropdown-popup"
               overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
               trigger={['click']}
+              open={isDropdownOpen('mobile-locale')}
+              onOpenChange={(open) => setDropdownOpen('mobile-locale', open)}
               menu={{
                 items: [
                   { key: 'language-title', label: t('nav.language'), disabled: true },
@@ -816,22 +889,24 @@ const Navbar: React.FC = () => {
                 ],
               }}
             >
-              <button type="button" aria-label={`${t('nav.language')} / ${t('nav.currency')}`}>
+              <button type="button" aria-label={`${t('nav.language')} / ${t('nav.currency')}`} aria-haspopup="menu" aria-expanded={isDropdownOpen('mobile-locale')}>
                 <GlobalOutlined />
               </button>
             </Dropdown>
             {token ? (
               <>
-                <button className="shop-nav__mobile-orders" onClick={() => navigate('/profile?tab=orders')} aria-label={t('pages.profile.allOrders')}>
+                <button type="button" className="shop-nav__mobile-orders" onClick={() => navigate('/profile?tab=orders')} aria-label={t('pages.profile.allOrders')}>
                   <ShoppingOutlined />
                 </button>
-                <Link to="/profile" className="shop-nav__mobile-auth"><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.account')}</span></Link>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/wishlist')} aria-label={t('nav.ariaFavorites')}>
+                {!nativeBottomNav ? (
+                  <Link to="/profile" className="shop-nav__mobile-auth" aria-label={t('nav.account')} title={t('nav.account')}><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.account')}</span></Link>
+                ) : null}
+                <button type="button" className="shop-nav__secondary-action" onClick={() => navigate('/wishlist')} aria-label={t('nav.ariaFavorites')}>
                     <Badge count={safeWishlistCount} size="small">
                     <HeartOutlined />
                   </Badge>
                 </button>
-                <button className="shop-nav__secondary-action" onClick={() => navigate('/notifications')} aria-label={t('nav.ariaNotifications')}>
+                <button type="button" className="shop-nav__secondary-action" onClick={() => navigate('/notifications')} aria-label={t('nav.ariaNotifications')}>
                     <Badge count={safeUnreadCount} size="small">
                     <BellOutlined />
                   </Badge>
@@ -841,6 +916,8 @@ const Navbar: React.FC = () => {
                   overlayClassName="shop-nav__dropdown-popup"
                   overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
                   trigger={['click']}
+                  open={isDropdownOpen('account-more')}
+                  onOpenChange={(open) => setDropdownOpen('account-more', open)}
                   menu={{
                     items: [
                       ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
@@ -852,18 +929,18 @@ const Navbar: React.FC = () => {
                     ],
                   }}
                 >
-                  <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={t('nav.more')}>
+                  <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={t('nav.more')} aria-haspopup="menu" aria-expanded={isDropdownOpen('account-more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <EllipsisOutlined />
                     </Badge>
                   </button>
                 </Dropdown>
-                <button onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
+                <button type="button" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
                   <Badge count={safeCartCount} size="small">
                     <ShoppingCartOutlined />
                   </Badge>
                 </button>
-                <button className="shop-nav__mobile-logout" onClick={handleLogout} aria-label={t('nav.logout')}>
+                <button type="button" className="shop-nav__mobile-logout" onClick={handleLogout} aria-label={t('nav.logout')}>
                   <LogoutOutlined />
                 </button>
                 {canAccessAdmin ? (
@@ -874,13 +951,19 @@ const Navbar: React.FC = () => {
               </>
             ) : (
               <>
-                <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary"><UserAddOutlined /><span className="shop-nav__mobile-authText">{t('nav.register')}</span></Link>
-                <Link to="/login" className="shop-nav__mobile-auth"><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.login')}</span></Link>
+                {!nativeBottomNav ? (
+                  <>
+                    <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary" aria-label={t('nav.register')} title={t('nav.register')}><UserAddOutlined /><span className="shop-nav__mobile-authText">{t('nav.register')}</span></Link>
+                    <Link to="/login" className="shop-nav__mobile-auth" aria-label={t('nav.login')} title={t('nav.login')}><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.login')}</span></Link>
+                  </>
+                ) : null}
                 <Dropdown
                   getPopupContainer={() => document.body}
                   overlayClassName="shop-nav__dropdown-popup"
                   overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
                   trigger={['click']}
+                  open={isDropdownOpen('guest-more')}
+                  onOpenChange={(open) => setDropdownOpen('guest-more', open)}
                   menu={{
                     items: [
                       { key: 'login', icon: <UserOutlined />, label: t('nav.login'), onClick: () => navigate('/login') },
@@ -894,13 +977,13 @@ const Navbar: React.FC = () => {
                     ],
                   }}
                 >
-                  <button className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={t('nav.more')}>
+                  <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={t('nav.more')} aria-haspopup="menu" aria-expanded={isDropdownOpen('guest-more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <EllipsisOutlined />
                     </Badge>
                   </button>
                 </Dropdown>
-                <button onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
+                <button type="button" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
                   <Badge count={safeCartCount} size="small">
                     <ShoppingCartOutlined />
                   </Badge>
@@ -912,36 +995,50 @@ const Navbar: React.FC = () => {
       </div>
       </header>
       <nav className={bottomBarClassName} aria-label={t('home.categories')}>
-        <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--home shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--home'}>
+        <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--home shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--home'} aria-current={location.pathname === '/' ? 'page' : undefined}>
           <HomeOutlined />
           <span>{t('nav.ariaHome')}</span>
         </Link>
-        <Link to="/products" className={isProductsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--products'}>
+        <Link to="/products" className={isProductsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--products'} aria-current={isProductsActive ? 'page' : undefined}>
           <ShoppingOutlined />
           <span>{t('nav.products')}</span>
         </Link>
-        <Link to="/coupons" className={isCouponsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--coupons'}>
+        <Link to="/coupons" className={isCouponsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--coupons'} aria-current={isCouponsActive ? 'page' : undefined}>
           <GiftOutlined />
           <span>{t('nav.coupons')}</span>
         </Link>
-        <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={t('nav.ariaCart')}>
+        <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={t('nav.ariaCart')} aria-current={isCartActive ? 'page' : undefined}>
           <Badge count={safeCartCount} size="small" overflowCount={99}>
             <ShoppingCartOutlined />
           </Badge>
           <span>{t('pages.cart.title')}</span>
         </Link>
-        {!nativeBottomNav && (
-          <button type="button" className="shop-nav__bottomItem shop-nav__bottomItem--support" onClick={openSupport} aria-label={t('nav.help')}>
-            <CustomerServiceOutlined />
-            <span>{t('nav.support')}</span>
-          </button>
-        )}
+        {!nativeBottomNav && showAndroidDownloadLink ? (
+          androidApkUrl ? (
+            <a href={androidApkUrl} download className="shop-nav__bottomItem shop-nav__bottomItem--app" aria-label={t('nav.downloadAndroid')} title={t('nav.downloadAndroid')}>
+              <DownloadOutlined />
+              <span>{t('nav.mobileAppShort')}</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              className="shop-nav__bottomItem shop-nav__bottomItem--app"
+              onClick={handleAndroidDownloadUnavailable}
+              aria-label={androidDownloadActionLabel}
+              title={androidDownloadActionLabel}
+            >
+              <DownloadOutlined />
+              <span>{t('nav.mobileAppShort')}</span>
+            </button>
+          )
+        ) : null}
         <Link
           to={token ? '/profile' : '/login'}
           className={isAccountActive ? 'shop-nav__bottomItem shop-nav__bottomItem--account shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--account'}
+          aria-current={isAccountActive ? 'page' : undefined}
         >
           <UserOutlined />
-          <span>{t('nav.account')}</span>
+          <span>{bottomAccountLabel}</span>
         </Link>
       </nav>
     </>

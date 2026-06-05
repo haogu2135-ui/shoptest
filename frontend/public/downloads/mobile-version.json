@@ -10,11 +10,11 @@
   "legacyApkUrl": "",
   "releaseSigned": false,
   "certificateSha256": "",
-  "fileName": "shoptest-1.0.23.apk",
-  "sizeBytes": 6526961,
-  "sha256": "6bf4865d3f42a9b69d7d7d7f084d5f474f28f5d60424f73757426c2f48a48b41",
+  "fileName": "",
+  "sizeBytes": 0,
+  "sha256": "",
   "releaseNotes": [
     "Performance and storefront stability improvements."
   ],
-  "generatedAt": "2026-06-02T14:25:05.697Z"
+  "generatedAt": "2026-06-04T23:48:10.092Z"
 }

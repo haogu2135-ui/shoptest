@@ -170,6 +170,12 @@
   border-radius: 8px;
 }
 
+.pet-finder-page__searchAllButton.ant-btn {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 640px) {
   .pet-finder-page {
     width: min(100% - 16px, 1200px);
@@ -350,6 +356,10 @@
     width: 100%;
   }
 
+  .pet-finder-page .ant-card-extra .pet-finder-page__searchAllButton.ant-btn {
+    min-width: 0;
+  }
+
   .pet-finder-page .ant-select-selector {
     min-height: 42px;
   }
@@ -385,14 +395,29 @@
     margin-inline-end: 0;
   }
 
-  .pet-finder-page__productCard {
-    height: 100%;
-  }
+.pet-finder-page__productCard {
+  height: 100%;
+}
 
-  .pet-finder-page__productCard .ant-card-cover,
-  .pet-finder-page__productCard .ant-image {
-    height: 132px !important;
-  }
+.pet-finder-page__productImageButton {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.pet-finder-page__productImageButton:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.38);
+  outline-offset: 3px;
+}
+
+.pet-finder-page__productCard .ant-card-cover,
+.pet-finder-page__productCard .ant-image {
+  height: 132px !important;
+}
 
   .pet-finder-page__productImage {
     height: 132px !important;
@@ -405,9 +430,20 @@
     padding: 10px;
   }
 
-  .pet-finder-page__productCard .ant-card-actions > li {
-    margin: 6px 0;
-  }
+.pet-finder-page__productCard .ant-card-actions > li {
+  margin: 6px 0;
+}
+
+.pet-finder-page__productName.ant-typography {
+  display: block;
+  max-width: 100%;
+  color: #173f2b;
+  line-height: 1.35;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
 
   .pet-finder-page__productCard .ant-btn {
     min-height: 34px;
@@ -1075,9 +1111,168 @@
 /* Final mobile/App pet finder touch-target guard */
 @media (max-width: 640px) {
   .pet-finder-page .ant-btn,
+  .pet-finder-page__fieldControl.ant-select,
   .pet-finder-page__fieldControl .ant-select-selector,
+  .pet-finder-page__fieldControl .ant-select-selection-search-input,
+  .pet-finder-page__fieldControl .ant-select-selection-item,
+  .pet-finder-page__fieldControl .ant-select-selection-placeholder,
   .pet-finder-page .ant-slider,
   .pet-finder-page__productCard .ant-card-actions .ant-btn {
     min-height: 44px;
+  }
+
+  .pet-finder-page__fieldControl.ant-select {
+    height: 44px;
+  }
+
+  .pet-finder-page__fieldControl .ant-select-selector {
+    align-items: center;
+    height: 44px !important;
+    padding-block: 0 !important;
+  }
+
+  .pet-finder-page__fieldControl .ant-select-selection-search-input,
+  .pet-finder-page__fieldControl .ant-select-selection-item,
+  .pet-finder-page__fieldControl .ant-select-selection-placeholder {
+    line-height: 44px !important;
+  }
+
+  .pet-finder-page__fieldControl .ant-select-arrow,
+  .pet-finder-page__fieldControl .ant-select-clear {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .pet-finder-page .ant-slider .ant-slider-handle {
+    width: 44px;
+    height: 44px;
+    inset-block-start: 50%;
+    touch-action: pan-x;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  .pet-finder-page .ant-slider .ant-slider-handle::after {
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Commercial UI guard: keep next actions inside mobile viewports and raise text contrast. */
+.pet-finder-page .ant-typography-secondary,
+.pet-finder-page .ant-card-meta-description {
+  color: #40564a;
+}
+
+.pet-finder-page__productPrice,
+.pet-finder-page .commerce-money {
+  color: #8f2d17 !important;
+}
+
+.pet-finder-page .ant-btn-primary,
+.pet-finder-page__nextStepActions .ant-btn-primary {
+  background: linear-gradient(135deg, #b84222, #7f2d16) !important;
+  color: #fff7f0 !important;
+}
+
+.pet-finder-page .ant-tag-green {
+  border-color: #8fc7a4;
+  background: #e8f6ee;
+  color: #145c32;
+}
+
+@media (max-width: 640px) {
+  .pet-finder-page__nextStepActions.ant-space {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: 0;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .pet-finder-page__nextStepActions .ant-space-item {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    flex: initial !important;
+  }
+
+  .pet-finder-page__nextStepActions .ant-btn,
+  .pet-finder-page__nextStepActions .pet-finder-page__searchAllButton.ant-btn {
+    min-width: 0;
+    max-width: 100%;
+    width: 100% !important;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 380px) {
+  .pet-finder-page__nextStepActions.ant-space {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final mobile Web/App audit guard: the match summary must not be clipped by
+   decorative overflow or the fixed bottom navigation. */
+@media (max-width: 640px) {
+  .pet-finder-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 120px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pet-finder-page__insights {
+    position: relative;
+    top: auto;
+    overflow: visible;
+  }
+
+  body:has(.pet-finder-page) .shop-nav__bottomBar {
+    position: fixed !important;
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
+    z-index: 1250;
+    width: auto;
+    max-width: calc(100vw - 16px);
+    margin: 0;
+    transform: translateZ(0);
+  }
+
+  .pet-finder-page__insights::after,
+  .pet-finder-page__nextStep::after {
+    content: none !important;
+  }
+
+  .pet-finder-page__nextStep {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 20px + env(safe-area-inset-bottom, 0px));
+    overflow: visible;
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pet-finder-page__nextStepCopy,
+  .pet-finder-page__insightCopy,
+  .pet-finder-page__signalGrid,
+  .pet-finder-page__nextStepMeta,
+  .pet-finder-page__nextStepActions {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .pet-finder-page__nextStepCopy > span.ant-typography:not(.pet-finder-page__eyebrow),
+  .pet-finder-page__nextStepMeta .ant-tag,
+  .pet-finder-page__nextStepActions .ant-btn {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 }

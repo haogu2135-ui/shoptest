@@ -12,10 +12,12 @@ import com.example.shop.repository.ReviewRepository;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.util.CsvUtils;
+import com.example.shop.util.ImageUrlValidator;
 import com.example.shop.util.ProductStatusUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -40,7 +42,6 @@ import java.io.InputStreamReader;
 import java.io.PushbackInputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.InetAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -172,8 +173,6 @@ public class ProductServiceImpl implements ProductService {
             Map.entry("shippingthreshold", "freeshippingthreshold"),
             Map.entry("options", "variants")
     );
-    private static final Pattern IPV4_HOST_PATTERN = Pattern.compile("^\\d{1,3}(?:\\.\\d{1,3}){3}$");
-    private static final Pattern IPV6_HOST_PATTERN = Pattern.compile("^[0-9a-fA-F:]+$");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
@@ -2146,11 +2145,11 @@ public class ProductServiceImpl implements ProductService {
                 && !categoryLookup.ids.contains(product.getCategoryId())) {
             throw new IllegalArgumentException("categoryId does not exist: " + product.getCategoryId());
         }
-        validateImportImageUrl(product.getImageUrl(), "imageUrl");
-        validateImportImageList(product.getImages());
+        product.setImageUrl(normalizeImportImageUrl(product.getImageUrl(), "imageUrl"));
+        product.setImages(normalizeImportImageList(product.getImages()));
         validateImportSpecifications(product.getSpecifications());
-        validateImportDetailContent(product.getDetailContent());
-        validateImportVariants(product.getVariants());
+        product.setDetailContent(normalizeImportDetailContent(product.getDetailContent()));
+        product.setVariants(normalizeImportVariants(product.getVariants()));
     }
 
     private void validateImportTargetIdentity(Product existing, Product imported, Set<String> importedTargetIdentities, Set<String> updateFields) {
@@ -2267,11 +2266,11 @@ public class ProductServiceImpl implements ProductService {
         if (product.getDiscount() != null && (product.getDiscount() < 0 || product.getDiscount() > 100)) {
             throw new IllegalArgumentException("discount must be between 0 and 100");
         }
-        validateImportImageUrl(product.getImageUrl(), "imageUrl");
-        validateImportImageList(product.getImages());
+        product.setImageUrl(normalizeImportImageUrl(product.getImageUrl(), "imageUrl"));
+        product.setImages(normalizeImportImageList(product.getImages()));
         validateImportSpecifications(product.getSpecifications());
-        validateImportDetailContent(product.getDetailContent());
-        validateImportVariants(product.getVariants());
+        product.setDetailContent(normalizeImportDetailContent(product.getDetailContent()));
+        product.setVariants(normalizeImportVariants(product.getVariants()));
     }
 
     private String normalizeDirectText(String value, String field, int maxLength, boolean required) {
@@ -2341,18 +2340,23 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private void validateImportImageList(String images) {
+    private String normalizeImportImageList(String images) {
         if (images == null || images.isBlank()) {
-            return;
+            return null;
         }
         try {
             List<String> urls = OBJECT_MAPPER.readValue(images, new TypeReference<List<String>>() {});
             if (urls.size() > 8) {
                 throw new IllegalArgumentException("images must include 8 URLs or fewer");
             }
+            List<String> normalizedUrls = new ArrayList<>();
             for (String url : urls) {
-                validateImportImageUrl(url, "images");
+                String normalizedUrl = normalizeImportImageUrl(url, "images");
+                if (normalizedUrl != null) {
+                    normalizedUrls.add(normalizedUrl);
+                }
             }
+            return normalizedUrls.isEmpty() ? null : OBJECT_MAPPER.writeValueAsString(normalizedUrls);
         } catch (IllegalArgumentException ex) {
             throw ex;
         } catch (Exception ex) {
@@ -2411,10 +2415,10 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private void validateImportDetailContent(String value) {
+    private String normalizeImportDetailContent(String value) {
         JsonNode blocks = validateImportJsonArray(value, "detailContent", 24);
         if (blocks == null) {
-            return;
+            return null;
         }
         for (JsonNode block : blocks) {
             if (!block.isObject()) {
@@ -2440,14 +2444,15 @@ public class ProductServiceImpl implements ProductService {
             if (url == null || url.isBlank()) {
                 throw new IllegalArgumentException("detailContent media URL is required");
             }
-            validateImportImageUrl(url, "detailContent");
+            ((ObjectNode) block).put("url", normalizeImportImageUrl(url, "detailContent"));
         }
+        return writeNormalizedJsonArray(blocks, "detailContent");
     }
 
-    private void validateImportVariants(String value) {
+    private String normalizeImportVariants(String value) {
         JsonNode variants = validateImportJsonArray(value, "variants", 200);
         if (variants == null) {
-            return;
+            return null;
         }
         Set<String> seenSkus = new HashSet<>();
         Set<String> seenOptionCombinations = new HashSet<>();
@@ -2489,8 +2494,14 @@ public class ProductServiceImpl implements ProductService {
             if (variantStock != null && variantStock < 0) {
                 throw new IllegalArgumentException("variants stock must be greater than or equal to 0");
             }
-            validateImportImageUrl(jsonText(variant.get("imageUrl")), "variants");
+            String normalizedImageUrl = normalizeImportImageUrl(jsonText(variant.get("imageUrl")), "variants");
+            if (normalizedImageUrl == null) {
+                ((ObjectNode) variant).remove("imageUrl");
+            } else {
+                ((ObjectNode) variant).put("imageUrl", normalizedImageUrl);
+            }
         }
+        return writeNormalizedJsonArray(variants, "variants");
     }
 
     private void validateImportVariantSkusAcrossFile(String value, Set<String> importedVariantSkus) {
@@ -2629,71 +2640,23 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private void validateImportImageUrl(String value, String field) {
+    private String normalizeImportImageUrl(String value, String field) {
         if (value == null || value.isBlank()) {
-            return;
+            return null;
         }
         String url = value.trim();
         if (url.length() > MAX_IMPORT_IMAGE_URL_LENGTH) {
             throw new IllegalArgumentException(field + " is too long");
         }
-        if (url.startsWith("//")) {
-            throw new IllegalArgumentException(field + " must include http or https");
-        }
-        if (url.startsWith("/")) {
-            return;
-        }
-        try {
-            URI uri = URI.create(url);
-            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
-            if (!scheme.equals("http") && !scheme.equals("https")) {
-                throw new IllegalArgumentException(field + " must use http, https, or a site-relative path");
-            }
-            if (uri.getUserInfo() != null) {
-                throw new IllegalArgumentException(field + " must not include credentials");
-            }
-            int port = uri.getPort();
-            if (port != -1 && port != 80 && port != 443) {
-                throw new IllegalArgumentException(field + " must use a standard web port");
-            }
-            if (hasUnsafeImportMediaHost(uri.getHost())) {
-                throw new IllegalArgumentException(field + " must not point to localhost or a private network");
-            }
-        } catch (IllegalArgumentException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new IllegalArgumentException(field + " must be a valid image URL");
-        }
+        return ImageUrlValidator.normalizePersistentImageUrl(url, field);
     }
 
-    private boolean hasUnsafeImportMediaHost(String host) {
-        if (host == null || host.isBlank()) {
-            return true;
+    private String writeNormalizedJsonArray(JsonNode node, String field) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(node);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(field + " must be a valid JSON array");
         }
-        String normalized = host.toLowerCase(Locale.ROOT);
-        if (normalized.startsWith("[") && normalized.endsWith("]")) {
-            normalized = normalized.substring(1, normalized.length() - 1);
-        }
-        if ("localhost".equals(normalized)
-                || normalized.endsWith(".localhost")
-                || normalized.endsWith(".local")
-                || normalized.endsWith(".internal")
-                || normalized.endsWith(".lan")) {
-            return true;
-        }
-        if (IPV4_HOST_PATTERN.matcher(normalized).matches() || (normalized.contains(":") && IPV6_HOST_PATTERN.matcher(normalized).matches())) {
-            try {
-                InetAddress address = InetAddress.getByName(normalized);
-                return address.isAnyLocalAddress()
-                        || address.isLoopbackAddress()
-                        || address.isLinkLocalAddress()
-                        || address.isSiteLocalAddress()
-                        || address.isMulticastAddress();
-            } catch (Exception ex) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private String importFieldFromException(Exception ex) {

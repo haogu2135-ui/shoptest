@@ -291,6 +291,11 @@ const AdminDashboard: React.FC = () => {
     returnAwaitingShipmentText: t('pages.adminDashboard.operationsSla.returnAwaitingShipmentText'),
     refundDueText: t('pages.adminDashboard.operationsSla.refundDueText'),
   };
+  const dashboardPageLabel = t('pages.adminDashboard.title');
+  const dashboardReloadActionLabel = `${t('common.refresh')}: ${dashboardPageLabel}`;
+  const commercialReadinessTitle = t('pages.adminDashboard.commercialReadiness.title');
+  const actionCenterLabel = t('pages.adminDashboard.actionCenterTitle');
+  const dashboardDrilldownLabel = (section: string, label: string, value: number | string) => `${section}: ${label} (${value})`;
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -317,7 +322,7 @@ const AdminDashboard: React.FC = () => {
         <WarningOutlined />
         <Typography.Title level={4}>{t('pages.adminDashboard.loadFailed')}</Typography.Title>
         <Typography.Text type="secondary">{loadError || t('pages.adminDashboard.loadFailed')}</Typography.Text>
-        <Button type="primary" onClick={() => window.location.reload()}>{t('common.refresh')}</Button>
+        <Button type="primary" aria-label={dashboardReloadActionLabel} title={dashboardReloadActionLabel} onClick={() => window.location.reload()}>{t('common.refresh')}</Button>
       </div>
     );
   }
@@ -541,15 +546,26 @@ const AdminDashboard: React.FC = () => {
     { label: t('status.COMPLETED'), value: Number(stats.completedOrders || 0), color: '#52c41a' },
     { label: t('status.CANCELLED'), value: Number(stats.cancelledOrders || 0), color: '#ff4d4f' },
   ];
+  const dashboardProductName = (item: { id?: number; productId?: number; name?: string; productName?: string }) => (
+    (item.productName || item.name || '').trim() || t('pages.profile.productFallback', { id: item.productId || item.id || '-' })
+  );
   const topProductColumns = [
     {
       title: t('common.image'),
       dataIndex: 'imageUrl',
       key: 'imageUrl',
       width: 72,
-      render: (value: string, row: any) => <Avatar shape="square" size={48} src={resolveProductImage(value)}>{String(row.productName || row.productId).slice(0, 1)}</Avatar>,
+      render: (value: string, row: any) => {
+        const productName = dashboardProductName(row);
+        return <Avatar shape="square" size={48} src={resolveProductImage(value)}>{productName.slice(0, 1)}</Avatar>;
+      },
     },
-    { title: t('pages.productAdmin.productName'), dataIndex: 'productName', key: 'productName' },
+    {
+      title: t('pages.productAdmin.productName'),
+      dataIndex: 'productName',
+      key: 'productName',
+      render: (_value: string, row: any) => dashboardProductName(row),
+    },
     { title: t('common.quantity'), dataIndex: 'quantity', key: 'quantity', width: 110 },
     {
       title: t('pages.adminDashboard.revenue'),
@@ -579,7 +595,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      <section className={`admin-dashboard__readiness admin-dashboard__readiness--${commercialReadinessTone}`} aria-label={t('pages.adminDashboard.commercialReadiness.title')}>
+      <section className={`admin-dashboard__readiness admin-dashboard__readiness--${commercialReadinessTone}`} aria-label={commercialReadinessTitle}>
         <div className="admin-dashboard__readinessScore">
           <span>{t('pages.adminDashboard.commercialReadiness.eyebrow')}</span>
           <strong>{commercialReadinessScore}</strong>
@@ -608,6 +624,8 @@ const AdminDashboard: React.FC = () => {
               key={item.key}
               type="button"
               className={`admin-dashboard__readinessItem admin-dashboard__readinessItem--${item.tone}`}
+              aria-label={dashboardDrilldownLabel(commercialReadinessTitle, item.label, item.value)}
+              title={dashboardDrilldownLabel(commercialReadinessTitle, item.label, item.value)}
               onClick={() => navigate(item.target)}
             >
               <span className="admin-dashboard__readinessIcon">{item.icon}</span>
@@ -620,7 +638,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       </section>
 
-      <div className={`admin-dashboard__actionBar admin-dashboard__actionBar--${openActionCount > 0 ? 'active' : 'calm'}`} aria-label={t('pages.adminDashboard.actionCenterTitle')}>
+      <div className={`admin-dashboard__actionBar admin-dashboard__actionBar--${openActionCount > 0 ? 'active' : 'calm'}`} aria-label={actionCenterLabel}>
         <div className="admin-dashboard__actionIntro">
           <WarningOutlined />
           <div>
@@ -634,6 +652,8 @@ const AdminDashboard: React.FC = () => {
               key={item.key}
               type="button"
               className={`admin-dashboard__actionCard admin-dashboard__actionCard--${item.tone}`}
+              aria-label={dashboardDrilldownLabel(actionCenterLabel, item.title, item.value)}
+              title={dashboardDrilldownLabel(actionCenterLabel, item.title, item.value)}
               onClick={() => navigate(item.target)}
             >
               <strong>{item.value}</strong>
@@ -658,6 +678,8 @@ const AdminDashboard: React.FC = () => {
               key={item.key}
               type="button"
               className={`admin-dashboard__paymentOpsCard admin-dashboard__paymentOpsCard--${item.tone}`}
+              aria-label={dashboardDrilldownLabel(paymentRefundCopy.title, item.label, item.value)}
+              title={dashboardDrilldownLabel(paymentRefundCopy.title, item.label, item.value)}
               onClick={() => navigate(item.target)}
             >
               <strong>{item.value}</strong>
@@ -671,9 +693,9 @@ const AdminDashboard: React.FC = () => {
             <Typography.Text type="secondary">{paymentRefundCopy.guideText}</Typography.Text>
           </div>
           <Space wrap>
-            <Button size="small" onClick={() => navigate('/admin/orders?status=PENDING_PAYMENT')}>{paymentRefundCopy.paymentAction}</Button>
-            <Button size="small" type="primary" onClick={() => navigate('/admin/orders?quick=RETURN_SHIPPED')}>{paymentRefundCopy.returnAction}</Button>
-            <Button size="small" onClick={() => navigate('/admin/audit-logs?view=payment-failures')}>{paymentRefundCopy.auditAction}</Button>
+            <Button size="small" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.paymentAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.paymentAction}`} onClick={() => navigate('/admin/orders?status=PENDING_PAYMENT')}>{paymentRefundCopy.paymentAction}</Button>
+            <Button size="small" type="primary" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.returnAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.returnAction}`} onClick={() => navigate('/admin/orders?quick=RETURN_SHIPPED')}>{paymentRefundCopy.returnAction}</Button>
+            <Button size="small" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.auditAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.auditAction}`} onClick={() => navigate('/admin/audit-logs?view=payment-failures')}>{paymentRefundCopy.auditAction}</Button>
           </Space>
         </div>
       </section>
@@ -695,6 +717,8 @@ const AdminDashboard: React.FC = () => {
               key={item.key}
               type="button"
               className={`admin-dashboard__slaCard admin-dashboard__slaCard--${item.tone}`}
+              aria-label={dashboardDrilldownLabel(slaCopy.title, item.title, item.value)}
+              title={dashboardDrilldownLabel(slaCopy.title, item.title, item.value)}
               onClick={() => navigate(item.target)}
             >
               <strong>{item.value}</strong>
@@ -902,16 +926,19 @@ const AdminDashboard: React.FC = () => {
               className="admin-dashboard__lowStockList"
               dataSource={stats.lowStockList || []}
               locale={{ emptyText: t('pages.adminDashboard.noLowStock') }}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    avatar={<Avatar shape="square" src={resolveProductImage(item.imageUrl)}>{item.name.slice(0, 1)}</Avatar>}
-                    title={item.name}
-                    description={`${t('common.id')}: ${item.id}`}
-                  />
-                  <Tag color={(item.stock || 0) <= 0 ? 'red' : 'orange'}>{item.stock}</Tag>
-                </List.Item>
-              )}
+              renderItem={(item) => {
+                const productName = dashboardProductName(item);
+                return (
+                  <List.Item>
+                    <List.Item.Meta
+                      avatar={<Avatar shape="square" src={resolveProductImage(item.imageUrl)}>{productName.slice(0, 1)}</Avatar>}
+                      title={productName}
+                      description={`${t('common.id')}: ${item.id}`}
+                    />
+                    <Tag color={(item.stock || 0) <= 0 ? 'red' : 'orange'}>{item.stock}</Tag>
+                  </List.Item>
+                );
+              }}
             />
           </Card>
         </Col>

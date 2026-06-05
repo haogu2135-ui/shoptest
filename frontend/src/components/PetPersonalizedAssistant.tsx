@@ -99,6 +99,14 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
 
   const openPetProfiles = () => navigate('/profile?tab=pets');
   const browseProducts = () => navigate('/products');
+  const leadPetName = leadPet?.name?.trim();
+  const petRecommendationContextLabel = leadPetName
+    ? `${t('home.petRecommendations')}: ${leadPetName}`
+    : t('home.petRecommendations');
+  const addPetProfileActionLabel = `${t('pages.profile.addPet')}: ${t('home.petRecommendations')}`;
+  const browsePersonalizedActionLabel = `${t('pages.cart.browse')}: ${t('home.petRecommendations')}`;
+  const managePetProfileActionLabel = `${t('pages.productList.managePetProfile')}: ${petRecommendationContextLabel}`;
+  const viewPetPicksActionLabel = `${t('pages.productList.viewPick')}: ${petRecommendationContextLabel}`;
 
   const handlePrimaryAction = async (product: Product) => {
     if (needsOptionSelection(product) || !onAdd) {
@@ -121,7 +129,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
 
   if (loading) {
     return (
-      <section className={`pet-personalized-assistant pet-personalized-assistant--${variant}`}>
+      <section className={`pet-personalized-assistant pet-personalized-assistant--${variant}`} aria-label={t('home.petRecommendations')}>
         <Skeleton active paragraph={{ rows: variant === 'compact' ? 3 : 4 }} />
       </section>
     );
@@ -129,7 +137,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
 
   if (petProfiles.length === 0) {
     return (
-      <section className={`pet-personalized-assistant pet-personalized-assistant--${variant}`}>
+      <section className={`pet-personalized-assistant pet-personalized-assistant--${variant}`} aria-label={t('home.petRecommendations')}>
         <div className="pet-personalized-assistant__header">
           <div>
             <span className="pet-personalized-assistant__eyebrow">{t('home.petRecommendations')}</span>
@@ -137,11 +145,18 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
             <Text type="secondary">{t('pages.productList.personalGuideEmpty')}</Text>
           </div>
           <div className="pet-personalized-assistant__actions">
-            <Button type="primary" onClick={openPetProfiles}>
+            <Button
+              type="primary"
+              aria-label={addPetProfileActionLabel}
+              title={addPetProfileActionLabel}
+              onClick={openPetProfiles}
+            >
               {t('pages.profile.addPet')}
             </Button>
             {variant === 'default' ? (
-              <Button onClick={browseProducts}>{t('pages.cart.browse')}</Button>
+              <Button aria-label={browsePersonalizedActionLabel} title={browsePersonalizedActionLabel} onClick={browseProducts}>
+                {t('pages.cart.browse')}
+              </Button>
             ) : null}
           </div>
         </div>
@@ -152,7 +167,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
   if (displayProducts.length === 0) return null;
 
   return (
-    <section className={`pet-personalized-assistant pet-personalized-assistant--${variant}`}>
+    <section className={`pet-personalized-assistant pet-personalized-assistant--${variant}`} aria-label={petRecommendationContextLabel}>
       <div className="pet-personalized-assistant__header">
         <div>
           <span className="pet-personalized-assistant__eyebrow">
@@ -166,9 +181,11 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
           <Text type="secondary">{t('home.petRecommendationsHint')}</Text>
         </div>
         <div className="pet-personalized-assistant__actions">
-          <Button onClick={openPetProfiles}>{t('pages.productList.managePetProfile')}</Button>
+          <Button aria-label={managePetProfileActionLabel} title={managePetProfileActionLabel} onClick={openPetProfiles}>
+            {t('pages.productList.managePetProfile')}
+          </Button>
           {variant === 'default' ? (
-            <Button type="primary" ghost onClick={browseProducts}>
+            <Button type="primary" ghost aria-label={viewPetPicksActionLabel} title={viewPetPicksActionLabel} onClick={browseProducts}>
               {t('pages.productList.viewPick')}
             </Button>
           ) : null}
@@ -188,12 +205,15 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
           const showDeal = isDealProduct(product);
           const price = Number(product.effectivePrice ?? product.price ?? 0);
           const rating = Number(product.averageRating || 0);
+          const productViewActionLabel = `${t('pages.productList.viewPick')}: ${productName} - ${petRecommendationContextLabel}`;
+          const productPrimaryActionLabel = `${hasOptions ? t('pages.wishlist.selectOptions') : t('pages.productList.quickAdd')}: ${productName} - ${petRecommendationContextLabel}`;
           return (
             <article key={product.id} className="pet-personalized-assistant__card">
               <button
                 type="button"
                 className="pet-personalized-assistant__media"
-                aria-label={`${t('pages.productList.viewPick')}: ${productName}`}
+                aria-label={productViewActionLabel}
+                title={productViewActionLabel}
                 onClick={() => navigate(`/products/${product.id}`)}
               >
                 <img
@@ -217,8 +237,8 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                 <button
                   type="button"
                   className="pet-personalized-assistant__name"
-                  aria-label={`${t('pages.productList.viewPick')}: ${productName}`}
-                  title={productName}
+                  aria-label={productViewActionLabel}
+                  title={productViewActionLabel}
                   onClick={() => navigate(`/products/${product.id}`)}
                 >
                   {productName}
@@ -244,8 +264,8 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                     type="primary"
                     icon={hasOptions ? undefined : <ShoppingCartOutlined />}
                     loading={addingId === product.id}
-                    aria-label={`${hasOptions ? t('pages.wishlist.selectOptions') : t('pages.productList.quickAdd')}: ${productName}`}
-                    title={`${hasOptions ? t('pages.wishlist.selectOptions') : t('pages.productList.quickAdd')}: ${productName}`}
+                    aria-label={productPrimaryActionLabel}
+                    title={productPrimaryActionLabel}
                     onClick={() => handlePrimaryAction(product)}
                   >
                     {hasOptions ? t('pages.wishlist.selectOptions') : t('pages.productList.quickAdd')}

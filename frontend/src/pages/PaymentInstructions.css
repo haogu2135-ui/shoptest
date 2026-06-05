@@ -100,12 +100,17 @@
 
 .payment-instructions-page__steps {
   display: grid;
+  gap: 10px;
+}
+
+.payment-instructions-page__step {
+  display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
 }
 
-.payment-instructions-page__steps > span {
+.payment-instructions-page__step > span {
   width: 28px;
   height: 28px;
   display: inline-grid;

@@ -449,11 +449,16 @@
 }
 
 .profile-after-sale-panel__metrics button:hover,
-.profile-after-sale-panel__metrics button:focus-visible {
+.profile-after-sale-panel__metrics button:focus-visible,
+.profile-after-sale-panel__metrics button.is-active {
   outline: none;
   border-color: #124734;
   box-shadow: 0 6px 16px rgba(18, 71, 52, 0.1);
   transform: translateY(-1px);
+}
+
+.profile-after-sale-panel__metrics button.is-active {
+  background: #f4f8f1;
 }
 
 .profile-after-sale-panel__metrics strong {
@@ -3329,5 +3334,19 @@
   .profile-order-detail__productButton,
   .profile-popconfirm .ant-popconfirm-buttons .ant-btn {
     min-height: 44px;
+  }
+}
+
+/* Final body-portal profile modal viewport closure. Profile.css is loaded as a
+   route chunk after the app shell CSS, so repeat the tight mobile modal budget
+   here for profile pet/password/detail dialogs. */
+@media (max-width: 640px) {
+  body .ant-modal-root .profile-mobile-safe-modal.ant-modal:not(.ant-modal-confirm) {
+    top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 0 !important;
+  }
+
+  body .ant-modal-root .profile-mobile-safe-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
   }
 }

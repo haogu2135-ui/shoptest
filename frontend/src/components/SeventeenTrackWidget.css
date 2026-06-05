@@ -22,17 +22,18 @@
 }
 
 .seventeen-track-widget__search .ant-btn {
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: 96px;
   overflow: hidden;
   font-weight: 800;
   line-height: 1.15;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .seventeen-track-widget__search .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .seventeen-track-widget__results {
@@ -139,6 +140,7 @@
 
   .seventeen-track-widget__search .ant-btn {
     min-height: 42px;
+    white-space: normal;
   }
 
   .seventeen-track-widget__results {

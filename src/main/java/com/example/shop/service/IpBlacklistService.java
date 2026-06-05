@@ -147,8 +147,6 @@ public class IpBlacklistService {
     }
 
     public List<IpBlacklistEntry> search(String status, String source, String ipAddress, int limit) {
-        releaseExpired();
-        syncLoginFailuresFromLegacyRateLimiter();
         int safeLimit = Math.max(1, Math.min(limit <= 0 ? 200 : limit, 1000));
         String normalizedStatus = normalizeStatusFilter(status);
         String normalizedSource = blankToNull(normalizeSourceFilter(source));
@@ -164,12 +162,13 @@ public class IpBlacklistService {
                 normalizedSource, normalizedSource,
                 normalizedIp, normalizedIp,
                 safeLimit);
+        if (rows == null) {
+            rows = List.of();
+        }
         return mergeLegacyLoginFailures(rows, normalizedStatus, normalizedSource, normalizedIp, safeLimit);
     }
 
     public IpBlacklistStatusResponse status() {
-        releaseExpired();
-        syncLoginFailuresFromLegacyRateLimiter();
         List<TokenBlacklistService.LoginIpFailureSnapshot> legacySnapshots = findLegacyLoginFailuresSafely();
         List<IpBlacklistEntry> missingLegacyRows = missingLegacyLoginFailureEntries(legacySnapshots);
         IpBlacklistStatusResponse response = new IpBlacklistStatusResponse();
@@ -453,7 +452,8 @@ public class IpBlacklistService {
 
     private List<TokenBlacklistService.LoginIpFailureSnapshot> findLegacyLoginFailuresSafely() {
         try {
-            return tokenBlacklistService.findLoginIpFailures();
+            List<TokenBlacklistService.LoginIpFailureSnapshot> snapshots = tokenBlacklistService.findLoginIpFailures();
+            return snapshots == null ? List.of() : snapshots;
         } catch (RuntimeException ignored) {
             return List.of();
         }

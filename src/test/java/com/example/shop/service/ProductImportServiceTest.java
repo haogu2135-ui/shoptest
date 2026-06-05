@@ -183,6 +183,52 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void importsCsvNormalizesLegacyUploadedImageUrlsBeforeSaving() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,price,stock,categoryId,imageUrl,images,detailContent,variants\n"
+                        + "Harness,19.99,8,1,uploads/products/main.jpg,\"[\"\"uploads/products/alt.jpg\"\"]\",\"[{\"\"type\"\":\"\"image\"\",\"\"url\"\":\"\"uploads/products/detail.jpg\"\"}]\",\"[{\"\"sku\"\":\"\"HAR-S\"\",\"\"options\"\":{\"\"Size\"\":\"\"S\"\"},\"\"price\"\":19.99,\"\"stock\"\":2,\"\"imageUrl\"\":\"\"uploads/products/variant.jpg\"\"}]\"\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getTotalRows());
+        assertEquals(0, result.getFailed());
+        assertEquals(1, result.getCreated());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        Product saved = captor.getValue();
+        assertEquals("/uploads/products/main.jpg", saved.getImageUrl());
+        assertEquals("[\"/uploads/products/alt.jpg\"]", saved.getImages());
+        assertEquals("[{\"type\":\"image\",\"url\":\"/uploads/products/detail.jpg\"}]", saved.getDetailContent());
+        assertEquals("[{\"sku\":\"HAR-S\",\"options\":{\"Size\":\"S\"},\"price\":19.99,\"stock\":2,\"imageUrl\":\"/uploads/products/variant.jpg\"}]", saved.getVariants());
+    }
+
+    @Test
+    void rejectsCsvWithNonUploadRootRelativeImageUrlBeforeSaving() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,price,stock,categoryId,imageUrl\n"
+                        + "Harness,19.99,8,1,/assets/products/main.jpg\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("imageUrl", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("/uploads/"));
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void importsSemicolonDelimitedCsvFromSpreadsheetExport() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         MockMultipartFile file = new MockMultipartFile(

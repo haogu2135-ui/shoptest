@@ -1506,3 +1506,38 @@
     min-height: 44px;
   }
 }
+
+/* Commercial UI guard: keep live preview to one visible card surface. */
+.product-live-preview__card {
+  display: grid;
+  gap: 12px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.product-live-preview__card::after {
+  content: none;
+}
+
+.product-live-preview__image {
+  overflow: hidden;
+  border: 1px solid #e4ebe4;
+  border-radius: 12px;
+}
+
+.product-live-preview__body {
+  padding: 0;
+}
+
+@media (max-width: 720px) {
+  .product-live-preview__card {
+    gap: 10px;
+  }
+
+  .product-live-preview__image {
+    border-radius: 10px;
+  }
+}

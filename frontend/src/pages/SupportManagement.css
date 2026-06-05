@@ -1793,7 +1793,76 @@
   .support-management__orderWorkflowActions .ant-btn,
   .support-management__composerActions .ant-btn,
   .support-management__orderLink.ant-btn,
-  .support-management__quickReplyChip {
+  .support-management__quickReplyChip,
+  .support-management .ant-pagination .ant-pagination-item,
+  .support-management .ant-pagination .ant-pagination-prev,
+  .support-management .ant-pagination .ant-pagination-next,
+  .support-management .ant-pagination .ant-pagination-item-link {
     min-height: 44px;
+  }
+
+  .support-management .ant-pagination {
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .support-management .ant-pagination .ant-pagination-item,
+  .support-management .ant-pagination .ant-pagination-prev,
+  .support-management .ant-pagination .ant-pagination-next {
+    min-width: 44px;
+    width: 44px;
+  }
+
+  .support-management .ant-pagination .ant-pagination-item-link,
+  .support-management .ant-pagination .ant-pagination-item a {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .support-management .ant-pagination .ant-pagination-options {
+    display: none;
+  }
+}
+
+/* Final mobile/App support admin search guard: AntD compact grouped inputs can
+   keep the search addon at 31px wide even when the button is 44px tall. */
+@media (max-width: 900px) {
+  .support-management__headerControls {
+    align-items: stretch;
+  }
+
+  .support-management__headerControls .ant-input-search {
+    max-width: 100%;
+  }
+
+  .support-management__headerControls .ant-input-group,
+  .support-management__headerControls .ant-input-wrapper {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .support-management__headerControls .ant-input-group-addon,
+  .support-management__headerControls .ant-input-search-button,
+  .support-management__headerControls .ant-input-search .ant-btn {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding-inline: 0 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .support-management__headerControls,
+  .support-management__headerControls .ant-space-item,
+  .support-management__headerControls .ant-input-search,
+  .support-management__headerControls .ant-select {
+    width: 100% !important;
   }
 }

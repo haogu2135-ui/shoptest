@@ -41,4 +41,13 @@ class SecurityConfigCorsTest {
         assertTrue(allowedHeaders.contains(RequestCorrelationFilter.CORRELATION_ID_HEADER));
         assertTrue(allowedHeaders.contains("X-Bootstrap-Token"));
     }
+
+    @Test
+    void publicGuestOperationsAreExplicitlyPermitted() throws Exception {
+        String source = java.nio.file.Files.readString(
+                java.nio.file.Paths.get("src/main/java/com/example/shop/config/SecurityConfig.java"));
+
+        assertTrue(source.contains(".antMatchers(HttpMethod.POST, \"/orders/track\").permitAll()"));
+        assertTrue(source.contains(".antMatchers(HttpMethod.POST, \"/support/guest/session\").permitAll()"));
+    }
 }

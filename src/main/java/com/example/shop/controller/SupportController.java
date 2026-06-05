@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.SupportAdminSessionResponse;
 import com.example.shop.dto.SupportMessageAdminResponse;
 import com.example.shop.dto.SupportAdminSummaryResponse;
 import com.example.shop.dto.SupportAdminSessionPageResponse;
@@ -59,7 +60,16 @@ public class SupportController {
     }
 
     @GetMapping("/support/session")
-    public SupportSessionCustomerResponse getMySession() {
+    public ResponseEntity<SupportSessionCustomerResponse> getMySession() {
+        SupportSession session = supportService.findOpenSession(currentUserId());
+        if (session == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(SupportSessionCustomerResponse.from(session));
+    }
+
+    @PostMapping("/support/session")
+    public SupportSessionCustomerResponse createMySession() {
         return SupportSessionCustomerResponse.from(supportService.getOrCreateOpenSession(currentUserId()));
     }
 
@@ -75,7 +85,6 @@ public class SupportController {
         if (!canAccessSession(sessionId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
-        supportService.markRead(sessionId, "USER");
         return ResponseEntity.ok(toCustomerMessages(supportService.getMessages(sessionId, limit, afterId)));
     }
 
@@ -117,8 +126,21 @@ public class SupportController {
     }
 
     @GetMapping("/support/guest/session")
-    public SupportSessionCustomerResponse getGuestSession(@RequestParam String orderNo, @RequestParam String email,
-                                                          HttpServletRequest request) {
+    public ResponseEntity<SupportSessionCustomerResponse> getGuestSession(@RequestParam String orderNo, @RequestParam String email,
+                                                                          HttpServletRequest request) {
+        Order order = requireGuestOrder(orderNo, email, request);
+        SupportSession session = supportService.findOpenSession(order.getUserId(), guestSupportContextKey(order));
+        if (session == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(SupportSessionCustomerResponse.from(session));
+    }
+
+    @PostMapping("/support/guest/session")
+    public SupportSessionCustomerResponse createGuestSession(@RequestBody(required = false) Map<String, Object> body,
+                                                             HttpServletRequest request) {
+        String orderNo = body == null ? null : String.valueOf(body.get("orderNo"));
+        String email = body == null ? null : String.valueOf(body.get("email"));
         Order order = requireGuestOrder(orderNo, email, request);
         return SupportSessionCustomerResponse.from(supportService.getOrCreateOpenSession(order.getUserId(), guestSupportContextKey(order)));
     }
@@ -132,7 +154,6 @@ public class SupportController {
                                               HttpServletRequest request) {
         Order order = requireGuestOrder(orderNo, email, request);
         assertGuestSessionAccess(sessionId, order, request);
-        supportService.markRead(sessionId, "USER");
         return ResponseEntity.ok(toCustomerMessages(supportService.getMessages(sessionId, limit, afterId)));
     }
 
@@ -212,7 +233,7 @@ public class SupportController {
                     "Support message sent", supportMessageAuditMetadata(sent));
             return ResponseEntity.ok(Map.of(
                     "message", SupportMessageAdminResponse.from(sent),
-                    "session", supportService.getSession(sent.getSessionId())
+                    "session", SupportAdminSessionResponse.from(supportService.getSession(sent.getSessionId()))
             ));
         } catch (IllegalArgumentException | IllegalStateException ex) {
             auditLogService.record("SUPPORT_MESSAGE_SEND", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
@@ -222,16 +243,16 @@ public class SupportController {
     }
 
     @PutMapping("/admin/support/sessions/{sessionId}/close")
-    public SupportSession closeSupportSession(@PathVariable Long sessionId,
-                                              Authentication authentication,
-                                              HttpServletRequest request) {
+    public SupportAdminSessionResponse closeSupportSession(@PathVariable Long sessionId,
+                                                           Authentication authentication,
+                                                           HttpServletRequest request) {
         requireSupportActionPermission(authentication, AdminRoleService.SUPPORT_CLOSE_PERMISSION,
                 "SUPPORT_SESSION_CLOSE", sessionId, request);
         try {
             SupportSession session = supportService.closeSession(sessionId);
             auditLogService.record("SUPPORT_SESSION_CLOSE", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
                     "Support session closed", supportSessionAuditMetadata(session));
-            return session;
+            return SupportAdminSessionResponse.from(session);
         } catch (RuntimeException ex) {
             auditLogService.record("SUPPORT_SESSION_CLOSE", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
                     ex.getMessage(), null);
@@ -249,7 +270,7 @@ public class SupportController {
             SupportSession session = supportService.assignSession(sessionId, currentUserId());
             auditLogService.record("SUPPORT_SESSION_ASSIGN", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
                     "Support session assigned", supportSessionAuditMetadata(session));
-            return ResponseEntity.ok(session);
+            return ResponseEntity.ok(SupportAdminSessionResponse.from(session));
         } catch (IllegalArgumentException | IllegalStateException ex) {
             auditLogService.record("SUPPORT_SESSION_ASSIGN", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
                     ex.getMessage(), null);
@@ -267,7 +288,7 @@ public class SupportController {
             SupportSession session = supportService.reopenSession(sessionId, currentUserId());
             auditLogService.record("SUPPORT_SESSION_REOPEN", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
                     "Support session reopened", supportSessionAuditMetadata(session));
-            return ResponseEntity.ok(session);
+            return ResponseEntity.ok(SupportAdminSessionResponse.from(session));
         } catch (IllegalArgumentException | IllegalStateException ex) {
             auditLogService.record("SUPPORT_SESSION_REOPEN", "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
                     ex.getMessage(), null);

@@ -2541,6 +2541,9 @@
   }
 
   .customer-support-widget__headerClose.ant-btn {
-    min-width: 44px;
+    flex: 0 0 46px;
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
   }
 }

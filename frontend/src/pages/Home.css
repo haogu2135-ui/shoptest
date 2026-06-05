@@ -1078,6 +1078,24 @@
     #fff url('https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80') center / cover no-repeat;
 }
 
+.shopee-product__imageButton {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+.shopee-product__imageButton:focus-visible {
+  outline: 3px solid #124734;
+  outline-offset: -3px;
+}
+
 .shopee-product__imageWrap::after {
   content: '';
   position: absolute;
@@ -1102,7 +1120,8 @@
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease;
 }
 
-.shopee-product:hover .shopee-product__image {
+.shopee-product:hover .shopee-product__image,
+.shopee-product__imageButton:focus-visible .shopee-product__image {
   transform: scale(1.06);
   filter: saturate(1.08) brightness(1.03);
 }
@@ -4588,5 +4607,130 @@
     width: 44px;
     min-width: 44px;
     height: 44px;
+  }
+}
+
+/* Commercial UI guard: preserve brand styling while meeting readable contrast. */
+.shopee-home .ant-typography-secondary,
+.shopee-home .ant-card-meta-description,
+.shopee-section__hint,
+.shopee-product__meta,
+.shopee-product__stock,
+.shopee-product__reviewCount,
+.shopee-product__lastViewed {
+  color: #40564a !important;
+}
+
+.shopee-home .shopee-product__price,
+.shopee-home .shopee-hero__featuredPrice,
+.shopee-home .shopee-section__header button:hover,
+.shopee-home .shopee-section__actions button + button,
+.shopee-home .pet-ugc__actions button {
+  color: #8f2d17 !important;
+}
+
+.shopee-editorial-band .shopee-section__header button {
+  border: 1px solid rgba(255, 247, 240, 0.22);
+  background: rgba(15, 53, 39, 0.92);
+  color: #fff7f0 !important;
+}
+
+.shopee-editorial-band .shopee-section__header button:hover,
+.shopee-editorial-band .shopee-section__header button:focus-visible {
+  background: #fff7f0;
+  color: #124734 !important;
+}
+
+.shopee-editorial-band .ant-typography,
+.shopee-editorial-band__feature .ant-typography,
+.shopee-editorial-band__miniBody .ant-typography {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.shopee-editorial-band__actions .ant-btn-primary {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #b84222, #7f2d16) !important;
+  color: #fff7f0 !important;
+}
+
+.shopee-editorial-band__actions .ant-btn-primary > span,
+.shopee-editorial-band__actions .ant-btn-primary .anticon {
+  color: inherit !important;
+}
+
+/* Final mobile Web hero readability guard: storefront value copy must not be
+   visually clipped on narrow screens. */
+@media (max-width: 600px) {
+  .shopee-home .shopee-hero p {
+    display: block;
+    overflow: visible;
+    text-overflow: clip;
+    -webkit-box-orient: initial;
+    -webkit-line-clamp: unset;
+  }
+}
+
+/* Final mobile trust strip guard: avoid clipped copy on mid-size phones. */
+@media (max-width: 600px) {
+  .pet-trust-strip,
+  .shopee-home--es .pet-trust-strip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .pet-trust-strip > div,
+  .shopee-home--es .pet-trust-strip > div {
+    min-height: 0;
+    height: auto;
+    max-width: 100%;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .pet-trust-strip strong,
+  .pet-trust-strip span {
+    display: block;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .pet-trust-strip > div::after {
+    content: none !important;
+  }
+}
+
+/* Final mobile quick-entry guard: keep the two-row quick panel clear of the fixed bottom nav. */
+@media (max-width: 600px) {
+  .shopee-mobile-priority {
+    margin-top: -86px;
+    margin-bottom: 18px;
+  }
+
+  .shopee-mobile-quick-panel {
+    min-height: 136px;
+  }
+
+  .shopee-mobile-quick-panel button {
+    min-height: 62px;
+  }
+}
+
+@media (max-width: 380px) {
+  .shopee-mobile-priority {
+    margin-top: -104px;
+  }
+
+  .shopee-mobile-quick-panel {
+    min-height: 130px;
+  }
+
+  .shopee-mobile-quick-panel button {
+    min-height: 58px;
   }
 }

@@ -675,7 +675,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  cursor: pointer;
+  cursor: default;
   border-color: #e4ebe4;
   border-radius: var(--radius-card);
   background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
@@ -855,6 +855,24 @@
   background:
     linear-gradient(145deg, rgba(248, 252, 249, 0.96), rgba(255, 247, 240, 0.72)),
     #fff url('https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80') center / cover no-repeat;
+}
+
+.product-list__imageButton {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+.product-list__imageButton:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.45);
+  outline-offset: -3px;
 }
 
 .product-list__image {
@@ -5077,7 +5095,8 @@
   .product-list__badges {
     top: 6px;
     left: 6px;
-    max-height: 24px;
+    max-height: none;
+    overflow: visible;
   }
 
   .product-list__badges .ant-tag {
@@ -5085,8 +5104,8 @@
     min-height: 21px;
     padding-inline: 6px;
     font-size: 10px;
-    line-height: 19px;
-    white-space: nowrap;
+    line-height: 1.1;
+    white-space: normal;
   }
 
   .product-list__previewTrigger.ant-btn {
@@ -6438,6 +6457,28 @@
     min-height: 44px;
   }
 
+  .product-list__mobileConversionActions .ant-btn {
+    min-height: 44px !important;
+    height: 44px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .product-list__mobileConversionActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    line-height: 1.08;
+    white-space: normal;
+  }
+
+  .product-list:not(.product-list--empty) .product-list__mobileConversionActions {
+    grid-template-columns: 44px minmax(0, 1fr) minmax(106px, 1.18fr);
+  }
+
+  .product-list__mobileConversionActions .ant-btn,
+  .product-list:not(.product-list--empty) .product-list__mobileConversionActions .ant-btn:first-child {
+    min-width: 44px;
+  }
+
   .product-list .ant-pagination-item,
   .product-list .ant-pagination-prev,
   .product-list .ant-pagination-next,
@@ -6445,5 +6486,166 @@
   .product-list .ant-pagination-next .ant-pagination-item-link {
     min-width: 44px;
     min-height: 44px;
+  }
+}
+
+/* Commercial UI guard: improve catalog text contrast without changing layout. */
+.product-list .ant-typography-secondary,
+.product-list .ant-card-meta-description,
+.product-list__brand,
+.product-list__proof,
+.product-list__mobileNextStepCopy .ant-typography {
+  color: #40564a !important;
+}
+
+.product-list__priceLine,
+.product-list__currentPrice,
+.product-list__priceLine .ant-typography,
+.product-list__recommendationPrice,
+.product-list__previewPrice,
+.product-list__mobileDiscoveryButton--active {
+  color: #8f2d17 !important;
+}
+
+.product-list__mobileDiscoveryButton--active {
+  border-color: rgba(143, 45, 23, 0.28) !important;
+  background: #fff7f0 !important;
+}
+
+.product-list__mobileNextStepActions .ant-btn-primary,
+.product-list__mobileConversionActions .ant-btn-primary {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #b84222, #7f2d16) !important;
+  color: #fff7f0 !important;
+}
+
+.product-list__mobileNextStepActions .ant-btn-primary > span,
+.product-list__mobileNextStepActions .ant-btn-primary .anticon,
+.product-list__mobileConversionActions .ant-btn-primary > span,
+.product-list__mobileConversionActions .ant-btn-primary .anticon {
+  color: inherit !important;
+}
+
+/* Mobile audit closure: AntD grouped search buttons can shrink below the
+   required hit width after compact toolbar rules. */
+@media (max-width: 780px) {
+  .product-list__search .ant-input-search-button,
+  .product-list__search .ant-btn {
+    min-width: 44px !important;
+    width: 44px !important;
+  }
+
+  .product-list__filterButton.ant-btn {
+    min-width: 44px !important;
+  }
+}
+
+/* Final mobile Web audit guard: discovery categories should fit without a
+   hidden horizontal rail, and select inputs should expose a 44px target. */
+@media (max-width: 780px) {
+  .product-list__mobileDiscovery {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    max-width: 100%;
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .product-list__mobileDiscoveryButton {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 44px;
+    padding: 8px;
+    white-space: normal;
+  }
+
+  .product-list__mobileDiscoveryButton > span:not(.product-list__mobileDiscoveryIcon) {
+    white-space: normal;
+  }
+
+  .product-list__toolbar .ant-select-selection-search-input,
+  .product-list__toolbar .ant-select-selection-item,
+  .product-list__toolbar .ant-select-selection-placeholder {
+    min-height: 44px;
+    line-height: 44px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .product-list__mobileDiscovery {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final narrow mobile catalog guard: keep first-screen discovery and conversion
+   actions clear of the fixed bottom navigation. */
+@media (min-width: 341px) and (max-width: 380px) {
+  .product-list__mobileDiscovery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .product-list:not(.product-list--empty) .product-list__mobileConversionBar {
+    position: fixed;
+    top: auto;
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 14px + env(safe-area-inset-bottom, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
+    z-index: 1241;
+    max-width: calc(100vw - 16px);
+    margin: 0;
+  }
+}
+
+/* Final mobile sort control guard: AntD compact rules must not shrink the
+   visible select or its popup options below the 44px touch target. */
+@media (max-width: 780px) {
+  .product-list__sortSelect.ant-select,
+  .product-list__sortSelect .ant-select-selector,
+  .product-list__toolbar .product-list__sortSelect.ant-select,
+  .product-list__toolbar .product-list__sortSelect .ant-select-selector {
+    min-height: 44px !important;
+    height: 44px !important;
+  }
+
+  .product-list__sortSelect .ant-select-selector {
+    align-items: center !important;
+    padding-block: 0 !important;
+  }
+
+  .product-list__sortSelect .ant-select-selection-search-input,
+  .product-list__sortSelect .ant-select-selection-item,
+  .product-list__sortSelect .ant-select-selection-placeholder {
+    min-height: 44px !important;
+    height: 44px !important;
+    line-height: 44px !important;
+  }
+
+  .product-list__sortSelect .ant-select-arrow,
+  .product-list__sortSelect .ant-select-clear,
+  .shop-mobile-popup-layer .ant-select-item,
+  .shop-mobile-popup-layer .ant-select-item-option-content {
+    min-height: 44px !important;
+  }
+
+  .shop-mobile-popup-layer .ant-select-item {
+    display: flex !important;
+    align-items: center !important;
+    padding-block: 8px !important;
+  }
+
+  .shop-mobile-popup-layer .ant-select-item-option-content {
+    display: flex;
+    align-items: center;
+    line-height: 1.25;
+    white-space: normal;
   }
 }

@@ -31,7 +31,11 @@ public final class GatewayUrlValidator {
         if (host == null || host.trim().isEmpty()) {
             throw new IllegalStateException(label + " host is required");
         }
-        if (!allowLocal && isLocalOrPrivateHost(host)) {
+        boolean localOrPrivateHost = isLocalOrPrivateHost(host);
+        if ("http".equals(scheme) && (!allowLocal || !localOrPrivateHost)) {
+            throw new IllegalStateException(label + " must use https unless explicitly using a local development gateway");
+        }
+        if (!allowLocal && localOrPrivateHost) {
             throw new IllegalStateException(label + " host is not allowed");
         }
         return uri.toString();

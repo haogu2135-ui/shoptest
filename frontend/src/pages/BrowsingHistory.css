@@ -1696,6 +1696,7 @@
   .browsing-history__emptyActions .ant-btn,
   .browsing-history__mobileAction .ant-btn,
   .browsing-history-clear-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-width: 44px;
     min-height: 44px;
     touch-action: manipulation;
   }

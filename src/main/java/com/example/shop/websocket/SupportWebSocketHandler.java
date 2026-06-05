@@ -1,5 +1,6 @@
 package com.example.shop.websocket;
 
+import com.example.shop.dto.SupportAdminSessionResponse;
 import com.example.shop.dto.SupportMessageAdminResponse;
 import com.example.shop.dto.SupportMessageCustomerResponse;
 import com.example.shop.dto.SupportSessionCustomerResponse;
@@ -359,9 +360,13 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
 
     private Map<String, Object> adminPayload(String type, SupportMessage message, SupportSession session) {
         if (message == null) {
-            return Map.of("type", type, "session", session);
+            return Map.of("type", type, "session", SupportAdminSessionResponse.from(session));
         }
-        return Map.of("type", type, "message", SupportMessageAdminResponse.from(message), "session", session);
+        return Map.of(
+                "type", type,
+                "message", SupportMessageAdminResponse.from(message),
+                "session", SupportAdminSessionResponse.from(session)
+        );
     }
 
     private String normalizeContent(String content) {

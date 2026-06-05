@@ -29,51 +29,62 @@ jest.mock('../hooks/useAppConfig', () => ({
   }),
 }));
 
-jest.mock('../i18n', () => ({
-  useLanguage: () => ({
-    language: 'en',
-    t: (key: string, params?: Record<string, string | number>) => {
-      const labels: Record<string, string> = {
-        'pages.checkout.title': 'Checkout',
-        'pages.checkout.readinessEyebrow': 'Ready',
-        'pages.checkout.savingsCoachSubtitle': 'Keep your order ready.',
-        'pages.checkout.paymentUnavailable': 'Payment methods are temporarily unavailable',
-        'pages.checkout.paymentUnavailableDescription': 'Checkout is paused until a configured payment channel is available. Please try again later or contact support.',
-        'pages.checkout.submitWithAmount': 'Submit {amount}',
-        'pages.checkout.paymentConfidenceTitle': 'Payment confidence',
-        'pages.checkout.paymentConfidenceDefault': 'Choose a payment method',
-        'pages.checkout.paymentConfidenceSelected': '{method}',
-        'pages.checkout.paymentRequired': 'Select a payment method',
-        'pages.checkout.emptySelected': 'Nothing selected',
-        'pages.checkout.backCart': 'Back to cart',
-        'pages.checkout.paymentMethod': 'Payment method',
-        'pages.checkout.itemSummary': '{count} item(s)',
-        'pages.checkout.payable': 'Payable',
-        'pages.checkout.shippingFee': 'Shipping fee',
-        'pages.checkout.address': 'Address',
-        'pages.checkout.contact': 'Contact',
-        'pages.checkout.email': 'Email',
-        'pages.checkout.guestHint': 'Guest checkout',
-        'pages.checkout.recipient': 'Recipient',
-        'pages.checkout.region': 'Region',
-        'pages.checkout.detailAddress': 'Detail address',
-        'pages.checkout.postalCode': 'Postal code',
-        'pages.checkout.expressCheckout': 'Express checkout',
-        'pages.checkout.itemList': 'Items',
-        'pages.checkout.orderSummary': 'Order summary',
-        'pages.checkout.defaultAddress': 'Default',
-        'pages.checkout.useNewAddress': 'Use new address',
-        'pages.checkout.selectCoupon': 'Select coupon',
-        'pages.payment.title': 'Payment',
-        'pages.cart.browse': 'Browse products',
-        'pages.cart.freeShippingUnlocked': 'Free shipping unlocked',
-        'pages.cart.freeShippingRemaining': 'Free shipping in {amount}',
-        'common.subtotal': 'Subtotal',
-      };
-      return labels[key] || key.replace(/^\w+\./, '');
-    },
-  }),
-}));
+jest.mock('../i18n', () => {
+  const labels: Record<string, string> = {
+    'pages.checkout.title': 'Checkout',
+    'pages.checkout.readinessEyebrow': 'Ready',
+    'pages.checkout.savingsCoachSubtitle': 'Keep your order ready.',
+    'pages.checkout.paymentUnavailable': 'Payment methods are temporarily unavailable',
+    'pages.checkout.paymentUnavailableDescription': 'Checkout is paused until a configured payment channel is available. Please try again later or contact support.',
+    'pages.checkout.submitWithAmount': 'Submit {amount}',
+    'pages.checkout.paymentConfidenceTitle': 'Payment confidence',
+    'pages.checkout.paymentConfidenceDefault': 'Choose a payment method',
+    'pages.checkout.paymentConfidenceSelected': '{method}',
+    'pages.checkout.paymentRequired': 'Select a payment method',
+    'pages.checkout.emptySelected': 'Nothing selected',
+    'pages.checkout.backCart': 'Back to cart',
+    'pages.checkout.coupon': 'Coupon',
+    'pages.checkout.couponOpportunityBuildText': 'Spend {amount} more for {value}.',
+    'pages.checkout.couponOpportunityBuildTitle': 'Coupon within reach',
+    'pages.checkout.couponOpportunityReview': 'Review coupons',
+    'pages.checkout.paymentMethod': 'Payment method',
+    'pages.checkout.itemSummary': '{count} item(s)',
+    'pages.checkout.payable': 'Payable',
+    'pages.checkout.shippingFee': 'Shipping fee',
+    'pages.checkout.address': 'Address',
+    'pages.checkout.contact': 'Contact',
+    'pages.checkout.email': 'Email',
+    'pages.checkout.guestHint': 'Guest checkout',
+    'pages.checkout.recipient': 'Recipient',
+    'pages.checkout.region': 'Region',
+    'pages.checkout.detailAddress': 'Detail address',
+    'pages.checkout.postalCode': 'Postal code',
+    'pages.checkout.expressCheckout': 'Express checkout',
+    'pages.checkout.itemList': 'Items',
+    'pages.checkout.orderSummary': 'Order summary',
+    'pages.checkout.defaultAddress': 'Default',
+    'pages.checkout.useNewAddress': 'Use new address',
+    'pages.checkout.selectCoupon': 'Select coupon',
+    'pages.payment.title': 'Payment',
+    'pages.cart.browse': 'Browse products',
+    'pages.cart.freeShippingUnlocked': 'Free shipping unlocked',
+    'pages.cart.freeShippingRemaining': 'Free shipping in {amount}',
+    'common.subtotal': 'Subtotal',
+  };
+  const t = (key: string, params?: Record<string, string | number>) => {
+    let label = labels[key] || key.replace(/^\w+\./, '');
+    Object.entries(params || {}).forEach(([name, value]) => {
+      label = label.replace(`{${name}}`, String(value));
+    });
+    return label;
+  };
+  return {
+    useLanguage: () => ({
+      language: 'en',
+      t,
+    }),
+  };
+});
 
 jest.mock('../utils/paymentMethods', () => ({
   createPaymentMethodDetails: () => [],
@@ -191,5 +202,34 @@ describe('Checkout payment availability', () => {
       expect(orderApi.guestCheckout).not.toHaveBeenCalled();
       expect(paymentApi.create).not.toHaveBeenCalled();
     });
+  });
+
+  it('labels coupon opportunity actions with checkout context', async () => {
+    (couponApi.quote as jest.Mock).mockResolvedValue({
+      data: {
+        subtotal: 120,
+        discountAmount: 0,
+        shippingFee: 30,
+        payableAmount: 150,
+        availableCoupons: [{
+          id: 20,
+          couponName: 'Save 10',
+          couponType: 'FULL_REDUCTION',
+          thresholdAmount: 200,
+          reductionAmount: 10,
+        }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/checkout']}>
+        <Checkout />
+      </MemoryRouter>,
+    );
+
+    const reviewCouponsButton = await screen.findByRole('button', {
+      name: 'Review coupons: Coupon within reach',
+    });
+    expect(reviewCouponsButton).toHaveAttribute('title', 'Review coupons: Coupon within reach');
   });
 });

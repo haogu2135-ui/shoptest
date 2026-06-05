@@ -3,9 +3,10 @@ package com.example.shop.dto;
 import com.example.shop.entity.SupportSession;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SupportAdminSessionPageResponse {
-    private List<SupportSession> items;
+    private List<SupportAdminSessionResponse> items;
     private long total;
     private int page;
     private int size;
@@ -18,7 +19,9 @@ public class SupportAdminSessionPageResponse {
         int safeSize = Math.max(1, size);
         int safePage = Math.max(1, page);
         int pages = total <= 0 ? 0 : (int) Math.ceil((double) total / safeSize);
-        response.setItems(items == null ? List.of() : items);
+        response.setItems(items == null ? List.of() : items.stream()
+                .map(SupportAdminSessionResponse::from)
+                .collect(Collectors.toList()));
         response.setTotal(Math.max(0, total));
         response.setPage(safePage);
         response.setSize(safeSize);
@@ -28,11 +31,11 @@ public class SupportAdminSessionPageResponse {
         return response;
     }
 
-    public List<SupportSession> getItems() {
+    public List<SupportAdminSessionResponse> getItems() {
         return items;
     }
 
-    public void setItems(List<SupportSession> items) {
+    public void setItems(List<SupportAdminSessionResponse> items) {
         this.items = items;
     }
 

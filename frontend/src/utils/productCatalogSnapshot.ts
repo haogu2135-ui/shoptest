@@ -1,4 +1,5 @@
 import type { ProductPublic, ProductVariant } from '../types';
+import { normalizePersistentImageUrl } from './mediaAssets';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 export const PRODUCT_CATALOG_SNAPSHOT_KEY = 'shop-product-catalog-snapshot';
@@ -179,6 +180,11 @@ const boundedStringList = (value: unknown, limit: number, maxLength = 80) =>
     ? Array.from(new Set(value.map((item) => clampString(item, maxLength)).filter(Boolean))).slice(0, limit)
     : undefined;
 
+const boundedImageList = (value: unknown, limit: number, maxLength = 1000) =>
+  Array.isArray(value)
+    ? Array.from(new Set(value.map((item) => normalizePersistentImageUrl(clampString(item, maxLength))).filter(Boolean))).slice(0, limit)
+    : undefined;
+
 const normalizeSpecifications = (value: unknown) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const entries = Object.entries(value as Record<string, unknown>)
@@ -207,7 +213,7 @@ const normalizeVariants = (value: unknown): ProductVariant[] | undefined => {
         price,
       };
       const sku = clampString(variant?.sku, 80);
-      const imageUrl = clampString(variant?.imageUrl, 1000);
+      const imageUrl = normalizePersistentImageUrl(clampString(variant?.imageUrl, 1000));
       if (sku) normalizedVariant.sku = sku;
       if (Number.isFinite(Number(variant?.stock))) normalizedVariant.stock = Math.max(0, Math.floor(Number(variant.stock)));
       if (imageUrl) normalizedVariant.imageUrl = imageUrl;
@@ -239,10 +245,10 @@ export const normalizeProductForCatalogSnapshot = (value: unknown): ProductCatal
     price,
     stock: Math.max(0, Math.floor(finiteNumber(product?.stock, 0))),
     categoryId,
-    imageUrl: clampString(product?.imageUrl, 1000),
+    imageUrl: normalizePersistentImageUrl(clampString(product?.imageUrl, 1000)),
     categoryName: clampString(product?.categoryName, 120) || undefined,
     isFeatured: Boolean(product?.isFeatured),
-    images: boundedStringList(product?.images, MAX_SNAPSHOT_IMAGES, 1000),
+    images: boundedImageList(product?.images, MAX_SNAPSHOT_IMAGES, 1000),
     brand: clampString(product?.brand, 120) || undefined,
     originalPrice: Number.isFinite(originalPrice) && originalPrice >= 0 ? originalPrice : undefined,
     discount: Number.isFinite(discount) ? Math.max(0, Math.min(discount, 100)) : undefined,

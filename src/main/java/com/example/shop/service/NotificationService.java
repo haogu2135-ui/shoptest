@@ -32,6 +32,8 @@ public class NotificationService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
     private static final int BROADCAST_BATCH_SIZE = 500;
+    private static final int MAX_BROADCAST_TITLE_LENGTH = 100;
+    private static final int MAX_BROADCAST_MESSAGE_LENGTH = 5000;
     private static final Set<String> BLOCKED_HTML_TAGS = Set.of(
             "script", "iframe", "object", "embed", "link", "meta", "style", "form", "input",
             "button", "svg", "math", "frame", "frameset", "base");
@@ -40,7 +42,7 @@ public class NotificationService {
     private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("(?is)<!--.*?-->");
     private static final Pattern BLOCKED_ELEMENT_PATTERN = Pattern.compile("(?is)<\\s*(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|frame|frameset|base)\\b[^>]*>.*?<\\s*/\\s*\\1\\s*>");
     private static final Pattern BLOCKED_TAG_PATTERN = Pattern.compile("(?is)<\\s*/?\\s*(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|frame|frameset|base)\\b[^>]*>");
-    private static final Pattern START_TAG_PATTERN = Pattern.compile("(?is)<([a-z][a-z0-9:-]*)(\\s+[^<>]*?)?>");
+    private static final Pattern START_TAG_PATTERN = Pattern.compile("(?is)<([a-z][a-z0-9:-]*)([\\s/]+[^<>]*?)?>");
     private static final Pattern ATTRIBUTE_PATTERN = Pattern.compile("(?is)([a-z_:][a-z0-9_:\\-]*)(?:\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s\"'=<>`]+))?");
 
     public List<Notification> getNotifications(Long userId) {
@@ -88,14 +90,22 @@ public class NotificationService {
     }
 
     public int broadcastToCustomers(String type, String title, String message, String contentFormat) {
-        if (title == null || title.trim().isEmpty()) {
+        String normalizedTitle = title == null ? "" : title.trim();
+        String rawMessage = message == null ? "" : message.trim();
+        if (normalizedTitle.isEmpty()) {
             throw new IllegalArgumentException("Title is required");
         }
-        if (message == null || message.trim().isEmpty()) {
+        if (normalizedTitle.length() > MAX_BROADCAST_TITLE_LENGTH) {
+            throw new IllegalArgumentException("Title must be 100 characters or fewer");
+        }
+        if (rawMessage.isEmpty()) {
             throw new IllegalArgumentException("Message is required");
         }
+        if (rawMessage.length() > MAX_BROADCAST_MESSAGE_LENGTH) {
+            throw new IllegalArgumentException("Message must be 5000 characters or fewer");
+        }
         String normalizedFormat = normalizeFormat(contentFormat);
-        String normalizedMessage = normalizeMessage(message, normalizedFormat);
+        String normalizedMessage = normalizeMessage(rawMessage, normalizedFormat);
         if (normalizedMessage.isEmpty()) {
             throw new IllegalArgumentException("Message is required");
         }
@@ -108,7 +118,7 @@ public class NotificationService {
                 return sent;
             }
             sent += transactionTemplate.execute(status ->
-                    insertBroadcastBatch(customerIds, type, title, normalizedMessage, normalizedFormat, now));
+                    insertBroadcastBatch(customerIds, type, normalizedTitle, normalizedMessage, normalizedFormat, now));
             lastId = customerIds.get(customerIds.size() - 1);
         }
     }
@@ -262,7 +272,10 @@ public class NotificationService {
         }
         try {
             URI uri = new URI(trimmed);
-            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            if (uri.getScheme() == null) {
+                return true;
+            }
+            String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
             return uri.getUserInfo() == null && Set.of("http", "https", "mailto", "tel").contains(scheme);
         } catch (URISyntaxException e) {
             return false;

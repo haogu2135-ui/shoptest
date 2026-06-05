@@ -6,6 +6,7 @@ import com.example.shop.dto.OrderCustomerResponse;
 import com.example.shop.dto.OrderItemCustomerResponse;
 import com.example.shop.dto.OrderTrackRequest;
 import com.example.shop.dto.OrderTrackResponse;
+import com.example.shop.dto.PaymentResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.entity.Payment;
@@ -250,22 +251,50 @@ public class OrderController {
     @PutMapping("/{id}/pay")
     public ResponseEntity<?> payOrder(@PathVariable Long id,
                                       @RequestBody(required = false) Map<String, String> body,
-                                      Authentication authentication) {
-        requireOrdersActionPermission(authentication, AdminRoleService.ORDER_PAYMENT_PERMISSION);
+                                      Authentication authentication,
+                                      HttpServletRequest request) {
         String transactionId = body == null ? null : body.get("transactionId");
-        Payment payment = orderService.confirmPayment(id, transactionId);
-        return ResponseEntity.ok(Map.of("message", "Payment confirmed", "payment", payment));
+        try {
+            requireOrdersActionPermission(authentication, AdminRoleService.ORDER_PAYMENT_PERMISSION);
+            Payment payment = orderService.confirmPayment(id, transactionId);
+            auditLogService.record("PAYMENT_MANUAL_CONFIRM", "SUCCESS", authentication, "ORDER", id, request,
+                    "Payment confirmed", legacyPaymentMetadata(payment, transactionId));
+            return ResponseEntity.ok(Map.of("message", "Payment confirmed", "payment", PaymentResponse.from(payment)));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            auditLogService.record("PAYMENT_MANUAL_CONFIRM", "FAILURE", authentication, "ORDER", id, request,
+                    e.getMessage(), "transactionId=" + transactionId);
+            throw e;
+        } catch (ResponseStatusException e) {
+            auditLogService.record("PAYMENT_MANUAL_CONFIRM", "FAILURE", authentication, "ORDER", id, request,
+                    reasonOf(e), "transactionId=" + transactionId);
+            throw e;
+        }
     }
 
     @PutMapping("/{id}/ship")
-    public ResponseEntity<?> shipOrder(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, Authentication authentication) {
-        requireOrdersActionPermission(authentication, AdminRoleService.ORDER_FULFILLMENT_PERMISSION);
+    public ResponseEntity<?> shipOrder(@PathVariable Long id,
+                                       @RequestBody(required = false) Map<String, String> body,
+                                       Authentication authentication,
+                                       HttpServletRequest request) {
         String trackingNumber = body != null ? body.get("trackingNumber") : null;
         String trackingCarrierCode = body != null ? body.get("trackingCarrierCode") : null;
-        if (!orderService.shipOrder(id, trackingNumber, trackingCarrierCode)) {
-            throw new IllegalStateException("Order shipment failed");
+        try {
+            requireOrdersActionPermission(authentication, AdminRoleService.ORDER_FULFILLMENT_PERMISSION);
+            if (!orderService.shipOrder(id, trackingNumber, trackingCarrierCode)) {
+                throw new IllegalStateException("Order shipment failed");
+            }
+            auditLogService.record("ORDER_SHIP", "SUCCESS", authentication, "ORDER", id, request,
+                    "Order shipped", legacyShipmentMetadata(trackingNumber, trackingCarrierCode));
+            return ResponseEntity.ok(Map.of("message", "Order shipped"));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            auditLogService.record("ORDER_SHIP", "FAILURE", authentication, "ORDER", id, request,
+                    e.getMessage(), legacyShipmentMetadata(trackingNumber, trackingCarrierCode));
+            throw e;
+        } catch (ResponseStatusException e) {
+            auditLogService.record("ORDER_SHIP", "FAILURE", authentication, "ORDER", id, request,
+                    reasonOf(e), legacyShipmentMetadata(trackingNumber, trackingCarrierCode));
+            throw e;
         }
-        return ResponseEntity.ok(Map.of("message", "Order shipped"));
     }
 
     @PutMapping("/{id}/confirm")
@@ -532,6 +561,24 @@ public class OrderController {
             return AdminRoleService.ORDER_REFUND_PERMISSION;
         }
         return AdminRoleService.ORDER_STATUS_PERMISSION;
+    }
+
+    private String legacyPaymentMetadata(Payment payment, String requestedTransactionId) {
+        if (payment == null) {
+            return "transactionId=" + requestedTransactionId;
+        }
+        return "paymentId=" + payment.getId()
+                + ",paymentChannel=" + payment.getChannel()
+                + ",transactionId=" + payment.getTransactionId()
+                + ",requestedTransactionId=" + requestedTransactionId;
+    }
+
+    private String legacyShipmentMetadata(String trackingNumber, String trackingCarrierCode) {
+        return "trackingNumber=" + trackingNumber + ",trackingCarrierCode=" + trackingCarrierCode;
+    }
+
+    private String reasonOf(ResponseStatusException e) {
+        return e.getReason() != null ? e.getReason() : e.getMessage();
     }
 
     private boolean isSelf(UserDetailsImpl user, Long userId) {

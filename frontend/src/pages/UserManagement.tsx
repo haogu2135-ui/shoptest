@@ -17,12 +17,15 @@ import {
 } from '../utils/roles';
 import { hasStoredValue } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
+import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './UserManagement.css';
 
 const { Title, Text } = Typography;
 type UserAccountStatus = 'ACTIVE' | 'BANNED' | 'GUEST';
 const DEFAULT_USER_PAGE_SIZE = 20;
 const USER_MANAGEMENT_BUILT_IN_ROLE_LABEL_KEYS = new Set(['USER', 'ADMIN', 'SUPER_ADMIN']);
+const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const normalizeUserAccountStatus = (status?: string): UserAccountStatus => {
   const normalized = (status || 'ACTIVE').trim().toUpperCase();
@@ -98,6 +101,13 @@ const UserManagement: React.FC = () => {
     missingPhone: summary?.missingPhoneUsers ?? localUserHealth.missingPhone,
     score: summary?.healthScore ?? localUserHealth.score,
     adminRatioPercent: summary?.adminRatioPercent ?? 0,
+  };
+  const userHealthLabels = {
+    score: `${t('pages.adminUsers.healthScore')}: ${userHealth.score}`,
+    activeUsers: `${t('pages.adminUsers.activeUsers')}: ${userHealth.activeUsers}`,
+    admins: `${t('pages.adminUsers.adminUsers')}: ${userHealth.admins}`,
+    missingEmail: `${t('pages.adminUsers.missingEmail')}: ${userHealth.missingEmail}`,
+    missingPhone: `${t('pages.adminUsers.missingPhone')}: ${userHealth.missingPhone}`,
   };
 
   const getUserReadiness = (user: User) => [
@@ -175,6 +185,23 @@ const UserManagement: React.FC = () => {
     } catch (error: any) {
       message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
     }
+  };
+
+  const confirmRoleCodeChange = (user: User, nextRoleCode: string) => {
+    const userLabel = user.username || user.email || `#${user.id}`;
+    const matchedRole = roles.find((role) => String(role.code || '').trim().toUpperCase() === String(nextRoleCode || '').trim().toUpperCase());
+    const nextRoleLabel = formatRoleLabel(nextRoleCode, matchedRole?.name);
+    const confirmLabel = `${t('pages.adminUsers.roleCode')}: ${userLabel} -> ${nextRoleLabel}`;
+    Modal.confirm({
+      title: confirmLabel,
+      content: `${userLabel} -> ${nextRoleLabel}`,
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      okButtonProps: { 'aria-label': confirmLabel, title: confirmLabel },
+      cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${confirmLabel}`, title: `${t('common.cancel')}: ${confirmLabel}` },
+      className: 'profile-mobile-safe-modal user-management-page__roleConfirmModal',
+      onOk: () => handleRoleCodeChange(user.id, nextRoleCode),
+    });
   };
 
   const handleExport = async () => {
@@ -289,9 +316,11 @@ const UserManagement: React.FC = () => {
       key: 'roleCode',
       width: 180,
       render: (roleCode: string, record: User) => {
+        const userLabel = record.username || record.email || `#${record.id}`;
         const isSelf = record.id === currentUserId;
         const effectiveRole = getEffectiveRole(record.role, roleCode);
         const matchedRole = roles.find((role) => String(role.code || '').trim().toUpperCase() === effectiveRole);
+        const roleSelectLabel = `${t('pages.adminUsers.roleCode')}: ${userLabel}`;
         if (isSelf || !canManageRoles) {
           return <Tag color={roleColor(effectiveRole)}>{formatRoleLabel(effectiveRole, matchedRole?.name)}</Tag>;
         }
@@ -300,9 +329,11 @@ const UserManagement: React.FC = () => {
             size="small"
             value={effectiveRole}
             className="user-management-page__roleCodeSelect"
-            popupClassName="shop-mobile-popup-layer"
+            aria-label={roleSelectLabel}
+            title={roleSelectLabel}
+            classNames={mobilePopupClassNames}
             getPopupContainer={() => document.body}
-            onChange={(val) => handleRoleCodeChange(record.id, val)}
+            onChange={(val) => confirmRoleCodeChange(record, val)}
             options={[
               { value: 'USER', label: formatRoleLabel('USER') },
               ...roles.map((role) => ({ value: role.code, label: formatRoleLabel(role.code, role.name) })),
@@ -362,6 +393,7 @@ const UserManagement: React.FC = () => {
       key: 'action',
       width: 180,
       render: (_: any, record: User) => {
+        const userLabel = record.username || record.email || `#${record.id}`;
         const isSelf = record.id === currentUserId;
         const targetRole = getEffectiveRole(record.role, record.roleCode);
         const targetPrivileged = isAdminRole(targetRole);
@@ -375,35 +407,50 @@ const UserManagement: React.FC = () => {
           : normalizedStatus === 'ACTIVE'
             ? t('pages.adminUsers.ban')
             : t('pages.adminUsers.unban');
+        const editActionLabel = `${t('common.edit')}: ${userLabel}`;
+        const accountStatusActionLabel = `${statusActionLabel}: ${userLabel}`;
+        const deleteActionLabel = `${t('common.delete')}: ${userLabel}`;
         const statusConfirmTitle = normalizedStatus === 'ACTIVE'
-          ? t('pages.adminUsers.banConfirm', { user: record.username || record.email || `#${record.id}` })
-          : t('pages.adminUsers.unbanConfirm', { user: record.username || record.email || `#${record.id}` });
+          ? t('pages.adminUsers.banConfirm', { user: userLabel })
+          : t('pages.adminUsers.unbanConfirm', { user: userLabel });
         return (
           <Space size="small">
-            <Button size="small" icon={<EditOutlined />} disabled={profileEditDisabled} onClick={() => openProfileModal(record)}>
+            <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={profileEditDisabled} onClick={() => openProfileModal(record)}>
               {t('common.edit')}
             </Button>
             <Popconfirm
+              classNames={mobilePopconfirmClassNames}
               title={statusConfirmTitle}
               onConfirm={() => handleToggleStatus(record)}
               disabled={statusActionDisabled}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ 'aria-label': accountStatusActionLabel, title: accountStatusActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${accountStatusActionLabel}`, title: `${t('common.cancel')}: ${accountStatusActionLabel}` }}
             >
               <Button
                 size="small"
                 icon={normalizedStatus === 'ACTIVE' ? <StopOutlined /> : <CheckCircleOutlined />}
                 danger={normalizedStatus === 'ACTIVE'}
                 type={normalizedStatus === 'BANNED' ? 'primary' : 'default'}
+                aria-label={accountStatusActionLabel}
+                title={accountStatusActionLabel}
                 disabled={statusActionDisabled}
               >
                 {statusActionLabel}
               </Button>
             </Popconfirm>
             <Popconfirm
-              title={t('pages.adminUsers.deleteConfirm')}
+              classNames={mobilePopconfirmClassNames}
+              title={`${t('pages.adminUsers.deleteConfirm')}: ${userLabel}`}
               onConfirm={() => handleDelete(record.id)}
               disabled={deleteDisabled}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             >
-              <Button size="small" danger icon={<DeleteOutlined />} disabled={deleteDisabled}>
+              <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={deleteDisabled}>
                 {t('common.delete')}
               </Button>
             </Popconfirm>
@@ -412,6 +459,20 @@ const UserManagement: React.FC = () => {
       },
     },
   ];
+
+  const pageLabel = t('pages.adminUsers.title');
+  const keywordSearchLabel = `${pageLabel}: ${t('pages.adminUsers.searchPlaceholder')}`;
+  const roleFilterLabel = `${pageLabel}: ${t('pages.adminUsers.role')}`;
+  const statusFilterLabel = `${pageLabel}: ${t('common.status')}`;
+  const searchActionLabel = `${pageLabel}: ${t('common.search')}`;
+  const exportActionLabel = `${pageLabel}: ${t('pages.adminUsers.export')}`;
+  const editingUserLabel = editingUser?.username || editingUser?.email || (editingUser ? `#${editingUser.id}` : t('pages.adminUsers.editProfile'));
+  const saveProfileActionLabel = `${t('common.save')}: ${editingUserLabel}`;
+  const cancelProfileActionLabel = `${t('common.cancel')}: ${editingUserLabel}`;
+  const userPaginationItemRender = useMemo(() => buildPaginationItemRender(
+    `${t('common.previousPage')}: ${pageLabel}`,
+    `${t('common.nextPage')}: ${pageLabel}`,
+  ), [pageLabel, t]);
 
   return (
     <div className="user-management-page">
@@ -425,6 +486,8 @@ const UserManagement: React.FC = () => {
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('pages.adminUsers.searchPlaceholder')}
+            aria-label={keywordSearchLabel}
+            title={keywordSearchLabel}
             className="user-management-page__keywordInput"
           />
           <Select
@@ -433,7 +496,9 @@ const UserManagement: React.FC = () => {
             onChange={setRoleFilter}
             placeholder={t('pages.adminUsers.role')}
             className="user-management-page__roleFilter"
-            popupClassName="shop-mobile-popup-layer"
+            aria-label={roleFilterLabel}
+            title={roleFilterLabel}
+            classNames={mobilePopupClassNames}
             getPopupContainer={() => document.body}
             options={[
               { value: 'USER', label: formatRoleLabel('USER') },
@@ -446,7 +511,9 @@ const UserManagement: React.FC = () => {
             onChange={setStatusFilter}
             placeholder={t('common.status')}
             className="user-management-page__statusFilter"
-            popupClassName="shop-mobile-popup-layer"
+            aria-label={statusFilterLabel}
+            title={statusFilterLabel}
+            classNames={mobilePopupClassNames}
             getPopupContainer={() => document.body}
             options={[
               { value: 'ACTIVE', label: t('status.ACTIVE') },
@@ -454,9 +521,9 @@ const UserManagement: React.FC = () => {
               { value: 'GUEST', label: t('status.GUEST') },
             ]}
           />
-          <Button onClick={() => fetchUsers(1, pageState.size)} type="primary" icon={<SearchOutlined />}>{t('common.search')}</Button>
+          <Button onClick={() => fetchUsers(1, pageState.size)} type="primary" icon={<SearchOutlined />} aria-label={searchActionLabel} title={searchActionLabel}>{t('common.search')}</Button>
           {canExportUsers ? (
-            <Button onClick={handleExport} icon={<DownloadOutlined />} loading={exporting}>{t('pages.adminUsers.export')}</Button>
+            <Button onClick={handleExport} icon={<DownloadOutlined />} loading={exporting} aria-label={exportActionLabel} title={exportActionLabel}>{t('pages.adminUsers.export')}</Button>
           ) : null}
         </Space>
       </Card>
@@ -466,33 +533,33 @@ const UserManagement: React.FC = () => {
           <Title level={5}>{t('pages.adminUsers.healthTitle')}</Title>
           <Text type="secondary">{t('pages.adminUsers.healthSubtitle')}</Text>
         </div>
-        <div className="user-management-page__score">
+        <div className="user-management-page__score" role="group" aria-label={userHealthLabels.score} title={userHealthLabels.score}>
           <Progress
             type="circle"
             percent={userHealth.score}
-            width={86}
+            size={86}
             strokeColor={userHealth.score >= 80 ? '#2f855a' : userHealth.score >= 60 ? '#d97706' : '#dc2626'}
             format={(value) => `${value || 0}`}
           />
           <Text type="secondary">{t('pages.adminUsers.healthScore')}</Text>
         </div>
         <div className="user-management-page__healthGrid">
-          <div className="user-management-page__healthItem">
+          <div className="user-management-page__healthItem" role="group" aria-label={userHealthLabels.activeUsers} title={userHealthLabels.activeUsers}>
             <TeamOutlined />
             <strong>{userHealth.activeUsers}</strong>
             <span>{t('pages.adminUsers.activeUsers')}</span>
           </div>
-          <div className={`user-management-page__healthItem ${userHealth.admins > 2 ? 'is-risk' : ''}`}>
+          <div className={`user-management-page__healthItem ${userHealth.admins > 2 ? 'is-risk' : ''}`} role="group" aria-label={userHealthLabels.admins} title={userHealthLabels.admins}>
             <SafetyCertificateOutlined />
             <strong>{userHealth.admins}</strong>
             <span>{t('pages.adminUsers.adminUsers')}</span>
           </div>
-          <div className={`user-management-page__healthItem ${userHealth.missingEmail ? 'is-risk' : ''}`}>
+          <div className={`user-management-page__healthItem ${userHealth.missingEmail ? 'is-risk' : ''}`} role="group" aria-label={userHealthLabels.missingEmail} title={userHealthLabels.missingEmail}>
             <MailOutlined />
             <strong>{userHealth.missingEmail}</strong>
             <span>{t('pages.adminUsers.missingEmail')}</span>
           </div>
-          <div className={`user-management-page__healthItem ${userHealth.missingPhone ? 'is-risk' : ''}`}>
+          <div className={`user-management-page__healthItem ${userHealth.missingPhone ? 'is-risk' : ''}`} role="group" aria-label={userHealthLabels.missingPhone} title={userHealthLabels.missingPhone}>
             <PhoneOutlined />
             <strong>{userHealth.missingPhone}</strong>
             <span>{t('pages.adminUsers.missingPhone')}</span>
@@ -511,6 +578,7 @@ const UserManagement: React.FC = () => {
           pageSizeOptions: [10, 20, 50, 100],
           showSizeChanger: true,
           showTotal: (total) => t('pages.adminUsers.total', { count: total }),
+          itemRender: userPaginationItemRender,
           onChange: (page, size) => fetchUsers(page, size),
         }}
         bordered
@@ -524,11 +592,13 @@ const UserManagement: React.FC = () => {
         onOk={handleProfileSubmit}
         onCancel={closeProfileModal}
         confirmLoading={profileSubmitting}
+        okButtonProps={{ 'aria-label': saveProfileActionLabel, title: saveProfileActionLabel }}
+        cancelButtonProps={{ 'aria-label': cancelProfileActionLabel, title: cancelProfileActionLabel }}
         destroyOnHidden
       >
         <Form form={profileForm} layout="vertical">
           <Form.Item label={t('pages.adminUsers.username')}>
-            <Input value={editingUser?.username || ''} disabled />
+            <Input value={editingUser?.username || ''} disabled aria-label={`${editingUserLabel}: ${t('pages.adminUsers.username')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.username')}`} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -538,21 +608,21 @@ const UserManagement: React.FC = () => {
               { max: 120, message: t('pages.adminUsers.emailTooLong') },
             ]}
           >
-            <Input autoComplete="email" maxLength={120} />
+            <Input autoComplete="email" maxLength={120} aria-label={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} />
           </Form.Item>
           <Form.Item
             name="phone"
             label={t('pages.adminUsers.phone')}
             rules={[{ max: 20, message: t('pages.adminUsers.phoneTooLong') }]}
           >
-            <Input autoComplete="tel" inputMode="tel" maxLength={20} />
+            <Input autoComplete="tel" inputMode="tel" maxLength={20} aria-label={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} />
           </Form.Item>
           <Form.Item
             name="address"
             label={t('pages.adminUsers.address')}
             rules={[{ max: 260, message: t('pages.adminUsers.addressTooLong') }]}
           >
-            <Input.TextArea rows={3} maxLength={260} showCount autoComplete="street-address" />
+            <Input.TextArea rows={3} maxLength={260} showCount autoComplete="street-address" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.address')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.address')}`} />
           </Form.Item>
         </Form>
       </Modal>

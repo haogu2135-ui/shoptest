@@ -31,6 +31,8 @@ const Wishlist: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const wishlistProductName = useCallback((item: WishlistItem) =>
+    (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId }), [t]);
   const wishlistGroups = useMemo(() => {
     const directAddItems: WishlistItem[] = [];
     const optionItems: WishlistItem[] = [];
@@ -196,10 +198,11 @@ const Wishlist: React.FC = () => {
       };
     }
     if (wishlistStats.lowStockCount > 0 && featuredWishlistItem) {
+      const featuredName = wishlistProductName(featuredWishlistItem);
       return {
         tone: 'urgent',
         title: t('pages.wishlist.nextActionLowStockTitle'),
-        text: t('pages.wishlist.nextActionLowStockText', { name: featuredWishlistItem.productName }),
+        text: t('pages.wishlist.nextActionLowStockText', { name: featuredName }),
         label: t('pages.wishlist.viewBestPick'),
         action: () => navigate(`/products/${featuredWishlistItem.productId}`),
       };
@@ -212,6 +215,11 @@ const Wishlist: React.FC = () => {
       action: () => navigate('/products?sort=personalized-desc'),
     };
   })();
+  const addAllToCartActionLabel = `${t('pages.wishlist.addAllToCart')}: ${directAddItems.length}`;
+  const clearUnavailableActionLabel = `${t('pages.cart.clearUnavailable')}: ${wishlistStats.unavailableCount}`;
+  const recoveryActionLabel = `${recoveryAction.label}: ${recoveryText}`;
+  const wishlistNextActionLabel = `${wishlistNextAction.label}: ${wishlistNextAction.title}`;
+  const wishlistBrowseActionLabel = t('pages.wishlist.browse');
 
   const getFeaturedReason = (item: WishlistItem) => {
     const lowStockCount = getLowStockCount(item);
@@ -224,7 +232,9 @@ const Wishlist: React.FC = () => {
   };
 
   const primaryAction = (item: WishlistItem) => {
+    const productName = wishlistProductName(item);
     if (item.requiresSelection) {
+      const selectActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
       return (
         <Button
           type="primary"
@@ -232,12 +242,15 @@ const Wishlist: React.FC = () => {
           className="wishlist-page__primaryAction"
           block
           disabled={!isPurchasable(item)}
+          aria-label={selectActionLabel}
+          title={selectActionLabel}
           onClick={() => navigate(`/products/${item.productId}`)}
         >
           {t('pages.wishlist.selectOptions')}
         </Button>
       );
     }
+    const addActionLabel = `${t('pages.productList.addToCart')}: ${productName}`;
     return (
       <Button
         type="primary"
@@ -245,6 +258,8 @@ const Wishlist: React.FC = () => {
         className="wishlist-page__primaryAction"
         block
         disabled={!isPurchasable(item)}
+        aria-label={addActionLabel}
+        title={addActionLabel}
         onClick={() => handleAddToCart(item.productId)}
       >
         {t('pages.productList.addToCart')}
@@ -279,7 +294,15 @@ const Wishlist: React.FC = () => {
     return (
       <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
         <Empty description={t('pages.wishlist.empty')} />
-        <Button type="primary" className="wishlist-page__emptyBrowse" onClick={() => navigate('/products')}>{t('pages.wishlist.browse')}</Button>
+        <Button
+          type="primary"
+          className="wishlist-page__emptyBrowse"
+          aria-label={wishlistBrowseActionLabel}
+          title={wishlistBrowseActionLabel}
+          onClick={() => navigate('/products')}
+        >
+          {t('pages.wishlist.browse')}
+        </Button>
       </div>
     );
   }
@@ -291,16 +314,27 @@ const Wishlist: React.FC = () => {
           <HeartFilled style={{ color: '#ee4d2d', fontSize: 24 }} />
           <Title level={3} style={{ margin: 0 }}>{t('pages.wishlist.title', { count: items.length })}</Title>
         </Space>
-        <Button type="primary" icon={<ShoppingCartOutlined />} disabled={directAddItems.length === 0} onClick={handleAddAllToCart}>
+        <Button
+          type="primary"
+          icon={<ShoppingCartOutlined />}
+          disabled={directAddItems.length === 0}
+          aria-label={addAllToCartActionLabel}
+          title={addAllToCartActionLabel}
+          onClick={handleAddAllToCart}
+        >
           {t('pages.wishlist.addAllToCart')}
         </Button>
         {wishlistStats.unavailableCount > 0 ? (
           <Popconfirm
-            popupClassName="shop-mobile-popup-layer wishlist-clear-unavailable-popconfirm"
+            classNames={{ root: 'shop-mobile-popup-layer wishlist-clear-unavailable-popconfirm' }}
             title={t('pages.cart.clearUnavailableConfirm', { count: wishlistStats.unavailableCount })}
             onConfirm={clearUnavailableItems}
+            okText={t('common.confirm')}
+            cancelText={t('common.cancel')}
+            okButtonProps={{ danger: true, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
+            cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
           >
-            <Button danger icon={<DeleteOutlined />}>
+            <Button danger icon={<DeleteOutlined />} aria-label={clearUnavailableActionLabel} title={clearUnavailableActionLabel}>
               {t('pages.cart.clearUnavailable')}
             </Button>
           </Popconfirm>
@@ -328,7 +362,14 @@ const Wishlist: React.FC = () => {
           <Text strong>{t('pages.wishlist.recoveryTitle')}</Text>
           <Text type="secondary">{recoveryText}</Text>
         </div>
-        <Button type="primary" icon={<ShoppingCartOutlined />} disabled={recoveryAction.disabled} onClick={recoveryAction.action}>
+        <Button
+          type="primary"
+          icon={<ShoppingCartOutlined />}
+          disabled={recoveryAction.disabled}
+          aria-label={recoveryActionLabel}
+          title={recoveryActionLabel}
+          onClick={recoveryAction.action}
+        >
           {recoveryAction.label}
         </Button>
       </div>
@@ -347,62 +388,77 @@ const Wishlist: React.FC = () => {
         <Button
           type={wishlistNextAction.tone === 'ready' ? 'primary' : 'default'}
           icon={wishlistNextAction.tone === 'options' ? <SettingOutlined /> : <ShoppingCartOutlined />}
+          aria-label={wishlistNextActionLabel}
+          title={wishlistNextActionLabel}
           onClick={wishlistNextAction.action}
         >
           {wishlistNextAction.label}
         </Button>
       </div>
       {featuredWishlistItem ? (
-        <div className="wishlist-page__bestPick">
-          <button
-            type="button"
-            className="wishlist-page__bestPickImageButton"
-            onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}
-            aria-label={featuredWishlistItem.productName}
-          >
-            <img
-              alt={featuredWishlistItem.productName}
-              src={resolveWishlistImage(featuredWishlistItem.imageUrl)}
-              className="wishlist-page__bestPickImage"
-              onError={(event) => {
-                if (event.currentTarget.src !== wishlistImageFallback) {
-                  event.currentTarget.src = wishlistImageFallback;
-                }
-              }}
-            />
-          </button>
-          <div className="wishlist-page__bestPickBody">
-            <Text className="wishlist-page__bestPickEyebrow">
-              <FireOutlined /> {t('pages.wishlist.bestPickEyebrow')}
-            </Text>
-            <button
-              type="button"
-              className="wishlist-page__bestPickName"
-              onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}
-              title={featuredWishlistItem.productName}
-            >
-              {featuredWishlistItem.productName}
-            </button>
-            <Text type="secondary">{getFeaturedReason(featuredWishlistItem)}</Text>
-            {renderReadiness(featuredWishlistItem)}
-          </div>
-          <div className="wishlist-page__bestPickAction">
-            <Text className="wishlist-page__price commerce-money">{formatMoney(featuredWishlistItem.productPrice)}</Text>
-            {featuredWishlistItem.requiresSelection ? (
-              <Button type="primary" icon={<SettingOutlined />} onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}>
-                {t('pages.wishlist.selectOptions')}
-              </Button>
-            ) : (
-              <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => handleAddToCart(featuredWishlistItem.productId)}>
-                {t('pages.productList.addToCart')}
-              </Button>
-            )}
-          </div>
-        </div>
+        (() => {
+          const productName = wishlistProductName(featuredWishlistItem);
+          const viewActionLabel = `${t('pages.productList.viewPick')}: ${productName}`;
+          const selectActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
+          const addActionLabel = `${t('pages.productList.addToCart')}: ${productName}`;
+          return (
+            <div className="wishlist-page__bestPick">
+              <button
+                type="button"
+                className="wishlist-page__bestPickImageButton"
+                onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}
+                aria-label={viewActionLabel}
+                title={viewActionLabel}
+              >
+                <img
+                  alt={productName}
+                  src={resolveWishlistImage(featuredWishlistItem.imageUrl)}
+                  className="wishlist-page__bestPickImage"
+                  onError={(event) => {
+                    if (event.currentTarget.src !== wishlistImageFallback) {
+                      event.currentTarget.src = wishlistImageFallback;
+                    }
+                  }}
+                />
+              </button>
+              <div className="wishlist-page__bestPickBody">
+                <Text className="wishlist-page__bestPickEyebrow">
+                  <FireOutlined /> {t('pages.wishlist.bestPickEyebrow')}
+                </Text>
+                <button
+                  type="button"
+                  className="wishlist-page__bestPickName"
+                  onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}
+                  aria-label={viewActionLabel}
+                  title={productName}
+                >
+                  {productName}
+                </button>
+                <Text type="secondary">{getFeaturedReason(featuredWishlistItem)}</Text>
+                {renderReadiness(featuredWishlistItem)}
+              </div>
+              <div className="wishlist-page__bestPickAction">
+                <Text className="wishlist-page__price commerce-money">{formatMoney(featuredWishlistItem.productPrice)}</Text>
+                {featuredWishlistItem.requiresSelection ? (
+                  <Button type="primary" icon={<SettingOutlined />} aria-label={selectActionLabel} title={selectActionLabel} onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}>
+                    {t('pages.wishlist.selectOptions')}
+                  </Button>
+                ) : (
+                  <Button type="primary" icon={<ShoppingCartOutlined />} aria-label={addActionLabel} title={addActionLabel} onClick={() => handleAddToCart(featuredWishlistItem.productId)}>
+                    {t('pages.productList.addToCart')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })()
       ) : null}
       <Row gutter={[16, 16]}>
         {items.map(item => {
           const lowStockCount = getLowStockCount(item);
+          const productName = wishlistProductName(item);
+          const viewActionLabel = `${t('pages.productList.viewPick')}: ${productName}`;
+          const removeActionLabel = `${t('pages.wishlist.remove')}: ${productName}`;
           return (
           <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
             <Card
@@ -413,10 +469,11 @@ const Wishlist: React.FC = () => {
                   type="button"
                   className="wishlist-page__imageButton"
                   onClick={() => navigate(`/products/${item.productId}`)}
-                  aria-label={item.productName}
+                  aria-label={viewActionLabel}
+                  title={viewActionLabel}
                 >
                   <img
-                    alt={item.productName}
+                    alt={productName}
                     src={resolveWishlistImage(item.imageUrl)}
                     className="wishlist-page__image"
                     onError={(event) => {
@@ -432,9 +489,10 @@ const Wishlist: React.FC = () => {
                 type="button"
                 className="wishlist-page__productName"
                 onClick={() => navigate(`/products/${item.productId}`)}
-                title={item.productName}
+                aria-label={viewActionLabel}
+                title={productName}
               >
-                {item.productName}
+                {productName}
               </button>
               <div className="wishlist-page__meta">
                 <Text className="wishlist-page__price commerce-money">{formatMoney(item.productPrice)}</Text>
@@ -449,11 +507,15 @@ const Wishlist: React.FC = () => {
               <div className="wishlist-page__actions">
                 {primaryAction(item)}
                 <Popconfirm
-                  popupClassName="shop-mobile-popup-layer wishlist-remove-popconfirm"
+                  classNames={{ root: 'shop-mobile-popup-layer wishlist-remove-popconfirm' }}
                   title={t('pages.wishlist.removeConfirm')}
                   onConfirm={() => handleRemove(item.productId)}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
+                  okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
+                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
                 >
-                  <Button danger icon={<DeleteOutlined />} className="wishlist-page__removeAction" block>
+                  <Button danger icon={<DeleteOutlined />} className="wishlist-page__removeAction" block aria-label={removeActionLabel} title={removeActionLabel}>
                     {t('pages.wishlist.remove')}
                   </Button>
                 </Popconfirm>
@@ -472,6 +534,8 @@ const Wishlist: React.FC = () => {
         <Button
           type={wishlistNextAction.tone === 'ready' ? 'primary' : 'default'}
           icon={wishlistNextAction.tone === 'options' ? <SettingOutlined /> : <ShoppingCartOutlined />}
+          aria-label={wishlistNextActionLabel}
+          title={wishlistNextActionLabel}
           onClick={wishlistNextAction.action}
         >
           {wishlistNextAction.label}

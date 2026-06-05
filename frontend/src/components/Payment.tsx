@@ -3,7 +3,7 @@ import { Alert, Button, Modal, Radio, Space, Tag, Typography, message } from 'an
 import { SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
-import { createPaymentMethodOptions, PaymentMethod } from '../utils/paymentMethods';
+import { createPaymentMethodOptions, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { navigateToSafeUrl } from '../utils/safeUrl';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -46,6 +46,18 @@ export const Payment: React.FC<PaymentProps> = ({
         .map((channel) => String(channel.market || '').toUpperCase())
         .filter(Boolean))), [paymentChannels]);
     const formattedAmount = formatMoney(amount);
+    const paymentTargetLabel = orderNo
+        ? `${t('pages.paymentInstructions.orderNo')}: ${orderNo}`
+        : `${t('pages.adminOrders.orderLabel')} #${orderId}`;
+    const paymentContextLabel = `${paymentTargetLabel} · ${formattedAmount}`;
+    const paymentMethodGroupLabel = `${t('pages.checkout.paymentMethod')}: ${paymentContextLabel}`;
+    const paymentOptionLabel = (method: PaymentMethod) => {
+        const channel = paymentChannels.find((item) => item.code === method);
+        if (channel?.labelKey) return t(channel.labelKey);
+        return channel?.displayName || paymentMethodLabel(method, t);
+    };
+    const selectedPaymentLabel = paymentMethod ? paymentOptionLabel(paymentMethod) : t('pages.checkout.paymentRequired');
+    const confirmPaymentLabel = `${t('pages.payment.confirm')}: ${paymentContextLabel} · ${selectedPaymentLabel}`;
 
     useEffect(() => {
         paymentApi.getChannels()
@@ -116,20 +128,31 @@ export const Payment: React.FC<PaymentProps> = ({
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     className="payment-modal__methodGroup"
+                    aria-label={paymentMethodGroupLabel}
                 >
                     <Space direction="vertical" className="payment-modal__methodList">
                         {paymentOptions.length === 0 ? (
                             <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
                         ) : null}
-                        {paymentOptions.map((option) => (
-                            <Radio.Button key={option.value} value={option.value} className="payment-modal__method">
-                                <Space>{option.label}</Space>
-                            </Radio.Button>
-                        ))}
+                        {paymentOptions.map((option) => {
+                            const optionLabel = paymentOptionLabel(option.value);
+                            const optionActionLabel = `${t('pages.checkout.paymentMethod')}: ${optionLabel} · ${paymentContextLabel}`;
+                            return (
+                                <Radio.Button
+                                    key={option.value}
+                                    value={option.value}
+                                    className="payment-modal__method"
+                                    aria-label={optionActionLabel}
+                                    title={optionActionLabel}
+                                >
+                                    <Space>{option.label}</Space>
+                                </Radio.Button>
+                            );
+                        })}
                     </Space>
                 </Radio.Group>
                 {selectedChannel ? (
-                    <div className="payment-modal__channelNote">
+                    <div className="payment-modal__channelNote" role="status" aria-label={`${t('pages.checkout.paymentConfidenceTitle')}: ${selectedPaymentLabel}`}>
                         <Text strong>{selectedChannel.displayName}</Text>
                         <Text type="secondary">
                             {selectedChannel.descriptionKey ? t(selectedChannel.descriptionKey) : t('pages.payment.channelFallback')}
@@ -143,6 +166,8 @@ export const Payment: React.FC<PaymentProps> = ({
                     loading={loading}
                     disabled={paymentOptions.length === 0}
                     className="payment-modal__confirm"
+                    aria-label={confirmPaymentLabel}
+                    title={confirmPaymentLabel}
                 >
                     {t('pages.payment.confirm')}
                 </Button>

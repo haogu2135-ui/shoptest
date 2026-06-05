@@ -45,6 +45,8 @@ const BrowsingHistory: React.FC = () => {
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const hasHistory = preferences.recent.length > 0;
+  const historyProductName = (product: Pick<Product, 'id' | 'name'>) =>
+    (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id });
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -188,19 +190,21 @@ const BrowsingHistory: React.FC = () => {
       };
     }
     if (historyInsights.bestRecovery && isPurchasable(historyInsights.bestRecovery) && !needsOptionSelection(historyInsights.bestRecovery)) {
+      const productName = historyProductName(historyInsights.bestRecovery);
       return {
         tone: 'ready',
         title: t('pages.browsingHistory.nextActionAddTitle'),
-        text: t('pages.browsingHistory.nextActionAddText', { name: historyInsights.bestRecovery.name }),
+        text: t('pages.browsingHistory.nextActionAddText', { name: productName }),
         label: t('pages.browsingHistory.addBestToCart'),
         action: () => addHistoryProductToCart(historyInsights.bestRecovery!),
       };
     }
     if (historyInsights.bestRecovery && needsOptionSelection(historyInsights.bestRecovery)) {
+      const productName = historyProductName(historyInsights.bestRecovery);
       return {
         tone: 'options',
         title: t('pages.browsingHistory.nextActionOptionsTitle'),
-        text: t('pages.browsingHistory.nextActionOptionsText', { name: historyInsights.bestRecovery.name }),
+        text: t('pages.browsingHistory.nextActionOptionsText', { name: productName }),
         label: t('pages.browsingHistory.resumeProduct'),
         action: () => navigate(`/products/${historyInsights.bestRecovery!.id}`),
       };
@@ -222,6 +226,10 @@ const BrowsingHistory: React.FC = () => {
       action: () => navigate('/products?sort=personalized-desc'),
     };
   })();
+  const clearHistoryActionLabel = `${t('pages.browsingHistory.clear')}: ${historyProducts.length}`;
+  const historyBrowseActionLabel = t('pages.browsingHistory.browse');
+  const historyNextActionLabel = `${historyNextAction.label}: ${historyNextAction.title}`;
+  const resetHistoryFiltersLabel = `${t('pages.productList.resetFilters')}: ${filteredProducts.length} / ${historyProducts.length}`;
 
   const emptyQuickActions = [
     {
@@ -276,16 +284,19 @@ const BrowsingHistory: React.FC = () => {
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('pages.browsingHistory.searchPlaceholder')}
+            aria-label={t('pages.browsingHistory.searchPlaceholder')}
           />
           <Popconfirm
-            popupClassName="shop-mobile-popup-layer browsing-history-clear-popconfirm"
+            classNames={{ root: 'shop-mobile-popup-layer browsing-history-clear-popconfirm' }}
             title={t('pages.browsingHistory.clearConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
+            okButtonProps={{ danger: true, 'aria-label': clearHistoryActionLabel, title: clearHistoryActionLabel }}
+            cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearHistoryActionLabel}`, title: `${t('common.cancel')}: ${clearHistoryActionLabel}` }}
             onConfirm={clearHistory}
             disabled={!hasHistory}
           >
-            <Button danger icon={<DeleteOutlined />} disabled={!hasHistory} aria-label={t('pages.browsingHistory.clear')}>
+            <Button danger icon={<DeleteOutlined />} disabled={!hasHistory} aria-label={clearHistoryActionLabel} title={clearHistoryActionLabel}>
               {t('pages.browsingHistory.clear')}
             </Button>
           </Popconfirm>
@@ -304,22 +315,50 @@ const BrowsingHistory: React.FC = () => {
             </p>
           </div>
           <div className="browsing-history__assistant-actions">
-            <button type="button" className={quickFilter === 'all' ? 'is-active' : ''} onClick={() => setQuickFilter('all')}>
+            <button
+              type="button"
+              className={quickFilter === 'all' ? 'is-active' : ''}
+              aria-pressed={quickFilter === 'all'}
+              aria-label={`${t('pages.browsingHistory.allViewed')}: ${historyProducts.length}`}
+              title={`${t('pages.browsingHistory.allViewed')}: ${historyProducts.length}`}
+              onClick={() => setQuickFilter('all')}
+            >
               <HistoryOutlined />
               <strong>{historyProducts.length}</strong>
               <span>{t('pages.browsingHistory.allViewed')}</span>
             </button>
-            <button type="button" className={quickFilter === 'recent' ? 'is-active' : ''} onClick={() => setQuickFilter('recent')}>
+            <button
+              type="button"
+              className={quickFilter === 'recent' ? 'is-active' : ''}
+              aria-pressed={quickFilter === 'recent'}
+              aria-label={`${t('pages.browsingHistory.viewedToday')}: ${historyInsights.viewedToday}`}
+              title={`${t('pages.browsingHistory.viewedToday')}: ${historyInsights.viewedToday}`}
+              onClick={() => setQuickFilter('recent')}
+            >
               <ClockCircleOutlined />
               <strong>{historyInsights.viewedToday}</strong>
               <span>{t('pages.browsingHistory.viewedToday')}</span>
             </button>
-            <button type="button" className={quickFilter === 'deals' ? 'is-active' : ''} onClick={() => setQuickFilter('deals')}>
+            <button
+              type="button"
+              className={quickFilter === 'deals' ? 'is-active' : ''}
+              aria-pressed={quickFilter === 'deals'}
+              aria-label={`${t('pages.browsingHistory.dealWatch')}: ${historyInsights.deals}`}
+              title={`${t('pages.browsingHistory.dealWatch')}: ${historyInsights.deals}`}
+              onClick={() => setQuickFilter('deals')}
+            >
               <ThunderboltOutlined />
               <strong>{historyInsights.deals}</strong>
               <span>{t('pages.browsingHistory.dealWatch')}</span>
             </button>
-            <button type="button" className={quickFilter === 'lowStock' ? 'is-active' : ''} onClick={() => setQuickFilter('lowStock')}>
+            <button
+              type="button"
+              className={quickFilter === 'lowStock' ? 'is-active' : ''}
+              aria-pressed={quickFilter === 'lowStock'}
+              aria-label={`${t('pages.browsingHistory.lowStockWatch')}: ${historyInsights.lowStock}`}
+              title={`${t('pages.browsingHistory.lowStockWatch')}: ${historyInsights.lowStock}`}
+              onClick={() => setQuickFilter('lowStock')}
+            >
               <FireOutlined />
               <strong>{historyInsights.lowStock}</strong>
               <span>{t('pages.browsingHistory.lowStockWatch')}</span>
@@ -329,13 +368,17 @@ const BrowsingHistory: React.FC = () => {
       ) : null}
 
       {hasHistory && historyInsights.bestRecovery ? (
+        (() => {
+          const productName = historyProductName(historyInsights.bestRecovery!);
+          const resumeActionLabel = `${t('pages.browsingHistory.resumeProduct')}: ${productName}`;
+          return (
         <section className="browsing-history__recovery" aria-label={t('pages.browsingHistory.recoveryTitle')}>
           <div>
             <span className="browsing-history__recovery-eyebrow">{t('pages.browsingHistory.recoveryEyebrow')}</span>
             <h2>{t('pages.browsingHistory.recoveryTitle')}</h2>
             <p>
               {t('pages.browsingHistory.recoverySubtitle', {
-                name: historyInsights.bestRecovery.name,
+                name: productName,
                 price: formatMoney(historyInsights.bestRecovery.effectivePrice ?? historyInsights.bestRecovery.price),
               })}
             </p>
@@ -345,10 +388,12 @@ const BrowsingHistory: React.FC = () => {
             {getLowStockCount(historyInsights.bestRecovery.stock, 1) !== null ? <Tag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</Tag> : null}
             <Tag color="blue">{formatViewedAt(viewedAtById.get(historyInsights.bestRecovery.id))}</Tag>
           </div>
-          <Button type="primary" icon={<ShoppingOutlined />} onClick={() => navigate(`/products/${historyInsights.bestRecovery!.id}`)}>
+          <Button type="primary" icon={<ShoppingOutlined />} aria-label={resumeActionLabel} title={resumeActionLabel} onClick={() => navigate(`/products/${historyInsights.bestRecovery!.id}`)}>
             {t('pages.browsingHistory.resumeProduct')}
           </Button>
         </section>
+          );
+        })()
       ) : null}
 
       {hasHistory ? (
@@ -366,6 +411,8 @@ const BrowsingHistory: React.FC = () => {
           <Button
             type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
             icon={historyNextAction.tone === 'ready' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}
+            aria-label={historyNextActionLabel}
+            title={historyNextActionLabel}
             onClick={historyNextAction.action}
           >
             {historyNextAction.label}
@@ -376,6 +423,7 @@ const BrowsingHistory: React.FC = () => {
       {filteredProducts.length ? (
         <section className="browsing-history__grid">
           {filteredProducts.map((product) => {
+            const productName = historyProductName(product);
             const price = product.effectivePrice ?? product.price;
             const viewedAt = viewedAtById.get(product.id);
             const productReadyToCart = isPurchasable(product) && !needsOptionSelection(product);
@@ -383,15 +431,15 @@ const BrowsingHistory: React.FC = () => {
             const productLowStock = getLowStockCount(product.stock, 1) !== null;
             const productDeal = isDealProduct(product);
             const originalPrice = Number(product.originalPrice || 0);
-            const addActionLabel = `${t('pages.browsingHistory.addToCart')}: ${product.name}`;
-            const viewActionLabel = `${productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}: ${product.name}`;
-            const deleteActionLabel = `${t('common.delete')}: ${product.name}`;
+            const addActionLabel = `${t('pages.browsingHistory.addToCart')}: ${productName}`;
+            const viewActionLabel = `${productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}: ${productName}`;
+            const deleteActionLabel = `${t('common.delete')}: ${productName}`;
             return (
               <article className={`browsing-history__item${productReadyToCart ? ' browsing-history__item--ready' : ''}${productLowStock ? ' browsing-history__item--urgent' : ''}`} key={product.id}>
-                <button type="button" className="browsing-history__image" onClick={() => navigate(`/products/${product.id}`)}>
+                <button type="button" className="browsing-history__image" aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
                   <img
                     src={resolveHistoryImage(product.imageUrl)}
-                    alt={product.name}
+                    alt={productName}
                     onError={(event) => {
                       if (event.currentTarget.src !== fallbackImage) {
                         event.currentTarget.src = fallbackImage;
@@ -401,8 +449,8 @@ const BrowsingHistory: React.FC = () => {
                 </button>
                 <div className="browsing-history__content">
                   <div>
-                    <button type="button" className="browsing-history__name" onClick={() => navigate(`/products/${product.id}`)}>
-                      {product.name}
+                    <button type="button" className="browsing-history__name" aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
+                      {productName}
                     </button>
                     <div className="browsing-history__meta">
                       <span>{formatViewedAt(viewedAt)}</span>
@@ -442,10 +490,10 @@ const BrowsingHistory: React.FC = () => {
           <Empty description={historyProducts.length ? t('pages.browsingHistory.noSearchResults') : t('pages.browsingHistory.empty')}>
             {historyProducts.length ? (
               <div className="browsing-history__emptyActions">
-                <Button type="primary" icon={<ShoppingOutlined />} onClick={() => navigate('/products')}>
+                <Button type="primary" icon={<ShoppingOutlined />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
                   {t('pages.browsingHistory.browse')}
                 </Button>
-                <Button onClick={() => {
+                <Button aria-label={resetHistoryFiltersLabel} title={resetHistoryFiltersLabel} onClick={() => {
                   setKeyword('');
                   setQuickFilter('all');
                 }}>
@@ -459,6 +507,8 @@ const BrowsingHistory: React.FC = () => {
                     key={action.key}
                     type={action.type}
                     icon={action.icon}
+                    aria-label={action.label}
+                    title={action.label}
                     onClick={action.action}
                   >
                     {action.label}
@@ -478,6 +528,8 @@ const BrowsingHistory: React.FC = () => {
         <Button
           type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
           icon={historyNextAction.tone === 'ready' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}
+          aria-label={historyNextActionLabel}
+          title={historyNextActionLabel}
           onClick={historyNextAction.action}
         >
           {historyNextAction.label}

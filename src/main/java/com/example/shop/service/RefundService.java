@@ -30,6 +30,8 @@ import java.util.Map;
 
 @Service
 public class RefundService {
+    private static final String STATUS_PAID = "PAID";
+    private static final String STATUS_RECONCILE_REQUIRED = "RECONCILE_REQUIRED";
     private static final String STATUS_REFUNDED = "REFUNDED";
     private static final String STATUS_REFUNDING = "REFUNDING";
 
@@ -54,7 +56,7 @@ public class RefundService {
     public Payment refundPaidPayment(Order order, String reason, String manualRefundReference) {
         String normalizedReason = normalizeReason(reason);
         String normalizedManualReference = normalizeManualRefundReference(manualRefundReference);
-        Payment payment = paymentRepository.findLatestPaidByOrderId(order.getId());
+        Payment payment = findLatestRefundablePayment(order.getId());
         if (payment == null) {
             Payment refunded = paymentRepository.findLatestRefundedByOrderId(order.getId());
             if (refunded != null) {
@@ -66,6 +68,7 @@ public class RefundService {
             }
             throw new IllegalStateException("No paid payment found for refund");
         }
+        String claimedStatus = refundClaimRevertStatus(payment);
         int claimed = paymentRepository.markRefunding(payment.getId());
         if (claimed == 0) {
             String latestStatus = resolveLatestPaymentStatus(payment.getId());
@@ -78,10 +81,14 @@ public class RefundService {
             }
             throw new IllegalStateException("Refund state claim failed");
         }
-        return completeRefundingPayment(order, payment, normalizedReason, normalizedManualReference, true);
+        return completeRefundingPayment(order, payment, normalizedReason, normalizedManualReference, true, claimedStatus);
     }
 
     private Payment completeRefundingPayment(Order order, Payment payment, String normalizedReason, String normalizedManualReference, boolean newlyClaimed) {
+        return completeRefundingPayment(order, payment, normalizedReason, normalizedManualReference, newlyClaimed, STATUS_PAID);
+    }
+
+    private Payment completeRefundingPayment(Order order, Payment payment, String normalizedReason, String normalizedManualReference, boolean newlyClaimed, String claimedStatus) {
         PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
         String refundReference = null;
         try {
@@ -94,7 +101,7 @@ public class RefundService {
             }
         } catch (RuntimeException e) {
             if (newlyClaimed) {
-                paymentRepository.revertRefunding(payment.getId());
+                paymentRepository.revertRefunding(payment.getId(), claimedStatus);
             }
             throw e;
         }
@@ -103,6 +110,18 @@ public class RefundService {
             throw new IllegalStateException("Refund state update failed");
         }
         return paymentRepository.findById(payment.getId());
+    }
+
+    private Payment findLatestRefundablePayment(Long orderId) {
+        Payment payment = paymentRepository.findLatestPaidByOrderId(orderId);
+        if (payment != null) {
+            return payment;
+        }
+        return paymentRepository.findLatestReconcileRequiredByOrderId(orderId);
+    }
+
+    private String refundClaimRevertStatus(Payment payment) {
+        return STATUS_RECONCILE_REQUIRED.equals(payment.getStatus()) ? STATUS_RECONCILE_REQUIRED : STATUS_PAID;
     }
 
     private boolean shouldRefundViaStripe(Payment payment, PaymentChannelConfig.Channel channel) {

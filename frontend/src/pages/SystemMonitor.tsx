@@ -99,8 +99,57 @@ const SystemMonitor: React.FC = () => {
     loadStatus();
   }, [loadStatus]);
 
-  const memoryRisk = Number(status?.memory.usedPercent || 0) >= 85;
-  const diskRisk = Number(status?.disk.usedPercent || 0) >= 85;
+  const applicationStatus = status?.application || {
+    name: '-',
+    runtimeMode: '-',
+    serverPort: '-',
+    profiles: [],
+    time: '',
+  };
+  const runtimeStatus = status?.runtime || {
+    javaVersion: '-',
+    javaVendor: '-',
+    osName: '-',
+    osVersion: '-',
+    processors: 0,
+    uptimeMs: 0,
+    startTimeMs: 0,
+  };
+  const memoryStatus = status?.memory || {
+    maxBytes: 0,
+    totalBytes: 0,
+    freeBytes: 0,
+    usedBytes: 0,
+    usedPercent: 0,
+  };
+  const diskStatus = status?.disk || {
+    path: '-',
+    totalBytes: 0,
+    freeBytes: 0,
+    usedBytes: 0,
+    usedPercent: 0,
+  };
+  const databaseStatus = status?.database || {
+    url: '',
+    driver: '',
+    status: 'UNKNOWN',
+    ready: false,
+    required: true,
+  };
+  const nacosStatus = status?.nacos || {
+    serverAddr: '',
+    status: 'UNKNOWN',
+    ready: false,
+    configEnabled: false,
+    discoveryEnabled: false,
+    registerEnabled: false,
+    namespace: '',
+    group: 'DEFAULT_GROUP',
+    warnings: [],
+    errors: [],
+  };
+  const memoryRisk = Number(memoryStatus.usedPercent || 0) >= 85;
+  const diskRisk = Number(diskStatus.usedPercent || 0) >= 85;
   const dependencyRisk = status?.ready === false;
   const optionalHealthRisk = status?.healthy === false && !dependencyRisk;
   const productionConfig = status?.productionConfig;
@@ -141,6 +190,7 @@ const SystemMonitor: React.FC = () => {
     on: t('pages.systemMonitor.onStatus'),
     off: t('pages.systemMonitor.offStatus'),
   }), [t]);
+  const refreshSystemStatusActionLabel = `${t('common.refresh')}: ${t('pages.systemMonitor.title')}`;
 
   return (
     <div className="system-monitor">
@@ -150,7 +200,7 @@ const SystemMonitor: React.FC = () => {
           <Title level={2}>{t('pages.systemMonitor.title')}</Title>
           <Text type="secondary">{t('pages.systemMonitor.description')}</Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={loadStatus} loading={loading}>
+        <Button icon={<ReloadOutlined />} aria-label={refreshSystemStatusActionLabel} title={refreshSystemStatusActionLabel} onClick={loadStatus} loading={loading}>
           {t('common.refresh')}
         </Button>
       </div>
@@ -163,13 +213,13 @@ const SystemMonitor: React.FC = () => {
                 <Statistic title={t('pages.systemMonitor.overallStatus')} value={healthText} valueStyle={{ color: dependencyRisk ? '#cf1322' : (memoryRisk || diskRisk || optionalHealthRisk ? '#c46a14' : '#1f8a4c') }} prefix={<SettingOutlined />} />
               </Card>
               <Card>
-                <Statistic title={t('pages.systemMonitor.applicationName')} value={status.application.name} prefix={<CloudServerOutlined />} />
+                <Statistic title={t('pages.systemMonitor.applicationName')} value={applicationStatus.name} prefix={<CloudServerOutlined />} />
               </Card>
               <Card>
-                <Statistic title={t('pages.systemMonitor.uptime')} value={formatDuration(status.runtime.uptimeMs, durationLabels)} />
+                <Statistic title={t('pages.systemMonitor.uptime')} value={formatDuration(runtimeStatus.uptimeMs, durationLabels)} />
               </Card>
               <Card>
-                <Statistic title={t('pages.systemMonitor.cpuCores')} value={status.runtime.processors} />
+                <Statistic title={t('pages.systemMonitor.cpuCores')} value={runtimeStatus.processors} />
               </Card>
             </div>
 
@@ -189,26 +239,26 @@ const SystemMonitor: React.FC = () => {
               <Card title={t('pages.systemMonitor.jvmMemory')} className="system-monitor__card">
                 <Progress
                   type="dashboard"
-                  percent={Math.round(Number(status.memory.usedPercent || 0))}
+                  percent={Math.round(Number(memoryStatus.usedPercent || 0))}
                   status={memoryRisk ? 'exception' : 'normal'}
                 />
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(status.memory.usedBytes)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.max')}>{formatBytes(status.memory.maxBytes)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.free')}>{formatBytes(status.memory.freeBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(memoryStatus.usedBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.max')}>{formatBytes(memoryStatus.maxBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.free')}>{formatBytes(memoryStatus.freeBytes)}</Descriptions.Item>
                 </Descriptions>
               </Card>
 
               <Card title={t('pages.systemMonitor.diskSpace')} className="system-monitor__card">
                 <Progress
                   type="dashboard"
-                  percent={Math.round(Number(status.disk.usedPercent || 0))}
+                  percent={Math.round(Number(diskStatus.usedPercent || 0))}
                   status={diskRisk ? 'exception' : 'normal'}
                 />
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.path')}>{status.disk.path}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(status.disk.usedBytes)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.total')}>{formatBytes(status.disk.totalBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.path')}>{diskStatus.path}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(diskStatus.usedBytes)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.total')}>{formatBytes(diskStatus.totalBytes)}</Descriptions.Item>
                 </Descriptions>
               </Card>
             </div>
@@ -219,13 +269,13 @@ const SystemMonitor: React.FC = () => {
                   <Space size={6}>{statusTag(status.status, status.ready, statusLabels)}{readyTag(status.ready, readyLabels)}</Space>
                 </Descriptions.Item>
                 <Descriptions.Item label={t('pages.systemMonitor.apiAddress')}>{apiBaseUrl}</Descriptions.Item>
-                <Descriptions.Item label={t('pages.systemMonitor.port')}>{status.application.serverPort}</Descriptions.Item>
-                <Descriptions.Item label={t('pages.systemMonitor.mode')}>{status.application.runtimeMode}</Descriptions.Item>
+                <Descriptions.Item label={t('pages.systemMonitor.port')}>{applicationStatus.serverPort}</Descriptions.Item>
+                <Descriptions.Item label={t('pages.systemMonitor.mode')}>{applicationStatus.runtimeMode}</Descriptions.Item>
                 <Descriptions.Item label={t('pages.systemMonitor.profile')}>
-                  {status.application.profiles?.length ? status.application.profiles.map((profile) => <Tag key={profile}>{profile}</Tag>) : <Tag>default</Tag>}
+                  {applicationStatus.profiles?.length ? applicationStatus.profiles.map((profile) => <Tag key={profile}>{profile}</Tag>) : <Tag>default</Tag>}
                 </Descriptions.Item>
-                <Descriptions.Item label="Java">{status.runtime.javaVersion}</Descriptions.Item>
-                <Descriptions.Item label={t('pages.systemMonitor.system')}>{status.runtime.osName} {status.runtime.osVersion}</Descriptions.Item>
+                <Descriptions.Item label="Java">{runtimeStatus.javaVersion}</Descriptions.Item>
+                <Descriptions.Item label={t('pages.systemMonitor.system')}>{runtimeStatus.osName} {runtimeStatus.osVersion}</Descriptions.Item>
               </Descriptions>
             </Card>
 
@@ -239,7 +289,7 @@ const SystemMonitor: React.FC = () => {
                   <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small">
                     <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(productionConfig.ready, readyLabels)}</Descriptions.Item>
                     <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(productionConfig.required, booleanLabels)}</Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.mode')}>{productionConfig.runtimeMode || status.application.runtimeMode}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.mode')}>{productionConfig.runtimeMode || applicationStatus.runtimeMode}</Descriptions.Item>
                     <Descriptions.Item label={t('pages.systemMonitor.mailAccounts')}>
                       {productionConfig.checks?.mail?.configuredAccountCount ?? '-'}
                     </Descriptions.Item>
@@ -262,18 +312,18 @@ const SystemMonitor: React.FC = () => {
 
             <div className="system-monitor__resourceGrid">
               <Card
-                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.database')} {statusTag(status.database.status, status.database.ready, statusLabels)}</Space>}
+                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.database')} {statusTag(databaseStatus.status, databaseStatus.ready, statusLabels)}</Space>}
                 className="system-monitor__card"
               >
                 <Space direction="vertical" className="system-monitor__databaseInfo">
                   <DatabaseOutlined className="system-monitor__largeIcon" />
                   <Descriptions column={1} size="small">
-                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(status.database.ready, readyLabels)}</Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(status.database.latencyMs)}</Descriptions.Item>
-                    <Descriptions.Item label="URL"><Text>{maskDatabaseUrl(status.database.url)}</Text></Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.driver')}>{status.database.driver || '-'}</Descriptions.Item>
-                    {status.database.error ? (
-                      <Descriptions.Item label={t('pages.systemMonitor.error')}>{status.database.error}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(databaseStatus.ready, readyLabels)}</Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(databaseStatus.latencyMs)}</Descriptions.Item>
+                    <Descriptions.Item label="URL"><Text>{maskDatabaseUrl(databaseStatus.url)}</Text></Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.driver')}>{databaseStatus.driver || '-'}</Descriptions.Item>
+                    {databaseStatus.error ? (
+                      <Descriptions.Item label={t('pages.systemMonitor.error')}>{databaseStatus.error}</Descriptions.Item>
                     ) : null}
                   </Descriptions>
                 </Space>
@@ -297,27 +347,27 @@ const SystemMonitor: React.FC = () => {
               </Card>
 
               <Card
-                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.nacosDiscovery')} {statusTag(status.nacos.status, status.nacos.ready, statusLabels)}</Space>}
+                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.nacosDiscovery')} {statusTag(nacosStatus.status, nacosStatus.ready, statusLabels)}</Space>}
                 className="system-monitor__card"
               >
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(status.nacos.ready, readyLabels)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.address')}>{status.nacos.serverAddr || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.namespace')}>{status.nacos.namespace || 'public'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.group')}>{status.nacos.group || 'DEFAULT_GROUP'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.config')}>{booleanTag(status.nacos.configEnabled, booleanLabels)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(nacosStatus.ready, readyLabels)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.address')}>{nacosStatus.serverAddr || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.namespace')}>{nacosStatus.namespace || 'public'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.group')}>{nacosStatus.group || 'DEFAULT_GROUP'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.config')}>{booleanTag(nacosStatus.configEnabled, booleanLabels)}</Descriptions.Item>
                   <Descriptions.Item label={t('pages.systemMonitor.discovery')}>
-                    {booleanTag(status.nacos.discoveryEnabled, booleanLabels)}
+                    {booleanTag(nacosStatus.discoveryEnabled, booleanLabels)}
                   </Descriptions.Item>
                   <Descriptions.Item label={t('pages.systemMonitor.register')}>
-                    {booleanTag(status.nacos.registerEnabled, booleanLabels)}
+                    {booleanTag(nacosStatus.registerEnabled, booleanLabels)}
                   </Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.serviceStatus')}>{status.nacos.serverStatus || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Data ID">{status.nacos.dataId || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(status.nacos.latencyMs)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.warnings')}>{renderMessages(status.nacos.warnings, 'warning')}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.serviceStatus')}>{nacosStatus.serverStatus || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="Data ID">{nacosStatus.dataId || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(nacosStatus.latencyMs)}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.systemMonitor.warnings')}>{renderMessages(nacosStatus.warnings, 'warning')}</Descriptions.Item>
                   <Descriptions.Item label={t('pages.systemMonitor.error')}>
-                    {status.nacos.error || renderMessages(status.nacos.errors, 'error')}
+                    {nacosStatus.error || renderMessages(nacosStatus.errors, 'error')}
                   </Descriptions.Item>
                 </Descriptions>
               </Card>

@@ -16,10 +16,10 @@ export const normalizeAnnouncementLink = (value?: string | null) => {
   if (link.startsWith('/')) return link.startsWith('//') ? '' : link;
   try {
     const url = new URL(link);
-    const isHttp = url.protocol === 'http:' || url.protocol === 'https:';
+    const isHttps = url.protocol === 'https:';
     const hasHost = Boolean(url.hostname.trim());
     const hasCredentials = Boolean(url.username || url.password);
-    return isHttp && hasHost && !hasCredentials ? link : '';
+    return isHttps && hasHost && !hasCredentials ? link : '';
   } catch {
     return '';
   }

@@ -131,6 +131,14 @@ const PaymentInstructions: React.FC = () => {
   const verifiedAmount = Number(payment?.amount ?? order?.totalAmount);
   const amountText = order && Number.isFinite(verifiedAmount) ? formatPaymentAmount(verifiedAmount, currency) : '-';
   const expiresAt = payment?.expiresAt || '';
+  const paymentContextLabel = `${t('pages.paymentInstructions.orderNo')}: ${normalizedOrderNo || '-'} · ${t('pages.paymentInstructions.amount')}: ${amountText}`;
+  const trackOrderActionLabel = `${t('nav.trackOrder')}: ${paymentContextLabel}`;
+  const supportActionLabel = `${t('pages.profile.contactSupport')}: ${paymentContextLabel}`;
+  const paymentSteps = [
+    t('pages.paymentInstructions.stepOne'),
+    t('pages.paymentInstructions.stepTwo'),
+    t('pages.paymentInstructions.stepThree'),
+  ];
   const expiresText = useMemo(() => {
     if (!expiresAt) return t('pages.paymentInstructions.expiryFallback');
     const parsed = new Date(expiresAt);
@@ -155,7 +163,7 @@ const PaymentInstructions: React.FC = () => {
             ) : !guestEmail && !isAuthenticated ? (
               <Alert type="info" showIcon message={t('pages.paymentInstructions.verifyWithTrackOrder')} />
             ) : null}
-            <div className="payment-instructions-page__status">
+            <div className="payment-instructions-page__status" aria-label={`${t('pages.paymentInstructions.pendingTitle')}: ${paymentContextLabel}`}>
               <CreditCardOutlined />
               <span>
                 <Text strong>{t('pages.paymentInstructions.pendingTitle')}</Text>
@@ -182,16 +190,19 @@ const PaymentInstructions: React.FC = () => {
         <Card className="payment-instructions-page__card">
           <Space direction="vertical" size="middle" className="payment-instructions-page__stack">
             <Title level={3}>{t('pages.paymentInstructions.nextTitle')}</Title>
-            <div className="payment-instructions-page__steps">
-              <span>1</span><Text>{t('pages.paymentInstructions.stepOne')}</Text>
-              <span>2</span><Text>{t('pages.paymentInstructions.stepTwo')}</Text>
-              <span>3</span><Text>{t('pages.paymentInstructions.stepThree')}</Text>
+            <div className="payment-instructions-page__steps" role="list" aria-label={`${t('pages.paymentInstructions.nextTitle')}: ${paymentContextLabel}`}>
+              {paymentSteps.map((step, index) => (
+                <div className="payment-instructions-page__step" role="listitem" aria-label={`${index + 1}. ${step}`} key={step}>
+                  <span aria-hidden="true">{index + 1}</span>
+                  <Text>{step}</Text>
+                </div>
+              ))}
             </div>
             <Space wrap className="payment-instructions-page__actions">
-              <Button type="primary" icon={<FileSearchOutlined />} onClick={openTrackOrder}>
+              <Button type="primary" icon={<FileSearchOutlined />} aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackOrder}>
                 {t('nav.trackOrder')}
               </Button>
-              <Button icon={<CustomerServiceOutlined />} onClick={openSupport}>
+              <Button icon={<CustomerServiceOutlined />} aria-label={supportActionLabel} title={supportActionLabel} onClick={openSupport}>
                 {t('pages.profile.contactSupport')}
               </Button>
             </Space>

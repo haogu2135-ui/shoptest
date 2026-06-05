@@ -4,6 +4,7 @@ import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.PaymentCallbackRequest;
 import com.example.shop.dto.PaymentChannelResponse;
 import com.example.shop.dto.PaymentCreateRequest;
+import com.example.shop.dto.PaymentCustomerResponse;
 import com.example.shop.dto.PaymentResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
@@ -71,7 +72,7 @@ public class PaymentController {
             auditLogService.record("PAYMENT_CREATE", "SUCCESS", authentication, "PAYMENT", payment.getId(), httpRequest,
                     "Payment created",
                     "orderId=" + request.getOrderId() + ",channel=" + payment.getChannel() + ",amount=" + payment.getAmount());
-            return ResponseEntity.ok(paymentResponse(payment));
+            return ResponseEntity.ok(customerPaymentResponse(payment));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_CREATE", "FAILURE", authentication, "ORDER", request.getOrderId(), httpRequest,
                     e.getMessage(), "channel=" + request.getChannel());
@@ -95,7 +96,7 @@ public class PaymentController {
             Payment payment = paymentService.simulatePaid(id);
             auditLogService.record("PAYMENT_SIMULATE_PAID", "SUCCESS", authentication, "PAYMENT", id, request,
                     "Payment simulated as paid", payment.getOrderNo());
-            return ResponseEntity.ok(payment);
+            return ResponseEntity.ok(paymentResponse(payment));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SIMULATE_PAID", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
@@ -119,7 +120,7 @@ public class PaymentController {
             Payment payment = paymentService.simulateCallback(id);
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "SUCCESS", authentication, "PAYMENT", id, request,
                     "Payment callback simulated", payment.getOrderNo());
-            return ResponseEntity.ok(payment);
+            return ResponseEntity.ok(paymentResponse(payment));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SIMULATE_CALLBACK", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
@@ -143,7 +144,7 @@ public class PaymentController {
             Payment payment = paymentService.syncPayment(id);
             auditLogService.record("PAYMENT_SYNC", "SUCCESS", authentication, "PAYMENT", id, request,
                     "Payment state synced", payment.getOrderNo());
-            return ResponseEntity.ok(paymentResponse(payment));
+            return ResponseEntity.ok(customerPaymentResponse(payment));
         } catch (IllegalArgumentException | IllegalStateException e) {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
                     e.getMessage(), null);
@@ -201,44 +202,44 @@ public class PaymentController {
     }
 
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<List<PaymentResponse>> findByOrderId(@PathVariable Long orderId,
-                                                               @RequestParam(required = false) String guestEmail,
-                                                               @RequestParam(required = false) String orderNo,
-                                                               Authentication authentication) {
+    public ResponseEntity<List<PaymentCustomerResponse>> findByOrderId(@PathVariable Long orderId,
+                                                                       @RequestParam(required = false) String guestEmail,
+                                                                       @RequestParam(required = false) String orderNo,
+                                                                       Authentication authentication) {
         assertCanSeeOrder(orderId, authentication, guestEmail, orderNo);
         List<Payment> payments = paymentService.findStoredByOrderId(orderId);
-        return ResponseEntity.ok(paymentResponses(payments));
+        return ResponseEntity.ok(customerPaymentResponses(payments));
     }
 
     @GetMapping("/guest/order/{orderId}")
-    public ResponseEntity<List<PaymentResponse>> findGuestByOrderId(@PathVariable Long orderId,
-                                                                    @RequestParam String guestEmail,
-                                                                    @RequestParam String orderNo,
-                                                                    HttpServletRequest request) {
+    public ResponseEntity<List<PaymentCustomerResponse>> findGuestByOrderId(@PathVariable Long orderId,
+                                                                            @RequestParam String guestEmail,
+                                                                            @RequestParam String orderNo,
+                                                                            HttpServletRequest request) {
         assertCanSeeGuestOrder(orderId, guestEmail, orderNo, request);
         return ResponseEntity.ok(paymentService.findStoredByOrderId(orderId).stream()
-                .map(PaymentResponse::from)
+                .map(PaymentCustomerResponse::from)
                 .collect(Collectors.toList()));
     }
 
     @GetMapping("/order/{orderId}/latest")
-    public ResponseEntity<PaymentResponse> findLatestByOrderId(@PathVariable Long orderId,
-                                                               @RequestParam(required = false) String guestEmail,
-                                                               @RequestParam(required = false) String orderNo,
-                                                               Authentication authentication) {
+    public ResponseEntity<PaymentCustomerResponse> findLatestByOrderId(@PathVariable Long orderId,
+                                                                       @RequestParam(required = false) String guestEmail,
+                                                                       @RequestParam(required = false) String orderNo,
+                                                                       Authentication authentication) {
         assertCanSeeOrder(orderId, authentication, guestEmail, orderNo);
         Payment payment = paymentService.findStoredLatestByOrderId(orderId);
-        return payment != null ? ResponseEntity.ok(paymentResponse(payment)) : ResponseEntity.notFound().build();
+        return payment != null ? ResponseEntity.ok(customerPaymentResponse(payment)) : ResponseEntity.notFound().build();
     }
 
     @GetMapping("/guest/order/{orderId}/latest")
-    public ResponseEntity<PaymentResponse> findLatestGuestByOrderId(@PathVariable Long orderId,
-                                                                    @RequestParam String guestEmail,
-                                                                    @RequestParam String orderNo,
-                                                                    HttpServletRequest request) {
+    public ResponseEntity<PaymentCustomerResponse> findLatestGuestByOrderId(@PathVariable Long orderId,
+                                                                            @RequestParam String guestEmail,
+                                                                            @RequestParam String orderNo,
+                                                                            HttpServletRequest request) {
         assertCanSeeGuestOrder(orderId, guestEmail, orderNo, request);
         Payment payment = paymentService.findStoredLatestByOrderId(orderId);
-        return payment != null ? ResponseEntity.ok(PaymentResponse.from(payment)) : ResponseEntity.notFound().build();
+        return payment != null ? ResponseEntity.ok(PaymentCustomerResponse.from(payment)) : ResponseEntity.notFound().build();
     }
 
     private void assertCanSeeOrder(Long orderId, Authentication authentication) {
@@ -289,7 +290,13 @@ public class PaymentController {
     }
 
     private void assertAdminPaymentSimulation(Authentication authentication) {
-        SecurityUtils.assertAdmin(authentication);
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (SecurityUtils.isAdmin(user)
+                && adminRoleService.canAccess(user.getId(), "/admin/orders")
+                && adminRoleService.hasPermission(user.getId(), AdminRoleService.ORDER_PAYMENT_PERMISSION)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Payment simulation permission required");
     }
 
     private void assertCanOperateOrder(Order order, Authentication authentication, String guestEmail, String orderNo, String forbiddenMessage) {
@@ -325,8 +332,12 @@ public class PaymentController {
         return PaymentResponse.from(payment);
     }
 
-    private List<PaymentResponse> paymentResponses(List<Payment> payments) {
-        return payments.stream().map(PaymentResponse::from).collect(Collectors.toList());
+    private PaymentCustomerResponse customerPaymentResponse(Payment payment) {
+        return PaymentCustomerResponse.from(payment);
+    }
+
+    private List<PaymentCustomerResponse> customerPaymentResponses(List<Payment> payments) {
+        return payments.stream().map(PaymentCustomerResponse::from).collect(Collectors.toList());
     }
 
     private String reasonOf(ResponseStatusException e) {

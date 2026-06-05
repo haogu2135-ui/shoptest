@@ -37,6 +37,7 @@ const { TextArea } = Input;
 const { Title, Text } = Typography;
 const categoryImageFallback = imageFallbacks.category;
 const resolveCategoryImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, categoryImageFallback);
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const CategoryManagement: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -79,6 +80,30 @@ const CategoryManagement: React.FC = () => {
     const blockedIds = editingCategory ? descendantIdSet(editingCategory) : new Set<number>();
     return toTreeOptions(categoryTree, (category) => category.level === 3 || blockedIds.has(category.id), language);
   }, [categoryTree, editingCategory, language]);
+  const categoryPageLabel = t('pages.categoryAdmin.title');
+  const getCategoryLabel = useCallback((category?: Category | null) => {
+    if (!category) return t('pages.categoryAdmin.addTitle');
+    return category.localizedContent?.[language]?.name
+      || category.localizedContent?.en?.name
+      || category.name
+      || `${t('pages.categoryAdmin.name')} #${category.id}`;
+  }, [language, t]);
+  const getCategoryPathLabel = useCallback((category?: Category | null) => {
+    if (!category) return t('pages.categoryAdmin.root');
+    return getCategoryPath(flatCategories, category.id, language) || getCategoryLabel(category);
+  }, [flatCategories, getCategoryLabel, language, t]);
+  const categoryEditorLabel = editingCategory
+    ? `${t('pages.categoryAdmin.editTitle')}: ${getCategoryLabel(editingCategory)}`
+    : t('pages.categoryAdmin.addTitle');
+  const categorySearchLabel = `${t('common.search')}: ${categoryPageLabel}`;
+  const addRootCategoryLabel = `${t('pages.categoryAdmin.addRoot')}: ${categoryPageLabel}`;
+  const categoryHealthLabels = {
+    score: `${t('pages.categoryAdmin.healthScore')}: ${categoryHealth.score}`,
+    roots: `${categoryPageLabel}: ${t('pages.categoryAdmin.rootCount')} ${categoryHealth.rootCategories}`,
+    leaves: `${categoryPageLabel}: ${t('pages.categoryAdmin.leafCount')} ${categoryHealth.leafCategories}`,
+    missingImages: `${categoryPageLabel}: ${t('pages.categoryAdmin.missingImages')} ${categoryHealth.missingImages}`,
+    localizationGaps: `${categoryPageLabel}: ${t('pages.categoryAdmin.localizationGaps')} ${categoryHealth.localizationGaps}`,
+  };
 
   const getCategoryReadiness = (category: Category) => [
     category.name?.trim(),
@@ -251,19 +276,24 @@ const CategoryManagement: React.FC = () => {
       dataIndex: 'imageUrl',
       key: 'imageUrl',
       width: 88,
-      render: (url?: string, record?: Category) =>
-        url ? (
-          <Image
-            src={resolveCategoryImage(url)}
-            alt={record?.localizedContent?.[language]?.name || record?.localizedContent?.en?.name || record?.name || t('common.image')}
-            width={56}
-            height={56}
-            style={{ objectFit: 'cover', borderRadius: 6 }}
-            fallback={categoryImageFallback}
-          />
-        ) : (
-          <div className="category-management-page__imagePlaceholder" />
-        ),
+      render: (url?: string, record?: Category) => {
+        const imageLabel = record ? `${t('common.image')}: ${getCategoryLabel(record)}` : t('common.image');
+        return (
+          url ? (
+            <Image
+              src={resolveCategoryImage(url)}
+              alt={imageLabel}
+              title={imageLabel}
+              width={56}
+              height={56}
+              style={{ objectFit: 'cover', borderRadius: 6 }}
+              fallback={categoryImageFallback}
+            />
+          ) : (
+            <div className="category-management-page__imagePlaceholder" role="img" aria-label={`${t('pages.categoryAdmin.missingImages')}: ${record ? getCategoryLabel(record) : t('common.image')}`} title={`${t('pages.categoryAdmin.missingImages')}: ${record ? getCategoryLabel(record) : t('common.image')}`} />
+          )
+        );
+      },
     },
     {
       title: t('pages.categoryAdmin.name'),
@@ -309,8 +339,9 @@ const CategoryManagement: React.FC = () => {
       width: 140,
       render: (_: unknown, record: Category) => {
         const readySignals = getCategoryReadiness(record);
+        const readinessLabel = `${t('pages.categoryAdmin.readiness')}: ${getCategoryLabel(record)} ${t('pages.categoryAdmin.readySignals', { count: readySignals })}`;
         return (
-          <Tag color={readySignals >= 5 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
+          <Tag color={readySignals >= 5 ? 'green' : readySignals >= 3 ? 'orange' : 'red'} aria-label={readinessLabel} title={readinessLabel}>
             {t('pages.categoryAdmin.readySignals', { count: readySignals })}
           </Tag>
         );
@@ -321,7 +352,7 @@ const CategoryManagement: React.FC = () => {
       key: 'action',
       width: 280,
       render: (_: unknown, record: Category) => {
-        const categoryName = record.localizedContent?.[language]?.name || record.localizedContent?.en?.name || record.name || `#${record.id}`;
+        const categoryName = getCategoryLabel(record);
         const childActionLabel = `${t('pages.categoryAdmin.child')}: ${categoryName}`;
         const editActionLabel = `${t('common.edit')}: ${categoryName}`;
         const deleteActionLabel = `${t('common.delete')}: ${categoryName}`;
@@ -336,7 +367,15 @@ const CategoryManagement: React.FC = () => {
               {t('common.edit')}
             </Button> : null}
             {canDeleteCategories ? (
-              <Popconfirm title={t('pages.categoryAdmin.deleteConfirm')} onConfirm={() => handleDelete(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+              <Popconfirm
+                classNames={mobilePopconfirmClassNames}
+                title={t('pages.categoryAdmin.deleteConfirm')}
+                onConfirm={() => handleDelete(record.id)}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${categoryName}`, title: `${t('common.cancel')}: ${categoryName}` }}
+              >
                 <Button icon={<DeleteOutlined />} danger size="small" aria-label={deleteActionLabel} title={deleteActionLabel}>
                   {t('common.delete')}
                 </Button>
@@ -365,9 +404,11 @@ const CategoryManagement: React.FC = () => {
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('common.search')}
             className="category-management-page__keywordInput"
+            aria-label={categorySearchLabel}
+            title={categorySearchLabel}
           />
           {canWriteCategories ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+            <Button type="primary" icon={<PlusOutlined />} aria-label={addRootCategoryLabel} title={addRootCategoryLabel} onClick={() => openModal()}>
               {t('pages.categoryAdmin.addRoot')}
             </Button>
           ) : null}
@@ -380,7 +421,7 @@ const CategoryManagement: React.FC = () => {
           <Title level={5}>{t('pages.categoryAdmin.healthTitle')}</Title>
           <Text type="secondary">{t('pages.categoryAdmin.healthDescription')}</Text>
         </div>
-        <div className="category-management-page__score">
+        <div className="category-management-page__score" role="group" aria-label={categoryHealthLabels.score} title={categoryHealthLabels.score}>
           <Progress
             type="circle"
             percent={categoryHealth.score}
@@ -391,22 +432,22 @@ const CategoryManagement: React.FC = () => {
           <Text type="secondary">{t('pages.categoryAdmin.healthScore')}</Text>
         </div>
         <div className="category-management-page__healthGrid">
-          <div className="category-management-page__healthItem is-ok">
+          <div className="category-management-page__healthItem is-ok" role="group" aria-label={categoryHealthLabels.roots} title={categoryHealthLabels.roots}>
             <BranchesOutlined />
             <strong>{categoryHealth.rootCategories}</strong>
             <span>{t('pages.categoryAdmin.rootCount')}</span>
           </div>
-          <div className="category-management-page__healthItem is-ok">
+          <div className="category-management-page__healthItem is-ok" role="group" aria-label={categoryHealthLabels.leaves} title={categoryHealthLabels.leaves}>
             <BranchesOutlined />
             <strong>{categoryHealth.leafCategories}</strong>
             <span>{t('pages.categoryAdmin.leafCount')}</span>
           </div>
-          <div className={`category-management-page__healthItem ${categoryHealth.missingImages ? 'is-risk' : 'is-ok'}`}>
+          <div className={`category-management-page__healthItem ${categoryHealth.missingImages ? 'is-risk' : 'is-ok'}`} role="group" aria-label={categoryHealthLabels.missingImages} title={categoryHealthLabels.missingImages}>
             <PictureOutlined />
             <strong>{categoryHealth.missingImages}</strong>
             <span>{t('pages.categoryAdmin.missingImages')}</span>
           </div>
-          <div className={`category-management-page__healthItem ${categoryHealth.localizationGaps ? 'is-risk' : 'is-ok'}`}>
+          <div className={`category-management-page__healthItem ${categoryHealth.localizationGaps ? 'is-risk' : 'is-ok'}`} role="group" aria-label={categoryHealthLabels.localizationGaps} title={categoryHealthLabels.localizationGaps}>
             <GlobalOutlined />
             <strong>{categoryHealth.localizationGaps}</strong>
             <span>{t('pages.categoryAdmin.localizationGaps')}</span>
@@ -432,10 +473,14 @@ const CategoryManagement: React.FC = () => {
         onCancel={closeModal}
         confirmLoading={saving}
         destroyOnHidden
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ 'aria-label': `${t('common.save')}: ${categoryEditorLabel}`, title: `${t('common.save')}: ${categoryEditorLabel}` }}
+        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${categoryEditorLabel}`, title: `${t('common.cancel')}: ${categoryEditorLabel}` }}
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.categoryAdmin.name')} rules={[{ required: true, message: t('pages.categoryAdmin.nameRequired') }]}>
-            <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} />
+            <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.name')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.name')}`} />
           </Form.Item>
 
           <Divider>{t('pages.categoryAdmin.languageSettings')}</Divider>
@@ -447,10 +492,10 @@ const CategoryManagement: React.FC = () => {
                 children: (
                   <>
                     <Form.Item name={['localizedContent', 'en', 'name']} label={t('pages.categoryAdmin.englishName')}>
-                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} />
+                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishName')}`} />
                     </Form.Item>
                     <Form.Item name={['localizedContent', 'en', 'description']} label={t('pages.categoryAdmin.englishDescription')}>
-                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} />
+                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishDescription')}`} />
                     </Form.Item>
                   </>
                 ),
@@ -461,10 +506,10 @@ const CategoryManagement: React.FC = () => {
                 children: (
                   <>
                     <Form.Item name={['localizedContent', 'es', 'name']} label={t('pages.categoryAdmin.spanishName')}>
-                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} />
+                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishName')}`} />
                     </Form.Item>
                     <Form.Item name={['localizedContent', 'es', 'description']} label={t('pages.categoryAdmin.spanishDescription')}>
-                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} />
+                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishDescription')}`} />
                     </Form.Item>
                   </>
                 ),
@@ -475,10 +520,10 @@ const CategoryManagement: React.FC = () => {
                 children: (
                   <>
                     <Form.Item name={['localizedContent', 'zh', 'name']} label={t('pages.categoryAdmin.chineseName')}>
-                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} />
+                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseName')}`} />
                     </Form.Item>
                     <Form.Item name={['localizedContent', 'zh', 'description']} label={t('pages.categoryAdmin.chineseDescription')}>
-                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} />
+                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseDescription')}`} />
                     </Form.Item>
                   </>
                 ),
@@ -492,20 +537,23 @@ const CategoryManagement: React.FC = () => {
               treeDefaultExpandAll
               placeholder={t('pages.categoryAdmin.noParent')}
               treeData={parentOptions}
-              popupClassName="shop-mobile-popup-layer"
+              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
               getPopupContainer={() => document.body}
+              aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.parent')}`}
+              title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.parent')} ${editingCategory ? getCategoryPathLabel(editingCategory) : t('pages.categoryAdmin.root')}`}
             />
           </Form.Item>
 
           <Form.Item name="imageUrl" label={t('pages.categoryAdmin.imageUrl')}>
-            <Input placeholder="https://..." onChange={(event) => setImagePreviewUrl(event.target.value)} />
+            <Input placeholder="https://..." onChange={(event) => setImagePreviewUrl(event.target.value)} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.imageUrl')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.imageUrl')}`} />
           </Form.Item>
 
           {imagePreviewUrl ? (
             <div className="category-management-page__preview">
               <Image
                 src={resolveCategoryImage(imagePreviewUrl)}
-                alt={editingCategory?.localizedContent?.[language]?.name || editingCategory?.localizedContent?.en?.name || editingCategory?.name || t('common.image')}
+                alt={`${t('common.image')}: ${editingCategory ? getCategoryLabel(editingCategory) : t('pages.categoryAdmin.addTitle')}`}
+                title={`${t('common.image')}: ${editingCategory ? getCategoryLabel(editingCategory) : t('pages.categoryAdmin.addTitle')}`}
                 width={180}
                 height={120}
                 style={{ objectFit: 'cover', borderRadius: 8 }}
@@ -515,7 +563,7 @@ const CategoryManagement: React.FC = () => {
           ) : null}
 
           <Form.Item name="description" label={t('pages.categoryAdmin.description')}>
-            <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} />
+            <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.description')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.description')}`} />
           </Form.Item>
         </Form>
       </Modal>

@@ -89,7 +89,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
   const getCartItemName = useCallback((item: Pick<CartItem, 'productId' | 'productName'>) => (
-    item.productName || t('pages.profile.productFallback', { id: item.productId })
+    (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
   ), [t]);
   const closeDrawer = useCallback(() => setOpen(false), []);
 
@@ -527,6 +527,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       onClick: () => goCheckout(),
     };
   })();
+  const clearBlockedActionLabel = `${t('pages.cart.drawerClearBlocked')}: ${t('pages.cart.blockedItems', { count: blockedCount })}`;
+  const checkoutDrawerActionLabel = `${t('pages.cart.checkout')}: ${formatMoney(subtotal)}`;
+  const fullCartActionLabel = `${t('pages.cart.viewFullCart')}: ${t('pages.cart.yourCart')}`;
+  const emptyDrawerBrowseActionLabel = `${t('pages.cart.browse')}: ${t('pages.cart.empty')}`;
 
   return (
     <Drawer
@@ -580,14 +584,18 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             </span>
             {drawerNextAction.tone === 'attention' ? (
               <Popconfirm
-                popupClassName="shop-mobile-popup-layer cart-drawer-popconfirm"
+                classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
                 title={t('pages.cart.drawerClearBlockedConfirm', { count: blockedCount })}
                 onConfirm={drawerNextAction.onClick}
                 okText={t('pages.cart.drawerClearBlocked')}
                 cancelText={t('common.cancel')}
+                okButtonProps={{ danger: true, 'aria-label': clearBlockedActionLabel, title: clearBlockedActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearBlockedActionLabel}`, title: `${t('common.cancel')}: ${clearBlockedActionLabel}` }}
               >
                 <Button
                   size="small"
+                  aria-label={clearBlockedActionLabel}
+                  title={clearBlockedActionLabel}
                   disabled={checkoutSubmitting}
                 >
                   {drawerNextAction.label}
@@ -597,6 +605,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               <Button
                 size="small"
                 type={drawerNextAction.tone === 'ready' ? 'primary' : 'default'}
+                aria-label={`${drawerNextAction.label}: ${drawerNextAction.title}`}
+                title={`${drawerNextAction.label}: ${drawerNextAction.title}`}
                 onClick={drawerNextAction.onClick}
                 disabled={checkoutSubmitting}
               >
@@ -610,13 +620,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           <div className="cart-drawer__unavailable">
             <Text type="secondary">{t('pages.cart.unavailableSummary', { count: blockedCount })}</Text>
             <Popconfirm
-              popupClassName="shop-mobile-popup-layer cart-drawer-popconfirm"
+              classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
               title={t('pages.cart.drawerClearBlockedConfirm', { count: blockedCount })}
               onConfirm={clearBlockedItems}
               okText={t('pages.cart.drawerClearBlocked')}
               cancelText={t('common.cancel')}
+              okButtonProps={{ danger: true, 'aria-label': clearBlockedActionLabel, title: clearBlockedActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearBlockedActionLabel}`, title: `${t('common.cancel')}: ${clearBlockedActionLabel}` }}
             >
-              <Button size="small">{t('pages.cart.drawerClearBlocked')}</Button>
+              <Button size="small" aria-label={clearBlockedActionLabel} title={clearBlockedActionLabel}>{t('pages.cart.drawerClearBlocked')}</Button>
             </Popconfirm>
           </div>
         ) : null}
@@ -644,15 +656,23 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             <div className="cart-drawer__expressWrap">
               <Space.Compact block className="cart-drawer__express">
                 {expressPaymentCodes.map((code) => (
-                  <Button
-                    key={code}
-                    disabled={!drawerReady || checkoutSubmitting}
-                    loading={checkoutPaymentSubmitting === code}
-                    icon={expressPaymentIcon(code)}
-                    onClick={() => goCheckout(code)}
-                  >
-                    {paymentMethodLabel(code, t)}
-                  </Button>
+                  (() => {
+                    const paymentLabel = paymentMethodLabel(code, t);
+                    const expressPaymentActionLabel = `${t('pages.checkout.expressCheckout')}: ${paymentLabel}, ${formatMoney(subtotal)}`;
+                    return (
+                      <Button
+                        key={code}
+                        disabled={!drawerReady || checkoutSubmitting}
+                        loading={checkoutPaymentSubmitting === code}
+                        icon={expressPaymentIcon(code)}
+                        aria-label={expressPaymentActionLabel}
+                        title={expressPaymentActionLabel}
+                        onClick={() => goCheckout(code)}
+                      >
+                        {paymentLabel}
+                      </Button>
+                    );
+                  })()
                 ))}
               </Space.Compact>
             </div>
@@ -661,7 +681,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
         {items.length === 0 ? (
           <Empty image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />} description={t('pages.cart.empty')}>
-            <Button type="primary" onClick={() => { setOpen(false); navigate('/products'); }}>
+            <Button type="primary" aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => { setOpen(false); navigate('/products'); }}>
               {t('pages.cart.browse')}
             </Button>
           </Empty>
@@ -674,6 +694,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               const itemName = getCartItemName(item);
               const saveActionLabel = `${t('pages.cart.saveForLaterShort')}: ${itemName}`;
               const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
+              const productLinkLabel = `${t('pages.productList.viewPick')}: ${itemName}`;
               return (
               <List.Item
                 className="cart-drawer__item"
@@ -683,9 +704,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                   </Button>,
                   <Popconfirm
                     key="delete"
-                    popupClassName="shop-mobile-popup-layer cart-drawer-popconfirm"
+                    classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
                     title={t('pages.cart.deleteConfirm')}
                     onConfirm={() => removeItem(item)}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
+                    okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
                     <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>
                       {t('common.delete')}
@@ -708,7 +733,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                       onError={applyCartImageFallback}
                     />
                   }
-                  title={<button type="button" className="cart-drawer__productLink" onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{itemName}</button>}
+                  title={<button type="button" className="cart-drawer__productLink" aria-label={productLinkLabel} title={productLinkLabel} onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{itemName}</button>}
                   description={
                     <Space direction="vertical" size={4}>
                       {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
@@ -733,6 +758,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                           value={item.quantity}
                           disabled={!isAvailable(item)}
                           status={updatingQuantityIds[item.id] ? 'warning' : undefined}
+                          aria-label={`${t('common.quantity')}: ${itemName}`}
+                          title={`${t('common.quantity')}: ${itemName}`}
                           onChange={(value) => updateQuantity(item, value || 1)}
                         />
                       </div>
@@ -773,6 +800,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             size="large"
             className="cart-drawer__checkoutButton"
             onClick={() => goCheckout()}
+            aria-label={checkoutDrawerActionLabel}
+            title={checkoutDrawerActionLabel}
             loading={checkoutPaymentSubmitting === 'standard'}
             disabled={checkoutItems.length === 0 || checkoutSubmitting}
           >
@@ -786,7 +815,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           <Text type="secondary" className="cart-drawer__footerHint">
             {t('pages.cart.drawerFooterHint')}
           </Text>
-          <Button block onClick={() => { setOpen(false); navigate('/cart'); }}>
+          <Button block aria-label={fullCartActionLabel} title={fullCartActionLabel} onClick={() => { setOpen(false); navigate('/cart'); }}>
             {t('pages.cart.viewFullCart')}
           </Button>
         </Space>

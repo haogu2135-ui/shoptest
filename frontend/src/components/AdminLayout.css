@@ -1,4 +1,7 @@
 ﻿.admin-layout {
+  --shop-admin-safe-top: 0px;
+  --shop-admin-safe-bottom: 0px;
+  --shop-admin-header-height: 58px;
   min-height: 100vh;
   background: #f4f7f5;
 }
@@ -317,6 +320,11 @@
   min-width: 0;
 }
 
+.admin-layout > .ant-layout {
+  flex: 1 1 0;
+  width: 0;
+}
+
 .admin-layout__sider.ant-layout-sider-collapsed .admin-layout__brand h4.ant-typography {
   letter-spacing: 0;
 }
@@ -349,6 +357,10 @@
 }
 
 @media (max-width: 430px) {
+  .admin-layout {
+    --shop-admin-header-height: 52px;
+  }
+
   .admin-layout__sider.ant-layout-sider {
     box-shadow: 4px 0 16px rgba(18, 71, 52, 0.12);
   }
@@ -676,5 +688,88 @@
   .admin-layout__content .ant-btn {
     min-height: 44px;
     touch-action: manipulation;
+  }
+}
+
+body.shop-mobile-app .admin-layout {
+  --shop-admin-safe-top: env(safe-area-inset-top, 0px);
+  --shop-admin-safe-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--shop-admin-safe-bottom);
+}
+
+body.shop-mobile-app .admin-layout__loading {
+  min-height: calc(100vh - var(--shop-admin-safe-top));
+  padding-top: var(--shop-admin-safe-top);
+  padding-bottom: var(--shop-admin-safe-bottom);
+}
+
+body.shop-mobile-app .admin-layout__sider.ant-layout-sider {
+  top: var(--shop-admin-safe-top);
+  height: calc(100vh - var(--shop-admin-safe-top));
+}
+
+body.shop-mobile-app .admin-layout__menu.ant-menu-dark {
+  max-height: calc(100vh - var(--shop-admin-safe-top) - 108px);
+}
+
+body.shop-mobile-app .admin-layout__header.ant-layout-header {
+  top: var(--shop-admin-safe-top);
+}
+
+body.shop-mobile-app .admin-layout__content.ant-layout-content {
+  padding-bottom: calc(24px + var(--shop-admin-safe-bottom));
+}
+
+@media (max-width: 720px) {
+  body.shop-mobile-app .admin-layout__menu.ant-menu-dark {
+    max-height: calc(100vh - var(--shop-admin-safe-top) - 96px);
+  }
+
+  body.shop-mobile-app .admin-layout__content.ant-layout-content {
+    padding-bottom: calc(10px + var(--shop-admin-safe-bottom));
+  }
+}
+
+@media (max-width: 430px) {
+  body.shop-mobile-app .admin-layout__menu.ant-menu-dark {
+    max-height: calc(100vh - var(--shop-admin-safe-top) - 88px);
+  }
+
+  body.shop-mobile-app .admin-layout__content.ant-layout-content {
+    padding-bottom: calc(8px + var(--shop-admin-safe-bottom));
+  }
+}
+
+/* Final mobile/App admin brand guard: collapsed sidebars have room for the
+   icon/menu affordance, not the full Admin word. */
+@media (max-width: 720px) {
+  .admin-layout__sider.ant-layout-sider-collapsed .admin-layout__brand h4.ant-typography,
+  .admin-layout__sider.ant-layout-sider-collapsed .admin-layout__brand .ant-typography,
+  body.shop-mobile-app .admin-layout__brand h4.ant-typography,
+  body.shop-mobile-app .admin-layout__brand .ant-typography {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  .admin-layout__sider.ant-layout-sider-collapsed .admin-layout__brand::before,
+  body.shop-mobile-app .admin-layout__brand::before {
+    content: 'A';
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 900;
+    line-height: 1;
   }
 }

@@ -2608,7 +2608,7 @@ const scanRootForContrast = (
 };
 
 const applyMobileContrastFixes = () => {
-  if (!isBrowser() || !document.body.classList.contains('shop-mobile-app')) return;
+  if (!isBrowser() || !document.body?.classList.contains('shop-mobile-app')) return;
   const roots = Array.from(document.querySelectorAll(MOBILE_SHELL_ROOT_SELECTOR));
   if (!roots.length) return;
 

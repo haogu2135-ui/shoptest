@@ -281,6 +281,18 @@
   transform: translateY(-1px);
 }
 
+.audit-log-page__opsMetrics button[aria-pressed="true"] {
+  border-color: #124734;
+  background: #f4fbf7;
+  color: #124734;
+  box-shadow: 0 0 0 2px rgba(18, 71, 52, 0.08), 0 8px 18px rgba(18, 71, 52, 0.16);
+  transform: translateY(-1px);
+}
+
+.audit-log-page__opsMetrics button[aria-pressed="true"] span {
+  color: inherit;
+}
+
 .audit-log-page__opsMetrics button.is-risk {
   border-color: #ffa39e;
   background: #fff1f0;
@@ -291,6 +303,20 @@
   border-color: #ffe58f;
   background: #fffbe6;
   color: #8c6d1f;
+}
+
+.audit-log-page__opsMetrics button.is-risk[aria-pressed="true"] {
+  border-color: #d92d20;
+  background: #fff5f3;
+  color: #a61b12;
+  box-shadow: 0 0 0 2px rgba(217, 45, 32, 0.1), 0 8px 18px rgba(217, 45, 32, 0.16);
+}
+
+.audit-log-page__opsMetrics button.is-watch[aria-pressed="true"] {
+  border-color: #b7791f;
+  background: #fff8db;
+  color: #7a4f12;
+  box-shadow: 0 0 0 2px rgba(183, 121, 31, 0.12), 0 8px 18px rgba(183, 121, 31, 0.16);
 }
 
 .audit-log-page__opsMetrics strong {

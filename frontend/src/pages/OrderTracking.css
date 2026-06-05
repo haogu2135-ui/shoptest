@@ -27,6 +27,11 @@
   border-radius: 8px;
 }
 
+.order-tracking-page__lookupError {
+  margin-top: 12px;
+  border-radius: 8px;
+}
+
 .order-tracking-page__restrictedNotice {
   border-radius: 8px;
 }
@@ -1351,5 +1356,14 @@
   .order-tracking-page__returnModal textarea.ant-input,
   .order-tracking-page__returnModal .ant-modal-footer .ant-btn {
     min-height: 44px;
+  }
+}
+
+/* Mobile audit closure: keep the guest lookup submit button at 44px even when
+   compact form spacing rules are active. */
+@media (max-width: 780px) {
+  .order-tracking-page__lookupButton.ant-btn {
+    min-height: 44px !important;
+    height: 44px !important;
   }
 }

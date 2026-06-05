@@ -55,6 +55,8 @@ const RegistryManagement: React.FC = () => {
     enabled: t('pages.registryAdmin.enabledStatus'),
     disabled: t('pages.registryAdmin.disabledStatus'),
   };
+  const refreshRegistryStatusActionLabel = `${t('common.refresh')}: ${t('pages.registryAdmin.title')}`;
+  const serviceSearchInputLabel = `${t('common.search')}: ${t('pages.registryAdmin.discoveredServiceList')}`;
 
   return (
     <div className="registry-management">
@@ -64,7 +66,7 @@ const RegistryManagement: React.FC = () => {
           <Title level={2}>{t('pages.registryAdmin.title')}</Title>
           <Text type="secondary">{t('pages.registryAdmin.description')}</Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={loadStatus} loading={loading}>
+        <Button icon={<ReloadOutlined />} aria-label={refreshRegistryStatusActionLabel} title={refreshRegistryStatusActionLabel} onClick={loadStatus} loading={loading}>
           {t('common.refresh')}
         </Button>
       </div>
@@ -159,6 +161,8 @@ const RegistryManagement: React.FC = () => {
                   value={serviceKeyword}
                   onChange={(event) => setServiceKeyword(event.target.value)}
                   placeholder={t('common.search')}
+                  aria-label={serviceSearchInputLabel}
+                  title={serviceSearchInputLabel}
                 />
               )}
             >

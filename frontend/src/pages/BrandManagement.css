@@ -318,21 +318,20 @@
   }
 
   .brand-management-page__healthGrid {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    margin-inline: -14px;
-    padding: 0 14px 2px;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-type: none;
   }
 
   .brand-management-page__healthItem,
   .brand-management-page--es .brand-management-page__healthItem {
-    flex: 0 0 138px;
     min-height: 82px;
     padding: 10px;
-    scroll-snap-align: start;
+    scroll-snap-align: none;
   }
 
   .brand-management-page__healthItem strong {
@@ -351,13 +350,13 @@
   }
 
   .brand-management-page__healthGrid {
-    margin-inline: -12px;
-    padding-inline: 12px;
+    margin-inline: 0;
+    padding-inline: 0;
   }
 
   .brand-management-page__healthItem,
   .brand-management-page--es .brand-management-page__healthItem {
-    flex-basis: 132px;
+    min-height: 80px;
   }
 
   .brand-management-page .ant-table-cell .ant-space {
@@ -505,14 +504,14 @@
   }
 
   .brand-management-page__healthGrid {
-    scrollbar-width: none;
-    overscroll-behavior-inline: contain;
-    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
-    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+    scrollbar-width: auto;
+    overscroll-behavior-inline: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .brand-management-page__healthGrid::-webkit-scrollbar {
-    display: none;
+    display: initial;
   }
 
   .brand-management-page .ant-table-content {

@@ -2,6 +2,7 @@ package com.example.shop.controller;
 
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.PaymentResponse;
+import com.example.shop.dto.PaymentCustomerResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
 import com.example.shop.security.UserDetailsImpl;
@@ -24,9 +25,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -54,7 +56,10 @@ class PaymentControllerSimulationAccessTest {
         payment.setOrderNo("SO202605260001");
         payment.setAmount(new BigDecimal("88.00"));
         payment.setStatus("PAID");
+        payment.setPaymentUrl("https://payments.example.com/pay/internal");
+        payment.setProviderReference("provider-secret");
 
+        grantOrderPaymentPermission();
         when(paymentService.simulateCallback(9L)).thenReturn(payment);
 
         ResponseEntity<?> response = controller.simulateCallback(
@@ -64,8 +69,51 @@ class PaymentControllerSimulationAccessTest {
                 new MockHttpServletRequest("POST", "/payments/9/simulate-callback")
         );
 
-        assertSame(payment, response.getBody());
+        PaymentResponse body = (PaymentResponse) response.getBody();
+        assertNotNull(body);
+        assertEquals(payment.getId(), body.getId());
+        assertEquals(payment.getOrderNo(), body.getOrderNo());
+        assertNull(body.getPaymentUrl());
         verify(paymentService).simulateCallback(9L);
+    }
+
+    @Test
+    void adminSimulatePaidKeepsAdminPaymentResponse() {
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605260001");
+        payment.setAmount(new BigDecimal("88.00"));
+        payment.setStatus("REFUNDED");
+        payment.setRefundReference("refund-visible");
+
+        grantOrderPaymentPermission();
+        when(paymentService.simulatePaid(9L)).thenReturn(payment);
+
+        ResponseEntity<?> response = controller.simulatePaid(
+                9L,
+                Map.of(),
+                adminAuthentication(),
+                new MockHttpServletRequest("POST", "/payments/9/simulate-paid")
+        );
+
+        PaymentResponse body = assertInstanceOf(PaymentResponse.class, response.getBody());
+        assertEquals(payment.getId(), body.getId());
+        assertEquals(payment.getRefundReference(), body.getRefundReference());
+        verify(paymentService).simulatePaid(9L);
+    }
+
+    @Test
+    void adminWithoutOrderPaymentPermissionCannotUseSimulation() {
+        when(adminRoleService.canAccess(1L, "/admin/orders")).thenReturn(true);
+
+        assertThrows(ResponseStatusException.class, () -> controller.simulatePaid(
+                9L,
+                Map.of(),
+                adminAuthentication(),
+                new MockHttpServletRequest("POST", "/payments/9/simulate-paid")
+        ));
+        verify(paymentService, never()).simulatePaid(9L);
     }
 
     @Test
@@ -103,7 +151,7 @@ class PaymentControllerSimulationAccessTest {
                 new MockHttpServletRequest("POST", "/payments")
         );
 
-        PaymentResponse body = (PaymentResponse) response.getBody();
+        PaymentCustomerResponse body = (PaymentCustomerResponse) response.getBody();
         assertNotNull(body);
         assertEquals(payment.getId(), body.getId());
         assertEquals(payment.getOrderId(), body.getOrderId());
@@ -163,6 +211,11 @@ class PaymentControllerSimulationAccessTest {
                 "encoded-password",
                 List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+    }
+
+    private void grantOrderPaymentPermission() {
+        when(adminRoleService.canAccess(1L, "/admin/orders")).thenReturn(true);
+        when(adminRoleService.hasPermission(1L, AdminRoleService.ORDER_PAYMENT_PERMISSION)).thenReturn(true);
     }
 
     private Authentication customerAuthentication(Long userId) {

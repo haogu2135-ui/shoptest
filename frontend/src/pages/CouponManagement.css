@@ -12,6 +12,18 @@
   width: 100%;
 }
 
+.coupon-management-page__srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .coupon-management-page__header {
   display: flex;
   align-items: center;
@@ -318,20 +330,19 @@
   }
 
   .coupon-management-insights__cards {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    margin-inline: -12px;
-    padding: 0 12px 2px;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-type: none;
   }
 
   .coupon-management-insights__cards div {
-    flex: 0 0 138px;
     min-height: 82px;
     padding: 10px;
-    scroll-snap-align: start;
+    scroll-snap-align: none;
   }
 
   .coupon-management-insights__cards strong {
@@ -350,7 +361,7 @@
 
 @media (max-width: 430px) {
   .coupon-management-insights__cards div {
-    flex-basis: 132px;
+    min-height: 80px;
   }
 
   .coupon-management-page .ant-table-cell .ant-space {
@@ -367,13 +378,13 @@
 /* Final mobile coupon admin action stability pass */
 @media (max-width: 720px) {
   .coupon-management-insights__cards {
-    overscroll-behavior-inline: contain;
-    scrollbar-width: none;
-    touch-action: pan-x;
+    overscroll-behavior-inline: auto;
+    scrollbar-width: auto;
+    touch-action: manipulation;
   }
 
   .coupon-management-insights__cards::-webkit-scrollbar {
-    display: none;
+    display: initial;
   }
 
   .coupon-management-page .ant-btn,
@@ -405,7 +416,7 @@
 
 @media (max-width: 360px) {
   .coupon-management-insights__cards div {
-    flex-basis: 122px;
+    min-height: 78px;
   }
 }
 
@@ -565,8 +576,8 @@
   }
 
   .coupon-management-insights__cards {
-    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
-    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent);
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .coupon-management-page .ant-table-content {

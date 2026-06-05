@@ -545,4 +545,18 @@
   .category-management-page__editorModal .ant-tree-select-selector {
     min-height: 44px;
   }
+
+  .category-management-page__healthGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    overflow-x: visible;
+    padding-bottom: 0;
+    scrollbar-width: auto;
+  }
+
+  .category-management-page__healthCard {
+    flex: initial;
+    min-width: 0;
+  }
 }

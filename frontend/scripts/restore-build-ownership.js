@@ -22,6 +22,7 @@ if (isRootProcess()) {
   const owner = fs.statSync(projectRoot);
   const targets = [
     path.join(frontendRoot, 'build'),
+    path.join(frontendRoot, 'node_modules', '.cache'),
     path.join(frontendRoot, 'public', 'downloads'),
   ];
 

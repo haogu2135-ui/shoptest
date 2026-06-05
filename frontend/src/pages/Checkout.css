@@ -1352,6 +1352,10 @@
     grid-template-columns: 1fr;
   }
 
+  .checkout-page__submitReview .checkout-page__submitAction {
+    display: none;
+  }
+
   .checkout-page__item {
     align-items: flex-start;
   }

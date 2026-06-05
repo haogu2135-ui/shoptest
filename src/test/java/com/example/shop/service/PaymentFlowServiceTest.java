@@ -16,6 +16,7 @@ import com.example.shop.repository.OrderRepository;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -38,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -294,6 +296,46 @@ class PaymentFlowServiceTest {
 
         verify(paymentRepository).markExpired(9L);
         verify(orderService, never()).cancelOrder(42L);
+        verify(orderService, never()).cancelOrderForPaymentExpiry(42L);
+    }
+
+    @Test
+    void expiringLastPendingPaymentClaimsOrderBeforeMarkingPaymentExpired() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        CouponService couponService = mock(CouponService.class);
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setStatus("PENDING");
+        payment.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        order.setStatus("PENDING_PAYMENT");
+
+        when(paymentRepository.findById(9L)).thenReturn(payment);
+        when(paymentRepository.countActivePendingByOrderId(42L)).thenReturn(0L);
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "CANCELLED")).thenReturn(1);
+        when(paymentRepository.markExpired(9L)).thenReturn(1);
+
+        OrderService orderService = new OrderService();
+        ReflectionTestUtils.setField(orderService, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(orderService, "orderItemRepository", orderItemRepository);
+        ReflectionTestUtils.setField(orderService, "couponService", couponService);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+
+        service.expireSinglePendingPayment(9L);
+
+        InOrder inOrder = inOrder(orderRepository, paymentRepository);
+        inOrder.verify(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "CANCELLED");
+        inOrder.verify(paymentRepository).markExpired(9L);
+        inOrder.verify(paymentRepository).markPendingCancelledByOrderId(42L);
     }
 
     @Test
@@ -428,7 +470,6 @@ class PaymentFlowServiceTest {
         payment.setChannel("OXXO");
         payment.setStatus("PENDING");
         payment.setAmount(new BigDecimal("88.00"));
-
         Order cancelledOrder = new Order();
         cancelledOrder.setId(42L);
         cancelledOrder.setStatus("CANCELLED");
@@ -455,8 +496,405 @@ class PaymentFlowServiceTest {
 
         when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
         when(orderService.getOrderById(42L)).thenReturn(cancelledOrder);
+        when(orderService.updateOrderStatus(42L, "PENDING_SHIPMENT")).thenReturn(false);
 
         assertThrows(IllegalStateException.class, () -> service.handleCallback(request));
+        verify(paymentRepository, never()).markPaidDetailed(eq(9L), any(), any(), any());
+    }
+
+    @Test
+    void successfulCallbackAfterLocalPaymentCancellationRequiresReconciliation() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("CANCELLED");
+        payment.setAmount(new BigDecimal("88.00"));
+        Payment reconcilePayment = new Payment();
+        reconcilePayment.setId(9L);
+        reconcilePayment.setOrderId(42L);
+        reconcilePayment.setOrderNo(payment.getOrderNo());
+        reconcilePayment.setChannel(payment.getChannel());
+        reconcilePayment.setStatus("RECONCILE_REQUIRED");
+        reconcilePayment.setAmount(payment.getAmount());
+        reconcilePayment.setTransactionId("provider-txn-1");
+
+        PaymentService service = new PaymentService();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
+        when(runtimeConfig.getLong("payment.callback-max-skew-seconds", 300)).thenReturn(300L);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderNo(payment.getOrderNo());
+        request.setChannel(payment.getChannel());
+        request.setTransactionId("provider-txn-1");
+        request.setProviderReference("provider-ref-1");
+        request.setStatus("SUCCESS");
+        request.setAmount(payment.getAmount());
+        request.setCallbackTimestamp(Instant.now().getEpochSecond());
+        request.setSignature(service.expectedSignature(request));
+
+        when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+        when(paymentRepository.markReconcileRequired(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any())).thenReturn(1);
+        when(paymentRepository.findById(9L)).thenReturn(reconcilePayment);
+
+        Payment result = service.handleCallback(request);
+
+        assertEquals("RECONCILE_REQUIRED", result.getStatus());
+        verify(orderService, never()).updateOrderStatus(42L, "PENDING_SHIPMENT");
+        verify(paymentRepository, never()).markPaidDetailed(eq(9L), any(), any(), any());
+    }
+
+    @Test
+    void successfulCallbackAfterOrderCancellationWithPendingPaymentRequiresReconciliation() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("CANCELLED");
+        order.setTotalAmount(payment.getAmount());
+        Payment reconcilePayment = new Payment();
+        reconcilePayment.setId(9L);
+        reconcilePayment.setOrderId(42L);
+        reconcilePayment.setOrderNo(payment.getOrderNo());
+        reconcilePayment.setChannel(payment.getChannel());
+        reconcilePayment.setStatus("RECONCILE_REQUIRED");
+        reconcilePayment.setAmount(payment.getAmount());
+        reconcilePayment.setTransactionId("provider-txn-1");
+
+        PaymentService service = new PaymentService();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
+        when(runtimeConfig.getLong("payment.callback-max-skew-seconds", 300)).thenReturn(300L);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderNo(payment.getOrderNo());
+        request.setChannel(payment.getChannel());
+        request.setTransactionId("provider-txn-1");
+        request.setProviderReference("provider-ref-1");
+        request.setStatus("SUCCESS");
+        request.setAmount(payment.getAmount());
+        request.setCallbackTimestamp(Instant.now().getEpochSecond());
+        request.setSignature(service.expectedSignature(request));
+
+        when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(paymentRepository.markReconcileRequired(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any())).thenReturn(1);
+        when(paymentRepository.findById(9L)).thenReturn(reconcilePayment);
+
+        Payment result = service.handleCallback(request);
+
+        assertEquals("RECONCILE_REQUIRED", result.getStatus());
+        verify(orderService, never()).updateOrderStatus(42L, "PENDING_SHIPMENT");
+        verify(paymentRepository, never()).markPaidDetailed(eq(9L), any(), any(), any());
+    }
+
+    @Test
+    void successfulCallbackClaimsOrderBeforeMarkingPaymentPaid() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(payment.getAmount());
+        Payment paidPayment = new Payment();
+        paidPayment.setId(9L);
+        paidPayment.setOrderId(42L);
+        paidPayment.setOrderNo(payment.getOrderNo());
+        paidPayment.setChannel(payment.getChannel());
+        paidPayment.setStatus("PAID");
+        paidPayment.setAmount(payment.getAmount());
+
+        PaymentService service = new PaymentService();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
+        when(runtimeConfig.getLong("payment.callback-max-skew-seconds", 300)).thenReturn(300L);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderNo(payment.getOrderNo());
+        request.setChannel(payment.getChannel());
+        request.setTransactionId("provider-txn-1");
+        request.setProviderReference("provider-ref-1");
+        request.setStatus("SUCCESS");
+        request.setAmount(payment.getAmount());
+        request.setCallbackTimestamp(Instant.now().getEpochSecond());
+        request.setSignature(service.expectedSignature(request));
+
+        when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.updateOrderStatus(42L, "PENDING_SHIPMENT")).thenReturn(true);
+        when(paymentRepository.markPaidDetailed(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any())).thenReturn(1);
+        when(paymentRepository.findById(9L)).thenReturn(paidPayment);
+
+        Payment result = service.handleCallback(request);
+
+        assertEquals("PAID", result.getStatus());
+        InOrder inOrder = inOrder(orderService, paymentRepository);
+        inOrder.verify(orderService).updateOrderStatus(42L, "PENDING_SHIPMENT");
+        inOrder.verify(paymentRepository).markPaidDetailed(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any());
+    }
+
+    @Test
+    void successfulCallbackDoesNotMarkPaymentWhenPendingOrderClaimFails() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(payment.getAmount());
+
+        PaymentService service = new PaymentService();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
+        when(runtimeConfig.getLong("payment.callback-max-skew-seconds", 300)).thenReturn(300L);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderNo(payment.getOrderNo());
+        request.setChannel(payment.getChannel());
+        request.setTransactionId("provider-txn-1");
+        request.setProviderReference("provider-ref-1");
+        request.setStatus("SUCCESS");
+        request.setAmount(payment.getAmount());
+        request.setCallbackTimestamp(Instant.now().getEpochSecond());
+        request.setSignature(service.expectedSignature(request));
+
+        when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.updateOrderStatus(42L, "PENDING_SHIPMENT")).thenReturn(false);
+
+        assertThrows(IllegalStateException.class, () -> service.handleCallback(request));
+        verify(paymentRepository, never()).markPaidDetailed(eq(9L), any(), any(), any());
+    }
+
+    @Test
+    void successfulCallbackUsesOrderRepositoryCasBeforeMarkingPaymentPaid() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        RuntimeConfigService orderRuntimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+        Payment paidPayment = new Payment();
+        paidPayment.setId(9L);
+        paidPayment.setOrderId(42L);
+        paidPayment.setOrderNo(payment.getOrderNo());
+        paidPayment.setChannel(payment.getChannel());
+        paidPayment.setStatus("PAID");
+        paidPayment.setAmount(payment.getAmount());
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(payment.getAmount());
+
+        OrderService orderService = new OrderService();
+        ReflectionTestUtils.setField(orderService, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(orderService, "runtimeConfig", orderRuntimeConfig);
+
+        PaymentService service = new PaymentService();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
+        when(runtimeConfig.getLong("payment.callback-max-skew-seconds", 300)).thenReturn(300L);
+        when(orderRuntimeConfig.getLong("order.return-window-days", 7)).thenReturn(7L);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderNo(payment.getOrderNo());
+        request.setChannel(payment.getChannel());
+        request.setTransactionId("provider-txn-1");
+        request.setProviderReference("provider-ref-1");
+        request.setStatus("SUCCESS");
+        request.setAmount(payment.getAmount());
+        request.setCallbackTimestamp(Instant.now().getEpochSecond());
+        request.setSignature(service.expectedSignature(request));
+
+        when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT")).thenReturn(1);
+        when(paymentRepository.markPaidDetailed(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any())).thenReturn(1);
+        when(paymentRepository.findById(9L)).thenReturn(paidPayment);
+
+        Payment result = service.handleCallback(request);
+
+        assertEquals("PAID", result.getStatus());
+        InOrder inOrder = inOrder(orderRepository, paymentRepository);
+        inOrder.verify(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT");
+        inOrder.verify(paymentRepository).markPaidDetailed(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any());
+    }
+
+    @Test
+    void simulateCallbackDoesNotMarkPaymentWhenOrderClaimFails() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(payment.getAmount());
+
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.simulation-enabled", "")).thenReturn("");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
+        when(runtimeConfig.getLong("payment.callback-max-skew-seconds", 300)).thenReturn(300L);
+        when(paymentRepository.findById(9L)).thenReturn(payment);
+        when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.updateOrderStatus(42L, "PENDING_SHIPMENT")).thenReturn(false);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+
+        assertThrows(IllegalStateException.class, () -> service.simulateCallback(9L));
+        verify(paymentRepository, never()).markPaidDetailed(eq(9L), any(), any(), any());
+    }
+
+    @Test
+    void simulatePaidClaimsOrderBeforeMarkingPaymentPaid() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(payment.getAmount());
+        Payment paidPayment = new Payment();
+        paidPayment.setId(9L);
+        paidPayment.setOrderId(42L);
+        paidPayment.setOrderNo(payment.getOrderNo());
+        paidPayment.setChannel(payment.getChannel());
+        paidPayment.setStatus("PAID");
+        paidPayment.setAmount(payment.getAmount());
+
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.simulation-enabled", "")).thenReturn("");
+        when(paymentRepository.findById(9L)).thenReturn(payment, paidPayment);
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.updateOrderStatus(42L, "PENDING_SHIPMENT")).thenReturn(true);
+        when(paymentRepository.markPaidDetailed(eq(9L), any(), any(), any())).thenReturn(1);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        Payment result = service.simulatePaid(9L);
+
+        assertEquals("PAID", result.getStatus());
+        InOrder inOrder = inOrder(orderService, paymentRepository);
+        inOrder.verify(orderService).updateOrderStatus(42L, "PENDING_SHIPMENT");
+        inOrder.verify(paymentRepository).markPaidDetailed(eq(9L), any(), any(), any());
+    }
+
+    @Test
+    void simulatePaidDoesNotMarkPaymentWhenOrderClaimFails() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(payment.getAmount());
+
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.simulation-enabled", "")).thenReturn("");
+        when(paymentRepository.findById(9L)).thenReturn(payment);
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.updateOrderStatus(42L, "PENDING_SHIPMENT")).thenReturn(false);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        assertThrows(IllegalStateException.class, () -> service.simulatePaid(9L));
         verify(paymentRepository, never()).markPaidDetailed(eq(9L), any(), any(), any());
     }
 
@@ -487,6 +925,80 @@ class PaymentFlowServiceTest {
         service.refundPaidPayment(order, "customer return", "BANK-REF-20260518");
 
         verify(paymentRepository).markRefunded(9L, "BANK-REF-20260518");
+    }
+
+    @Test
+    void reconcileRequiredPaymentCanBeRefundedWithManualReference() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo(order.getOrderNo());
+        payment.setChannel("OXXO");
+        payment.setStatus("RECONCILE_REQUIRED");
+        payment.setAmount(new BigDecimal("88.00"));
+        Payment refundedPayment = new Payment();
+        refundedPayment.setId(9L);
+        refundedPayment.setOrderId(42L);
+        refundedPayment.setOrderNo(order.getOrderNo());
+        refundedPayment.setChannel("OXXO");
+        refundedPayment.setStatus("REFUNDED");
+        refundedPayment.setAmount(new BigDecimal("88.00"));
+
+        when(paymentRepository.findLatestPaidByOrderId(42L)).thenReturn(null);
+        when(paymentRepository.findLatestReconcileRequiredByOrderId(42L)).thenReturn(payment);
+        when(paymentRepository.markRefunding(9L)).thenReturn(1);
+        when(paymentRepository.markRefunded(9L, "BANK-REF-20260518")).thenReturn(1);
+        when(paymentRepository.findById(9L)).thenReturn(refundedPayment);
+
+        RefundService service = new RefundService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+
+        Payment result = service.refundPaidPayment(order, "provider paid after local cancellation", "BANK-REF-20260518");
+
+        assertEquals("REFUNDED", result.getStatus());
+        verify(paymentRepository).markRefunding(9L);
+        verify(paymentRepository).markRefunded(9L, "BANK-REF-20260518");
+    }
+
+    @Test
+    void reconcileRequiredRefundFailureRestoresReviewStatus() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo(order.getOrderNo());
+        payment.setChannel("STRIPE");
+        payment.setStatus("RECONCILE_REQUIRED");
+        payment.setTransactionId("pi_paid_after_cancel");
+        payment.setAmount(new BigDecimal("88.00"));
+
+        when(paymentRepository.findLatestPaidByOrderId(42L)).thenReturn(null);
+        when(paymentRepository.findLatestReconcileRequiredByOrderId(42L)).thenReturn(payment);
+        when(paymentRepository.markRefunding(9L)).thenReturn(1);
+        when(runtimeConfig.getString("stripe.secret-key", "")).thenReturn("");
+
+        RefundService service = new RefundService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> service.refundPaidPayment(order, "provider paid after local cancellation", "BANK-REF-20260518")
+        );
+        verify(paymentRepository).revertRefunding(9L, "RECONCILE_REQUIRED");
+        verify(paymentRepository, never()).markRefunded(eq(9L), any());
     }
 
     @Test
@@ -601,6 +1113,117 @@ class PaymentFlowServiceTest {
     }
 
     @Test
+    void directRefundClaimsOrderBeforeCallingExternalRefund() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        RefundService refundService = mock(RefundService.class);
+        CouponService couponService = mock(CouponService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        order.setStatus("SHIPPED");
+        Payment refundedPayment = new Payment();
+        refundedPayment.setId(9L);
+        refundedPayment.setOrderId(42L);
+        refundedPayment.setOrderNo(order.getOrderNo());
+        refundedPayment.setChannel("STRIPE");
+        refundedPayment.setStatus("REFUNDED");
+        refundedPayment.setAmount(new BigDecimal("88.00"));
+
+        when(runtimeConfig.getInt("order.return-reason-max-chars", 500)).thenReturn(500);
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(orderRepository.markRefunded(42L, "SHIPPED", "customer return")).thenReturn(1);
+        when(refundService.refundPaidPayment(order, "customer return", "BANK-REF-20260518")).thenReturn(refundedPayment);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "refundService", refundService);
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        Payment result = service.refundOrder(42L, "customer return", false, "BANK-REF-20260518");
+
+        assertEquals("REFUNDED", result.getStatus());
+        InOrder inOrder = inOrder(orderRepository, refundService);
+        inOrder.verify(orderRepository).markRefunded(42L, "SHIPPED", "customer return");
+        inOrder.verify(refundService).refundPaidPayment(order, "customer return", "BANK-REF-20260518");
+    }
+
+    @Test
+    void cancelledOrderWithReconcileRequiredPaymentCanBeRefunded() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        RefundService refundService = mock(RefundService.class);
+        CouponService couponService = mock(CouponService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        order.setStatus("CANCELLED");
+        Payment reconcilePayment = new Payment();
+        reconcilePayment.setId(9L);
+        reconcilePayment.setOrderId(42L);
+        reconcilePayment.setOrderNo(order.getOrderNo());
+        reconcilePayment.setChannel("STRIPE");
+        reconcilePayment.setStatus("RECONCILE_REQUIRED");
+        reconcilePayment.setAmount(new BigDecimal("88.00"));
+        Payment refundedPayment = new Payment();
+        refundedPayment.setId(9L);
+        refundedPayment.setOrderId(42L);
+        refundedPayment.setOrderNo(order.getOrderNo());
+        refundedPayment.setChannel("STRIPE");
+        refundedPayment.setStatus("REFUNDED");
+        refundedPayment.setAmount(new BigDecimal("88.00"));
+
+        when(runtimeConfig.getInt("order.return-reason-max-chars", 500)).thenReturn(500);
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(paymentRepository.findLatestReconcileRequiredByOrderId(42L)).thenReturn(reconcilePayment);
+        when(orderRepository.markRefunded(42L, "CANCELLED", "provider paid after local cancellation")).thenReturn(1);
+        when(refundService.refundPaidPayment(order, "provider paid after local cancellation", "BANK-REF-20260518")).thenReturn(refundedPayment);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "refundService", refundService);
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        Payment result = service.refundOrder(42L, "provider paid after local cancellation", false, "BANK-REF-20260518");
+
+        assertEquals("REFUNDED", result.getStatus());
+        InOrder inOrder = inOrder(orderRepository, refundService);
+        inOrder.verify(orderRepository).markRefunded(42L, "CANCELLED", "provider paid after local cancellation");
+        inOrder.verify(refundService).refundPaidPayment(order, "provider paid after local cancellation", "BANK-REF-20260518");
+    }
+
+    @Test
+    void cancelledOrderWithoutReconcileRequiredPaymentIsNotRefundable() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        RefundService refundService = mock(RefundService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        order.setStatus("CANCELLED");
+
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(paymentRepository.findLatestReconcileRequiredByOrderId(42L)).thenReturn(null);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "refundService", refundService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        assertThrows(IllegalStateException.class, () -> service.refundOrder(42L, "customer return", false));
+        verify(orderRepository, never()).markRefunded(eq(42L), any(), any());
+        verifyNoInteractions(refundService);
+    }
+
+    @Test
     void completeReturnCanRecoverOrderAlreadyMarkedRefunding() {
         OrderRepository orderRepository = mock(OrderRepository.class);
         OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
@@ -663,6 +1286,7 @@ class PaymentFlowServiceTest {
         when(paymentRepository.findPendingByOrderId(42L)).thenReturn(payment);
         when(paymentRepository.findById(9L)).thenReturn(payment);
         when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT")).thenReturn(1);
+        when(paymentRepository.update(payment)).thenReturn(1);
         User user = new User();
         user.setId(7L);
         user.setEmail("Mia@Example.com");
@@ -678,6 +1302,9 @@ class PaymentFlowServiceTest {
 
         service.confirmPayment(42L, "MANUAL-TXN");
 
+        InOrder inOrder = inOrder(orderRepository, paymentRepository);
+        inOrder.verify(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT");
+        inOrder.verify(paymentRepository).update(payment);
         verify(notificationService).tryCreateNotification(
                 eq(7L),
                 eq("ORDER"),
@@ -689,6 +1316,65 @@ class PaymentFlowServiceTest {
                 eq("Payment received"),
                 contains("SO202605260001")
         );
+    }
+
+    @Test
+    void manualPaymentConfirmationDoesNotWritePaymentWhenOrderClaimFails() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605260001");
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(new BigDecimal("88.00"));
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo(order.getOrderNo());
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(paymentRepository.findPendingByOrderId(42L)).thenReturn(payment);
+        when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT")).thenReturn(0);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+
+        assertThrows(IllegalStateException.class, () -> service.confirmPayment(42L, "MANUAL-TXN"));
+        verify(paymentRepository, never()).update(any(Payment.class));
+        verify(paymentRepository, never()).insert(any(Payment.class));
+    }
+
+    @Test
+    void manualPaymentConfirmationInsertsPaymentAfterOrderClaim() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605260001");
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(new BigDecimal("88.00"));
+
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT")).thenReturn(1);
+        when(paymentRepository.insert(any(Payment.class))).thenAnswer(invocation -> {
+            Payment inserted = invocation.getArgument(0);
+            inserted.setId(10L);
+            return 1;
+        });
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+
+        Payment result = service.confirmPayment(42L, "MANUAL-TXN");
+
+        assertEquals("PAID", result.getStatus());
+        InOrder inOrder = inOrder(orderRepository, paymentRepository);
+        inOrder.verify(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT");
+        inOrder.verify(paymentRepository).insert(any(Payment.class));
     }
 
     @Test
@@ -804,7 +1490,7 @@ class PaymentFlowServiceTest {
 
         when(orderRepository.findById(42L)).thenReturn(order);
         when(runtimeConfig.getInt("order.tracking-number-max-chars", 120)).thenReturn(120);
-        when(orderRepository.updateShipping(42L, "SHIPPED", "TRACK123", null, null)).thenReturn(1);
+        when(orderRepository.updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", null, null)).thenReturn(1);
         when(notificationService.tryCreateNotification(any(), any(), any(), any())).thenReturn(false);
 
         OrderService service = new OrderService();
@@ -814,8 +1500,34 @@ class PaymentFlowServiceTest {
 
         service.shipOrder(42L, "TRACK123");
 
-        verify(orderRepository).updateShipping(42L, "SHIPPED", "TRACK123", null, null);
+        verify(orderRepository).updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", null, null);
         verify(notificationService).tryCreateNotification(eq(7L), eq("ORDER"), eq("Order shipped"), contains("TRACK123"));
+    }
+
+    @Test
+    void shipOrderDoesNotOverwriteOrderWhenStatusChangedConcurrently() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        NotificationService notificationService = mock(NotificationService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605260001");
+        order.setUserId(7L);
+        order.setStatus("PENDING_SHIPMENT");
+
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(runtimeConfig.getInt("order.tracking-number-max-chars", 120)).thenReturn(120);
+        when(orderRepository.updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", null, null)).thenReturn(0);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "notificationService", notificationService);
+
+        assertFalse(service.shipOrder(42L, "TRACK123"));
+
+        verify(orderRepository).updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", null, null);
+        verify(notificationService, never()).tryCreateNotification(any(), any(), any(), any());
     }
 
     @Test
@@ -837,7 +1549,7 @@ class PaymentFlowServiceTest {
 
         when(orderRepository.findById(42L)).thenReturn(order);
         when(runtimeConfig.getInt("order.tracking-number-max-chars", 120)).thenReturn(120);
-        when(orderRepository.updateShipping(42L, "SHIPPED", "TRACK123", null, null)).thenReturn(1);
+        when(orderRepository.updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", null, null)).thenReturn(1);
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
 
         OrderService service = new OrderService();

@@ -266,6 +266,28 @@
 
 /* Final mobile/App product-question operations touch-target guard */
 @media (max-width: 760px) {
+  .product-question-management-page__keywordInput.ant-input-search,
+  .product-question-management-page__keywordInput .ant-input-wrapper,
+  .product-question-management-page__keywordInput .ant-input-group {
+    width: 100% !important;
+  }
+
+  .product-question-management-page__keywordInput .ant-input-group {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-items: stretch;
+  }
+
+  .product-question-management-page__keywordInput .ant-input-affix-wrapper {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .product-question-management-page__keywordInput .ant-input-group-addon {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+
   .product-question-management-page__toolbar .ant-input-affix-wrapper,
   .product-question-management-page__toolbar .ant-input-search-button,
   .product-question-management-page__toolbar .ant-select-selector,
@@ -273,5 +295,29 @@
   .product-question-management-page__answerModal .ant-modal-footer .ant-btn,
   .product-question-management-page__answerModal textarea.ant-input {
     min-height: 44px;
+  }
+
+  .product-question-management-page__toolbar .ant-input-search-button {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+  }
+
+  .product-question-management-page .ant-pagination-item,
+  .product-question-management-page .ant-pagination-prev,
+  .product-question-management-page .ant-pagination-next {
+    min-width: 44px !important;
+    height: 44px !important;
+    line-height: 42px !important;
+  }
+
+  .product-question-management-page .ant-pagination-item a,
+  .product-question-management-page .ant-pagination-prev .ant-pagination-item-link,
+  .product-question-management-page .ant-pagination-next .ant-pagination-item-link {
+    min-width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }

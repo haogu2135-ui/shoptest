@@ -65,6 +65,12 @@
         LIMIT 1
     </select>
 
+    <select id="findLatestReconcileRequiredByOrderId" resultMap="paymentMap">
+        SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'RECONCILE_REQUIRED'
+        ORDER BY COALESCE(callback_at, updated_at, created_at) DESC, id DESC
+        LIMIT 1
+    </select>
+
     <select id="findLatestRefundedByOrderId" resultMap="paymentMap">
         SELECT * FROM payments WHERE order_id = #{orderId} AND status = 'REFUNDED'
         ORDER BY refunded_at DESC, id DESC
@@ -134,11 +140,23 @@
         WHERE id = #{id} AND status = 'PENDING'
     </update>
 
+    <update id="markReconcileRequired">
+        UPDATE payments
+        SET status = 'RECONCILE_REQUIRED',
+            transaction_id = COALESCE(#{transactionId}, transaction_id),
+            provider_reference = COALESCE(#{providerReference}, provider_reference),
+            callback_at = COALESCE(#{callbackAt}, callback_at),
+            payment_url = NULL,
+            expires_at = NULL,
+            updated_at = NOW()
+        WHERE id = #{id} AND status IN ('PENDING', 'CANCELLED', 'EXPIRED', 'FAILED')
+    </update>
+
     <update id="markRefunding">
         UPDATE payments
         SET status = 'REFUNDING',
             updated_at = NOW()
-        WHERE id = #{id} AND status = 'PAID'
+        WHERE id = #{id} AND status IN ('PAID', 'RECONCILE_REQUIRED')
     </update>
 
     <update id="markRefunded">
@@ -152,7 +170,10 @@
 
     <update id="revertRefunding">
         UPDATE payments
-        SET status = 'PAID',
+        SET status = CASE
+                WHEN #{status} = 'RECONCILE_REQUIRED' THEN 'RECONCILE_REQUIRED'
+                ELSE 'PAID'
+            END,
             updated_at = NOW()
         WHERE id = #{id} AND status = 'REFUNDING'
     </update>

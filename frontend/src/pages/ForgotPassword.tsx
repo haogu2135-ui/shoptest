@@ -36,6 +36,14 @@ const ForgotPassword: React.FC = () => {
   const { t } = useLanguage();
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
+  const resetPageLabel = t('pages.auth.resetPasswordTitle');
+  const resetLoginInputLabel = `${resetPageLabel}: ${t('pages.auth.username')}`;
+  const resetEmailInputLabel = `${resetPageLabel}: ${t('pages.auth.email')}`;
+  const resetCodeInputLabel = `${resetPageLabel}: ${t('pages.auth.verificationCode')}`;
+  const resetSendCodeActionLabel = `${resetPageLabel}: ${t('pages.auth.sendCode')}`;
+  const resetNewPasswordInputLabel = `${resetPageLabel}: ${t('pages.auth.newPassword')}`;
+  const resetConfirmPasswordInputLabel = `${resetPageLabel}: ${t('pages.auth.confirmPassword')}`;
+  const resetSubmitActionLabel = `${resetPageLabel}: ${t('pages.auth.resetPassword')}`;
 
   useEffect(() => {
     if (sendCodeCountdown <= 0) return undefined;
@@ -161,7 +169,7 @@ const ForgotPassword: React.FC = () => {
             </div>
           )}
           <Form.Item name="login" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
-            <Input prefix={<UserOutlined />} placeholder={t('pages.auth.username')} size="large" autoComplete="username" />
+            <Input prefix={<UserOutlined />} placeholder={t('pages.auth.username')} size="large" autoComplete="username" aria-label={resetLoginInputLabel} title={resetLoginInputLabel} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -170,7 +178,7 @@ const ForgotPassword: React.FC = () => {
               { type: 'email', message: t('pages.auth.emailInvalid') },
             ]}
           >
-            <Input prefix={<MailOutlined />} placeholder={t('pages.auth.email')} size="large" autoComplete="email" disabled={loading || !emailCodeEnabled} />
+            <Input prefix={<MailOutlined />} placeholder={t('pages.auth.email')} size="large" autoComplete="email" disabled={loading || !emailCodeEnabled} aria-label={resetEmailInputLabel} title={resetEmailInputLabel} />
           </Form.Item>
           {sentEmailHint && (
             <div className="shopee-login-emailSent" role="status">
@@ -201,6 +209,8 @@ const ForgotPassword: React.FC = () => {
               inputMode="numeric"
               pattern="[0-9]*"
               disabled={loading || !emailCodeEnabled}
+              aria-label={resetCodeInputLabel}
+              title={resetCodeInputLabel}
               onChange={(event) => {
                 const normalized = normalizeEmailCode(event.target.value);
                 if (normalized !== event.target.value) {
@@ -214,6 +224,8 @@ const ForgotPassword: React.FC = () => {
                   className="shopee-login-codeButton"
                   loading={codeSending}
                   disabled={loading || codeSending || sendCodeCountdown > 0 || !emailCodeEnabled}
+                  aria-label={resetSendCodeActionLabel}
+                  title={resetSendCodeActionLabel}
                   onClick={sendResetCode}
                 >
                   {codeSending
@@ -233,7 +245,7 @@ const ForgotPassword: React.FC = () => {
               { pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: t('pages.auth.passwordPattern') },
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.newPassword')} size="large" autoComplete="new-password" />
+            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.newPassword')} size="large" autoComplete="new-password" aria-label={resetNewPasswordInputLabel} title={resetNewPasswordInputLabel} />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
@@ -250,10 +262,10 @@ const ForgotPassword: React.FC = () => {
               }),
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.confirmPassword')} size="large" autoComplete="new-password" />
+            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.confirmPassword')} size="large" autoComplete="new-password" aria-label={resetConfirmPasswordInputLabel} title={resetConfirmPasswordInputLabel} />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" block size="large" loading={loading} disabled={codeSending || !emailCodeEnabled}>
+            <Button type="primary" htmlType="submit" block size="large" loading={loading} disabled={codeSending || !emailCodeEnabled} aria-label={resetSubmitActionLabel} title={resetSubmitActionLabel}>
               {t('pages.auth.resetPassword')}
             </Button>
           </Form.Item>

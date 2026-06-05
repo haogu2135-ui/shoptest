@@ -6,6 +6,7 @@ import { adminApi } from '../api';
 import type { SystemAlert, SystemAlertSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import { labelTableSelectionCheckbox } from '../utils/tableSelectionAccessibility';
 import {
   ALERTS_ACKNOWLEDGE_PERMISSION,
   ALERTS_PURGE_PERMISSION,
@@ -17,6 +18,7 @@ import {
 import './AlertManagement.css';
 
 const { Text, Title } = Typography;
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const severityColor = (severity: string) => {
   if (severity === 'CRITICAL') return 'magenta';
@@ -85,6 +87,9 @@ const AlertManagement: React.FC = () => {
     EXCEPTION: t('pages.alertAdmin.sourceValues.EXCEPTION'),
     SELF_CHECK: t('pages.alertAdmin.sourceValues.SELF_CHECK'),
   }), [t]);
+  const alertDisplayLabel = useCallback((alert: Pick<SystemAlert, 'id' | 'title' | 'fingerprint'>) => (
+    [alert.title, alert.fingerprint].map((value) => String(value || '').trim()).find(Boolean) || `#${alert.id}`
+  ), []);
 
   const applyStatusFilter = useCallback((nextStatus: string) => {
     setStatus(nextStatus);
@@ -312,32 +317,77 @@ const AlertManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'actions',
       width: 180,
-      render: (_, record) => (
-        <Space wrap>
-          {record.status === 'OPEN' && canAcknowledgeAlerts ? (
-            <Popconfirm
-              title={t('pages.alertAdmin.ackConfirm')}
-              onConfirm={() => acknowledge(record)}
-            >
-              <Button size="small" loading={acting === `ack-${record.id}`}>
-                {t('pages.alertAdmin.ack')}
-              </Button>
-            </Popconfirm>
-          ) : null}
-          {record.status !== 'RESOLVED' && canResolveAlerts ? (
-            <Popconfirm
-              title={t('pages.alertAdmin.resolveConfirm')}
-              onConfirm={() => resolve(record)}
-            >
-              <Button size="small" type="primary" loading={acting === `resolve-${record.id}`}>
-                {t('pages.alertAdmin.resolve')}
-              </Button>
-            </Popconfirm>
-          ) : null}
-        </Space>
-      ),
+      render: (_, record) => {
+        const alertLabel = alertDisplayLabel(record);
+        const ackActionLabel = `${t('pages.alertAdmin.ack')}: ${alertLabel}`;
+        const resolveActionLabel = `${t('pages.alertAdmin.resolve')}: ${alertLabel}`;
+        return (
+          <Space wrap>
+	            {record.status === 'OPEN' && canAcknowledgeAlerts ? (
+		              <Popconfirm
+		                classNames={mobilePopconfirmClassNames}
+		                title={`${t('pages.alertAdmin.ackConfirm')} ${alertLabel}`}
+		                description={record.fingerprint && record.fingerprint !== alertLabel ? record.fingerprint : undefined}
+		                onConfirm={() => acknowledge(record)}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ 'aria-label': ackActionLabel, title: ackActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${ackActionLabel}`, title: `${t('common.cancel')}: ${ackActionLabel}` }}
+              >
+                <Button size="small" aria-label={ackActionLabel} title={ackActionLabel} loading={acting === `ack-${record.id}`}>
+                  {t('pages.alertAdmin.ack')}
+                </Button>
+              </Popconfirm>
+            ) : null}
+	            {record.status !== 'RESOLVED' && canResolveAlerts ? (
+		              <Popconfirm
+		                classNames={mobilePopconfirmClassNames}
+		                title={`${t('pages.alertAdmin.resolveConfirm')} ${alertLabel}`}
+		                description={record.fingerprint && record.fingerprint !== alertLabel ? record.fingerprint : undefined}
+		                onConfirm={() => resolve(record)}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ 'aria-label': resolveActionLabel, title: resolveActionLabel }}
+                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resolveActionLabel}`, title: `${t('common.cancel')}: ${resolveActionLabel}` }}
+              >
+                <Button size="small" type="primary" aria-label={resolveActionLabel} title={resolveActionLabel} loading={acting === `resolve-${record.id}`}>
+                  {t('pages.alertAdmin.resolve')}
+                </Button>
+              </Popconfirm>
+            ) : null}
+          </Space>
+        );
+      },
     },
-  ], [acknowledge, acting, alertCategoryLabels, alertSeverityLabels, alertStatusLabels, canAcknowledgeAlerts, canResolveAlerts, formatTime, resolve, t]);
+  ], [acknowledge, acting, alertCategoryLabels, alertDisplayLabel, alertSeverityLabels, alertStatusLabels, canAcknowledgeAlerts, canResolveAlerts, formatTime, resolve, t]);
+
+  const openAlertCount = summary?.openCount || 0;
+  const acknowledgedAlertCount = summary?.acknowledgedCount || 0;
+  const resolvedAlertCount = summary?.resolvedCount || 0;
+  const allAlertCount = openAlertCount + acknowledgedAlertCount + resolvedAlertCount;
+  const allAlertsFilterLabel = `${t('pages.alertAdmin.showAll')}: ${allAlertCount}`;
+  const openAlertsFilterLabel = `${t('pages.alertAdmin.showOpen')}: ${openAlertCount}`;
+  const acknowledgedAlertsFilterLabel = `${t('pages.alertAdmin.showAcknowledged')}: ${acknowledgedAlertCount}`;
+  const resolvedAlertsFilterLabel = `${t('pages.alertAdmin.showResolved')}: ${resolvedAlertCount}`;
+  const currentStatusLabel = alertStatusLabels[status as keyof typeof alertStatusLabels] || status;
+  const currentSeverityLabel = alertSeverityLabels[severity as keyof typeof alertSeverityLabels] || severity;
+  const currentCategoryLabel = category.trim() || alertStatusLabels.ALL;
+  const currentStatusFilterLabel = `${t('common.status')}: ${currentStatusLabel}`;
+  const currentSeverityFilterLabel = `${t('pages.alertAdmin.severity')}: ${currentSeverityLabel}`;
+  const currentCategoryFilterLabel = `${t('pages.alertAdmin.category')}: ${currentCategoryLabel}`;
+  const activeAlertFilterLabel = `${currentStatusFilterLabel}, ${currentSeverityFilterLabel}, ${currentCategoryFilterLabel}`;
+  const refreshAlertsActionLabel = `${t('common.refresh')}: ${t('pages.alertAdmin.title')}, ${activeAlertFilterLabel}`;
+  const selfCheckActionLabel = `${t('pages.alertAdmin.selfCheck')}: ${t('pages.alertAdmin.title')}`;
+  const statusFilterGroupLabel = `${t('common.status')}: ${t('pages.alertAdmin.title')}, ${currentStatusLabel}`;
+  const severityFilterGroupLabel = `${t('pages.alertAdmin.severity')}: ${t('pages.alertAdmin.title')}, ${currentSeverityLabel}`;
+  const categoryFilterInputLabel = `${t('pages.alertAdmin.category')}: ${t('pages.alertAdmin.title')}, ${currentCategoryLabel}`;
+  const applyAlertFilterActionLabel = `${t('pages.alertAdmin.filter')}: ${activeAlertFilterLabel}`;
+  const selectAllVisibleAlertsLabel = t('pages.alertAdmin.selectAllVisibleAlerts');
+  const selectedAlertSummaryLabel = t('pages.alertAdmin.selectedSummary', { selected: selectedAlertIds.length, open: selectedOpenIds.length, unresolved: selectedUnresolvedIds.length });
+  const batchAckActionLabel = `${t('pages.alertAdmin.batchAck')}: ${selectedOpenIds.length}`;
+  const batchResolveActionLabel = `${t('pages.alertAdmin.batchResolve')}: ${selectedUnresolvedIds.length}`;
+  const purgeRetentionInputLabel = `${t('pages.alertAdmin.purgeRetention')}: ${retentionDays} ${t('pages.alertAdmin.days')}`;
+  const purgeResolvedActionLabel = `${t('pages.alertAdmin.purge')}: ${retentionDays} ${t('pages.alertAdmin.days')}`;
 
   return (
     <div className="alert-management">
@@ -348,11 +398,11 @@ const AlertManagement: React.FC = () => {
           <Text type="secondary">{t('pages.alertAdmin.description')}</Text>
         </div>
         <Space className="alert-management__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={loadData}>
+          <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshAlertsActionLabel} title={refreshAlertsActionLabel} onClick={loadData}>
             {t('common.refresh')}
           </Button>
           {canRunSelfCheck ? (
-            <Button type="primary" icon={<ToolOutlined />} loading={acting === 'self-check'} onClick={runSelfCheck}>
+            <Button type="primary" icon={<ToolOutlined />} loading={acting === 'self-check'} aria-label={selfCheckActionLabel} title={selfCheckActionLabel} onClick={runSelfCheck}>
               {t('pages.alertAdmin.selfCheck')}
             </Button>
           ) : null}
@@ -364,7 +414,10 @@ const AlertManagement: React.FC = () => {
           <Card
             className={`alert-management__statCard${status === 'OPEN' ? ' is-active' : ''}`}
             hoverable
+            role="button"
             tabIndex={0}
+            aria-pressed={status === 'OPEN'}
+            aria-label={`${t('pages.alertAdmin.open')}: ${summary?.openCount || 0}`}
             onClick={() => applyStatusFilter('OPEN')}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -378,7 +431,10 @@ const AlertManagement: React.FC = () => {
           <Card
             className={`alert-management__statCard${status === 'ACKNOWLEDGED' ? ' is-active' : ''}`}
             hoverable
+            role="button"
             tabIndex={0}
+            aria-pressed={status === 'ACKNOWLEDGED'}
+            aria-label={`${t('pages.alertAdmin.acknowledgedStat')}: ${summary?.acknowledgedCount || 0}`}
             onClick={() => applyStatusFilter('ACKNOWLEDGED')}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -392,7 +448,10 @@ const AlertManagement: React.FC = () => {
           <Card
             className={`alert-management__statCard${status === 'RESOLVED' ? ' is-active' : ''}`}
             hoverable
+            role="button"
             tabIndex={0}
+            aria-pressed={status === 'RESOLVED'}
+            aria-label={`${t('pages.alertAdmin.resolvedStat')}: ${summary?.resolvedCount || 0}`}
             onClick={() => applyStatusFilter('RESOLVED')}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -417,20 +476,24 @@ const AlertManagement: React.FC = () => {
 
         <Card className="alert-management__card">
           <Space className="alert-management__filters" wrap>
-            <Select
-              value={status}
-              onChange={applyStatusFilter}
-              popupClassName="shop-mobile-popup-layer"
-              getPopupContainer={() => document.body}
-              options={statusOptions.map((value) => ({ value, label: alertStatusLabels[value as keyof typeof alertStatusLabels] || value }))}
-            />
-            <Select
-              value={severity}
-              onChange={setSeverity}
-              popupClassName="shop-mobile-popup-layer"
-              getPopupContainer={() => document.body}
-              options={['ALL', 'CRITICAL', 'ERROR', 'WARNING', 'INFO'].map((value) => ({ value, label: alertSeverityLabels[value as keyof typeof alertSeverityLabels] || value }))}
-            />
+            <div role="group" aria-label={statusFilterGroupLabel} title={statusFilterGroupLabel}>
+              <Select
+                value={status}
+                onChange={applyStatusFilter}
+                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                getPopupContainer={() => document.body}
+                options={statusOptions.map((value) => ({ value, label: alertStatusLabels[value as keyof typeof alertStatusLabels] || value }))}
+              />
+            </div>
+            <div role="group" aria-label={severityFilterGroupLabel} title={severityFilterGroupLabel}>
+              <Select
+                value={severity}
+                onChange={setSeverity}
+                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                getPopupContainer={() => document.body}
+                options={['ALL', 'CRITICAL', 'ERROR', 'WARNING', 'INFO'].map((value) => ({ value, label: alertSeverityLabels[value as keyof typeof alertSeverityLabels] || value }))}
+              />
+            </div>
             <Input
               allowClear
               prefix={<SearchOutlined />}
@@ -438,24 +501,33 @@ const AlertManagement: React.FC = () => {
               onChange={(event) => setCategory(event.target.value)}
               onPressEnter={loadData}
               placeholder={t('pages.alertAdmin.category')}
+              aria-label={categoryFilterInputLabel}
+              title={categoryFilterInputLabel}
             />
-            <Button onClick={loadData}>{t('pages.alertAdmin.filter')}</Button>
+            <Button onClick={loadData} aria-label={applyAlertFilterActionLabel} title={applyAlertFilterActionLabel}>{t('pages.alertAdmin.filter')}</Button>
           </Space>
 
           <div className="alert-management__bulkBar">
             <Space wrap>
               <Text type="secondary">
-                {t('pages.alertAdmin.selectedSummary', { selected: selectedAlertIds.length, open: selectedOpenIds.length, unresolved: selectedUnresolvedIds.length })}
+                {selectedAlertSummaryLabel}
               </Text>
               {canAcknowledgeAlerts ? (
                 <Popconfirm
+                  classNames={mobilePopconfirmClassNames}
                   title={t('pages.alertAdmin.batchAckConfirm', { count: selectedOpenIds.length })}
                   onConfirm={batchAcknowledge}
                   disabled={!selectedOpenIds.length}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
+                  okButtonProps={{ 'aria-label': batchAckActionLabel, title: batchAckActionLabel }}
+                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchAckActionLabel}`, title: `${t('common.cancel')}: ${batchAckActionLabel}` }}
                 >
                   <Button
                     disabled={!selectedOpenIds.length}
                     loading={acting === 'batch-ack'}
+                    aria-label={batchAckActionLabel}
+                    title={batchAckActionLabel}
                   >
                     {t('pages.alertAdmin.batchAck')}
                   </Button>
@@ -463,14 +535,21 @@ const AlertManagement: React.FC = () => {
               ) : null}
               {canResolveAlerts ? (
                 <Popconfirm
+                  classNames={mobilePopconfirmClassNames}
                   title={t('pages.alertAdmin.batchResolveConfirm', { count: selectedUnresolvedIds.length })}
                   onConfirm={batchResolve}
                   disabled={!selectedUnresolvedIds.length}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
+                  okButtonProps={{ 'aria-label': batchResolveActionLabel, title: batchResolveActionLabel }}
+                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchResolveActionLabel}`, title: `${t('common.cancel')}: ${batchResolveActionLabel}` }}
                 >
                   <Button
                     type="primary"
                     disabled={!selectedUnresolvedIds.length}
                     loading={acting === 'batch-resolve'}
+                    aria-label={batchResolveActionLabel}
+                    title={batchResolveActionLabel}
                   >
                     {t('pages.alertAdmin.batchResolve')}
                   </Button>
@@ -487,13 +566,20 @@ const AlertManagement: React.FC = () => {
                   value={retentionDays}
                   onChange={(value) => setRetentionDays(Number(value || 30))}
                   addonAfter={t('pages.alertAdmin.days')}
+                  aria-label={purgeRetentionInputLabel}
+                  title={purgeRetentionInputLabel}
                 />
                 <Popconfirm
+                  classNames={mobilePopconfirmClassNames}
                   title={t('pages.alertAdmin.purgeConfirm')}
                   description={t('pages.alertAdmin.purgeDescription', { days: retentionDays })}
                   onConfirm={purgeResolved}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
+                  okButtonProps={{ danger: true, 'aria-label': purgeResolvedActionLabel, title: purgeResolvedActionLabel }}
+                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${purgeResolvedActionLabel}`, title: `${t('common.cancel')}: ${purgeResolvedActionLabel}` }}
                 >
-                  <Button icon={<DeleteOutlined />} loading={acting === 'purge-resolved'}>
+                  <Button icon={<DeleteOutlined />} loading={acting === 'purge-resolved'} aria-label={purgeResolvedActionLabel} title={purgeResolvedActionLabel}>
                     {t('pages.alertAdmin.purge')}
                   </Button>
                 </Popconfirm>
@@ -503,15 +589,23 @@ const AlertManagement: React.FC = () => {
 
           {alerts.length ? (
             <Table<SystemAlert>
+              className="shop-admin-selection-table"
               rowKey="id"
               columns={columns}
               dataSource={alerts}
               rowSelection={canAcknowledgeAlerts || canResolveAlerts ? {
+                columnWidth: 56,
+                columnTitle: (checkboxNode) => labelTableSelectionCheckbox(checkboxNode, selectAllVisibleAlertsLabel),
                 selectedRowKeys: selectedAlertIds,
                 onChange: (keys) => setSelectedAlertIds(keys.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)),
-                getCheckboxProps: (record) => ({
-                  disabled: record.status === 'RESOLVED' || (!canResolveAlerts && record.status !== 'OPEN'),
-                }),
+                getCheckboxProps: (record) => {
+                  const selectionLabel = t('pages.alertAdmin.selectAlertRow', { alert: alertDisplayLabel(record) });
+                  return {
+                    disabled: record.status === 'RESOLVED' || (!canResolveAlerts && record.status !== 'OPEN'),
+                    'aria-label': selectionLabel,
+                    title: selectionLabel,
+                  };
+                },
               } : undefined}
               pagination={{ pageSize: 10 }}
               scroll={{ x: 980 }}
@@ -535,16 +629,44 @@ const AlertManagement: React.FC = () => {
                   <Text>{t('pages.alertAdmin.empty')}</Text>
                   <Text type="secondary">{t('pages.alertAdmin.emptyFiltered')}</Text>
                   <Space wrap>
-                    <Button size="small" onClick={() => applyStatusFilter('ALL')}>
+                    <Button
+                      size="small"
+                      type={status === 'ALL' ? 'primary' : 'default'}
+                      aria-pressed={status === 'ALL'}
+                      aria-label={allAlertsFilterLabel}
+                      title={allAlertsFilterLabel}
+                      onClick={() => applyStatusFilter('ALL')}
+                    >
                       {t('pages.alertAdmin.showAll')}
                     </Button>
-                    <Button size="small" onClick={() => applyStatusFilter('OPEN')}>
+                    <Button
+                      size="small"
+                      type={status === 'OPEN' ? 'primary' : 'default'}
+                      aria-pressed={status === 'OPEN'}
+                      aria-label={openAlertsFilterLabel}
+                      title={openAlertsFilterLabel}
+                      onClick={() => applyStatusFilter('OPEN')}
+                    >
                       {t('pages.alertAdmin.showOpen')}
                     </Button>
-                    <Button size="small" onClick={() => applyStatusFilter('ACKNOWLEDGED')}>
+                    <Button
+                      size="small"
+                      type={status === 'ACKNOWLEDGED' ? 'primary' : 'default'}
+                      aria-pressed={status === 'ACKNOWLEDGED'}
+                      aria-label={acknowledgedAlertsFilterLabel}
+                      title={acknowledgedAlertsFilterLabel}
+                      onClick={() => applyStatusFilter('ACKNOWLEDGED')}
+                    >
                       {t('pages.alertAdmin.showAcknowledged')}
                     </Button>
-                    <Button size="small" onClick={() => applyStatusFilter('RESOLVED')}>
+                    <Button
+                      size="small"
+                      type={status === 'RESOLVED' ? 'primary' : 'default'}
+                      aria-pressed={status === 'RESOLVED'}
+                      aria-label={resolvedAlertsFilterLabel}
+                      title={resolvedAlertsFilterLabel}
+                      onClick={() => applyStatusFilter('RESOLVED')}
+                    >
                       {t('pages.alertAdmin.showResolved')}
                     </Button>
                   </Space>

@@ -913,7 +913,9 @@
   .register-page__cardHint {
     font-size: 12px;
     line-height: 1.4;
-    -webkit-line-clamp: 1;
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
   }
 
   .register-page__title {

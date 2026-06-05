@@ -394,6 +394,7 @@ describe('api parameter normalization', () => {
     await paymentApi.create(7, ' stripe ', ' USER@Example.COM ', ' so202605260001 ');
     await paymentApi.getByOrder(7, 'bad-email', ' so202605260001 ');
     await paymentApi.getByOrder(7, ' USER@Example.COM ', ' so202605260001 ');
+    await paymentApi.sync(7, ' USER@Example.COM ', ' so202605260001 ');
 
     expect(mockPost.mock.calls[0][1]).toEqual({ orderId: 7, channel: 'STRIPE', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockGet.mock.calls[0][0]).toBe('/payments/order/7');
@@ -401,6 +402,12 @@ describe('api parameter normalization', () => {
     expect(mockGet.mock.calls[1][0]).toBe('/payments/guest/order/7');
     expect(mockGet.mock.calls[1][1]).toEqual(expect.objectContaining({
       params: { guestEmail: 'user@example.com', orderNo: 'SO202605260001' },
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
+    expect(mockPost.mock.calls[1][0]).toBe('/payments/7/sync');
+    expect(mockPost.mock.calls[1][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPost.mock.calls[1][2]).toEqual(expect.objectContaining({
       skipAuthHeader: true,
       skipAuthRedirect: true,
     }));
@@ -443,18 +450,20 @@ describe('api parameter normalization', () => {
   it('normalizes support session path params and optional session payloads', async () => {
     const { supportApi, adminSupportApi } = require('./index');
 
+    await supportApi.createSession();
     await supportApi.getMessages('9' as unknown as number);
     await supportApi.markRead('11' as unknown as number);
     await supportApi.sendMessage('hello', -4);
     await adminSupportApi.reopenSession(12);
     await adminSupportApi.sendMessage(8, 'reply');
 
+    expect(mockPost.mock.calls[0][0]).toBe('/support/session');
     expect(mockGet.mock.calls[0][0]).toBe('/support/sessions/9/messages');
     expect(mockPut.mock.calls[0][0]).toBe('/support/sessions/11/read');
-    expect(mockPost.mock.calls[0][0]).toBe('/support/messages');
-    expect(mockPost.mock.calls[0][1]).toEqual({ content: 'hello', sessionId: undefined });
+    expect(mockPost.mock.calls[1][0]).toBe('/support/messages');
+    expect(mockPost.mock.calls[1][1]).toEqual({ content: 'hello', sessionId: undefined });
     expect(mockPut.mock.calls[1][0]).toBe('/admin/support/sessions/12/reopen');
-    expect(mockPost.mock.calls[1][0]).toBe('/admin/support/sessions/8/messages');
+    expect(mockPost.mock.calls[2][0]).toBe('/admin/support/sessions/8/messages');
   });
 
   it('requests admin support summary for queue health panels', async () => {
@@ -463,6 +472,37 @@ describe('api parameter normalization', () => {
     await adminSupportApi.getSummary();
 
     expect(mockGet.mock.calls[0][0]).toBe('/admin/support/summary');
+  });
+
+  it('strips internal support session context keys from admin session pages', async () => {
+    const { adminSupportApi } = require('./index');
+    mockGet.mockResolvedValueOnce({
+      data: {
+        items: [{
+          id: 55,
+          userId: 42,
+          username: 'Guest Buyer',
+          contextKey: 'guest-order:so202606030001',
+          status: 'OPEN',
+          unreadByAdmin: 2,
+        }],
+        total: 1,
+        page: 1,
+        size: 20,
+        totalPages: 1,
+      },
+    });
+
+    const response = await adminSupportApi.getSessions({ status: 'OPEN' });
+
+    expect(response.data.items[0]).toEqual(expect.objectContaining({
+      id: 55,
+      userId: 42,
+      username: 'Guest Buyer',
+      status: 'OPEN',
+      unreadByAdmin: 2,
+    }));
+    expect(response.data.items[0]).not.toHaveProperty('contextKey');
   });
 
   it('normalizes product path params and short-circuits invalid recommendation requests', async () => {
@@ -475,6 +515,93 @@ describe('api parameter normalization', () => {
     expect(mockPut.mock.calls[0][0]).toBe('/products/2');
     expect(mockDelete.mock.calls[0][0]).toBe('/products/4');
     expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it('normalizes product rich-detail media URLs to the backend media contract', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.createProduct({
+      name: 'Harness',
+      detailContent: [
+        { type: 'text', content: '  Fit notes  ' },
+        { type: 'image', url: '/uploads/products/harness.jpg', caption: ' Detail ' },
+        { type: 'video', url: 'https://cdn.example.com/videos/demo.mp4' },
+        { type: 'image', url: 'uploads/products/relative.jpg' },
+        { type: 'image', url: '/assets/products/preview-only.jpg' },
+        { type: 'image', url: 'http://localhost/local.jpg' },
+        { type: 'image', url: 'https://192.168.1.10/private.jpg' },
+        { type: 'image', url: 'https://[::ffff:192.168.1.10]/mapped-private.jpg' },
+        { type: 'image', url: 'https://cdn.example.com:8443/private-port.jpg' },
+      ],
+    });
+
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/products');
+    const detailContent = mockPost.mock.calls[0][1].detailContent;
+    expect(detailContent).toHaveLength(4);
+    expect(detailContent[0]).toEqual(expect.objectContaining({ type: 'text', content: 'Fit notes' }));
+    expect(detailContent[1]).toEqual(expect.objectContaining({ type: 'image', url: '/uploads/products/harness.jpg', caption: 'Detail' }));
+    expect(detailContent[2]).toEqual(expect.objectContaining({ type: 'video', url: 'https://cdn.example.com/videos/demo.mp4' }));
+    expect(detailContent[3]).toEqual(expect.objectContaining({ type: 'image', url: '/uploads/products/relative.jpg' }));
+    expect(JSON.stringify(detailContent)).not.toContain('localhost');
+    expect(JSON.stringify(detailContent)).not.toContain('192.168.1.10');
+    expect(JSON.stringify(detailContent)).not.toContain('::ffff');
+    expect(JSON.stringify(detailContent)).not.toContain(':8443');
+    expect(JSON.stringify(detailContent)).not.toContain('/assets/');
+  });
+
+  it('normalizes persisted image payload fields to public asset URLs', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.createProduct({
+      name: 'Harness',
+      imageUrl: 'uploads/products/main.jpg',
+      images: [
+        '/uploads/products/alt.jpg',
+        'uploads/products/legacy-alt.jpg',
+        'https://cdn.example.com/gallery.jpg',
+        'assets/products/local.jpg',
+        'data:image/png;base64,abc',
+        'blob:https://app.example.com/id',
+      ],
+      variants: [
+        { options: { Size: 'S' }, price: 12, imageUrl: '/uploads/products/variant.jpg' },
+        { options: { Size: 'M' }, price: 14, imageUrl: 'https://cdn.example.com/variant.jpg' },
+        { options: { Size: 'L' }, price: 16, imageUrl: 'http://localhost/private.jpg' },
+      ],
+    });
+    await adminApi.createCategory({ name: 'Beds', imageUrl: 'data:image/svg+xml,<svg></svg>' });
+    await adminApi.createBrand({ name: 'PawCo', logoUrl: 'assets/brand.png' });
+    await adminApi.createCategory({ name: 'Legacy beds', imageUrl: 'uploads/categories/beds.png' });
+    await adminApi.createBrand({ name: 'Legacy PawCo', logoUrl: 'uploads/brands/pawco.png' });
+
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/products');
+    expect(mockPost.mock.calls[0][1].imageUrl).toBe('/uploads/products/main.jpg');
+    expect(mockPost.mock.calls[0][1].images).toEqual([
+      '/uploads/products/alt.jpg',
+      '/uploads/products/legacy-alt.jpg',
+      'https://cdn.example.com/gallery.jpg',
+    ]);
+    expect(mockPost.mock.calls[0][1].variants).toEqual([
+      expect.objectContaining({ imageUrl: '/uploads/products/variant.jpg' }),
+      expect.objectContaining({ imageUrl: 'https://cdn.example.com/variant.jpg' }),
+      expect.objectContaining({ imageUrl: undefined }),
+    ]);
+    expect(mockPost.mock.calls[1]).toEqual([
+      '/admin/categories',
+      expect.objectContaining({ imageUrl: null }),
+    ]);
+    expect(mockPost.mock.calls[2]).toEqual([
+      '/admin/brands',
+      expect.objectContaining({ logoUrl: null }),
+    ]);
+    expect(mockPost.mock.calls[3]).toEqual([
+      '/admin/categories',
+      expect.objectContaining({ imageUrl: '/uploads/categories/beds.png' }),
+    ]);
+    expect(mockPost.mock.calls[4]).toEqual([
+      '/admin/brands',
+      expect.objectContaining({ logoUrl: '/uploads/brands/pawco.png' }),
+    ]);
   });
 
   it('normalizes order paths, checkout ids, guest email, and return text fields', async () => {
@@ -560,6 +687,19 @@ describe('api parameter normalization', () => {
       skipAuthHeader: true,
       skipAuthRedirect: true,
     }));
+  });
+
+  it('clears order tracking cache when cancelling an order', async () => {
+    const { orderApi } = require('./index');
+
+    await orderApi.track(' CACHECANCEL730 ', ' USER@Example.COM ');
+    await orderApi.track(' CACHECANCEL730 ', ' USER@Example.COM ');
+    await orderApi.cancel(8, ' USER@Example.COM ', ' CACHECANCEL730 ');
+    await orderApi.track(' CACHECANCEL730 ', ' USER@Example.COM ');
+
+    const trackCalls = mockPost.mock.calls.filter((call) => call[0] === '/orders/track');
+    expect(trackCalls).toHaveLength(2);
+    expect(mockPut.mock.calls[0][0]).toBe('/orders/guest/8/cancel');
   });
 
   it('normalizes review and question params and text payloads', async () => {

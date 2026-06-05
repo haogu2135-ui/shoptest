@@ -29,14 +29,16 @@ describe('productOptions', () => {
   it('drops object-valued variant options and clamps negative stock', () => {
     const product = {
       variants: JSON.stringify([
-        { options: { Size: 'S', Meta: { bad: true } }, price: 12, stock: -4 },
+        { options: { Size: 'S', Meta: { bad: true } }, price: 12, stock: -4, imageUrl: 'data:image/png;base64,abc' },
         { optionText: 'Size=M\uFF0CColor=Orange;Coat=Short', price: 14, stock: 3.8 },
+        { options: { Size: 'L' }, price: 16, imageUrl: 'uploads/products/variant.jpg' },
       ]),
     } as unknown as Partial<Product>;
 
     expect(getProductVariants(product)).toEqual([
       { options: { Size: 'S' }, price: 12, stock: 0, imageUrl: undefined, sku: undefined },
       { options: { Size: 'M', Color: 'Orange', Coat: 'Short' }, price: 14, stock: 3, imageUrl: undefined, sku: undefined },
+      { options: { Size: 'L' }, price: 16, stock: undefined, imageUrl: '/uploads/products/variant.jpg', sku: undefined },
     ]);
   });
 

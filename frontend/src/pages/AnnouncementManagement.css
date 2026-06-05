@@ -405,3 +405,41 @@
     min-height: 44px;
   }
 }
+
+/* Absolute final announcement editor modal guard. AntD renders Modal through a
+   body portal, so page-scoped `.announcement-management .ant-modal` rules do
+   not reach the editor dialog itself. */
+@media (max-width: 720px) {
+  body .ant-modal-root .profile-mobile-safe-modal.announcement-management-page__editorModal.ant-modal:not(.ant-modal-confirm) {
+    top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 0 auto !important;
+    padding-bottom: 0 !important;
+  }
+
+  body .ant-modal-root .announcement-management-page__editorModal .ant-modal-content {
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border-radius: 8px !important;
+  }
+
+  body .ant-modal-root .announcement-management-page__editorModal .ant-modal-body {
+    flex: 1 1 auto !important;
+    padding: 12px 14px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body .ant-modal-root .announcement-management-page__editorModal .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  body .ant-modal-root .announcement-management-page__editorModal .ant-modal-footer {
+    flex: 0 0 auto;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

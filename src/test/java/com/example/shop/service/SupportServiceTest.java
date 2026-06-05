@@ -65,6 +65,14 @@ class SupportServiceTest {
     }
 
     @Test
+    void findOpenSessionDoesNotCreateSession() {
+        service.findOpenSession(5L);
+
+        verify(supportSessionMapper).findOpenByUserId(5L);
+        verify(supportSessionMapper, never()).insert(any(SupportSession.class));
+    }
+
+    @Test
     void rateLimitsSupportMessagesBeforeSaving() {
         when(runtimeConfig.getBoolean("support.message.rate-limit-enabled", true)).thenReturn(true);
         when(runtimeConfig.getInt("support.message.max-per-minute", 20)).thenReturn(2);

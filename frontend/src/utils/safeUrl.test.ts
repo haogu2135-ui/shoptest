@@ -4,6 +4,7 @@ describe('safeUrl', () => {
   it('rejects blank, script, and credentialed urls', () => {
     expect(isSafeHttpUrl('   ')).toBe(false);
     expect(isSafeHttpUrl('/checkout/session')).toBe(false);
+    expect(isSafeHttpUrl('http://pay.example.com/checkout')).toBe(false);
     expect(isSafeHttpUrl('javascript:alert(1)')).toBe(false);
     expect(isSafeHttpUrl('https://user:pass@pay.example.com/checkout')).toBe(false);
   });

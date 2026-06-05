@@ -3,7 +3,7 @@ type ScrollListener = EventListenerOrEventListenerObject;
 const isNativeRuntime = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') return false;
   const capacitor = window.Capacitor;
-  return document.body.classList.contains('shop-mobile-app')
+  return Boolean(document.body?.classList.contains('shop-mobile-app'))
     || document.documentElement.classList.contains('shop-mobile-app-root')
     || window.location.protocol === 'capacitor:'
     || capacitor?.isNativePlatform?.() === true;

@@ -1178,7 +1178,6 @@ export interface SupportSessionCustomer {
 export interface SupportSession extends SupportSessionCustomer {
     userId?: number;
     assignedAdminId?: number;
-    contextKey?: string;
     username?: string;
     unreadByAdmin?: number;
 }

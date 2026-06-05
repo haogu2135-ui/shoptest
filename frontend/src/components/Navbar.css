@@ -601,6 +601,20 @@
   z-index: 1;
 }
 
+@media (max-width: 780px) {
+  .shop-nav__dropdown-popup .ant-dropdown-menu-item,
+  .shop-nav__dropdown-popup .ant-dropdown-menu-submenu-title {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-block: 10px;
+  }
+
+  .shop-nav__dropdown-popup .ant-dropdown-menu-title-content {
+    min-width: 0;
+  }
+}
+
 .shop-nav__menu-action {
   width: 100%;
   min-height: 34px;
@@ -2543,6 +2557,119 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__admin :where(.ant
   flex: 0 0 auto !important;
 }
 
+/* Mobile header closure: keep brand and action hit areas separated at 390px. */
+@media (max-width: 780px) {
+  .shop-nav .shop-nav__inner--main {
+    grid-template-columns: minmax(0, 1fr) max-content !important;
+    column-gap: 8px !important;
+  }
+
+  .shop-nav .shop-nav__brand {
+    max-width: 100% !important;
+    min-height: 44px !important;
+    overflow: hidden !important;
+  }
+
+  .shop-nav .shop-nav__brandCopy {
+    min-width: 0 !important;
+  }
+
+  .shop-nav .shop-nav__brandCopy strong {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .shop-nav .shop-nav__actions {
+    max-width: min(152px, calc(100vw - 184px)) !important;
+    gap: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-auth {
+    display: none !important;
+  }
+
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-locale,
+  .shop-nav .shop-nav__actions > .shop-nav__secondary-action,
+  .shop-nav .shop-nav__actions > button[aria-label],
+  .shop-nav .shop-nav__actions > a[aria-label] {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+  }
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__brand {
+  min-height: 44px !important;
+  overflow: hidden !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions {
+  max-width: min(152px, calc(100vw - 184px)) !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-auth {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
+body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+  min-width: 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+}
+
+.shop-nav .shop-nav__actions > .shop-nav__actionSummary,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
+  display: none !important;
+}
+
+/* Final mobile bottom-nav legibility guard. Short labels allow a readable 10px
+   baseline even on 360px devices without text clipping. */
+@media (max-width: 780px) {
+  .shop-nav__bottomItem,
+  body.shop-mobile-app .shop-nav__bottomItem {
+    font-size: 10px !important;
+  }
+
+  .shop-nav__bottomItem span:not(.anticon):not(.ant-badge):not(.ant-scroll-number),
+  body.shop-mobile-app .shop-nav__bottomItem span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
+    max-width: 100%;
+    overflow: hidden;
+    line-height: 1.08;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 340px) {
+  .shop-nav__bottomItem,
+  body.shop-mobile-app .shop-nav__bottomItem {
+    font-size: 10px !important;
+  }
+}
+
+/* Absolute mobile menu target closure: sub-pixel layout can leave dropdown
+   rows just under 44px, so reserve a stable 48px row. */
+@media (max-width: 780px) {
+  .shop-nav__dropdown-popup .ant-dropdown-menu-item,
+  .shop-nav__dropdown-popup .ant-dropdown-menu-submenu-title {
+    min-height: 48px !important;
+    padding-block: 12px !important;
+  }
+
+  .shop-nav__dropdown-popup .ant-dropdown-menu-title-content,
+  .shop-nav__dropdown-popup .shop-nav__menu-action {
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+  }
+}
+
 /* Final App bottom navigation touch-target guard. */
 @media (max-width: 780px) {
   body.shop-mobile-app .shop-nav__bottomBar {
@@ -2617,4 +2744,11 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__admin :where(.ant
     justify-content: center;
     line-height: 1.2;
   }
+}
+
+/* Absolute final navbar action closure: action summaries are desktop context
+   only and must not be revived by generic icon hit-area guards. */
+.shop-nav .shop-nav__actions > .shop-nav__actionSummary,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
+  display: none !important;
 }

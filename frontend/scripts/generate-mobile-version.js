@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const rootDir = path.resolve(__dirname, '..');
 const downloadsDir = path.join(rootDir, 'public', 'downloads');
@@ -21,6 +22,7 @@ const explicitApkFileName = process.env.MOBILE_APK_FILE_NAME || (explicitApkPath
 const shouldUpdateRuntimeConfig = process.env.MOBILE_RELEASE_UPDATE_RUNTIME_CONFIG !== 'false';
 const allowEmptyApkBootstrap = process.env.MOBILE_RELEASE_ALLOW_EMPTY_APK === 'true';
 const skipGeneration = process.env.MOBILE_RELEASE_SKIP_GENERATION === 'true';
+const releaseSigned = process.env.MOBILE_RELEASE_SIGNED === 'true';
 
 const apkPattern = /^shoptest-(\d+)\.(\d+)\.(\d+)\.apk$/;
 const ANDROID_DEBUG_CERT_SHA256 = 'A59C1DF808784AF870705AC1FB13B0A12E5099AB3D140A26052A885AD66687F1';
@@ -74,6 +76,87 @@ const sha256 = (filePath) => crypto.createHash('sha256').update(fs.readFileSync(
 const normalizeCertificateFingerprint = (value) => String(value || '').replace(/[^a-f0-9]/gi, '').toUpperCase();
 const cleanString = (value) => String(value || '').trim();
 
+const compareVersionPartsDesc = (left, right) => {
+  const leftParts = left.split('.').map((part) => Number(part) || 0);
+  const rightParts = right.split('.').map((part) => Number(part) || 0);
+  const maxLength = Math.max(leftParts.length, rightParts.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    const diff = (rightParts[index] || 0) - (leftParts[index] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+};
+
+const findAndroidBuildTool = (toolName) => {
+  const androidSdkRoot = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || '';
+  const buildToolsDir = androidSdkRoot ? path.join(androidSdkRoot, 'build-tools') : '';
+  if (!buildToolsDir || !fs.existsSync(buildToolsDir)) return toolName;
+  const executableName = process.platform === 'win32' ? `${toolName}.bat` : toolName;
+  const candidates = fs.readdirSync(buildToolsDir)
+    .sort(compareVersionPartsDesc)
+    .map((version) => path.join(buildToolsDir, version, executableName))
+    .filter((candidate) => fs.existsSync(candidate));
+  return candidates[0] || toolName;
+};
+
+const extractCertificateSha256 = (output) => {
+  const text = String(output || '');
+  const labeledMatch = text.match(/(?:SHA-256 digest|SHA256)\s*:\s*([A-Fa-f0-9: ]{64,95})/);
+  if (labeledMatch) {
+    const normalized = normalizeCertificateFingerprint(labeledMatch[1]);
+    if (/^[A-F0-9]{64}$/.test(normalized)) return normalized;
+  }
+  const anyMatch = text.match(/\b([A-Fa-f0-9]{2}(?::[A-Fa-f0-9]{2}){31}|[A-Fa-f0-9]{64})\b/);
+  return anyMatch ? normalizeCertificateFingerprint(anyMatch[1]) : '';
+};
+
+const runForOutput = (command, args) => {
+  const javaHome = process.env.JAVA_HOME || '';
+  const pathValue = javaHome
+    ? `${path.join(javaHome, 'bin')}${path.delimiter}${process.env.PATH || ''}`
+    : process.env.PATH;
+  const result = spawnSync(command, args, {
+    cwd: rootDir,
+    env: {
+      ...process.env,
+      ...(pathValue ? { PATH: pathValue } : {}),
+    },
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+  });
+  return {
+    ok: result.status === 0,
+    output: `${result.stdout || ''}\n${result.stderr || ''}`,
+    status: result.status === null ? 1 : result.status,
+  };
+};
+
+const readApkCertificateSha256 = (apkPath) => {
+  const apksigner = findAndroidBuildTool('apksigner');
+  const apksignerResult = runForOutput(apksigner, ['verify', '--print-certs', apkPath]);
+  const apksignerFingerprint = extractCertificateSha256(apksignerResult.output);
+  if (apksignerResult.ok && apksignerFingerprint) {
+    return apksignerFingerprint;
+  }
+
+  const javaHome = process.env.JAVA_HOME || '';
+  const keytool = javaHome
+    ? path.join(javaHome, 'bin', process.platform === 'win32' ? 'keytool.exe' : 'keytool')
+    : 'keytool';
+  const keytoolResult = runForOutput(keytool, ['-printcert', '-jarfile', apkPath]);
+  const keytoolFingerprint = extractCertificateSha256(keytoolResult.output);
+  if (keytoolResult.ok && keytoolFingerprint) {
+    return keytoolFingerprint;
+  }
+
+  throw new Error(
+    [
+      `Unable to read APK signing certificate SHA-256 for ${apkPath}.`,
+      `apksigner status=${apksignerResult.status}; keytool status=${keytoolResult.status}.`,
+    ].join(' '),
+  );
+};
+
 const readJsonFile = (filePath) => {
   if (!fs.existsSync(filePath)) return null;
   try {
@@ -114,7 +197,7 @@ const writeMobileReleaseOutputs = (manifest) => {
   console.log(`Generated ${path.relative(rootDir, manifestOutputPath)} for ${manifest.versionName} (${manifest.versionCode})`);
 };
 
-const validateReleaseSigningMetadata = (releaseSigned, certificateSha256) => {
+const validateReleaseSigningMetadata = (releaseSigned, certificateSha256, apkPath) => {
   if (!releaseSigned) return;
   if (!certificateSha256) {
     throw new Error('MOBILE_RELEASE_CERTIFICATE_SHA256 is required when MOBILE_RELEASE_SIGNED=true');
@@ -124,6 +207,19 @@ const validateReleaseSigningMetadata = (releaseSigned, certificateSha256) => {
   }
   if (certificateSha256 === ANDROID_DEBUG_CERT_SHA256) {
     throw new Error('Refusing to mark an Android Debug certificate as release-signed');
+  }
+  const actualCertificateSha256 = readApkCertificateSha256(apkPath);
+  if (actualCertificateSha256 === ANDROID_DEBUG_CERT_SHA256) {
+    throw new Error('Refusing to mark an APK signed by the Android Debug certificate as release-signed');
+  }
+  if (actualCertificateSha256 !== certificateSha256) {
+    throw new Error(
+      [
+        'MOBILE_RELEASE_CERTIFICATE_SHA256 does not match the selected APK signing certificate.',
+        `expected=${certificateSha256}`,
+        `actual=${actualCertificateSha256}`,
+      ].join(' '),
+    );
   }
 };
 
@@ -154,8 +250,8 @@ const apkFiles = explicitApk ? [explicitApk] : (fs.existsSync(downloadsDir)
 
 const latestApk = apkFiles.sort(compareVersion).pop();
 if (!latestApk) {
-  if (!allowEmptyApkBootstrap) {
-    throw new Error(`No versioned APK matching ${apkPattern} found in ${downloadsDir}`);
+  if (!allowEmptyApkBootstrap && releaseSigned) {
+    throw new Error(`No release APK matching ${apkPattern} found in ${downloadsDir}`);
   }
   const existingManifest = readJsonFile(manifestPath) || {};
   const versionName = cleanString(
@@ -195,7 +291,11 @@ if (!latestApk) {
     releaseNotes: releaseNotes(),
     generatedAt: new Date().toISOString(),
   });
-  console.log(`Bootstrapped mobile release metadata without an APK because MOBILE_RELEASE_ALLOW_EMPTY_APK=true`);
+  console.log(
+    allowEmptyApkBootstrap
+      ? 'Bootstrapped mobile release metadata without an APK because MOBILE_RELEASE_ALLOW_EMPTY_APK=true'
+      : 'Bootstrapped unsigned mobile release metadata without a public APK',
+  );
   process.exit(0);
 }
 
@@ -203,13 +303,12 @@ const stat = fs.statSync(latestApk.filePath);
 const versionName = process.env.MOBILE_VERSION_NAME || latestApk.versionName;
 const versionCode = Number(process.env.MOBILE_VERSION_CODE || toVersionCode(versionName));
 const generatedAt = new Date().toISOString();
-const releaseSigned = process.env.MOBILE_RELEASE_SIGNED === 'true';
 const certificateSha256 = normalizeCertificateFingerprint(process.env.MOBILE_RELEASE_CERTIFICATE_SHA256);
 const minSupportedVersionCode = Number(process.env.MOBILE_MIN_SUPPORTED_VERSION_CODE || 0);
 const apkUrl = releaseSigned ? `/downloads/${latestApk.fileName}` : '';
 const legacyApkUrl = releaseSigned ? `/downloads/shoptest.apk?v=${encodeURIComponent(versionName)}` : '';
 
-validateReleaseSigningMetadata(releaseSigned, certificateSha256);
+validateReleaseSigningMetadata(releaseSigned, certificateSha256, latestApk.filePath);
 validateVersionMetadata(versionName, versionCode, latestApk);
 validateUpdatePolicyMetadata(minSupportedVersionCode, versionCode);
 

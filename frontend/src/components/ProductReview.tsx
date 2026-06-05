@@ -35,6 +35,12 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     const [submitting, setSubmitting] = useState(false);
     const { t, language } = useLanguage();
     const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+    const selectedReviewOrder = reviewableOrders.find((order) => Number(order.id) === Number(orderId));
+    const selectedReviewOrderLabel = selectedReviewOrder?.orderNo || (selectedReviewOrder ? `#${selectedReviewOrder.id}` : t('pages.review.selectOrder'));
+    const reviewOrderSelectLabel = `${t('pages.review.selectOrder')}: ${selectedReviewOrderLabel}`;
+    const reviewRatingLabel = `${t('pages.productDetail.rating')}: ${rating}, ${selectedReviewOrderLabel}`;
+    const reviewCommentLabel = `${t('pages.review.placeholder')}: ${selectedReviewOrderLabel}`;
+    const reviewSubmitLabel = `${t('pages.review.submit')}: ${selectedReviewOrderLabel}, ${t('pages.productDetail.rating')} ${rating}`;
 
     useEffect(() => {
         setOrderId((current) =>
@@ -85,14 +91,18 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 onChange={setOrderId}
                                 placeholder={t('pages.review.selectOrder')}
                                 className="product-review__orderSelect"
-                                popupClassName="shop-mobile-popup-layer"
+                                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                                 getPopupContainer={() => document.body}
+                                aria-label={reviewOrderSelectLabel}
+                                title={reviewOrderSelectLabel}
                                 options={reviewableOrders.map((order) => ({
                                     value: order.id,
                                     label: `${order.orderNo || `#${order.id}`}${formatSafeDate(order.createdAt, dateLocale, '') ? ` - ${formatSafeDate(order.createdAt, dateLocale)}` : ''}`,
                                 }))}
                             />
-                            <Rate className="product-review__rate" value={rating} onChange={setRating} />
+                            <div role="group" aria-label={reviewRatingLabel} title={reviewRatingLabel}>
+                                <Rate className="product-review__rate" value={rating} onChange={setRating} />
+                            </div>
                             <TextArea
                                 className="product-review__textarea"
                                 rows={4}
@@ -101,12 +111,16 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 placeholder={t('pages.review.placeholder')}
                                 maxLength={1000}
                                 showCount
+                                aria-label={reviewCommentLabel}
+                                title={reviewCommentLabel}
                             />
                             <Button
                                 type="primary"
                                 className="product-review__submit"
                                 onClick={handleSubmit}
                                 loading={submitting}
+                                aria-label={reviewSubmitLabel}
+                                title={reviewSubmitLabel}
                             >
                                 {t('pages.review.submit')}
                             </Button>
@@ -140,7 +154,9 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                             title={
                                 <Space className="product-review__meta" wrap>
                                     <span>{review.username}</span>
-                                    <Rate disabled value={review.rating} />
+                                    <span role="group" aria-label={`${t('pages.productDetail.rating')}: ${review.rating}, ${review.username}`} title={`${t('pages.productDetail.rating')}: ${review.rating}, ${review.username}`}>
+                                        <Rate disabled value={review.rating} />
+                                    </span>
                                 </Space>
                             }
                             description={

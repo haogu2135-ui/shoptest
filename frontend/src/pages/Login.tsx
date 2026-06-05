@@ -97,6 +97,21 @@ const Login: React.FC = () => {
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const canSubmitEmailCode = emailCodeEnabled && emailCodeLength === 6 && verifyRetryCountdown <= 0;
   const postLoginRedirectTarget = getPostLoginRedirectTarget(location.search);
+  const loginPageLabel = t('pages.auth.loginTitle');
+  const loginRegisterActionLabel = `${t('pages.auth.register')}: ${loginPageLabel}`;
+  const loginTrackOrderActionLabel = `${t('nav.trackOrder')}: ${loginPageLabel}`;
+  const loginSupportActionLabel = `${t('nav.help')}: ${t('pages.auth.mobileQuickActions')}`;
+  const passwordLoginActionLabel = `${t('pages.auth.passwordLogin')}: ${loginPageLabel}`;
+  const emailLoginActionLabel = `${t('pages.auth.emailLogin')}: ${loginPageLabel}`;
+  const passwordLoginUsernameInputLabel = `${passwordLoginActionLabel}: ${t('pages.auth.username')}`;
+  const passwordLoginPasswordInputLabel = `${passwordLoginActionLabel}: ${t('pages.auth.password')}`;
+  const emailLoginEmailInputLabel = `${emailLoginActionLabel}: ${t('pages.auth.email')}`;
+  const emailLoginCodeInputLabel = `${emailLoginActionLabel}: ${t('pages.auth.verificationCode')}`;
+  const sendEmailCodeActionLabel = codeSending
+    ? `${emailLoginActionLabel}: ${t('pages.auth.emailCodeSending')}`
+    : sendCodeCountdown > 0
+    ? `${emailLoginActionLabel}: ${t('pages.auth.resendIn', { seconds: sendCodeCountdown })}`
+    : `${emailLoginActionLabel}: ${t('pages.auth.sendCode')}`;
 
   useEffect(() => {
     if (getLocalStorageItem('token')) {
@@ -327,10 +342,10 @@ const Login: React.FC = () => {
             </div>
           </div>
           <div className="shopee-login-panel__actions">
-            <Button type="primary" size="large" onClick={() => navigate('/register')}>
+            <Button type="primary" size="large" aria-label={loginRegisterActionLabel} title={loginRegisterActionLabel} onClick={() => navigate('/register')}>
               {t('pages.auth.register')}
             </Button>
-            <Button ghost size="large" onClick={() => navigate('/track-order')}>
+            <Button ghost size="large" aria-label={loginTrackOrderActionLabel} title={loginTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
               {t('nav.trackOrder')}
             </Button>
           </div>
@@ -351,11 +366,11 @@ const Login: React.FC = () => {
             </span>
           </div>
           <div className="shopee-login-appActions" aria-label={t('pages.auth.mobileQuickActions')}>
-            <button type="button" onClick={() => navigate('/track-order')}>
+            <button type="button" aria-label={loginTrackOrderActionLabel} title={loginTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
               <TruckOutlined />
               <span>{t('nav.trackOrder')}</span>
             </button>
-            <button type="button" onClick={() => dispatchDomEvent('shop:open-support')}>
+            <button type="button" aria-label={loginSupportActionLabel} title={loginSupportActionLabel} onClick={() => dispatchDomEvent('shop:open-support')}>
               <CustomerServiceOutlined />
               <span>{t('nav.help')}</span>
             </button>
@@ -420,6 +435,8 @@ const Login: React.FC = () => {
                         placeholder={t('pages.auth.username')}
                         size="large"
                         autoComplete="username"
+                        aria-label={passwordLoginUsernameInputLabel}
+                        title={passwordLoginUsernameInputLabel}
                         onBlur={(event) => passwordForm.setFieldValue('username', normalizePasswordLogin(event.target.value))}
                       />
                     </Form.Item>
@@ -427,10 +444,17 @@ const Login: React.FC = () => {
                       { required: true, message: t('pages.auth.passwordRequired') },
                       { min: 8, message: t('pages.auth.passwordMinLength') },
                     ]}>
-                      <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.password')} size="large" autoComplete="current-password" />
+                      <Input.Password
+                        prefix={<LockOutlined />}
+                        placeholder={t('pages.auth.password')}
+                        size="large"
+                        autoComplete="current-password"
+                        aria-label={passwordLoginPasswordInputLabel}
+                        title={passwordLoginPasswordInputLabel}
+                      />
                     </Form.Item>
                     <Form.Item>
-                      <Button type="primary" htmlType="submit" block size="large" loading={loading}>
+                      <Button type="primary" htmlType="submit" block size="large" loading={loading} aria-label={passwordLoginActionLabel} title={passwordLoginActionLabel}>
                         {t('pages.auth.login')}
                       </Button>
                     </Form.Item>
@@ -493,7 +517,8 @@ const Login: React.FC = () => {
                         autoComplete="email"
                         allowClear
                         disabled={loading || !emailCodeEnabled}
-                        aria-label={t('pages.auth.email')}
+                        aria-label={emailLoginEmailInputLabel}
+                        title={emailLoginEmailInputLabel}
                       />
                     </Form.Item>
                     <Form.Item
@@ -516,7 +541,8 @@ const Login: React.FC = () => {
                         pattern="[0-9]*"
                         enterKeyHint="done"
                         disabled={loading || !emailCodeEnabled}
-                        aria-label={t('pages.auth.verificationCode')}
+                        aria-label={emailLoginCodeInputLabel}
+                        title={emailLoginCodeInputLabel}
                         onChange={(event) => {
                           const normalized = normalizeEmailCode(event.target.value);
                           if (normalized !== event.target.value) {
@@ -531,11 +557,8 @@ const Login: React.FC = () => {
                             loading={codeSending}
                             disabled={loading || codeSending || sendCodeCountdown > 0 || !emailCodeEnabled}
                             onClick={sendEmailCode}
-                            aria-label={codeSending
-                              ? t('pages.auth.emailCodeSending')
-                              : sendCodeCountdown > 0
-                              ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
-                              : t('pages.auth.sendCode')}
+                            aria-label={sendEmailCodeActionLabel}
+                            title={sendEmailCodeActionLabel}
                           >
                             {codeSending
                               ? t('pages.auth.emailCodeSending')
@@ -562,7 +585,7 @@ const Login: React.FC = () => {
                       </span>
                     </div>
                     <Form.Item>
-                      <Button className="shopee-login-emailSubmit" type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !canSubmitEmailCode}>
+                      <Button className="shopee-login-emailSubmit" type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !canSubmitEmailCode} aria-label={emailLoginActionLabel} title={emailLoginActionLabel}>
                         {verifyRetryCountdown > 0
                           ? t('pages.auth.emailCodeRetryIn', { seconds: verifyRetryCountdown })
                           : t('pages.auth.emailLogin')}
@@ -575,7 +598,7 @@ const Login: React.FC = () => {
           />
 
           <div className="shopee-login-quickLinks">
-            <button type="button" onClick={() => navigate('/track-order')}>
+            <button type="button" aria-label={loginTrackOrderActionLabel} title={loginTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
               <TruckOutlined />
               <span>{t('nav.trackOrder')}</span>
             </button>

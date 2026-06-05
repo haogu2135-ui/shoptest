@@ -176,7 +176,7 @@ public class SiteAnnouncementService {
                 throw new IllegalArgumentException("Link URL is too long");
             }
             if (!isSafeLinkUrl(trimmedLink)) {
-                throw new IllegalArgumentException("Link URL must be a relative path or an HTTP(S) URL");
+                throw new IllegalArgumentException("Link URL must be a relative path or an HTTPS URL");
             }
         }
         if (announcement.getStartsAt() != null && announcement.getEndsAt() != null
@@ -301,7 +301,7 @@ public class SiteAnnouncementService {
             URI uri = new URI(value);
             String scheme = uri.getScheme();
             return scheme != null
-                    && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+                    && "https".equalsIgnoreCase(scheme)
                     && uri.getUserInfo() == null
                     && uri.getHost() != null
                     && !uri.getHost().trim().isEmpty();

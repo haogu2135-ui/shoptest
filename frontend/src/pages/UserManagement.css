@@ -197,20 +197,17 @@
   }
 
   .user-management-page__healthGrid {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    margin-inline: -12px;
-    padding: 0 12px 2px;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
   }
 
   .user-management-page__healthItem {
-    min-width: 132px;
     min-height: 82px;
     padding: 10px;
-    scroll-snap-align: start;
   }
 
   .user-management-page__healthItem strong {

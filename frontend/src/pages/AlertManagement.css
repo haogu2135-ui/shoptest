@@ -227,6 +227,7 @@
 @media (max-width: 720px) {
   .alert-management__hero > div:first-child,
   .alert-management__actions,
+  .alert-management__actions.ant-space,
   .alert-management__card,
   .alert-management__filters,
   .alert-management__bulkBar,
@@ -244,14 +245,18 @@
     line-height: 1.4;
   }
 
-  .alert-management__actions {
+  .alert-management__actions,
+  .alert-management__actions.ant-space {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+    justify-content: stretch;
   }
 
   .alert-management__actions .ant-space-item,
   .alert-management__actions .ant-btn {
+    min-width: 0;
+    max-width: 100%;
     width: 100%;
   }
 
@@ -281,7 +286,8 @@
 }
 
 @media (max-width: 380px) {
-  .alert-management__actions {
+  .alert-management__actions,
+  .alert-management__actions.ant-space {
     grid-template-columns: 1fr;
   }
 
@@ -373,5 +379,54 @@
   .alert-management__purge .ant-input-number,
   .alert-management__purge .ant-input-number-group-addon {
     min-height: 44px;
+  }
+}
+
+/* Final F744 regression guard: table scroll width must not stretch mobile page chrome. */
+@media (max-width: 720px) {
+  .alert-management,
+  .alert-management__hero,
+  .alert-management__hero > div:first-child,
+  .alert-management__actions,
+  .alert-management__card,
+  .alert-management__card .ant-card-body,
+  .alert-management__filters,
+  .alert-management__bulkBar,
+  .alert-management__purge,
+  .alert-management .ant-spin-nested-loading,
+  .alert-management .ant-spin-container,
+  .alert-management .ant-table-wrapper {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .alert-management__hero,
+  .alert-management__filters,
+  .alert-management__bulkBar {
+    overflow-x: clip;
+  }
+
+  .alert-management__card,
+  .alert-management__card .ant-card-body {
+    overflow: hidden;
+  }
+
+  .alert-management .ant-table-wrapper {
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .alert-management .ant-table-container,
+  .alert-management .ant-table-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .alert-management .ant-table {
+    min-width: 980px;
   }
 }
