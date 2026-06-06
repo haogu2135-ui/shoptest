@@ -4,7 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- Total: 2113 issues | FIXED: 2005 | WONTFIX: 14 | OPEN: 94
+- Total: 2113 issues | FIXED: 2006 | WONTFIX: 14 | OPEN: 93
+- **Implementation Cycle #497 (2026-06-06 20:52 UTC)**: Closed 1 current queue item. FIXED: F2081 `Cart.tsx` recent-products cache now has a 50-entry LRU-style cap, prunes expired TTL entries on reads/writes, refreshes hit order on cache reads, and evicts oldest keys after writes so long-lived cart sessions cannot grow the module-level cache without bound. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-cart-f2081 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 93.
 - **Implementation Cycle #496 (2026-06-06 20:48 UTC)**: Closed 1 current queue item. FIXED: F2080 `ReviewServiceImpl.getAverageRating()` now runs inside a read-only `REPEATABLE_READ` transaction so the public product-status check and average-rating aggregate are read from a consistent transaction snapshot under concurrent review writes. Verification: backend targeted Maven ✅ (`ReviewServiceTest`). Remaining OPEN: 94.
 - **Implementation Cycle #495 (2026-06-06 20:42 UTC)**: Closed 3 current queue items. WONTFIX/NON_ISSUE: F2077 and F2078 because current `AdminBugReportService` has no `getAll()` or `getStatusTimeStats()` methods; `/admin/bugs` uses the bounded `search(page,size,...)` query with `LIMIT/OFFSET`, and `/admin/bugs/summary` uses SQL count/group queries instead of loading rows. FIXED: F2079 by removing the dead unbounded `OrderRepository.findAll()` API and matching `OrderMapper.xml` `SELECT * FROM orders` mapping; legacy/admin order list paths remain on counted, capped `searchAdminOrders(...)`. Verification: backend targeted Maven ✅ (`OrderStatsServiceTest`). Remaining OPEN: 95.
 - **Regression #484 (2026-06-23 08:15 UTC)**: Backend ⚠️ 463/464 passed — **1 failure**: `AdminBugReportServiceTest.updateThrowsWhenNoRowsAreAffected` (F2076 regression — the test expects `DataIntegrityViolationException` but `update()` now throws `RuntimeException("Bug report not found")` per F2076 fix). Frontend Build ✅ SUCCESS. Frontend Jest ⚠️ 246/248 pass, 48/50 suites — F1831 flaky timeout (CartCheckoutFlow rapid edits) + F1767 syntax error (SupportManagement @testing-library/dom) still OPEN. **No new source-code issues found.**
@@ -7817,8 +7818,9 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **File:** `frontend/src/pages/Cart.tsx:69`
 **Description:** `recentProductsCache` is a module-level `Map<number, Product>` that grows with every cart item viewed. There's no eviction policy — the map accumulates indefinitely over a long session. Should use an LRU cache (e.g., Map with max size 50) or at minimum clear on logout.
 **Impact:** Memory leak in long-lived sessions.
-**Fix:** Use LRU cache or add size-based eviction.
-**Severity:** MEDIUM | **Status:** OPEN | **Date:** 2026-06-20
+**Fix applied:** Added a 50-entry cap for the module-level recent-products cache. Cache reads delete expired entries and refresh hit order; cache writes prune expired entries, insert the refreshed key, and evict oldest keys while the map is over the cap.
+**Verification:** `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-cart-f2081 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` passed with existing Browserslist stale-data warnings only.
+**Severity:** MEDIUM | **Status:** FIXED | **Date:** 2026-06-20 | **Fixed:** 2026-06-06 20:52 UTC
 
 ### F2082: MEDIUM — Checkout payment polling cross-tab coordination missing
 **File:** `frontend/src/pages/Checkout.tsx:158-176`

@@ -4,6 +4,18 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 20:52 UTC Implementation Cycle #497 Regression Handoff
+
+Source status: SOURCE_FIXED / E2E PENDING for F2081.
+
+Local verification already run:
+- Frontend build: `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-cart-f2081 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` ✅, with existing Browserslist stale-data warnings only
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Cart recently viewed cache long session | SOURCE_FIXED / E2E PENDING | In one browser session, repeatedly change recently viewed product history and reopen `/cart` across more than 50 distinct recent-product cache keys/language combinations. Verify the cart recently viewed recovery UI still shows correct products and browser heap does not grow from unbounded `recentProductsCache` entries. |
+| Cart recently viewed cache TTL refresh | SOURCE_FIXED / E2E PENDING | Reopen `/cart` with the same recent-products key within the 2-minute cache TTL and verify cached products render without an extra product batch request; after TTL expiry, verify the next cart load refreshes from the product API and expired entries are not reused. |
+
 ## 2026-06-06 20:48 UTC Implementation Cycle #496 Regression Handoff
 
 Source status: SOURCE_FIXED / E2E PENDING for F2080.

@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-06 20:48 UTC — Implementation Cycle #496 | Total: 2113 issues
+Last updated: 2026-06-06 20:52 UTC — Implementation Cycle #497 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -9,9 +9,18 @@ Legend: OPEN / FIXED / WONTFIX
 ## Summary
 
 - Total issues: 2113
-- FIXED: 2005
+- FIXED: 2006
 - WONTFIX: 14
-- OPEN: 94
+- OPEN: 93
+
+---
+
+## 2026-06-06 20:52 UTC Implementation Cycle #497 — Status Update
+
+### Implementation Cycle #497 Results
+- **Closed items:** F2081 fixed in `Cart.tsx`; the recently viewed products cache now prunes expired entries and enforces a 50-entry LRU-style cap, so long-lived cart sessions cannot grow the module-level Map without bound.
+- **Frontend build:** ✅ `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-cart-f2081 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` (Browserslist stale-data warnings only)
+- **Status:** Summary preserves the existing total of 2113 and updates FIXED to 2006, OPEN to 93. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 

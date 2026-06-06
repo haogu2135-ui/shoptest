@@ -33,7 +33,47 @@ import '../styles/mobile-page-contrast.css';
 
 const { Title, Text } = Typography;
 const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;
-const recentProductsCache = new Map<string, { expiresAt: number; products: Product[] }>();
+const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;
+type RecentProductsCacheEntry = { expiresAt: number; products: Product[] };
+const recentProductsCache = new Map<string, RecentProductsCacheEntry>();
+
+const pruneRecentProductsCache = (now = Date.now()) => {
+  recentProductsCache.forEach((entry, key) => {
+    if (entry.expiresAt <= now) {
+      recentProductsCache.delete(key);
+    }
+  });
+  while (recentProductsCache.size > RECENT_PRODUCTS_CACHE_MAX_ENTRIES) {
+    const oldestKey = recentProductsCache.keys().next().value;
+    if (!oldestKey) break;
+    recentProductsCache.delete(oldestKey);
+  }
+};
+
+const getCachedRecentProducts = (cacheKey: string, now = Date.now()) => {
+  const cached = recentProductsCache.get(cacheKey);
+  if (!cached) {
+    pruneRecentProductsCache(now);
+    return null;
+  }
+  if (cached.expiresAt <= now) {
+    recentProductsCache.delete(cacheKey);
+    return null;
+  }
+  recentProductsCache.delete(cacheKey);
+  recentProductsCache.set(cacheKey, cached);
+  return cached.products;
+};
+
+const setCachedRecentProducts = (cacheKey: string, products: Product[], now = Date.now()) => {
+  pruneRecentProductsCache(now);
+  recentProductsCache.delete(cacheKey);
+  recentProductsCache.set(cacheKey, {
+    expiresAt: now + RECENT_PRODUCTS_CACHE_MS,
+    products,
+  });
+  pruneRecentProductsCache(now);
+};
 
 const getSavedAgeDays = (savedAt?: number) => {
   if (!savedAt) return 0;
@@ -128,9 +168,9 @@ const Cart: React.FC = () => {
       try {
         const recentIds = preferences.recent.slice(0, conversionConfig.cartRecentlyViewed.maxItems * 2);
         const cacheKey = `${language}|${recentIds.join(',')}`;
-        const cached = recentProductsCache.get(cacheKey);
-        if (cached && cached.expiresAt > Date.now()) {
-          setRecentProducts(cached.products);
+        const cachedProducts = getCachedRecentProducts(cacheKey);
+        if (cachedProducts) {
+          setRecentProducts(cachedProducts);
           return;
         }
         const response = await productApi.getByIds(recentIds);
@@ -140,10 +180,7 @@ const Cart: React.FC = () => {
             .filter((product): product is Product => Boolean(product))
             .filter((product) => product.stock === undefined || product.stock > 0)
             .slice(0, conversionConfig.cartRecentlyViewed.maxItems);
-        recentProductsCache.set(cacheKey, {
-          expiresAt: Date.now() + RECENT_PRODUCTS_CACHE_MS,
-          products: nextRecentProducts,
-        });
+        setCachedRecentProducts(cacheKey, nextRecentProducts);
         setRecentProducts(nextRecentProducts);
       } catch {
         setRecentProducts([]);
