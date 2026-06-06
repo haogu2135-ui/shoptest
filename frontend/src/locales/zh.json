@@ -304,7 +304,7 @@
     },
     "heroEyebrow": "宠物好物限时优惠",
     "heroTitle": "宠物用品低至5折",
-    "heroText": "全场包邮，新用户立减 $20。",
+    "heroText": "全场包邮，新用户专享立减优惠。",
     "shopBestSellers": "立即购买",
     "findWalkingGear": "领取优惠券",
     "claimCoupons": "领取优惠券",
@@ -313,7 +313,7 @@
     "couponsExtra": "额外优惠券",
     "upToOff": "最高 60% 折扣",
     "localDelivery": "本地配送",
-    "shippingFrom": "运费低至 $0",
+    "shippingFrom": "运费低至免邮",
     "categories": "商品分类",
     "viewAll": "查看全部",
     "shopAll": "全部选购",
@@ -3195,7 +3195,7 @@
       "checkHook": "转化钩子",
       "sendAllConfirmDescription": "会向所有符合条件的用户发送通知，发送后不可撤回。",
       "templateTitle": "ShopMX 限时优惠",
-      "templateHtml": "<p><strong>限时优惠</strong>：指定订单满 $299 免运费。</p><p>使用优惠券 <strong>SHOPMX20</strong> 可享额外折扣。</p><p><a href=\"/coupons\">立即领取优惠券</a></p>"
+      "templateHtml": "<p><strong>限时优惠</strong>：指定订单满额即可免运费。</p><p>使用优惠券 <strong>SHOPMX20</strong> 可享额外折扣。</p><p><a href=\"/coupons\">立即领取优惠券</a></p>"
     },
     "petFinder": {
       "title": "宠物选品助手",

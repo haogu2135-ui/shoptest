@@ -4,6 +4,19 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 21:22 UTC Implementation Cycle #500 Regression Handoff
+
+Source status: SOURCE_FIXED / E2E PENDING for F2084.
+
+Local verification already run:
+- Frontend build: `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-zh-locale-f2084 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` ✅, with existing Browserslist stale-data warnings only
+- Static locale check: `rg -n '\$[0-9]' frontend/src/locales/zh.json` ✅ no matches
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Chinese cart/free-shipping amount copy | SOURCE_FIXED / E2E PENDING | Switch the storefront to Chinese and inspect cart, cart drawer, checkout shipping policy, coupon threshold/gap text, and free-shipping prompts. Verify threshold amounts render through localized money formatting and no literal `$20`, `$0`, or `$299` appears in Chinese UI copy. |
+| Chinese marketing/notification copy | SOURCE_FIXED / E2E PENDING | Open the Chinese storefront/home promotional area and notification campaign template preview or seeded notification content. Verify new-user and free-shipping copy is localized and does not contain hardcoded dollar-denominated numeric amounts. |
+
 ## 2026-06-06 21:15 UTC Implementation Cycle #499 Regression Handoff
 
 Source status: SOURCE_FIXED / E2E PENDING for F2083.

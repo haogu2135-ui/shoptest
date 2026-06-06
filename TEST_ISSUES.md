@@ -4,7 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- Total: 2113 issues | FIXED: 2008 | WONTFIX: 14 | OPEN: 91
+- Total: 2113 issues | FIXED: 2009 | WONTFIX: 14 | OPEN: 90
+- **Implementation Cycle #500 (2026-06-06 21:22 UTC)**: Closed 1 current queue item. FIXED: F2084 `frontend/src/locales/zh.json` no longer has hardcoded dollar-denominated numeric amounts in Chinese copy; the reported `cart.noThreshold` key is absent in current source, cart/free-shipping threshold strings already use `{amount}`, and the remaining zh marketing/notification dollar amounts were rewritten to localized non-hardcoded copy. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-zh-locale-f2084 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only); static check ✅ (`rg -n '\\$[0-9]' frontend/src/locales/zh.json` returns no matches). Remaining OPEN: 90.
 - **Implementation Cycle #499 (2026-06-06 21:15 UTC)**: Closed 1 current queue item. FIXED: F2083 `OrderTracking.tsx` order-tracking requests now use AbortController cleanup: new lookups abort prior lookups, tracked-order refreshes abort prior refreshes, component unmount aborts both active controllers, and `orderApi.track()` accepts an abort signal while skipping shared pending/cache for abortable calls. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-ordertracking-f2083 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 91.
 - **Implementation Cycle #498 (2026-06-06 21:04 UTC)**: Closed 1 current queue item. FIXED: F2082 `Checkout.tsx` pending-payment polling now uses a per-order `localStorage` owner lock with TTL/settle confirmation before calling `paymentApi.getLatestByOrder`, and writes latest payment/order results for sibling tabs to consume through storage events so only the owner tab polls while other checkout tabs reuse shared state. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-checkout-f2082 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 92.
 - **Implementation Cycle #497 (2026-06-06 20:52 UTC)**: Closed 1 current queue item. FIXED: F2081 `Cart.tsx` recent-products cache now has a 50-entry LRU-style cap, prunes expired TTL entries on reads/writes, refreshes hit order on cache reads, and evicts oldest keys after writes so long-lived cart sessions cannot grow the module-level cache without bound. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-cart-f2081 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 93.
@@ -7844,8 +7845,9 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **File:** `frontend/src/locales/zh.json:357`
 **Description:** The `cart.noThreshold` key contains `"适用于订单满$20以上的商品"` — hardcoded "$20" with a dollar sign. This text should use the template variable `{{amount}}` (which is already defined in `couponRule`) or at minimum use the localized currency symbol.
 **Impact:** Hardcoded English currency in Chinese locale.
-**Fix:** Use template variable `{{amount}}` with localized currency.
-**Severity:** MEDIUM | **Status:** OPEN | **Date:** 2026-06-20
+**Fix applied:** Current source no longer has a `cart.noThreshold` key, and cart/free-shipping threshold strings already use `{amount}`. Removed the remaining hardcoded dollar-denominated numeric amounts from Chinese locale marketing/notification copy (`heroText`, `shippingFrom`, `campaign.templateHtml`) so `zh.json` no longer mixes Chinese copy with `$20`, `$0`, or `$299` text.
+**Verification:** `rg -n '\\$[0-9]' frontend/src/locales/zh.json` returned no matches. `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-zh-locale-f2084 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` passed with existing Browserslist stale-data warnings only.
+**Severity:** MEDIUM | **Status:** FIXED | **Date:** 2026-06-20 | **Fixed:** 2026-06-06 21:22 UTC
 
 ### F2085: LOW — review table has no UNIQUE INDEX on order_id — duplicate reviews possible
 **File:** `src/main/resources/schema.sql:590-592`

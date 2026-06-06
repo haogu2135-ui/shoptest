@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-06 21:15 UTC — Implementation Cycle #499 | Total: 2113 issues
+Last updated: 2026-06-06 21:22 UTC — Implementation Cycle #500 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -9,9 +9,19 @@ Legend: OPEN / FIXED / WONTFIX
 ## Summary
 
 - Total issues: 2113
-- FIXED: 2008
+- FIXED: 2009
 - WONTFIX: 14
-- OPEN: 91
+- OPEN: 90
+
+---
+
+## 2026-06-06 21:22 UTC Implementation Cycle #500 — Status Update
+
+### Implementation Cycle #500 Results
+- **Closed items:** F2084 fixed in `frontend/src/locales/zh.json`; the reported `cart.noThreshold` key is absent in current source, cart/free-shipping threshold strings already use `{amount}`, and the remaining hardcoded dollar-denominated numeric amounts in Chinese marketing/notification copy were removed.
+- **Frontend build:** ✅ `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-zh-locale-f2084 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` (Browserslist stale-data warnings only)
+- **Static locale check:** ✅ `rg -n '\$[0-9]' frontend/src/locales/zh.json` returned no matches
+- **Status:** Summary preserves the existing total of 2113 and updates FIXED to 2009, OPEN to 90. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 
