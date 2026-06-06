@@ -40,10 +40,6 @@
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
 
-    <select id="findAll" resultMap="orderMap">
-        SELECT * FROM orders
-    </select>
-
     <select id="countAll" resultType="long">
         SELECT COUNT(*) FROM orders
     </select>

@@ -4,7 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- Total: 2113 issues | FIXED: 2003 | WONTFIX: 12 | OPEN: 98
+- Total: 2113 issues | FIXED: 2004 | WONTFIX: 14 | OPEN: 95
+- **Implementation Cycle #495 (2026-06-06 20:42 UTC)**: Closed 3 current queue items. WONTFIX/NON_ISSUE: F2077 and F2078 because current `AdminBugReportService` has no `getAll()` or `getStatusTimeStats()` methods; `/admin/bugs` uses the bounded `search(page,size,...)` query with `LIMIT/OFFSET`, and `/admin/bugs/summary` uses SQL count/group queries instead of loading rows. FIXED: F2079 by removing the dead unbounded `OrderRepository.findAll()` API and matching `OrderMapper.xml` `SELECT * FROM orders` mapping; legacy/admin order list paths remain on counted, capped `searchAdminOrders(...)`. Verification: backend targeted Maven ✅ (`OrderStatsServiceTest`). Remaining OPEN: 95.
 - **Regression #484 (2026-06-23 08:15 UTC)**: Backend ⚠️ 463/464 passed — **1 failure**: `AdminBugReportServiceTest.updateThrowsWhenNoRowsAreAffected` (F2076 regression — the test expects `DataIntegrityViolationException` but `update()` now throws `RuntimeException("Bug report not found")` per F2076 fix). Frontend Build ✅ SUCCESS. Frontend Jest ⚠️ 246/248 pass, 48/50 suites — F1831 flaky timeout (CartCheckoutFlow rapid edits) + F1767 syntax error (SupportManagement @testing-library/dom) still OPEN. **No new source-code issues found.**
 - **Deep Review #99 (2026-06-20 22:00 UTC)**: 14 new issues (F2100–F2113) from full security & code quality audit. **1 HIGH** (admin bootstrap endpoint publicly accessible — auto-disable after first admin). **8 MEDIUM** (password validation allows weak passwords, JWT secret runtime validation, CORS allows private network origins, payment simulation endpoints accessible, JWT stored in localStorage, dangerouslySetInnerHTML with custom sanitizer, guest order weak auth, unbounded SELECT queries). **5 LOW** (token blacklist not checked on refresh, User type includes password field, missing AbortController cleanup, stale closure in SearchBar, no i18n fallback warning).
 - **Implementation Cycle #494 (2026-06-06 20:34 UTC)**: Closed 1 current queue item. FIXED: F2076 `AdminBugReportService.update()` now checks the `jdbcTemplate.update(...)` affected-row count and throws `Bug report not found` if the row disappears or cannot be updated, instead of silently continuing into a stale follow-up read. Verification: backend targeted Maven ✅ (`AdminBugReportServiceTest`). Remaining OPEN: 98.
@@ -7780,25 +7781,28 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **Severity:** MEDIUM | **Status:** FIXED | **Date:** 2026-06-20 | **Fixed:** 2026-06-06 20:34 UTC
 
 ### F2077: MEDIUM — AdminBugReportService getAll() unbounded query loads all bugs into memory
-**File:** `src/main/java/com/example/shop/service/AdminBugReportService.java:517-520`
-**Description:** `getAll()` applies only status/severity/keyword filters with no LIMIT clause. On a system with thousands of resolved bugs, this loads every matching row into a single `List<AdminBugReport>`. Should use pagination or at minimum add a default page size.
-**Impact:** Memory growth and slow query on large datasets.
-**Fix:** Add pagination parameters and a default LIMIT.
-**Severity:** MEDIUM | **Status:** OPEN | **Date:** 2026-06-20
+**File:** `src/main/java/com/example/shop/service/AdminBugReportService.java`
+**Description:** The reported unbounded `getAll()` path is not present in current source. Admin bug listing enters `AdminBugReportController.search()` and `AdminBugReportService.search(page,size,...)`, which clamps the page size and executes `LIMIT ? OFFSET ?`.
+**Impact:** No current production path loads all admin bug reports for the reported list flow.
+**Resolution:** WONTFIX/NON_ISSUE — current source is already bounded; no production code change needed.
+**Verification:** Static source review confirmed no `getAll()` method in `AdminBugReportService` and confirmed `/admin/bugs` uses `search(... LIMIT/OFFSET ...)`.
+**Severity:** MEDIUM | **Status:** WONTFIX/NON_ISSUE | **Date:** 2026-06-20 | **Closed:** 2026-06-06 20:42 UTC
 
 ### F2078: MEDIUM — AdminBugReportService getStatusTimeStats() iterates all bugs twice instead of using SQL aggregation
-**File:** `src/main/java/com/example/shop/service/AdminBugReportService.java:668-699`
-**Description:** `getStatusTimeStats()` loads all matching bugs into memory (via `getAll()`), then iterates twice — once for status durations, once for scan intervals — using `Duration.between()`. This is O(n) in Java when SQL `GROUP BY` with `TIMESTAMPDIFF` would be both faster and use constant heap. The method also re-calls `getAll()` each time it's invoked, doubling the DB load.
-**Impact:** Unbounded heap growth and slow response on large datasets.
-**Fix:** Use SQL aggregation with GROUP BY instead of in-memory iteration.
-**Severity:** MEDIUM | **Status:** OPEN | **Date:** 2026-06-20
+**File:** `src/main/java/com/example/shop/service/AdminBugReportService.java`
+**Description:** The reported `getStatusTimeStats()` method is not present in current source. The active summary endpoint calls `summary()`, which uses `COUNT(*)`, due-for-scan count, and whitelisted `GROUP BY` queries instead of loading report rows into Java.
+**Impact:** No current production summary path performs the reported full-list Java iteration.
+**Resolution:** WONTFIX/NON_ISSUE — current source is already SQL-aggregate based; no production code change needed.
+**Verification:** Static source review confirmed no `getStatusTimeStats()` method in `AdminBugReportService` and confirmed `/admin/bugs/summary` uses `countByStatus`, `countDueForScan`, and `groupCount`.
+**Severity:** MEDIUM | **Status:** WONTFIX/NON_ISSUE | **Date:** 2026-06-20 | **Closed:** 2026-06-06 20:42 UTC
 
 ### F2079: MEDIUM — OrderMapper.findAll() returns all orders with no LIMIT — unbounded query
-**File:** `src/main/java/com/example/shop/mapper/OrderMapper.java:37-39`
-**Description:** `findAll()` executes `SELECT * FROM order` with no LIMIT. On production with many orders, this loads all orders into memory. Should use pagination or at minimum add a default LIMIT.
-**Impact:** OOM risk and slow DB scan.
-**Fix:** Add pagination or a LIMIT clause.
-**Severity:** MEDIUM | **Status:** OPEN | **Date:** 2026-06-20
+**File:** `src/main/java/com/example/shop/repository/OrderRepository.java`, `src/main/resources/mapper/OrderMapper.xml`, `src/test/java/com/example/shop/service/OrderStatsServiceTest.java`
+**Description:** `OrderRepository.findAll()` exposed an unbounded mapper select (`SELECT * FROM orders`) even though current production order list paths use counted and capped `searchAdminOrders(...)`.
+**Impact:** Dead API could be accidentally reused later and reintroduce unbounded order loading.
+**Fix applied:** Removed the unused `OrderRepository.findAll()` declaration and the matching MyBatis `<select id="findAll">`. Updated `OrderStatsServiceTest` to verify the statistics and legacy-list paths make only their expected aggregate/paged repository calls.
+**Verification:** `./mvnw -q -Dtest=OrderStatsServiceTest test` passed.
+**Severity:** MEDIUM | **Status:** FIXED | **Date:** 2026-06-20 | **Fixed:** 2026-06-06 20:42 UTC
 
 ### F2080: MEDIUM — ReviewService.getAverageRatingByProductId() may return stale data without @Transactional
 **File:** `src/main/java/com/example/shop/service/ReviewService.java:200-203`

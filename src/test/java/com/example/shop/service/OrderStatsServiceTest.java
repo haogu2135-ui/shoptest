@@ -12,8 +12,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class OrderStatsServiceTest {
@@ -37,7 +37,7 @@ class OrderStatsServiceTest {
         assertEquals(9L, service.count());
 
         verify(orderRepository).countAll();
-        verify(orderRepository, never()).findAll();
+        verifyNoMoreInteractions(orderRepository);
     }
 
     @Test
@@ -47,7 +47,7 @@ class OrderStatsServiceTest {
         assertEquals(new BigDecimal("128.50"), service.getTotalRevenue());
 
         verify(orderRepository).sumTotalAmount();
-        verify(orderRepository, never()).findAll();
+        verifyNoMoreInteractions(orderRepository);
     }
 
     @Test
@@ -60,7 +60,7 @@ class OrderStatsServiceTest {
         assertEquals(Map.of("PENDING_SHIPMENT", 3L, "COMPLETED", 7L), service.getStatusBreakdown());
 
         verify(orderRepository).countByStatusGroup();
-        verify(orderRepository, never()).findAll();
+        verifyNoMoreInteractions(orderRepository);
     }
 
     @Test
@@ -74,6 +74,6 @@ class OrderStatsServiceTest {
         assertEquals(1, service.getAllOrders().size());
 
         verify(orderRepository).searchAdminOrders(null, null, null, 0, 75);
-        verify(orderRepository, never()).findAll();
+        verifyNoMoreInteractions(orderRepository);
     }
 }

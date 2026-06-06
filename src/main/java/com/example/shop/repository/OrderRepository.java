@@ -9,7 +9,6 @@ import java.util.Map;
 
 @Mapper
 public interface OrderRepository {
-    List<Order> findAll();
     long countAll();
     LocalDateTime currentDatabaseTime();
     java.math.BigDecimal sumTotalAmount();

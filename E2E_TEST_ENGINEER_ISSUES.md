@@ -4,6 +4,20 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 20:42 UTC Implementation Cycle #495 Regression Handoff
+
+Source status: SOURCE_FIXED for F2079. SOURCE_COVERED / NON_ISSUE for F2077 and F2078.
+
+Local verification already run:
+- Backend targeted Maven: `./mvnw -q -Dtest=OrderStatsServiceTest test` ✅
+- Static source review: `AdminBugReportService` has no `getAll()` or `getStatusTimeStats()` methods; admin bug list uses `LIMIT/OFFSET`, and summary uses count/group queries.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin bug list pagination bound | SOURCE_COVERED / E2E OPTIONAL | With enough admin bug rows to exceed one page, call `/admin/bugs?page=1&size=20`, an oversized `size`, and filtered/scan-queue variants. Verify responses are bounded and include accurate pagination metadata. |
+| Admin bug summary aggregation | SOURCE_COVERED / E2E OPTIONAL | Open the admin bug summary/dashboard and verify counts by status/severity match fixture data without any full bug-list response being requested by the UI. |
+| Admin order legacy/admin list bound | SOURCE_FIXED / E2E PENDING | Open `/admin/orders` and `/admin/orders/page` with large order fixtures and oversized `size`. Verify API responses stay capped/paged, pagination totals remain accurate, and no legacy path returns every order row. |
+
 ## 2026-06-06 20:34 UTC Implementation Cycle #494 Regression Handoff
 
 Source status: SOURCE_FIXED / E2E PENDING for F2076.

@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-23 08:15 UTC — Regression #484 | Total: 2113 issues
+Last updated: 2026-06-06 20:42 UTC — Implementation Cycle #495 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -9,9 +9,18 @@ Legend: OPEN / FIXED / WONTFIX
 ## Summary
 
 - Total issues: 2113
-- FIXED: 2003
-- WONTFIX: 12
-- OPEN: 98
+- FIXED: 2004
+- WONTFIX: 14
+- OPEN: 95
+
+---
+
+## 2026-06-06 20:42 UTC Implementation Cycle #495 — Status Update
+
+### Implementation Cycle #495 Results
+- **Closed items:** F2077 and F2078 closed as WONTFIX/NON_ISSUE because current `AdminBugReportService` has no reported unbounded `getAll()` or `getStatusTimeStats()` paths; admin bug list and summary use bounded pagination plus SQL count/group queries. F2079 fixed by removing the unused unbounded `OrderRepository.findAll()` mapper API and its `SELECT * FROM orders` mapping.
+- **Backend targeted Maven:** ✅ `./mvnw -q -Dtest=OrderStatsServiceTest test`
+- **Status:** Summary preserves the existing total of 2113 and updates FIXED to 2004, WONTFIX to 14, OPEN to 95. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 
