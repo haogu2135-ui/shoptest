@@ -4,7 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- Total: 2113 issues | FIXED: 2004 | WONTFIX: 14 | OPEN: 95
+- Total: 2113 issues | FIXED: 2005 | WONTFIX: 14 | OPEN: 94
+- **Implementation Cycle #496 (2026-06-06 20:48 UTC)**: Closed 1 current queue item. FIXED: F2080 `ReviewServiceImpl.getAverageRating()` now runs inside a read-only `REPEATABLE_READ` transaction so the public product-status check and average-rating aggregate are read from a consistent transaction snapshot under concurrent review writes. Verification: backend targeted Maven ✅ (`ReviewServiceTest`). Remaining OPEN: 94.
 - **Implementation Cycle #495 (2026-06-06 20:42 UTC)**: Closed 3 current queue items. WONTFIX/NON_ISSUE: F2077 and F2078 because current `AdminBugReportService` has no `getAll()` or `getStatusTimeStats()` methods; `/admin/bugs` uses the bounded `search(page,size,...)` query with `LIMIT/OFFSET`, and `/admin/bugs/summary` uses SQL count/group queries instead of loading rows. FIXED: F2079 by removing the dead unbounded `OrderRepository.findAll()` API and matching `OrderMapper.xml` `SELECT * FROM orders` mapping; legacy/admin order list paths remain on counted, capped `searchAdminOrders(...)`. Verification: backend targeted Maven ✅ (`OrderStatsServiceTest`). Remaining OPEN: 95.
 - **Regression #484 (2026-06-23 08:15 UTC)**: Backend ⚠️ 463/464 passed — **1 failure**: `AdminBugReportServiceTest.updateThrowsWhenNoRowsAreAffected` (F2076 regression — the test expects `DataIntegrityViolationException` but `update()` now throws `RuntimeException("Bug report not found")` per F2076 fix). Frontend Build ✅ SUCCESS. Frontend Jest ⚠️ 246/248 pass, 48/50 suites — F1831 flaky timeout (CartCheckoutFlow rapid edits) + F1767 syntax error (SupportManagement @testing-library/dom) still OPEN. **No new source-code issues found.**
 - **Deep Review #99 (2026-06-20 22:00 UTC)**: 14 new issues (F2100–F2113) from full security & code quality audit. **1 HIGH** (admin bootstrap endpoint publicly accessible — auto-disable after first admin). **8 MEDIUM** (password validation allows weak passwords, JWT secret runtime validation, CORS allows private network origins, payment simulation endpoints accessible, JWT stored in localStorage, dangerouslySetInnerHTML with custom sanitizer, guest order weak auth, unbounded SELECT queries). **5 LOW** (token blacklist not checked on refresh, User type includes password field, missing AbortController cleanup, stale closure in SearchBar, no i18n fallback warning).
@@ -7805,11 +7806,12 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **Severity:** MEDIUM | **Status:** FIXED | **Date:** 2026-06-20 | **Fixed:** 2026-06-06 20:42 UTC
 
 ### F2080: MEDIUM — ReviewService.getAverageRatingByProductId() may return stale data without @Transactional
-**File:** `src/main/java/com/example/shop/service/ReviewService.java:200-203`
+**File:** `src/main/java/com/example/shop/service/impl/ReviewServiceImpl.java`, `src/test/java/com/example/shop/service/ReviewServiceTest.java`
 **Description:** `getAverageRatingByProductId()` reads reviews then computes average without a transaction. A concurrent review insert/update could cause the average to be computed from a mix of old and new data. Should use `@Transactional(readOnly = true)` with REPEATABLE_READ isolation for consistency.
 **Impact:** Stale or inconsistent rating data under concurrent writes.
-**Fix:** Add `@Transactional(readOnly = true)` annotation.
-**Severity:** MEDIUM | **Status:** OPEN | **Date:** 2026-06-20
+**Fix applied:** Added `@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)` to `ReviewServiceImpl.getAverageRating()` so the product visibility check and average aggregate execute within one consistent read-only transaction. Added `ReviewServiceTest` coverage that verifies the method keeps the read-only repeatable-read transaction metadata.
+**Verification:** `./mvnw -q -Dtest=ReviewServiceTest test` passed.
+**Severity:** MEDIUM | **Status:** FIXED | **Date:** 2026-06-20 | **Fixed:** 2026-06-06 20:48 UTC
 
 ### F2081: MEDIUM — Cart recentProductsCache Map grows without bound — no eviction
 **File:** `frontend/src/pages/Cart.tsx:69`

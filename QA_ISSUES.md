@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-06 20:42 UTC — Implementation Cycle #495 | Total: 2113 issues
+Last updated: 2026-06-06 20:48 UTC — Implementation Cycle #496 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -9,9 +9,18 @@ Legend: OPEN / FIXED / WONTFIX
 ## Summary
 
 - Total issues: 2113
-- FIXED: 2004
+- FIXED: 2005
 - WONTFIX: 14
-- OPEN: 95
+- OPEN: 94
+
+---
+
+## 2026-06-06 20:48 UTC Implementation Cycle #496 — Status Update
+
+### Implementation Cycle #496 Results
+- **Closed items:** F2080 fixed in `ReviewServiceImpl.getAverageRating()`; the public product visibility check and average-rating aggregate now run inside a read-only `REPEATABLE_READ` transaction, avoiding mixed snapshots under concurrent review writes.
+- **Backend targeted Maven:** ✅ `./mvnw -q -Dtest=ReviewServiceTest test`
+- **Status:** Summary preserves the existing total of 2113 and updates FIXED to 2005, OPEN to 94. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 

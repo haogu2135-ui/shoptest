@@ -4,6 +4,18 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 20:48 UTC Implementation Cycle #496 Regression Handoff
+
+Source status: SOURCE_FIXED / E2E PENDING for F2080.
+
+Local verification already run:
+- Backend targeted Maven: `./mvnw -q -Dtest=ReviewServiceTest test` ✅
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product average rating consistency | SOURCE_FIXED / E2E PENDING | With approved reviews on an active product, read the product detail/review average while concurrently adding or approving another review. Verify the response does not mix product visibility and average-rating reads from different transaction snapshots, and the final average becomes correct after the write commits. |
+| Inactive product average rating guard | SOURCE_FIXED / E2E PENDING | Mark a product inactive while reviews exist, then call the public product/review average path. Verify inactive products still return the guarded zero/no-public-rating behavior and do not expose stale averages. |
+
 ## 2026-06-06 20:42 UTC Implementation Cycle #495 Regression Handoff
 
 Source status: SOURCE_FIXED for F2079. SOURCE_COVERED / NON_ISSUE for F2077 and F2078.

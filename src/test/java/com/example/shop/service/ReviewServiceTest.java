@@ -17,12 +17,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -101,6 +104,17 @@ class ReviewServiceTest {
 
         assertEquals(List.of("/uploads/reviews/123e4567-e89b-12d3-a456-426614174000.jpg"),
                 ReviewImageUrlCodec.parse(saved.getImageUrls()));
+    }
+
+    @Test
+    void averageRatingUsesRepeatableReadReadonlyTransaction() throws NoSuchMethodException {
+        Transactional transactional = ReviewServiceImpl.class
+                .getMethod("getAverageRating", Long.class)
+                .getAnnotation(Transactional.class);
+
+        assertNotNull(transactional);
+        assertEquals(true, transactional.readOnly());
+        assertEquals(Isolation.REPEATABLE_READ, transactional.isolation());
     }
 
     @Test
