@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Descriptions, Empty, Form, Input, List, Modal, Space, Tag, Typography, message } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, CustomerServiceOutlined, RollbackOutlined, SearchOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { cartApi, orderApi, paymentApi } from '../api';
+import { cartApi, createApiAbortController, orderApi, paymentApi } from '../api';
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -96,6 +96,8 @@ const OrderTracking: React.FC = () => {
   const autoTrackKeyRef = useRef('');
   const mountedRef = useRef(true);
   const trackRequestSeqRef = useRef(0);
+  const trackAbortRef = useRef<AbortController | null>(null);
+  const refreshAbortRef = useRef<AbortController | null>(null);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
@@ -212,18 +214,23 @@ const OrderTracking: React.FC = () => {
     return () => {
       mountedRef.current = false;
       trackRequestSeqRef.current += 1;
+      trackAbortRef.current?.abort();
+      refreshAbortRef.current?.abort();
     };
   }, []);
 
   const trackOrder = useCallback(async (values: { orderNo: string; email: string }, quiet = false) => {
+    trackAbortRef.current?.abort();
     const requestSeq = trackRequestSeqRef.current + 1;
     trackRequestSeqRef.current = requestSeq;
-    const isCurrentTrackRequest = () => mountedRef.current && trackRequestSeqRef.current === requestSeq;
+    const abortController = createApiAbortController();
+    trackAbortRef.current = abortController;
+    const isCurrentTrackRequest = () => mountedRef.current && trackRequestSeqRef.current === requestSeq && !abortController.signal.aborted;
     setLoading(true);
     setLookupError('');
     const normalizedEmail = values.email.trim().toLowerCase();
     try {
-      const res = await orderApi.track(values.orderNo.trim(), normalizedEmail);
+      const res = await orderApi.track(values.orderNo.trim(), normalizedEmail, { signal: abortController.signal });
       if (!isCurrentTrackRequest()) {
         return;
       }
@@ -247,6 +254,9 @@ const OrderTracking: React.FC = () => {
         message.error(errorMessage);
       }
     } finally {
+      if (trackAbortRef.current === abortController) {
+        trackAbortRef.current = null;
+      }
       if (isCurrentTrackRequest()) {
         setLoading(false);
       }
@@ -279,8 +289,12 @@ const OrderTracking: React.FC = () => {
 
   const refreshTrackedOrder = async () => {
     if (!order?.orderNo || !trackedEmail) return false;
+    refreshAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    refreshAbortRef.current = abortController;
     try {
-      const refreshed = await orderApi.track(order.orderNo, trackedEmail);
+      const refreshed = await orderApi.track(order.orderNo, trackedEmail, { signal: abortController.signal, bypassCache: true });
+      if (!mountedRef.current || abortController.signal.aborted) return false;
       setOrder(refreshed.data.order);
       setItems(refreshed.data.items || []);
       setDetailsRestricted(refreshed.data.detailsRestricted === true);
@@ -288,8 +302,13 @@ const OrderTracking: React.FC = () => {
       setReturnTrackingNumber(refreshed.data.order?.returnTrackingNumber || '');
       return true;
     } catch (error: any) {
+      if (!mountedRef.current || abortController.signal.aborted) return false;
       message.warning(getApiErrorMessage(error, t('pages.orderTracking.trackingFailed'), language));
       return false;
+    } finally {
+      if (refreshAbortRef.current === abortController) {
+        refreshAbortRef.current = null;
+      }
     }
   };
 
@@ -316,10 +335,7 @@ const OrderTracking: React.FC = () => {
       }
       if (payment.status === 'PAID') {
         message.success(t('pages.checkout.paidTitle'));
-        const refreshed = await orderApi.track(order.orderNo || String(order.id), trackedEmail);
-        setOrder(refreshed.data.order);
-        setItems(refreshed.data.items || []);
-        setDetailsRestricted(refreshed.data.detailsRestricted === true);
+        await refreshTrackedOrder();
         return;
       }
       message.success(t('pages.checkout.paymentReady'));

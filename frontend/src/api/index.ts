@@ -1672,23 +1672,25 @@ export const orderApi = {
     })),
     getByUser: (_userId: number) => api.get<OrderCustomer[]>('/orders/me').then(withArrayData),
     getMine: () => api.get<OrderCustomer[]>('/orders/me').then(withArrayData),
-    track: (orderNo: string, email: string) => {
+    track: (orderNo: string, email: string, options?: ApiRequestOptions) => {
         const normalizedOrderNo = normalizeOrderTrackingNumber(orderNo);
         const normalizedEmail = normalizeEmailParam(email) || '';
         if (!normalizedOrderNo || !normalizedEmail) {
             return Promise.reject(new Error('Order number and email are required'));
         }
         const cacheKey = `${normalizedOrderNo}:${normalizedEmail}`;
-        const cached = orderTrackCache.get(cacheKey);
-        if (cached && cached.expiresAt > Date.now()) {
-            return Promise.resolve(cached.response);
+        if (!options?.bypassCache && !options?.signal) {
+            const cached = orderTrackCache.get(cacheKey);
+            if (cached && cached.expiresAt > Date.now()) {
+                return Promise.resolve(cached.response);
+            }
+            const pending = orderTrackRequests.get(cacheKey);
+            if (pending) return pending;
         }
-        const pending = orderTrackRequests.get(cacheKey);
-        if (pending) return pending;
         const request = api.post<OrderTrackResult>('/orders/track', {
             orderNo: normalizedOrderNo,
             email: normalizedEmail,
-        }, anonymousRequestConfig())
+        }, anonymousRequestConfig(undefined, options))
             .then((response) => {
                 setTimedCacheEntry(orderTrackCache, cacheKey, {
                     response,
@@ -1697,7 +1699,9 @@ export const orderApi = {
                 return response;
             })
             .finally(() => orderTrackRequests.delete(cacheKey));
-        setBoundedMapEntry(orderTrackRequests, cacheKey, request);
+        if (!options?.bypassCache && !options?.signal) {
+            setBoundedMapEntry(orderTrackRequests, cacheKey, request);
+        }
         return request;
     },
     create: (order: Partial<Order>) => api.post<OrderCustomer>('/orders', order),

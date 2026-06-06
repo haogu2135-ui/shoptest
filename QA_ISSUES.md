@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-06 21:04 UTC — Implementation Cycle #498 | Total: 2113 issues
+Last updated: 2026-06-06 21:15 UTC — Implementation Cycle #499 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -9,9 +9,18 @@ Legend: OPEN / FIXED / WONTFIX
 ## Summary
 
 - Total issues: 2113
-- FIXED: 2007
+- FIXED: 2008
 - WONTFIX: 14
-- OPEN: 92
+- OPEN: 91
+
+---
+
+## 2026-06-06 21:15 UTC Implementation Cycle #499 — Status Update
+
+### Implementation Cycle #499 Results
+- **Closed items:** F2083 fixed in `OrderTracking.tsx` and `frontend/src/api/index.ts`; order tracking lookups and refreshes now create AbortControllers, abort superseded requests, abort active controllers on unmount, and pass `signal` through `orderApi.track()` while bypassing shared pending/cache for abortable calls.
+- **Frontend build:** ✅ `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-ordertracking-f2083 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` (Browserslist stale-data warnings only)
+- **Status:** Summary preserves the existing total of 2113 and updates FIXED to 2008, OPEN to 91. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 

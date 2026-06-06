@@ -4,6 +4,19 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 21:15 UTC Implementation Cycle #499 Regression Handoff
+
+Source status: SOURCE_FIXED / E2E PENDING for F2083.
+
+Local verification already run:
+- Frontend build: `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-ordertracking-f2083 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` ✅, with existing Browserslist stale-data warnings only
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Order tracking lookup abort on navigation | SOURCE_FIXED / E2E PENDING | Open `/track-order` with a delayed `/orders/track` response, submit a guest lookup, then navigate away before the response returns. Verify the browser aborts the in-flight request and no stale tracked order, lookup error, toast, or loading state appears after leaving the page. |
+| Order tracking superseded lookup | SOURCE_FIXED / E2E PENDING | Submit one tracking lookup with a delayed response, immediately submit a different order/email lookup, and verify the first request is aborted or ignored while only the second order populates the page. |
+| Order tracking paid refresh | SOURCE_FIXED / E2E PENDING | On a tracked pending-payment order, complete or simulate payment and use the continue-payment flow. Verify the post-payment tracked-order refresh completes normally while any previous refresh request is cancelled and does not overwrite the final paid/order state. |
+
 ## 2026-06-06 21:04 UTC Implementation Cycle #498 Regression Handoff
 
 Source status: SOURCE_FIXED / E2E PENDING for F2082.
