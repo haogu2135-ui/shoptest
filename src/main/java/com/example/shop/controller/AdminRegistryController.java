@@ -1,14 +1,20 @@
 package com.example.shop.controller;
 
 import com.example.shop.util.SensitiveDataMasker;
+import com.example.shop.security.SecurityUtils;
+import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,6 +27,7 @@ import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/admin/registry")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminRegistryController {
     private static final Pattern SENSITIVE_METADATA_KEY = Pattern.compile(
             "(?i).*(password|passwd|pwd|secret|token|credential|api[-_.]?key|access[-_.]?key|private[-_.]?key|authorization|signature).*");
@@ -28,24 +35,38 @@ public class AdminRegistryController {
 
     private final DiscoveryClient discoveryClient;
     private final Environment environment;
+    private final AdminRoleService adminRoleService;
 
-    public AdminRegistryController(DiscoveryClient discoveryClient, Environment environment) {
+    public AdminRegistryController(DiscoveryClient discoveryClient,
+                                   Environment environment,
+                                   AdminRoleService adminRoleService) {
         this.discoveryClient = discoveryClient;
         this.environment = environment;
+        this.adminRoleService = adminRoleService;
     }
 
     @GetMapping
-    public Map<String, Object> getRegistryStatus() {
+    public Map<String, Object> getRegistryStatus(Authentication authentication) {
+        requireAdminActionPermission(authentication, AdminRoleService.REGISTRY_STATUS_PERMISSION);
         return buildRegistryStatus();
     }
 
     @GetMapping("/readiness")
-    public ResponseEntity<Map<String, Object>> getRegistryReadiness() {
+    public ResponseEntity<Map<String, Object>> getRegistryReadiness(Authentication authentication) {
+        requireAdminActionPermission(authentication, AdminRoleService.REGISTRY_STATUS_PERMISSION);
         Map<String, Object> response = buildRegistryStatus();
         boolean ready = Boolean.TRUE.equals(response.get("healthy"));
         return ResponseEntity
                 .status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
                 .body(response);
+    }
+
+    private void requireAdminActionPermission(Authentication authentication, String permission) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (adminRoleService.hasPermission(user.getId(), permission)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
     }
 
     private Map<String, Object> buildRegistryStatus() {

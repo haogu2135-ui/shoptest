@@ -78,6 +78,8 @@ public class AdminRoleService {
     public static final String TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION = "traffic-control:circuit-reset";
     public static final String CONFIG_CENTER_APPLY_PERMISSION = "config-center:apply";
     public static final String CONFIG_CENTER_PUBLISH_PERMISSION = "config-center:publish";
+    public static final String SYSTEM_STATUS_PERMISSION = "system:status";
+    public static final String REGISTRY_STATUS_PERMISSION = "registry:status";
     public static final String PET_GALLERY_DELETE_PERMISSION = "pet-gallery:delete";
     public static final String REVIEWS_MODERATE_PERMISSION = "reviews:moderate";
     public static final String REVIEWS_REPLY_PERMISSION = "reviews:reply";
@@ -141,6 +143,8 @@ public class AdminRoleService {
             TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION,
             CONFIG_CENTER_APPLY_PERMISSION,
             CONFIG_CENTER_PUBLISH_PERMISSION,
+            SYSTEM_STATUS_PERMISSION,
+            REGISTRY_STATUS_PERMISSION,
             PET_GALLERY_DELETE_PERMISSION,
             REVIEWS_MODERATE_PERMISSION,
             REVIEWS_REPLY_PERMISSION,
@@ -218,14 +222,9 @@ public class AdminRoleService {
                 + ") DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         alignRoleCollation();
         seedRole(SUPER_ADMIN, "Super admin", "Full backend access", ALL_ADMIN_PERMISSIONS);
-        seedRole(ADMIN, "Admin", "Standard operator access", defaultAdminPermissions());
-        seedRole(CUSTOMER_SERVICE, "Customer service", "Support and after-sales access",
-                List.of("dashboard", "orders", "support", "reviews", "questions",
-                        SUPPORT_REPLY_PERMISSION,
-                        SUPPORT_ASSIGN_PERMISSION,
-                        SUPPORT_CLOSE_PERMISSION,
-                        SUPPORT_REOPEN_PERMISSION,
-                        SUPPORT_READ_STATE_PERMISSION));
+        seedRole(ADMIN, "Admin", "Full operator access", ALL_ADMIN_PERMISSIONS);
+        seedRole(CUSTOMER_SERVICE, "Customer service", "Full operator access", ALL_ADMIN_PERMISSIONS);
+        grantAllPermissionsToActiveAdminRoles();
         jdbcTemplate.update("UPDATE users SET role = ? WHERE role_code = ?",
                 SUPER_ADMIN,
                 SUPER_ADMIN);
@@ -282,7 +281,7 @@ public class AdminRoleService {
                 String.class,
                 roleCode);
         if (permissions.isEmpty() && ADMIN.equals(role) && ADMIN.equals(roleCode)) {
-            return defaultAdminPermissions();
+            return ALL_ADMIN_PERMISSIONS;
         }
         return permissions;
     }
@@ -485,6 +484,14 @@ public class AdminRoleService {
                 jdbcTemplate.update("INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)", code, permission);
             }
         }
+    }
+
+    private void grantAllPermissionsToActiveAdminRoles() {
+        jdbcTemplate.queryForList("SELECT code FROM admin_roles WHERE status = 'ACTIVE'", String.class)
+                .stream()
+                .map(this::normalize)
+                .filter(code -> !code.isEmpty() && !"USER".equals(code))
+                .forEach(code -> addMissingPermissions(code, ALL_ADMIN_PERMISSIONS));
     }
 
     private List<String> sanitizePermissions(List<String> permissions) {

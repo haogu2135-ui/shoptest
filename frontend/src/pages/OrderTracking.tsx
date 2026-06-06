@@ -94,6 +94,8 @@ const OrderTracking: React.FC = () => {
   const [items, setItems] = useState<OrderItemCustomer[]>([]);
   const [detailsRestricted, setDetailsRestricted] = useState(false);
   const autoTrackKeyRef = useRef('');
+  const mountedRef = useRef(true);
+  const trackRequestSeqRef = useRef(0);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
@@ -205,12 +207,26 @@ const OrderTracking: React.FC = () => {
     };
   }, [detailsRestricted, items, navigate, order, supportOpen, t]);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      trackRequestSeqRef.current += 1;
+    };
+  }, []);
+
   const trackOrder = useCallback(async (values: { orderNo: string; email: string }, quiet = false) => {
+    const requestSeq = trackRequestSeqRef.current + 1;
+    trackRequestSeqRef.current = requestSeq;
+    const isCurrentTrackRequest = () => mountedRef.current && trackRequestSeqRef.current === requestSeq;
     setLoading(true);
     setLookupError('');
     const normalizedEmail = values.email.trim().toLowerCase();
     try {
       const res = await orderApi.track(values.orderNo.trim(), normalizedEmail);
+      if (!isCurrentTrackRequest()) {
+        return;
+      }
       setTrackedEmail(normalizedEmail);
       setOrder(res.data.order);
       setItems(res.data.items || []);
@@ -218,6 +234,9 @@ const OrderTracking: React.FC = () => {
       setReturnReason(res.data.order?.returnReason || '');
       setReturnTrackingNumber(res.data.order?.returnTrackingNumber || '');
     } catch (error: any) {
+      if (!isCurrentTrackRequest()) {
+        return;
+      }
       setTrackedEmail('');
       setOrder(null);
       setItems([]);
@@ -228,7 +247,9 @@ const OrderTracking: React.FC = () => {
         message.error(errorMessage);
       }
     } finally {
-      setLoading(false);
+      if (isCurrentTrackRequest()) {
+        setLoading(false);
+      }
     }
   }, [language, t]);
 
@@ -240,7 +261,9 @@ const OrderTracking: React.FC = () => {
       const sanitized = new URLSearchParams(searchParams);
       sanitized.delete('email');
       sanitized.delete('guestEmail');
-      setSearchParams(sanitized, { replace: true });
+      if (sanitized.toString() !== searchParams.toString()) {
+        setSearchParams(sanitized, { replace: true });
+      }
     }
     const storedContext = loadGuestSupportContext();
     const storedEmail = storedContext?.orderNo.toUpperCase() === orderNo.toUpperCase() ? storedContext.email : '';

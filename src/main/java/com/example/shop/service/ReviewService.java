@@ -10,10 +10,9 @@ import java.util.List;
 public interface ReviewService {
     List<PublicReviewResponse> getPublicReviewsByProductId(Long productId, Long currentUserId);
     double getAverageRating(Long productId);
-    Review addReview(Long productId, Long userId, Long orderId, int rating, String comment);
+    Review addReview(Long productId, Long userId, Long orderId, int rating, String comment, List<String> imageUrls);
     Review replyReview(Long id, String reply);
     Review updateReviewStatus(Long id, String status);
-    List<Review> getAllReviews();
     List<Review> searchAdminReviews(String status, String search, int page, int size);
     List<AdminReviewResponse> searchAdminReviewResponses(String status, String search, int page, int size);
     long countAdminReviews(String status, String search);

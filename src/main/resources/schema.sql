@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS orders (
     recipient_name VARCHAR(120),
     recipient_phone VARCHAR(60),
     contact_email VARCHAR(160),
+    guest_order BOOLEAN NOT NULL DEFAULT FALSE,
     payment_method VARCHAR(50) NOT NULL,
     tracking_number VARCHAR(100),
     tracking_carrier_code VARCHAR(80),
@@ -131,6 +132,7 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (user_id) REFERENCES users(id),
     INDEX idx_orders_status_created (status, created_at),
     INDEX idx_orders_user_status (user_id, status),
+    INDEX idx_orders_user_status_created (user_id, status, created_at),
     INDEX idx_orders_created_id (created_at, id),
     INDEX idx_orders_status_updated (status, updated_at),
     INDEX idx_orders_status_return_requested (status, return_requested_at),
@@ -138,6 +140,21 @@ CREATE TABLE IF NOT EXISTS orders (
     INDEX idx_orders_status_return_shipped (status, return_shipped_at),
     INDEX idx_orders_status_tracking (status, tracking_number),
     INDEX idx_orders_refunded_at (refunded_at)
+);
+
+CREATE TABLE IF NOT EXISTS checkout_idempotency_keys (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    checkout_scope VARCHAR(20) NOT NULL,
+    principal VARCHAR(180) NOT NULL,
+    idempotency_key VARCHAR(120) NOT NULL,
+    request_fingerprint CHAR(64) NOT NULL,
+    order_id BIGINT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PROCESSING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_checkout_idempotency_key (checkout_scope, principal, idempotency_key),
+    INDEX idx_checkout_idempotency_order (order_id),
+    INDEX idx_checkout_idempotency_updated (updated_at)
 );
 
 -- 鏀惰揣鍦板潃琛?
@@ -190,7 +207,8 @@ CREATE TABLE IF NOT EXISTS order_items (
     selected_specs TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    INDEX idx_order_items_product_order (product_id, order_id)
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
@@ -199,6 +217,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     product_id BIGINT NOT NULL,
     rating INT NOT NULL,
     comment VARCHAR(1000),
+    image_urls TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     order_id BIGINT,
     admin_reply VARCHAR(1000),
@@ -210,6 +229,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     INDEX idx_reviews_product_id (product_id),
     INDEX idx_reviews_user_id (user_id),
     INDEX idx_reviews_order_id (order_id),
+    UNIQUE INDEX uk_reviews_product_user_order (product_id, user_id, order_id),
     INDEX idx_reviews_status_created (status, created_at)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -523,6 +543,7 @@ ALTER TABLE orders ADD COLUMN coupon_name VARCHAR(100);
 ALTER TABLE orders ADD COLUMN recipient_name VARCHAR(120);
 ALTER TABLE orders ADD COLUMN recipient_phone VARCHAR(60);
 ALTER TABLE orders ADD COLUMN contact_email VARCHAR(160);
+ALTER TABLE orders ADD COLUMN guest_order BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE notifications ADD COLUMN content_format VARCHAR(20) NOT NULL DEFAULT 'TEXT';
 ALTER TABLE payments ADD COLUMN expires_at TIMESTAMP NULL;
 ALTER TABLE payments ADD COLUMN provider_reference VARCHAR(128);

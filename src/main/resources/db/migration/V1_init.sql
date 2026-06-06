@@ -95,6 +95,7 @@ CREATE TABLE reviews (
     created_at DATETIME NOT NULL,
     INDEX idx_reviews_product_id (product_id),
     INDEX idx_reviews_user_id (user_id),
+    UNIQUE INDEX uk_reviews_product_user_order (product_id, user_id, order_id),
     INDEX idx_reviews_status_created (status, created_at),
     FOREIGN KEY (product_id) REFERENCES products(id),
     FOREIGN KEY (user_id) REFERENCES users(id),

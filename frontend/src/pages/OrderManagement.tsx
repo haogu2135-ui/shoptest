@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
-import { DownloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi, logisticsCarrierApi } from '../api';
 import type { AdminPayment, LogisticsCarrier, Order, OrderItem } from '../types';
@@ -20,6 +20,7 @@ import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { labelTableSelectionCheckbox } from '../utils/tableSelectionAccessibility';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import {
   getEffectiveRole,
   hasAdminPermission,
@@ -228,9 +229,20 @@ const OrderManagement: React.FC = () => {
   }, [filterStatus, quickFilter, debouncedSearchText]);
 
   useEffect(() => {
+    let disposed = false;
     logisticsCarrierApi.getAll(true)
-      .then((res) => setCarriers(res.data || []))
-      .catch(() => setCarriers([]));
+      .then((res) => {
+        if (disposed) return;
+        setCarriers(res.data || []);
+      })
+      .catch((error) => {
+        if (disposed) return;
+        reportNonBlockingError(error, 'OrderManagement carriers load failed');
+        setCarriers([]);
+      });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -314,7 +326,8 @@ const OrderManagement: React.FC = () => {
   const formatLabelSpecs = (selectedSpecs?: string | null) => {
     try {
       return selectedSpecs ? formatSelectedSpecs(selectedSpecs, t, language) : '';
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('OrderManagement.formatLabelSpecs', error);
       return selectedSpecs || '';
     }
   };
@@ -429,7 +442,8 @@ const OrderManagement: React.FC = () => {
     try {
       const res = await adminApi.getOrderItems(order.id);
       items = res.data || [];
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('OrderManagement.loadLabelItems', error);
       items = [];
     }
 
@@ -437,7 +451,8 @@ const OrderManagement: React.FC = () => {
       printWindow.document.open();
       printWindow.document.write(buildShippingLabelHtml(order, items));
       printWindow.document.close();
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('OrderManagement.printShippingLabel', error);
       printWindow.close();
       message.error(t('pages.adminOrders.printFailed'));
     }
@@ -540,7 +555,8 @@ const OrderManagement: React.FC = () => {
     try {
       const res = await adminApi.getOrderPayments(order.id);
       setRefundPayments(res.data || []);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('OrderManagement.openRefundModal.payments', error);
       setRefundPayments([]);
     } finally {
       setRefundPaymentsLoading(false);
@@ -1189,6 +1205,7 @@ const OrderManagement: React.FC = () => {
             onChange={(event) => setSearchText(event.target.value.slice(0, 120))}
             placeholder={t('pages.adminOrders.searchPlaceholder')}
             className="order-management-page__searchInput"
+            enterButton={<Button icon={<SearchOutlined />} aria-label={orderSearchInputLabel} title={orderSearchInputLabel} />}
             aria-label={orderSearchInputLabel}
             title={orderSearchInputLabel}
           />

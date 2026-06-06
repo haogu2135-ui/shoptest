@@ -49,7 +49,9 @@ const AlertManagement: React.FC = () => {
   const [acting, setActing] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const formatTime = useCallback((value?: string) => value ? new Date(value).toLocaleString(dateLocale) : '-', [dateLocale]);
+  const canReadAlerts = hasAdminPermission(adminPermissions, currentRole, 'alerts');
   const canPurgeResolved = hasAdminPermission(adminPermissions, currentRole, ALERTS_PURGE_PERMISSION);
   const canRunSelfCheck = hasAdminPermission(adminPermissions, currentRole, ALERTS_SELF_CHECK_PERMISSION);
   const canAcknowledgeAlerts = hasAdminPermission(adminPermissions, currentRole, ALERTS_ACKNOWLEDGE_PERMISSION);
@@ -97,6 +99,16 @@ const AlertManagement: React.FC = () => {
   }, []);
 
   const loadData = useCallback(async () => {
+    if (!permissionsLoaded) {
+      return;
+    }
+    if (!canReadAlerts) {
+      setAlerts([]);
+      setSummary(null);
+      setSelectedAlertIds([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [alertResponse, summaryResponse] = await Promise.all([
@@ -116,11 +128,14 @@ const AlertManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, language, severity, status, t]);
+  }, [canReadAlerts, category, language, permissionsLoaded, severity, status, t]);
 
   useEffect(() => {
+    if (!permissionsLoaded) {
+      return;
+    }
     loadData();
-  }, [language, loadData, t]);
+  }, [loadData, permissionsLoaded]);
 
   useEffect(() => {
     let disposed = false;
@@ -129,11 +144,13 @@ const AlertManagement: React.FC = () => {
         if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
+        setPermissionsLoaded(true);
       })
       .catch(() => {
         if (disposed) return;
         setCurrentRole('');
         setAdminPermissions([]);
+        setPermissionsLoaded(true);
       });
     return () => {
       disposed = true;
@@ -398,7 +415,7 @@ const AlertManagement: React.FC = () => {
           <Text type="secondary">{t('pages.alertAdmin.description')}</Text>
         </div>
         <Space className="alert-management__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshAlertsActionLabel} title={refreshAlertsActionLabel} onClick={loadData}>
+          <Button icon={<ReloadOutlined />} loading={loading} disabled={!permissionsLoaded || !canReadAlerts} aria-label={refreshAlertsActionLabel} title={refreshAlertsActionLabel} onClick={loadData}>
             {t('common.refresh')}
           </Button>
           {canRunSelfCheck ? (
@@ -409,7 +426,16 @@ const AlertManagement: React.FC = () => {
         </Space>
       </div>
 
-      <Spin spinning={loading && alerts.length === 0}>
+      {permissionsLoaded && !canReadAlerts ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('adminLayout.noPermission')}
+          description={t('pages.alertAdmin.noReadPermission')}
+          className="alert-management__permissionNotice"
+        />
+      ) : (
+      <Spin spinning={(!permissionsLoaded || loading) && alerts.length === 0}>
         <div className="alert-management__stats">
           <Card
             className={`alert-management__statCard${status === 'OPEN' ? ' is-active' : ''}`}
@@ -676,6 +702,7 @@ const AlertManagement: React.FC = () => {
           )}
         </Card>
       </Spin>
+      )}
     </div>
   );
 };

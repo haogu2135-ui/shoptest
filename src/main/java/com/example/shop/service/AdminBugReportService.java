@@ -13,6 +13,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -59,6 +60,9 @@ public class AdminBugReportService {
             "PRODUCT",
             "SUPPORT",
             "INFRASTRUCTURE");
+    private static final Map<String, String> GROUP_COUNT_COLUMNS = Map.of(
+            "status", "status",
+            "severity", "severity");
     private static final Map<String, Set<String>> STATUS_TRANSITIONS = Map.of(
             STATUS_OPEN, Set.of(STATUS_OPEN, STATUS_FIXING, STATUS_NON_ISSUE),
             STATUS_FIXING, Set.of(STATUS_FIXING, STATUS_FIXED_PENDING_REGRESSION, STATUS_NON_ISSUE),
@@ -188,7 +192,7 @@ public class AdminBugReportService {
         boolean stampRegression = shouldStampRegression(existing.getStatus(), normalized.status);
         boolean stampClosed = shouldStampClosed(existing.getStatus(), normalized.status);
         boolean clearClosed = shouldClearClosed(existing.getStatus(), normalized.status);
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 "UPDATE admin_bug_reports SET "
                         + "title = ?, description = ?, module = ?, severity = ?, priority = ?, status = ?, "
                         + "page_url = ?, environment = ?, reproduction_steps = ?, expected_result = ?, actual_result = ?, "
@@ -226,6 +230,9 @@ public class AdminBugReportService {
                 Boolean.valueOf(stampClosed),
                 Boolean.valueOf(clearClosed),
                 id);
+        if (updated == 0) {
+            throw new IllegalArgumentException("Bug report not found");
+        }
         return findById(id);
     }
 
@@ -331,7 +338,11 @@ public class AdminBugReportService {
         }
         String keywordPattern = keywordPattern(keyword);
         if (keywordPattern != null) {
-            where.append(" AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(COALESCE(page_url, '')) LIKE ? OR LOWER(COALESCE(scan_note, '')) LIKE ? OR LOWER(COALESCE(fix_summary, '')) LIKE ?)");
+            where.append(" AND (LOWER(title) LIKE ? ESCAPE '!' "
+                    + "OR LOWER(description) LIKE ? ESCAPE '!' "
+                    + "OR LOWER(COALESCE(page_url, '')) LIKE ? ESCAPE '!' "
+                    + "OR LOWER(COALESCE(scan_note, '')) LIKE ? ESCAPE '!' "
+                    + "OR LOWER(COALESCE(fix_summary, '')) LIKE ? ESCAPE '!')");
             args.add(keywordPattern);
             args.add(keywordPattern);
             args.add(keywordPattern);
@@ -371,9 +382,13 @@ public class AdminBugReportService {
     }
 
     private Map<String, Long> groupCount(String column) {
+        String safeColumn = GROUP_COUNT_COLUMNS.get(column);
+        if (safeColumn == null) {
+            throw new IllegalArgumentException("Unsupported bug summary group");
+        }
         Map<String, Long> result = new LinkedHashMap<>();
         jdbcTemplate.queryForList(
-                        "SELECT " + column + " AS k, COUNT(*) AS total FROM admin_bug_reports GROUP BY " + column + " ORDER BY total DESC")
+                        "SELECT " + safeColumn + " AS k, COUNT(*) AS total FROM admin_bug_reports GROUP BY " + safeColumn + " ORDER BY total DESC")
                 .forEach(row -> result.put(String.valueOf(row.get("k")), ((Number) row.get("total")).longValue()));
         return result;
     }
@@ -405,12 +420,12 @@ public class AdminBugReportService {
         normalized.module = normalizeModule(request.getModule(), "GENERAL");
         normalized.severity = normalizeSeverity(request.getSeverity(), "MEDIUM");
         normalized.priority = normalizePriority(request.getPriority(), "P2");
-        normalized.pageUrl = optionalText(request.getPageUrl(), 500, null);
+        normalized.pageUrl = optionalUrlText(request.getPageUrl(), 500, null);
         normalized.environment = optionalText(request.getEnvironment(), 120, null);
         normalized.reproductionSteps = optionalMultilineText(request.getReproductionSteps(), 4000, null);
         normalized.expectedResult = optionalMultilineText(request.getExpectedResult(), 4000, null);
         normalized.actualResult = optionalMultilineText(request.getActualResult(), 4000, null);
-        normalized.attachmentUrls = optionalMultilineText(request.getAttachmentUrls(), 2000, null);
+        normalized.attachmentUrls = optionalUrlMultilineText(request.getAttachmentUrls(), 2000, null);
         normalized.assignedTo = optionalText(request.getAssignedTo(), 120, "CODEX");
         normalized.scanNote = optionalMultilineText(request.getScanNote(), 2000, null);
         normalized.fixSummary = optionalMultilineText(request.getFixSummary(), 2000, null);
@@ -442,6 +457,48 @@ public class AdminBugReportService {
     private String optionalMultilineText(String value, int max, String fallback) {
         String normalized = sanitizeMultiline(value, max);
         return normalized == null || normalized.isBlank() ? fallback : normalized;
+    }
+
+    private String optionalUrlText(String value, int max, String fallback) {
+        String normalized = optionalText(value, max, fallback);
+        if (normalized == null || normalized.equals(fallback)) {
+            return normalized;
+        }
+        validateAllowedReferenceUrl(normalized, "Unsupported bug page URL");
+        return normalized;
+    }
+
+    private String optionalUrlMultilineText(String value, int max, String fallback) {
+        String normalized = optionalMultilineText(value, max, fallback);
+        if (normalized == null || normalized.equals(fallback)) {
+            return normalized;
+        }
+        for (String line : normalized.split("\\n")) {
+            String item = line == null ? "" : line.trim();
+            if (!item.isEmpty()) {
+                validateAllowedReferenceUrl(item, "Unsupported bug attachment URL");
+            }
+        }
+        return normalized;
+    }
+
+    private void validateAllowedReferenceUrl(String value, String message) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.startsWith("/") && !normalized.startsWith("//") && !normalized.contains("\\")) {
+            return;
+        }
+        try {
+            URI uri = new URI(normalized);
+            String scheme = uri.getScheme();
+            if (scheme != null
+                    && uri.getHost() != null
+                    && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
+                return;
+            }
+        } catch (Exception ignored) {
+            // Fall through to the normalized error below.
+        }
+        throw new IllegalArgumentException(message);
     }
 
     private String sanitize(String value, int max) {
@@ -546,7 +603,17 @@ public class AdminBugReportService {
         if (normalized == null || normalized.isBlank()) {
             return null;
         }
-        return "%" + normalized.toLowerCase(Locale.ROOT) + "%";
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        StringBuilder escaped = new StringBuilder("%");
+        for (int i = 0; i < lower.length(); i++) {
+            char ch = lower.charAt(i);
+            if (ch == '!' || ch == '%' || ch == '_') {
+                escaped.append('!');
+            }
+            escaped.append(ch);
+        }
+        escaped.append('%');
+        return escaped.toString();
     }
 
     private String mergeNote(String current, String primary, String fallback, int max) {

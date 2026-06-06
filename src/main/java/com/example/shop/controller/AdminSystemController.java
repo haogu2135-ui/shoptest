@@ -3,6 +3,9 @@ package com.example.shop.controller;
 import com.example.shop.dto.ConfigCenterHealthResponse;
 import com.example.shop.config.MailAccountProperties;
 import com.example.shop.config.PaymentChannelConfig;
+import com.example.shop.security.SecurityUtils;
+import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.ConfigCenterService;
 import com.example.shop.util.GatewayUrlValidator;
 import com.example.shop.util.SensitiveDataMasker;
@@ -13,9 +16,12 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.sql.DataSource;
 import java.io.File;
@@ -36,6 +42,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin/system")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminSystemController {
 
     private final Environment environment;
@@ -44,6 +51,7 @@ public class AdminSystemController {
     private final ObjectProvider<ConfigCenterService> configCenterServices;
     private final ObjectProvider<MailAccountProperties> mailAccountProperties;
     private final ObjectProvider<PaymentChannelConfig> paymentChannelConfigs;
+    private final AdminRoleService adminRoleService;
 
     public AdminSystemController(
             Environment environment,
@@ -51,7 +59,8 @@ public class AdminSystemController {
             ObjectProvider<StringRedisTemplate> redisTemplates,
             ObjectProvider<ConfigCenterService> configCenterServices,
             ObjectProvider<MailAccountProperties> mailAccountProperties,
-            ObjectProvider<PaymentChannelConfig> paymentChannelConfigs
+            ObjectProvider<PaymentChannelConfig> paymentChannelConfigs,
+            AdminRoleService adminRoleService
     ) {
         this.environment = environment;
         this.dataSources = dataSources;
@@ -59,20 +68,31 @@ public class AdminSystemController {
         this.configCenterServices = configCenterServices;
         this.mailAccountProperties = mailAccountProperties;
         this.paymentChannelConfigs = paymentChannelConfigs;
+        this.adminRoleService = adminRoleService;
     }
 
     @GetMapping("/status")
-    public Map<String, Object> getStatus() {
+    public Map<String, Object> getStatus(Authentication authentication) {
+        requireAdminActionPermission(authentication, AdminRoleService.SYSTEM_STATUS_PERMISSION);
         return buildStatus();
     }
 
     @GetMapping("/readiness")
-    public ResponseEntity<Map<String, Object>> getReadiness() {
+    public ResponseEntity<Map<String, Object>> getReadiness(Authentication authentication) {
+        requireAdminActionPermission(authentication, AdminRoleService.SYSTEM_STATUS_PERMISSION);
         Map<String, Object> payload = buildStatus();
         boolean ready = Boolean.TRUE.equals(payload.get("ready"));
         return ResponseEntity
                 .status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
                 .body(payload);
+    }
+
+    private void requireAdminActionPermission(Authentication authentication, String permission) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (adminRoleService.hasPermission(user.getId(), permission)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
     }
 
     private Map<String, Object> buildStatus() {

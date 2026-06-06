@@ -12,8 +12,10 @@ import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.ReviewRepository;
 import com.example.shop.repository.UserRepository;
 import com.example.shop.service.impl.ReviewServiceImpl;
+import com.example.shop.util.ReviewImageUrlCodec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -53,6 +55,8 @@ class ReviewServiceTest {
         ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
         when(runtimeConfig.getInt("review.max-comment-chars", 1000)).thenReturn(80);
         when(runtimeConfig.getInt("review.max-reply-chars", 1000)).thenReturn(80);
+        when(runtimeConfig.getInt("review.max-images", 4)).thenReturn(4);
+        when(runtimeConfig.getString("review.image.public-path", "/uploads/reviews")).thenReturn("/uploads/reviews");
 
         Product product = new Product();
         product.setId(7L);
@@ -74,7 +78,7 @@ class ReviewServiceTest {
 
     @Test
     void normalizesReviewCommentBeforeSaving() {
-        Review saved = service.addReview(7L, 3L, 11L, 5, "  Great\tfit\nfor\u0000my dog.  ");
+        Review saved = service.addReview(7L, 3L, 11L, 5, "  Great\tfit\nfor\u0000my dog.  ", List.of());
 
         assertEquals("Great fit for my dog.", saved.getComment());
         verify(reviewRepository).save(any(Review.class));
@@ -82,7 +86,48 @@ class ReviewServiceTest {
 
     @Test
     void rejectsOverlongReviewCommentBeforeSaving() {
-        assertThrows(IllegalArgumentException.class, () -> service.addReview(7L, 3L, 11L, 5, "x".repeat(81)));
+        assertThrows(IllegalArgumentException.class, () -> service.addReview(7L, 3L, 11L, 5, "x".repeat(81), List.of()));
+    }
+
+    @Test
+    void storesUploadedReviewImageUrls() {
+        Review saved = service.addReview(
+                7L,
+                3L,
+                11L,
+                5,
+                "Great fit",
+                List.of("/uploads/reviews/123e4567-e89b-12d3-a456-426614174000.jpg"));
+
+        assertEquals(List.of("/uploads/reviews/123e4567-e89b-12d3-a456-426614174000.jpg"),
+                ReviewImageUrlCodec.parse(saved.getImageUrls()));
+    }
+
+    @Test
+    void duplicateReviewInsertRaceReturnsAlreadyReviewedError() {
+        when(reviewRepository.save(any(Review.class)))
+                .thenThrow(new DataIntegrityViolationException("Duplicate entry for key 'uk_reviews_product_user_order'"));
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> service.addReview(
+                7L,
+                3L,
+                11L,
+                5,
+                "Great fit",
+                List.of()));
+
+        assertEquals("This product has already been reviewed for this order", error.getMessage());
+    }
+
+    @Test
+    void rejectsReviewImageUrlsThatWereNotUploaded() {
+        assertThrows(IllegalArgumentException.class, () -> service.addReview(
+                7L,
+                3L,
+                11L,
+                5,
+                "Great fit",
+                List.of("/uploads/pet-gallery/123e4567-e89b-12d3-a456-426614174000.jpg")));
     }
 
     @Test
@@ -106,29 +151,20 @@ class ReviewServiceTest {
     }
 
     @Test
-    void batchesReviewableOrderEligibilityChecks() {
+    void queriesReviewableOrdersWithBoundedRepositoryPath() {
         Order eligibleOrder = completedOrder(101L);
-        Order reviewedOrder = completedOrder(102L);
-        Order wrongProductOrder = completedOrder(103L);
-        Order oldOrder = completedOrder(104L);
-        oldOrder.setCreatedAt(LocalDateTime.now().minusDays(31));
-
-        OrderItem eligibleItem = orderItem(101L, 7L);
-        OrderItem reviewedItem = orderItem(102L, 7L);
-        OrderItem wrongProductItem = orderItem(103L, 9L);
-        Review existingReview = new Review();
-        existingReview.setOrderId(102L);
-
-        when(orderRepository.findByUserId(3L)).thenReturn(List.of(eligibleOrder, reviewedOrder, wrongProductOrder, oldOrder));
-        when(orderItemRepository.findByOrderIds(List.of(101L, 102L, 103L))).thenReturn(List.of(eligibleItem, reviewedItem, wrongProductItem));
-        when(reviewRepository.findByProduct_IdAndUser_IdAndOrderIdIn(7L, 3L, List.of(101L, 102L, 103L))).thenReturn(List.of(existingReview));
+        when(runtimeConfig.getInt("review.reviewable-order-max-rows", 50)).thenReturn(50);
+        when(orderRepository.findReviewableOrdersByUserAndProduct(any(), any(), any(), any(Integer.class)))
+                .thenReturn(List.of(eligibleOrder));
 
         List<ReviewableOrderResponse> result = service.getReviewableOrders(7L, 3L);
 
         assertEquals(1, result.size());
         assertEquals(eligibleOrder.getId(), result.get(0).getId());
-        verify(orderItemRepository).findByOrderIds(List.of(101L, 102L, 103L));
-        verify(reviewRepository).findByProduct_IdAndUser_IdAndOrderIdIn(7L, 3L, List.of(101L, 102L, 103L));
+        verify(orderRepository).findReviewableOrdersByUserAndProduct(any(), any(), any(), any(Integer.class));
+        verify(orderRepository, never()).findByUserId(any());
+        verify(orderItemRepository, never()).findByOrderIds(any());
+        verify(reviewRepository, never()).findByProduct_IdAndUser_IdAndOrderIdIn(any(), any(), any());
         verify(orderItemRepository, never()).findByOrderIdAndProductId(any(), any());
         verify(reviewRepository, never()).existsByProduct_IdAndUser_IdAndOrderId(any(), any(), any());
     }
@@ -140,12 +176,5 @@ class ReviewServiceTest {
         order.setStatus("COMPLETED");
         order.setCreatedAt(LocalDateTime.now());
         return order;
-    }
-
-    private OrderItem orderItem(Long orderId, Long productId) {
-        OrderItem item = new OrderItem();
-        item.setOrderId(orderId);
-        item.setProductId(productId);
-        return item;
     }
 }

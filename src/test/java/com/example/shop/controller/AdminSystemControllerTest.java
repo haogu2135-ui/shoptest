@@ -3,6 +3,8 @@ package com.example.shop.controller;
 import com.example.shop.config.MailAccountProperties;
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.ConfigCenterHealthResponse;
+import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.ConfigCenterService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -12,6 +14,10 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -21,11 +27,13 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AdminSystemControllerTest {
+    private final AdminRoleService adminRoleService = mock(AdminRoleService.class);
 
     @Test
     void reportsHealthyWhenDatabaseAndRedisAreAvailable() throws Exception {
@@ -34,7 +42,7 @@ class AdminSystemControllerTest {
         StringRedisTemplate redisTemplate = redisTemplate("PONG");
         AdminSystemController controller = controller(environment, dataSource, redisTemplate, true);
 
-        Map<String, Object> status = controller.getStatus();
+        Map<String, Object> status = controller.getStatus(adminAuthentication());
 
         assertEquals("UP", status.get("status"));
         assertEquals(true, status.get("healthy"));
@@ -53,7 +61,7 @@ class AdminSystemControllerTest {
         Environment environment = environment();
         AdminSystemController controller = controller(environment, dataSource(true), null, false);
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("UP", response.getBody().get("status"));
@@ -69,7 +77,7 @@ class AdminSystemControllerTest {
         when(dataSource.getConnection()).thenThrow(new SQLException("db\nunreachable password=raw-secret token=raw-token"));
         AdminSystemController controller = controller(environment, dataSource, redisTemplate("PONG"), true);
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         assertEquals("DEGRADED", response.getBody().get("status"));
@@ -88,7 +96,7 @@ class AdminSystemControllerTest {
         Environment environment = environment();
         AdminSystemController controller = controller(environment, dataSource(true), null, true);
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         assertEquals("DEGRADED", response.getBody().get("status"));
@@ -114,7 +122,7 @@ class AdminSystemControllerTest {
         when(configCenterService.health(null, null, null)).thenReturn(health);
         AdminSystemController controller = controller(environment, dataSource(true), redisTemplate("PONG"), true, configCenterService);
 
-        Map<String, Object> status = controller.getStatus();
+        Map<String, Object> status = controller.getStatus(adminAuthentication());
 
         Map<?, ?> nacos = (Map<?, ?>) status.get("nacos");
         assertEquals("DOWN", nacos.get("status"));
@@ -142,7 +150,7 @@ class AdminSystemControllerTest {
                 new PaymentChannelConfig()
         );
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         assertEquals("DEGRADED", response.getBody().get("status"));
@@ -183,7 +191,7 @@ class AdminSystemControllerTest {
                 productionPaymentChannels()
         );
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("UP", response.getBody().get("status"));
@@ -221,7 +229,7 @@ class AdminSystemControllerTest {
                 productionPaymentChannels()
         );
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
@@ -253,7 +261,7 @@ class AdminSystemControllerTest {
                 productionPaymentChannels()
         );
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
@@ -283,7 +291,7 @@ class AdminSystemControllerTest {
                 productionPaymentChannels()
         );
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
@@ -314,7 +322,7 @@ class AdminSystemControllerTest {
                 productionPaymentChannels()
         );
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
@@ -337,13 +345,26 @@ class AdminSystemControllerTest {
                 new PaymentChannelConfig()
         );
 
-        ResponseEntity<Map<String, Object>> response = controller.getReadiness();
+        ResponseEntity<Map<String, Object>> response = controller.getReadiness(adminAuthentication());
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
         assertEquals("SKIPPED", productionConfig.get("status"));
         assertEquals(false, productionConfig.get("required"));
         assertEquals(true, productionConfig.get("ready"));
+    }
+
+    @Test
+    void statusRequiresSystemStatusPermission() throws Exception {
+        AdminSystemController controller = controller(environment(), dataSource(true), redisTemplate("PONG"), true);
+        when(adminRoleService.hasPermission(1L, AdminRoleService.SYSTEM_STATUS_PERMISSION)).thenReturn(false);
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> controller.getStatus(adminAuthentication())
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, error.getStatus());
     }
 
     private Environment environment() {
@@ -482,6 +503,7 @@ class AdminSystemControllerTest {
         when(mailAccountProperties.getIfAvailable()).thenReturn(mailProperties);
         when(paymentChannelConfigs.getIfAvailable()).thenReturn(paymentChannelConfig);
         when(environment.getProperty("app.mail.redis-enabled", Boolean.class, true)).thenReturn(mailRedisEnabled);
+        grantSystemStatusPermission();
 
         return new AdminSystemController(
                 environment,
@@ -489,7 +511,23 @@ class AdminSystemControllerTest {
                 redisTemplates,
                 configCenterServices,
                 mailAccountProperties,
-                paymentChannelConfigs
+                paymentChannelConfigs,
+                adminRoleService
         );
+    }
+
+    private void grantSystemStatusPermission() {
+        when(adminRoleService.hasPermission(1L, AdminRoleService.SYSTEM_STATUS_PERMISSION)).thenReturn(true);
+    }
+
+    private Authentication adminAuthentication() {
+        UserDetailsImpl principal = new UserDetailsImpl(
+                1L,
+                "admin",
+                "admin@example.com",
+                "ACTIVE",
+                "encoded-password",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
 }

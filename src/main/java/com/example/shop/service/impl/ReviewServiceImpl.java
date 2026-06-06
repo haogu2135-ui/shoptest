@@ -15,19 +15,20 @@ import com.example.shop.repository.ReviewRepository;
 import com.example.shop.repository.UserRepository;
 import com.example.shop.service.ReviewService;
 import com.example.shop.service.RuntimeConfigService;
+import com.example.shop.util.ReviewImageUrlCodec;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -78,12 +79,6 @@ public class ReviewServiceImpl implements ReviewService {
             return 0;
         }
         return reviewRepository.findAverageRatingByProductId(productId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Review> getAllReviews() {
-        return reviewRepository.findAll();
     }
 
     @Override
@@ -144,46 +139,16 @@ public class ReviewServiceImpl implements ReviewService {
             return List.of();
         }
         LocalDateTime deadline = LocalDateTime.now().minusDays(30);
-        List<Order> recentCompletedOrders = orderRepository.findByUserId(userId).stream()
-                .filter(order -> "COMPLETED".equals(order.getStatus()))
-                .filter(order -> order.getCreatedAt() != null && !order.getCreatedAt().isBefore(deadline))
-                .collect(Collectors.toList());
-        if (recentCompletedOrders.isEmpty()) {
-            return List.of();
-        }
-
-        List<Long> orderIds = recentCompletedOrders.stream()
-                .map(Order::getId)
-                .filter(id -> id != null && id > 0)
-                .distinct()
-                .collect(Collectors.toList());
-        if (orderIds.isEmpty()) {
-            return List.of();
-        }
-
-        Set<Long> ordersWithProduct = orderItemRepository.findByOrderIds(orderIds).stream()
-                .filter(item -> productId.equals(item.getProductId()))
-                .map(OrderItem::getOrderId)
-                .collect(Collectors.toSet());
-        if (ordersWithProduct.isEmpty()) {
-            return List.of();
-        }
-
-        Set<Long> reviewedOrderIds = reviewRepository.findByProduct_IdAndUser_IdAndOrderIdIn(productId, userId, orderIds).stream()
-                .map(Review::getOrderId)
-                .collect(Collectors.toCollection(HashSet::new));
-
-        return recentCompletedOrders.stream()
-                .filter(order -> ordersWithProduct.contains(order.getId()))
-                .filter(order -> !reviewedOrderIds.contains(order.getId()))
-                .limit(normalizedReviewableOrderMaxRows())
+        int limit = normalizedReviewableOrderMaxRows();
+        return orderRepository.findReviewableOrdersByUserAndProduct(userId, productId, deadline, limit).stream()
+                .limit(limit)
                 .map(ReviewableOrderResponse::from)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public Review addReview(Long productId, Long userId, Long orderId, int rating, String comment) {
+    public Review addReview(Long productId, Long userId, Long orderId, int rating, String comment, List<String> imageUrls) {
         Optional<Product> productOpt = productRepository.findById(productId);
         Optional<User> userOpt = userRepository.findById(userId);
 
@@ -201,6 +166,7 @@ public class ReviewServiceImpl implements ReviewService {
         if (normalizedComment.isEmpty()) {
             throw new IllegalArgumentException("Comment is required");
         }
+        List<String> normalizedImageUrls = normalizeReviewImageUrls(imageUrls);
 
         Order order = orderRepository.findById(orderId);
         if (order == null || !userId.equals(order.getUserId())) {
@@ -226,9 +192,24 @@ public class ReviewServiceImpl implements ReviewService {
         review.setOrderId(orderId);
         review.setRating(rating);
         review.setComment(normalizedComment);
+        review.setImageUrls(ReviewImageUrlCodec.toJson(normalizedImageUrls));
         review.setStatus("PENDING");
 
-        return reviewRepository.save(review);
+        try {
+            return reviewRepository.save(review);
+        } catch (DataIntegrityViolationException ex) {
+            if (isDuplicateReviewConstraintViolation(ex)) {
+                throw new IllegalStateException("This product has already been reviewed for this order", ex);
+            }
+            throw ex;
+        }
+    }
+
+    private boolean isDuplicateReviewConstraintViolation(DataIntegrityViolationException ex) {
+        String message = String.valueOf(ex.getMostSpecificCause() == null ? ex.getMessage() : ex.getMostSpecificCause().getMessage())
+                .toLowerCase(Locale.ROOT);
+        return message.contains("uk_reviews_product_user_order")
+                || (message.contains("duplicate") && message.contains("review"));
     }
 
     private boolean isPublicProduct(Long productId) {
@@ -288,6 +269,51 @@ public class ReviewServiceImpl implements ReviewService {
             throw new IllegalArgumentException(label + " is too long");
         }
         return normalized;
+    }
+
+    private List<String> normalizeReviewImageUrls(List<String> imageUrls) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
+            return List.of();
+        }
+        int maxImages = normalizedMaxImages();
+        if (maxImages <= 0) {
+            return List.of();
+        }
+        LinkedHashSet<String> unique = new LinkedHashSet<>();
+        for (String candidate : imageUrls) {
+            String normalized = normalizeReviewImageUrl(candidate);
+            if (normalized.isEmpty()) {
+                continue;
+            }
+            unique.add(normalized);
+            if (unique.size() > maxImages) {
+                throw new IllegalArgumentException("Review supports up to " + maxImages + " images");
+            }
+        }
+        return List.copyOf(unique);
+    }
+
+    private String normalizeReviewImageUrl(String value) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        if (normalized.length() > 2048) {
+            throw new IllegalArgumentException("Review image URL is too long");
+        }
+        String publicPath = normalizedReviewImagePublicPath();
+        String prefix = publicPath + "/";
+        if (!normalized.startsWith(prefix)) {
+            throw new IllegalArgumentException("Review images must be uploaded before submitting");
+        }
+        String filename = normalized.substring(prefix.length());
+        if (filename.isEmpty() || filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
+            throw new IllegalArgumentException("Review image URL is invalid");
+        }
+        if (!filename.matches("[0-9a-fA-F-]{36}\\.(jpg|png)")) {
+            throw new IllegalArgumentException("Review image URL is invalid");
+        }
+        return prefix + filename;
     }
 
     private String stripHtml(String value) {
@@ -351,5 +377,21 @@ public class ReviewServiceImpl implements ReviewService {
 
     private int normalizedReviewableOrderMaxRows() {
         return Math.max(1, Math.min(runtimeConfig.getInt("review.reviewable-order-max-rows", 50), 100));
+    }
+
+    private int normalizedMaxImages() {
+        return Math.max(0, Math.min(runtimeConfig.getInt("review.max-images", 4), 8));
+    }
+
+    private String normalizedReviewImagePublicPath() {
+        String configured = runtimeConfig.getString("review.image.public-path", "/uploads/reviews");
+        String normalized = configured == null ? "/uploads/reviews" : configured.trim();
+        if (normalized.isEmpty()) {
+            normalized = "/uploads/reviews";
+        }
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
+        return normalized.replaceAll("/$", "");
     }
 } 

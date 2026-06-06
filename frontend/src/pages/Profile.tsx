@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Spin, Tabs, Tag, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
@@ -20,6 +20,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import '../styles/mobile-page-contrast.css';
 
@@ -177,6 +178,8 @@ const Profile: React.FC = () => {
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [orderSearchText, setOrderSearchText] = useState('');
   const handledPaymentReturnRef = useRef('');
+  const mountedRef = useRef(false);
+  const ordersRequestSeqRef = useRef(0);
   const profileOrderItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
   );
@@ -216,21 +219,37 @@ const Profile: React.FC = () => {
     [getKnownStatusColor],
   );
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      ordersRequestSeqRef.current += 1;
+    };
+  }, []);
+
   const fetchUserInfo = useCallback(async () => {
     try {
       const response = await userApi.getProfile();
+      if (!mountedRef.current) return;
       setUser(response.data);
     } catch {
-      message.error(t('pages.profile.fetchUserFailed'));
+      if (mountedRef.current) {
+        message.error(t('pages.profile.fetchUserFailed'));
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [t]);
 
   const fetchOrders = useCallback(async () => {
+    const requestSeq = ordersRequestSeqRef.current + 1;
+    ordersRequestSeqRef.current = requestSeq;
     try {
       const response = await orderApi.getMine();
       const sortedOrders = sortOrdersNewestFirst(response.data || []);
+      if (!mountedRef.current || ordersRequestSeqRef.current !== requestSeq) return;
       setOrders(sortedOrders);
       const itemResults = await allSettledWithConcurrency(
         sortedOrders.slice(0, 30),
@@ -238,7 +257,8 @@ const Profile: React.FC = () => {
           try {
             const res = await orderApi.getItems(order.id);
             return [order.id, res.data || []] as const;
-          } catch {
+          } catch (error) {
+            reportNonBlockingError('Profile.fetchOrderItemsPreview', error);
             return [order.id, []] as const;
           }
         },
@@ -246,24 +266,29 @@ const Profile: React.FC = () => {
       const itemEntries = itemResults
         .filter((result): result is PromiseFulfilledResult<readonly [number, OrderItemCustomer[]]> => result.status === 'fulfilled')
         .map((result) => result.value);
+      if (!mountedRef.current || ordersRequestSeqRef.current !== requestSeq) return;
       setOrderItemsByOrderId(Object.fromEntries(itemEntries));
     } catch {
-      message.error(t('pages.profile.fetchOrdersFailed'));
+      if (mountedRef.current && ordersRequestSeqRef.current === requestSeq) {
+        message.error(t('pages.profile.fetchOrdersFailed'));
+      }
     }
   }, [t]);
 
   const syncPaymentReturnState = useCallback(async (order: OrderCustomer) => {
     const paymentListRes = await paymentApi.getByOrder(order.id);
+    if (!mountedRef.current) return;
     const paymentList = paymentListRes.data || [];
     const syncedById = new Map<number, PaymentCustomer>();
     await Promise.all(paymentList.map(async (payment) => {
       try {
         const synced = await paymentApi.sync(payment.id);
         syncedById.set(payment.id, synced.data);
-      } catch {
-        // A single provider sync failure should not block order refresh after returning from checkout.
+      } catch (error) {
+        reportNonBlockingError('Profile.syncPaymentReturnState', error);
       }
     }));
+    if (!mountedRef.current) return;
     const mergedPayments = paymentList.map((payment) => syncedById.get(payment.id) || payment);
     const latestPayment = mergedPayments[0] || null;
     setOrderPayments(mergedPayments);
@@ -272,6 +297,7 @@ const Profile: React.FC = () => {
       setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
     }
     await fetchOrders();
+    if (!mountedRef.current) return;
     if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'RECONCILE_REQUIRED')) {
       message.warning(t('pages.profile.paymentReturnReconcileRequired'));
     } else if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'PAID')) {
@@ -284,18 +310,26 @@ const Profile: React.FC = () => {
   const fetchAddresses = useCallback(async () => {
     try {
       const response = await addressApi.getByUser(0);
+      if (!mountedRef.current) return;
       setAddresses(response.data);
-    } catch {
-      setAddresses([]);
+    } catch (error) {
+      reportNonBlockingError('Profile.fetchAddresses', error);
+      if (mountedRef.current) {
+        setAddresses([]);
+      }
     }
   }, []);
 
   const fetchPetProfiles = useCallback(async () => {
     try {
       const response = await petProfileApi.getMine();
+      if (!mountedRef.current) return;
       setPetProfiles(response.data || []);
-    } catch {
-      setPetProfiles([]);
+    } catch (error) {
+      reportNonBlockingError('Profile.fetchPetProfiles', error);
+      if (mountedRef.current) {
+        setPetProfiles([]);
+      }
     }
   }, []);
 
@@ -345,8 +379,10 @@ const Profile: React.FC = () => {
     }
     setSearchParams(nextParams, { replace: true });
     syncPaymentReturnState(targetOrder).catch(() => {
-      message.error(t('pages.profile.paymentReturnSyncFailed'));
-      fetchOrders();
+      if (mountedRef.current) {
+        message.error(t('pages.profile.paymentReturnSyncFailed'));
+        fetchOrders();
+      }
     });
   }, [fetchOrders, orders, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState, t]);
 
@@ -358,11 +394,12 @@ const Profile: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [profileEmailCodeCountdown]);
 
-  const refreshPaymentState = useCallback(async (orderId: number) => {
+  const refreshPaymentState = useCallback(async (orderId: number, isActive: () => boolean = () => true) => {
     const [orderRes, paymentListRes] = await Promise.all([
       orderApi.getById(orderId),
       paymentApi.getByOrder(orderId),
     ]);
+    if (!mountedRef.current || !isActive()) return;
     const paymentList = paymentListRes.data || [];
     const latestPayment = paymentList[0] || null;
     setSelectedOrder(orderRes.data);
@@ -475,7 +512,8 @@ const Profile: React.FC = () => {
     try {
       const res = await orderApi.getItems(order.id);
       setOrderItems(res.data);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('Profile.loadOrderItems', error);
       setOrderItems([]);
     }
   };
@@ -489,28 +527,35 @@ const Profile: React.FC = () => {
     if (!getLocalStorageItem('token') || orderItems.length === 0) return;
     setReordering(true);
     let added = 0;
+    const expectedQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
     try {
       for (const item of orderItems) {
+        if (!mountedRef.current) return;
         try {
           await cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs);
+          if (!mountedRef.current) return;
           added += item.quantity;
-        } catch {
-          // Keep trying the remaining order items.
+        } catch (error) {
+          if (!mountedRef.current) return;
+          reportNonBlockingError('Profile.reorderItem', error);
         }
       }
+      if (!mountedRef.current) return;
       if (added === 0) {
         message.error(t('pages.profile.reorderFailed'));
         return;
       }
       message.success(
-        added === orderItems.reduce((sum, item) => sum + item.quantity, 0)
+        added === expectedQuantity
           ? t('pages.profile.reordered', { count: added })
           : t('pages.profile.reorderPartial', { count: added }),
       );
       dispatchDomEvent('shop:cart-updated');
       dispatchDomEvent('shop:open-cart');
     } finally {
-      setReordering(false);
+      if (mountedRef.current) {
+        setReordering(false);
+      }
     }
   };
 
@@ -577,13 +622,17 @@ const Profile: React.FC = () => {
     const orderId = selectedOrder?.id;
     if (!paymentModalVisible || !orderId) return undefined;
     let polling = false;
+    let disposed = false;
+    const isActive = () => !disposed && mountedRef.current;
     const syncPaymentState = async () => {
-      if (polling) return;
+      if (polling || !isActive()) return;
       polling = true;
       try {
-        await refreshPaymentState(orderId);
-      } catch {
-        // keep the current modal content if one polling request fails
+        await refreshPaymentState(orderId, isActive);
+      } catch (error) {
+        if (isActive()) {
+          reportNonBlockingError('Profile.pollPaymentState', error);
+        }
       } finally {
         polling = false;
       }
@@ -591,19 +640,26 @@ const Profile: React.FC = () => {
     syncPaymentState();
     const timer = window.setInterval(syncPaymentState, 5000);
     return () => {
+      disposed = true;
       polling = false;
       window.clearInterval(timer);
     };
   }, [paymentModalVisible, refreshPaymentState, selectedOrder?.id]);
 
   useEffect(() => {
+    let disposed = false;
     paymentApi.getChannels()
       .then((res) => {
+        if (disposed || !mountedRef.current) return;
         setPaymentChannels(res.data || []);
       })
       .catch(() => {
+        if (disposed || !mountedRef.current) return;
         setPaymentChannels([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const handleConfirmReceipt = async (orderId: number) => {
@@ -1091,7 +1147,12 @@ const Profile: React.FC = () => {
   };
 
   if (loading || !user) {
-    return <div className="profile-loading">{t('common.loading')}</div>;
+    return (
+      <div className="profile-loading" role="status" aria-live="polite">
+        <Spin />
+        <span>{t('common.loading')}</span>
+      </div>
+    );
   }
 
   const selectedOrderLabel = selectedOrder ? profileOrderLabel(selectedOrder) : '';
@@ -1214,11 +1275,13 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      <div className="profile-mobile-entry">
+      <div className="profile-mobile-entry" role="tablist" aria-label={t('pages.profile.title')}>
         <button
           type="button"
+          role="tab"
           className={profileActiveTab === 'orders' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
-          aria-pressed={profileActiveTab === 'orders'}
+          aria-selected={profileActiveTab === 'orders'}
+          tabIndex={profileActiveTab === 'orders' ? 0 : -1}
           onClick={() => openProfileTab('orders')}
         >
           <ShoppingCartOutlined />
@@ -1226,8 +1289,10 @@ const Profile: React.FC = () => {
         </button>
         <button
           type="button"
+          role="tab"
           className={profileActiveTab === 'addresses' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
-          aria-pressed={profileActiveTab === 'addresses'}
+          aria-selected={profileActiveTab === 'addresses'}
+          tabIndex={profileActiveTab === 'addresses' ? 0 : -1}
           onClick={() => openProfileTab('addresses')}
         >
           <EnvironmentOutlined />
@@ -1235,8 +1300,10 @@ const Profile: React.FC = () => {
         </button>
         <button
           type="button"
+          role="tab"
           className={profileActiveTab === 'info' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
-          aria-pressed={profileActiveTab === 'info'}
+          aria-selected={profileActiveTab === 'info'}
+          tabIndex={profileActiveTab === 'info' ? 0 : -1}
           onClick={() => openProfileTab('info')}
         >
           <UserOutlined />
@@ -1244,8 +1311,10 @@ const Profile: React.FC = () => {
         </button>
         <button
           type="button"
+          role="tab"
           className={profileActiveTab === 'pets' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
-          aria-pressed={profileActiveTab === 'pets'}
+          aria-selected={profileActiveTab === 'pets'}
+          tabIndex={profileActiveTab === 'pets' ? 0 : -1}
           onClick={() => openProfileTab('pets')}
         >
           <HeartOutlined />
@@ -1700,7 +1769,7 @@ const Profile: React.FC = () => {
                           <Space direction="vertical">
                             <Text>{t('pages.profile.petBreed')}: {pet.breed || t('common.unset')}</Text>
                             <Text>{t('pages.profile.petBirthday')}: {pet.birthday || t('common.unset')}</Text>
-                            <Text>{t('pages.profile.petWeight')}: {pet.weight ? `${pet.weight} kg` : t('common.unset')}</Text>
+                            <Text>{t('pages.profile.petWeight')}: {pet.weight ? t('pages.profile.petWeightValue', { weight: pet.weight }) : t('common.unset')}</Text>
                             <Text>{t('pages.profile.petSize')}: {petSizeLabel(pet.size)}</Text>
                             {pet.birthday ? <Tag color="gold">{t('pages.profile.birthdayCouponEnabled')}</Tag> : null}
                             <Button size="small" icon={<ShoppingCartOutlined />} aria-label={shopActionLabel} title={shopActionLabel} onClick={() => openPetShoppingPath(pet)}>

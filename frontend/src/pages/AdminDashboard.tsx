@@ -298,18 +298,26 @@ const AdminDashboard: React.FC = () => {
   const dashboardDrilldownLabel = (section: string, label: string, value: number | string) => `${section}: ${label} (${value})`;
 
   useEffect(() => {
+    let disposed = false;
     const fetchStats = async () => {
       try {
         const res = await adminApi.getDashboard();
+        if (disposed) return;
         setStats(res.data);
         setLoadError('');
       } catch (error: any) {
+        if (disposed) return;
         setLoadError(getApiErrorMessage(error, t('pages.adminDashboard.loadFailed'), language));
       } finally {
-        setLoading(false);
+        if (!disposed) {
+          setLoading(false);
+        }
       }
     };
     fetchStats();
+    return () => {
+      disposed = true;
+    };
   }, [language, t]);
 
   if (loading) {
