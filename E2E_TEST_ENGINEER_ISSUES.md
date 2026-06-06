@@ -4,6 +4,19 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 21:27 UTC Implementation Cycle #501 Regression Handoff
+
+Source status: CURRENT_SOURCE_COVERED / NON_ISSUE for F2085.
+
+Local verification already run:
+- Backend targeted Maven: `./mvnw -q -Dtest=ReviewServiceTest test` ✅
+- Static schema review: `schema.sql`, `V1_init.sql`, and `V6__review_unique_product_user_order.sql` contain `uk_reviews_product_user_order (product_id, user_id, order_id)`; `reviews.order_id` remains indexed and FK-backed
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Review uniqueness business rule | CURRENT_SOURCE_COVERED / E2E PENDING | Create or seed a completed order with at least two products for one user. Verify each product can receive one review tied to the same order, while a second review for the same product/user/order is rejected readably. |
+| Review schema migration guard | CURRENT_SOURCE_COVERED / E2E PENDING | On a migrated environment, confirm `uk_reviews_product_user_order` exists and no `UNIQUE(order_id)` constraint blocks multi-product review submission. |
+
 ## 2026-06-06 21:22 UTC Implementation Cycle #500 Regression Handoff
 
 Source status: SOURCE_FIXED / E2E PENDING for F2084.

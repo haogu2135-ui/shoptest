@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-06 21:22 UTC — Implementation Cycle #500 | Total: 2113 issues
+Last updated: 2026-06-06 21:27 UTC — Implementation Cycle #501 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -10,8 +10,18 @@ Legend: OPEN / FIXED / WONTFIX
 
 - Total issues: 2113
 - FIXED: 2009
-- WONTFIX: 14
-- OPEN: 90
+- WONTFIX: 15
+- OPEN: 89
+
+---
+
+## 2026-06-06 21:27 UTC Implementation Cycle #501 — Status Update
+
+### Implementation Cycle #501 Results
+- **Closed items:** F2085 closed as WONTFIX/NON_ISSUE. Current `reviews` schema already has `uk_reviews_product_user_order (product_id, user_id, order_id)` in fresh schema and Flyway migration, which is the correct DB-level guard for one review per purchased product per order.
+- **Rationale:** Adding a unique index on `review(order_id)` would incorrectly reject normal multi-item orders where the buyer reviews more than one product from the same order.
+- **Backend targeted Maven:** ✅ `./mvnw -q -Dtest=ReviewServiceTest test`
+- **Status:** Summary preserves the existing total of 2113 and updates WONTFIX to 15, OPEN to 89. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 

@@ -4,7 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- Total: 2113 issues | FIXED: 2009 | WONTFIX: 14 | OPEN: 90
+- Total: 2113 issues | FIXED: 2009 | WONTFIX: 15 | OPEN: 89
+- **Implementation Cycle #501 (2026-06-06 21:27 UTC)**: Closed 1 current queue item. WONTFIX/NON_ISSUE: F2085 because current review schema already enforces one review per purchased product per order with `uk_reviews_product_user_order (product_id, user_id, order_id)` in both fresh schema and Flyway migration. A unique index on `order_id` alone would incorrectly block separate reviews for multiple products in the same order; `reviews.order_id` remains indexed and FK-backed for lookup/integrity, and `ReviewServiceImpl.addReview()` converts the duplicate-key race into the existing already-reviewed error. Verification: backend targeted Maven ✅ (`./mvnw -q -Dtest=ReviewServiceTest test`). Remaining OPEN: 89.
 - **Implementation Cycle #500 (2026-06-06 21:22 UTC)**: Closed 1 current queue item. FIXED: F2084 `frontend/src/locales/zh.json` no longer has hardcoded dollar-denominated numeric amounts in Chinese copy; the reported `cart.noThreshold` key is absent in current source, cart/free-shipping threshold strings already use `{amount}`, and the remaining zh marketing/notification dollar amounts were rewritten to localized non-hardcoded copy. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-zh-locale-f2084 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only); static check ✅ (`rg -n '\\$[0-9]' frontend/src/locales/zh.json` returns no matches). Remaining OPEN: 90.
 - **Implementation Cycle #499 (2026-06-06 21:15 UTC)**: Closed 1 current queue item. FIXED: F2083 `OrderTracking.tsx` order-tracking requests now use AbortController cleanup: new lookups abort prior lookups, tracked-order refreshes abort prior refreshes, component unmount aborts both active controllers, and `orderApi.track()` accepts an abort signal while skipping shared pending/cache for abortable calls. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-ordertracking-f2083 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 91.
 - **Implementation Cycle #498 (2026-06-06 21:04 UTC)**: Closed 1 current queue item. FIXED: F2082 `Checkout.tsx` pending-payment polling now uses a per-order `localStorage` owner lock with TTL/settle confirmation before calling `paymentApi.getLatestByOrder`, and writes latest payment/order results for sibling tabs to consume through storage events so only the owner tab polls while other checkout tabs reuse shared state. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-checkout-f2082 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 92.
@@ -7852,9 +7853,10 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 ### F2085: LOW — review table has no UNIQUE INDEX on order_id — duplicate reviews possible
 **File:** `src/main/resources/schema.sql:590-592`
 **Description:** The `review` table has only a NON-UNIQUE INDEX `idx_review_order` on `order_id`. Combined with the application-level check-then-insert pattern in `ReviewService.addReview()`, this allows duplicate reviews under concurrent requests. Should add `UNIQUE INDEX unique_review_order (order_id)` to enforce at the DB level.
-**Impact:** DB-level enforcement missing for one-review-per-order invariant.
-**Fix:** Add UNIQUE INDEX on `review(order_id)`.
-**Severity:** LOW | **Status:** OPEN | **Date:** 2026-06-20
+**Impact:** None in current source; the reported `order_id`-only invariant is incorrect for multi-item orders.
+**Fix:** WONTFIX/NON_ISSUE — do not add `UNIQUE INDEX` on `review(order_id)`. Current fresh schema and Flyway migrations enforce `UNIQUE INDEX uk_reviews_product_user_order (product_id, user_id, order_id)`, which prevents duplicate reviews for the same purchased product/order while allowing separate reviews for different products in one order. `reviews.order_id` remains indexed and FK-backed, and the duplicate-key race is converted into the existing already-reviewed business error.
+**Verification:** `./mvnw -q -Dtest=ReviewServiceTest test` passed.
+**Severity:** LOW | **Status:** WONTFIX/NON_ISSUE | **Date:** 2026-06-20 | **Closed:** 2026-06-06 21:27 UTC
 
 ### F2086: LOW — searchOrderFilters() uses LIKE '%keyword%' without escaping SQL wildcards
 **File:** `src/main/java/com/example/shop/mapper/OrderMapper.java:54`
