@@ -4,6 +4,18 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 21:42 UTC Implementation Cycle #503 Regression Handoff
+
+Source status: CURRENT_SOURCE_COVERED / NON_ISSUE for F2087.
+
+Local verification already run:
+- Static source check: only `Stripe.API_VERSION` is present for Stripe webhook test payload API version; no `Stripe.apiVersion = ...`, `"2025-06-30"`, or `"basil"` hardcoded version remains
+- Backend targeted Maven: `./mvnw -q -Dtest=PaymentFlowServiceTest test` ✅
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Stripe webhook fixture compatibility | CURRENT_SOURCE_COVERED / E2E PENDING | No dedicated browser flow required for the stale hardcoded-version report. Keep normal Stripe checkout/webhook regression coverage and verify webhook fixtures continue to parse after Stripe SDK upgrades. |
+
 ## 2026-06-06 21:35 UTC Implementation Cycle #502 Regression Handoff
 
 Source status: SOURCE_FIXED / E2E PENDING for F2086.

@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-06 21:35 UTC — Implementation Cycle #502 | Total: 2113 issues
+Last updated: 2026-06-06 21:42 UTC — Implementation Cycle #503 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -10,8 +10,17 @@ Legend: OPEN / FIXED / WONTFIX
 
 - Total issues: 2113
 - FIXED: 2010
-- WONTFIX: 15
-- OPEN: 88
+- WONTFIX: 16
+- OPEN: 87
+
+---
+
+## 2026-06-06 21:42 UTC Implementation Cycle #503 — Status Update
+
+### Implementation Cycle #503 Results
+- **Closed items:** F2087 closed as WONTFIX/NON_ISSUE. Current payment tests have no hardcoded `Stripe.apiVersion = "2025-06-30.basil"` assignment; the Stripe webhook fixture uses `Stripe.API_VERSION`.
+- **Backend targeted Maven:** ✅ `./mvnw -q -Dtest=PaymentFlowServiceTest test`
+- **Status:** Summary preserves the existing total of 2113 and updates WONTFIX to 16, OPEN to 87. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 

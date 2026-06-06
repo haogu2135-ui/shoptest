@@ -4,7 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- Total: 2113 issues | FIXED: 2010 | WONTFIX: 15 | OPEN: 88
+- Total: 2113 issues | FIXED: 2010 | WONTFIX: 16 | OPEN: 87
+- **Implementation Cycle #503 (2026-06-06 21:42 UTC)**: Closed 1 current queue item. WONTFIX/NON_ISSUE: F2087 because current `PaymentFlowServiceTest` no longer hardcodes `Stripe.apiVersion = "2025-06-30.basil"`; there is no `Stripe.apiVersion` assignment or hardcoded `"2025-06-30"`/`"basil"` Stripe version in source, and the current Stripe webhook fixture uses the SDK-provided `Stripe.API_VERSION`. Verification: backend targeted Maven ✅ (`./mvnw -q -Dtest=PaymentFlowServiceTest test`). Remaining OPEN: 87.
 - **Implementation Cycle #502 (2026-06-06 21:35 UTC)**: Closed 1 current queue item. FIXED: F2086 admin order search now escapes SQL LIKE wildcard characters in `OrderService` before calling the mapper, and every admin-order `#{search}` LIKE predicate in `OrderMapper.xml` uses `ESCAPE '!'`. `%`, `_`, `!`, and `\` are treated as literal search text, while the mapper still wraps the escaped term in `%...%` for contains search. Verification: backend targeted Maven ✅ (`./mvnw -q -Dtest=OrderStatsServiceTest,OrderMapperSlaConsistencyTest test`). Remaining OPEN: 88.
 - **Implementation Cycle #501 (2026-06-06 21:27 UTC)**: Closed 1 current queue item. WONTFIX/NON_ISSUE: F2085 because current review schema already enforces one review per purchased product per order with `uk_reviews_product_user_order (product_id, user_id, order_id)` in both fresh schema and Flyway migration. A unique index on `order_id` alone would incorrectly block separate reviews for multiple products in the same order; `reviews.order_id` remains indexed and FK-backed for lookup/integrity, and `ReviewServiceImpl.addReview()` converts the duplicate-key race into the existing already-reviewed error. Verification: backend targeted Maven ✅ (`./mvnw -q -Dtest=ReviewServiceTest test`). Remaining OPEN: 89.
 - **Implementation Cycle #500 (2026-06-06 21:22 UTC)**: Closed 1 current queue item. FIXED: F2084 `frontend/src/locales/zh.json` no longer has hardcoded dollar-denominated numeric amounts in Chinese copy; the reported `cart.noThreshold` key is absent in current source, cart/free-shipping threshold strings already use `{amount}`, and the remaining zh marketing/notification dollar amounts were rewritten to localized non-hardcoded copy. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-zh-locale-f2084 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only); static check ✅ (`rg -n '\\$[0-9]' frontend/src/locales/zh.json` returns no matches). Remaining OPEN: 90.
@@ -7870,9 +7871,10 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 ### F2087: LOW — Stripe API_VERSION constant in test code may drift from production
 **File:** `src/test/java/com/example/shop/service/PaymentFlowServiceTest.java:88`
 **Description:** Test code hardcodes `Stripe.apiVersion = "2025-06-30.basil"` which may drift from the actual API version used in production. If the Stripe SDK version is upgraded but the test constant isn't updated, payment tests may silently use a different API version than production, masking version-specific bugs.
-**Impact:** Test/production API version mismatch.
-**Fix:** Use a shared constant or remove the hardcoded version from tests.
-**Severity:** LOW | **Status:** OPEN | **Date:** 2026-06-20
+**Impact:** None in current source; the reported hardcoded test API version is absent.
+**Fix:** WONTFIX/NON_ISSUE — no code change required. Current source has no `Stripe.apiVersion` assignment and no hardcoded `"2025-06-30"` or `"basil"` Stripe version string. The current Stripe webhook fixture uses `Stripe.API_VERSION`, so the test payload follows the Stripe SDK version instead of drifting from production SDK behavior.
+**Verification:** `rg -n "2025-06-30|basil|Stripe\\.apiVersion\\s*=|api_version.*2025|Stripe\\.API_VERSION" src/main src/test pom.xml` finds only the `Stripe.API_VERSION` fixture usage. `./mvnw -q -Dtest=PaymentFlowServiceTest test` passed.
+**Severity:** LOW | **Status:** WONTFIX/NON_ISSUE | **Date:** 2026-06-20 | **Closed:** 2026-06-06 21:42 UTC
 
 ### F2088: LOW — FileUploadServiceImpl has unclosed ImageIO.read() — ImageReader not closed
 **File:** `src/main/java/com/example/shop/service/FileUploadServiceImpl.java:357`
