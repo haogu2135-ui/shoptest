@@ -9,6 +9,10 @@ type ApiErrorLike = {
       code?: string;
       error?: string;
       message?: string;
+      retryAfterSeconds?: number | string;
+    };
+    headers?: Record<string, unknown> & {
+      get?: (name: string) => unknown;
     };
   };
 };
@@ -16,6 +20,16 @@ type ApiErrorLike = {
 const hasChineseText = (value: string) => /[\u3400-\u9fff]/.test(value);
 const hasSpanishSignal = (value: string) =>
   /[áéíóúñü¿¡]/i.test(value) || /\b(el|la|los|las|un|una|pedido|pago|usuario|correo|contraseña|direccion|dirección|envio|envío|reembolso)\b/i.test(value);
+
+const normalizeRetryAfterSeconds = (error: ApiErrorLike) => {
+  const headers = error.response?.headers;
+  const headerValue = headers?.get?.('Retry-After')
+    ?? headers?.get?.('retry-after')
+    ?? headers?.['Retry-After']
+    ?? headers?.['retry-after'];
+  const numeric = Number(error.response?.data?.retryAfterSeconds ?? headerValue);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.ceil(numeric) : null;
+};
 
 export const getApiErrorMessage = (error: unknown, fallback: string, language: Language = 'en') => {
   const errorLike = error as ApiErrorLike;
@@ -25,16 +39,25 @@ export const getApiErrorMessage = (error: unknown, fallback: string, language: L
       network: 'Network connection failed. Please check the storefront API proxy and try again.',
       timeout: 'The request timed out. Please try again.',
       serviceUnavailable: 'The service is temporarily unavailable. Please try again later.',
+      rateLimited: (seconds: number | null) => seconds
+        ? `Too many requests. Please try again in ${seconds} seconds.`
+        : 'Too many requests. Please wait and try again.',
     },
     zh: {
       network: '网络连接失败，请检查前台 API 代理后重试。',
       timeout: '请求超时，请稍后重试。',
       serviceUnavailable: '服务暂不可用，请稍后重试。',
+      rateLimited: (seconds: number | null) => seconds
+        ? `请求过于频繁，请在 ${seconds} 秒后重试。`
+        : '请求过于频繁，请稍后重试。',
     },
     es: {
       network: 'Falló la conexión de red. Verifica el proxy API de la tienda e inténtalo de nuevo.',
       timeout: 'La solicitud agotó el tiempo. Inténtalo de nuevo.',
       serviceUnavailable: 'El servicio no está disponible temporalmente. Inténtalo más tarde.',
+      rateLimited: (seconds: number | null) => seconds
+        ? `Demasiadas solicitudes. Inténtalo de nuevo en ${seconds} segundos.`
+        : 'Demasiadas solicitudes. Espera e inténtalo de nuevo.',
     },
   }[language] || undefined;
   if (!errorLike.response) {
@@ -51,6 +74,9 @@ export const getApiErrorMessage = (error: unknown, fallback: string, language: L
   const status = Number(errorLike.response?.status);
   if (responseCode === 'LOGIN_SERVICE_UNAVAILABLE' || status === 503) {
     return localMessages?.serviceUnavailable || fallback;
+  }
+  if (responseCode === 'RATE_LIMITED' || status === 429) {
+    return localMessages?.rateLimited(normalizeRetryAfterSeconds(errorLike)) || fallback;
   }
   const serverMessage = String(responseMessage?.error || responseMessage?.message || '').trim();
 

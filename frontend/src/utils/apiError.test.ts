@@ -1,6 +1,12 @@
 import { getApiErrorMessage } from './apiError';
 
 const apiError = (message: string) => ({ response: { data: { error: message } } });
+const rateLimitedError = (retryAfterSeconds?: number | string) => ({
+  response: {
+    status: 429,
+    data: { code: 'RATE_LIMITED', error: 'Too many requests', retryAfterSeconds },
+  },
+});
 
 describe('getApiErrorMessage', () => {
   it('uses server detail for English pages', () => {
@@ -20,5 +26,14 @@ describe('getApiErrorMessage', () => {
   it('recognizes accented Spanish server messages', () => {
     expect(getApiErrorMessage(apiError('La dirección de envío no es válida'), 'No se pudo pagar', 'es'))
       .toBe('La dirección de envío no es válida');
+  });
+
+  it('shows localized retry guidance for rate-limited requests', () => {
+    expect(getApiErrorMessage(rateLimitedError(12), 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again in 12 seconds.');
+    expect(getApiErrorMessage(rateLimitedError('7'), '支付失败', 'zh'))
+      .toBe('请求过于频繁，请在 7 秒后重试。');
+    expect(getApiErrorMessage(rateLimitedError(), 'No se pudo pagar', 'es'))
+      .toBe('Demasiadas solicitudes. Espera e inténtalo de nuevo.');
   });
 });
