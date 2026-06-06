@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-06 21:27 UTC — Implementation Cycle #501 | Total: 2113 issues
+Last updated: 2026-06-06 21:35 UTC — Implementation Cycle #502 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -9,9 +9,18 @@ Legend: OPEN / FIXED / WONTFIX
 ## Summary
 
 - Total issues: 2113
-- FIXED: 2009
+- FIXED: 2010
 - WONTFIX: 15
-- OPEN: 89
+- OPEN: 88
+
+---
+
+## 2026-06-06 21:35 UTC Implementation Cycle #502 — Status Update
+
+### Implementation Cycle #502 Results
+- **Closed items:** F2086 fixed in `OrderService` and `OrderMapper.xml`; admin order search now escapes LIKE wildcards before mapper calls and uses `ESCAPE '!'` on all admin-order search predicates.
+- **Backend targeted Maven:** ✅ `./mvnw -q -Dtest=OrderStatsServiceTest,OrderMapperSlaConsistencyTest test`
+- **Status:** Summary preserves the existing total of 2113 and updates FIXED to 2010, OPEN to 88. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 

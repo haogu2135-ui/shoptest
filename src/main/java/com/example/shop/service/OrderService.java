@@ -729,18 +729,18 @@ public class OrderService {
         int safeSize = Math.max(1, Math.min(size, 5000));
         int safePage = Math.max(1, page);
         int offset = (safePage - 1) * safeSize;
-        return orderRepository.searchAdminOrders(blankToNull(status), blankToNull(search), blankToNull(quick), offset, safeSize)
+        return orderRepository.searchAdminOrders(blankToNull(status), searchLikeTerm(search), blankToNull(quick), offset, safeSize)
                 .stream()
                 .map(this::enrichReturnInfo)
                 .collect(Collectors.toList());
     }
 
     public int countAdminOrders(String status, String search, String quick) {
-        return orderRepository.countAdminOrders(blankToNull(status), blankToNull(search), blankToNull(quick));
+        return orderRepository.countAdminOrders(blankToNull(status), searchLikeTerm(search), blankToNull(quick));
     }
 
     public Map<String, Long> countAdminOrderSummary(String search) {
-        Map<String, Object> row = orderRepository.countAdminOrderSummary(blankToNull(search));
+        Map<String, Object> row = orderRepository.countAdminOrderSummary(searchLikeTerm(search));
         Map<String, Long> summary = new LinkedHashMap<>();
         for (String key : ADMIN_ORDER_SUMMARY_KEYS) {
             summary.put(key, mapLong(row, key));
@@ -809,6 +809,26 @@ public class OrderService {
     private String blankToNull(String value) {
         String normalized = normalizeText(value);
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String searchLikeTerm(String value) {
+        String normalized = blankToNull(value);
+        if (normalized == null) {
+            return null;
+        }
+        return escapeLikeLiteral(normalized);
+    }
+
+    private String escapeLikeLiteral(String value) {
+        StringBuilder escaped = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (ch == '!' || ch == '%' || ch == '_' || ch == '\\') {
+                escaped.append('!');
+            }
+            escaped.append(ch);
+        }
+        return escaped.toString();
     }
 
     /**

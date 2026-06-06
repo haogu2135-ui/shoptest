@@ -4,7 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- Total: 2113 issues | FIXED: 2009 | WONTFIX: 15 | OPEN: 89
+- Total: 2113 issues | FIXED: 2010 | WONTFIX: 15 | OPEN: 88
+- **Implementation Cycle #502 (2026-06-06 21:35 UTC)**: Closed 1 current queue item. FIXED: F2086 admin order search now escapes SQL LIKE wildcard characters in `OrderService` before calling the mapper, and every admin-order `#{search}` LIKE predicate in `OrderMapper.xml` uses `ESCAPE '!'`. `%`, `_`, `!`, and `\` are treated as literal search text, while the mapper still wraps the escaped term in `%...%` for contains search. Verification: backend targeted Maven ✅ (`./mvnw -q -Dtest=OrderStatsServiceTest,OrderMapperSlaConsistencyTest test`). Remaining OPEN: 88.
 - **Implementation Cycle #501 (2026-06-06 21:27 UTC)**: Closed 1 current queue item. WONTFIX/NON_ISSUE: F2085 because current review schema already enforces one review per purchased product per order with `uk_reviews_product_user_order (product_id, user_id, order_id)` in both fresh schema and Flyway migration. A unique index on `order_id` alone would incorrectly block separate reviews for multiple products in the same order; `reviews.order_id` remains indexed and FK-backed for lookup/integrity, and `ReviewServiceImpl.addReview()` converts the duplicate-key race into the existing already-reviewed error. Verification: backend targeted Maven ✅ (`./mvnw -q -Dtest=ReviewServiceTest test`). Remaining OPEN: 89.
 - **Implementation Cycle #500 (2026-06-06 21:22 UTC)**: Closed 1 current queue item. FIXED: F2084 `frontend/src/locales/zh.json` no longer has hardcoded dollar-denominated numeric amounts in Chinese copy; the reported `cart.noThreshold` key is absent in current source, cart/free-shipping threshold strings already use `{amount}`, and the remaining zh marketing/notification dollar amounts were rewritten to localized non-hardcoded copy. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-zh-locale-f2084 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only); static check ✅ (`rg -n '\\$[0-9]' frontend/src/locales/zh.json` returns no matches). Remaining OPEN: 90.
 - **Implementation Cycle #499 (2026-06-06 21:15 UTC)**: Closed 1 current queue item. FIXED: F2083 `OrderTracking.tsx` order-tracking requests now use AbortController cleanup: new lookups abort prior lookups, tracked-order refreshes abort prior refreshes, component unmount aborts both active controllers, and `orderApi.track()` accepts an abort signal while skipping shared pending/cache for abortable calls. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-ordertracking-f2083 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 91.
@@ -7861,9 +7862,10 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 ### F2086: LOW — searchOrderFilters() uses LIKE '%keyword%' without escaping SQL wildcards
 **File:** `src/main/java/com/example/shop/mapper/OrderMapper.java:54`
 **Description:** `searchOrderFilters()` uses `LIKE CONCAT('%', #{keyword}, '%')` without escaping `%`, `_`, or `\` wildcards in the keyword. A user searching for "100%" matches far more than intended. Should escape wildcards in the service layer before passing to the mapper.
-**Impact:** Unintended search results and potential performance issues.
-**Fix:** Escape SQL wildcards in the keyword before passing to the mapper.
-**Severity:** LOW | **Status:** OPEN | **Date:** 2026-06-20
+**Impact:** Fixed; wildcard-heavy admin searches now match literal user input instead of expanding the result set through SQL LIKE metacharacters.
+**Fix applied:** `OrderService` now converts admin order search text into an escaped LIKE term before repository calls, covering list, count, summary, and export callers. `OrderMapper.xml` declares `ESCAPE '!'` on every admin-order `#{search}` LIKE predicate so `%`, `_`, `!`, and `\` are treated literally while preserving contains-search semantics.
+**Verification:** `./mvnw -q -Dtest=OrderStatsServiceTest,OrderMapperSlaConsistencyTest test` passed.
+**Severity:** LOW | **Status:** FIXED | **Date:** 2026-06-20 | **Fixed:** 2026-06-06 21:35 UTC
 
 ### F2087: LOW — Stripe API_VERSION constant in test code may drift from production
 **File:** `src/test/java/com/example/shop/service/PaymentFlowServiceTest.java:88`

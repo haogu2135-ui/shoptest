@@ -109,22 +109,22 @@
             </if>
             <if test="search != null and search != ''">
                 AND (
-                    CAST(orders.id AS CHAR) LIKE CONCAT('%', #{search}, '%')
-                    OR orders.order_no LIKE CONCAT('%', #{search}, '%')
-                    OR CAST(orders.user_id AS CHAR) LIKE CONCAT('%', #{search}, '%')
-                    OR orders.status LIKE CONCAT('%', #{search}, '%')
-                    OR orders.shipping_address LIKE CONCAT('%', #{search}, '%')
-                    OR orders.recipient_name LIKE CONCAT('%', #{search}, '%')
-                    OR orders.recipient_phone LIKE CONCAT('%', #{search}, '%')
-                    OR orders.contact_email LIKE CONCAT('%', #{search}, '%')
-                    OR orders.payment_method LIKE CONCAT('%', #{search}, '%')
-                    OR orders.tracking_number LIKE CONCAT('%', #{search}, '%')
-                    OR orders.tracking_carrier_name LIKE CONCAT('%', #{search}, '%')
-                    OR orders.return_tracking_number LIKE CONCAT('%', #{search}, '%')
-                    OR orders.return_reason LIKE CONCAT('%', #{search}, '%')
-                    OR users.username LIKE CONCAT('%', #{search}, '%')
-                    OR users.email LIKE CONCAT('%', #{search}, '%')
-                    OR users.phone LIKE CONCAT('%', #{search}, '%')
+                    CAST(orders.id AS CHAR) LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.order_no LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR CAST(orders.user_id AS CHAR) LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.status LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.shipping_address LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.recipient_name LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.recipient_phone LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.contact_email LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.payment_method LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.tracking_number LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.tracking_carrier_name LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.return_tracking_number LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.return_reason LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR users.username LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR users.email LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR users.phone LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
                 )
             </if>
             <if test="quick != null and quick != ''">
@@ -329,22 +329,22 @@
         <where>
             <if test="search != null and search != ''">
                 AND (
-                    CAST(orders.id AS CHAR) LIKE CONCAT('%', #{search}, '%')
-                    OR orders.order_no LIKE CONCAT('%', #{search}, '%')
-                    OR CAST(orders.user_id AS CHAR) LIKE CONCAT('%', #{search}, '%')
-                    OR orders.status LIKE CONCAT('%', #{search}, '%')
-                    OR orders.shipping_address LIKE CONCAT('%', #{search}, '%')
-                    OR orders.recipient_name LIKE CONCAT('%', #{search}, '%')
-                    OR orders.recipient_phone LIKE CONCAT('%', #{search}, '%')
-                    OR orders.contact_email LIKE CONCAT('%', #{search}, '%')
-                    OR orders.payment_method LIKE CONCAT('%', #{search}, '%')
-                    OR orders.tracking_number LIKE CONCAT('%', #{search}, '%')
-                    OR orders.tracking_carrier_name LIKE CONCAT('%', #{search}, '%')
-                    OR orders.return_tracking_number LIKE CONCAT('%', #{search}, '%')
-                    OR orders.return_reason LIKE CONCAT('%', #{search}, '%')
-                    OR users.username LIKE CONCAT('%', #{search}, '%')
-                    OR users.email LIKE CONCAT('%', #{search}, '%')
-                    OR users.phone LIKE CONCAT('%', #{search}, '%')
+                    CAST(orders.id AS CHAR) LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.order_no LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR CAST(orders.user_id AS CHAR) LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.status LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.shipping_address LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.recipient_name LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.recipient_phone LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.contact_email LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.payment_method LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.tracking_number LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.tracking_carrier_name LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.return_tracking_number LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR orders.return_reason LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR users.username LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR users.email LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
+                    OR users.phone LIKE CONCAT('%', #{search}, '%') ESCAPE '!'
                 )
             </if>
         </where>

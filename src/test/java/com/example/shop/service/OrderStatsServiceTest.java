@@ -76,4 +76,21 @@ class OrderStatsServiceTest {
         verify(orderRepository).searchAdminOrders(null, null, null, 0, 75);
         verifyNoMoreInteractions(orderRepository);
     }
+
+    @Test
+    void adminOrderSearchEscapesLikeWildcards() {
+        String escapedSearch = "100!%!_!!promo!\\code";
+        when(orderRepository.searchAdminOrders(null, escapedSearch, null, 0, 20)).thenReturn(List.of());
+        when(orderRepository.countAdminOrders(null, escapedSearch, null)).thenReturn(0);
+        when(orderRepository.countAdminOrderSummary(escapedSearch)).thenReturn(Map.of());
+
+        assertEquals(List.of(), service.searchAdminOrders(null, " 100%_!promo\\code ", null, 1, 20));
+        assertEquals(0, service.countAdminOrders(null, "100%_!promo\\code", null));
+        assertEquals(0L, service.countAdminOrderSummary("100%_!promo\\code").get("NEEDS_ACTION"));
+
+        verify(orderRepository).searchAdminOrders(null, escapedSearch, null, 0, 20);
+        verify(orderRepository).countAdminOrders(null, escapedSearch, null);
+        verify(orderRepository).countAdminOrderSummary(escapedSearch);
+        verifyNoMoreInteractions(orderRepository);
+    }
 }

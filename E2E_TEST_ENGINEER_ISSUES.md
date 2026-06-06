@@ -4,6 +4,18 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 21:35 UTC Implementation Cycle #502 Regression Handoff
+
+Source status: SOURCE_FIXED / E2E PENDING for F2086.
+
+Local verification already run:
+- Backend targeted Maven: `./mvnw -q -Dtest=OrderStatsServiceTest,OrderMapperSlaConsistencyTest test` ✅
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin order wildcard search | SOURCE_FIXED / E2E PENDING | In admin order management, search for order/customer fields containing literal `%`, `_`, `!`, and `\` characters. Verify these characters do not broaden results as SQL wildcards and normal contains searches still work. |
+| Admin order filtered counts/export | SOURCE_FIXED / E2E PENDING | Repeat wildcard searches with status/quick filters, summary counters, pagination, and order export. Verify counts/export rows match the visible filtered result set. |
+
 ## 2026-06-06 21:27 UTC Implementation Cycle #501 Regression Handoff
 
 Source status: CURRENT_SOURCE_COVERED / NON_ISSUE for F2085.
