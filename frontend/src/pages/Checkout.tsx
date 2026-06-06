@@ -21,7 +21,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { saveGuestSupportContext } from '../utils/guestSupportContext';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { isAdminRole } from '../utils/roles';
-import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
+import { getLocalStorageItem, getSessionStorageItem, removeLocalStorageItem, removeSessionStorageItem, setLocalStorageItem, setSessionStorageItem } from '../utils/safeStorage';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -32,6 +32,26 @@ const { Text, Title } = Typography;
 const checkoutImageFallback = productImageFallback;
 const resolveCheckoutImage = resolveProductImage;
 const mobileCheckoutQuery = '(max-width: 780px)';
+const CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS = 30 * 1000;
+const CHECKOUT_PAYMENT_POLL_LOCK_SETTLE_MS = 75;
+const CHECKOUT_PAYMENT_POLL_RESULT_MAX_MS = 30 * 60 * 1000 + CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS;
+
+type CheckoutPaymentPollLock = {
+  ownerId: string;
+  orderId: number;
+  orderNo?: string;
+  expiresAt: number;
+  updatedAt: number;
+};
+
+type CheckoutPaymentPollResult = {
+  ownerId: string;
+  orderId: number;
+  orderNo?: string;
+  payment: PaymentCustomer;
+  order?: OrderCustomer | null;
+  updatedAt: number;
+};
 
 const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED', 'RECONCILE_REQUIRED']);
 const paymentStatusColors: Record<string, string> = {
@@ -131,6 +151,136 @@ const clearExpiredCheckoutSession = () => {
   clearStoredAuthSession();
 };
 
+const checkoutPaymentPollLockKey = (orderId: number) => `checkoutPaymentPollLock:${orderId}`;
+const checkoutPaymentPollResultKey = (orderId: number) => `checkoutPaymentPollResult:${orderId}`;
+
+const createCheckoutPaymentPollOwnerId = () => {
+  const cryptoApi = typeof window !== 'undefined'
+    ? window.crypto as (Crypto & { randomUUID?: () => string }) | undefined
+    : undefined;
+  if (cryptoApi?.randomUUID) {
+    return `checkout-poll-${cryptoApi.randomUUID()}`;
+  }
+  return `checkout-poll-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+};
+
+const parseCheckoutPaymentPollLock = (raw: string | null): CheckoutPaymentPollLock | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<CheckoutPaymentPollLock> | null;
+    const ownerId = normalizeCheckoutText(parsed?.ownerId, 120);
+    const orderId = Number(parsed?.orderId);
+    const expiresAt = Number(parsed?.expiresAt);
+    const updatedAt = Number(parsed?.updatedAt);
+    if (!ownerId || !Number.isSafeInteger(orderId) || orderId <= 0 || !Number.isFinite(expiresAt)) {
+      return null;
+    }
+    return {
+      ownerId,
+      orderId,
+      orderNo: normalizeCheckoutText(parsed?.orderNo, 80) || undefined,
+      expiresAt,
+      updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const parseCheckoutPaymentPollResult = (raw: string | null): CheckoutPaymentPollResult | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<CheckoutPaymentPollResult> | null;
+    const ownerId = normalizeCheckoutText(parsed?.ownerId, 120);
+    const orderId = Number(parsed?.orderId);
+    const updatedAt = Number(parsed?.updatedAt);
+    const payment = parsed?.payment && typeof parsed.payment === 'object'
+      ? parsed.payment as PaymentCustomer
+      : null;
+    if (!ownerId || !Number.isSafeInteger(orderId) || orderId <= 0 || !Number.isFinite(updatedAt) || !payment) {
+      return null;
+    }
+    return {
+      ownerId,
+      orderId,
+      orderNo: normalizeCheckoutText(parsed?.orderNo, 80) || undefined,
+      payment,
+      order: parsed?.order && typeof parsed.order === 'object' ? parsed.order as OrderCustomer : null,
+      updatedAt,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const waitCheckoutPaymentPollLockSettle = () => new Promise<void>((resolve) => {
+  if (typeof window === 'undefined') {
+    resolve();
+    return;
+  }
+  window.setTimeout(resolve, CHECKOUT_PAYMENT_POLL_LOCK_SETTLE_MS);
+});
+
+const claimCheckoutPaymentPollLock = async (orderId: number, orderNo: string | undefined, ownerId: string) => {
+  const now = Date.now();
+  const key = checkoutPaymentPollLockKey(orderId);
+  const existing = parseCheckoutPaymentPollLock(getLocalStorageItem(key));
+  if (existing && existing.ownerId !== ownerId && existing.expiresAt > now) {
+    return false;
+  }
+  const nextLock: CheckoutPaymentPollLock = {
+    ownerId,
+    orderId,
+    orderNo,
+    updatedAt: now,
+    expiresAt: now + CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS,
+  };
+  if (!setLocalStorageItem(key, JSON.stringify(nextLock))) {
+    return true;
+  }
+  await waitCheckoutPaymentPollLockSettle();
+  const confirmed = parseCheckoutPaymentPollLock(getLocalStorageItem(key));
+  return Boolean(confirmed && confirmed.ownerId === ownerId && confirmed.orderId === orderId);
+};
+
+const releaseCheckoutPaymentPollLock = (orderId: number, ownerId: string) => {
+  const key = checkoutPaymentPollLockKey(orderId);
+  const existing = parseCheckoutPaymentPollLock(getLocalStorageItem(key));
+  if (!existing || existing.ownerId === ownerId) {
+    removeLocalStorageItem(key);
+  }
+};
+
+const readCheckoutPaymentPollResult = (orderId: number) => {
+  const result = parseCheckoutPaymentPollResult(getLocalStorageItem(checkoutPaymentPollResultKey(orderId)));
+  if (!result || result.orderId !== orderId || Date.now() - result.updatedAt > CHECKOUT_PAYMENT_POLL_RESULT_MAX_MS) {
+    return null;
+  }
+  return result;
+};
+
+const writeCheckoutPaymentPollResult = (
+  orderId: number,
+  ownerId: string,
+  payment: PaymentCustomer,
+  order?: OrderCustomer | null,
+) => {
+  const result: CheckoutPaymentPollResult = {
+    ownerId,
+    orderId,
+    orderNo: order?.orderNo || payment.orderNo,
+    payment,
+    order: order || null,
+    updatedAt: Date.now(),
+  };
+  setLocalStorageItem(checkoutPaymentPollResultKey(orderId), JSON.stringify(result));
+};
+
+const isCheckoutPaymentPollTerminal = (payment?: PaymentCustomer | null) => {
+  const status = normalizeStatusCode(payment?.status);
+  return Boolean(status && status !== 'PENDING');
+};
+
 const CHECKOUT_GUEST_DRAFT_KEY = 'checkoutGuestDraft';
 
 const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: string) => {
@@ -181,6 +331,10 @@ const Checkout: React.FC = () => {
   const [selectedUserCouponId, setSelectedUserCouponId] = useState<number | null>(null);
   const [couponManuallyChanged, setCouponManuallyChanged] = useState(false);
   const [supportPanelOpen, setSupportPanelOpen] = useState(false);
+  const paymentPollOwnerIdRef = React.useRef<string | null>(null);
+  if (!paymentPollOwnerIdRef.current) {
+    paymentPollOwnerIdRef.current = createCheckoutPaymentPollOwnerId();
+  }
   const supportPanelDismissedKeyRef = React.useRef<string | null>(null);
   const couponQuoteSeqRef = React.useRef(0);
   const { t, language } = useLanguage();
@@ -1121,36 +1275,73 @@ const Checkout: React.FC = () => {
 
   useEffect(() => {
     if (!createdOrderId || paymentStatus !== 'PENDING') return undefined;
+    const ownerId = paymentPollOwnerIdRef.current || createCheckoutPaymentPollOwnerId();
+    paymentPollOwnerIdRef.current = ownerId;
     const shouldRefreshOrder = Boolean(getLocalStorageItem('token'));
     const guestOrderNo = !shouldRefreshOrder && guestPaymentEmail ? createdOrderNo : undefined;
     let disposed = false;
     let polling = false;
+    let ownsLock = false;
+    const applySharedPollResult = (result: CheckoutPaymentPollResult | null) => {
+      if (!result || result.ownerId === ownerId || result.orderId !== createdOrderId) return false;
+      setPayment(result.payment);
+      if (result.order) {
+        setCreatedOrder(result.order);
+      }
+      return true;
+    };
+    applySharedPollResult(readCheckoutPaymentPollResult(createdOrderId));
+    const handlePaymentPollStorage = (event: StorageEvent) => {
+      if (event.key !== checkoutPaymentPollResultKey(createdOrderId) || !event.newValue || disposed) return;
+      applySharedPollResult(parseCheckoutPaymentPollResult(event.newValue));
+    };
+    window.addEventListener('storage', handlePaymentPollStorage);
     const timer = window.setInterval(async () => {
       if (polling) return;
+      const sharedResult = readCheckoutPaymentPollResult(createdOrderId);
+      if (applySharedPollResult(sharedResult) && isCheckoutPaymentPollTerminal(sharedResult?.payment)) {
+        return;
+      }
       polling = true;
+      let ownsThisPoll = false;
       try {
+        ownsThisPoll = await claimCheckoutPaymentPollLock(createdOrderId, createdOrderNo, ownerId);
+        ownsLock = ownsLock || ownsThisPoll;
+        if (disposed || !ownsThisPoll) return;
         const paymentRes = await paymentApi.getLatestByOrder(createdOrderId, shouldRefreshOrder ? undefined : guestPaymentEmail, guestOrderNo);
         if (disposed) return;
-        setPayment(paymentRes.data);
+        const latestPayment = paymentRes.data;
+        setPayment(latestPayment);
+        writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment);
         if (shouldRefreshOrder) {
           const orderRes = await orderApi.getById(createdOrderId);
           if (disposed) return;
           setCreatedOrder(orderRes.data);
+          writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment, orderRes.data);
         } else if (guestPaymentEmail && guestOrderNo) {
           const orderRes = await orderApi.getById(createdOrderId, guestPaymentEmail, guestOrderNo);
           if (disposed) return;
           setCreatedOrder(orderRes.data);
+          writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment, orderRes.data);
         }
       } catch {
         // Keep the submitted-order screen stable while the gateway is still redirecting or polling.
       } finally {
         polling = false;
+        if (disposed && ownsThisPoll) {
+          releaseCheckoutPaymentPollLock(createdOrderId, ownerId);
+          ownsLock = false;
+        }
       }
     }, 5000);
     return () => {
+      const shouldReleaseLock = ownsLock && !polling;
       disposed = true;
-      polling = false;
       window.clearInterval(timer);
+      window.removeEventListener('storage', handlePaymentPollStorage);
+      if (shouldReleaseLock) {
+        releaseCheckoutPaymentPollLock(createdOrderId, ownerId);
+      }
     };
   }, [createdOrderId, createdOrderNo, guestPaymentEmail, paymentStatus]);
 

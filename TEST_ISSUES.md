@@ -4,7 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- Total: 2113 issues | FIXED: 2006 | WONTFIX: 14 | OPEN: 93
+- Total: 2113 issues | FIXED: 2007 | WONTFIX: 14 | OPEN: 92
+- **Implementation Cycle #498 (2026-06-06 21:04 UTC)**: Closed 1 current queue item. FIXED: F2082 `Checkout.tsx` pending-payment polling now uses a per-order `localStorage` owner lock with TTL/settle confirmation before calling `paymentApi.getLatestByOrder`, and writes latest payment/order results for sibling tabs to consume through storage events so only the owner tab polls while other checkout tabs reuse shared state. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-checkout-f2082 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 92.
 - **Implementation Cycle #497 (2026-06-06 20:52 UTC)**: Closed 1 current queue item. FIXED: F2081 `Cart.tsx` recent-products cache now has a 50-entry LRU-style cap, prunes expired TTL entries on reads/writes, refreshes hit order on cache reads, and evicts oldest keys after writes so long-lived cart sessions cannot grow the module-level cache without bound. Verification: frontend production build ✅ (`CI=true BUILD_PATH=/tmp/shoptest-frontend-build-cart-f2081 MOBILE_RELEASE_SKIP_GENERATION=true npm run build`, Browserslist stale-data warnings only). Remaining OPEN: 93.
 - **Implementation Cycle #496 (2026-06-06 20:48 UTC)**: Closed 1 current queue item. FIXED: F2080 `ReviewServiceImpl.getAverageRating()` now runs inside a read-only `REPEATABLE_READ` transaction so the public product-status check and average-rating aggregate are read from a consistent transaction snapshot under concurrent review writes. Verification: backend targeted Maven ✅ (`ReviewServiceTest`). Remaining OPEN: 94.
 - **Implementation Cycle #495 (2026-06-06 20:42 UTC)**: Closed 3 current queue items. WONTFIX/NON_ISSUE: F2077 and F2078 because current `AdminBugReportService` has no `getAll()` or `getStatusTimeStats()` methods; `/admin/bugs` uses the bounded `search(page,size,...)` query with `LIMIT/OFFSET`, and `/admin/bugs/summary` uses SQL count/group queries instead of loading rows. FIXED: F2079 by removing the dead unbounded `OrderRepository.findAll()` API and matching `OrderMapper.xml` `SELECT * FROM orders` mapping; legacy/admin order list paths remain on counted, capped `searchAdminOrders(...)`. Verification: backend targeted Maven ✅ (`OrderStatsServiceTest`). Remaining OPEN: 95.
@@ -7826,8 +7827,9 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **File:** `frontend/src/pages/Checkout.tsx:158-176`
 **Description:** `pollOrderStatus()` starts its own `setInterval` without coordinating across browser tabs. Two tabs on the same checkout page will both poll independently and may trigger duplicate order-confirm actions. Should use `BroadcastChannel` or `localStorage` lock to ensure only one tab polls.
 **Impact:** Duplicate order-confirm actions in multi-tab scenarios.
-**Fix:** Use BroadcastChannel or localStorage lock for cross-tab coordination.
-**Severity:** MEDIUM | **Status:** OPEN | **Date:** 2026-06-20
+**Fix applied:** Added a per-order checkout payment polling lock in `localStorage`. Each checkout tab gets a stable owner id, confirms lock ownership after a short settle window before polling, refreshes/releases only its own lock, and publishes latest payment/order snapshots to a per-order storage key so non-owner tabs can reuse terminal payment state without issuing duplicate polling requests.
+**Verification:** `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-checkout-f2082 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` passed with existing Browserslist stale-data warnings only.
+**Severity:** MEDIUM | **Status:** FIXED | **Date:** 2026-06-20 | **Fixed:** 2026-06-06 21:04 UTC
 
 ### F2083: MEDIUM — OrderTracking trackOrder polling has no AbortController
 **File:** `frontend/src/pages/OrderTracking.tsx:111-128`

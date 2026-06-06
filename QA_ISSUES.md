@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-06 20:52 UTC — Implementation Cycle #497 | Total: 2113 issues
+Last updated: 2026-06-06 21:04 UTC — Implementation Cycle #498 | Total: 2113 issues
 
 Legend: OPEN / FIXED / WONTFIX
 
@@ -9,9 +9,18 @@ Legend: OPEN / FIXED / WONTFIX
 ## Summary
 
 - Total issues: 2113
-- FIXED: 2006
+- FIXED: 2007
 - WONTFIX: 14
-- OPEN: 93
+- OPEN: 92
+
+---
+
+## 2026-06-06 21:04 UTC Implementation Cycle #498 — Status Update
+
+### Implementation Cycle #498 Results
+- **Closed items:** F2082 fixed in `Checkout.tsx`; pending-payment polling now uses a per-order `localStorage` owner lock with TTL/settle confirmation before calling `paymentApi.getLatestByOrder`, and writes latest payment/order snapshots for sibling checkout tabs to consume via storage events.
+- **Frontend build:** ✅ `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-checkout-f2082 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` (Browserslist stale-data warnings only)
+- **Status:** Summary preserves the existing total of 2113 and updates FIXED to 2007, OPEN to 92. Test engineer regression handoff added to `E2E_TEST_ENGINEER_ISSUES.md`.
 
 ---
 

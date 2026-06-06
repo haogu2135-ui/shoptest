@@ -4,6 +4,19 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-06 21:04 UTC Implementation Cycle #498 Regression Handoff
+
+Source status: SOURCE_FIXED / E2E PENDING for F2082.
+
+Local verification already run:
+- Frontend build: `CI=true BUILD_PATH=/tmp/shoptest-frontend-build-checkout-f2082 MOBILE_RELEASE_SKIP_GENERATION=true npm run build` ✅, with existing Browserslist stale-data warnings only
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Checkout pending-payment multi-tab owner lock | SOURCE_FIXED / E2E PENDING | Open the same pending-payment checkout result in two browser tabs for the same order. Verify only one tab repeatedly calls the latest-payment endpoint while the sibling tab does not poll independently and instead updates from the shared storage result when the payment status changes. |
+| Checkout polling owner takeover | SOURCE_FIXED / E2E PENDING | Start a pending-payment poll, close or navigate away from the owner tab, wait for the lock TTL to expire, and verify another open checkout tab can take ownership and resume polling without duplicate overlapping latest-payment requests. |
+| Checkout paid-state broadcast | SOURCE_FIXED / E2E PENDING | Complete or simulate payment from the owner tab while another tab is open on the pending result. Verify the sibling tab updates to the terminal paid/payment state without firing its own duplicate payment polling request. |
+
 ## 2026-06-06 20:52 UTC Implementation Cycle #497 Regression Handoff
 
 Source status: SOURCE_FIXED / E2E PENDING for F2081.
