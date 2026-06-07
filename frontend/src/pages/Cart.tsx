@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, message, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,6 +12,7 @@ import {
   getSavedForLaterItems,
   removeSavedForLaterProduct,
   removeSavedForLaterItem,
+  replaceSavedForLaterItems,
   saveCartItemForLater,
   type SavedForLaterItem,
 } from '../utils/saveForLater';
@@ -34,6 +35,7 @@ import '../styles/mobile-page-contrast.css';
 const { Title, Text } = Typography;
 const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;
 const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;
+const CART_QUANTITY_SYNC_DELAY_MS = 350;
 type RecentProductsCacheEntry = { expiresAt: number; products: Product[] };
 const recentProductsCache = new Map<string, RecentProductsCacheEntry>();
 
@@ -85,6 +87,12 @@ const getCartQuantityLimit = (stock?: number | null) => {
   return Math.max(1, stock);
 };
 
+const isCartItemStockOut = (stock?: number | null) => {
+  if (stock === undefined || stock === null) return false;
+  const numeric = Number(stock);
+  return Number.isFinite(numeric) && numeric <= 0;
+};
+
 const isAuthExpiredError = (error: any) => {
   const status = Number(error?.response?.status);
   return status === 401 || status === 403;
@@ -95,6 +103,12 @@ const getLineQuantity = (quantity: unknown) => {
   return Number.isFinite(numeric) ? Math.max(1, Math.floor(numeric)) : 1;
 };
 
+const normalizeCartQuantity = (item: Pick<CartItem, 'stock'> | undefined, quantity: number) => {
+  const parsedQuantity = Math.floor(Number(quantity));
+  const safeQuantity = Number.isFinite(parsedQuantity) ? parsedQuantity : 1;
+  return Math.max(1, Math.min(safeQuantity, getCartQuantityLimit(item?.stock)));
+};
+
 const getLinePrice = (price: unknown) => {
   const numeric = Number(price);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
@@ -103,10 +117,21 @@ const getLinePrice = (price: unknown) => {
 const getLineTotal = (item: Pick<CartItem, 'price' | 'quantity'> | Pick<SavedForLaterItem, 'price' | 'quantity'>) =>
   getLinePrice(item.price) * getLineQuantity(item.quantity);
 
+const normalizeCartItems = (items: unknown): CartItem[] => (Array.isArray(items) ? items : []);
+
+const normalizeSavedForLaterItems = (items: unknown): SavedForLaterItem[] => (Array.isArray(items) ? items : []);
+
+const getSavedForLaterItemsSnapshot = () => normalizeSavedForLaterItems(getSavedForLaterItems());
+
+const normalizePositiveProductId = (value: unknown) => {
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+};
+
 const Cart: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [savedItems, setSavedItems] = useState<SavedForLaterItem[]>(() => getSavedForLaterItems());
+  const [savedItems, setSavedItems] = useState<SavedForLaterItem[]>(() => getSavedForLaterItemsSnapshot());
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -114,6 +139,11 @@ const Cart: React.FC = () => {
   const [addingRecentId, setAddingRecentId] = useState<number | null>(null);
   const [updatingItemIds, setUpdatingItemIds] = useState<number[]>([]);
   const [removingItemIds, setRemovingItemIds] = useState<number[]>([]);
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
+  const mountedRef = useRef(true);
+  const quantityTimersRef = useRef<Record<number, number>>({});
+  const quantityRequestPromisesRef = useRef<Record<number, Promise<void> | undefined>>({});
+  const quantityRequestVersionRef = useRef<Record<number, number>>({});
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
@@ -127,7 +157,7 @@ const Cart: React.FC = () => {
   const fetchCartItems = useCallback(async () => {
     const authenticated = hasAuthenticatedCartSession();
     if (!authenticated) {
-      const guestItems = getGuestCartItems();
+      const guestItems = normalizeCartItems(getGuestCartItems());
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
       setLoading(false);
@@ -136,11 +166,12 @@ const Cart: React.FC = () => {
     try {
       setLoadError(false);
       const response = await cartApi.getItems(0);
-      setCartItems(response.data);
-      setSelectedIds(response.data.filter(canCheckout).map((item) => item.id));
+      const nextItems = normalizeCartItems(response.data);
+      setCartItems(nextItems);
+      setSelectedIds(nextItems.filter(canCheckout).map((item) => item.id));
     } catch (error: any) {
       if (isAuthExpiredError(error)) {
-        const guestItems = getGuestCartItems();
+        const guestItems = normalizeCartItems(getGuestCartItems());
         setCartItems(guestItems);
         setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
         setLoadError(false);
@@ -158,10 +189,20 @@ const Cart: React.FC = () => {
   }, [fetchCartItems]);
 
   useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      Object.values(quantityTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
+      quantityTimersRef.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
     if (!conversionConfig.cartRecentlyViewed.enabled) return;
+    let disposed = false;
     const loadRecentlyViewedProducts = async () => {
       const preferences = loadProductViewPreferences();
       if (preferences.recent.length === 0) {
+        if (disposed || !mountedRef.current) return;
         setRecentProducts([]);
         return;
       }
@@ -170,10 +211,12 @@ const Cart: React.FC = () => {
         const cacheKey = `${language}|${recentIds.join(',')}`;
         const cachedProducts = getCachedRecentProducts(cacheKey);
         if (cachedProducts) {
+          if (disposed || !mountedRef.current) return;
           setRecentProducts(cachedProducts);
           return;
         }
         const response = await productApi.getByIds(recentIds);
+        if (disposed || !mountedRef.current) return;
         const productById = new Map(response.data.map((product) => [product.id, localizeProduct(product, language)]));
         const nextRecentProducts = preferences.recent
             .map((productId) => productById.get(productId))
@@ -183,19 +226,23 @@ const Cart: React.FC = () => {
         setCachedRecentProducts(cacheKey, nextRecentProducts);
         setRecentProducts(nextRecentProducts);
       } catch {
+        if (disposed || !mountedRef.current) return;
         setRecentProducts([]);
       }
     };
     loadRecentlyViewedProducts();
     window.addEventListener('shop:product-view-preferences-updated', loadRecentlyViewedProducts);
-    return () => window.removeEventListener('shop:product-view-preferences-updated', loadRecentlyViewedProducts);
+    return () => {
+      disposed = true;
+      window.removeEventListener('shop:product-view-preferences-updated', loadRecentlyViewedProducts);
+    };
   }, [language]);
 
   useEffect(() => {
-    const refreshSavedItems = () => setSavedItems(getSavedForLaterItems());
+    const refreshSavedItems = () => setSavedItems(getSavedForLaterItemsSnapshot());
     const refreshGuestCartFromStorage = (event: StorageEvent) => {
       if (event.key !== 'shop-guest-cart' || getLocalStorageItem('token')) return;
-      const guestItems = getGuestCartItems();
+      const guestItems = normalizeCartItems(getGuestCartItems());
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
       setLoading(false);
@@ -208,26 +255,66 @@ const Cart: React.FC = () => {
     };
   }, []);
 
-  const updateQuantity = async (itemId: number, quantity: number) => {
-    if (updatingItemIds.includes(itemId)) return;
-    const targetItem = cartItems.find((item) => item.id === itemId);
-    const normalizedQuantity = Math.max(1, Math.min(Number(quantity) || 1, getCartQuantityLimit(targetItem?.stock)));
-    if (targetItem && normalizedQuantity === targetItem.quantity) return;
-    try {
-      setUpdatingItemIds((ids) => Array.from(new Set([...ids, itemId])));
-      const authenticated = hasAuthenticatedCartSession();
-      if (authenticated) {
-        await cartApi.updateQuantity(itemId, normalizedQuantity);
-        setCartItems((items) => items.map((item) => (item.id === itemId ? { ...item, quantity: normalizedQuantity } : item)));
-      } else {
-        setCartItems(updateGuestCartQuantity(itemId, normalizedQuantity));
-      }
-      if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch (err: any) {
-      message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
-    } finally {
-      setUpdatingItemIds((ids) => ids.filter((id) => id !== itemId));
+  const clearQuantityTimer = useCallback((itemId: number) => {
+    const timerId = quantityTimersRef.current[itemId];
+    if (timerId !== undefined) {
+      window.clearTimeout(timerId);
+      delete quantityTimersRef.current[itemId];
     }
+  }, []);
+
+  const clearQuantityPendingState = useCallback((itemIds: number[]) => {
+    if (!mountedRef.current || itemIds.length === 0) return;
+    setUpdatingItemIds((ids) => ids.filter((id) => !itemIds.includes(id)));
+  }, []);
+
+  const cancelPendingQuantitySync = useCallback((itemIds: number[]) => {
+    itemIds.forEach((itemId) => {
+      clearQuantityTimer(itemId);
+      quantityRequestVersionRef.current[itemId] = (quantityRequestVersionRef.current[itemId] || 0) + 1;
+      delete quantityRequestPromisesRef.current[itemId];
+    });
+    clearQuantityPendingState(itemIds);
+  }, [clearQuantityPendingState, clearQuantityTimer]);
+
+  const updateQuantity = (item: CartItem, quantity: number) => {
+    const normalizedQuantity = normalizeCartQuantity(item, quantity);
+    const authenticated = hasAuthenticatedCartSession();
+    if (getLineQuantity(item.quantity) === normalizedQuantity && !quantityTimersRef.current[item.id]) return;
+    if (!authenticated) {
+      setCartItems(normalizeCartItems(updateGuestCartQuantity(item.id, normalizedQuantity)));
+      return;
+    }
+
+    setCartItems((items) => normalizeCartItems(items).map((entry) => (entry.id === item.id ? { ...entry, quantity: normalizedQuantity } : entry)));
+    clearQuantityTimer(item.id);
+    const requestVersion = (quantityRequestVersionRef.current[item.id] || 0) + 1;
+    quantityRequestVersionRef.current[item.id] = requestVersion;
+    setUpdatingItemIds((ids) => Array.from(new Set([...ids, item.id])));
+    quantityTimersRef.current[item.id] = window.setTimeout(() => {
+      delete quantityTimersRef.current[item.id];
+      const syncPromise = cartApi.updateQuantity(item.id, normalizedQuantity)
+        .then(() => {
+          if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
+          dispatchDomEvent('shop:cart-updated');
+        })
+        .catch((err: any) => {
+          if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
+          message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
+          void fetchCartItems();
+          throw err;
+        })
+        .finally(() => {
+          if (quantityRequestVersionRef.current[item.id] === requestVersion) {
+            delete quantityRequestPromisesRef.current[item.id];
+          }
+          if (mountedRef.current && quantityRequestVersionRef.current[item.id] === requestVersion) {
+            setUpdatingItemIds((ids) => ids.filter((id) => id !== item.id));
+          }
+        });
+      quantityRequestPromisesRef.current[item.id] = syncPromise;
+      void syncPromise.catch(() => undefined);
+    }, CART_QUANTITY_SYNC_DELAY_MS);
   };
 
   const renderQuantityControl = (item: CartItem) => {
@@ -236,29 +323,45 @@ const Cart: React.FC = () => {
     const decreaseLabel = `${t('pages.cart.decreaseQuantity')}: ${itemName}`;
     const increaseLabel = `${t('pages.cart.increaseQuantity')}: ${itemName}`;
     const limit = getCartQuantityLimit(item.stock);
-    const disabled = !isAvailable(item) || updatingItemIds.includes(item.id) || removingItemIds.includes(item.id);
+    const syncing = updatingItemIds.includes(item.id);
+    const disabled = !isAvailable(item) || removingItemIds.includes(item.id) || checkoutSubmitting;
     const quantity = getLineQuantity(item.quantity);
+    if (!isAvailable(item)) {
+      const unavailableLabel = isCartItemStockOut(item.stock) ? t('pages.cart.outOfStock') : t('pages.cart.quantityUnavailable');
+      return (
+        <div
+          className="cart-page__quantityStepper cart-page__quantityStepper--unavailable"
+          role="status"
+          aria-label={`${quantityLabel}: ${unavailableLabel}`}
+          title={unavailableLabel}
+        >
+          <span className="cart-page__quantityUnavailable">{unavailableLabel}</span>
+        </div>
+      );
+    }
 
     return (
-      <div className="cart-page__quantityStepper" role="group" aria-label={quantityLabel} title={quantityLabel}>
+      <div className="cart-page__quantityStepper" role="group" aria-label={quantityLabel} title={quantityLabel} aria-busy={syncing}>
         <Button
           size="small"
           icon={<MinusOutlined />}
           aria-label={decreaseLabel}
           title={decreaseLabel}
           disabled={disabled || quantity <= 1}
-          onClick={() => updateQuantity(item.id, quantity - 1)}
+          onClick={() => updateQuantity(item, quantity - 1)}
         />
         <input
           className="cart-page__quantityInput"
           type="number"
           min={1}
           max={limit}
+          step={1}
+          inputMode="numeric"
           value={quantity}
           disabled={disabled}
           aria-label={quantityLabel}
           title={quantityLabel}
-          onChange={(event) => updateQuantity(item.id, Number(event.currentTarget.value) || 1)}
+          onChange={(event) => updateQuantity(item, Number(event.currentTarget.value) || 1)}
         />
         <Button
           size="small"
@@ -266,22 +369,29 @@ const Cart: React.FC = () => {
           aria-label={increaseLabel}
           title={increaseLabel}
           disabled={disabled || quantity >= limit}
-          onClick={() => updateQuantity(item.id, quantity + 1)}
+          onClick={() => updateQuantity(item, quantity + 1)}
         />
       </div>
     );
   };
 
+  const renderLineTotal = (item: CartItem) => (
+    canCheckout(item)
+      ? <Text strong className="cart-page__priceText commerce-money">{formatMoney(getLineTotal(item))}</Text>
+      : <Text type="danger" className="cart-page__unavailableSubtotal">{t('pages.cart.quantityUnavailable')}</Text>
+  );
+
   const removeItem = async (itemId: number) => {
     if (removingItemIds.includes(itemId)) return;
+    cancelPendingQuantitySync([itemId]);
     try {
       setRemovingItemIds((ids) => Array.from(new Set([...ids, itemId])));
       const authenticated = hasAuthenticatedCartSession();
       if (authenticated) {
         await cartApi.removeItem(itemId);
-        setCartItems((items) => items.filter((item) => item.id !== itemId));
+        setCartItems((items) => normalizeCartItems(items).filter((item) => item.id !== itemId));
       } else {
-        setCartItems(removeGuestCartItem(itemId));
+        setCartItems(normalizeCartItems(removeGuestCartItem(itemId)));
       }
       message.success(t('messages.deleteSuccess'));
       setSelectedIds((ids) => ids.filter((id) => id !== itemId));
@@ -294,22 +404,33 @@ const Cart: React.FC = () => {
   };
 
   const saveForLater = async (item: CartItem) => {
+    if (removingItemIds.includes(item.id)) return;
+    cancelPendingQuantitySync([item.id]);
+    const previousSavedItems = getSavedForLaterItemsSnapshot();
+    const savedItem = saveCartItemForLater(item);
+    if (!savedItem) {
+      message.error(t('messages.operationFailed'));
+      return;
+    }
+    setSavedItems(getSavedForLaterItemsSnapshot());
+    setRemovingItemIds((ids) => Array.from(new Set([...ids, item.id])));
     try {
       const authenticated = hasAuthenticatedCartSession();
       if (authenticated) {
         await cartApi.removeItem(item.id);
-        saveCartItemForLater(item);
-        setCartItems((items) => items.filter((cartItem) => cartItem.id !== item.id));
+        setCartItems((items) => normalizeCartItems(items).filter((cartItem) => cartItem.id !== item.id));
       } else {
-        saveCartItemForLater(item);
-        setCartItems(removeGuestCartItem(item.id));
+        setCartItems(normalizeCartItems(removeGuestCartItem(item.id)));
       }
       setSelectedIds((ids) => ids.filter((id) => id !== item.id));
-      setSavedItems(getSavedForLaterItems());
       message.success(t('pages.cart.savedForLater'));
       if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch {
-      message.error(t('messages.operationFailed'));
+    } catch (error: any) {
+      replaceSavedForLaterItems(previousSavedItems);
+      setSavedItems(previousSavedItems);
+      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
+    } finally {
+      setRemovingItemIds((ids) => ids.filter((id) => id !== item.id));
     }
   };
 
@@ -319,8 +440,9 @@ const Cart: React.FC = () => {
       if (authenticated) {
         await cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs);
         const response = await cartApi.getItems(0);
-        setCartItems(response.data);
-        setSelectedIds(response.data.filter(canCheckout).map((cartItem) => cartItem.id));
+        const nextItems = normalizeCartItems(response.data);
+        setCartItems(nextItems);
+        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       } else {
         addGuestCartItem(
           {
@@ -333,12 +455,12 @@ const Cart: React.FC = () => {
           item.selectedSpecs,
           item.price,
         );
-        const nextItems = getGuestCartItems();
+        const nextItems = normalizeCartItems(getGuestCartItems());
         setCartItems(nextItems);
         setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       }
       removeSavedForLaterProduct(item.productId, item.selectedSpecs);
-      setSavedItems(getSavedForLaterItems());
+      setSavedItems(getSavedForLaterItemsSnapshot());
       message.success(t('pages.cart.movedToCart'));
       if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch {
@@ -364,8 +486,9 @@ const Cart: React.FC = () => {
           return;
         }
         const response = await cartApi.getItems(0);
-        setCartItems(response.data);
-        setSelectedIds(response.data.filter(canCheckout).map((cartItem) => cartItem.id));
+        const nextItems = normalizeCartItems(response.data);
+        setCartItems(nextItems);
+        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       } else {
         targetItems.forEach((item) => {
           addGuestCartItem(
@@ -380,12 +503,12 @@ const Cart: React.FC = () => {
             item.price,
           );
         });
-        const nextItems = getGuestCartItems();
+        const nextItems = normalizeCartItems(getGuestCartItems());
         setCartItems(nextItems);
         setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       }
       restoredItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
-      setSavedItems(getSavedForLaterItems());
+      setSavedItems(getSavedForLaterItemsSnapshot());
       if (restoredItems.length === targetItems.length) {
         message.success(t('pages.cart.movedSavedBatch', { count: restoredItems.length }));
       } else {
@@ -400,21 +523,22 @@ const Cart: React.FC = () => {
   };
 
   const removeSavedItem = (itemId: number) => {
-    setSavedItems(removeSavedForLaterItem(itemId));
+    setSavedItems(normalizeSavedForLaterItems(removeSavedForLaterItem(itemId)));
     message.success(t('messages.deleteSuccess'));
   };
 
   const removeItems = async (itemIds: number[], successMessage: string) => {
     if (itemIds.length === 0) return;
     const normalizedIds = Array.from(new Set(itemIds));
+    cancelPendingQuantitySync(normalizedIds);
     try {
       setRemovingItemIds((ids) => Array.from(new Set([...ids, ...normalizedIds])));
       const authenticated = hasAuthenticatedCartSession();
       if (authenticated) {
         await cartApi.removeItems(normalizedIds);
-        setCartItems((items) => items.filter((item) => !normalizedIds.includes(item.id)));
+        setCartItems((items) => normalizeCartItems(items).filter((item) => !normalizedIds.includes(item.id)));
       } else {
-        setCartItems(removeGuestCartItems(normalizedIds));
+        setCartItems(normalizeCartItems(removeGuestCartItems(normalizedIds)));
       }
       setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
       message.success(successMessage);
@@ -460,15 +584,70 @@ const Cart: React.FC = () => {
     setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, itemId])) : ids.filter((id) => id !== itemId)));
   };
 
-  const goCheckout = () => {
+  const flushPendingQuantityUpdates = async (checkoutSnapshot: CartItem[]) => {
+    if (!hasAuthenticatedCartSession()) return;
+    const affectedIds = new Set<number>();
+    const inFlightPromises = checkoutSnapshot
+      .map((item) => {
+        const promise = quantityRequestPromisesRef.current[item.id];
+        if (promise) affectedIds.add(item.id);
+        return promise;
+      })
+      .filter((promise): promise is Promise<void> => Boolean(promise));
+
+    checkoutSnapshot.forEach((item) => {
+      if (quantityTimersRef.current[item.id] !== undefined) {
+        affectedIds.add(item.id);
+        clearQuantityTimer(item.id);
+      }
+    });
+    if (affectedIds.size === 0) return;
+
+    if (inFlightPromises.length > 0) {
+      await Promise.allSettled(inFlightPromises);
+    }
+    const itemsToSync = checkoutSnapshot.filter((item) => affectedIds.has(item.id));
+    itemsToSync.forEach((item) => {
+      quantityRequestVersionRef.current[item.id] = (quantityRequestVersionRef.current[item.id] || 0) + 1;
+      delete quantityRequestPromisesRef.current[item.id];
+    });
+    try {
+      const results = await allSettledWithConcurrency(
+        itemsToSync,
+        (item) => cartApi.updateQuantity(item.id, normalizeCartQuantity(item, item.quantity)),
+      );
+      const failed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
+      if (failed) {
+        throw failed.reason;
+      }
+      dispatchDomEvent('shop:cart-updated');
+    } catch (err: any) {
+      message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
+      await fetchCartItems();
+      throw err;
+    } finally {
+      clearQuantityPendingState(itemsToSync.map((item) => item.id));
+    }
+  };
+
+  const goCheckout = async () => {
+    if (checkoutSubmitting) return;
     const checkoutItems = selectedItems.filter(canCheckout);
     if (checkoutItems.length === 0) {
       message.warning(t('pages.cart.chooseItems'));
       return;
     }
-    syncCheckoutCartItemIds(checkoutItems);
-    removeSessionStorageItem('checkoutPaymentMethod');
-    navigate('/checkout');
+    setCheckoutSubmitting(true);
+    try {
+      await flushPendingQuantityUpdates(checkoutItems);
+      syncCheckoutCartItemIds(checkoutItems);
+      removeSessionStorageItem('checkoutPaymentMethod');
+      navigate('/checkout');
+    } catch {
+      return;
+    } finally {
+      if (mountedRef.current) setCheckoutSubmitting(false);
+    }
   };
 
   const removeSelectedItems = () => {
@@ -613,23 +792,32 @@ const Cart: React.FC = () => {
   const restoreSavedReminderActionLabel = `${t('pages.cart.restoreReminder')}: ${t('pages.cart.savedReminderTitle', { count: savedReminderItems.length })}`;
 
   const addSuggestedProduct = async (product: Product) => {
+    const productId = normalizePositiveProductId(product.id);
+    if (productId === null) {
+      throw new Error(t('messages.addFailed'));
+    }
+    const productWithSafeId = { ...product, id: productId };
     const authenticated = hasAuthenticatedCartSession();
     if (authenticated) {
-      await cartApi.addItem(0, product.id, 1);
+      await cartApi.addItem(0, productId, 1);
       const response = await cartApi.getItems(0);
-      setCartItems(response.data);
-      const addedItemIds = response.data
-        .filter((item) => item.productId === product.id && canCheckout(item))
+      const nextItems = normalizeCartItems(response.data);
+      setCartItems(nextItems);
+      const addedItemIds = nextItems
+        .filter((item) => item.productId === productId && canCheckout(item))
         .map((item) => item.id);
       setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
       dispatchDomEvent('shop:cart-updated');
       return;
     }
-    addGuestCartItem(product, 1);
-    const nextItems = getGuestCartItems();
+    const addedItem = addGuestCartItem(productWithSafeId, 1);
+    if (!addedItem) {
+      throw new Error(t('messages.addFailed'));
+    }
+    const nextItems = normalizeCartItems(getGuestCartItems());
     setCartItems(nextItems);
     const addedItemIds = nextItems
-      .filter((item) => item.productId === product.id && canCheckout(item))
+      .filter((item) => item.productId === productId && canCheckout(item))
       .map((item) => item.id);
     setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
     dispatchDomEvent('shop:cart-updated');
@@ -728,7 +916,7 @@ const Cart: React.FC = () => {
       title: t('common.subtotal'),
       key: 'subtotal',
       width: 120,
-      render: (_: unknown, record: CartItem) => <Text strong className="cart-page__priceText commerce-money">{formatMoney(getLineTotal(record))}</Text>,
+      render: (_: unknown, record: CartItem) => renderLineTotal(record),
     },
     {
       title: t('common.actions'),
@@ -790,13 +978,13 @@ const Cart: React.FC = () => {
   if (!loading && loadError && cartItems.length === 0) {
     return (
       <div className={`cart-page cart-page--empty cart-page--${language}`}>
-        <div style={{ padding: '80px 24px', textAlign: 'center' }}>
+        <div className="cart-page__loadError">
           <Alert
+            className="cart-page__loadErrorAlert"
             type="error"
             showIcon
             message={t('messages.loadFailed')}
             description={t('pages.cart.fetchFailed')}
-            style={{ maxWidth: 480, margin: '0 auto 24px' }}
             action={
               <Button
                 type="primary"
@@ -840,19 +1028,21 @@ const Cart: React.FC = () => {
             </Button>
           </div>
           <div className="cart-page__emptySignals">
-            <span>
+            <span className="cart-page__emptySignal">
               <CheckCircleOutlined />
-              {freeShippingThreshold > 0
-                ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingThreshold) })
-                : t('pages.cart.freeShippingUnlocked')}
+              <span className="cart-page__emptySignalText">
+                {freeShippingThreshold > 0
+                  ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingThreshold) })
+                  : t('pages.cart.freeShippingUnlocked')}
+              </span>
             </span>
-            <span>
+            <span className="cart-page__emptySignal">
               <ClockCircleOutlined />
-              {t('pages.cart.saveForLaterTitle')}
+              <span className="cart-page__emptySignalText">{t('pages.cart.saveForLaterTitle')}</span>
             </span>
-            <span>
+            <span className="cart-page__emptySignal">
               <ShoppingOutlined />
-              {t('pages.cart.recentRecoveryTitle')}
+              <span className="cart-page__emptySignalText">{t('pages.cart.recentRecoveryTitle')}</span>
             </span>
           </div>
         </section>
@@ -885,8 +1075,8 @@ const Cart: React.FC = () => {
             ) : (
               <Button
                 type={cartItems.length > 0 ? 'primary' : 'default'}
-                aria-label={cartItems.length > 0 ? cartNextActionLabel : emptyBrowseActionLabel}
-                title={cartItems.length > 0 ? cartNextActionLabel : emptyBrowseActionLabel}
+                aria-label={cartItems.length > 0 ? `${cartNextActionLabel} (top action)` : emptyBrowseActionLabel}
+                title={cartItems.length > 0 ? `${cartNextActionLabel} (top action)` : emptyBrowseActionLabel}
                 onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}
               >
                 {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
@@ -1159,7 +1349,7 @@ const Cart: React.FC = () => {
                 <div className="cart-page__mobileItemBottom">
                   <div className="cart-page__mobileItemCommerce">
                     {renderQuantityControl(item)}
-                    <Text strong className="cart-page__priceText commerce-money">{formatMoney(getLineTotal(item))}</Text>
+                    {renderLineTotal(item)}
                   </div>
                   <div className="cart-page__mobileItemActions">
                     <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
@@ -1206,8 +1396,8 @@ const Cart: React.FC = () => {
                   {t('common.total')}: <Text strong className="cart-page__totalAmount commerce-money">{formatMoney(selectedTotal)}</Text>
                 </Text>
               </div>
-              <Button type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={checkoutBlocked}>
-                {t('pages.cart.checkout')}
+              <Button type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={checkoutBlocked || checkoutSubmitting} loading={checkoutSubmitting}>
+                {checkoutSubmitting ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
               </Button>
             </div>
           </Card>
@@ -1226,7 +1416,7 @@ const Cart: React.FC = () => {
         </>
       ) : (
         <Card className="cart-page__emptyPanel">
-          <Empty image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />} description={t('pages.cart.empty')}>
+          <Empty image={<ShoppingOutlined className="cart-page__emptyPanelIcon" />} description={t('pages.cart.empty')}>
             <Button type="primary" aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
           </Empty>
         </Card>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Dropdown, Input, message, Select } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -43,6 +43,8 @@ import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
 import { normalizeAnnouncementLink } from '../utils/announcementLinks';
+import { buildLoginUrlFromWindow } from '../utils/authRedirect';
+import { AUTH_SESSION_CHANGED_EVENT, AUTH_SESSION_STORAGE_KEYS } from '../utils/authEvents';
 import {
   currentMobileVersionCode,
   fetchLatestMobileRelease,
@@ -63,6 +65,12 @@ const ANNOUNCEMENT_REPEATED_CHARACTER_PATTERN = /([a-z])\1{4,}/i;
 const ANNOUNCEMENT_LONG_TOKEN_PATTERN = /\b[a-z0-9]{18,}\b/gi;
 
 const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);
+const readNavAuthSnapshot = () => ({
+  token: getLocalStorageItem('token') || '',
+  username: getLocalStorageItem('username') || '',
+  role: getLocalStorageItem('role') || '',
+  adminDefaultPath: getLocalStorageItem('adminDefaultPath') || '/admin',
+});
 const replaceAnnouncementControlCharacters = (value: string) => {
   let normalized = '';
   for (const char of value) {
@@ -116,10 +124,11 @@ const Navbar: React.FC = () => {
     (...terms: string[]) => isProductsActive && terms.some((term) => activeProductKeyword.includes(term)),
     [activeProductKeyword, isProductsActive],
   );
-  const token = getLocalStorageItem('token');
-  const username = getLocalStorageItem('username');
-  const [navRole, setNavRole] = useState(getLocalStorageItem('role') || '');
-  const [adminPath, setAdminPath] = useState(getLocalStorageItem('adminDefaultPath') || '/admin');
+  const [authSnapshot, setAuthSnapshot] = useState(readNavAuthSnapshot);
+  const token = authSnapshot.token;
+  const username = authSnapshot.username;
+  const [navRole, setNavRole] = useState(authSnapshot.role);
+  const [adminPath, setAdminPath] = useState(authSnapshot.adminDefaultPath);
   const canAccessAdmin = isAdminRole(navRole);
   const [cartCount, setCartCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -136,11 +145,45 @@ const Navbar: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const { currency, setCurrency, market, formatMoney } = useMarket();
   const navSearchActionLabel = `${t('common.search')}: ${t('nav.searchPlaceholder')}`;
+  const badgeLoadWarningShown = useRef(false);
+  const showBadgeLoadWarning = useCallback((source: string, error: unknown) => {
+    if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+      console.warn(`[shop] Failed to refresh ${source} navigation badge`, error);
+    }
+    if (isNativeMobileApp() || document.body?.classList.contains('shop-mobile-app')) {
+      return;
+    }
+    if (!badgeLoadWarningShown.current) {
+      badgeLoadWarningShown.current = true;
+      message.warning(t('nav.badgeLoadFailed'));
+    }
+  }, [t]);
   const languageOptions = [
     { value: 'es', label: 'Español' },
     { value: 'zh', label: '中文' },
     { value: 'en', label: 'English' },
   ];
+
+  const syncAuthSnapshot = useCallback(() => {
+    const nextSnapshot = readNavAuthSnapshot();
+    setAuthSnapshot(nextSnapshot);
+    setNavRole(nextSnapshot.role);
+    setAdminPath(nextSnapshot.adminDefaultPath);
+  }, []);
+
+  useEffect(() => {
+    const handleAuthStorageChange = (event: StorageEvent) => {
+      if (!event.key || AUTH_SESSION_STORAGE_KEYS.includes(event.key)) {
+        syncAuthSnapshot();
+      }
+    };
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, syncAuthSnapshot);
+    window.addEventListener('storage', handleAuthStorageChange);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, syncAuthSnapshot);
+      window.removeEventListener('storage', handleAuthStorageChange);
+    };
+  }, [syncAuthSnapshot]);
 
   useEffect(() => {
     let disposed = false;
@@ -194,6 +237,10 @@ const Navbar: React.FC = () => {
   const safeAlertCount = normalizeBadgeCount(alertCount);
   const communitySignalCount = safeWishlistCount + safeUnreadCount + safeCouponCount + safeCompareCount + safeAlertCount;
   const utilityMenuCount = token ? communitySignalCount : safeCompareCount + safeAlertCount;
+  const wishlistBadgeLabel = `${t('nav.ariaFavorites')}: ${safeWishlistCount}`;
+  const notificationsBadgeLabel = `${t('nav.ariaNotifications')}: ${safeUnreadCount}`;
+  const utilityMenuBadgeLabel = `${t('nav.more')}: ${utilityMenuCount}`;
+  const cartBadgeLabel = `${t('nav.ariaCart')}: ${safeCartCount}`;
   const nativeAndroidReleaseAvailable = Boolean(
     nativeBottomNav
     && isNativeAndroidApp()
@@ -380,8 +427,11 @@ const Navbar: React.FC = () => {
           }).length;
           setAlertCount(readyCount);
         })
-        .catch(() => {
-          if (!disposed) setAlertCount(0);
+        .catch((error) => {
+          if (!disposed) {
+            setAlertCount(0);
+            showBadgeLoadWarning('stock alert', error);
+          }
         });
     };
     const refreshGuestCartCount = () => {
@@ -396,8 +446,11 @@ const Navbar: React.FC = () => {
             const count = res.data.reduce((sum: number, item: any) => sum + normalizeBadgeCount(item.quantity), 0);
             setCartCount(count);
           })
-          .catch(() => {
-            if (!disposed) setCartCount(0);
+          .catch((error) => {
+            if (!disposed) {
+              setCartCount(0);
+              showBadgeLoadWarning('cart', error);
+            }
           });
       } else {
         refreshGuestCartCount();
@@ -412,8 +465,11 @@ const Navbar: React.FC = () => {
         .then((res) => {
           if (!disposed) setUnreadCount(normalizeBadgeCount(res.data.count));
         })
-        .catch(() => {
-          if (!disposed) setUnreadCount(0);
+        .catch((error) => {
+          if (!disposed) {
+            setUnreadCount(0);
+            showBadgeLoadWarning('notification', error);
+          }
         });
     };
     const refreshWishlistCount = () => {
@@ -425,8 +481,11 @@ const Navbar: React.FC = () => {
         .then((res) => {
           if (!disposed) setWishlistCount(normalizeBadgeCount(res.data.count));
         })
-        .catch(() => {
-          if (!disposed) setWishlistCount(0);
+        .catch((error) => {
+          if (!disposed) {
+            setWishlistCount(0);
+            showBadgeLoadWarning('wishlist', error);
+          }
         });
     };
     const refreshCouponCount = () => {
@@ -438,8 +497,11 @@ const Navbar: React.FC = () => {
         .then((res) => {
           if (!disposed) setCouponCount(normalizeBadgeCount(res.data.length));
         })
-        .catch(() => {
-          if (!disposed) setCouponCount(0);
+        .catch((error) => {
+          if (!disposed) {
+            setCouponCount(0);
+            showBadgeLoadWarning('coupon', error);
+          }
         });
     };
     const refreshLocalCountsFromStorage = (event: StorageEvent) => {
@@ -488,14 +550,20 @@ const Navbar: React.FC = () => {
       window.removeEventListener('shop:coupons-updated', refreshCouponCountFromEvent);
       window.removeEventListener('storage', refreshLocalCountsFromStorage);
     };
-  }, [token]);
+  }, [showBadgeLoadWarning, token]);
 
   const handleLogout = () => {
+    const loginUrl = buildLoginUrlFromWindow();
     const refreshToken = getLocalStorageItem('refreshToken');
-    userApi.logout(refreshToken).catch(() => undefined);
+    void userApi.logout(refreshToken).catch((error) => {
+      if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+        console.warn('[shop] Logout token revoke failed', error);
+      }
+      message.warning(t('messages.logoutPartialFailure'));
+    });
     clearStoredAuthSession();
     setCartCount(0);
-    navigate('/login');
+    navigate(loginUrl, { replace: true });
   };
 
   const handleSearch = (value: string) => {
@@ -659,7 +727,6 @@ const Navbar: React.FC = () => {
             <button type="button" onClick={openSupport}>{t('nav.help')}</button>
             <Select
               aria-label={t('nav.language')}
-              aria-expanded={isDropdownOpen('top-language')}
               aria-haspopup="listbox"
               className="shop-nav__language"
               size="small"
@@ -674,7 +741,6 @@ const Navbar: React.FC = () => {
             />
             <Select
               aria-label={t('nav.currency')}
-              aria-expanded={isDropdownOpen('top-currency')}
               aria-haspopup="listbox"
               className="shop-nav__currency"
               size="small"
@@ -763,7 +829,6 @@ const Navbar: React.FC = () => {
             <div className="shop-nav__mobile-tools">
               <Select
                 aria-label={t('nav.language')}
-                aria-expanded={isDropdownOpen('mobile-language')}
                 aria-haspopup="listbox"
                 className="shop-nav__language"
                 size="small"
@@ -778,7 +843,6 @@ const Navbar: React.FC = () => {
               />
               <Select
                 aria-label={t('nav.currency')}
-                aria-expanded={isDropdownOpen('mobile-currency')}
                 aria-haspopup="listbox"
                 className="shop-nav__currency"
                 size="small"
@@ -909,12 +973,12 @@ const Navbar: React.FC = () => {
                 {!nativeBottomNav ? (
                   <Link to="/profile" className="shop-nav__mobile-auth" aria-label={t('nav.account')} title={t('nav.account')}><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.account')}</span></Link>
                 ) : null}
-                <button type="button" className="shop-nav__secondary-action" onClick={() => navigate('/wishlist')} aria-label={t('nav.ariaFavorites')}>
+                <button type="button" className="shop-nav__secondary-action shop-nav__secondary-action--wishlist" onClick={() => navigate('/wishlist')} aria-label={wishlistBadgeLabel} title={wishlistBadgeLabel}>
                     <Badge count={safeWishlistCount} size="small">
                     <HeartOutlined />
                   </Badge>
                 </button>
-                <button type="button" className="shop-nav__secondary-action" onClick={() => navigate('/notifications')} aria-label={t('nav.ariaNotifications')}>
+                <button type="button" className="shop-nav__secondary-action shop-nav__secondary-action--notifications" onClick={() => navigate('/notifications')} aria-label={notificationsBadgeLabel} title={notificationsBadgeLabel}>
                     <Badge count={safeUnreadCount} size="small">
                     <BellOutlined />
                   </Badge>
@@ -937,13 +1001,13 @@ const Navbar: React.FC = () => {
                     ],
                   }}
                 >
-                  <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={t('nav.more')} aria-haspopup="menu" aria-expanded={isDropdownOpen('account-more')}>
+                  <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={utilityMenuBadgeLabel} title={utilityMenuBadgeLabel} aria-haspopup="menu" aria-expanded={isDropdownOpen('account-more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <EllipsisOutlined />
                     </Badge>
                   </button>
                 </Dropdown>
-                <button type="button" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
+                <button type="button" className="shop-nav__cart-action" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
                   <Badge count={safeCartCount} size="small">
                     <ShoppingCartOutlined />
                   </Badge>
@@ -985,13 +1049,13 @@ const Navbar: React.FC = () => {
                     ],
                   }}
                 >
-                  <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={t('nav.more')} aria-haspopup="menu" aria-expanded={isDropdownOpen('guest-more')}>
+                  <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={utilityMenuBadgeLabel} title={utilityMenuBadgeLabel} aria-haspopup="menu" aria-expanded={isDropdownOpen('guest-more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <EllipsisOutlined />
                     </Badge>
                   </button>
                 </Dropdown>
-                <button type="button" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={t('nav.ariaCart')}>
+                <button type="button" className="shop-nav__cart-action" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
                   <Badge count={safeCartCount} size="small">
                     <ShoppingCartOutlined />
                   </Badge>
@@ -1015,7 +1079,7 @@ const Navbar: React.FC = () => {
           <GiftOutlined />
           <span>{t('nav.coupons')}</span>
         </Link>
-        <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={t('nav.ariaCart')} aria-current={isCartActive ? 'page' : undefined}>
+        <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={cartBadgeLabel} title={cartBadgeLabel} aria-current={isCartActive ? 'page' : undefined}>
           <Badge count={safeCartCount} size="small" overflowCount={99}>
             <ShoppingCartOutlined />
           </Badge>

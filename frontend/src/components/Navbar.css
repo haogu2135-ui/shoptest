@@ -2628,6 +2628,198 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
   display: none !important;
 }
 
+/* Final mobile category rail hit-area guard: short labels like "Cat" still
+   need a stable 44px touch target on mobile web. */
+@media (max-width: 780px) {
+  .shop-nav .shop-nav__mega button,
+  .shop-nav .shop-nav__megaButton,
+  .shop-nav.shop-nav--es .shop-nav__mega button,
+  .shop-nav.shop-nav--es .shop-nav__megaButton,
+  body.shop-mobile-app .shop-nav .shop-nav__mega button,
+  body.shop-mobile-app .shop-nav .shop-nav__megaButton,
+  body.shop-mobile-app .shop-nav.shop-nav--es .shop-nav__mega button,
+  body.shop-mobile-app .shop-nav.shop-nav--es .shop-nav__megaButton {
+    min-width: 44px !important;
+  }
+}
+
+/* 2026-06 final App hit-area close: this intentionally matches the triple
+   body specificity used by the native visual refresh so measured controls stay
+   at 44px instead of being compressed to 42/40px. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brand,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+    box-sizing: border-box !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    transform: none !important;
+    scale: 1 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action {
+    flex-basis: 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+    width: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+  }
+}
+
+/* 2026-06 App route audit close: keep visible header controls at 44px after
+   compact transforms from earlier mobile passes. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .shop-nav .shop-nav__brand {
+    min-height: 44px !important;
+    height: 44px !important;
+    transform: none !important;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    transform: none !important;
+    scale: 1 !important;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button {
+    width: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+  }
+}
+
+/* Absolute native App navbar closure for submitted regressions. */
+body.shop-mobile-app .shop-nav__inner--main {
+  grid-template-columns: minmax(0, calc(100vw - 154px)) max-content !important;
+  column-gap: 8px !important;
+  overflow: visible !important;
+}
+
+body.shop-mobile-app .shop-nav__brand,
+body.shop-mobile-app .shop-nav__brandCopy {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy {
+  max-width: 84px !important;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy strong {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.shop-mobile-app .shop-nav__brandCopy small {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-nav__actions {
+  width: 140px !important;
+  max-width: 140px !important;
+  flex: 0 0 140px !important;
+  display: inline-flex !important;
+  justify-content: flex-end !important;
+  gap: 4px !important;
+  overflow: visible !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-locale,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-orders,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-auth,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__secondary-action--wishlist,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-logout,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__admin,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__guestCtas {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__secondary-action--notifications,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action {
+  box-sizing: border-box !important;
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__secondary-action--notifications {
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem {
+  min-height: 50px !important;
+  color: #5f7167 !important;
+  font-weight: 800 !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem :where(.anticon, .ant-badge) {
+  color: inherit !important;
+  font-size: 21px !important;
+  transform-origin: center !important;
+  transition: color 0.16s ease, transform 0.16s ease !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active {
+  background: #eaf4ef !important;
+  color: #124734 !important;
+  font-weight: 900 !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active :where(.anticon, .ant-badge) {
+  color: #124734 !important;
+  transform: scale(1.1) !important;
+}
+
+body.shop-mobile-app .shop-nav__bottomItem--active > span:not(.ant-badge):not(.anticon),
+body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
+  color: #124734 !important;
+  -webkit-text-fill-color: #124734 !important;
+  font-weight: 900 !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shop-nav__inner--main {
+    grid-template-columns: minmax(0, calc(100vw - 154px)) max-content !important;
+  }
+
+  body.shop-mobile-app .shop-nav__actions {
+    width: 140px !important;
+    max-width: 140px !important;
+    flex-basis: 140px !important;
+  }
+}
+
 /* Final mobile bottom-nav legibility guard. Short labels allow a readable 10px
    baseline even on 360px devices without text clipping. */
 @media (max-width: 780px) {

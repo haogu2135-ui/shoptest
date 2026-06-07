@@ -368,6 +368,17 @@
   text-align: center;
 }
 
+.cart-page__loadError {
+  padding: clamp(32px, 8vh, 80px) clamp(12px, 4vw, 24px);
+  text-align: center;
+}
+
+.cart-page__loadErrorAlert {
+  max-width: min(480px, 100%);
+  margin: 0 auto 24px;
+  text-align: left;
+}
+
 .cart-page__emptyHero {
   width: min(680px, 100%);
   display: grid;
@@ -460,7 +471,7 @@
   gap: 8px;
 }
 
-.cart-page__emptySignals span {
+.cart-page__emptySignal {
   min-height: 34px;
   display: inline-flex;
   align-items: center;
@@ -475,6 +486,11 @@
   font-weight: 800;
   line-height: 1.2;
   overflow-wrap: anywhere;
+}
+
+.cart-page__emptySignalText {
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .cart-page__emptySignals .anticon {
@@ -547,6 +563,38 @@
   background: #f5f7f5;
   color: #87938a;
   cursor: not-allowed;
+}
+
+.cart-page__quantityStepper--unavailable {
+  grid-template-columns: minmax(86px, 1fr);
+  max-width: 132px;
+}
+
+.cart-page__quantityUnavailable,
+.cart-page__unavailableSubtotal {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.cart-page__quantityUnavailable {
+  width: 100%;
+  padding: 4px 10px;
+  border: 1px solid #f0b8ae;
+  background: #fff4f1;
+  color: #a33b2a;
+}
+
+.cart-page__unavailableSubtotal {
+  padding: 4px 8px;
+  color: #a33b2a;
+  white-space: normal;
 }
 
 .cart-page__readiness {
@@ -925,6 +973,11 @@
 
 .cart-page__emptyPanel {
   margin-bottom: 16px;
+}
+
+.cart-page__emptyPanelIcon {
+  color: #8a948d;
+  font-size: clamp(40px, 12vw, 54px);
 }
 
 .cart-page__recentRecovery {
@@ -2023,12 +2076,13 @@
   }
 
   .cart-page__mobileItemTop {
-    grid-template-columns: auto 64px minmax(0, 1fr);
+    grid-template-columns: 44px 64px minmax(0, 1fr);
     align-items: center;
   }
 
   .cart-page__mobileItemTop .ant-checkbox-wrapper {
-    min-width: 26px;
+    width: 44px;
+    min-width: 44px;
     min-height: 44px;
     display: inline-flex;
     align-items: center;
@@ -2150,7 +2204,7 @@
 
 @media (max-width: 380px) {
   .cart-page__mobileItemTop {
-    grid-template-columns: auto 58px minmax(0, 1fr);
+    grid-template-columns: 44px 58px minmax(0, 1fr);
     gap: 8px;
   }
 
@@ -2233,7 +2287,7 @@
     width: 100%;
   }
 
-  .cart-page__emptySignals span {
+  .cart-page__emptySignal {
     min-height: 32px;
     flex: 1 1 142px;
     justify-content: center;
@@ -2253,7 +2307,7 @@
     font-size: 11px;
   }
 
-  .cart-page__emptySignals span {
+  .cart-page__emptySignal {
     flex-basis: 100%;
   }
 }
@@ -2664,6 +2718,7 @@
     gap: 6px !important;
   }
 }
+
 /* App cart closure: avoid compressed commerce/actions rows inside the native WebView. */
 @media (max-width: 860px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__hero {
@@ -2859,5 +2914,166 @@
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__heroStats,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__summaryStrip {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Android UI closure: later narrow breakpoints must not shrink cart controls. */
+@media (max-width: 780px) {
+  .cart-page {
+    overflow-x: hidden !important;
+    touch-action: pan-y;
+  }
+
+  .cart-page__quantityStepper,
+  .cart-page__quantityStepper .ant-btn,
+  .cart-page__quantityInput,
+  .cart-page__quantityUnavailable,
+  .cart-page__quantityInput .ant-input-number-input {
+    min-height: 48px !important;
+    height: 48px !important;
+    max-height: none !important;
+  }
+
+  .cart-page__quantityStepper--unavailable {
+    grid-template-columns: minmax(84px, 1fr) !important;
+    max-width: 132px;
+  }
+
+  .cart-page__quantityUnavailable {
+    padding-inline: 8px;
+    font-size: 12px !important;
+  }
+
+  .cart-page__quantityStepper .ant-btn {
+    width: 48px !important;
+    min-width: 48px !important;
+  }
+
+  .cart-page__mobileItemBottom .ant-btn,
+  .cart-page__summary .ant-btn,
+  .cart-page__emptyActions .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+    font-size: max(12px, 1em) !important;
+  }
+
+  .cart-page__mobileItemBottom .ant-btn-dangerous {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+  }
+
+  .cart-page :where(input, textarea, .ant-input-number-input) {
+    font-size: 16px !important;
+  }
+
+  .cart-page__summaryStripCard strong,
+  .cart-page__summaryStripCard span,
+  .cart-page__mobileItemBottom .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .cart-page__summary .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .cart-page__emptyActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* App cart item closure: keep quantity/price and actions in separate stable rows. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemTop {
+    grid-template-columns: 44px 72px minmax(0, 1fr) !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemTop .ant-checkbox-wrapper {
+    width: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemBottom {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(152px, max-content) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce .cart-page__quantityStepper {
+    width: 152px !important;
+    max-width: 152px !important;
+    justify-self: start !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce .cart-page__quantityStepper:not(.cart-page__quantityStepper--unavailable) {
+    grid-template-columns: 48px minmax(40px, 48px) 48px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce .cart-page__quantityStepper--unavailable {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce .cart-page__priceText,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce .cart-page__unavailableSubtotal {
+    min-width: 0 !important;
+    justify-self: end !important;
+    overflow: hidden !important;
+    text-align: right !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemActions {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 44px !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemActions .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemActions .ant-btn-dangerous {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    padding-inline: 0 !important;
+  }
+}
+
+@media (max-width: 360px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemTop {
+    grid-template-columns: 44px 64px minmax(0, 1fr) !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce .cart-page__quantityStepper {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce .cart-page__priceText,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--cart .cart-page__mobileItemCommerce .cart-page__unavailableSubtotal {
+    justify-self: start !important;
+    text-align: left !important;
   }
 }
