@@ -16,6 +16,12 @@ import './LogisticsCarrierManagement.css';
 const { Title, Text } = Typography;
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
+type LogisticsCarrierFormValues = Pick<LogisticsCarrier, 'name' | 'trackingCode' | 'status' | 'sortOrder'>;
+
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
+
 const LogisticsCarrierManagement: React.FC = () => {
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,7 +32,7 @@ const LogisticsCarrierManagement: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<LogisticsCarrierFormValues>();
   const { t, language } = useLanguage();
   const canWriteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_WRITE_PERMISSION);
   const canDeleteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_DELETE_PERMISSION);
@@ -105,7 +111,7 @@ const LogisticsCarrierManagement: React.FC = () => {
     try {
       const res = await logisticsCarrierApi.getAll(false);
       setCarriers(res.data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -164,8 +170,8 @@ const LogisticsCarrierManagement: React.FC = () => {
       setEditingCarrier(null);
       form.resetFields();
       fetchCarriers();
-    } catch (err: any) {
-      if (err?.errorFields) return;
+    } catch (err: unknown) {
+      if (isFormValidationError(err)) return;
       message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.saveFailed'), language));
     } finally {
       setSaving(false);
@@ -181,7 +187,7 @@ const LogisticsCarrierManagement: React.FC = () => {
       await logisticsCarrierApi.delete(id);
       message.success(t('pages.logisticsCarriers.deleted'));
       fetchCarriers();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.deleteFailed'), language));
     }
   };

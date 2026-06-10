@@ -4,6 +4,28 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 17:33 UTC QA F3515 LogisticsCarrierManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Logistics Carrier Management production `any` usage is closed.
+- `LogisticsCarrierManagement.tsx` carrier list, save, and delete failures now use `unknown`.
+- AntD validation failures now narrow through `isFormValidationError(...)`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `LogisticsCarrierManagementTypeSafety.test.ts` source guard rejects the old carrier management `any` and direct `err?.errorFields` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/LogisticsCarrierManagementTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` and direct `err?.errorFields` in `LogisticsCarrierManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/LogisticsCarrierManagement.tsx frontend/src/pages/LogisticsCarrierManagementTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Carrier list/search/filter | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open `/admin/logistics-carriers`, search/filter carriers, and verify readiness metrics, table rows, loading state, and localized load-failure handling. |
+| Carrier create/edit validation | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open the carrier modal, trigger required-field validation, then create/edit a carrier and verify validation failures do not show API-error toasts while real API failures still do. |
+| Carrier delete | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Delete a permitted carrier and verify confirmation copy, permission gating, localized success/error handling, and refreshed list state. |
+| Mobile carrier admin layout | PARTIAL_SOURCE_FIXED / MOBILE ADMIN E2E RECOMMENDED | Check phone/tablet widths for search/status controls, readiness grid, table horizontal scroll, modal footer, and popup layering. |
+
 ## 2026-06-10 17:25 UTC QA F3515 StockAlerts Type-Safety Partial Fix Handoff
 
 Source status:
