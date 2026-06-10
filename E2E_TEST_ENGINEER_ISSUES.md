@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:36 UTC QA F3515 Support Management Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Support Management production broad `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/SupportManagement.tsx` now handles admin support session/message/send/close/reissue/order-detail/assign/reopen failures with `unknown`; legacy Safari audio access uses `LegacyAudioWindow`.
+- Runtime admin support behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for Support Management broad `any`, `window as any`, and typed catch regressions returned no matches.
+- Added `SupportManagementTypeSafety.test.ts` source guard for the typed admin support contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin support management smoke | RECONCILED_SOURCE_FIXED / ADMIN E2E OPTIONAL | If support management coverage is in the regression pass, verify queue load/search/filter/pagination, conversation load, reply send, close/reopen/assign, birthday coupon reissue, order detail load, permission-gated controls, WebSocket fallback/polling basics, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:29 UTC QA F3515 Profile Type-Safety Reconciliation Handoff
 
 Source status:

@@ -30,6 +30,7 @@ const { Text, Title } = Typography;
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const SUPPORT_MESSAGE_WINDOW = 80;
 const SUPPORT_QUEUE_PAGE_SIZE = 20;
+type LegacyAudioWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 const supportOrderImageFallback = productImageFallback;
 const resolveSupportOrderImage = resolveProductImage;
 const SUPPORT_MANAGEMENT_STATUS_LABEL_KEYS = new Set([
@@ -183,7 +184,8 @@ const SupportManagement: React.FC = () => {
 
   const playTone = () => {
     try {
-      const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+      const audioWindow = window as LegacyAudioWindow;
+      const AudioCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
       if (!AudioCtor) return;
       const context = audioContextRef.current || new AudioCtor();
       audioContextRef.current = context;
@@ -334,7 +336,7 @@ const SupportManagement: React.FC = () => {
         const fresh = sessionsRes.data.items.find((item) => item.id === currentSession.id);
         if (fresh) setSelectedSession(fresh);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
     } finally {
       setQueueLoading(false);
@@ -350,7 +352,7 @@ const SupportManagement: React.FC = () => {
         await adminSupportApi.markRead(session.id).catch(() => undefined);
       }
       await loadSessions();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
     }
   };
@@ -499,7 +501,7 @@ const SupportManagement: React.FC = () => {
       mergeSessionIntoCurrentQueue(res.data.session);
       setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       setContent('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
     } finally {
       setSending(false);
@@ -517,7 +519,7 @@ const SupportManagement: React.FC = () => {
       const res = await adminSupportApi.closeSession(selectedSession.id);
       mergeSessionIntoCurrentQueue(res.data);
       message.success(t('pages.adminSupport.sessionClosed'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setClosing(false);
@@ -538,7 +540,7 @@ const SupportManagement: React.FC = () => {
       } else {
         message.warning(t('pages.adminSupport.noBirthdayCouponReissued'));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.adminSupport.reissueBirthdayCouponFailed'), language));
     } finally {
       setReissueLoading(false);
@@ -558,7 +560,7 @@ const SupportManagement: React.FC = () => {
       ]);
       setDetailOrder(orderRes.data);
       setDetailItems(itemsRes.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.support.orderLoadFailed'), language));
     } finally {
       setDetailLoading(false);
@@ -629,7 +631,7 @@ const SupportManagement: React.FC = () => {
       const res = await adminSupportApi.assignSession(selectedSession.id);
       upsertSession(res.data);
       message.success(t('pages.adminSupport.assignedToMe'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setAssigning(false);
@@ -649,7 +651,7 @@ const SupportManagement: React.FC = () => {
       setFilter('OPEN');
       setQueuePage(1);
       message.success(t('pages.adminSupport.sessionReopened'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setReopening(false);
