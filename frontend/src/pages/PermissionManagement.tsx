@@ -14,6 +14,9 @@ const { Title, Text } = Typography;
 const RESERVED_ROLE_CODES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN']);
 
 const isReservedRole = (role?: AdminRole | null) => RESERVED_ROLE_CODES.has(String(role?.code || '').trim().toUpperCase());
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
 
 const PermissionManagement: React.FC = () => {
   const [roles, setRoles] = useState<AdminRole[]>([]);
@@ -32,7 +35,7 @@ const PermissionManagement: React.FC = () => {
       setLoading(true);
       const res = await adminApi.getRoles();
       setRoles(res.data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.permissions.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -82,8 +85,8 @@ const PermissionManagement: React.FC = () => {
       setEditingRole(null);
       form.resetFields();
       loadRoles();
-    } catch (err: any) {
-      if (err?.errorFields) return;
+    } catch (err: unknown) {
+      if (isFormValidationError(err)) return;
       message.error(getApiErrorMessage(err, t('messages.saveFailed'), language));
     } finally {
       setSaving(false);

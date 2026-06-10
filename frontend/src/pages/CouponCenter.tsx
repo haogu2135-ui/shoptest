@@ -11,6 +11,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { getGuestCartItems } from '../utils/guestCart';
 import { getCouponUiText } from '../utils/couponUiText';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   filterPublicCoupons,
@@ -124,7 +125,8 @@ const CouponCenter: React.FC = () => {
       setCartSubtotal(getCartSubtotal(safeCartItems));
       setCartItemCount(getCartItemCount(safeCartItems));
       setLoadError(false);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('CouponCenter.loadCoupons', error);
       if (mountedRef.current && requestId === loadCouponsRequestRef.current) {
         setPublicCoupons(getFallbackPublicCoupons());
         setMyCoupons([]);
@@ -238,7 +240,7 @@ const CouponCenter: React.FC = () => {
       message.success(t('pages.coupons.claimedSuccess'));
       dispatchDomEvent('shop:coupons-updated');
       await loadCoupons();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.coupons.claimFailed'), language));
     } finally {
       setClaimingId(null);
@@ -274,7 +276,8 @@ const CouponCenter: React.FC = () => {
         message.error(t('pages.coupons.claimFailed'));
       }
       await loadCoupons();
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('CouponCenter.claimAllCoupons', error);
       message.error(t('pages.coupons.claimFailed'));
     } finally {
       setClaimingAll(false);
@@ -926,7 +929,7 @@ const CouponCenter: React.FC = () => {
                 ]}
               />
             </div>
-            <div className="coupon-claim-section__filters" aria-label={t('pages.productList.filters')}>
+            <div className="coupon-claim-section__filters" role="group" aria-label={t('pages.productList.filters')}>
               <div className="coupon-claim-section__filterButtons">
                 {couponFilterOptions.map((option) => {
                   const couponFilterLabel = `${option.label}: ${option.count}`;
@@ -1204,7 +1207,7 @@ const CouponCenter: React.FC = () => {
               </small>
             </div>
           </div>
-          <div className="coupon-wallet__filters" aria-label={t('pages.coupons.myCoupons')}>
+          <div className="coupon-wallet__filters" role="group" aria-label={t('pages.coupons.myCoupons')}>
             {([
               ['all', couponUiText.walletAll, myCoupons.length],
               ['UNUSED', t('status.UNUSED'), couponWalletStats.unused],

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Row, Col, Button, Empty, Spin, Typography, message, Popconfirm, Tag, Space } from 'antd';
 import { ShoppingCartOutlined, DeleteOutlined, HeartFilled, SettingOutlined, ThunderboltOutlined, CheckCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { hasStoredValue } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -16,6 +17,7 @@ import './Wishlist.css';
 import '../styles/mobile-page-contrast.css';
 
 const { Text, Title } = Typography;
+const WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY = 'wishlist-login-required';
 const wishlistImageFallback = productImageFallback;
 const resolveWishlistImage = resolveProductImage;
 
@@ -28,6 +30,11 @@ const getLowStockCount = (item: WishlistItem) =>
 const Wishlist: React.FC = () => {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [removingProductIds, setRemovingProductIds] = useState<number[]>([]);
+  const [addingAllToCart, setAddingAllToCart] = useState(false);
+  const mountedRef = useRef(true);
+  const removingProductIdsRef = useRef(new Set<number>());
+  const addingAllToCartRef = useRef(false);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
@@ -88,17 +95,34 @@ const Wishlist: React.FC = () => {
   const fetchWishlist = useCallback(async () => {
     try {
       const res = await wishlistApi.getByUser(0);
+      if (!mountedRef.current) return;
       setItems(res.data);
-    } catch {
-      message.error(t('pages.wishlist.fetchFailed'));
+    } catch (error) {
+      reportNonBlockingError('Wishlist.fetchWishlist', error);
+      if (mountedRef.current) {
+        message.error(t('pages.wishlist.fetchFailed'));
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [t]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!hasStoredValue('token')) {
-      message.warning(t('messages.loginRequired'));
+      message.open({
+        key: WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY,
+        type: 'warning',
+        content: t('messages.loginRequired'),
+      });
       navigate(buildLoginUrlFromWindow());
       return;
     }
@@ -106,43 +130,69 @@ const Wishlist: React.FC = () => {
   }, [fetchWishlist, navigate, t]);
 
   const handleRemove = async (productId: number) => {
+    if (removingProductIdsRef.current.has(productId)) return;
+    removingProductIdsRef.current.add(productId);
+    setRemovingProductIds((current) => current.includes(productId) ? current : [...current, productId]);
     try {
       await wishlistApi.remove(0, productId);
+      if (!mountedRef.current) return;
       setItems((current) => current.filter(item => item.productId !== productId));
       dispatchDomEvent('shop:wishlist-updated');
       message.success(t('pages.wishlist.removed'));
-    } catch {
-      message.error(t('messages.operationFailed'));
+    } catch (error) {
+      reportNonBlockingError('Wishlist.handleRemove', error);
+      if (mountedRef.current) {
+        message.error(t('messages.operationFailed'));
+      }
+    } finally {
+      removingProductIdsRef.current.delete(productId);
+      if (mountedRef.current) {
+        setRemovingProductIds((current) => current.filter((id) => id !== productId));
+      }
     }
   };
 
   const handleAddToCart = async (productId: number) => {
     try {
       await cartApi.addItem(0, productId, 1);
+      if (!mountedRef.current) return;
       message.success(t('messages.addCartSuccess'));
       dispatchDomEvent('shop:cart-updated');
       dispatchDomEvent('shop:open-cart');
-    } catch (err: any) {
-      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
+    } catch (err: unknown) {
+      if (mountedRef.current) {
+        message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
+      }
     }
   };
 
   const handleAddAllToCart = async () => {
+    if (addingAllToCartRef.current) return;
     if (directAddItems.length === 0) {
       message.info(t('pages.wishlist.noDirectAdd'));
       return;
     }
-    const results = await allSettledWithConcurrency(
-      directAddItems,
-      (item) => cartApi.addItem(0, item.productId, 1),
-    );
-    const added = results.filter((result) => result.status === 'fulfilled').length;
-    if (added > 0) {
-      message.success(t('pages.wishlist.addedAllToCart', { count: added }));
-      dispatchDomEvent('shop:cart-updated');
-      dispatchDomEvent('shop:open-cart');
-    } else {
-      message.error(t('messages.addFailed'));
+    addingAllToCartRef.current = true;
+    setAddingAllToCart(true);
+    try {
+      const results = await allSettledWithConcurrency(
+        directAddItems,
+        (item) => cartApi.addItem(0, item.productId, 1),
+      );
+      if (!mountedRef.current) return;
+      const added = results.filter((result) => result.status === 'fulfilled').length;
+      if (added > 0) {
+        message.success(t('pages.wishlist.addedAllToCart', { count: added }));
+        dispatchDomEvent('shop:cart-updated');
+        dispatchDomEvent('shop:open-cart');
+      } else {
+        message.error(t('messages.addFailed'));
+      }
+    } finally {
+      addingAllToCartRef.current = false;
+      if (mountedRef.current) {
+        setAddingAllToCart(false);
+      }
     }
   };
 
@@ -152,6 +202,7 @@ const Wishlist: React.FC = () => {
       wishlistGroups.unavailableItems,
       (item) => wishlistApi.remove(0, item.productId),
     );
+    if (!mountedRef.current) return;
     const removedProductIds = new Set(
       wishlistGroups.unavailableItems
         .filter((_, index) => results[index]?.status === 'fulfilled')
@@ -167,7 +218,7 @@ const Wishlist: React.FC = () => {
   };
 
   const recoveryAction = directAddItems.length > 0
-    ? { label: t('pages.wishlist.addAllToCart'), action: handleAddAllToCart, disabled: false }
+    ? { label: t('pages.wishlist.addAllToCart'), action: handleAddAllToCart, disabled: addingAllToCart }
     : wishlistStats.optionCount > 0
       ? { label: t('pages.wishlist.resolveOptions'), action: () => {
         const nextItem = items.find((item) => item.requiresSelection && isPurchasable(item));
@@ -186,6 +237,7 @@ const Wishlist: React.FC = () => {
         }),
         label: t('pages.wishlist.addAllToCart'),
         action: handleAddAllToCart,
+        disabled: addingAllToCart,
       };
     }
     if (wishlistStats.optionCount > 0) {
@@ -195,6 +247,7 @@ const Wishlist: React.FC = () => {
         text: t('pages.wishlist.nextActionOptionsText', { count: wishlistStats.optionCount }),
         label: t('pages.wishlist.resolveOptions'),
         action: recoveryAction.action,
+        disabled: false,
       };
     }
     if (wishlistStats.lowStockCount > 0 && featuredWishlistItem) {
@@ -205,6 +258,7 @@ const Wishlist: React.FC = () => {
         text: t('pages.wishlist.nextActionLowStockText', { name: featuredName }),
         label: t('pages.wishlist.viewBestPick'),
         action: () => navigate(`/products/${featuredWishlistItem.productId}`),
+        disabled: false,
       };
     }
     return {
@@ -213,6 +267,7 @@ const Wishlist: React.FC = () => {
       text: t('pages.wishlist.nextActionBrowseText'),
       label: t('pages.wishlist.browsePersonalized'),
       action: () => navigate('/products?sort=personalized-desc'),
+      disabled: false,
     };
   })();
   const addAllToCartActionLabel = `${t('pages.wishlist.addAllToCart')}: ${directAddItems.length}`;
@@ -308,7 +363,7 @@ const Wishlist: React.FC = () => {
   }
 
   return (
-    <div className={`wishlist-page wishlist-page--${language}`}>
+    <div className={`wishlist-page wishlist-page--${language} wishlist-page--withMobileAction`}>
       <div className="wishlist-page__header">
         <Space align="center">
           <HeartFilled style={{ color: '#ee4d2d', fontSize: 24 }} />
@@ -317,7 +372,8 @@ const Wishlist: React.FC = () => {
         <Button
           type="primary"
           icon={<ShoppingCartOutlined />}
-          disabled={directAddItems.length === 0}
+          loading={addingAllToCart}
+          disabled={addingAllToCart || directAddItems.length === 0}
           aria-label={addAllToCartActionLabel}
           title={addAllToCartActionLabel}
           onClick={handleAddAllToCart}
@@ -365,6 +421,7 @@ const Wishlist: React.FC = () => {
         <Button
           type="primary"
           icon={<ShoppingCartOutlined />}
+          loading={addingAllToCart && directAddItems.length > 0}
           disabled={recoveryAction.disabled}
           aria-label={recoveryActionLabel}
           title={recoveryActionLabel}
@@ -388,6 +445,8 @@ const Wishlist: React.FC = () => {
         <Button
           type={wishlistNextAction.tone === 'ready' ? 'primary' : 'default'}
           icon={wishlistNextAction.tone === 'options' ? <SettingOutlined /> : <ShoppingCartOutlined />}
+          loading={wishlistNextAction.tone === 'ready' && addingAllToCart}
+          disabled={wishlistNextAction.disabled}
           aria-label={wishlistNextActionLabel}
           title={wishlistNextActionLabel}
           onClick={wishlistNextAction.action}
@@ -459,6 +518,7 @@ const Wishlist: React.FC = () => {
           const productName = wishlistProductName(item);
           const viewActionLabel = `${t('pages.productList.viewPick')}: ${productName}`;
           const removeActionLabel = `${t('pages.wishlist.remove')}: ${productName}`;
+          const removing = removingProductIds.includes(item.productId);
           return (
           <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
             <Card
@@ -515,7 +575,16 @@ const Wishlist: React.FC = () => {
                   okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
                 >
-                  <Button danger icon={<DeleteOutlined />} className="wishlist-page__removeAction" block aria-label={removeActionLabel} title={removeActionLabel}>
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    className="wishlist-page__removeAction"
+                    block
+                    loading={removing}
+                    disabled={removing}
+                    aria-label={removeActionLabel}
+                    title={removeActionLabel}
+                  >
                     {t('pages.wishlist.remove')}
                   </Button>
                 </Popconfirm>
@@ -534,6 +603,8 @@ const Wishlist: React.FC = () => {
         <Button
           type={wishlistNextAction.tone === 'ready' ? 'primary' : 'default'}
           icon={wishlistNextAction.tone === 'options' ? <SettingOutlined /> : <ShoppingCartOutlined />}
+          loading={wishlistNextAction.tone === 'ready' && addingAllToCart}
+          disabled={wishlistNextAction.disabled}
           aria-label={wishlistNextActionLabel}
           title={wishlistNextActionLabel}
           onClick={wishlistNextAction.action}

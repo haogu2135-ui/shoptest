@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Empty, Input, message, Popconfirm, Spin, Tag } from 'antd';
+import { Alert, Button, Empty, Input, message, Popconfirm, Spin, Tag, Typography } from 'antd';
 import { ClockCircleOutlined, DeleteOutlined, FireOutlined, HistoryOutlined, SearchOutlined, ShoppingCartOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
@@ -12,17 +12,20 @@ import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   clearProductViewHistory,
   loadProductViewPreferences,
+  PRODUCT_VIEW_PREFERENCES_KEY,
   removeProductViewHistoryItem,
 } from '../utils/productViewPreferences';
 import './BrowsingHistory.css';
 import '../styles/mobile-page-contrast.css';
 
 const fallbackImage = productImageFallback;
+const { Paragraph, Title } = Typography;
 type HistoryQuickFilter = 'all' | 'recent' | 'deals' | 'lowStock';
 const resolveHistoryImage = resolveProductImage;
 
@@ -38,6 +41,8 @@ const isPurchasable = (product: Product) =>
 const BrowsingHistory: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
   const [keyword, setKeyword] = useState('');
   const [quickFilter, setQuickFilter] = useState<HistoryQuickFilter>('all');
   const [preferences, setPreferences] = useState(() => loadProductViewPreferences());
@@ -49,27 +54,40 @@ const BrowsingHistory: React.FC = () => {
     (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id });
 
   useEffect(() => {
+    let disposed = false;
     const fetchProducts = async () => {
       if (!hasHistory) {
         setProducts([]);
+        setLoadError(false);
         setLoading(false);
         return;
       }
       setLoading(true);
+      setLoadError(false);
       try {
         const response = await productApi.getByIds(preferences.recent);
+        if (disposed) return;
         setProducts(response.data.map((product) => localizeProduct(product, language)));
-      } catch {
+      } catch (error) {
+        reportNonBlockingError('BrowsingHistory.fetchProducts', error);
+        if (disposed) return;
         setProducts([]);
+        setLoadError(true);
       } finally {
-        setLoading(false);
+        if (!disposed) setLoading(false);
       }
     };
     fetchProducts();
-  }, [hasHistory, language, preferences.recent]);
+    return () => {
+      disposed = true;
+    };
+  }, [hasHistory, language, preferences.recent, reloadToken]);
 
   useEffect(() => {
-    const syncPreferences = () => setPreferences(loadProductViewPreferences());
+    const syncPreferences = (event?: Event) => {
+      if (event instanceof StorageEvent && event.key && event.key !== PRODUCT_VIEW_PREFERENCES_KEY) return;
+      setPreferences(loadProductViewPreferences());
+    };
     window.addEventListener('shop:product-view-preferences-updated', syncPreferences);
     window.addEventListener('storage', syncPreferences);
     return () => {
@@ -174,7 +192,7 @@ const BrowsingHistory: React.FC = () => {
       message.success(t('messages.addCartSuccess'));
       dispatchDomEvent('shop:cart-updated');
       dispatchDomEvent('shop:open-cart');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     }
   };
@@ -274,8 +292,8 @@ const BrowsingHistory: React.FC = () => {
           <span className="browsing-history__eyebrow">
             <HistoryOutlined /> {t('pages.browsingHistory.eyebrow')}
           </span>
-          <h1>{t('pages.browsingHistory.title')}</h1>
-          <p>{t('pages.browsingHistory.subtitle', { count: historyProducts.length })}</p>
+          <Title level={1} className="browsing-history__title">{t('pages.browsingHistory.title')}</Title>
+          <Paragraph className="browsing-history__subtitle">{t('pages.browsingHistory.subtitle', { count: historyProducts.length })}</Paragraph>
         </div>
         <div className="browsing-history__tools">
           <Input
@@ -307,12 +325,12 @@ const BrowsingHistory: React.FC = () => {
         <section className="browsing-history__assistant">
           <div className="browsing-history__assistant-copy">
             <span>{t('pages.browsingHistory.assistantEyebrow')}</span>
-            <h2>{t('pages.browsingHistory.assistantTitle')}</h2>
-            <p>
+            <Title level={2} className="browsing-history__sectionTitle">{t('pages.browsingHistory.assistantTitle')}</Title>
+            <Paragraph className="browsing-history__sectionText">
               {historyInsights.topBrand
                 ? t('pages.browsingHistory.assistantSubtitleBrand', { brand: historyInsights.topBrand })
                 : t('pages.browsingHistory.assistantSubtitle')}
-            </p>
+            </Paragraph>
           </div>
           <div className="browsing-history__assistant-actions">
             <button
@@ -375,13 +393,13 @@ const BrowsingHistory: React.FC = () => {
         <section className="browsing-history__recovery" aria-label={t('pages.browsingHistory.recoveryTitle')}>
           <div>
             <span className="browsing-history__recovery-eyebrow">{t('pages.browsingHistory.recoveryEyebrow')}</span>
-            <h2>{t('pages.browsingHistory.recoveryTitle')}</h2>
-            <p>
+            <Title level={2} className="browsing-history__sectionTitle">{t('pages.browsingHistory.recoveryTitle')}</Title>
+            <Paragraph className="browsing-history__sectionText">
               {t('pages.browsingHistory.recoverySubtitle', {
                 name: productName,
                 price: formatMoney(historyInsights.bestRecovery.effectivePrice ?? historyInsights.bestRecovery.price),
               })}
-            </p>
+            </Paragraph>
           </div>
           <div className="browsing-history__recovery-tags">
             {isDealProduct(historyInsights.bestRecovery) ? <Tag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</Tag> : null}
@@ -400,8 +418,8 @@ const BrowsingHistory: React.FC = () => {
         <section className={`browsing-history__nextAction browsing-history__nextAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>
           <div>
             <span>{t('pages.browsingHistory.nextActionEyebrow')}</span>
-            <h2>{historyNextAction.title}</h2>
-            <p>{historyNextAction.text}</p>
+            <Title level={2} className="browsing-history__sectionTitle">{historyNextAction.title}</Title>
+            <Paragraph className="browsing-history__sectionText">{historyNextAction.text}</Paragraph>
           </div>
           <div className="browsing-history__nextActionStats">
             <Tag color="green">{t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}</Tag>
@@ -420,7 +438,21 @@ const BrowsingHistory: React.FC = () => {
         </section>
       ) : null}
 
-      {filteredProducts.length ? (
+      {loadError ? (
+        <section className="browsing-history__loadError" aria-live="polite">
+          <Alert
+            type="warning"
+            showIcon
+            message={t('messages.loadFailed')}
+            description={t('messages.loadFailedRetry')}
+            action={(
+              <Button size="small" onClick={() => setReloadToken((current) => current + 1)}>
+                {t('messages.retry')}
+              </Button>
+            )}
+          />
+        </section>
+      ) : filteredProducts.length ? (
         <section className="browsing-history__grid">
           {filteredProducts.map((product) => {
             const productName = historyProductName(product);
@@ -477,7 +509,14 @@ const BrowsingHistory: React.FC = () => {
                       <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShoppingOutlined />} aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
                         {productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}
                       </Button>
-                      <Button type="text" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} onClick={() => removeItem(product.id)} />
+                      <Popconfirm
+                        title={t('pages.browsingHistory.removeConfirm')}
+                        okText={t('common.delete')}
+                        cancelText={t('common.cancel')}
+                        onConfirm={() => removeItem(product.id)}
+                      >
+                        <Button type="text" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
+                      </Popconfirm>
                     </div>
                   </div>
                 </div>

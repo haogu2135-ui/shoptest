@@ -25,7 +25,7 @@ const RegistryManagement: React.FC = () => {
     try {
       const response = await adminApi.getRegistryStatus();
       setStatus(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.registryAdmin.loadFailed'), language));
     } finally {
       setLoading(false);

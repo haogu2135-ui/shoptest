@@ -88,7 +88,7 @@ const SystemMonitor: React.FC = () => {
     try {
       const response = await adminApi.getSystemStatus();
       setStatus(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.systemMonitor.loadFailed'), language));
     } finally {
       setLoading(false);

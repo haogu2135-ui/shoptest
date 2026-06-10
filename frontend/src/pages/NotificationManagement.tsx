@@ -14,6 +14,9 @@ const { TextArea } = Input;
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const conversionHookPattern = /(coupon|discount|offer|shipping|birthday|limited|bundle|save|\u4f18\u60e0|\u6298\u6263|\u5238|\u5305\u90ae|\u751f\u65e5|\u9650\u65f6|\u5957\u88c5|ahorro|oferta|cup[o\u00f3]n|env[i\u00ed]o)/i;
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
 
 const NotificationManagement: React.FC = () => {
   const [form] = Form.useForm();
@@ -86,8 +89,8 @@ const NotificationManagement: React.FC = () => {
       dispatchDomEvent('shop:notifications-updated');
       form.resetFields();
       form.setFieldsValue({ type: 'PROMOTION', contentFormat: 'HTML' });
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.notificationAdmin.sendFailed'), language));
     } finally {
       setSending(false);
