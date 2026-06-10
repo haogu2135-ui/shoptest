@@ -259,6 +259,9 @@ const normalizePetProfilePayload = (pet: Partial<PetProfile>) => {
 
 const hasOwn = (value: object, key: PropertyKey) => Object.prototype.hasOwnProperty.call(value, key);
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    Boolean(value && typeof value === 'object' && !Array.isArray(value));
+
 const normalizeNullableProductValue = <T,>(value: unknown, normalize: (raw: unknown) => T) =>
     value === null ? null : normalize(value);
 
@@ -696,7 +699,7 @@ const parseMaybeJson = (value: unknown) => {
 };
 
 const normalizeProductImages = (product: Partial<ProductPublic>) => {
-    const rawImages = parseMaybeJson((product as any).images);
+    const rawImages = parseMaybeJson(product.images);
     const images = Array.isArray(rawImages)
         ? rawImages.map(String).map((image) => image.trim()).filter(Boolean)
         : [];
@@ -706,7 +709,7 @@ const normalizeProductImages = (product: Partial<ProductPublic>) => {
 
 const normalizeProductMap = (value: unknown) => {
     const parsed = parseMaybeJson(value);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, string> : {};
+    return isRecord(parsed) ? parsed as Record<string, string> : {};
 };
 
 const normalizeProductListField = <T,>(value: unknown): T[] => {
@@ -720,7 +723,7 @@ const normalizeProductOptionGroups = (value: unknown) =>
             const name = normalizeTextParam(group?.name, 80);
             const values = Array.isArray(group?.values)
                 ? normalizeStringListParam(group.values, 40, 120)
-                : normalizeStringListParam((group as any)?.options, 40, 120);
+                : normalizeStringListParam(group.options, 40, 120);
             return { name, values, options: values };
         })
         .filter((group) => group.name && group.values.length > 0);
@@ -736,10 +739,10 @@ const normalizeProduct = <T extends ProductPublic>(product: T): T => ({
     ...product,
     images: normalizeProductImages(product),
     imageUrl: (typeof product.imageUrl === 'string' && product.imageUrl.trim()) || normalizeProductImages(product)[0] || '',
-    specifications: normalizeProductMap((product as any).specifications),
-    detailContent: normalizeProductListField((product as any).detailContent),
-    variants: normalizeProductListField((product as any).variants),
-    optionGroups: normalizeProductOptionGroups((product as any).optionGroups),
+    specifications: normalizeProductMap(product.specifications),
+    detailContent: normalizeProductListField(product.detailContent),
+    variants: normalizeProductListField(product.variants),
+    optionGroups: normalizeProductOptionGroups(product.optionGroups),
     bundle: product.bundle && typeof product.bundle === 'object' ? product.bundle : null,
     localizedContent: product.localizedContent && typeof product.localizedContent === 'object' ? product.localizedContent : null,
 } as T);
@@ -752,24 +755,25 @@ const withProductArrayData = <T extends ProductPublic>(response: AxiosResponse<T
 const normalizeProductPublicPageResponse = (response: AxiosResponse<ProductPublicPage | ProductPublic[]>): AxiosResponse<ProductPublicPage> => {
     const raw = response.data as ProductPublicPage | ProductPublic[] | Record<string, unknown>;
     const items = normalizeProductPageData<ProductPublic>(raw);
-    const rawPage = Array.isArray(raw) ? undefined : Number((raw as ProductPublicPage).page);
-    const rawSize = Array.isArray(raw) ? undefined : Number((raw as ProductPublicPage).size);
+    const rawRecord = isRecord(raw) ? raw : {};
+    const rawPage = Array.isArray(raw) ? undefined : Number(rawRecord.page);
+    const rawSize = Array.isArray(raw) ? undefined : Number(rawRecord.size);
     const page = typeof rawPage === 'number' && Number.isFinite(rawPage) && rawPage >= 0 ? rawPage : 0;
     const size = typeof rawSize === 'number' && Number.isFinite(rawSize) && rawSize > 0 ? rawSize : Math.max(1, items.length);
     const rawTotal = Array.isArray(raw)
         ? items.length
-        : Number((raw as ProductPublicPage).total ?? (raw as any).totalElements ?? items.length);
+        : Number(rawRecord.total ?? rawRecord.totalElements ?? items.length);
     const total = Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length;
-    const rawTotalPages = Array.isArray(raw) ? undefined : Number((raw as ProductPublicPage).totalPages);
+    const rawTotalPages = Array.isArray(raw) ? undefined : Number(rawRecord.totalPages);
     const totalPages = typeof rawTotalPages === 'number' && Number.isFinite(rawTotalPages) && rawTotalPages >= 0
         ? rawTotalPages
         : (total === 0 ? 0 : Math.ceil(total / size));
     const hasNext = Array.isArray(raw)
         ? page + 1 < totalPages
-        : Boolean((raw as ProductPublicPage).hasNext ?? page + 1 < totalPages);
+        : Boolean(rawRecord.hasNext ?? page + 1 < totalPages);
     const hasPrevious = Array.isArray(raw)
         ? page > 0
-        : Boolean((raw as ProductPublicPage).hasPrevious ?? page > 0);
+        : Boolean(rawRecord.hasPrevious ?? page > 0);
     return {
         ...response,
         data: {
@@ -787,24 +791,25 @@ const normalizeProductPublicPageResponse = (response: AxiosResponse<ProductPubli
 const normalizeProductAdminPageResponse = (response: AxiosResponse<AdminProductPage | Product[]>): AxiosResponse<AdminProductPage> => {
     const raw = response.data as AdminProductPage | Product[] | Record<string, unknown>;
     const items = normalizeProductPageData<Product>(raw);
-    const rawPage = Array.isArray(raw) ? undefined : Number((raw as AdminProductPage).page);
-    const rawSize = Array.isArray(raw) ? undefined : Number((raw as AdminProductPage).size);
+    const rawRecord = isRecord(raw) ? raw : {};
+    const rawPage = Array.isArray(raw) ? undefined : Number(rawRecord.page);
+    const rawSize = Array.isArray(raw) ? undefined : Number(rawRecord.size);
     const page = typeof rawPage === 'number' && Number.isFinite(rawPage) && rawPage >= 0 ? rawPage : 0;
     const size = typeof rawSize === 'number' && Number.isFinite(rawSize) && rawSize > 0 ? rawSize : Math.max(1, items.length);
     const rawTotal = Array.isArray(raw)
         ? items.length
-        : Number((raw as AdminProductPage).total ?? (raw as any).totalElements ?? items.length);
+        : Number(rawRecord.total ?? rawRecord.totalElements ?? items.length);
     const total = Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length;
-    const rawTotalPages = Array.isArray(raw) ? undefined : Number((raw as AdminProductPage).totalPages);
+    const rawTotalPages = Array.isArray(raw) ? undefined : Number(rawRecord.totalPages);
     const totalPages = typeof rawTotalPages === 'number' && Number.isFinite(rawTotalPages) && rawTotalPages >= 0
         ? rawTotalPages
         : (total === 0 ? 0 : Math.ceil(total / size));
     const hasNext = Array.isArray(raw)
         ? page + 1 < totalPages
-        : Boolean((raw as AdminProductPage).hasNext ?? page + 1 < totalPages);
+        : Boolean(rawRecord.hasNext ?? page + 1 < totalPages);
     const hasPrevious = Array.isArray(raw)
         ? page > 0
-        : Boolean((raw as AdminProductPage).hasPrevious ?? page > 0);
+        : Boolean(rawRecord.hasPrevious ?? page > 0);
     return {
         ...response,
         data: {

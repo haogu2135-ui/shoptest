@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:01 UTC QA F3515 API Product Normalization Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the API product response normalization broad `any` usage is closed.
+- `frontend/src/api/index.ts` now reads product images/specifications/detail content/variants/option groups and product-page `totalElements` fallbacks through typed fields plus `isRecord(...)`.
+- Runtime product list/detail/admin product behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for `(product as any)`, `(group as any)`, `(raw as any)`, and `as any` in the product normalization slice returned no matches.
+- Added `ProductApiTypeSafety.test.ts` source guard for the typed product normalization contract.
+- `git diff --check -- frontend/src/api/index.ts frontend/src/api/ProductApiTypeSafety.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product list/detail API normalization smoke | PARTIAL_SOURCE_FIXED / STOREFRONT E2E OPTIONAL | If storefront catalog coverage is in the regression pass, verify product list pagination totals, image fallback, specifications, variants/options, and detail content still render for both array and paged API responses. |
+| Admin product list pagination smoke | PARTIAL_SOURCE_FIXED / ADMIN E2E OPTIONAL | If admin product coverage is in the regression pass, verify product list page/size/total display and option/variant fields still load correctly. |
+
 ## 2026-06-10 22:09 UTC QA F3515 Admin Layout Menu Type-Safety Partial Fix Handoff
 
 Source status:
