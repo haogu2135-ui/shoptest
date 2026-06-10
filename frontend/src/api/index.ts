@@ -373,6 +373,14 @@ type AuthRetryConfig = AxiosRequestConfig & {
     allowAnonymousRetry?: boolean;
 };
 
+type HeaderSetter = {
+    set: (name: string, value: string) => void;
+};
+
+const hasHeaderSetter = (headers: unknown): headers is HeaderSetter => (
+    Boolean(headers && typeof headers === 'object' && typeof (headers as { set?: unknown }).set === 'function')
+);
+
 export type ApiRequestOptions = {
     signal?: AbortSignal;
     bypassCache?: boolean;
@@ -1309,14 +1317,14 @@ const refreshAuthToken = () => {
 };
 
 const applyAuthorizationHeader = (config: AuthRetryConfig, token: string) => {
-    const mutableConfig = config as AuthRetryConfig & { headers?: any };
-    const headers = (mutableConfig.headers || {}) as Record<string, unknown> & { set?: (name: string, value: string) => void };
-    if (typeof headers.set === 'function') {
+    const { headers } = config;
+    if (hasHeaderSetter(headers)) {
         headers.set('Authorization', `Bearer ${token}`);
-        mutableConfig.headers = headers;
+        config.headers = headers as AuthRetryConfig['headers'];
         return;
     }
-    mutableConfig.headers = { ...headers, Authorization: `Bearer ${token}` };
+    const mutableHeaders = headers && typeof headers === 'object' ? headers as Record<string, unknown> : {};
+    config.headers = { ...mutableHeaders, Authorization: `Bearer ${token}` } as AuthRetryConfig['headers'];
 };
 
 const removeAuthorizationHeader = (config: AuthRetryConfig) => {

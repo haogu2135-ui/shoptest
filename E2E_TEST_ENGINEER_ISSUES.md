@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:05 UTC QA F3515 API Auth Header Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the API auth-header broad `any` usage is closed.
+- `frontend/src/api/index.ts` now applies refreshed authorization headers through typed `HeaderSetter` / `hasHeaderSetter(...)` and `AuthRetryConfig['headers']`.
+- Runtime auth retry behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for `headers?: any` and broad `as any` in the auth-header helper returned no matches.
+- Added `AuthHeaderTypeSafety.test.ts` source guard for the typed auth-header contract.
+- `git diff --check -- frontend/src/api/index.ts frontend/src/api/AuthHeaderTypeSafety.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Auth refresh retry smoke | PARTIAL_SOURCE_FIXED / AUTH E2E OPTIONAL | If auth/session coverage is in the regression pass, verify an expired access token refreshes once, retries the original request with `Authorization: Bearer <new token>`, and preserves logout/refresh-failure behavior. |
+
 ## 2026-06-10 23:01 UTC QA F3515 API Product Normalization Type-Safety Partial Fix Handoff
 
 Source status:
