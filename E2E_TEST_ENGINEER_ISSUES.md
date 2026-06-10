@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:22 UTC QA F3515 IP Blacklist Management Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the IP blacklist admin production broad `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/IpBlacklistManagement.tsx` now handles list/status load, manual block, release, and batch-release failures with `unknown`; AntD validation failures narrow through `isFormValidationError(...)`.
+- Runtime IP blacklist admin behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for IP blacklist broad `any` variables/catches and direct `error?.errorFields` returned no matches.
+- Added `IpBlacklistManagement.test.ts` source guard for the typed admin IP blacklist contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin IP blacklist smoke | RECONCILED_SOURCE_FIXED / ADMIN E2E OPTIONAL | If admin security coverage is in the regression pass, verify list/status load, status/source/IP filters, manual block form validation and submit, single release, batch release, permission-gated controls, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:18 UTC QA F3515 Cart Type-Safety Reconciliation Handoff
 
 Source status:

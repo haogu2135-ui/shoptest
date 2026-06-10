@@ -36,6 +36,12 @@ const sourceColor = (source: string) => {
 
 const STATUS_OPTIONS = ['ALL', 'BLOCKED', 'MONITORING', 'RELEASED'];
 const SOURCE_OPTIONS = ['ALL', 'LOGIN', 'PAYMENT', 'MANUAL'];
+type FormValidationError = { errorFields: unknown[] };
+
+const isFormValidationError = (error: unknown): error is FormValidationError => {
+  if (!error || typeof error !== 'object') return false;
+  return Array.isArray((error as { errorFields?: unknown }).errorFields);
+};
 
 const readEntryArray = (value: unknown): IpBlacklistEntry[] | null => {
   if (Array.isArray(value)) return value as IpBlacklistEntry[];
@@ -132,8 +138,8 @@ const IpBlacklistManagement: React.FC = () => {
   const fetchData = useCallback(async (nextStatus: string, nextSource: string, nextIpAddress: string) => {
     setLoading(true);
     try {
-      let listError: any = null;
-      let statusError: any = null;
+      let listError: unknown = null;
+      let statusError: unknown = null;
       const [listLoaded] = await Promise.all([
         adminApi.getIpBlacklist({
           status: nextStatus === 'ALL' ? undefined : nextStatus,
@@ -146,7 +152,7 @@ const IpBlacklistManagement: React.FC = () => {
           setSelectedEntryIds((ids) => ids.filter((id) => nextEntries.some((entry) => entry.id === id)));
           setListLoadError(null);
           return true;
-        }).catch((error) => {
+        }).catch((error: unknown) => {
           listError = error;
           setSelectedEntryIds([]);
           return false;
@@ -155,7 +161,7 @@ const IpBlacklistManagement: React.FC = () => {
           const nextStatusInfo = normalizeStatusInfo(statusResponse.data);
           if (nextStatusInfo) setStatusInfo(nextStatusInfo);
           return true;
-        }).catch((error) => {
+        }).catch((error: unknown) => {
           statusError = error;
           return false;
         }),
@@ -167,7 +173,7 @@ const IpBlacklistManagement: React.FC = () => {
       } else if (statusError) {
         message.warning(getApiErrorMessage(statusError, t('pages.ipBlacklistAdmin.statusLoadFailed'), language));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorMessage = getApiErrorMessage(error, t('pages.ipBlacklistAdmin.loadFailed'), language);
       setListLoadError(errorMessage);
       message.error(errorMessage);
@@ -218,8 +224,8 @@ const IpBlacklistManagement: React.FC = () => {
       setSource('ALL');
       setIpAddress('');
       await loadData({ status: 'ALL', source: 'ALL', ipAddress: '' });
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.blockFailed'), language));
     } finally {
       setBlocking(false);
@@ -273,7 +279,7 @@ const IpBlacklistManagement: React.FC = () => {
       await adminApi.releaseIpBlacklistEntry(entry.id);
       message.success(t('pages.ipBlacklistAdmin.released'));
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.releaseFailed'), language));
     } finally {
       setActing(null);
@@ -306,7 +312,7 @@ const IpBlacklistManagement: React.FC = () => {
       message.success(t('pages.ipBlacklistAdmin.batchReleaseDone', { count: response.data.releasedCount }));
       setSelectedEntryIds([]);
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.batchReleaseFailed'), language));
     } finally {
       setBatchActing(false);
