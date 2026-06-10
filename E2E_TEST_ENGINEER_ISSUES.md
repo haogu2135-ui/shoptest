@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 16:23 UTC QA F3515 AddOnAssistant Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Add-on Assistant production `any` usage is closed.
+- `AddOnAssistant.tsx` add-on quick-add failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `AddOnAssistant.test.ts` source guard rejects the old Add-on Assistant `any` patterns.
+- `CI=true npm test -- --runTestsByPath src/components/AddOnAssistant.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any` in `AddOnAssistant.tsx` returned no matches.
+- `git diff --check -- frontend/src/components/AddOnAssistant.tsx frontend/src/components/AddOnAssistant.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Add-on suggestions load | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Open a cart/checkout surface that renders Add-on Assistant with a remaining shipping/gift gap and verify suggestions, badges, pricing, and target amount render normally. |
+| Add-on quick add | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Quick-add an add-on suggestion and verify loading state, localized success/error messages, cart update behavior, and removal from the suggestion list. |
+| Empty/disabled states | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Verify the assistant stays hidden when disabled, when remaining amount is zero, or when no valid suggestions are returned. |
+| Mobile readability | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Check the Add-on Assistant on phone/WebView widths and verify labels, badges, images, and quick-add buttons do not overlap. |
+
 ## 2026-06-10 16:14 UTC QA F3515 PetPersonalizedAssistant Type-Safety Partial Fix Handoff
 
 Source status:

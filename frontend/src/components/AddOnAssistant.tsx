@@ -87,7 +87,7 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
       await onAdd(product);
       setProducts((current) => current.filter((item) => item.id !== product.id));
       message.success(t('pages.addOnAssistant.added'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
     } finally {
       setAddingId(null);
