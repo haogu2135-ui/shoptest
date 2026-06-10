@@ -56,7 +56,7 @@ const ProductQuestionManagement: React.FC = () => {
       const questionsRes = await adminApi.getQuestions({ status: normalizedStatus, search: normalizedSearch, limit });
       setSummary(summaryRes.data);
       setQuestions(questionsRes.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.adminQuestions.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -132,7 +132,7 @@ const ProductQuestionManagement: React.FC = () => {
       setAnswerTarget(null);
       setAnswerText('');
       loadQuestions();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.adminQuestions.answerFailed'), language));
     } finally {
       setAnswering(false);
@@ -155,7 +155,7 @@ const ProductQuestionManagement: React.FC = () => {
       await adminApi.deleteQuestion(question.id);
       message.success(t('messages.deleteSuccess'));
       await loadQuestions();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     } finally {
       setDeletingId(null);

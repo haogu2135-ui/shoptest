@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:54 UTC QA F3515 Product Question Management Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Product Question Management catch-binding `any` usage is closed.
+- `ProductQuestionManagement.tsx` question list/summary load, answer submit, and delete failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- Source search for broad `any` in `ProductQuestionManagement.tsx` returned no matches.
+- Added `ProductQuestionManagement.test.ts` source guard requiring typed catch handling.
+- `git diff --check -- frontend/src/pages/ProductQuestionManagement.tsx frontend/src/pages/ProductQuestionManagement.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin product questions smoke | PARTIAL_SOURCE_FIXED / ADMIN E2E OPTIONAL | If admin question management is in the regression pass, open `/admin/questions`, verify list/summary load, status/search filters, answer submit, delete, permission-gated actions, and localized failure toasts. No dedicated E2E is required for this type-only error-boundary change. |
+
 ## 2026-06-10 21:51 UTC QA F3515 Product Options Type-Safety Partial Fix Handoff
 
 Source status:
