@@ -35,6 +35,7 @@ logs/
 *.png
 !frontend/public/logo192.png
 !frontend/public/logo512.png
+/artifacts/
 frontend/visual-checks/
 
 .DS_Store
