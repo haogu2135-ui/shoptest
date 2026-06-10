@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:12 UTC QA F3515 Alert Management Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the Alert Management broad catch-binding `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/AlertManagement.tsx` now handles admin alert list/summary load, self-check, acknowledge, resolve, batch acknowledge, batch resolve, and purge failures with `unknown`.
+- Runtime admin alert behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for `catch (...: any)` and broad `as any` in `AlertManagement.tsx` returned no matches.
+- Added `AlertManagementTypeSafety.test.ts` source guard for the typed admin alert failure paths.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin alert management smoke | RECONCILED_SOURCE_FIXED / ADMIN E2E OPTIONAL | If admin alert management is in the regression pass, verify alert list/summary load, status/severity/type filters, self-check, acknowledge, resolve, batch acknowledge/resolve, purge resolved alerts, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:05 UTC QA F3515 API Auth Header Type-Safety Partial Fix Handoff
 
 Source status:

@@ -123,7 +123,7 @@ const AlertManagement: React.FC = () => {
       setAlerts(alertResponse.data);
       setSummary(summaryResponse.data);
       setSelectedAlertIds((ids) => ids.filter((id) => alertResponse.data.some((alert) => alert.id === id)));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.alertAdmin.loadFailed'), language));
     } finally {
       setLoading(false);
@@ -167,7 +167,7 @@ const AlertManagement: React.FC = () => {
       await adminApi.runAlertSelfCheck();
       message.success(t('pages.alertAdmin.selfCheckDone'));
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.alertAdmin.selfCheckFailed'), language));
     } finally {
       setActing(null);
@@ -185,7 +185,7 @@ const AlertManagement: React.FC = () => {
       setAlerts((items) => items.map((item) => item.id === alert.id ? response.data : item));
       message.success(t('pages.alertAdmin.acknowledged'));
       loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.alertAdmin.ackFailed'), language));
     } finally {
       setActing(null);
@@ -203,7 +203,7 @@ const AlertManagement: React.FC = () => {
       setAlerts((items) => items.map((item) => item.id === alert.id ? response.data : item));
       message.success(t('pages.alertAdmin.resolved'));
       loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.alertAdmin.resolveFailed'), language));
     } finally {
       setActing(null);
@@ -238,7 +238,7 @@ const AlertManagement: React.FC = () => {
       message.success(t('pages.alertAdmin.batchAckDone', { count: response.data.updatedCount }));
       setSelectedAlertIds([]);
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.alertAdmin.batchAckFailed'), language));
     } finally {
       setActing(null);
@@ -260,7 +260,7 @@ const AlertManagement: React.FC = () => {
       message.success(t('pages.alertAdmin.batchResolveDone', { count: response.data.updatedCount }));
       setSelectedAlertIds([]);
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.alertAdmin.batchResolveFailed'), language));
     } finally {
       setActing(null);
@@ -277,7 +277,7 @@ const AlertManagement: React.FC = () => {
       const response = await adminApi.purgeResolvedAlerts(retentionDays);
       message.success(t('pages.alertAdmin.purgeDone', { count: response.data.deletedCount }));
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.alertAdmin.purgeFailed'), language));
     } finally {
       setActing(null);
