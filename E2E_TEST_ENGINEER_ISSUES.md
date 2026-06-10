@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:24 UTC QA F3515 TrafficControl Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Traffic Control production `any` usage is closed.
+- `TrafficControl.tsx` status load, circuit reset, and rate-limit clear failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `TrafficControl.test.ts` source guard rejects the old Traffic Control `any` catch patterns.
+- Source search for production `any` in `TrafficControl.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/TrafficControl.tsx frontend/src/pages/TrafficControl.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Traffic-control dashboard load | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open `/admin/traffic-control`, verify summary metrics, circuit table, loading state, empty state, and localized load-failure handling. |
+| Permission-gated actions | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Test users with and without traffic-control permissions; verify clear/reset buttons, no-permission toast, and disabled/action states. |
+| Circuit reset | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Reset one circuit and all circuits, verify refreshed status data, success toast, and localized failure handling. |
+| Rate-limit clear | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Clear rate-limit counters, verify refreshed counters, success toast, and localized failure handling. |
+| Mobile admin layout | PARTIAL_SOURCE_FIXED / MOBILE ADMIN E2E RECOMMENDED | Check phone/tablet widths for metric cards, table/card fallback, action buttons, popconfirm placement, and no overlap with admin chrome. |
+
 ## 2026-06-10 21:16 UTC QA F3515 Checkout Type-Safety Partial Fix Handoff
 
 Source status:

@@ -41,7 +41,7 @@ const TrafficControl: React.FC = () => {
     try {
       const response = await adminApi.getTrafficControlStatus();
       setStatus(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.trafficControl.loadFailed'), language));
     } finally {
       setLoading(false);
@@ -80,7 +80,7 @@ const TrafficControl: React.FC = () => {
       const response = await adminApi.resetCircuitBreaker(name);
       setStatus(response.data);
       message.success(name ? t('pages.trafficControl.circuitReset') : t('pages.trafficControl.allCircuitsReset'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.trafficControl.circuitResetFailed'), language));
     } finally {
       setActing(null);
@@ -97,7 +97,7 @@ const TrafficControl: React.FC = () => {
       const response = await adminApi.clearRateLimitCounters();
       setStatus(response.data);
       message.success(t('pages.trafficControl.rateLimitCleared'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.trafficControl.rateLimitClearFailed'), language));
     } finally {
       setActing(null);
