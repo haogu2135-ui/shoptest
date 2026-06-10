@@ -4,6 +4,26 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:11 UTC QA F3515 CustomerSupportWidget Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Customer Support Widget production `any` usage is closed.
+- `CustomerSupportWidget.tsx` legacy Safari audio compatibility now uses `LegacyAudioWindow` instead of `window as any`.
+- Guest support session load, message send, and order-send failures now use `unknown`; localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `CustomerSupportWidgetTypeSafety.test.ts` source guard rejects the old support widget `any`/`window as any` patterns and requires typed browser compatibility access.
+- Source search for production `any` in `CustomerSupportWidget.tsx` returned no matches.
+- `git diff --check -- frontend/src/components/CustomerSupportWidget.tsx frontend/src/components/CustomerSupportWidgetTypeSafety.test.ts` passed.
+- Jest/TypeScript were not rerun in this round because `frontend/node_modules` was intentionally removed during workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Authenticated support widget | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Log in, open the floating support widget, verify session creation, message history, unread reset, websocket fallback behavior, localized load failure, and notification tone still work. |
+| Guest order support context | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Open support from a guest order context, verify guest session creation, tracked order context, localized load failure, and guest read markers. |
+| Send message and order | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Send a normal message and share an order with websocket online/offline paths; verify success/failure toasts, content clearing, session history updates, and duplicate order sends are avoided. |
+| Mobile support widget | PARTIAL_SOURCE_FIXED / MOBILE STOREFRONT E2E RECOMMENDED | Check phone/tablet widths for floating button position, draggable state, order picker popup, conversation panel, keyboard clearance, and no overlap with bottom navigation. |
+
 ## 2026-06-10 21:03 UTC QA F3515 CartDrawer Type-Safety Partial Fix Handoff
 
 Source status:

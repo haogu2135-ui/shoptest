@@ -65,6 +65,10 @@ type CustomerSupportWidgetProps = {
   onReady?: () => void;
 };
 
+type LegacyAudioWindow = Window & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
 const getSupportButtonBottomMargin = () =>
   window.innerWidth <= 720 ? SUPPORT_BUTTON_MOBILE_BOTTOM_MARGIN : 24;
 
@@ -349,7 +353,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   const playTone = () => {
     try {
-      const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+      const legacyWindow = window as LegacyAudioWindow;
+      const AudioCtor = window.AudioContext || legacyWindow.webkitAudioContext;
       if (!AudioCtor) return;
       const context = audioContextRef.current || new AudioCtor();
       audioContextRef.current = context;
@@ -510,7 +515,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setMessages(mergeSupportMessages([], messagesRes.data));
         setUnread(0);
         supportApi.markGuestRead(sessionRes.data.id, activeGuestContext.orderNo, activeGuestContext.email).catch(() => undefined);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (disposed) return;
         message.error(getApiErrorMessage(err, t('pages.support.loadFailed'), language));
       }
@@ -724,7 +729,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       upsertSessionHistory(res.data.session);
       setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       setContent('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
     } finally {
       setSending(false);
@@ -764,7 +769,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       }
       message.success(t('pages.support.orderSent'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
     } finally {
       setSendingOrderId(null);
