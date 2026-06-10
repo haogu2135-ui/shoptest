@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 18:56 UTC QA F3515 SecurityAuditLogManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Security Audit Log Management production `any` usage is closed.
+- `SecurityAuditLogManagement.tsx` audit-log load/export/purge failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `SecurityAuditLogManagementTypeSafety.test.ts` source guard rejects the old audit-log `any` catch patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/SecurityAuditLogManagementTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` in `SecurityAuditLogManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/SecurityAuditLogManagement.tsx frontend/src/pages/SecurityAuditLogManagementTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Audit log list load | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open `/admin/audit-logs`, load representative success/failure/result/resource filters, and verify localized list, summary cards, pagination, loading state, empty state, and localized load-failure toast. |
+| Audit log export | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | With export permission, export filtered audit logs, verify CSV download, truncated-export warning headers, and localized export failure handling. |
+| Audit log purge | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | With purge permission, purge old audit logs and verify success count, refreshed list/summary, and localized purge failure handling. |
+| Mobile audit log filters | PARTIAL_SOURCE_FIXED / MOBILE ADMIN E2E RECOMMENDED | Check phone/tablet widths for filter wrapping, date range popup layering, export/purge buttons, table horizontal scroll, and no overlap with admin header. |
+
 ## 2026-06-10 18:47 UTC QA F3515 AdminDashboard Type-Safety Partial Fix Handoff
 
 Source status:

@@ -1270,7 +1270,7 @@ const SecurityAuditLogManagement: React.FC = () => {
       ]);
       setLogs(logResponse.data || []);
       setSummary(summaryResponse.data || null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.auditLogs.loadFailed'), language));
     } finally {
       setLoading(false);
@@ -1323,7 +1323,7 @@ const SecurityAuditLogManagement: React.FC = () => {
           total: res.headers?.['x-export-total'] || '',
         }));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.auditLogs.exportFailed'), language));
     } finally {
       setExporting(false);
@@ -1340,7 +1340,7 @@ const SecurityAuditLogManagement: React.FC = () => {
       const response = await adminApi.purgeAuditLogs(retentionDays);
       message.success(localizedAdminCopy.purgeSuccess.replace('{count}', String(response.data.deletedCount || 0)));
       await fetchLogs();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, localizedAdminCopy.purgeFailed, language));
     } finally {
       setPurging(false);
