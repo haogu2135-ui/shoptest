@@ -72,7 +72,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
             setRating(5);
             setOrderId(undefined);
             message.success(t('pages.review.success'));
-        } catch (error: any) {
+        } catch (error: unknown) {
             message.error(getApiErrorMessage(error, t('pages.review.failed'), language));
         } finally {
             setSubmitting(false);

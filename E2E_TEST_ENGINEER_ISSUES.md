@@ -4,6 +4,26 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 18:18 UTC QA F3515 ProductReview Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Product Review production `any` usage is closed.
+- `ProductReview.tsx` review-submit failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `ProductReviewTypeSafety.test.ts` source guard rejects the old Product Review `any` catch patterns.
+- `CI=true npm test -- --runTestsByPath src/components/ProductReviewTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` in `ProductReview.tsx` returned no matches.
+- `git diff --check -- frontend/src/components/ProductReview.tsx frontend/src/components/ProductReviewTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Review submit success/failure | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Open a reviewable product while logged in, submit a review with rating/comment, then simulate submit failure and verify localized error handling and form reset only after success. |
+| Review list rendering | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Verify existing review rows, admin replies, rating display, dates, empty state, and pagination remain usable. |
+| Mobile product review layout | PARTIAL_SOURCE_FIXED / MOBILE STOREFRONT E2E RECOMMENDED | Check phone/tablet widths for order select popup, rating row, textarea count, and submit button spacing. |
+
 ## 2026-06-10 18:09 UTC QA F3515 Register Type-Safety Partial Fix Handoff
 
 Source status:
