@@ -4,6 +4,29 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 17:59 UTC QA F3515 ForgotPassword Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Forgot Password production `any` usage is closed.
+- `ForgotPassword.tsx` reset-code send and password-reset submit failures now use `unknown`.
+- API error data narrows through typed helpers, AntD validation failures narrow through `isFormValidationError(...)`, and the email-code input ref uses AntD `InputRef`.
+- Customer-facing reset-code and reset-submit messages are unchanged.
+
+Local verification already run:
+- `ForgotPasswordTypeSafety.test.ts` source guard rejects the old reset-password `useRef<any>`, `catch (...: any)`, direct `error?.errorFields`, and direct `error.response?.data?.code` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/ForgotPasswordTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` and direct validation/API-error access in `ForgotPassword.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/ForgotPassword.tsx frontend/src/pages/ForgotPasswordTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Reset-code send success | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Open `/forgot-password`, enter a valid email, send a reset code, and verify masked-email confirmation, TTL/countdown, focus movement to the code field, and localized success text. |
+| Reset-code validation and rate limit | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Trigger empty/invalid email validation and a backend `RATE_LIMITED` response; verify form validation is silent to API toast handling, countdown uses retry-after data, and localized rate-limit copy appears. |
+| Reset-submit invalid code | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Submit an invalid or too-many-attempts code and verify the code field receives the localized inline error and matching toast. |
+| Reset-submit success | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Complete a valid reset, verify normalized login/email/code are submitted, success toast appears, and the user is redirected to `/login`. |
+| Mobile reset password layout | PARTIAL_SOURCE_FIXED / MOBILE AUTH E2E RECOMMENDED | Check 320-430px widths for reset guide wrapping, code addon button fit, countdown text, strong-password errors, and no overlap with page chrome. |
+
 ## 2026-06-10 17:51 UTC QA F3515 AnnouncementManagement Type-Safety Partial Fix Handoff
 
 Source status:

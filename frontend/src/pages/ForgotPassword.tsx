@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Form, Input, message } from 'antd';
+import type { InputRef } from 'antd/es/input';
 import { CheckCircleOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
@@ -15,6 +16,18 @@ interface ForgotPasswordForm {
   confirmPassword: string;
 }
 
+type AuthApiErrorData = {
+  code?: unknown;
+  retryAfterSeconds?: unknown;
+  resendIntervalSeconds?: unknown;
+};
+
+type AuthApiErrorLike = {
+  response?: {
+    data?: AuthApiErrorData;
+  };
+};
+
 const normalizeEmail = (value: unknown) => String(value || '').trim().toLowerCase();
 const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
 const maskEmail = (value: unknown) => {
@@ -24,6 +37,14 @@ const maskEmail = (value: unknown) => {
   return `${name.charAt(0)}***@${domain}`;
 };
 
+const asAuthApiError = (error: unknown): AuthApiErrorLike => (
+  error && typeof error === 'object' ? error as AuthApiErrorLike : {}
+);
+const authApiErrorData = (error: unknown) => asAuthApiError(error).response?.data || {};
+const authApiErrorCode = (error: unknown) => String(authApiErrorData(error).code || '').toUpperCase();
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
 const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [codeSending, setCodeSending] = useState(false);
@@ -31,7 +52,7 @@ const ForgotPassword: React.FC = () => {
   const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
   const [sentEmailHint, setSentEmailHint] = useState('');
   const [form] = Form.useForm<ForgotPasswordForm>();
-  const codeInputRef = useRef<any>(null);
+  const codeInputRef = useRef<InputRef | null>(null);
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
@@ -53,12 +74,13 @@ const ForgotPassword: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [sendCodeCountdown]);
 
-  const getRetryAfterSeconds = (error: any, fallback = 0) => {
-    const retryAfterSeconds = Number(error?.response?.data?.retryAfterSeconds);
+  const getRetryAfterSeconds = (error: unknown, fallback = 0) => {
+    const data = authApiErrorData(error);
+    const retryAfterSeconds = Number(data.retryAfterSeconds);
     if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
       return Math.ceil(retryAfterSeconds);
     }
-    const resendIntervalSeconds = Number(error?.response?.data?.resendIntervalSeconds);
+    const resendIntervalSeconds = Number(data.resendIntervalSeconds);
     if (Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0) {
       return Math.ceil(resendIntervalSeconds);
     }
@@ -85,9 +107,9 @@ const ForgotPassword: React.FC = () => {
       setSentEmailHint(maskEmail(normalizedEmail));
       window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
       message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
-    } catch (error: any) {
-      if (!error?.errorFields) {
-        const errorCode = error?.response?.data?.code;
+    } catch (error: unknown) {
+      if (!isFormValidationError(error)) {
+        const errorCode = authApiErrorCode(error);
         if (errorCode === 'RATE_LIMITED') {
           setSendCodeCountdown(getRetryAfterSeconds(error, 60));
         }
@@ -122,8 +144,8 @@ const ForgotPassword: React.FC = () => {
       });
       message.success(t('pages.auth.resetSuccess'));
       navigate('/login');
-    } catch (error: any) {
-      const errorCode = error.response?.data?.code;
+    } catch (error: unknown) {
+      const errorCode = authApiErrorCode(error);
       if (errorCode === 'INVALID_CODE' || errorCode === 'TOO_MANY_ATTEMPTS') {
         const msg = errorCode === 'TOO_MANY_ATTEMPTS'
           ? t('pages.auth.emailCodeTooManyAttempts')
