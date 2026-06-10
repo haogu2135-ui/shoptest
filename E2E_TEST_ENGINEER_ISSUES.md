@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:18 UTC QA F3515 Cart Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the Cart production broad `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/Cart.tsx` now handles cart load, quantity sync, save-for-later, bulk remove, checkout quantity flush, and suggested-product add failures with `unknown`; auth-expired detection narrows response status from `unknown`.
+- Runtime cart behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for Cart broad `any` catch/helper patterns returned no matches.
+- Added `CartTypeSafety.test.ts` source guard for the typed cart API-error contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Cart smoke | RECONCILED_SOURCE_FIXED / STOREFRONT E2E OPTIONAL | If cart coverage is in the regression pass, verify authenticated and guest cart load, quantity changes, remove item, save-for-later, move saved item back to cart, clear unavailable/bulk remove, checkout navigation after pending quantity sync, auth-expired fallback, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:12 UTC QA F3515 Alert Management Type-Safety Reconciliation Handoff
 
 Source status:

@@ -37,6 +37,7 @@ const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;
 const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;
 const CART_QUANTITY_SYNC_DELAY_MS = 350;
 type RecentProductsCacheEntry = { expiresAt: number; products: Product[] };
+type CartErrorWithResponse = { response?: { status?: unknown } };
 const recentProductsCache = new Map<string, RecentProductsCacheEntry>();
 
 const pruneRecentProductsCache = (now = Date.now()) => {
@@ -93,8 +94,16 @@ const isCartItemStockOut = (stock?: number | null) => {
   return Number.isFinite(numeric) && numeric <= 0;
 };
 
-const isAuthExpiredError = (error: any) => {
-  const status = Number(error?.response?.status);
+const getErrorResponseStatus = (error: unknown) => {
+  if (!error || typeof error !== 'object') return null;
+  const response = (error as CartErrorWithResponse).response;
+  if (!response || typeof response !== 'object') return null;
+  const status = Number(response.status);
+  return Number.isFinite(status) ? status : null;
+};
+
+const isAuthExpiredError = (error: unknown) => {
+  const status = getErrorResponseStatus(error);
   return status === 401 || status === 403;
 };
 
@@ -169,7 +178,7 @@ const Cart: React.FC = () => {
       const nextItems = normalizeCartItems(response.data);
       setCartItems(nextItems);
       setSelectedIds(nextItems.filter(canCheckout).map((item) => item.id));
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (isAuthExpiredError(error)) {
         const guestItems = normalizeCartItems(getGuestCartItems());
         setCartItems(guestItems);
@@ -298,7 +307,7 @@ const Cart: React.FC = () => {
           if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
           dispatchDomEvent('shop:cart-updated');
         })
-        .catch((err: any) => {
+        .catch((err: unknown) => {
           if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
           message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
           void fetchCartItems();
@@ -425,7 +434,7 @@ const Cart: React.FC = () => {
       setSelectedIds((ids) => ids.filter((id) => id !== item.id));
       message.success(t('pages.cart.savedForLater'));
       if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch (error: any) {
+    } catch (error: unknown) {
       replaceSavedForLaterItems(previousSavedItems);
       setSavedItems(previousSavedItems);
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
@@ -543,7 +552,7 @@ const Cart: React.FC = () => {
       setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
       message.success(successMessage);
       if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     } finally {
       setRemovingItemIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
@@ -621,7 +630,7 @@ const Cart: React.FC = () => {
         throw failed.reason;
       }
       dispatchDomEvent('shop:cart-updated');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
       await fetchCartItems();
       throw err;
@@ -832,7 +841,7 @@ const Cart: React.FC = () => {
     try {
       await addSuggestedProduct(product);
       message.success(t('messages.addCartSuccess'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     } finally {
       setAddingRecentId(null);
