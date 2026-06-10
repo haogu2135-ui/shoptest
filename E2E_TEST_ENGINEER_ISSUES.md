@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 17:07 UTC QA F3515 Limited-Time Countdown Test Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the limited-time countdown test-helper `as any` usage is closed.
+- `limitedTimeCountdown.test.ts` fixtures now derive their type from the production helper parameter contract.
+- `supportWorkflow.ts` broad `any` hits were triaged as English customer/admin copy, not TypeScript type escapes.
+- Runtime production code was not changed in this handoff.
+
+Local verification already run:
+- `CI=true npm test -- --runTestsByPath src/utils/limitedTimeCountdown.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any`, `: any`, and `as any` in `limitedTimeCountdown.test.ts` and `limitedTimeCountdown.ts` returned no matches.
+- `git diff --check -- frontend/src/utils/limitedTimeCountdown.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Limited-time discount countdown | TEST_ONLY_TYPE_FIX / NO DEDICATED E2E REQUIRED | No runtime code changed. Keep the normal product-card/product-detail sale countdown smoke in the broader storefront regression suite. |
+
 ## 2026-06-10 16:59 UTC QA F3515 SeventeenTrackWidget Type-Safety Partial Fix Handoff
 
 Source status:
