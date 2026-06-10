@@ -2,6 +2,14 @@ import { getProductOptionGroups, getProductVariants, optionValueIsCompatible } f
 import type { Product } from '../types';
 
 describe('productOptions', () => {
+  it('keeps option normalization typed without any', () => {
+    const source = require('fs').readFileSync(require('path').join(__dirname, 'productOptions.ts'), 'utf8') as string;
+
+    expect(source).not.toMatch(/\bany\b/);
+    expect(source).toContain('const normalizeVariantOptions = (variant: unknown)');
+    expect(source).toContain('const normalizeVariants = (items: unknown[])');
+  });
+
   it('splits configured options on common delimiters', () => {
     const product = {
       specifications: {

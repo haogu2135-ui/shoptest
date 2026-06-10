@@ -17,6 +17,9 @@ const splitOptionValues = (value: unknown) =>
 const normalizeOptionValues = (values: unknown[]) =>
   Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value && typeof value === 'object' && !Array.isArray(value));
+
 const parseVariantOptionText = (value: unknown): Record<string, string> =>
   String(value || '')
     .split(OPTION_VALUE_DELIMITER)
@@ -28,8 +31,9 @@ const parseVariantOptionText = (value: unknown): Record<string, string> =>
       return result;
     }, {});
 
-const normalizeVariantOptions = (variant: any): Record<string, string> => {
-  if (variant?.options && typeof variant.options === 'object' && !Array.isArray(variant.options)) {
+const normalizeVariantOptions = (variant: unknown): Record<string, string> => {
+  if (!isRecord(variant)) return {};
+  if (isRecord(variant.options)) {
     return Object.entries(variant.options).reduce((result: Record<string, string>, [key, value]) => {
       const normalizedKey = String(key || '').trim();
       if (value && typeof value === 'object') return result;
@@ -41,6 +45,32 @@ const normalizeVariantOptions = (variant: any): Record<string, string> => {
   return parseVariantOptionText(variant?.optionText);
 };
 
+const normalizeOptionGroup = (group: unknown): ProductOptionGroup | null => {
+  if (!isRecord(group)) return null;
+  const values = Array.isArray(group.values)
+    ? group.values
+    : (Array.isArray(group.options) ? group.options : []);
+  const normalized = {
+    name: String(group.name || '').trim(),
+    values: normalizeOptionValues(values),
+  };
+  return normalized.name && normalized.values.length > 0 ? normalized : null;
+};
+
+const normalizeVariant = (variant: unknown): ProductVariant | null => {
+  if (!isRecord(variant)) return null;
+  const normalized = {
+    sku: variant.sku ? String(variant.sku).trim() : undefined,
+    options: normalizeVariantOptions(variant),
+    price: Number(variant.price || 0),
+    stock: Number.isFinite(Number(variant.stock)) ? Math.max(0, Math.floor(Number(variant.stock))) : undefined,
+    imageUrl: normalizePersistentImageUrl(typeof variant.imageUrl === 'string' ? variant.imageUrl : undefined) || undefined,
+  };
+  return Object.keys(normalized.options).length > 0 && Number.isFinite(normalized.price) && normalized.price > 0
+    ? normalized
+    : null;
+};
+
 type ProductOptionInput = Partial<ProductPublic> & {
   sizes?: unknown;
   colors?: unknown;
@@ -50,11 +80,8 @@ export const getProductOptionGroups = (product?: ProductOptionInput | null): Pro
   if (!product) return [];
   const directGroups = Array.isArray(product.optionGroups)
     ? product.optionGroups
-      .map((group: any) => ({
-        name: String(group?.name || '').trim(),
-        values: normalizeOptionValues(Array.isArray(group?.values) ? group.values : (Array.isArray(group?.options) ? group.options : [])),
-      }))
-      .filter((group) => group.name && group.values.length > 0)
+      .map(normalizeOptionGroup)
+      .filter((group): group is ProductOptionGroup => group !== null)
     : [];
   if (directGroups.length > 0) return directGroups;
 
@@ -78,16 +105,10 @@ export const getProductOptionGroups = (product?: ProductOptionInput | null): Pro
 export const getProductVariants = (product?: ProductOptionInput | null): ProductVariant[] => {
   if (!product) return [];
   const rawVariants = (product as { variants?: ProductVariant[] | string }).variants;
-  const normalizeVariants = (items: any[]) =>
+  const normalizeVariants = (items: unknown[]) =>
     items
-      .map((variant) => ({
-        sku: variant?.sku ? String(variant.sku).trim() : undefined,
-        options: normalizeVariantOptions(variant),
-        price: Number(variant?.price || 0),
-        stock: Number.isFinite(Number(variant?.stock)) ? Math.max(0, Math.floor(Number(variant.stock))) : undefined,
-        imageUrl: normalizePersistentImageUrl(variant?.imageUrl) || undefined,
-      }))
-      .filter((variant) => Object.keys(variant.options).length > 0 && Number.isFinite(variant.price) && variant.price > 0);
+      .map(normalizeVariant)
+      .filter((variant): variant is ProductVariant => variant !== null);
   if (Array.isArray(rawVariants)) return normalizeVariants(rawVariants);
   if (typeof rawVariants !== 'string' || !rawVariants.trim()) return [];
   try {

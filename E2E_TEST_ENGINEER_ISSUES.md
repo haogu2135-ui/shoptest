@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:51 UTC QA F3515 Product Options Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but product option/variant normalization broad `any` usage is closed.
+- `productOptions.ts` now normalizes option groups and variants through `unknown` plus `isRecord(...)` guards.
+- Invalid variant JSON still falls back to an empty variant list, and image URL normalization behavior is unchanged.
+
+Local verification already run:
+- Source search for broad `any` in `productOptions.ts` returned no production matches.
+- `productOptions.test.ts` now includes a source guard for the typed normalization contract.
+- `git diff --check -- frontend/src/utils/productOptions.ts frontend/src/utils/productOptions.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product detail options and variants | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Open products with option groups and variant JSON, select compatible/incompatible options, verify disabled states, selected SKU image handling, price/stock display, add-to-cart payload, and no regression on products with malformed variant data. |
+
 ## 2026-06-10 21:45 UTC QA F3515 Checkout Payment-Method Test Type-Safety Partial Fix Handoff
 
 Source status:
