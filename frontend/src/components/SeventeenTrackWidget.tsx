@@ -3,7 +3,7 @@ import { Alert, Button, Empty, Input, Space, Tag, Typography, message } from 'an
 import { SearchOutlined } from '@ant-design/icons';
 import { logisticsApi } from '../api';
 import { useLanguage } from '../i18n';
-import { getApiErrorMessage } from '../utils/apiError';
+import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import type { LogisticsTrackResponse } from '../types';
 import './SeventeenTrackWidget.css';
 
@@ -78,9 +78,9 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
       const response = await logisticsApi.track(num, carrierCode, orderId, guestEmail, orderNo);
       if (requestSeq.current !== requestId) return;
       setResult(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (requestSeq.current !== requestId) return;
-      const providerError = String(err?.response?.data?.error || err?.response?.data?.message || err?.message || '');
+      const providerError = getApiErrorDiagnosticText(err);
       if (isProviderConfigurationError(providerError)) {
         setResult({
           trackingNumber: num,

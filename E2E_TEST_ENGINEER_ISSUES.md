@@ -4,6 +4,28 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 16:59 UTC QA F3515 SeventeenTrackWidget Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but SeventeenTrackWidget production `any` usage is closed.
+- `SeventeenTrackWidget.tsx` logistics tracking failures now use `unknown`.
+- Provider-configuration detection now uses `getApiErrorDiagnosticText(...)` instead of direct `err?.response?.data` parsing.
+- Localized customer-facing `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `SeventeenTrackWidget.test.ts` source guard rejects the old widget `any` and direct error parsing patterns.
+- `CI=true npm test -- --runTestsByPath src/components/SeventeenTrackWidget.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any` and direct `err?.response?.data` parsing in `SeventeenTrackWidget.tsx` returned no matches.
+- `git diff --check -- frontend/src/components/SeventeenTrackWidget.tsx frontend/src/components/SeventeenTrackWidget.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Tracking lookup success | PARTIAL_SOURCE_FIXED / ORDER E2E RECOMMENDED | Open an order tracking surface with a carrier/tracking number and verify the logistics widget renders status tags, summary, event timeline, and accessible labels normally. |
+| Provider configuration fallback | PARTIAL_SOURCE_FIXED / ORDER E2E RECOMMENDED | Simulate a logistics provider configuration error and verify the widget shows the no-tracking-data fallback instead of exposing raw provider/server text. |
+| Tracking lookup failure | PARTIAL_SOURCE_FIXED / ORDER E2E RECOMMENDED | Simulate a non-configuration tracking failure and verify the localized warning alert/toast appears, result state clears, and loading state resets. |
+| Manual retry/mobile layout | PARTIAL_SOURCE_FIXED / ORDER E2E RECOMMENDED | On desktop and phone/WebView widths, enter a tracking number manually, press Enter and the search button, and verify the input/button/results layout remains readable without overlap. |
+
 ## 2026-06-10 16:42 UTC QA F3515 Payment Component Type-Safety Partial Fix Handoff
 
 Source status:
