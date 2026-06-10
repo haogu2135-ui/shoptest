@@ -121,7 +121,7 @@ const ReviewManagement: React.FC = () => {
         totalPages: res.data.totalPages || 0,
       });
       setReviewSummary(res.data.summary || {});
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.adminReviews.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -141,7 +141,7 @@ const ReviewManagement: React.FC = () => {
       await adminApi.deleteReview(id);
       message.success(t('messages.deleteSuccess'));
       fetchReviews(pageState.page, pageState.size);
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };
@@ -172,7 +172,7 @@ const ReviewManagement: React.FC = () => {
       setReplyTarget(null);
       setReplyText('');
       fetchReviews(pageState.page, pageState.size);
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
     } finally {
       setReplying(false);
@@ -194,7 +194,7 @@ const ReviewManagement: React.FC = () => {
       await adminApi.updateReviewStatus(review.id, status);
       message.success(t('messages.updateSuccess'));
       fetchReviews(pageState.page, pageState.size);
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
     }
   };
@@ -205,10 +205,10 @@ const ReviewManagement: React.FC = () => {
       title: t('pages.adminReviews.productId'),
       key: 'productId',
       width: 220,
-      render: (_: any, record: Review) => {
-        const productId = record.productId || (record as any).product?.id;
+      render: (_: unknown, record: Review) => {
+        const productId = record.productId || record.product?.id;
         const productName = adminReviewProductName(record);
-        const rawProductImageUrl = record.productImageUrl || (record as any).product?.imageUrl;
+        const rawProductImageUrl = record.productImageUrl || record.product?.imageUrl;
         const productImageUrl = rawProductImageUrl ? resolveProductImage(rawProductImageUrl) : '';
         return (
           <div className="review-management-page__productCell">
@@ -236,7 +236,7 @@ const ReviewManagement: React.FC = () => {
       title: t('pages.adminReviews.user'),
       key: 'username',
       width: 100,
-      render: (_: any, record: Review) => record.username || (record as any).user?.username || '-',
+      render: (_: unknown, record: Review) => record.username || record.user?.username || '-',
     },
     {
       title: t('pages.adminReviews.rating'),
@@ -290,7 +290,7 @@ const ReviewManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 260,
-      render: (_: any, record: Review) => {
+      render: (_: unknown, record: Review) => {
         const reviewLabel = adminReviewProductName(record) || record.username || `#${record.id}`;
         const approveActionLabel = `${t('pages.adminReviews.approve')}: ${reviewLabel}`;
         const hideActionLabel = `${t('pages.adminReviews.hide')}: ${reviewLabel}`;

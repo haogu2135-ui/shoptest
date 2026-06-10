@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:59 UTC QA F3515 Review Management Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Review Management production broad `any` usage is closed.
+- `ReviewManagement.tsx` review list/delete/reply/status failures now use `unknown`.
+- Review table callbacks use typed placeholders, and nested product/user reads use `record.product` / `record.user`.
+- Runtime admin review behavior should be unchanged.
+
+Local verification already run:
+- Source search for broad `any` in `ReviewManagement.tsx` returned no matches.
+- Added `ReviewManagement.test.ts` source guard for typed nested review product/user fields.
+- `git diff --check -- frontend/src/pages/ReviewManagement.tsx frontend/src/pages/ReviewManagement.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin review management smoke | PARTIAL_SOURCE_FIXED / ADMIN E2E OPTIONAL | If admin review management is in the regression pass, verify review list load, product/user cells, approve/hide/reply/delete actions, permission-gated controls, and localized failure toasts. No dedicated E2E is required for this type-safety-only change. |
+
 ## 2026-06-10 21:54 UTC QA F3515 Product Question Management Type-Safety Partial Fix Handoff
 
 Source status:
