@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:49 UTC QA F3515 Product Detail Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Product Detail production broad `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/ProductDetail.tsx` now types product state, product-image normalization, recommendation state/handlers/render rows, and add-to-cart/buy-now/favorite/question/recommendation failure paths without broad `any`.
+- Runtime product-detail behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for Product Detail broad `any` product/recommendation/catch patterns returned no matches.
+- Added `ProductDetailTypeSafety.test.ts` source guard for the typed Product Detail contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product detail core smoke | RECONCILED_SOURCE_FIXED / PRODUCT DETAIL E2E OPTIONAL | If Product Detail coverage is in the regression pass, verify detail load/fallback, gallery image selection/zoom/fallback, option selection, add-to-cart, buy-now, favorite, stock alert, compare, review/question sections, recommendation carousel, recommendation add-to-cart, option-required recommendation navigation, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:41 UTC QA F3515 Order Management Type-Safety Reconciliation Handoff
 
 Source status:

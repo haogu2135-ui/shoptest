@@ -74,7 +74,7 @@ const parseImageList = (value: unknown): string[] => {
   }
 };
 
-const normalizeProductImages = (product: any) => {
+const normalizeProductImages = (product: Partial<Product> | null | undefined) => {
   const rawImages = parseImageList(product?.images);
   const images = [product?.imageUrl, ...rawImages]
     .map((image) => String(image || '').trim())
@@ -156,7 +156,7 @@ const normalizeQuestionText = (value: string) => (
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<any>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -167,7 +167,7 @@ const ProductDetail: React.FC = () => {
   const [reviewableOrders, setReviewableOrders] = useState<ReviewableOrder[]>([]);
   const [averageRating, setAverageRating] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<Product[]>([]);
   const [recommendationAddingId, setRecommendationAddingId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<ProductQuestionPublic[]>([]);
   const [pendingQuestions, setPendingQuestions] = useState<PendingProductQuestion[]>([]);
@@ -580,7 +580,7 @@ const ProductDetail: React.FC = () => {
       }
       message.success(t('messages.addCartSuccess'));
       dispatchDomEvent('shop:open-cart');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     } finally {
       purchaseRequestKeyRef.current = null;
@@ -629,7 +629,7 @@ const ProductDetail: React.FC = () => {
       }
       removeSessionStorageItem('checkoutPaymentMethod');
       navigate('/checkout');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       purchaseRequestKeyRef.current = null;
@@ -649,7 +649,7 @@ const ProductDetail: React.FC = () => {
       setIsWishlisted(res.data.wishlisted);
       dispatchDomEvent('shop:wishlist-updated');
       message.success(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
@@ -711,7 +711,7 @@ const ProductDetail: React.FC = () => {
       setQuestionText('');
       await fetchQuestions();
       message.success(t('pages.ask.pendingTitle'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.ask.askFailed'), language));
     } finally {
       setQuestionSubmitting(false);
@@ -910,12 +910,12 @@ const ProductDetail: React.FC = () => {
     imageUrl: selectedVariant?.imageUrl || resolveProductPrimaryImage(product),
   });
 
-  const isRecommendationUnavailable = (item: Product | any) => {
+  const isRecommendationUnavailable = (item: Product) => {
     const hasStockValue = item.stock !== undefined && item.stock !== null;
     return Boolean(hasStockValue && Number(item.stock) <= 0);
   };
 
-  const handleAddRecommendationToCart = async (event: React.MouseEvent<HTMLElement>, item: Product | any) => {
+  const handleAddRecommendationToCart = async (event: React.MouseEvent<HTMLElement>, item: Product) => {
     event.stopPropagation();
     const recommendationId = Number(item.id);
     if (!Number.isFinite(recommendationId) || recommendationRequestIdsRef.current.has(recommendationId)) {
@@ -943,7 +943,7 @@ const ProductDetail: React.FC = () => {
       }
       message.success(t('messages.addCartSuccess'));
       dispatchDomEvent('shop:open-cart');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
     } finally {
       recommendationRequestIdsRef.current.delete(recommendationId);
@@ -1919,7 +1919,7 @@ const ProductDetail: React.FC = () => {
                 { breakpoint: 520, settings: { slidesToShow: 1 } },
               ]}
             >
-              {recommendations.map((rec: any) => {
+              {recommendations.map((rec) => {
                 const recName = detailProductName(rec);
                 const needsOptions = needsOptionSelection(rec);
                 const isRecommendationSoldOut = isRecommendationUnavailable(rec);
