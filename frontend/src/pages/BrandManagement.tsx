@@ -32,6 +32,9 @@ const brandImageFallback = imageFallbacks.brand;
 const resolveBrandImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, brandImageFallback);
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
 
 const statusColors: Record<string, string> = {
   ACTIVE: 'green',
@@ -138,7 +141,7 @@ const BrandManagement: React.FC = () => {
     try {
       const response = await adminApi.getBrands();
       setBrands(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.brandAdmin.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -150,15 +153,21 @@ const BrandManagement: React.FC = () => {
   }, [fetchBrands]);
 
   useEffect(() => {
+    let disposed = false;
     adminApi.getMyPermissions()
       .then((response) => {
+        if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
+        if (disposed) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const openModal = (brand?: Brand) => {
@@ -208,8 +217,8 @@ const BrandManagement: React.FC = () => {
       setLogoPreviewUrl('');
       form.resetFields();
       fetchBrands();
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.brandAdmin.saveFailed'), language));
     } finally {
       setSaving(false);
@@ -233,7 +242,7 @@ const BrandManagement: React.FC = () => {
       await adminApi.deleteBrand(id);
       message.success(t('pages.brandAdmin.deleted'));
       fetchBrands();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.brandAdmin.deleteFailed'), language));
     }
   };

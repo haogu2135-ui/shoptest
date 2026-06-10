@@ -4,6 +4,72 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 15:55 UTC QA F3515 CategoryManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Category Management production `any` usage is closed.
+- `CategoryManagement.tsx` category list load, category delete, and category save catches now use `unknown`.
+- AntD validation failures narrow through `isFormValidationError(...)`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+- `CategoryManagement.test.ts` also refreshed the stale mobile popup z-index guard from `2100` to `var(--shop-z-floating-panel)`.
+
+Local verification already run:
+- `CategoryManagement.test.ts` source guard rejects the old Category Management `any` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/CategoryManagement.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any` in `CategoryManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/CategoryManagement.tsx frontend/src/pages/CategoryManagement.test.ts frontend/src/pages/LogManagement.tsx frontend/src/pages/LogManagement.test.ts frontend/src/pages/BrandManagement.tsx frontend/src/pages/BrandManagement.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Category tree and search | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open Category Management, load the tree/table, search localized names/descriptions, and verify readiness metrics plus path labels render normally. |
+| Create/edit category | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Create and edit root/child categories with required validation, localized content, image preview, and parent TreeSelect. Verify validation copy, popup layering, save state, localized success/error messages, and refreshed data. |
+| Category delete | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Delete categories with allowed and denied roles, including parent-with-child failure. Verify confirmation copy, permission denial, localized API errors, and refreshed data. |
+| Mobile editor popup | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open the parent TreeSelect inside the category modal on phone/tablet widths and verify it stays above the modal and inside the visible viewport. |
+
+## 2026-06-10 15:45 UTC QA F3515 LogManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Log Management production `any` usage is closed.
+- `LogManagement.tsx` log status load, debug-level toggle, and log download catches now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `LogManagement.test.ts` source guard rejects the old Log Management `any` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/LogManagement.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any` in `LogManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/LogManagement.tsx frontend/src/pages/LogManagement.test.ts frontend/src/pages/BrandManagement.tsx frontend/src/pages/BrandManagement.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Logger status load | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open Log Management, load the default logger and a custom logger, and verify current level, debug state, and available file counts render normally. |
+| Debug toggle | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Toggle debug logging with allowed and denied roles. Verify confirmation copy, loading state, localized success/error messages, and refreshed status. |
+| Log download | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Download logs for a selected time range, keyword, and level. Verify range validation, filename, loading state, permission denial, and localized API failure handling. |
+| Mobile RangePicker | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open the log export RangePicker on phone/tablet/short landscape and verify the popup remains inside the visible viewport. |
+
+## 2026-06-10 15:24 UTC QA F3515 BrandManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Brand Management production `any` usage is closed.
+- `BrandManagement.tsx` brand list load, brand save, and brand delete catches now use `unknown`.
+- AntD validation failures narrow through `isFormValidationError(...)`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `BrandManagement.test.ts` source guard rejects the old Brand Management `any` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/BrandManagement.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any` in `BrandManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/BrandManagement.tsx frontend/src/pages/BrandManagement.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Brand list and filters | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open Brand Management, load the brand list, search by name/description/URL, filter active/inactive status, and verify health metrics and table rows render normally. |
+| Create/edit brand | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Create and edit a brand with required-field validation, logo preview, website URL, status, sort order, and long description. Verify validation copy, save loading state, localized success/error messages, and refreshed data. |
+| Brand delete | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Delete a brand with allowed and denied roles. Verify confirmation copy, permission denial, localized success/error messages, and refreshed list data. |
+| Brand API failure | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Simulate list/save/delete API failures and verify localized error handling without stale modal/loading state. |
+
 ## 2026-06-10 15:12 UTC QA F3515 BrowsingHistory Type-Safety Partial Fix Handoff
 
 Source status:

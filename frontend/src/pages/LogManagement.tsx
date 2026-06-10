@@ -13,6 +13,7 @@ const { RangePicker } = DatePicker;
 const { Text, Title } = Typography;
 
 const DEFAULT_LOGGER = 'com.example.shop';
+const logRangePickerClassNames = { popup: { root: 'shop-mobile-popup-layer log-management__rangePopup' } };
 
 const LogManagement: React.FC = () => {
   const { t, language } = useLanguage();
@@ -36,7 +37,7 @@ const LogManagement: React.FC = () => {
       const response = await adminApi.getLogManagementStatus({ loggerName: requestedLogger });
       setStatus(response.data);
       setLoggerName(response.data.loggerName);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.logAdmin.loadFailed'), language));
     } finally {
       setLoading(false);
@@ -75,7 +76,7 @@ const LogManagement: React.FC = () => {
       const response = await adminApi.setDebugLogging({ loggerName, enabled });
       setStatus(response.data);
       message.success(enabled ? t('pages.logAdmin.debugEnabled') : t('pages.logAdmin.debugDisabled'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.logAdmin.levelToggleFailed'), language));
     } finally {
       setSwitching(false);
@@ -109,7 +110,7 @@ const LogManagement: React.FC = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
       message.success(t('pages.logAdmin.downloadStarted'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.logAdmin.downloadFailed'), language));
     } finally {
       setDownloading(false);
@@ -230,7 +231,8 @@ const LogManagement: React.FC = () => {
                 <RangePicker
                   showTime
                   allowClear={false}
-                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                  placement="bottomLeft"
+                  classNames={logRangePickerClassNames}
                   getPopupContainer={() => document.body}
                   value={range}
                   onChange={(values) => {

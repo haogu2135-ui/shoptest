@@ -38,6 +38,9 @@ const { Title, Text } = Typography;
 const categoryImageFallback = imageFallbacks.category;
 const resolveCategoryImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, categoryImageFallback);
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
 
 const CategoryManagement: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -146,7 +149,7 @@ const CategoryManagement: React.FC = () => {
     try {
       const res = await adminApi.getCategories();
       setCategories(res.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.categoryAdmin.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -158,15 +161,21 @@ const CategoryManagement: React.FC = () => {
   }, [fetchCategories]);
 
   useEffect(() => {
+    let disposed = false;
     adminApi.getMyPermissions()
       .then((response) => {
+        if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
+        if (disposed) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const openModal = (category?: Category | null, parent?: Category | null) => {
@@ -209,7 +218,7 @@ const CategoryManagement: React.FC = () => {
       await adminApi.deleteCategory(id);
       message.success(t('messages.deleteSuccess'));
       fetchCategories();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.categoryAdmin.deleteChildFirst'), language));
     }
   };
@@ -254,8 +263,8 @@ const CategoryManagement: React.FC = () => {
       setImagePreviewUrl('');
       form.resetFields();
       fetchCategories();
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.categoryAdmin.saveFailed'), language));
     } finally {
       setSaving(false);
