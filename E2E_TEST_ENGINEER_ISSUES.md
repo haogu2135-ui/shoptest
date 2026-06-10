@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:45 UTC QA F3515 Checkout Payment-Method Test Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the Checkout payment-method test mock `any[]` usage is closed.
+- `Checkout.test.tsx` now types mocked payment channels with explicit `code`, display, description, badge, and market fields.
+- Production Checkout behavior is unchanged.
+- Remaining `any` text in `Checkout.test.tsx` is source-guard assertion text for old production signatures, not runtime TypeScript usage.
+
+Local verification already run:
+- Source search for real broad `any` in `Checkout.test.tsx` returns only source-guard assertion strings.
+- `git diff --check -- frontend/src/pages/Checkout.test.tsx` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Checkout payment method rendering | SOURCE_TEST_FIXED / STOREFRONT E2E OPTIONAL | If checkout smoke coverage is already scheduled, verify configured payment methods render as selectable radios and unavailable-channel fallback copy still appears when no methods are returned. No dedicated E2E is required for this test-only type-safety change. |
+
 ## 2026-06-10 21:41 UTC QA F3515 API Interceptor Test Type-Safety Partial Fix Handoff
 
 Source status:

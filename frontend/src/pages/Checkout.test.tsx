@@ -87,7 +87,19 @@ jest.mock('../i18n', () => {
 });
 
 jest.mock('../utils/paymentMethods', () => ({
-  createPaymentMethodDetails: () => [],
+  createPaymentMethodDetails: (channels: Array<{
+    code: string;
+    displayName?: string;
+    descriptionKey?: string;
+    badgeKey?: string;
+    market?: string;
+  }> = []) => (Array.isArray(channels) ? channels : []).map((channel) => ({
+    value: channel.code,
+    title: channel.displayName || channel.code,
+    descriptionKey: channel.descriptionKey || 'pages.checkout.paymentGenericDesc',
+    badgeKey: channel.badgeKey || 'pages.checkout.paymentWallet',
+    market: channel.market || 'GLOBAL',
+  })),
   paymentMethodLabel: (method: string) => method,
 }));
 
