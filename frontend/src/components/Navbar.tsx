@@ -25,7 +25,7 @@ import {
 } from '@ant-design/icons';
 import { adminApi, announcementApi, cartApi, clearStoredAuthSession, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { Language, useLanguage } from '../i18n';
-import type { SiteAnnouncementPublic } from '../types';
+import type { CartItem, SiteAnnouncementPublic } from '../types';
 import { CurrencyCode, markets } from '../utils/market';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { useMarket } from '../hooks/useMarket';
@@ -443,7 +443,7 @@ const Navbar: React.FC = () => {
         cartApi.getItems(0)
           .then((res) => {
             if (disposed) return;
-            const count = res.data.reduce((sum: number, item: any) => sum + normalizeBadgeCount(item.quantity), 0);
+            const count = res.data.reduce((sum: number, item: CartItem) => sum + normalizeBadgeCount(item.quantity), 0);
             setCartCount(count);
           })
           .catch((error) => {

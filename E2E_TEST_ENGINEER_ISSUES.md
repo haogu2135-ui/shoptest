@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 18:34 UTC QA F3515 Navbar Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Navbar production `any` usage is closed.
+- `Navbar.tsx` authenticated cart badge rows are now typed as `CartItem`.
+- Badge quantity normalization via `normalizeBadgeCount(item.quantity)` is unchanged.
+
+Local verification already run:
+- `NavbarTypeSafety.test.ts` source guard rejects the old Navbar cart badge `item: any` pattern.
+- `CI=true npm test -- --runTestsByPath src/components/NavbarTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` in `Navbar.tsx` returned no matches.
+- `git diff --check -- frontend/src/components/Navbar.tsx frontend/src/components/NavbarTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Authenticated cart badge | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Log in with cart rows containing normal, string-like, zero, and invalid quantities; verify the Navbar cart badge shows the normalized total and updates after cart events. |
+| Guest cart badge | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Log out and verify guest cart badge counting still matches local guest-cart quantities. |
+| Badge load failure handling | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Simulate cart badge API failure and verify the badge resets safely plus localized non-blocking warning behavior remains usable. |
+| Mobile Navbar badge layout | PARTIAL_SOURCE_FIXED / MOBILE STOREFRONT E2E RECOMMENDED | Check phone/tablet widths for cart badge, notification badge, menu overflow, and dropdown layering. |
+
 ## 2026-06-10 18:18 UTC QA F3515 ProductReview Type-Safety Partial Fix Handoff
 
 Source status:
