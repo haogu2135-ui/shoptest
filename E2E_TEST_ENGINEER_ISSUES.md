@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:31 UTC QA F3515 Wishlist Test Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the Wishlist test mock `null as any` usage is closed.
+- `Wishlist.test.tsx` now returns a typed noop `ReturnType<typeof message.error>` handle for the unmounted-load failure spy.
+- Production Wishlist behavior is unchanged.
+
+Local verification already run:
+- Source search for runtime mock `as any` in `Wishlist.test.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/Wishlist.test.tsx` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Wishlist load/unmount smoke | SOURCE_TEST_FIXED / STOREFRONT E2E OPTIONAL | If Wishlist is already in smoke coverage, open Wishlist, navigate away during load, and verify no stale error toast appears. No dedicated E2E is required for the test-only type-safety change. |
+
 ## 2026-06-10 21:27 UTC QA F3515 Market Test Type-Safety Partial Fix Handoff
 
 Source status:

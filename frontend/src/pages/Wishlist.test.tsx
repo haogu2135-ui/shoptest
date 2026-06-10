@@ -111,7 +111,8 @@ describe('Wishlist async lifecycle', () => {
 
   it('does not report an initial load failure after the page unmounts', async () => {
     const wishlistRequest = createDeferred<{ data: [] }>();
-    const messageErrorSpy = jest.spyOn(message, 'error').mockImplementation(() => null as any);
+    const noopMessage = (() => undefined) as ReturnType<typeof message.error>;
+    const messageErrorSpy = jest.spyOn(message, 'error').mockImplementation(() => noopMessage);
     (wishlistApi.getByUser as jest.Mock).mockReturnValue(wishlistRequest.promise);
 
     const { unmount } = renderWishlist();
