@@ -53,6 +53,16 @@ type CheckoutPaymentPollResult = {
   updatedAt: number;
 };
 
+type CheckoutFormValues = {
+  guestEmail?: unknown;
+  recipientName?: unknown;
+  phone?: unknown;
+  region?: string[];
+  shippingAddress?: unknown;
+  postalCode?: unknown;
+  paymentMethod?: unknown;
+};
+
 const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED', 'RECONCILE_REQUIRED']);
 const paymentStatusColors: Record<string, string> = {
   PENDING: 'orange',
@@ -142,8 +152,20 @@ const normalizeCheckoutPhone = (value: unknown) => {
 const normalizeLikelyCheckoutPhone = (value: unknown) =>
   isLikelyPhone(value) ? normalizeCheckoutPhone(value) : normalizeCheckoutText(value, 40);
 
-const isAuthExpiredError = (error: any) => {
-  const status = Number(error?.response?.status);
+type CheckoutErrorResponseLike = {
+  response?: {
+    status?: unknown;
+  };
+};
+
+const getCheckoutErrorResponse = (error: unknown) => (
+  typeof error === 'object' && error !== null && 'response' in error
+    ? (error as CheckoutErrorResponseLike).response
+    : undefined
+);
+
+const isAuthExpiredError = (error: unknown) => {
+  const status = Number(getCheckoutErrorResponse(error)?.status);
   return status === 401 || status === 403;
 };
 
@@ -307,7 +329,7 @@ const resolveCheckoutPaymentMethod = (
 };
 
 const Checkout: React.FC = () => {
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<CheckoutFormValues>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -496,7 +518,7 @@ const Checkout: React.FC = () => {
         setAddresses(addressRes.data);
         const defaultAddress = addressRes.data.find((address) => address.isDefault) || addressRes.data[0];
         if (defaultAddress) setSelectedAddressId(defaultAddress.id);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (isAuthExpiredError(error)) {
           clearExpiredCheckoutSession();
           const guestItems = getGuestCartItems().filter(isPurchasable);
@@ -989,7 +1011,7 @@ const Checkout: React.FC = () => {
     return `${coupon.couponName}: ${rule}`;
   };
 
-  const buildAddress = (values: any) => {
+  const buildAddress = (values: CheckoutFormValues) => {
     if (selectedAddressId !== 'new') {
       const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
       if (!address) throw new Error(t('pages.checkout.addressRequired'));
@@ -1015,7 +1037,7 @@ const Checkout: React.FC = () => {
         syncCheckoutCartItemIds(purchasableItems);
         dispatchDomEvent('shop:cart-updated');
         return;
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (!isAuthExpiredError(error)) {
           throw error;
         }
@@ -1027,7 +1049,7 @@ const Checkout: React.FC = () => {
     syncCheckoutCartItemIds(nextItems);
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: CheckoutFormValues) => {
     const token = getLocalStorageItem('token');
     if (cartItems.length === 0) {
       message.error(t('pages.checkout.emptyCart'));
@@ -1100,7 +1122,7 @@ const Checkout: React.FC = () => {
           normalizedGuestEmail,
           token ? undefined : orderRes.data.orderNo,
         );
-      } catch (paymentError: any) {
+      } catch (paymentError: unknown) {
         setPayment(null);
         setPaymentCreateError(getApiErrorMessage(paymentError, t('pages.payment.createFailed'), language));
         message.warning(t('pages.checkout.orderCreatedPaymentPending'));
@@ -1113,7 +1135,7 @@ const Checkout: React.FC = () => {
           message.error(t('pages.payment.failed'));
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (token && isAuthExpiredError(error)) {
         clearExpiredCheckoutSession();
         setAddresses([]);
@@ -1146,7 +1168,7 @@ const Checkout: React.FC = () => {
       if (paymentRes.data.paymentUrl && !navigateToSafeUrl(paymentRes.data.paymentUrl)) {
         message.error(t('pages.payment.failed'));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       const localizedError = getApiErrorMessage(error, t('pages.payment.createFailed'), language);
       setPaymentCreateError(localizedError);
       message.error(localizedError);
@@ -1183,7 +1205,7 @@ const Checkout: React.FC = () => {
       } else if (createdOrder) {
         setCreatedOrder({ ...createdOrder, status: 'PENDING_SHIPMENT' });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.checkout.simulatePaymentFailed'), language));
     } finally {
       setSimulatingPayment(false);
@@ -1238,7 +1260,7 @@ const Checkout: React.FC = () => {
           setPaymentCreateError(null);
           message.success(t('pages.checkout.rollbackPaymentSuccess'));
           navigate('/cart');
-        } catch (error: any) {
+        } catch (error: unknown) {
           message.error(getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language));
         } finally {
           setCancelingPayment(false);

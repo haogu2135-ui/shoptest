@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:16 UTC QA F3515 Checkout Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Checkout production `any` usage is closed.
+- `Checkout.tsx` checkout load, add-on add, payment creation, order creation, retry payment, simulated payment, and rollback failures now use `unknown`.
+- Auth-expired response-status checks narrow through a typed checkout error-response helper; localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `CheckoutTypeSafety.test.ts` source guard rejects the old Checkout `any` catch patterns and direct `error?.response` access.
+- Source search for production `any` in `Checkout.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/Checkout.tsx frontend/src/pages/CheckoutTypeSafety.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Authenticated checkout load | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Log in, enter checkout with selected cart items, verify cart/address load, auth-expired redirect, unavailable-item pruning, coupon state, and localized load failures. |
+| Guest checkout and add-ons | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Complete guest checkout with valid email/phone/address, add suggested products, verify guest cart mutation, support context save, and localized add-on failure handling. |
+| Payment creation and retry | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Force order-created/payment-pending state, retry payment, verify payment URL safety handling, pending-order recovery copy, and localized payment errors. |
+| Simulated payment and rollback | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Simulate payment and cancel/restore submitted cart items for authenticated and guest flows; verify order/payment state refresh, cart restore, and localized rollback failure handling. |
+| Mobile checkout | PARTIAL_SOURCE_FIXED / MOBILE STOREFRONT E2E RECOMMENDED | Check phone/tablet widths for address form, region cascader, coupon/payment sections, fixed action footer, modals, and no overlap with mobile navigation. |
+
 ## 2026-06-10 21:11 UTC QA F3515 CustomerSupportWidget Type-Safety Partial Fix Handoff
 
 Source status:
