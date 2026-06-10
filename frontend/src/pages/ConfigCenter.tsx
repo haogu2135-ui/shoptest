@@ -27,6 +27,10 @@ type FormValues = {
 const rowsFromRecord = (record?: Record<string, string>) =>
   Object.entries(record || {}).map(([key, value]) => ({ key, name: key, value }));
 
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
+
 const ConfigCenter: React.FC = () => {
   const { t, language } = useLanguage();
   const [form] = Form.useForm<FormValues>();
@@ -58,7 +62,7 @@ const ConfigCenter: React.FC = () => {
         content: response.data.content,
         applyRuntime: true,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.configCenter.loadFailed'), language));
     } finally {
       setLoading(false);
@@ -114,8 +118,8 @@ const ConfigCenter: React.FC = () => {
       } else {
         message.success(response.data.runtimeApplied ? t('pages.configCenter.publishedAndApplied') : t('pages.configCenter.published'));
       }
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.configCenter.publishFailed'), language));
     } finally {
       setPublishing(false);
@@ -143,8 +147,8 @@ const ConfigCenter: React.FC = () => {
       } else {
         message.success(t('pages.configCenter.runtimeApplied'));
       }
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.configCenter.runtimeApplyFailed'), language));
     } finally {
       setApplying(false);

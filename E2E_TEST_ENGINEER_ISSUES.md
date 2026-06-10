@@ -4,6 +4,28 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 16:04 UTC QA F3515 ConfigCenter Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Config Center production `any` usage is closed.
+- `ConfigCenter.tsx` config snapshot load, publish, and runtime-apply catches now use `unknown`.
+- AntD validation failures narrow through `isFormValidationError(...)`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `ConfigCenterTypeSafety.test.ts` source guard rejects the old Config Center `any` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/ConfigCenterTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any` in `ConfigCenter.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/ConfigCenter.tsx frontend/src/pages/ConfigCenterTypeSafety.test.ts QA_ISSUES.md TEST_ISSUES.md E2E_TEST_ENGINEER_ISSUES.md` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Config snapshot load | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open Config Center, load the default config target, change dataId/group/namespace, refresh, and verify snapshot cards, masked sensitive keys, and effective properties render normally. |
+| Publish config | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Publish valid and invalid config content with allowed and denied roles. Verify validation copy, confirmation copy, loading state, localized success/error messages, and refreshed content. |
+| Runtime apply | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Apply runtime config only with allowed and denied roles. Verify confirmation copy, permission denial, localized API errors, and runtime-applied status. |
+| Mobile config editor | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open Config Center on phone/tablet widths and verify the content editor, Popconfirm overlays, and table sections stay inside the visible viewport. |
+
 ## 2026-06-10 15:55 UTC QA F3515 CategoryManagement Type-Safety Partial Fix Handoff
 
 Source status:
