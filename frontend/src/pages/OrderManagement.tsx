@@ -196,7 +196,7 @@ const OrderManagement: React.FC = () => {
       });
       pageSizeRef.current = res.data.size || params.size || pageSizeRef.current;
       setOrderSummary(res.data.summary || {});
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.adminOrders.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -304,7 +304,7 @@ const OrderManagement: React.FC = () => {
       await adminApi.updateOrderStatus(orderId, newStatus);
       message.success(t('pages.adminOrders.statusUpdated'));
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = getApiErrorMessage(err, t('messages.updateFailed'), language);
       message.error(msg);
     } finally {
@@ -488,7 +488,7 @@ const OrderManagement: React.FC = () => {
       setTrackingNumber('');
       setTrackingCarrierCode(undefined);
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
-    } catch (err: any) {
+    } catch (err: unknown) {
       printWindow?.close();
       const msg = getApiErrorMessage(err, t('messages.updateFailed'), language);
       message.error(msg);
@@ -512,7 +512,7 @@ const OrderManagement: React.FC = () => {
     try {
       const itemsRes = await adminApi.getOrderItems(order.id);
       setOrderItems(itemsRes.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setOrderItems([]);
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
@@ -525,7 +525,7 @@ const OrderManagement: React.FC = () => {
     try {
       const paymentsRes = await adminApi.getOrderPayments(order.id);
       setOrderPayments(paymentsRes.data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setOrderPayments([]);
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
@@ -598,7 +598,7 @@ const OrderManagement: React.FC = () => {
       setRefundRestock(false);
       setRefundPayments([]);
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.adminOrders.refundFailed'), language));
     } finally {
       setRefunding(false);
@@ -632,7 +632,7 @@ const OrderManagement: React.FC = () => {
       }
       message.success(t('pages.adminOrders.paymentSynced'));
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.adminOrders.paymentSyncFailed'), language));
     } finally {
       setSyncingPaymentIds((current) => current.filter((id) => id !== payment.id));
@@ -657,7 +657,7 @@ const OrderManagement: React.FC = () => {
       setBatchTrackingCarrierCode(undefined);
       setSelectedOrderIds([]);
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setBatchShipping(false);
@@ -708,7 +708,7 @@ const OrderManagement: React.FC = () => {
           total: res.headers?.['x-export-total'] || '',
         }));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.adminOrders.exportFailed'), language));
     } finally {
       setExporting(false);
@@ -1008,7 +1008,7 @@ const OrderManagement: React.FC = () => {
       title: t('pages.adminOrders.customer'),
       key: 'customer',
       width: 190,
-      render: (_: any, record: Order) => renderCustomer(record),
+      render: (_: unknown, record: Order) => renderCustomer(record),
     },
     {
       title: t('common.amount'),
@@ -1028,13 +1028,13 @@ const OrderManagement: React.FC = () => {
       title: t('pages.adminOrders.nextAction'),
       key: 'nextAction',
       width: 170,
-      render: (_: any, record: Order) => renderNextAction(record),
+      render: (_: unknown, record: Order) => renderNextAction(record),
     },
     {
       title: t('pages.adminOrders.returnInfo'),
       key: 'returnInfo',
       width: 180,
-      render: (_: any, record: Order) => (
+      render: (_: unknown, record: Order) => (
         <Space direction="vertical" size={2} className="order-management-page__compactStack">
           <Typography.Text>{record.returnReason || '-'}</Typography.Text>
           {record.returnTrackingNumber ? (
@@ -1099,7 +1099,7 @@ const OrderManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 180,
-      render: (_: any, record: Order) => {
+      render: (_: unknown, record: Order) => {
         const orderLabel = orderDisplayLabel(record);
         const transitions = orderValidTransitions[record.status] || [];
         const allowedTransitions = transitions.filter((status) => canApplyOrderTransition(record, status));
@@ -1439,7 +1439,7 @@ const OrderManagement: React.FC = () => {
                     title: t('common.actions'),
                     key: 'actions',
                     width: 120,
-                    render: (_: any, payment: AdminPayment) => {
+                    render: (_: unknown, payment: AdminPayment) => {
                       const syncActionLabel = `${t('pages.adminOrders.syncPayment')}: ${paymentDisplayLabel(payment)}`;
                       return (
                         <Popconfirm
@@ -1561,7 +1561,7 @@ const OrderManagement: React.FC = () => {
                 title: t('common.subtotal'),
                 key: 'subtotal',
                 width: 120,
-                render: (_: any, item: OrderItem) => <span className="commerce-money">{formatMoney(item.price * item.quantity)}</span>,
+                render: (_: unknown, item: OrderItem) => <span className="commerce-money">{formatMoney(item.price * item.quantity)}</span>,
               },
             ]}
           />
@@ -1607,7 +1607,7 @@ const OrderManagement: React.FC = () => {
                     title: t('common.actions'),
                     key: 'actions',
                     width: 120,
-                    render: (_: any, payment: AdminPayment) => {
+                    render: (_: unknown, payment: AdminPayment) => {
                       const syncActionLabel = `${t('pages.adminOrders.syncPayment')}: ${paymentDisplayLabel(payment)}`;
                       return (
                         <Popconfirm

@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:41 UTC QA F3515 Order Management Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Order Management production broad `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/OrderManagement.tsx` now handles admin order list/status/ship/detail/refund/payment sync/batch ship/export failures with `unknown`; order, payment, and item table render placeholders use `unknown`.
+- Runtime admin order behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for Order Management broad `any` catch/render patterns returned no matches.
+- Added `OrderManagementTypeSafety.test.ts` source guard for the typed admin order contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin order management smoke | RECONCILED_SOURCE_FIXED / ADMIN E2E OPTIONAL | If admin order coverage is in the regression pass, verify order list/search/filter/pagination, status transitions, shipping label/ship, item/payment detail modal, refund flow, payment sync, batch ship, export, tracking links, permission-gated controls, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:36 UTC QA F3515 Support Management Type-Safety Reconciliation Handoff
 
 Source status:
