@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:41 UTC QA F3515 API Interceptor Test Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the tracked API interceptor test mock `any` callback signatures are closed.
+- `api/index.test.ts` now types axios request/response interceptor mocks with local `MockApiRequestConfig`, `MockApiError`, and interceptor aliases.
+- Production API behavior is unchanged.
+- Current worktree scans still report separate `any` casts in pre-existing unstaged API test additions and untracked frontend tests; those remain follow-up F3515 cleanup.
+
+Local verification already run:
+- Interceptor-specific source search for the old `config: any`, `error: any`, `response: any`, and `Promise<any>` interceptor signatures returned no matches.
+- `git diff --check -- frontend/src/api/index.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Auth/API interceptor smoke | SOURCE_TEST_FIXED / E2E OPTIONAL | If auth/API smoke coverage is already scheduled, log in with an expiring/expired token, verify refresh retry behavior and localized auth failure handling. No dedicated E2E is required for this test-only type-safety change. |
+
 ## 2026-06-10 21:31 UTC QA F3515 Wishlist Test Type-Safety Partial Fix Handoff
 
 Source status:

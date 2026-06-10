@@ -3,8 +3,36 @@ const mockPost = jest.fn();
 const mockPut = jest.fn();
 const mockDelete = jest.fn();
 const mockRequest = jest.fn();
-let mockRequestInterceptorFulfilled: ((config: any) => any) | undefined;
-let mockResponseInterceptorRejected: ((error: any) => Promise<any>) | undefined;
+
+type MockApiHeaders = Record<string, unknown> & {
+  Accept?: unknown;
+  Authorization?: unknown;
+};
+
+type MockApiRequestConfig = {
+  url?: string;
+  headers?: MockApiHeaders;
+  _authRetry?: boolean;
+  [key: string]: unknown;
+};
+
+type MockApiError = {
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+  config?: MockApiRequestConfig;
+  code?: string;
+  message?: string;
+  [key: string]: unknown;
+};
+
+type MockRequestInterceptor = (config: MockApiRequestConfig) => MockApiRequestConfig | Promise<MockApiRequestConfig>;
+type MockResponseInterceptor = (response: unknown) => unknown;
+type MockResponseErrorInterceptor = (error: MockApiError) => Promise<unknown>;
+
+let mockRequestInterceptorFulfilled: MockRequestInterceptor | undefined;
+let mockResponseInterceptorRejected: MockResponseErrorInterceptor | undefined;
 
 export {};
 
@@ -38,12 +66,12 @@ jest.mock('axios', () => ({
       defaults: { baseURL: config?.baseURL || 'https://api.example.com' },
       interceptors: {
         request: {
-          use: jest.fn((fulfilled: (config: any) => any) => {
+          use: jest.fn((fulfilled: MockRequestInterceptor) => {
             mockRequestInterceptorFulfilled = fulfilled;
           }),
         },
         response: {
-          use: jest.fn((_fulfilled: (response: any) => any, rejected: (error: any) => Promise<any>) => {
+          use: jest.fn((_fulfilled: MockResponseInterceptor, rejected: MockResponseErrorInterceptor) => {
             mockResponseInterceptorRejected = rejected;
           }),
         },
