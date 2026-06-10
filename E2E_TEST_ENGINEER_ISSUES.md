@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 17:42 UTC QA F3515 PetGalleryManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Pet Gallery Management production `any` usage is closed.
+- `PetGalleryManagement.tsx` gallery list and delete failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `PetGalleryManagementTypeSafety.test.ts` source guard rejects the old Pet Gallery Management `any` catch patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/PetGalleryManagementTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` in `PetGalleryManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/PetGalleryManagement.tsx frontend/src/pages/PetGalleryManagementTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Pet gallery list/search/filter | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open `/admin/pet-gallery`, search/filter by status/source, page through photos, and verify stats, table rows, empty state, loading, and localized load-failure handling. |
+| Pet gallery delete | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Delete a permitted photo and verify popconfirm placement, permission gating, localized success/error handling, and refreshed list state. |
+| Media rendering fallback | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Verify broken/missing gallery image URLs use the media fallback and do not break row layout. |
+| Mobile pet gallery admin layout | PARTIAL_SOURCE_FIXED / MOBILE ADMIN E2E RECOMMENDED | Check phone/tablet widths for filters, stats, table horizontal scroll, image thumbnails, and delete popconfirm layering. |
+
 ## 2026-06-10 17:33 UTC QA F3515 LogisticsCarrierManagement Type-Safety Partial Fix Handoff
 
 Source status:

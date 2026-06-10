@@ -131,7 +131,7 @@ const PetGalleryManagement: React.FC = () => {
       });
       setGallerySummary(response.data.summary || {});
       setLastLoadedAt(new Date());
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.petGalleryAdmin.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -177,7 +177,7 @@ const PetGalleryManagement: React.FC = () => {
       await adminApi.deletePetGalleryPhoto(photo.id);
       await fetchPhotos(pageState.page, pageState.size);
       message.success(t('pages.petGalleryAdmin.deleted'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.petGalleryAdmin.deleteFailed'), language));
     } finally {
       setDeletingId(null);
