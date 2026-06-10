@@ -64,7 +64,8 @@ describe('market currency storage', () => {
     const listener = jest.fn();
     window.addEventListener('shop:currency-changed', listener);
 
-    setCurrency('DOGE' as any);
+    const setRuntimeCurrency = setCurrency as (currency: string) => void;
+    setRuntimeCurrency('DOGE');
 
     expect(localStorage.getItem('currency')).toBe('USD');
     expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ currency: 'USD' });

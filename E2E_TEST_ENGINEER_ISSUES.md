@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:27 UTC QA F3515 Market Test Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the market currency test-helper `as any` usage is closed.
+- `market.test.ts` now exercises invalid runtime currency input through a typed `(currency: string) => void` adapter.
+- Production `market.ts` behavior is unchanged: invalid currencies still fall back to USD and dispatch `shop:currency-changed`.
+
+Local verification already run:
+- Source search for broad `any` in `market.test.ts` returned no matches.
+- `git diff --check -- frontend/src/utils/market.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Currency fallback smoke | SOURCE_TEST_FIXED / STOREFRONT E2E OPTIONAL | If currency controls are covered in the storefront smoke suite, switch between supported currencies and verify formatted prices remain localized; no dedicated E2E is required for the test-only type-safety change. |
+
 ## 2026-06-10 21:24 UTC QA F3515 TrafficControl Type-Safety Partial Fix Handoff
 
 Source status:
