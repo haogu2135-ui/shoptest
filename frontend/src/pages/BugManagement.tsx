@@ -23,6 +23,10 @@ const DEFAULT_PAGE_SIZE = 20;
 const SCAN_REFRESH_MS = 10 * 60 * 1000;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
+
 const statusOptions = [
   'ALL',
   'OPEN',
@@ -195,7 +199,7 @@ const BugManagement: React.FC = () => {
         total: response.data.total || 0,
         totalPages: response.data.totalPages || 0,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, tx('loadFailed', 'Failed to load bugs'), language));
     } finally {
       if (!options?.quiet) setLoading(false);
@@ -206,7 +210,7 @@ const BugManagement: React.FC = () => {
     try {
       const response = await adminApi.getBugSummary();
       setSummary(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!quiet) {
         message.error(getApiErrorMessage(error, tx('summaryFailed', 'Failed to load bug summary'), language));
       }
@@ -357,8 +361,8 @@ const BugManagement: React.FC = () => {
       message.success(tx('saved', 'Bug saved'));
       setEditorOpen(false);
       await reload(false);
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, tx('saveFailed', 'Failed to save bug'), language));
     } finally {
       setSaving(false);
@@ -401,8 +405,8 @@ const BugManagement: React.FC = () => {
       message.success(tx('statusSaved', 'Bug status updated'));
       setStatusOpen(false);
       await reload(false);
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, tx('statusSaveFailed', 'Failed to update bug status'), language));
     } finally {
       setActing(false);

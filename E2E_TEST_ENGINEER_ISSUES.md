@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 19:05 UTC QA F3515 BugManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Bug Management production `any` usage is closed.
+- `BugManagement.tsx` bug list/summary/save/status failures now use `unknown`.
+- AntD validation failures narrow through `isFormValidationError(...)`; localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `BugManagementTypeSafety.test.ts` source guard rejects the old Bug Management `any` catch and direct `error?.errorFields` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/BugManagementTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` and direct validation-error access in `BugManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/BugManagement.tsx frontend/src/pages/BugManagementTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Bug list/search/filter | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open `/admin/bugs`, search and filter by status/severity/module/scan queue, and verify list rows, summary cards, pagination, loading skeleton, empty state, and localized load-failure handling. |
+| Bug create/edit validation | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open create/edit modal, trigger required-field validation, then save a valid bug and verify localized success/error handling plus refreshed list/summary. |
+| Bug scan/status update | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Scan or update a bug status with permitted and non-permitted users; verify validation, localized failure handling, status refresh, and regression handoff fields. |
+| Mobile bug admin | PARTIAL_SOURCE_FIXED / MOBILE ADMIN E2E RECOMMENDED | Check phone/tablet widths for toolbar filters, modal footer clearance, table-card labels, popups, and no overlap with admin chrome. |
+
 ## 2026-06-10 18:56 UTC QA F3515 SecurityAuditLogManagement Type-Safety Partial Fix Handoff
 
 Source status:
