@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 17:25 UTC QA F3515 StockAlerts Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Stock Alerts production `any` usage is closed.
+- `StockAlerts.tsx` stock-alert product loading and add-to-cart failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `StockAlertsTypeSafety.test.ts` source guard rejects the old Stock Alerts `any` catch patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/StockAlertsTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` in `StockAlerts.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/StockAlerts.tsx frontend/src/pages/StockAlertsTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Stock alert list load | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Open the stock-alerts page with saved alerts and verify product cards, back-in-stock state, loading state, localized error handling, and empty state render normally. |
+| Add ready item to cart | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Add a ready in-stock alert item to cart as logged-in and guest users; verify success/error toasts, cart update events, and cart drawer behavior. |
+| Bulk add ready items | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Use the add-ready-items action with multiple eligible products and verify partial failures do not break the page and success count is localized. |
+| Mobile stock alerts layout | PARTIAL_SOURCE_FIXED / MOBILE E2E RECOMMENDED | Check phone/WebView widths for action buttons, stock tags, image sizing, and next-action panel overlap. |
+
 ## 2026-06-10 17:14 UTC QA F3515 UserManagement Type-Safety Partial Fix Handoff
 
 Source status:

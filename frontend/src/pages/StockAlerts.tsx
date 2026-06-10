@@ -58,7 +58,7 @@ const StockAlerts: React.FC = () => {
           return acc;
         }, {});
         setProducts(nextProducts);
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(getApiErrorMessage(error, t('pages.stockAlerts.loadFailed'), language));
       } finally {
         setLoading(false);
@@ -100,7 +100,7 @@ const StockAlerts: React.FC = () => {
         dispatchDomEvent('shop:open-cart');
       }
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
       return false;
     }
