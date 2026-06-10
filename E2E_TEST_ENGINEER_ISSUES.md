@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 16:42 UTC QA F3515 Payment Component Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Payment component production `any` usage is closed.
+- `Payment.tsx` payment creation failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `PaymentTypeSafety.test.ts` source guard rejects the old Payment component `any` patterns.
+- `CI=true npm test -- --runTestsByPath src/components/PaymentTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any` in `Payment.tsx` returned no matches.
+- `git diff --check -- frontend/src/components/Payment.tsx frontend/src/components/PaymentTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Payment channel load | PARTIAL_SOURCE_FIXED / CHECKOUT E2E RECOMMENDED | Open the payment modal for an order and verify available channels, default recommended channel, market badges, and unavailable-channel copy render normally. |
+| Payment create success | PARTIAL_SOURCE_FIXED / CHECKOUT E2E RECOMMENDED | Confirm payment for hosted-URL and no-URL success paths. Verify loading state, safe URL navigation behavior, localized success copy, and `onSuccess` behavior. |
+| Payment create failure | PARTIAL_SOURCE_FIXED / CHECKOUT E2E RECOMMENDED | Simulate `paymentApi.create` failure and verify the localized API error toast appears and loading state resets. |
+| Guest payment context | PARTIAL_SOURCE_FIXED / CHECKOUT E2E RECOMMENDED | Run a guest order payment attempt and verify guest email/orderNo context is preserved in the payment create request and modal labels. |
+
 ## 2026-06-10 16:23 UTC QA F3515 AddOnAssistant Type-Safety Partial Fix Handoff
 
 Source status:

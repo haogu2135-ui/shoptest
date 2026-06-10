@@ -96,7 +96,7 @@ export const Payment: React.FC<PaymentProps> = ({
                 return;
             }
             onSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             message.error(getApiErrorMessage(error, t('pages.payment.createFailed'), language));
         } finally {
             setLoading(false);
