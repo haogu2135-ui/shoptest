@@ -27,6 +27,16 @@ const USER_MANAGEMENT_BUILT_IN_ROLE_LABEL_KEYS = new Set(['USER', 'ADMIN', 'SUPE
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
+type UserProfileFormValues = {
+  email?: string;
+  phone?: string;
+  address?: string;
+};
+
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
+
 const normalizeUserAccountStatus = (status?: string): UserAccountStatus => {
   const normalized = (status || 'ACTIVE').trim().toUpperCase();
   if (normalized === 'BANNED' || normalized === 'GUEST') {
@@ -56,7 +66,7 @@ const UserManagement: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_USER_PAGE_SIZE, total: 0 });
-  const [profileForm] = Form.useForm();
+  const [profileForm] = Form.useForm<UserProfileFormValues>();
   const canManageRoles = isSuperAdminRole(currentRole);
   const canWriteUsers = hasAdminPermission(adminPermissions, currentRole, USERS_WRITE_PERMISSION);
   const canChangeUserStatus = hasAdminPermission(adminPermissions, currentRole, USERS_STATUS_PERMISSION);
@@ -132,7 +142,7 @@ const UserManagement: React.FC = () => {
         total: usersResponse.data.total || 0,
       });
       setSummary(summaryResponse.data || null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.adminUsers.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -182,7 +192,7 @@ const UserManagement: React.FC = () => {
       }
       message.success(t('pages.adminUsers.roleUpdated'));
       fetchUsers(pageState.page, pageState.size);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
     }
   };
@@ -219,7 +229,7 @@ const UserManagement: React.FC = () => {
       link.download = 'admin-users.csv';
       link.click();
       URL.revokeObjectURL(url);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.adminUsers.exportFailed'), language));
     } finally {
       setExporting(false);
@@ -241,7 +251,7 @@ const UserManagement: React.FC = () => {
       await adminApi.updateUser(user.id, { status: newStatus });
       message.success(newStatus === 'BANNED' ? t('pages.adminUsers.banned') : t('pages.adminUsers.unbanned'));
       fetchUsers(pageState.page, pageState.size);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     }
   };
@@ -277,8 +287,8 @@ const UserManagement: React.FC = () => {
       message.success(t('pages.adminUsers.profileUpdated'));
       setEditingUser(null);
       fetchUsers(pageState.page, pageState.size);
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('messages.updateFailed'), language));
     } finally {
       setProfileSubmitting(false);
@@ -300,7 +310,7 @@ const UserManagement: React.FC = () => {
       await adminApi.deleteUser(id);
       message.success(t('messages.deleteSuccess'));
       fetchUsers(pageState.page, pageState.size);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('messages.deleteFailed'), language));
     }
   };
@@ -392,7 +402,7 @@ const UserManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 180,
-      render: (_: any, record: User) => {
+      render: (_: unknown, record: User) => {
         const userLabel = record.username || record.email || `#${record.id}`;
         const isSelf = record.id === currentUserId;
         const targetRole = getEffectiveRole(record.role, record.roleCode);

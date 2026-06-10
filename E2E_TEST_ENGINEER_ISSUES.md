@@ -4,6 +4,28 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 17:14 UTC QA F3515 UserManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but admin User Management production `any` usage is closed.
+- `UserManagement.tsx` user list, role update, export, status toggle, profile save, and delete failures now use `unknown`.
+- AntD validation failures now narrow through `isFormValidationError(...)`; the action-column render placeholder uses `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `UserManagement.test.ts` source guard rejects the old User Management `any` and direct `error?.errorFields` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/UserManagement.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any`, direct `error?.errorFields`, and old action render placeholders in `UserManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/UserManagement.tsx frontend/src/pages/UserManagement.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin users list | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open `/admin/users`, search/filter/page through users, and verify summary cards, table rows, pagination labels, and loading/error states still render normally. |
+| Role/status mutations | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Change a user's role, ban/unban an eligible user, and verify confirmations, localized success/error toasts, permissions, and refreshed row state. |
+| Profile edit | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open the profile edit modal, trigger validation, save address changes, and verify validation failures do not show API-error toasts while real API failures still do. |
+| Export/delete actions | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Export the filtered user CSV and delete a permitted non-self user; verify permission gating, confirmation copy, and localized failure handling. |
+
 ## 2026-06-10 17:07 UTC QA F3515 Limited-Time Countdown Test Type-Safety Partial Fix Handoff
 
 Source status:
