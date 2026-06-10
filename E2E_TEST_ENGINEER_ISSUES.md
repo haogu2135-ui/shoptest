@@ -4,6 +4,28 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 21:03 UTC QA F3515 CartDrawer Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Cart Drawer production `any` usage is closed.
+- `CartDrawer.tsx` cart load/remove/save-for-later/clear-blocked failures now use `unknown`.
+- Auth-expired status detection narrows an `unknown` error response; localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `CartDrawerTypeSafety.test.ts` source guard rejects the old Cart Drawer `any` catch patterns and requires the typed auth-expired helper.
+- `CI=true npm test -- --runTestsByPath src/components/CartDrawerTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` in `CartDrawer.tsx` returned no matches.
+- `git diff --check -- frontend/src/components/CartDrawer.tsx frontend/src/components/CartDrawerTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Authenticated cart drawer load | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Log in, open the cart drawer with active and blocked items, and verify loading state, localized load failure, auth-expired fallback to guest cart, totals, free-shipping copy, and checkout enablement. |
+| Guest cart drawer | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Log out, add guest items, open drawer, change quantities, remove items, and verify guest cart state and badge updates remain correct. |
+| Save for later and remove | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Save an item for later and remove an item with API success/failure; verify optimistic state, rollback on failure, localized errors, and cart-updated events. |
+| Clear blocked items and checkout | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Include unavailable/low-stock items, clear blocked items, then start checkout or express checkout; verify localized failure handling and persisted checkout item IDs. |
+| Mobile cart drawer | PARTIAL_SOURCE_FIXED / MOBILE STOREFRONT E2E RECOMMENDED | Check phone/tablet widths for drawer stacking, trust rows, quantity controls, action footer, add-on panels, and no overlap with bottom navigation. |
+
 ## 2026-06-10 20:58 UTC QA F3515 OrderTracking Type-Safety Partial Fix Handoff
 
 Source status:

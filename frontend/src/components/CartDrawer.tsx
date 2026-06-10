@@ -50,8 +50,11 @@ const normalizeCartQuantity = (item: CartItem, quantity: number) => {
     : normalizedQuantity;
 };
 
-const isAuthExpiredError = (error: any) => {
-  const status = Number(error?.response?.status);
+const isAuthExpiredError = (error: unknown) => {
+  const response = typeof error === 'object' && error !== null && 'response' in error
+    ? (error as { response?: { status?: unknown } }).response
+    : undefined;
+  const status = Number(response?.status);
   return status === 401 || status === 403;
 };
 
@@ -119,7 +122,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       const res = await cartApi.getItems(0);
       if (!mountedRef.current || loadCartRequestRef.current !== requestId) return;
       setItems(res.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (mountedRef.current && loadCartRequestRef.current === requestId) {
         if (isAuthExpiredError(error)) {
           setItems(getGuestCartItems());
@@ -287,7 +290,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
           dispatchDomEvent('shop:cart-updated');
         })
-        .catch((err: any) => {
+        .catch((err: unknown) => {
           if (!mountedRef.current || quantityRequestVersionRef.current[item.id] !== requestVersion) return;
           message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
           loadCart();
@@ -358,7 +361,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         throw failed.reason;
       }
       dispatchDomEvent('shop:cart-updated');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
       await loadCart();
       throw err;
@@ -381,7 +384,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         setItems(removeGuestCartItem(item.id));
       }
       if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };
@@ -402,7 +405,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       }
       message.success(t('pages.cart.savedForLater'));
       if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
@@ -465,7 +468,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         setItems(removeGuestCartItems(blockedItems.map((item) => item.id)));
         message.success(t('pages.cart.drawerClearedBlocked', { count: blockedItems.length }));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
