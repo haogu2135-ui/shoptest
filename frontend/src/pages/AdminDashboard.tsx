@@ -34,6 +34,8 @@ const ORDER_STATUS_LABEL_KEYS = new Set([...Object.keys(statusColors), 'PENDING_
 
 const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
 
+type TopDashboardProduct = NonNullable<DashboardStats['topProducts']>[number];
+
 const TrendChart: React.FC<{
   data: Array<{ date: string; orders: number; revenue: number }>;
   formatMoney: (value: number) => string;
@@ -305,7 +307,7 @@ const AdminDashboard: React.FC = () => {
         if (disposed) return;
         setStats(res.data);
         setLoadError('');
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (disposed) return;
         setLoadError(getApiErrorMessage(error, t('pages.adminDashboard.loadFailed'), language));
       } finally {
@@ -563,7 +565,7 @@ const AdminDashboard: React.FC = () => {
       dataIndex: 'imageUrl',
       key: 'imageUrl',
       width: 72,
-      render: (value: string, row: any) => {
+      render: (value: string, row: TopDashboardProduct) => {
         const productName = dashboardProductName(row);
         return <Avatar shape="square" size={48} src={resolveProductImage(value)}>{productName.slice(0, 1)}</Avatar>;
       },
@@ -572,7 +574,7 @@ const AdminDashboard: React.FC = () => {
       title: t('pages.productAdmin.productName'),
       dataIndex: 'productName',
       key: 'productName',
-      render: (_value: string, row: any) => dashboardProductName(row),
+      render: (_value: string, row: TopDashboardProduct) => dashboardProductName(row),
     },
     { title: t('common.quantity'), dataIndex: 'quantity', key: 'quantity', width: 110 },
     {

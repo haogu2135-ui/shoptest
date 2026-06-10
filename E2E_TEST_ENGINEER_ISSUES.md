@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 18:47 UTC QA F3515 AdminDashboard Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Admin Dashboard production `any` usage is closed.
+- `AdminDashboard.tsx` dashboard load failures now use `unknown`.
+- Top-product table rows are typed from `DashboardStats['topProducts']`, while product-image fallback and `dashboardProductName(row)` behavior are unchanged.
+
+Local verification already run:
+- `AdminDashboardTypeSafety.test.ts` source guard rejects the old Admin Dashboard `any` catch and `row: any` table patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/AdminDashboardTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` in `AdminDashboard.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/AdminDashboard.tsx frontend/src/pages/AdminDashboardTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin dashboard load success | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open `/admin/dashboard` with representative orders/products/users/revenue data and verify summary cards, readiness score, action center, SLA cards, charts, payment-method breakdown, and tracking panel still render after the deferred widgets appear. |
+| Admin dashboard load failure | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Simulate dashboard API failure and verify the localized error panel, reload button, and non-crashing state remain usable. |
+| Top products table | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Verify top product rows with image URL, missing image URL, and missing product name still show the correct image/avatar fallback, product fallback label, quantity, and revenue formatting. |
+| Mobile admin dashboard | PARTIAL_SOURCE_FIXED / MOBILE ADMIN E2E RECOMMENDED | Check phone/tablet widths for readiness cards, action buttons, deferred chart/tracking placeholders, top-product table horizontal scroll, and no text overlap. |
+
 ## 2026-06-10 18:34 UTC QA F3515 Navbar Type-Safety Partial Fix Handoff
 
 Source status:
