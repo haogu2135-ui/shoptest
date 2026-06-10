@@ -240,7 +240,7 @@ const OrderTracking: React.FC = () => {
       setDetailsRestricted(res.data.detailsRestricted === true);
       setReturnReason(res.data.order?.returnReason || '');
       setReturnTrackingNumber(res.data.order?.returnTrackingNumber || '');
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!isCurrentTrackRequest()) {
         return;
       }
@@ -301,7 +301,7 @@ const OrderTracking: React.FC = () => {
       setReturnReason(refreshed.data.order?.returnReason || '');
       setReturnTrackingNumber(refreshed.data.order?.returnTrackingNumber || '');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!mountedRef.current || abortController.signal.aborted) return false;
       message.warning(getApiErrorMessage(error, t('pages.orderTracking.trackingFailed'), language));
       return false;
@@ -342,7 +342,7 @@ const OrderTracking: React.FC = () => {
       if (payment.paymentUrl && !navigateToSafeUrl(payment.paymentUrl)) {
         message.error(t('pages.payment.failed'));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.profile.continuePayFailed'), language));
     } finally {
       setPaying(false);
@@ -402,7 +402,7 @@ const OrderTracking: React.FC = () => {
           }
           message.success(t('pages.checkout.rollbackPaymentSuccess'));
           navigate('/cart');
-        } catch (error: any) {
+        } catch (error: unknown) {
           message.error(getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language));
         } finally {
           setCanceling(false);
@@ -418,7 +418,7 @@ const OrderTracking: React.FC = () => {
       await orderApi.confirm(order.id, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
       await refreshTrackedOrder();
       message.success(t('pages.profile.receiptConfirmed'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.profile.confirmFailed'), language));
     } finally {
       setConfirmingReceipt(false);
@@ -449,7 +449,7 @@ const OrderTracking: React.FC = () => {
       await refreshTrackedOrder();
       setReturnRequestOpen(false);
       message.success(t('pages.profile.returnRequested'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.profile.returnFailed'), language));
     } finally {
       setReturning(false);
@@ -468,7 +468,7 @@ const OrderTracking: React.FC = () => {
       await refreshTrackedOrder();
       setReturnShipmentOpen(false);
       message.success(t('pages.profile.returnShipmentSubmitted'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.profile.returnShipmentFailed'), language));
     } finally {
       setReturnShipping(false);

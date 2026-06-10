@@ -4,6 +4,28 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 20:58 UTC QA F3515 OrderTracking Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Order Tracking production `any` usage is closed.
+- `OrderTracking.tsx` order lookup, refresh, payment continuation, cancellation, receipt confirmation, return request, and return shipment failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `OrderTrackingTypeSafety.test.ts` source guard rejects the old Order Tracking `any` catch patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/OrderTrackingTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` in `OrderTracking.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/OrderTracking.tsx frontend/src/pages/OrderTrackingTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Guest order lookup | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Open `/track-order`, submit a valid and invalid guest order/email pair, and verify result rendering, localized lookup failure, URL email stripping, and support context behavior. |
+| Order refresh and logistics | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Refresh a tracked order with shipped and pending statuses; verify refreshed order details, localized refresh failure warning, and the carrier widget remains usable. |
+| Payment/cancel actions | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | For a pending-payment order, continue payment and cancel/restore to cart; verify success/failure messages, safe payment URL navigation, and cart update behavior. |
+| Receipt and return actions | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | For shipped/returnable orders, confirm receipt, request return, and submit return tracking; verify localized success/failure handling and refreshed status. |
+| Mobile order tracking | PARTIAL_SOURCE_FIXED / MOBILE STOREFRONT E2E RECOMMENDED | Check phone/tablet widths for lookup form, result actions, return modals, logistics widget, and no action rail clipping. |
+
 ## 2026-06-10 19:05 UTC QA F3515 BugManagement Type-Safety Partial Fix Handoff
 
 Source status:
