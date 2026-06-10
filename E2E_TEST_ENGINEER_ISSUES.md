@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:25 UTC QA F3515 Coupon Management Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Coupon Management production broad `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/CouponManagement.tsx` now handles coupon list, birthday config load/save, coupon save/delete, grant, and birthday grant failures with `unknown`; form-validation failures narrow through `isFormValidationError(...)`; coupon table render callbacks use `unknown`.
+- Runtime admin coupon behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for Coupon Management broad `any` catch/render patterns and direct `error?.errorFields` returned no matches.
+- Added `CouponManagementTypeSafety.test.ts` source guard for the typed admin coupon contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin coupon management smoke | RECONCILED_SOURCE_FIXED / ADMIN E2E OPTIONAL | If admin coupon coverage is in the regression pass, verify coupon list/search/filter/pagination, create/edit/delete coupon, grant coupon modal validation and submit, birthday coupon config load/save, run birthday coupons, permission-gated controls, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:22 UTC QA F3515 IP Blacklist Management Type-Safety Reconciliation Handoff
 
 Source status:

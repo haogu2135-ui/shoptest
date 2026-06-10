@@ -25,6 +25,12 @@ const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const validRangeStartInputId = 'coupon-management-valid-range-start';
 const validRangeEndInputId = 'coupon-management-valid-range-end';
+type FormValidationError = { errorFields: unknown[] };
+
+const isFormValidationError = (error: unknown): error is FormValidationError => {
+  if (!error || typeof error !== 'object') return false;
+  return Array.isArray((error as { errorFields?: unknown }).errorFields);
+};
 
 const CouponManagement: React.FC = () => {
   const { t, language } = useLanguage();
@@ -201,7 +207,7 @@ const CouponManagement: React.FC = () => {
       if (res.data.summary) {
         setCouponSummary(res.data.summary);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.loadFailed'), language));
     } finally {
       setLoading(false);
@@ -246,7 +252,7 @@ const CouponManagement: React.FC = () => {
       const res = await adminApi.getPetBirthdayCouponConfig();
       setBirthdayConfig(res.data);
       birthdayConfigForm.setFieldsValue(res.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.birthdayConfigLoadFailed'), language));
     } finally {
       setBirthdayConfigLoading(false);
@@ -337,8 +343,8 @@ const CouponManagement: React.FC = () => {
       setEditingCoupon(null);
       form.resetFields();
       await Promise.all([loadCoupons(editingCoupon ? pageState.page : 1, pageState.size), loadCouponSummary()]);
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
       setCouponSubmitting(false);
@@ -354,7 +360,7 @@ const CouponManagement: React.FC = () => {
       await adminApi.deleteCoupon(id);
       message.success(t('pages.adminCoupons.deleted'));
       await Promise.all([loadCoupons(pageState.page, pageState.size), loadCouponSummary()]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.deleteFailed'), language));
     }
   };
@@ -399,7 +405,7 @@ const CouponManagement: React.FC = () => {
             setGrantCoupon(null);
             grantForm.resetFields();
             await Promise.all([loadCoupons(pageState.page, pageState.size), loadCouponSummary()]);
-          } catch (error: any) {
+          } catch (error: unknown) {
             message.error(getApiErrorMessage(error, t('pages.adminCoupons.grantFailed'), language));
             throw error;
           } finally {
@@ -407,8 +413,8 @@ const CouponManagement: React.FC = () => {
           }
         },
       });
-    } catch (error: any) {
-      if (!error?.errorFields) {
+    } catch (error: unknown) {
+      if (!isFormValidationError(error)) {
         message.error(getApiErrorMessage(error, t('pages.adminCoupons.grantFailed'), language));
       }
     }
@@ -424,7 +430,7 @@ const CouponManagement: React.FC = () => {
       const res = await adminApi.runPetBirthdayCoupons();
       message.success(t('pages.adminCoupons.petBirthdayGranted', { count: res.data.granted }));
       await Promise.all([loadCoupons(pageState.page, pageState.size), loadCouponSummary()]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.petBirthdayFailed'), language));
     } finally {
       setBirthdayCouponLoading(false);
@@ -469,8 +475,8 @@ const CouponManagement: React.FC = () => {
       setBirthdayConfig(res.data);
       birthdayConfigForm.setFieldsValue(res.data);
       message.success(t('pages.adminCoupons.birthdayConfigSaved'));
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.birthdayConfigSaveFailed'), language));
     } finally {
       setBirthdayConfigSaving(false);
@@ -491,7 +497,7 @@ const CouponManagement: React.FC = () => {
     {
       title: t('pages.adminCoupons.rule'),
       key: 'rule',
-      render: (_: any, record: Coupon) => (
+      render: (_: unknown, record: Coupon) => (
         <span className="commerce-atomic">
           {record.couponType === 'FULL_REDUCTION'
             ? `${formatMoney(record.thresholdAmount)} - ${formatMoney(record.reductionAmount)}`
@@ -512,12 +518,12 @@ const CouponManagement: React.FC = () => {
     {
       title: t('pages.adminCoupons.issued'),
       key: 'issued',
-      render: (_: any, record: Coupon) => `${record.claimedQuantity || 0}${record.totalQuantity ? ` / ${record.totalQuantity}` : ''}`,
+      render: (_: unknown, record: Coupon) => `${record.claimedQuantity || 0}${record.totalQuantity ? ` / ${record.totalQuantity}` : ''}`,
     },
     {
       title: t('common.actions'),
       key: 'actions',
-      render: (_: any, record: Coupon) => {
+      render: (_: unknown, record: Coupon) => {
         const couponName = getCouponLabel(record);
         const grantActionLabel = `${t('pages.adminCoupons.grant')}: ${couponName}`;
         const editActionLabel = `${t('common.edit')}: ${couponName}`;
