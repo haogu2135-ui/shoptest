@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:55 UTC QA F3515 Login Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Login production broad `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/Login.tsx` now uses typed password/email form values, login response/session contracts, API-error narrowing, `InputRef | null`, and `unknown` catch bindings for password login, candidate fallback, email-code send, and email-code login failures.
+- Runtime login behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for Login broad `any` auth-path patterns returned no matches.
+- Added `LoginTypeSafety.test.ts` source guard for the typed Login auth contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Login auth smoke | RECONCILED_SOURCE_FIXED / AUTH E2E OPTIONAL | If auth coverage is in the regression pass, verify password login success/failure, username/email/phone candidate fallback, email-code send, resend/rate-limit countdowns, email-code invalid/too-many-attempts failures, successful email login, guest-cart merge behavior, post-login redirect, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:49 UTC QA F3515 Product Detail Type-Safety Reconciliation Handoff
 
 Source status:

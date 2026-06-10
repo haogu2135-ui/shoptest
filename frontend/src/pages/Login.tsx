@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Form, Input, Button, Typography, message, Tabs } from 'antd';
+import type { InputRef } from 'antd/es/input';
 import { CompassOutlined, CustomerServiceOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartApi, persistAuthSession, userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
+import type { Language } from '../i18n';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
@@ -13,6 +15,36 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import './Login.css';
 
 const { Text, Title } = Typography;
+
+type TranslationFunction = (key: string, params?: Record<string, string | number>) => string;
+type PasswordLoginValues = {
+  username?: unknown;
+  password?: string;
+};
+type EmailLoginValues = {
+  email?: unknown;
+  code?: unknown;
+};
+type LoginSessionResponse = Parameters<typeof persistAuthSession>[0] & {
+  id?: unknown;
+};
+type LoginApiResponse = {
+  data: LoginSessionResponse;
+};
+type ApiErrorPayload = {
+  code?: unknown;
+  error?: unknown;
+  message?: unknown;
+  retryAfterSeconds?: unknown;
+  resendIntervalSeconds?: unknown;
+};
+type ApiErrorLike = {
+  response?: {
+    status?: unknown;
+    data?: ApiErrorPayload;
+  };
+  errorFields?: unknown;
+};
 
 const stripControlChars = (value: unknown) => Array.from(String(value || ''), (char) => {
   const code = char.charCodeAt(0);
@@ -53,9 +85,21 @@ const maskEmail = (value: unknown) => {
   return `${name.charAt(0)}***@${domain}`;
 };
 
-const resolvePasswordLoginError = (error: any, fallback: string, t: (key: string, params?: any) => string, language: any) => {
-  const status = Number(error?.response?.status);
-  const serverMessage = String(error?.response?.data?.error || error?.response?.data?.message || '').toLowerCase();
+const asApiError = (error: unknown): ApiErrorLike => (
+  error && typeof error === 'object' ? error as ApiErrorLike : {}
+);
+
+const apiErrorData = (error: unknown): ApiErrorPayload => asApiError(error).response?.data || {};
+
+const apiErrorCode = (error: unknown) => String(apiErrorData(error).code || '').toUpperCase();
+
+const isFormValidationError = (error: unknown) => Boolean(asApiError(error).errorFields);
+
+const resolvePasswordLoginError = (error: unknown, fallback: string, t: TranslationFunction, language: Language) => {
+  const apiError = asApiError(error);
+  const data = apiErrorData(error);
+  const status = Number(apiError.response?.status);
+  const serverMessage = String(data.error || data.message || '').toLowerCase();
   if (status === 429 || serverMessage.includes('too many') || serverMessage.includes('rate limited')) {
     return t('pages.auth.loginRateLimited');
   }
@@ -68,10 +112,12 @@ const resolvePasswordLoginError = (error: any, fallback: string, t: (key: string
   return getApiErrorMessage(error, fallback, language);
 };
 
-const shouldTryNextLoginCandidate = (error: any) => {
-  const status = Number(error?.response?.status);
-  const code = String(error?.response?.data?.code || '').toUpperCase();
-  const serverMessage = String(error?.response?.data?.error || error?.response?.data?.message || '').toLowerCase();
+const shouldTryNextLoginCandidate = (error: unknown) => {
+  const apiError = asApiError(error);
+  const data = apiErrorData(error);
+  const status = Number(apiError.response?.status);
+  const code = String(data.code || '').toUpperCase();
+  const serverMessage = String(data.error || data.message || '').toLowerCase();
   if ([400, 401, 404].includes(status)) return true;
   return code.includes('INVALID') || code.includes('NOT_FOUND') || serverMessage.includes('invalid') || serverMessage.includes('not found');
 };
@@ -87,7 +133,7 @@ const Login: React.FC = () => {
   const [passwordForm] = Form.useForm();
   const [emailForm] = Form.useForm();
   const watchedEmailCode = Form.useWatch('code', emailForm);
-  const codeInputRef = useRef<any>(null);
+  const codeInputRef = useRef<InputRef | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language } = useLanguage();
@@ -143,12 +189,13 @@ const Login: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [verifyRetryCountdown]);
 
-  const getRetryAfterSeconds = (error: any, fallback = 0) => {
-    const retryAfterSeconds = Number(error?.response?.data?.retryAfterSeconds);
+  const getRetryAfterSeconds = (error: unknown, fallback = 0) => {
+    const data = apiErrorData(error);
+    const retryAfterSeconds = Number(data.retryAfterSeconds);
     if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
       return Math.ceil(retryAfterSeconds);
     }
-    const resendIntervalSeconds = Number(error?.response?.data?.resendIntervalSeconds);
+    const resendIntervalSeconds = Number(data.resendIntervalSeconds);
     if (Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0) {
       return Math.ceil(resendIntervalSeconds);
     }
@@ -177,7 +224,7 @@ const Login: React.FC = () => {
     }
   };
 
-  const completeLogin = async (responseData: any) => {
+  const completeLogin = async (responseData: LoginSessionResponse) => {
     const { id } = responseData || {};
     if (!id) {
       throw new Error(t('pages.auth.loginFailed'));
@@ -191,7 +238,7 @@ const Login: React.FC = () => {
     navigate(postLoginRedirectTarget, { replace: true });
   };
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: PasswordLoginValues) => {
     const normalizedLogin = normalizePasswordLogin(values.username);
     passwordForm.setFieldValue('username', normalizedLogin);
     setLoading(true);
@@ -199,19 +246,19 @@ const Login: React.FC = () => {
       { name: 'username', errors: [] },
       { name: 'password', errors: [] },
     ]);
-    let lastError: any = null;
+    let lastError: unknown = null;
     try {
       const loginCandidates = readLoginCandidates(normalizedLogin);
-      let response: any = null;
+      let response: LoginApiResponse | null = null;
       for (const candidate of loginCandidates) {
         try {
-          response = await userApi.login(candidate, values.password);
+          response = await userApi.login(candidate, String(values.password || ''));
           if (candidate !== normalizedLogin) {
             passwordForm.setFieldValue('username', candidate);
           }
           removeSessionStorageItem('loginCandidates');
           break;
-        } catch (candidateError: any) {
+        } catch (candidateError: unknown) {
           lastError = candidateError;
           if (!shouldTryNextLoginCandidate(candidateError)) {
             break;
@@ -222,7 +269,7 @@ const Login: React.FC = () => {
         throw lastError || new Error(t('pages.auth.loginFailed'));
       }
       await completeLogin(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const loginError = resolvePasswordLoginError(error, t('pages.auth.loginFailed'), t, language);
       passwordForm.setFields([
         { name: 'username', errors: [loginError] },
@@ -255,9 +302,9 @@ const Login: React.FC = () => {
       setSentEmailHint(maskEmail(normalizedEmail));
       window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
       message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
-    } catch (error: any) {
-      if (!error?.errorFields) {
-        const errorCode = error?.response?.data?.code;
+    } catch (error: unknown) {
+      if (!isFormValidationError(error)) {
+        const errorCode = apiErrorCode(error);
         if (errorCode === 'RATE_LIMITED') {
           setSendCodeCountdown(getRetryAfterSeconds(error, 60));
         }
@@ -270,7 +317,7 @@ const Login: React.FC = () => {
     }
   };
 
-  const onEmailLogin = async (values: any) => {
+  const onEmailLogin = async (values: EmailLoginValues) => {
     const normalizedCode = normalizeEmailCode(values.code);
     if (normalizedCode.length !== 6) {
       emailForm.setFields([{ name: 'code', errors: [t('pages.auth.emailCodeLength')] }]);
@@ -282,8 +329,8 @@ const Login: React.FC = () => {
       emailForm.setFieldsValue({ email: normalizedEmail, code: normalizedCode });
       const response = await userApi.emailLogin(normalizedEmail, normalizedCode);
       await completeLogin(response.data);
-    } catch (error: any) {
-      const errorCode = error?.response?.data?.code;
+    } catch (error: unknown) {
+      const errorCode = apiErrorCode(error);
       if (errorCode === 'TOO_MANY_ATTEMPTS') {
         const retryAfterSeconds = getRetryAfterSeconds(error, 60);
         setVerifyRetryCountdown(retryAfterSeconds);
