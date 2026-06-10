@@ -27,6 +27,35 @@ import '../styles/mobile-page-contrast.css';
 const { Title, Text } = Typography;
 const orderImageFallback = productImageFallback;
 const resolveOrderImage = resolveProductImage;
+type FormValidationError = { errorFields: unknown[] };
+
+const isFormValidationError = (error: unknown): error is FormValidationError => {
+  if (!error || typeof error !== 'object') return false;
+  return Array.isArray((error as { errorFields?: unknown }).errorFields);
+};
+
+const getProfileApiErrorData = (error: unknown): Record<string, unknown> => {
+  if (!error || typeof error !== 'object') return {};
+  const response = (error as { response?: unknown }).response;
+  if (!response || typeof response !== 'object') return {};
+  const data = (response as { data?: unknown }).data;
+  return data && typeof data === 'object' ? data as Record<string, unknown> : {};
+};
+
+const getProfileApiErrorCode = (error: unknown) => {
+  const code = getProfileApiErrorData(error).code;
+  return typeof code === 'string' ? code : '';
+};
+
+const hasProfileApiResponse = (error: unknown) => (
+  Boolean(error) && typeof error === 'object' && Boolean((error as { response?: unknown }).response)
+);
+
+const getProfileErrorMessage = (error: unknown, fallback: string, language: ReturnType<typeof useLanguage>['language']) => {
+  if (hasProfileApiResponse(error)) return getApiErrorMessage(error, fallback, language);
+  if (error instanceof Error && error.message) return error.message;
+  return getApiErrorMessage(error, fallback, language);
+};
 
 const getPreferredPaymentChannel = (channels: PaymentChannel[], preferred?: string | null) => {
   if (preferred && channels.some((channel) => channel.code === preferred)) {
@@ -437,9 +466,9 @@ const Profile: React.FC = () => {
       setProfileEmailCodeSentTo('');
       setProfileEmailCodeCountdown(0);
       fetchUserInfo();
-    } catch (err: any) {
-      if (err?.errorFields) return;
-      const errorCode = err.response?.data?.code;
+    } catch (err: unknown) {
+      if (isFormValidationError(err)) return;
+      const errorCode = getProfileApiErrorCode(err);
       if (errorCode === 'INVALID_CODE' || errorCode === 'TOO_MANY_ATTEMPTS') {
         const msg = errorCode === 'TOO_MANY_ATTEMPTS'
           ? t('pages.auth.emailCodeTooManyAttempts')
@@ -477,9 +506,9 @@ const Profile: React.FC = () => {
       editForm.setFieldValue('emailCode', '');
       editForm.setFields([{ name: 'emailCode', errors: [] }]);
       message.success(t('pages.auth.emailCodeSentTo', { email: normalizedEmail }));
-    } catch (err: any) {
-      if (err?.errorFields) return;
-      const retryAfterSeconds = Number(err.response?.data?.retryAfterSeconds);
+    } catch (err: unknown) {
+      if (isFormValidationError(err)) return;
+      const retryAfterSeconds = Number(getProfileApiErrorData(err).retryAfterSeconds);
       if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
         setProfileEmailCodeCountdown(Math.ceil(retryAfterSeconds));
       }
@@ -498,8 +527,8 @@ const Profile: React.FC = () => {
       message.success(t('pages.profile.passwordChanged'));
       setPasswordModalVisible(false);
       passwordForm.resetFields();
-    } catch (err: any) {
-      if (err?.errorFields) return;
+    } catch (err: unknown) {
+      if (isFormValidationError(err)) return;
       message.error(getApiErrorMessage(err, t('pages.profile.passwordFailed'), language));
     } finally {
       setPasswordSubmitting(false);
@@ -563,7 +592,7 @@ const Profile: React.FC = () => {
     try {
       await orderApi.cancel(orderId);
       message.success(t('pages.profile.orderCancelled'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.profile.cancelFailed'), language));
     } finally {
       fetchOrders();
@@ -587,8 +616,8 @@ const Profile: React.FC = () => {
       setSelectedPayment(latestPayment);
       setSelectedPaymentMethod(latestPayment.channel || preferredMethod);
       setPaymentModalVisible(true);
-    } catch (err: any) {
-      message.error(err?.response ? getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language) : err.message || t('pages.profile.continuePayFailed'));
+    } catch (err: unknown) {
+      message.error(getProfileErrorMessage(err, t('pages.profile.continuePayFailed'), language));
       fetchOrders();
     } finally {
       setPayingOrderId(null);
@@ -610,8 +639,8 @@ const Profile: React.FC = () => {
       setOrderPayments((items) => [paymentRes.data, ...items.filter((item) => item.id !== paymentRes.data.id)]);
       message.success(t('pages.profile.paymentRefreshed'));
       await fetchOrders();
-    } catch (err: any) {
-      message.error(err?.response ? getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language) : err.message || t('pages.profile.continuePayFailed'));
+    } catch (err: unknown) {
+      message.error(getProfileErrorMessage(err, t('pages.profile.continuePayFailed'), language));
       await fetchOrders();
     } finally {
       setRefreshingPayment(false);
@@ -667,7 +696,7 @@ const Profile: React.FC = () => {
       await orderApi.confirm(orderId);
       message.success(t('pages.profile.receiptConfirmed'));
       fetchOrders();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.profile.confirmFailed'), language));
     }
   };
@@ -701,7 +730,7 @@ const Profile: React.FC = () => {
       setReturnRequestOrder(null);
       setReturnReason('');
       fetchOrders();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.profile.returnFailed'), language));
     } finally {
       setRequestingReturn(false);
@@ -721,7 +750,7 @@ const Profile: React.FC = () => {
       setReturnShipmentOrder(null);
       setReturnTrackingNumber('');
       fetchOrders();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.profile.returnShipmentFailed'), language));
     } finally {
       setSubmittingReturnShipment(false);
@@ -767,8 +796,8 @@ const Profile: React.FC = () => {
       setEditingAddress(null);
       addressForm.resetFields();
       fetchAddresses();
-    } catch (err: any) {
-      if (err?.errorFields) return;
+    } catch (err: unknown) {
+      if (isFormValidationError(err)) return;
       message.error(getApiErrorMessage(err, t('pages.profile.addressSaveFailed'), language));
     } finally {
       setAddressSubmitting(false);
@@ -780,7 +809,7 @@ const Profile: React.FC = () => {
       await addressApi.delete(id);
       message.success(t('pages.profile.addressDeleted'));
       fetchAddresses();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };
@@ -790,7 +819,7 @@ const Profile: React.FC = () => {
       await addressApi.setDefault(id);
       message.success(t('pages.profile.defaultSet'));
       fetchAddresses();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.profile.setFailed'), language));
     }
   };
@@ -870,8 +899,8 @@ const Profile: React.FC = () => {
       setEditingPet(null);
       petForm.resetFields();
       fetchPetProfiles();
-    } catch (err: any) {
-      if (err?.errorFields) return;
+    } catch (err: unknown) {
+      if (isFormValidationError(err)) return;
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setPetSubmitting(false);
@@ -890,7 +919,7 @@ const Profile: React.FC = () => {
       await petProfileApi.delete(id);
       message.success(t('messages.deleteSuccess'));
       fetchPetProfiles();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     }
   };

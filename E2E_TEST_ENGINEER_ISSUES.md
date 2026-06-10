@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 23:29 UTC QA F3515 Profile Type-Safety Reconciliation Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Profile production broad `any` usage is reconciled in current source.
+- This closure was already counted historically, so no tracker counter changed in this update.
+- `frontend/src/pages/Profile.tsx` now handles profile update/email-code/password, order/payment/return, address, and pet failures with `unknown`; form validation and API error metadata narrow through typed helpers.
+- Runtime profile behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for Profile broad `any`, `err?.errorFields`, and direct `err.response?.data` returned no matches.
+- Added `ProfileTypeSafety.test.ts` source guard for the typed Profile API-error contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Customer profile smoke | RECONCILED_SOURCE_FIXED / PROFILE E2E OPTIONAL | If profile coverage is in the regression pass, verify edit profile and email-code errors, change password, address create/edit/delete/default, pet create/edit/delete, order cancel/confirm receipt/return/return shipment, continue payment and payment refresh, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-10 23:25 UTC QA F3515 Coupon Management Type-Safety Reconciliation Handoff
 
 Source status:
