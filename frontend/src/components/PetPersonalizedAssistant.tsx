@@ -118,7 +118,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
       await onAdd(product);
       setProducts((current) => current.filter((item) => item.id !== product.id));
       message.success(t('messages.addCartSuccess'));
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
     } finally {
       setAddingId(null);

@@ -4,6 +4,27 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 16:14 UTC QA F3515 PetPersonalizedAssistant Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Pet Personalized Assistant production `any` usage is closed.
+- `PetPersonalizedAssistant.tsx` personalized quick-add failures now use `unknown`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `PetPersonalizedAssistant.test.ts` source guard rejects the old Pet Personalized Assistant `any` patterns.
+- `CI=true npm test -- --runTestsByPath src/components/PetPersonalizedAssistant.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for `any` in `PetPersonalizedAssistant.tsx` returned no matches.
+- `git diff --check -- frontend/src/components/PetPersonalizedAssistant.tsx frontend/src/components/PetPersonalizedAssistant.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Personalized recommendations load | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Log in with pet profiles, open a surface that renders the assistant, and verify recommended products, pet context, deal/ready tags, and compact/default variants render normally. |
+| Personalized quick add | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Quick-add a recommendation without required options and verify loading state, localized success/error messages, cart update behavior, and removal from the assistant list. |
+| Option-required recommendation | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Select a recommendation with options and verify it navigates to product detail instead of calling quick add. |
+| Guest/no-pet states | PARTIAL_SOURCE_FIXED / STOREFRONT E2E RECOMMENDED | Verify guests see no assistant, and logged-in users without pet profiles see the add-pet/browse actions with responsive layout intact. |
+
 ## 2026-06-10 16:04 UTC QA F3515 ConfigCenter Type-Safety Partial Fix Handoff
 
 Source status:
