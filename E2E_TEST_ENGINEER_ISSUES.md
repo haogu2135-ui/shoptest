@@ -4,6 +4,29 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 17:51 UTC QA F3515 AnnouncementManagement Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Announcement Management production `any` usage is closed.
+- `AnnouncementManagement.tsx` announcement list, save, status-toggle, and delete failures now use `unknown`.
+- AntD validation failures now narrow through `isFormValidationError(...)`, and the editor form is typed with `AnnouncementFormValues`.
+- Localized `getApiErrorMessage(...)` handling is unchanged.
+
+Local verification already run:
+- `AnnouncementManagementTypeSafety.test.ts` source guard rejects the old announcement management `any` and direct `error?.errorFields` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/AnnouncementManagementTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` and direct validation-error access in `AnnouncementManagement.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/AnnouncementManagement.tsx frontend/src/pages/AnnouncementManagementTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Announcement list/search/filter | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open `/admin/announcements`, search and filter by status, page through rows, and verify stats, loading state, empty state, and localized load-failure handling. |
+| Announcement create/edit validation | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Open the editor, trigger required-field/date/link validation, then create or edit a valid announcement and verify localized success/error handling and refreshed list/summary state. |
+| Announcement status toggle | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Toggle an announcement active/inactive and verify permission gating, localized failure handling, row state, and summary counts. |
+| Announcement delete | PARTIAL_SOURCE_FIXED / ADMIN E2E RECOMMENDED | Delete a permitted announcement and verify popconfirm behavior, permission gating, localized success/error handling, and refreshed list/summary state. |
+| Mobile announcement editor | PARTIAL_SOURCE_FIXED / MOBILE ADMIN E2E RECOMMENDED | Check phone/tablet widths for modal scrolling, date picker layering, toolbar wrapping, and table horizontal scroll. |
+
 ## 2026-06-10 17:42 UTC QA F3515 PetGalleryManagement Type-Safety Partial Fix Handoff
 
 Source status:

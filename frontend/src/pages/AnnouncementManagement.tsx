@@ -16,6 +16,15 @@ const DEFAULT_PAGE_SIZE = 20;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
+type AnnouncementFormValues = Omit<SiteAnnouncement, 'id' | 'createdAt' | 'updatedAt' | 'startsAt' | 'endsAt'> & {
+  startsAt?: string | dayjs.Dayjs | null;
+  endsAt?: string | dayjs.Dayjs | null;
+};
+
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
+
 const normalizeDateValue = (value?: string | dayjs.Dayjs | null) => {
   if (!value) return undefined;
   if (dayjs.isDayjs(value)) return value.format('YYYY-MM-DDTHH:mm:ss');
@@ -51,7 +60,7 @@ const AnnouncementManagement: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<AnnouncementFormValues>();
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const canWriteAnnouncements = hasAdminPermission(adminPermissions, currentRole, ANNOUNCEMENTS_WRITE_PERMISSION);
@@ -82,7 +91,7 @@ const AnnouncementManagement: React.FC = () => {
         hasNext: Boolean(response.data.hasNext),
         hasPrevious: Boolean(response.data.hasPrevious),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.fetchFailed'), language));
     } finally {
       setLoading(false);
@@ -211,8 +220,8 @@ const AnnouncementManagement: React.FC = () => {
       message.success(t('pages.announcementAdmin.saved'));
       setModalOpen(false);
       await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.saveFailed'), language));
     } finally {
       setSaving(false);
@@ -233,7 +242,7 @@ const AnnouncementManagement: React.FC = () => {
       });
       message.success(active ? t('pages.announcementAdmin.enabled') : t('pages.announcementAdmin.disabled'));
       await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.statusUpdateFailed'), language));
     } finally {
       setStatusUpdatingId(null);
@@ -257,7 +266,7 @@ const AnnouncementManagement: React.FC = () => {
       await adminApi.deleteAnnouncement(id);
       message.success(t('pages.announcementAdmin.deleted'));
       await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.deleteFailed'), language));
     }
   };
