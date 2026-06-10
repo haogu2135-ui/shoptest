@@ -4,6 +4,30 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 18:09 UTC QA F3515 Register Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but Register production `any` usage is closed.
+- `Register.tsx` register-code send and account-registration submit failures now use `unknown`.
+- API error data narrows through typed helpers, AntD validation failures narrow through `isFormValidationError(...)`, email-code-required detection uses a typed helper, and the email-code input ref uses AntD `InputRef`.
+- Customer-facing register-code and registration-submit messages are unchanged.
+
+Local verification already run:
+- `RegisterTypeSafety.test.ts` source guard rejects the old register `useRef<any>`, `catch (...: any)`, direct `error?.errorFields`, and direct `error.response?.data` patterns.
+- `CI=true npm test -- --runTestsByPath src/pages/RegisterTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=45000` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- Source search for production `any` and direct validation/API-error access in `Register.tsx` returned no matches.
+- `git diff --check -- frontend/src/pages/Register.tsx frontend/src/pages/RegisterTypeSafety.test.ts` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Register-code send success | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Open `/register`, enter a valid email, send a code, and verify masked-email confirmation, TTL/countdown, focus movement to the code field, and localized success text. |
+| Register-code validation and rate limit | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Trigger empty/invalid email validation and a backend `RATE_LIMITED` response; verify form validation stays separate from API toast handling, countdown uses retry-after data, and localized rate-limit copy appears. |
+| Register submit duplicate fields | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Submit duplicate username/email/phone responses and verify the correct field receives localized inline errors plus toast handling. |
+| Register submit email-code required/invalid | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Trigger email-code-required, invalid-code, and too-many-attempts responses and verify the code field, countdown, focus movement, and localized copy. |
+| Register success | PARTIAL_SOURCE_FIXED / AUTH E2E RECOMMENDED | Complete a valid registration, verify normalized username/email/phone/code payload, login prefill storage, success toast, and redirect to `/login`. |
+| Mobile register layout | PARTIAL_SOURCE_FIXED / MOBILE AUTH E2E RECOMMENDED | Check 320-430px widths for validation scrolling, code addon button fit, strong-password errors, visible labels, and no overlap with page chrome. |
+
 ## 2026-06-10 17:59 UTC QA F3515 ForgotPassword Type-Safety Partial Fix Handoff
 
 Source status:

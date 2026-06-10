@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
+import type { InputRef } from 'antd/es/input';
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { setSessionStorageItem } from '../utils/safeStorage';
-import { getApiErrorMessage } from '../utils/apiError';
+import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import './Register.css';
 
 const { Text, Title } = Typography;
@@ -19,6 +20,19 @@ interface RegisterForm {
   phone: string;
   emailCode?: string;
 }
+
+type RegisterApiErrorData = {
+  code?: unknown;
+  emailCodeRequired?: unknown;
+  retryAfterSeconds?: unknown;
+  resendIntervalSeconds?: unknown;
+};
+
+type RegisterApiErrorLike = {
+  response?: {
+    data?: RegisterApiErrorData;
+  };
+};
 
 const phonePattern = /^(?=(?:.*\d){8,20})(\+?[\d\s().-]{8,32})$/;
 const stripControlChars = (value: unknown) => Array.from(String(value || ''), (char) => {
@@ -47,6 +61,15 @@ const uniqueLoginCandidates = (...values: unknown[]) => Array.from(new Set(
     .filter(Boolean),
 ));
 
+const asRegisterApiError = (error: unknown): RegisterApiErrorLike => (
+  error && typeof error === 'object' ? error as RegisterApiErrorLike : {}
+);
+const registerApiErrorData = (error: unknown) => asRegisterApiError(error).response?.data || {};
+const registerApiErrorCode = (error: unknown) => String(registerApiErrorData(error).code || '').toUpperCase();
+const isRegisterEmailCodeRequired = (value: unknown) => value === true || value === 'true';
+const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
+  Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
+);
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -58,7 +81,7 @@ const Register: React.FC = () => {
   const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
   const [sentEmailHint, setSentEmailHint] = useState('');
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
-  const codeInputRef = useRef<any>(null);
+  const codeInputRef = useRef<InputRef | null>(null);
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const registerPageLabel = t('pages.auth.registerTitle');
   const registerLoginActionLabel = `${t('pages.auth.loginNow')}: ${registerPageLabel}`;
@@ -85,10 +108,11 @@ const Register: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [sendCodeCountdown]);
 
-  const getRetryAfterSeconds = (error: any, fallback = 0) => {
-    const retryAfterSeconds = Number(error?.response?.data?.retryAfterSeconds);
+  const getRetryAfterSeconds = (error: unknown, fallback = 0) => {
+    const data = registerApiErrorData(error);
+    const retryAfterSeconds = Number(data.retryAfterSeconds);
     if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) return Math.ceil(retryAfterSeconds);
-    const resendIntervalSeconds = Number(error?.response?.data?.resendIntervalSeconds);
+    const resendIntervalSeconds = Number(data.resendIntervalSeconds);
     if (Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0) return Math.ceil(resendIntervalSeconds);
     return fallback;
   };
@@ -114,9 +138,9 @@ const Register: React.FC = () => {
       form.setFields([{ name: 'emailCode', errors: [] }]);
       window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
       message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
-    } catch (error: any) {
-      if (!error?.errorFields) {
-        const errorCode = error?.response?.data?.code;
+    } catch (error: unknown) {
+      if (!isFormValidationError(error)) {
+        const errorCode = registerApiErrorCode(error);
         if (errorCode === 'RATE_LIMITED') {
           setSendCodeCountdown(getRetryAfterSeconds(error, 60));
         }
@@ -158,11 +182,11 @@ const Register: React.FC = () => {
       setSessionStorageItem('loginCandidates', JSON.stringify(loginCandidates));
       message.success(t('pages.auth.registerSuccess'));
       navigate('/login');
-    } catch (error: any) {
-      const responseData = error.response?.data || {};
-      const serverCode = String(responseData.code || '').toUpperCase();
-      const needsEmailCode = responseData.emailCodeRequired === true || responseData.emailCodeRequired === 'true';
-      const rawMessage = String(error.response?.data?.error || '').trim();
+    } catch (error: unknown) {
+      const responseData = registerApiErrorData(error);
+      const serverCode = registerApiErrorCode(error);
+      const needsEmailCode = isRegisterEmailCodeRequired(responseData.emailCodeRequired);
+      const rawMessage = getApiErrorDiagnosticText(error);
       const normalizedMessage = rawMessage.toLowerCase();
       if (needsEmailCode || serverCode === 'INVALID_CODE' || serverCode === 'TOO_MANY_ATTEMPTS') {
         setEmailCodeRequired(true);
