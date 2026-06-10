@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-10 22:09 UTC QA F3515 Admin Layout Menu Type-Safety Partial Fix Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, but the Admin Layout menu filtering broad `any` usage is closed.
+- `AdminLayout.tsx` now uses `AdminMenuItem` plus `isAdminMenuItem(...)` for permission-gated menu entries instead of `filter(Boolean) as any[]`.
+- Runtime admin navigation behavior should be unchanged.
+
+Local verification already run:
+- Source search for `filter(Boolean) as any[]` and runtime `as any` in `AdminLayout.tsx` returned no matches.
+- Added `AdminLayoutTypeSafety.test.ts` source guard for the typed menu filter contract.
+- `git diff --check -- frontend/src/components/AdminLayout.tsx frontend/src/components/AdminLayoutTypeSafety.test.ts` passed.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin shell navigation smoke | PARTIAL_SOURCE_FIXED / ADMIN E2E OPTIONAL | If admin shell coverage is in the regression pass, verify role-gated menu entries, default admin redirect, support badge rendering, mobile drawer navigation, and logout. No dedicated E2E is required for this type-safety-only change. |
+
 ## 2026-06-10 21:59 UTC QA F3515 Review Management Type-Safety Partial Fix Handoff
 
 Source status:
