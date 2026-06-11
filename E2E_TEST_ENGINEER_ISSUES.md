@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 19:50 UTC TEST F2729 Checkout Support Panel Dismiss Handoff
+
+Source status:
+- TEST F2729 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Checkout support panel dismissal now starts a short suppression window.
+- Auto-open skips while that recent manual dismissal suppression is active, even if `supportPanelAutoOpenKey` changes because subtotal, coupon opportunity, add-on target, or readiness state changes.
+- Reopening the panel clears the suppression window so explicit user intent still works.
+- `./mvnw -q -Dtest=CheckoutSupportPanelDismissContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Support panel manual dismiss stability | SOURCE_FIXED / CHECKOUT E2E PENDING | On checkout with a next-action/support opportunity, let the support panel auto-open, close it, then change cart quantity/coupon/add-on state so the old auto-open key would change. Verify the panel does not immediately reopen. |
+| Explicit support action still opens | SOURCE_FIXED / CHECKOUT E2E PENDING | After dismissing the auto-opened panel, click the checkout Support/Need help action. Verify the support panel opens and remains usable. |
+| Native back dismissal | SOURCE_FIXED / APP WEBVIEW E2E OPTIONAL | In app/WebView mode with the panel open, use native back to close it, then trigger a checkout state change. Verify it stays closed during the suppression window. |
+
 ## 2026-06-11 19:45 UTC TEST F2727 Checkout Idempotency Recovery Handoff
 
 Source status:

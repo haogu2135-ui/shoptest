@@ -35,6 +35,7 @@ const mobileCheckoutQuery = '(max-width: 780px)';
 const CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS = 30 * 1000;
 const CHECKOUT_PAYMENT_POLL_LOCK_SETTLE_MS = 75;
 const CHECKOUT_PAYMENT_POLL_RESULT_MAX_MS = 30 * 60 * 1000 + CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS;
+const SUPPORT_PANEL_DISMISS_SUPPRESS_MS = 30 * 1000;
 
 type CheckoutPaymentPollLock = {
   ownerId: string;
@@ -353,6 +354,7 @@ const Checkout: React.FC = () => {
     paymentPollOwnerIdRef.current = createCheckoutPaymentPollOwnerId();
   }
   const supportPanelDismissedKeyRef = React.useRef<string | null>(null);
+  const supportPanelDismissedUntilRef = React.useRef(0);
   const couponQuoteSeqRef = React.useRef(0);
   const { t, language } = useLanguage();
   const checkoutCartItemName = (item: Pick<CartItem, 'productId' | 'productName'>) => (
@@ -843,6 +845,9 @@ const Checkout: React.FC = () => {
       return;
     }
     if (needsCheckoutSupport) {
+      if (supportPanelDismissedUntilRef.current > Date.now()) {
+        return;
+      }
       if (supportPanelDismissedKeyRef.current === supportPanelAutoOpenKey) {
         return;
       }
@@ -852,15 +857,20 @@ const Checkout: React.FC = () => {
   const handleSupportPanelToggle = useCallback((event: React.SyntheticEvent<HTMLDetailsElement>) => {
     const nextOpen = event.currentTarget.open;
     setSupportPanelOpen(nextOpen);
-    supportPanelDismissedKeyRef.current = nextOpen
-      ? null
-      : supportPanelAutoOpenKey || null;
+    if (nextOpen) {
+      supportPanelDismissedKeyRef.current = null;
+      supportPanelDismissedUntilRef.current = 0;
+      return;
+    }
+    supportPanelDismissedKeyRef.current = supportPanelAutoOpenKey || null;
+    supportPanelDismissedUntilRef.current = Date.now() + SUPPORT_PANEL_DISMISS_SUPPRESS_MS;
   }, [supportPanelAutoOpenKey]);
   const closeSupportPanelForNativeBack = useCallback(() => {
     if (giftCelebrationOpen || !supportPanelOpen) {
       return false;
     }
     supportPanelDismissedKeyRef.current = supportPanelAutoOpenKey || null;
+    supportPanelDismissedUntilRef.current = Date.now() + SUPPORT_PANEL_DISMISS_SUPPRESS_MS;
     setSupportPanelOpen(false);
     return true;
   }, [giftCelebrationOpen, supportPanelAutoOpenKey, supportPanelOpen]);

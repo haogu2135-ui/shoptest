@@ -4801,8 +4801,11 @@ Notes:
 - File: `frontend/src/pages/Checkout.tsx` (lines 1001-1012)
 - Severity: MEDIUM
 - Description: When the user closes the support panel, the dismissed key is set to the current `supportPanelAutoOpenKey`. However, if the cart total or coupon state shifts, a new key is generated and the dismissed key no longer matches, so the panel re-opens unexpectedly.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 19:50 UTC)
 - Expected fix direction: Only auto-open on initial mount or when the key changes from a truly different logical state. Add a debounce or check if the panel was manually dismissed within the last few seconds.
+- Resolution: Checkout now records a short manual-dismiss suppression window when the savings/support panel is closed from the summary toggle or native back. The auto-open effect checks that window before comparing `supportPanelAutoOpenKey`, so cart total, coupon, add-on, or readiness key changes cannot immediately reopen a panel the shopper just dismissed. Reopening the panel clears the suppression window.
+- Regression guard: Added `CheckoutSupportPanelDismissContractTest`, which requires the suppression constant/ref, verifies the auto-open effect skips while suppression is active, requires both close paths to start suppression, and requires reopening to clear it.
+- Verification: `./mvnw -q -Dtest=CheckoutSupportPanelDismissContractTest test` passed.
 
 ### F2730: MEDIUM — Race condition in guest user creation
 
