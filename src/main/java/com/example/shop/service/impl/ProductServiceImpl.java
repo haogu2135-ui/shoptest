@@ -80,6 +80,9 @@ public class ProductServiceImpl implements ProductService {
     private static final int MAX_FEATURED_PRODUCT_LIMIT = 36;
     private static final int HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT = 100;
     private static final int HARD_ADMIN_PRODUCT_PAGE_SIZE_LIMIT = 500;
+    private static final int DEFAULT_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE = 500;
+    private static final int HARD_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE = 1_000;
+    private static final int HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS = 5_000;
     private static final String SMART_DEVICES_COLLECTION = "smart-devices";
     private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("(?is)<!--.*?-->");
     private static final Pattern HTML_BLOCK_PATTERN = Pattern.compile("(?is)<(script|style|iframe|object|embed|svg|math)\\b[^>]*>.*?</\\1\\s*>");
@@ -2633,35 +2636,72 @@ public class ProductServiceImpl implements ProductService {
         if (productRepository == null) {
             return Map.of();
         }
-        List<Product> products = productRepository.findAll();
-        if (products == null || products.isEmpty()) {
-            return Map.of();
-        }
         Map<String, Set<Long>> owners = new LinkedHashMap<>();
-        for (Product product : products) {
-            if (product == null || product.getId() == null || product.getVariants() == null || product.getVariants().isBlank()) {
-                continue;
+        int pageSize = importVariantSkuScanPageSize();
+        int maxRows = importVariantSkuScanMaxRows();
+        int scannedRows = 0;
+        for (int page = 0; scannedRows < maxRows; page++) {
+            List<Object[]> rows = productRepository.findVariantSkuOwnerRows(PageRequest.of(page, pageSize));
+            if (rows == null || rows.isEmpty()) {
+                break;
             }
-            try {
-                JsonNode variants = OBJECT_MAPPER.readTree(product.getVariants());
-                if (variants == null || !variants.isArray()) {
-                    continue;
+            for (Object[] row : rows) {
+                scannedRows++;
+                registerVariantSkuOwnerRow(row, owners);
+                if (scannedRows >= maxRows) {
+                    break;
                 }
-                for (JsonNode variant : variants) {
-                    if (variant == null || !variant.isObject()) {
-                        continue;
-                    }
-                    String sku = jsonText(variant.get("sku"));
-                    if (sku == null || sku.isBlank()) {
-                        continue;
-                    }
-                    owners.computeIfAbsent(normalizeImportSkuKey(sku), ignored -> new LinkedHashSet<>()).add(product.getId());
-                }
-            } catch (Exception ignored) {
-                // Existing malformed variant data should not block unrelated imports.
+            }
+            if (rows.size() < pageSize) {
+                break;
             }
         }
         return owners;
+    }
+
+    private int importVariantSkuScanPageSize() {
+        int configured = runtimeConfig == null
+                ? DEFAULT_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE
+                : runtimeConfig.getInt("product.import.variant-sku-scan-page-size", DEFAULT_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE);
+        return Math.max(1, Math.min(configured, HARD_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE));
+    }
+
+    private int importVariantSkuScanMaxRows() {
+        int configured = runtimeConfig == null
+                ? HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS
+                : runtimeConfig.getInt("product.import.variant-sku-scan-max-rows", HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS);
+        return Math.max(1, Math.min(configured, HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS));
+    }
+
+    private void registerVariantSkuOwnerRow(Object[] row, Map<String, Set<Long>> owners) {
+        if (row == null || row.length < 2 || row[0] == null || row[1] == null) {
+            return;
+        }
+        Long productId = row[0] instanceof Number
+                ? ((Number) row[0]).longValue()
+                : parseLong(String.valueOf(row[0]), false, "id");
+        String variantJson = String.valueOf(row[1]);
+        if (productId == null || productId <= 0 || variantJson.isBlank()) {
+            return;
+        }
+        try {
+            JsonNode variants = OBJECT_MAPPER.readTree(variantJson);
+            if (variants == null || !variants.isArray()) {
+                return;
+            }
+            for (JsonNode variant : variants) {
+                if (variant == null || !variant.isObject()) {
+                    continue;
+                }
+                String sku = jsonText(variant.get("sku"));
+                if (sku == null || sku.isBlank()) {
+                    continue;
+                }
+                owners.computeIfAbsent(normalizeImportSkuKey(sku), ignored -> new LinkedHashSet<>()).add(productId);
+            }
+        } catch (Exception ignored) {
+            // Existing malformed variant data should not block unrelated imports.
+        }
     }
 
     private String normalizeImportSkuKey(String sku) {

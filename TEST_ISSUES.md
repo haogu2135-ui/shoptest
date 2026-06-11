@@ -4861,8 +4861,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/impl/ProductServiceImpl.java` (lines 2534-2567)
 - Severity: MEDIUM
 - Description: `loadExistingVariantSkuOwners` calls `productRepository.findAll()` which loads the entire product catalog into memory to check for variant SKU uniqueness during CSV import. For large catalogs, this causes high memory usage and slow import times.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 20:27 UTC)
 - Expected fix direction: Add a dedicated repository method that queries only the `id` and `variants` columns, or use a database-level unique constraint on variant SKUs.
+- Resolution: CSV variant-SKU duplicate preflight now pages through lightweight `(id, variants)` projection rows from `ProductRepository.findVariantSkuOwnerRows(Pageable)` instead of loading full `Product` entities with `productRepository.findAll()`. The scan uses configurable page size and max-row bounds (`product.import.variant-sku-scan-page-size`, `product.import.variant-sku-scan-max-rows`) so large catalogs do not require full entity hydration.
+- Regression guard: Added `ProductImportVariantSkuOwnerScanContractTest`, which requires `loadExistingVariantSkuOwners` to avoid `productRepository.findAll()`, page through `findVariantSkuOwnerRows(PageRequest.of(page, pageSize))`, keep runtime scan bounds, parse projection rows, and use a repository query that selects only `p.id` and `p.variants`.
+- Verification: `./mvnw -q -Dtest=ProductImportVariantSkuOwnerScanContractTest test` passed.
 
 ### F2735: MEDIUM — Product name duplicate check loads all category products into memory
 

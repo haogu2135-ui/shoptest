@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 20:27 UTC TEST F2734 Product Import Variant SKU Projection Scan Handoff
+
+Source status:
+- TEST F2734 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- CSV import variant-SKU duplicate preflight now pages through `(id, variants)` projection rows instead of full `Product` entities.
+- The scan page size and maximum scanned rows are bounded and runtime configurable through `product.import.variant-sku-scan-page-size` and `product.import.variant-sku-scan-max-rows`.
+- `ProductRepository.findVariantSkuOwnerRows(Pageable)` selects only `p.id` and `p.variants`.
+- `./mvnw -q -Dtest=ProductImportVariantSkuOwnerScanContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Import duplicate variant SKU | SOURCE_FIXED / ADMIN PRODUCT E2E PENDING | Seed an existing product with variant SKU `SKU-200`, import a CSV row with variant SKU ` sku-200 ` on another product, and verify preview/import blocks with the duplicate variant SKU error. |
+| Existing product self-update | SOURCE_FIXED / ADMIN PRODUCT E2E PENDING | Import/update the same product id with its existing variant SKU and verify the import is allowed instead of flagging itself as a duplicate. |
+| Large catalog import preflight | SOURCE_FIXED / PERFORMANCE E2E OPTIONAL | With a large product table, run CSV preview containing variant SKUs and capture SQL/log evidence that import preflight pages `(id, variants)` projection rows rather than hydrating full product rows. |
+
 ## 2026-06-11 20:21 UTC TEST F2733 Redis Login Failure Scan Handoff
 
 Source status:

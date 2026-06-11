@@ -75,6 +75,9 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     @Query("select p from Product p where p.stock is not null and p.stock < 10 order by p.stock asc, p.id asc")
     List<Product> findLowStockProducts(Pageable pageable);
 
+    @Query("select p.id, p.variants from Product p where p.variants is not null and p.variants <> '' order by p.id asc")
+    List<Object[]> findVariantSkuOwnerRows(Pageable pageable);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Product p where p.id in :ids")
     List<Product> findAllByIdForUpdate(@Param("ids") List<Long> ids);
