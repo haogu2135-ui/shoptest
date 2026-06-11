@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 12:02 UTC TEST PERF-013 Coupon Usage Counter Handoff
+
+Source status:
+- TEST PERF-013 is closed as FIXED / CURRENT_SOURCE_COVERED / DUPLICATE_OF_QA_F9340 / REGRESSION_GUARD_ADDED.
+- Current `CouponService.useCoupon(...)` does not read-modify-write `Coupon.usedCount`; it first changes the selected `user_coupons` row from `UNUSED` to `USED` through `userCouponMapper.markUsed(...)`.
+- `UserCouponMapper.xml` guards `markUsed` with `WHERE id = #{id} AND status = 'UNUSED'`, so concurrent redemption of the same user coupon can advance the counter once.
+- `CouponRepository.incrementUsedCount(...)` increments `coupons.used_count` in one database UPDATE, and `releaseUsedCoupon(...)` decrements only after `releaseUsed(...)` changes a `USED` row back to `UNUSED`.
+- `CouponUsageCounterContractTest` guards the status-gated redemption/release path, database-side counter updates, and schema/backfill contract.
+
+Local verification already run:
+- Source/XML/schema search confirmed the conditional user-coupon status updates, database-side `used_count` increment/decrement, and schema/backfill coverage.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=CouponUsageCounterContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Coupon redemption checkout | CURRENT_SOURCE_COVERED / CHECKOUT/API E2E PENDING | Claim or grant a coupon, redeem it during checkout, and verify the order records the coupon while `user_coupons.status` becomes `USED` and `coupons.used_count` increments once. Repeat the same user coupon and verify the counter does not double-increment. |
+| Coupon release/cancellation | CURRENT_SOURCE_COVERED / CHECKOUT/API E2E PENDING | Exercise payment expiry or cancellation that releases a used coupon. Verify the user coupon returns to `UNUSED`, the order coupon link is cleared where expected, and `coupons.used_count` decrements without going below zero. |
+
 ## 2026-06-11 11:53 UTC TEST PERF-012 Hibernate Flush Mode Handoff
 
 Source status:
