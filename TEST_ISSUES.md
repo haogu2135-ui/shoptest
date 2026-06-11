@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer stale stack trace leak triage (2026-06-11 05:01 UTC)**: Closed QA **SEC-NEW-003** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / DUPLICATE_OF_F3499 / REGRESSION_GUARD_CONFIRMED**. The reported `src/main/java/com/example/shop/GlobalExceptionHandler.java` path is not tracked in current source; the active `GlobalApiExceptionHandler` logs unexpected failures through SLF4J and returns a sanitized generic 500 response instead of stack traces. Current production Java has no `.printStackTrace()` calls. Verification: `git ls-files` confirmed the stale handler path is absent; `rg -n "printStackTrace\s*\(" src/main/java` returned no matches; `git diff --check` passed; `./mvnw -q -Dtest=EmptyCatchBlockContractTest test` passed.
+
 - **Maintainer stale test credential triage (2026-06-11 04:43 UTC)**: Closed QA **SEC-NEW-002** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / SECRET_REDACTED / REGRESSION_GUARD_ADDED**. The reported `src/test/java/com/example/shop/service/impl/UserServiceImplTest.java` path is not tracked in current source, and Git index searches found no tracked occurrence of the previously reported remote MySQL host or password literal. The QA tracker entry was redacted so the sensitive values are no longer stored in the issue text. Added `SensitiveCredentialLeakContractTest` to reject the stale test path and the specific leaked literals without embedding those literals directly in test source. Verification: source searches confirmed the stale path and sensitive literals are absent from the Git index; `git diff --check` passed; `./mvnw -q -Dtest=SensitiveCredentialLeakContractTest test` passed.
 
 - **Maintainer support WebSocket dependency fix (2026-06-11 04:33 UTC)**: Closed QA **F3446** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. `SupportManagement.tsx` now keeps the admin WebSocket connection keyed by `adminSupportToken`, reading permission state, translated fallback text, and queue-merge handling through refs. `CustomerSupportWidget.tsx` keeps the authenticated customer socket keyed by `[open, token]`, reading session sorting/upsert and translated fallback text through refs. Expanded `SupportManagementTypeSafety.test.ts` and `CustomerSupportWidgetTypeSafety.test.ts` to guard both the committed ref-backed implementation and the current hook-backed keyed-connection implementation while rejecting the old callback/translation dependency arrays. Verification: staged source checks confirmed the old socket dependency arrays are absent from the committed implementation and `git diff --cached --check` passed. Frontend Jest was not run because `frontend/node_modules` is missing in this workspace.
@@ -3279,8 +3281,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: The global exception handler returns full stack traces in the response body for 500 errors.
 - Impact: Information disclosure — attackers can see internal code structure
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_NON_ISSUE / DUPLICATE_OF_F3499 / REGRESSION_GUARD_CONFIRMED
 - Expected fix direction: Log the full stack trace server-side but return only a generic error message to the client.
+- Triage: Current source does not track the reported `GlobalExceptionHandler.java`; active `GlobalApiExceptionHandler` logs unexpected exceptions server-side and returns sanitized `"Internal server error"` responses. Current production Java has no `.printStackTrace()` calls.
 
 ### SEC-NEW-004: Actuator /env endpoint exposed
 

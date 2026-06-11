@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 05:01 UTC QA SEC-NEW-003 Stale Stack Trace Leak Handoff
+
+Source status:
+- QA SEC-NEW-003 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / DUPLICATE_OF_F3499 / REGRESSION_GUARD_CONFIRMED.
+- The reported `src/main/java/com/example/shop/GlobalExceptionHandler.java` path is not tracked in current source.
+- The active `GlobalApiExceptionHandler` logs unexpected exceptions through SLF4J and returns sanitized generic 500 responses instead of stack traces or exception details.
+
+Local verification already run:
+- `git ls-files` confirmed the stale handler path is absent.
+- `rg -n "printStackTrace\s*\(" src/main/java` returned no production matches.
+- `git diff --check` passed for the updated issue handoff files.
+- `./mvnw -q -Dtest=EmptyCatchBlockContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Stack trace leak guard | CURRENT_SOURCE_NON_ISSUE / NO BROWSER E2E REQUIRED | Keep the F3499/F3526 `printStackTrace()` regression guard in CI. Browser/device E2E is not required because this closure is a current-source static security triage. |
+
 ## 2026-06-11 04:43 UTC QA SEC-NEW-002 Stale Test Credential Handoff
 
 Source status:
