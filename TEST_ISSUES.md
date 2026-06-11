@@ -3547,8 +3547,9 @@ Notes:
 - Severity: LOW
 - Symptom: `getEligibleCoupons` loads all active coupons and filters in Java rather than in SQL.
 - Impact: Slow coupon eligibility checks
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Push eligibility filters to SQL.
+- Triage (2026-06-11 13:01 UTC): The reported `getEligibleCoupons` path is stale against current source. Current coupon eligibility reads use `CouponService.findAvailableUserCoupons(...)`, which resolves the capped `coupon.available-max-rows` limit and delegates to `userCouponMapper.findUnusedByUserIdLimited(userId, limit)` instead of loading all active coupons in Java. The MyBatis query filters by current `user_id`, `UNUSED` user-coupon status, `ACTIVE` coupon status, start/end time window, deterministic `ORDER BY c.end_at ASC, uc.id DESC`, and `LIMIT #{limit}` in SQL. Checkout quote ranking only operates on that bounded current-user result, and an explicit selected coupon is revalidated with `findByIdAndUserId(...)`. Added `CouponEligibilityQueryContractTest` to reject stale full-scan eligible-coupon paths and guard the bounded SQL eligibility query.
 
 ### PERF-018: recommendProducts filters in memory
 

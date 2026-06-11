@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 13:01 UTC TEST PERF-017 Coupon Eligibility Query Handoff
+
+Source status:
+- TEST PERF-017 FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+
+Local verification already run:
+- Source/XML search confirmed no current `getEligibleCoupons` full-scan path and confirmed `findAvailableUserCoupons(...)` delegates to the bounded `findUnusedByUserIdLimited(userId, limit)` mapper query.
+- `./mvnw -q -Dtest=CouponEligibilityQueryContractTest test` passed.
+- `git diff --check` passed for the updated issue docs and contract test.
+- `target/` was removed after Maven verification.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Available coupon wallet and checkout quote | CURRENT_SOURCE_COVERED / COUPON E2E OPTIONAL | In an authenticated session, grant or claim active, expired, inactive, future-dated, and below-threshold coupons. Verify the available-coupons API/UI only exposes currently active unused user coupons and checkout quote still selects or validates the best usable coupon. |
+| Large coupon wallet | CURRENT_SOURCE_COVERED / API E2E OPTIONAL | Seed a user with more than `coupon.available-max-rows` unused coupons and verify the available-coupon response remains bounded, deterministic, and still usable in checkout. |
+
 ## 2026-06-11 12:40 UTC TEST PERF-016 Fuzzy Dedup Service Handoff
 
 Source status:
