@@ -228,7 +228,8 @@ public class SupportController {
                 "SUPPORT_MESSAGE_SEND", sessionId, request);
         try {
             String content = body == null || body.get("content") == null ? "" : String.valueOf(body.get("content"));
-            SupportMessage sent = supportService.sendAdminMessage(currentUserId(), sessionId, content);
+            SupportMessage sent = supportService.sendAdminMessage(currentUserId(), sessionId, content,
+                    currentAdminSupportRole(authentication));
             auditLogService.record("SUPPORT_MESSAGE_SEND", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
                     "Support message sent", supportMessageAuditMetadata(sent));
             return ResponseEntity.ok(Map.of(
@@ -435,6 +436,11 @@ public class SupportController {
 
     private Long currentUserId() {
         return currentUser().getId();
+    }
+
+    private String currentAdminSupportRole(Authentication authentication) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        return SecurityUtils.isSuperAdmin(user) ? "SUPER_ADMIN" : "ADMIN";
     }
 
     private UserDetailsImpl currentUser() {

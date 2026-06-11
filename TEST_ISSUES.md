@@ -4837,8 +4837,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/SupportService.java` (lines 204-214)
 - Severity: MEDIUM
 - Description: `sendAdminMessage` auto-assigns the admin to the session if `assignedAdminId` is null, without verifying that the caller actually has an ADMIN role. Any authenticated user could assign themselves as admin on an unassigned support session.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 20:15 UTC)
 - Expected fix direction: Add an explicit role check or assert that `senderRole` is `"ADMIN"` before auto-assigning.
+- Resolution: Admin support replies now use an explicit `sendAdminMessage(adminId, sessionId, content, senderRole)` entrypoint. The service validates `senderRole` is `ADMIN` or `SUPER_ADMIN` before reading or assigning the session, while the generic `sendMessage` entrypoint rejects forged admin roles and remains a user-message path. REST admin support replies pass the authenticated admin/super-admin role, and the WebSocket admin reply path passes the socket's verified support role.
+- Regression guard: Added `SupportAdminMessageRoleGuardTest`, which verifies forged `sendMessage(..., "ADMIN", ...)` calls cannot auto-assign, non-admin roles are rejected before session lookup/assignment, and valid ADMIN/SUPER_ADMIN replies assign unassigned sessions while storing support messages with the canonical `ADMIN` sender role.
+- Verification: `./mvnw -q -Dtest=SupportAdminMessageRoleGuardTest test` passed.
 
 ### F2733: MEDIUM — Redis KEYS command blocks server during login failure scan
 

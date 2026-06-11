@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 20:15 UTC TEST F2732 Support Admin Reply Role Guard Handoff
+
+Source status:
+- TEST F2732 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Service-layer admin support replies now require an explicit sender role of `ADMIN` or `SUPER_ADMIN` before session lookup or auto-assignment.
+- The generic support message entrypoint rejects forged `ADMIN` roles, so callers cannot self-assign an unassigned support session by passing a string role.
+- REST admin replies pass the authenticated admin/super-admin role; WebSocket admin replies pass the verified socket support role.
+- `./mvnw -q -Dtest=SupportAdminMessageRoleGuardTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin REST support reply | SOURCE_FIXED / ADMIN SUPPORT E2E PENDING | As an admin with `support:reply`, reply to an unassigned open support session through `/admin/support/sessions/{id}/messages`. Verify the message is sent, the session is assigned to that admin, and the response does not expose internal context fields. |
+| Non-admin support API guard | SOURCE_FIXED / SUPPORT SECURITY E2E PENDING | As a normal authenticated user, attempt to hit the admin support reply path or otherwise submit a support payload that claims an admin role. Verify it is forbidden/rejected and the session remains unassigned. |
+| Admin WebSocket support reply | SOURCE_FIXED / ADMIN SUPPORT WS E2E PENDING | Connect with a valid admin support WebSocket ticket, reply to an unassigned session, and verify the reply broadcasts normally and assigns the admin. Recheck a customer socket cannot send an admin-role payload. |
+
 ## 2026-06-11 20:06 UTC TEST F2731 Order Delete Status Guard Handoff
 
 Source status:

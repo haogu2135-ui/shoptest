@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -180,19 +181,21 @@ public class SupportService {
     }
 
     @Transactional
-    public SupportMessage sendAdminMessage(Long adminId, Long sessionId, String content) {
-        SupportSession session = supportSessionMapper.findById(sessionId);
-        if (session == null) {
-            throw new IllegalArgumentException("Support session not found");
-        }
-        if (session.getAssignedAdminId() == null) {
-            supportSessionMapper.assignAdmin(sessionId, adminId);
-        }
-        return sendMessage(session.getId(), adminId, "ADMIN", content);
+    public SupportMessage sendAdminMessage(Long adminId, Long sessionId, String content, String senderRole) {
+        requireAdminSenderRole(senderRole);
+        return sendMessageInternal(sessionId, adminId, "ADMIN", content);
     }
 
     @Transactional
     public SupportMessage sendMessage(Long sessionId, Long senderId, String senderRole, String content) {
+        String normalizedRole = normalizeSenderRole(senderRole);
+        if ("ADMIN".equals(normalizedRole)) {
+            throw new IllegalStateException("Admin support messages must use the admin message entrypoint");
+        }
+        return sendMessageInternal(sessionId, senderId, normalizedRole, content);
+    }
+
+    private SupportMessage sendMessageInternal(Long sessionId, Long senderId, String senderRole, String content) {
         String normalizedContent = normalizeContent(content);
         if (normalizedContent.isEmpty()) {
             throw new IllegalArgumentException("Message content is required");
@@ -220,6 +223,28 @@ public class SupportService {
         supportSessionMapper.updateLastMessage(sessionId, message.getContent());
         SupportMessage saved = supportMessageMapper.findById(message.getId());
         return saved == null ? message : saved;
+    }
+
+    private String normalizeSenderRole(String senderRole) {
+        String normalized = senderRole == null ? "USER" : senderRole.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || "USER".equals(normalized)) {
+            return "USER";
+        }
+        if (isAdminSenderRole(normalized)) {
+            return "ADMIN";
+        }
+        throw new IllegalArgumentException("Unsupported support message sender role");
+    }
+
+    private void requireAdminSenderRole(String senderRole) {
+        String normalized = senderRole == null ? "" : senderRole.trim().toUpperCase(Locale.ROOT);
+        if (!isAdminSenderRole(normalized)) {
+            throw new IllegalStateException("Admin role is required to send support messages");
+        }
+    }
+
+    private boolean isAdminSenderRole(String senderRole) {
+        return "ADMIN".equals(senderRole) || "SUPER_ADMIN".equals(senderRole);
     }
 
     private int normalizeMessageLimit(Integer limit) {

@@ -157,7 +157,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
                 if (session == null) {
                     throw new IllegalArgumentException("Support session not found");
                 }
-                SupportMessage message = supportService.sendAdminMessage(userId, session.getId(), content);
+                SupportMessage message = supportService.sendAdminMessage(userId, session.getId(), content, role);
                 SupportSession updatedSession = supportService.getSession(message.getSessionId());
                 auditAdminSocketAction(socket, "SUPPORT_MESSAGE_SEND", "SUCCESS", session.getId(),
                         "Support message sent", supportMessageAuditMetadata(message));

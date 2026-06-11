@@ -76,7 +76,7 @@ class SupportControllerAdminResponseTest {
         grantSupportPermission(AdminRoleService.SUPPORT_REPLY_PERMISSION);
         SupportMessage message = supportMessage();
         SupportSession session = adminSession();
-        when(supportService.sendAdminMessage(7L, 55L, "hello")).thenReturn(message);
+        when(supportService.sendAdminMessage(7L, 55L, "hello", "ADMIN")).thenReturn(message);
         when(supportService.getSession(55L)).thenReturn(session);
 
         ResponseEntity<?> response = controller.sendSupportMessage(
