@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer Redis KEYS usage triage (2026-06-11 09:49 UTC)**: Closed TEST **PERF-004** as **FIXED / SOURCE_FIXED / DUPLICATE_OF_QA_F3427_AND_F3452 / REGRESSION_GUARD_ADDED**. Current production Java source has no `.keys(...)` Redis calls. `RateLimitService.clearRedisBuckets()` and `TokenBlacklistService.findLoginIpFailures()` enumerate matching keys through `ScanOptions.scanOptions()` and `connection.scan(options)` with bounded runtime-configurable counts. Added `RedisKeysUsageContractTest` to scan production Java for blocking Redis `KEYS` usage and require the current SCAN contracts. Verification: production source search found no `.keys(` calls; `git diff --check` passed; `./mvnw -q -Dtest=RedisKeysUsageContractTest test` passed.
+
 - **Maintainer checkout stock distinct-save triage (2026-06-11 09:29 UTC)**: Closed TEST **PERF-003** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. The stale `updateProductStock` / `ProductMapper.updateStock` checkout target is absent. Current member and guest checkout mutate locked product entities during item validation, collect touched products in a `LinkedHashMap`, and call `saveReservedProducts(...)` after the loop so repeated checkout lines for the same product persist once per distinct product rather than once per item. Added `CheckoutStockDistinctProductSaveContractTest` to guard the deferred distinct-product persistence contract. Verification: source search confirmed the stale update target is absent and deferred save contract is present; `git diff --check` passed; `./mvnw -q -Dtest=CheckoutStockDistinctProductSaveContractTest test` passed.
 
 - **Maintainer checkout stock batch-load triage (2026-06-11 08:59 UTC)**: Closed TEST **PERF-002** as **WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current member checkout loads selected cart products through `loadProductsForCartItems(selectedItems, reserveStock)`, which de-duplicates product IDs and uses `productRepository.findAllByIdForUpdate(productIds)` when reserving stock. Current guest checkout also de-duplicates product IDs and uses the same bulk pessimistic-lock query for reservations. Added `CheckoutStockBatchLoadingContractTest` to reject per-item product stock lookups and require the bulk lock contract. Verification: source search confirmed the bulk stock-load paths; `git diff --check` passed; `./mvnw -q -Dtest=CheckoutStockBatchLoadingContractTest test` passed.
@@ -3391,8 +3393,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: `clearCacheByPattern` uses the Redis `KEYS` command, which blocks the Redis server and is O(N) where N is the total number of keys.
 - Impact: Redis performance degradation, potential timeout for large caches
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / DUPLICATE_OF_QA_F3427_AND_F3452 / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use `SCAN` instead of `KEYS` for pattern-based cache invalidation.
+- Triage (2026-06-11 09:49 UTC): Current production Java has no `.keys(...)` Redis calls. The active pattern-enumeration paths use Redis SCAN: `RateLimitService.clearRedisBuckets()` scans/deletes rate-limit buckets with bounded `traffic.rate-limit.redis-clear-scan-count`, and `TokenBlacklistService.findLoginIpFailures()` scans `login:ip:*` with bounded `security.ip-blacklist.redis-scan-count`. Added `RedisKeysUsageContractTest` to guard against blocking Redis KEYS usage returning.
 
 ### PERF-005: ProductRepository.findAll loads all products into memory
 

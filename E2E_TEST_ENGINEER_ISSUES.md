@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 09:49 UTC TEST PERF-004 Redis KEYS Usage Handoff
+
+Source status:
+- TEST PERF-004 is closed as FIXED / SOURCE_FIXED / DUPLICATE_OF_QA_F3427_AND_F3452 / REGRESSION_GUARD_ADDED.
+- Current production Java source has no `.keys(...)` Redis calls.
+- `RateLimitService.clearRedisBuckets()` scans rate-limit buckets through `ScanOptions.scanOptions()` and `connection.scan(options)` with bounded `traffic.rate-limit.redis-clear-scan-count`.
+- `TokenBlacklistService.findLoginIpFailures()` scans `login:ip:*` through `ScanOptions.scanOptions()` and `connection.scan(options)` with bounded `security.ip-blacklist.redis-scan-count`.
+- `RedisKeysUsageContractTest` scans production Java for blocking Redis `KEYS` usage and requires the current SCAN contracts.
+
+Local verification already run:
+- Production source search found no `.keys(` calls.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=RedisKeysUsageContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Redis pattern enumeration | SOURCE_FIXED / NO MANUAL E2E REQUIRED | Keep `RedisKeysUsageContractTest` plus focused Redis service tests in CI. Optional backend integration regression can exercise rate-limit clear and login-failure snapshot listing against Redis. |
+
 ## 2026-06-11 09:29 UTC TEST PERF-003 Checkout Stock Distinct Save Handoff
 
 Source status:
