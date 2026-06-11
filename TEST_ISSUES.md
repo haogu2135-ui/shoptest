@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer admin IP blacklist coverage fix (2026-06-11 05:25 UTC)**: Closed QA **SEC-NEW-005** and TEST **SEC-NEW-002** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. `SecurityConfig` already places `ipBlacklistFilter` before `jwtAuthenticationFilter`, but current default IP blacklist path prefixes omitted `/admin` when `security.ip-blacklist.block-all-paths=false`. Added `/admin` to `IpBlacklistService` defaults, `application.properties`, and the config-center template. Added `IpBlacklistAdminCoverageContractTest` to prove admin paths are checked by default and the filter chain remains ordered before JWT. Verification: `/admin` prefix source search confirmed code/config/template coverage; `git diff --check` passed; `./mvnw -q -Dtest=IpBlacklistAdminCoverageContractTest test` passed.
+
 - **Maintainer admin auth source triage (2026-06-11 05:11 UTC)**: Closed QA **SEC-NEW-004** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. The reported `adminJwtFilter` path is stale against current source: `SecurityConfig` has a single `/admin/**` rule requiring `ROLE_ADMIN`, and `JwtAuthenticationFilter` only accepts `Authorization: Bearer ...`. There is no cookie, `Sec-WebSocket-Protocol`, `admin_token`, or `adminToken` token fallback that could create competing credential-source priority. Added `AdminAuthenticationSourceContractTest` to guard this contract. Verification: stale marker source search returned no matches; `git diff --check` passed; `./mvnw -q -Dtest=AdminAuthenticationSourceContractTest test` passed.
 
 - **Maintainer stale stack trace leak triage (2026-06-11 05:01 UTC)**: Closed QA **SEC-NEW-003** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / DUPLICATE_OF_F3499 / REGRESSION_GUARD_CONFIRMED**. The reported `src/main/java/com/example/shop/GlobalExceptionHandler.java` path is not tracked in current source; the active `GlobalApiExceptionHandler` logs unexpected failures through SLF4J and returns a sanitized generic 500 response instead of stack traces. Current production Java has no `.printStackTrace()` calls. Verification: `git ls-files` confirmed the stale handler path is absent; `rg -n "printStackTrace\s*\(" src/main/java` returned no matches; `git diff --check` passed; `./mvnw -q -Dtest=EmptyCatchBlockContractTest test` passed.
@@ -3274,8 +3276,9 @@ Notes:
 - Severity: HIGH
 - Symptom: The IP blacklist filter is configured for storefront endpoints but the admin security filter chain does not include the IP blacklist filter.
 - Impact: Admin endpoints are not protected by IP blacklist
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Add the IP blacklist filter to the admin security filter chain.
+- Fix: Current source has a single chain with `ipBlacklistFilter` before JWT, but `/admin` was missing from default checked path prefixes. Added `/admin` to the service default, shipped properties, and config-center template; `IpBlacklistAdminCoverageContractTest` guards admin path coverage and filter ordering.
 
 ### SEC-NEW-003: Stack trace leaks in error responses
 

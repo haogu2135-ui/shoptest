@@ -45,6 +45,7 @@ public class IpBlacklistService {
             "/auth/register",
             "/auth/refresh",
             "/users/create-admin",
+            "/admin",
             "/payment",
             "/payments",
             "/orders/checkout/guest",

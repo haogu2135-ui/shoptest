@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 05:25 UTC QA SEC-NEW-005 / TEST SEC-NEW-002 Admin IP Blacklist Handoff
+
+Source status:
+- QA SEC-NEW-005 and TEST SEC-NEW-002 are source-fixed with a regression guard.
+- `IpBlacklistFilter` is registered before `JwtAuthenticationFilter` in the security filter chain.
+- `/admin` is now included in `IpBlacklistService` default protected prefixes, `application.properties`, and the config-center default template.
+- Admin paths are checked by the IP blacklist when `security.ip-blacklist.block-all-paths=false`.
+
+Local verification already run:
+- Source search confirmed `/admin` is present in the service default, shipped properties, config-center template, and guard.
+- `git diff --check` passed for the updated source, config, guard, and issue handoff files.
+- `./mvnw -q -Dtest=IpBlacklistAdminCoverageContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin blocked-IP enforcement | SOURCE_FIXED / API E2E RECOMMENDED | With a non-trusted test IP or mocked forwarded IP through a trusted proxy, create a blocked IP entry and call an `/admin/**` endpoint with a valid admin Bearer token. Confirm the response is 403 from IP blacklist before normal admin handling. Also confirm `OPTIONS /admin/**` remains allowed for CORS preflight. |
+
 ## 2026-06-11 05:11 UTC QA SEC-NEW-004 Admin Auth Source Handoff
 
 Source status:

@@ -138,7 +138,7 @@ public class ConfigCenterService {
             "security.ip-blacklist.window-minutes=15",
             "security.ip-blacklist.block-minutes=60",
             "security.ip-blacklist.block-all-paths=false",
-            "security.ip-blacklist.path-prefixes=/auth/login,/auth/email-login,/auth/email-code,/auth/password-reset-code,/auth/forgot-password,/auth/register,/auth/refresh,/users/create-admin,/payment,/payments,/orders/checkout/guest,/orders/track,/orders/guest,/support/guest,/ws/support",
+            "security.ip-blacklist.path-prefixes=/auth/login,/auth/email-login,/auth/email-code,/auth/password-reset-code,/auth/forgot-password,/auth/register,/auth/refresh,/users/create-admin,/admin,/payment,/payments,/orders/checkout/guest,/orders/track,/orders/guest,/support/guest,/ws/support",
             "security.ip-blacklist.trusted-ips=127.0.0.1,::1,0:0:0:0:0:0:0:1",
             "security.ip-blacklist.admin.batch-release-max-size=100",
             "security.login.account-failure-threshold=10",
