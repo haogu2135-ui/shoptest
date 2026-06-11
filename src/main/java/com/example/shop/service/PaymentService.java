@@ -284,8 +284,13 @@ public class PaymentService {
             log.debug("Stripe webhook ignored unsupported event type: type={}", event.getType());
             return null;
         }
-        Session session = (Session) event.getDataObjectDeserializer().getObject()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid Stripe webhook payload"));
+        Object stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
+        if (!(stripeObject instanceof Session)) {
+            log.warn("Stripe webhook ignored event with unavailable checkout session payload: eventId={}, type={}",
+                    event.getId(), event.getType());
+            return null;
+        }
+        Session session = (Session) stripeObject;
         Payment payment = paymentRepository.findByProviderReference(session.getId());
         if (payment == null) {
             payment = paymentRepository.findByTransactionId(session.getId());

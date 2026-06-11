@@ -15844,7 +15844,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `src/main/java/com/example/shop/service/PaymentService.java` (lines 276-281)
 - **Detail**: In `handleStripeWebhook`, if `event.getDataObjectDeserializer().getObject()` returns empty, the code throws `IllegalArgumentException`. An attacker could send many malformed payloads to generate error log noise.
 - **Suggested fix**: Return null or log a warning instead of throwing, or add webhook endpoint rate limiting.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 23:47 UTC)
+- **Resolution**: Signed Stripe checkout webhook events with an unavailable or unexpected deserialized data object are now logged as ignored and return `null`, so the controller acknowledges them without payment mutation or repeated `IllegalArgumentException` noise. Invalid signatures still throw `Invalid Stripe webhook signature`.
+- **Regression guard**: Added `StripeWebhookMalformedPayloadContractTest`, which requires signature verification to remain, forbids the old `orElseThrow` payload path, and requires the ignored-event `return null` branch.
+- **Verification**: `./mvnw -q -Dtest=StripeWebhookMalformedPayloadContractTest test` passed.
 
 ### F2493: [LOW] Rate limiter cleanup uses weakly consistent iteration
 - **Component**: Backend — SupportService

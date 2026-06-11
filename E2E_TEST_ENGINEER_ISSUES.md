@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 23:47 UTC TEST F2745 Stripe Webhook Malformed Payload Handoff
+
+Source status:
+- TEST F2745 / QA F2492 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `PaymentService.handleStripeWebhook(...)` still verifies Stripe signatures with `Webhook.constructEvent(...)`.
+- Signed checkout webhook events with unavailable/non-`Session` data objects now log a warning and return `null` instead of throwing `IllegalArgumentException`.
+- Invalid signatures still reject with `Invalid Stripe webhook signature`.
+- `./mvnw -q -Dtest=StripeWebhookMalformedPayloadContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Signed malformed Stripe checkout event | SOURCE_FIXED / PROVIDER E2E PENDING | Send a correctly signed `checkout.session.completed` event whose data object cannot be deserialized in the SDK and verify the endpoint acknowledges without payment mutation or 4xx noise. |
+| Invalid Stripe signature | SOURCE_FIXED / PROVIDER E2E PENDING | Send a webhook with an invalid Stripe signature and verify it still returns the existing failure path and blacklist accounting. |
+| Normal checkout.session.completed | SOURCE_FIXED / PROVIDER E2E PENDING | Send a valid completed checkout session and verify payment status/order side effects remain unchanged. |
+
 ## 2026-06-11 23:37 UTC TEST F2743 Admin Order List Bounds Handoff
 
 Source status:
