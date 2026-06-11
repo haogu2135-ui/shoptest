@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 19:24 UTC TEST F2724 Refresh Token Atomic Consume Handoff
+
+Source status:
+- TEST F2724 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `TokenBlacklistService.consumeRefreshToken(...)` now uses one Redis Lua script to atomically read and delete `refresh:<token>` in the same Redis operation.
+- Refresh consumption keeps fail-closed behavior when Redis/script execution fails.
+- `RefreshTokenAtomicConsumeContractTest` verifies successful atomic consumption, missing-token null return, Redis failure fail-closed behavior, and no separate Redis `get` then `delete` calls during consume.
+- `./mvnw -q -Dtest=RefreshTokenAtomicConsumeContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Refresh token replay guard | SOURCE_FIXED / AUTH E2E PENDING | Log in, capture one valid refresh token, then submit two refresh requests with that same token as close together as the harness allows. Verify exactly one request succeeds and the other fails with the normal unauthorized/expired-session response. |
+| Old refresh token reuse | SOURCE_FIXED / AUTH E2E PENDING | After a successful refresh rotates tokens, submit the old refresh token again. Verify it cannot mint another access token, and the newly issued refresh token still works once. |
+| Redis/script failure behavior | SOURCE_FIXED / AUTH E2E OPTIONAL | In an environment where Redis command failures can be injected, force refresh consume failure and verify refresh fails closed without issuing a new access token or leaving the UI in an authenticated-but-stale state. |
+
 ## 2026-06-11 19:09 UTC TEST F3404 Home Guest Conversion Handoff
 
 Source status:

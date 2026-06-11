@@ -4744,8 +4744,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/TokenBlacklistService.java` (lines 65-81)
 - Severity: HIGH
 - Description: `consumeRefreshToken` performs a `GET` followed by a separate `DELETE` on Redis. Between these two operations, a concurrent request can also `GET` the same token and receive the username, enabling the same refresh token to be consumed twice. This allows token replay attacks where an attacker who intercepts a refresh token can obtain a valid access token even after the legitimate user has already used it.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 19:24 UTC)
 - Expected fix direction: Use an atomic `GETDEL` command (Redis 6.2+), or wrap the get-and-delete in a Redis Lua script.
+- Resolution: `TokenBlacklistService.consumeRefreshToken(...)` now executes a single Redis Lua script that reads `refresh:<token>`, deletes it inside the same Redis script invocation when present, and returns the username. The method keeps the existing fail-closed behavior when Redis/script execution throws.
+- Regression guard: Added `RefreshTokenAtomicConsumeContractTest`, covering successful atomic consumption, missing-token null return, Redis script failure fail-closed behavior, and verifying refresh consumption no longer calls separate `opsForValue().get(...)` or `redis.delete(...)`.
+- Verification: `./mvnw -q -Dtest=RefreshTokenAtomicConsumeContractTest test` passed.
 
 ### F2725: HIGH — Production payment simulation can be enabled via runtime config
 

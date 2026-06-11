@@ -3,6 +3,8 @@ package com.example.shop.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -29,6 +31,7 @@ public class TokenBlacklistService {
     private static final int MAX_LOGIN_ATTEMPTS_PER_ACCOUNT = 10;
     private static final long IP_LOCKOUT_MINUTES = 15;
     private static final long ACCOUNT_LOCKOUT_MINUTES = 30;
+    private static final RedisScript<String> CONSUME_REFRESH_TOKEN_SCRIPT = consumeRefreshTokenScript();
 
     public TokenBlacklistService(ObjectProvider<StringRedisTemplate> redisTemplateProvider,
                                  RuntimeConfigService runtimeConfig) {
@@ -57,11 +60,12 @@ public class TokenBlacklistService {
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return null;
         String key = REFRESH_TOKEN_PREFIX + refreshToken;
-        String username = redis.opsForValue().get(key);
-        if (username != null) {
-            redis.delete(key);
+        try {
+            return redis.execute(CONSUME_REFRESH_TOKEN_SCRIPT, List.of(key));
+        } catch (RuntimeException ex) {
+            log.warn("Redis refresh token consume failed; refresh is failing closed", ex);
+            return null;
         }
-        return username;
     }
 
     public void revokeRefreshToken(String refreshToken) {
@@ -211,6 +215,13 @@ public class TokenBlacklistService {
 
     private StringRedisTemplate redisTemplate() {
         return redisTemplateProvider.getIfAvailable();
+    }
+
+    private static RedisScript<String> consumeRefreshTokenScript() {
+        DefaultRedisScript<String> script = new DefaultRedisScript<>();
+        script.setScriptText("local value = redis.call('GET', KEYS[1]); if value then redis.call('DEL', KEYS[1]); end; return value");
+        script.setResultType(String.class);
+        return script;
     }
 
     private String normalizeAccountKey(String username) {
