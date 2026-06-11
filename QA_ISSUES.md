@@ -15854,7 +15854,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `src/main/java/com/example/shop/service/SupportService.java` (lines 404-429)
 - **Detail**: The rate limiter cleanup only triggers when the map size exceeds the threshold. Under high concurrency, many entries can accumulate. The `ConcurrentHashMap` iteration during cleanup is weakly consistent and may miss entries.
 - **Suggested fix**: Use a scheduled cleanup task or a `Caffeine`/Guava cache with TTL-based eviction.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 23:54 UTC)
+- **Resolution**: `SupportService` now runs a scheduled `cleanupMessageRateBuckets()` task controlled by `support.message.rate-bucket-cleanup-ms` and delegates both scheduled cleanup and the existing max-bucket emergency guard to `cleanupMessageRateBucketsBefore(...)`.
+- **Regression guard**: Added `SupportRateBucketCleanupContractTest`, which requires the scheduled cleanup annotation, shared cleanup helper, exposed application/config-center/env defaults, and forbids inline bucket removal inside `consumeMessageRate`.
+- **Verification**: `./mvnw -q -Dtest=SupportRateBucketCleanupContractTest test` passed.
 
 ### F2494: [LOW] Login failure Redis key has no TTL if process crashes between INCR and EXPIRE
 - **Component**: Backend — TokenBlacklistService

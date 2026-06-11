@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 23:54 UTC TEST F2746 Support Rate Bucket Cleanup Handoff
+
+Source status:
+- TEST F2746 / QA F2493 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `SupportService` now has `@Scheduled(fixedDelayString = "${support.message.rate-bucket-cleanup-ms:300000}")`.
+- Scheduled cleanup prunes support message rate buckets older than the current minute window.
+- The existing `support.message.max-rate-buckets` guard still triggers immediate stale bucket cleanup through the same helper.
+- `support.message.rate-bucket-cleanup-ms` is exposed through `application.properties`, Config Center defaults, and `deploy/backend.env.example`.
+- `./mvnw -q -Dtest=SupportRateBucketCleanupContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Idle support chat rate bucket expiry | SOURCE_FIXED / SUPPORT E2E PENDING | Temporarily lower `support.message.rate-bucket-cleanup-ms`, send support messages across two minute windows, wait for the scheduled delay, and verify stale rate buckets are no longer retained through runtime metrics/log inspection. |
+| Burst limit still enforced | SOURCE_FIXED / SUPPORT E2E PENDING | Temporarily lower `support.message.max-per-minute`, send more than the allowed messages in one minute, and verify the over-limit path still returns the existing support message rate-limit error. |
+| Max bucket guard fallback | SOURCE_FIXED / SUPPORT E2E OPTIONAL | Temporarily lower `support.message.max-rate-buckets`, generate multiple sender buckets, and verify stale bucket cleanup is triggered even before the next scheduled pass. |
+
 ## 2026-06-11 23:47 UTC TEST F2745 Stripe Webhook Malformed Payload Handoff
 
 Source status:

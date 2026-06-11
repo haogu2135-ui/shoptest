@@ -8,6 +8,7 @@ import com.example.shop.entity.SupportSession;
 import com.example.shop.repository.SupportMessageMapper;
 import com.example.shop.repository.SupportSessionMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -360,8 +361,19 @@ public class SupportService {
             throw new IllegalStateException("Too many support messages. Please try again later.");
         }
         if (messageRateBuckets.size() > runtimeConfig.getInt("support.message.max-rate-buckets", 5000)) {
-            messageRateBuckets.entrySet().removeIf(entry -> entry.getValue().windowStart < windowStart);
+            cleanupMessageRateBucketsBefore(windowStart);
         }
+    }
+
+    @Scheduled(fixedDelayString = "${support.message.rate-bucket-cleanup-ms:300000}")
+    public void cleanupMessageRateBuckets() {
+        long now = Instant.now().getEpochSecond();
+        long currentWindowStart = now - Math.floorMod(now, 60);
+        cleanupMessageRateBucketsBefore(currentWindowStart);
+    }
+
+    private void cleanupMessageRateBucketsBefore(long windowStart) {
+        messageRateBuckets.entrySet().removeIf(entry -> entry.getValue().windowStart < windowStart);
     }
 
     @Transactional

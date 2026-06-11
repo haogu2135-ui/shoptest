@@ -103,6 +103,7 @@ public class ConfigCenterService {
             "support.websocket.max-text-message-bytes=16384",
             "support.websocket.max-binary-message-bytes=8192",
             "support.message.max-chars=1000",
+            "support.message.rate-bucket-cleanup-ms=300000",
             "product.search-cache-ttl-ms=30000",
             "product.public-default-page-size=24",
             "product.public-max-page-size=100",
