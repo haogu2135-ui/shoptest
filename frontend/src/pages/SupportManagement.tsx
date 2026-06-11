@@ -320,7 +320,8 @@ const SupportManagement: React.FC = () => {
     mergeSessionIntoCurrentQueueRef.current = mergeSessionIntoCurrentQueue;
   }, [mergeSessionIntoCurrentQueue]);
 
-  const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string }) => {
+  const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string; isActive?: () => boolean }) => {
+    const shouldApply = () => options?.isActive?.() !== false;
     try {
       setQueueLoading(true);
       const effectiveStatus = options?.status === undefined ? filter : options.status;
@@ -338,6 +339,7 @@ const SupportManagement: React.FC = () => {
         }),
         adminSupportApi.getSummary().catch(() => null),
       ]);
+      if (!shouldApply()) return;
       const nextSessions = sortSupportSessions(sessionsRes.data.items);
       sessionsRef.current = nextSessions;
       queueTotalRef.current = sessionsRes.data.total;
@@ -353,9 +355,13 @@ const SupportManagement: React.FC = () => {
         if (fresh) setSelectedSession(fresh);
       }
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
+      if (shouldApply()) {
+        message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
+      }
     } finally {
-      setQueueLoading(false);
+      if (shouldApply()) {
+        setQueueLoading(false);
+      }
     }
   }, [filter, language, queuePage, queuePageSize, queueSearch, t]);
 
@@ -457,28 +463,33 @@ const SupportManagement: React.FC = () => {
 
   useEffect(() => {
     let polling = false;
+    let disposed = false;
 
     const timer = window.setInterval(async () => {
 
-      if (polling) return;
+      if (disposed || polling) return;
       polling = true;
-      await loadSessions();
-      const activeSession = selectedSessionRef.current;
-      if (activeSession) {
-        try {
+      try {
+        await loadSessions({ isActive: () => !disposed });
+        if (disposed) return;
+        const activeSession = selectedSessionRef.current;
+        if (activeSession) {
           const afterId = newestSupportMessageId(messagesRef.current);
           const res = await adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW });
+          if (disposed || selectedSessionRef.current?.id !== activeSession.id) return;
           setMessages((items) => mergeSupportMessages(items, res.data));
           if (canUpdateSupportReadState) {
             await adminSupportApi.markRead(activeSession.id).catch(() => undefined);
           }
-        } catch {
-          // Polling is a backup path for missed socket events.
         }
-      }
-      polling = false;
+      } catch {
+        // Polling is a backup path for missed socket events.
+      } finally {
+        polling = false;
+      }
     }, 10000);
     return () => {
+      disposed = true;
       polling = false;
       window.clearInterval(timer);
     };

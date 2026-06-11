@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 15:02 UTC TEST F3488 Support Management Polling Handoff
+
+Source status:
+- TEST F3488 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED.
+
+Local verification already run:
+- `SupportManagement.tsx` queue polling now passes `isActive` into `loadSessions(...)` and checks it before data transformation/state writes after sessions/summary responses return.
+- The HTTP polling interval now exits on `disposed || polling`, checks `disposed` after queue refresh, and verifies the active session is still selected before merging new messages.
+- `./mvnw -q -Dtest=SupportManagementPollingContractTest test` passed.
+- `target/` was removed after Maven verification.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin support polling unmount | SOURCE_FIXED / ADMIN E2E PENDING | Open Support Management, select an active conversation, then navigate away while queue/message polling is in flight. Verify no setState-after-unmount warnings, stale queue updates, or message merges occur after unmount. |
+| Admin support conversation switch | SOURCE_FIXED / ADMIN E2E PENDING | Switch between two conversations while polling runs and messages arrive. Verify messages from the previous conversation are not merged into the newly selected conversation and read-state updates remain correct. |
+
 ## 2026-06-11 14:34 UTC TEST F3487 Checkout Payment Polling Handoff
 
 Source status:

@@ -3597,8 +3597,9 @@ Notes:
 - Severity: CRITICAL
 - Symptom: Both loadSessions and loadAdminConversations callbacks read `disposed` after the async calls complete but have no disposed check between the stats call and the loop body. No AbortController signal passed.
 - Impact: Memory leak, stale data displayed to admin
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Check disposed/AbortController before each data transformation.
+- Fix (2026-06-11 15:02 UTC): `SupportManagement.tsx` queue polling now passes an `isActive` callback into `loadSessions(...)`; after the concurrent sessions/summary requests return, `loadSessions` checks `shouldApply()` before sorting sessions, updating refs/state, refreshing the selected session, showing errors, or clearing the queue-loading flag. The HTTP polling interval now owns a `disposed` flag, returns immediately on `disposed || polling`, calls `loadSessions({ isActive: () => !disposed })`, checks `disposed` again before reading the active session, and verifies `disposed || selectedSessionRef.current?.id !== activeSession.id` before merging newly fetched messages or marking read. Cleanup sets `disposed = true` before clearing the interval. Added `SupportManagementPollingContractTest` to guard these inter-async disposed checks and prevent stale admin support queue/conversation updates after unmount.
 
 ### F3486: 170+ uses of `any` type bypassing TypeScript safety
 
