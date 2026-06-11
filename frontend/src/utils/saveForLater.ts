@@ -12,7 +12,7 @@ export type SavedForLaterItem = CartItem & {
   sourceCartItemId?: number;
 };
 
-const normalizeQuantity = (quantity: unknown) => {
+const normalizeSavedItemQuantity = (quantity: unknown) => {
   const numeric = Number(quantity);
   const requested = Number.isFinite(numeric) ? Math.floor(numeric) : 1;
   return Math.max(1, Math.min(requested, MAX_SAVED_ITEM_QUANTITY));
@@ -44,7 +44,7 @@ const normalizeSavedItem = (item: Partial<SavedForLaterItem>): SavedForLaterItem
     ...(item as SavedForLaterItem),
     id,
     productId,
-    quantity: normalizeQuantity(item.quantity),
+    quantity: normalizeSavedItemQuantity(item.quantity),
     savedAt: normalizeSavedAt(item.savedAt),
     sourceCartItemId: normalizeSafeInteger(item.sourceCartItemId) ?? undefined,
     selectedSpecs: item.selectedSpecs ? String(item.selectedSpecs).trim().slice(0, 600) : undefined,
@@ -80,7 +80,7 @@ export const saveCartItemForLater = (item: CartItem) => {
   const savedItem: SavedForLaterItem = {
     ...normalizedItem,
     id: createLocalId(items.map((savedItem) => savedItem.id)),
-    quantity: normalizeQuantity(normalizedItem.quantity),
+    quantity: normalizeSavedItemQuantity(normalizedItem.quantity),
     savedAt: Date.now(),
     sourceCartItemId: normalizedItem.id,
   };
@@ -89,7 +89,7 @@ export const saveCartItemForLater = (item: CartItem) => {
     items[existingIndex] = {
       ...items[existingIndex],
       ...savedItem,
-      quantity: normalizeQuantity(items[existingIndex].quantity + savedItem.quantity),
+      quantity: normalizeSavedItemQuantity(items[existingIndex].quantity + savedItem.quantity),
     };
     writeSavedItems(items);
     return items[existingIndex];

@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 16:59 UTC TEST F3492 Quantity Normalization Helper Handoff
+
+Source status:
+- TEST F3492 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL.
+
+Local verification already run:
+- Cart already uses shared `normalizeCartQuantity(...)` from `cartUi.ts`.
+- The remaining ambiguous local helpers were renamed to `normalizeGuestCartQuantity(...)` and `normalizeSavedItemQuantity(...)`; `api/index.ts` keeps distinct `normalizeQuantityParam(...)` for request parameter serialization.
+- Source search confirms no `const normalizeQuantity =` remains under `frontend/src`.
+- `cartTimerCleanup.test.ts` now guards against reintroducing ambiguous local `normalizeQuantity` helpers in guest cart, save-for-later, mobile update, auth hook, and Cart page code.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Guest cart quantity clamp | SOURCE_FIXED / STOREFRONT E2E OPTIONAL | As a guest, add/update quantities above stock, zero, negative, and fractional values. Verify the UI clamps to valid integer quantities and checkout receives the clamped quantity. |
+| Save-for-later quantity merge | SOURCE_FIXED / STOREFRONT E2E OPTIONAL | Save duplicate cart lines for later and move them back to cart. Verify merged quantities remain capped and no saved item is lost. |
+
 ## 2026-06-11 16:39 UTC TEST F3491 Auth Expiry Helper Dedup Handoff
 
 Source status:

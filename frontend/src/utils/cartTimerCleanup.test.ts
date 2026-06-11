@@ -32,6 +32,20 @@ describe('cart timer cleanup source contracts', () => {
     expect(cartDrawerSource).toContain('max={getCartQuantityLimit(item.stock)}');
   });
 
+  it('keeps quantity normalization helpers domain-specific instead of ambiguous local copies', () => {
+    const guestCartSource = readSourceFile('guestCart.ts');
+    const saveForLaterSource = readSourceFile('saveForLater.ts');
+    const mobileUpdateSource = readSourceFile('mobileUpdate.ts');
+    const useAuthSource = readSourceFile('../hooks/useAuth.ts');
+    const cartSource = readSourceFile('../pages/Cart.tsx');
+
+    expect(guestCartSource).toContain('const normalizeGuestCartQuantity =');
+    expect(saveForLaterSource).toContain('const normalizeSavedItemQuantity =');
+    [guestCartSource, saveForLaterSource, mobileUpdateSource, useAuthSource, cartSource].forEach((source) => {
+      expect(source).not.toMatch(/const normalizeQuantity\s*=/);
+    });
+  });
+
   it('uses the shared cart quantity sync hook instead of component-local timer copies', () => {
     const cartSource = readSourceFile('../pages/Cart.tsx');
     const cartDrawerSource = readSourceFile('../components/CartDrawer.tsx');

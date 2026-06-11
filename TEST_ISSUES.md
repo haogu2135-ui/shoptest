@@ -3714,7 +3714,11 @@ Notes:
 - Area: Frontend / utils/mobileUpdate.ts, hooks/useAuth.ts, pages/Cart.tsx
 - Severity: HIGH
 - Impact: Confusing API, inconsistent behavior
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL 2026-06-11 16:59 UTC
+- Current-source finding: The original `utils/mobileUpdate.ts` / `hooks/useAuth.ts` / `pages/Cart.tsx` targets no longer define `const normalizeQuantity =`; Cart uses shared `normalizeCartQuantity(...)` from `cartUi.ts`. Current source still had two ambiguous local helpers named `normalizeQuantity` in guest-cart and save-for-later storage utilities.
+- Resolution: Renamed the remaining local helpers to domain-specific `normalizeGuestCartQuantity(...)` and `normalizeSavedItemQuantity(...)` without changing their clamp semantics. `api/index.ts` still has `normalizeQuantityParam(...)`, which is an API parameter serializer with a distinct name and responsibility.
+- Regression guard: `frontend/src/utils/cartTimerCleanup.test.ts` now checks guest-cart/save-for-later use domain-specific helper names and rejects ambiguous `const normalizeQuantity =` in guestCart, saveForLater, mobileUpdate, useAuth, and Cart.
+- Verification: `rg -n "const normalizeQuantity\\s*=|normalizeGuestCartQuantity|normalizeSavedItemQuantity|normalizeQuantityParam" frontend/src --glob '!**/node_modules/**'` shows only the two domain-specific helpers plus distinct `normalizeQuantityParam(...)`. `npm test -- --runTestsByPath src/utils/cartTimerCleanup.test.ts src/utils/guestCart.test.ts src/utils/saveForLater.test.ts --watchAll=false` passed. `npx tsc --noEmit --pretty false` remains blocked by the pre-existing `frontend/src/api/index.test.ts:437` `config.headers` possibly undefined error.
 
 ### F3497: ~90+ empty catch blocks silently swallowing errors
 

@@ -11,7 +11,7 @@ const normalizeStockLimit = (stock: unknown) => {
   return Number.isFinite(numeric) && numeric >= 0 ? Math.floor(numeric) : MAX_GUEST_CART_QUANTITY;
 };
 
-const normalizeQuantity = (quantity: unknown, stock?: unknown) => {
+const normalizeGuestCartQuantity = (quantity: unknown, stock?: unknown) => {
   const numeric = Number(quantity);
   const requested = Number.isFinite(numeric) ? Math.floor(numeric) : 1;
   const maxByStock = normalizeStockLimit(stock);
@@ -51,7 +51,7 @@ const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
     ...item,
     id,
     productId,
-    quantity: normalizeQuantity(item.quantity, item.stock),
+    quantity: normalizeGuestCartQuantity(item.quantity, item.stock),
     productName: String(item.productName || '').trim(),
     imageUrl: item.imageUrl ? String(item.imageUrl).trim() : '',
     price: normalizePrice(item.price),
@@ -90,10 +90,10 @@ export const addGuestCartItem = (product: ProductPublic | any, quantity = 1, sel
   }
   const normalizedSpecs = selectedSpecs ? String(selectedSpecs).trim().slice(0, 600) : undefined;
   const stockLimit = normalizeStockLimit(product.stock);
-  const normalizedQuantity = normalizeQuantity(quantity, stockLimit);
+  const normalizedQuantity = normalizeGuestCartQuantity(quantity, stockLimit);
   const existing = items.find((item) => item.productId === productId && (item.selectedSpecs || '') === (normalizedSpecs || ''));
   if (existing) {
-    existing.quantity = normalizeQuantity(existing.quantity + normalizedQuantity, stockLimit);
+    existing.quantity = normalizeGuestCartQuantity(existing.quantity + normalizedQuantity, stockLimit);
     existing.price = price ?? product.effectivePrice ?? product.price;
     existing.stock = product.stock;
     writeGuestCart(items);
@@ -116,7 +116,7 @@ export const addGuestCartItem = (product: ProductPublic | any, quantity = 1, sel
 };
 
 export const updateGuestCartQuantity = (itemId: number, quantity: number) => {
-  const items = readGuestCart().map((item) => item.id === itemId ? { ...item, quantity: normalizeQuantity(quantity, item.stock) } : item);
+  const items = readGuestCart().map((item) => item.id === itemId ? { ...item, quantity: normalizeGuestCartQuantity(quantity, item.stock) } : item);
   writeGuestCart(items);
   return items;
 };
