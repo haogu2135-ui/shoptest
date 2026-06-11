@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 04:43 UTC QA SEC-NEW-002 Stale Test Credential Handoff
+
+Source status:
+- QA SEC-NEW-002 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / SECRET_REDACTED / REGRESSION_GUARD_ADDED.
+- The reported `src/test/java/com/example/shop/service/impl/UserServiceImplTest.java` path is not tracked in current source.
+- The previously reported remote MySQL host/password literals are absent from the Git index, and the QA tracker entry has been redacted.
+
+Local verification already run:
+- `git ls-files` confirmed the stale test path is absent.
+- Source searches confirmed the sensitive literals are absent from tracked current source after redaction.
+- Added `SensitiveCredentialLeakContractTest` to guard the stale test path and leaked literals.
+- `git diff --check` passed.
+- `./mvnw -q -Dtest=SensitiveCredentialLeakContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Secret leakage guard | CURRENT_SOURCE_NON_ISSUE / CI TEST PASSED LOCALLY | Keep `./mvnw -q -Dtest=SensitiveCredentialLeakContractTest test` in CI and confirm no tracked file reintroduces the stale remote DB host/password literals. No browser/device E2E is required. |
+
 ## 2026-06-11 04:33 UTC QA F3446 Support WebSocket Dependency Handoff
 
 Source status:
