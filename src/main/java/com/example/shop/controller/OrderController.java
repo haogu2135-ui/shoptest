@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/orders")
 @RequiredArgsConstructor
 public class OrderController {
-    private static final int HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT = 5000;
+    private static final int HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT = 500;
 
     private final OrderService orderService;
     private final OrderItemService orderItemService;

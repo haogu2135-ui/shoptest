@@ -85,6 +85,7 @@ public class OrderService {
     private static final int GUEST_USERNAME_TOKEN_LENGTH = 32;
     private static final int GUEST_USERNAME_SEED_MAX_LENGTH =
             GUEST_USERNAME_MAX_LENGTH - GUEST_USERNAME_TOKEN_LENGTH - 1;
+    private static final int HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT = 500;
     private final ConcurrentMap<String, ReentrantLock> guestUserCreationLocks = new ConcurrentHashMap<>();
 
     @Autowired
@@ -658,7 +659,7 @@ public class OrderService {
      * 获取所有订单
      */
     public List<Order> getAllOrders() {
-        int legacyListLimit = Math.max(1, Math.min(runtimeConfig.getInt("admin.orders.legacy-list-max-rows", 100), 5000));
+        int legacyListLimit = Math.max(1, Math.min(runtimeConfig.getInt("admin.orders.legacy-list-max-rows", 100), HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT));
         return orderRepository.searchAdminOrders(null, null, null, 0, legacyListLimit).stream()
                 .map(this::enrichReturnInfo)
                 .collect(Collectors.toList());

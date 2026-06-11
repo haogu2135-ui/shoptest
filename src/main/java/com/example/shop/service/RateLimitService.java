@@ -153,6 +153,7 @@ public class RateLimitService {
                 positiveInt("traffic.rate-limit.refresh-per-minute", 20),
                 positiveInt("traffic.rate-limit.admin-bootstrap-per-hour", 3),
                 positiveInt("traffic.rate-limit.guest-checkout-per-hour", 10),
+                positiveInt("traffic.rate-limit.admin-order-list-per-minute", 60),
                 positiveInt("traffic.rate-limit.pet-gallery-like-per-minute", 20),
                 runtimeConfig.getBoolean("traffic.rate-limit.redis-enabled", true),
                 runtimeConfig.getString("traffic.rate-limit.redis-key-prefix", "shop:rate-limit"),
@@ -284,6 +285,9 @@ public class RateLimitService {
     }
 
     private EndpointLimit endpointLimitFor(String method, String path, Config config) {
+        if ("GET".equals(method) && isAdminOrderListPath(path)) {
+            return new EndpointLimit("GET", "admin:orders:list", config.adminOrderListPerMinute, 60);
+        }
         if (!"POST".equals(method)) {
             return null;
         }
@@ -309,6 +313,11 @@ public class RateLimitService {
             return new EndpointLimit("POST", "pet-gallery:like", config.petGalleryLikePerMinute, 60);
         }
         return null;
+    }
+
+    private boolean isAdminOrderListPath(String path) {
+        return path.equals("/admin/orders")
+                || path.equals("/admin/orders/page");
     }
 
     private String normalizePath(HttpServletRequest request) {
@@ -469,6 +478,7 @@ public class RateLimitService {
         private final int refreshPerMinute;
         private final int adminBootstrapPerHour;
         private final int guestCheckoutPerHour;
+        private final int adminOrderListPerMinute;
         private final int petGalleryLikePerMinute;
         private final boolean redisEnabled;
         private final String redisKeyPrefix;
@@ -487,6 +497,7 @@ public class RateLimitService {
                        int refreshPerMinute,
                        int adminBootstrapPerHour,
                        int guestCheckoutPerHour,
+                       int adminOrderListPerMinute,
                        int petGalleryLikePerMinute,
                        boolean redisEnabled,
                        String redisKeyPrefix,
@@ -504,6 +515,7 @@ public class RateLimitService {
             this.refreshPerMinute = refreshPerMinute;
             this.adminBootstrapPerHour = adminBootstrapPerHour;
             this.guestCheckoutPerHour = guestCheckoutPerHour;
+            this.adminOrderListPerMinute = adminOrderListPerMinute;
             this.petGalleryLikePerMinute = petGalleryLikePerMinute;
             this.redisEnabled = redisEnabled;
             this.redisKeyPrefix = redisKeyPrefix;

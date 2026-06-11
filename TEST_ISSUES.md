@@ -4971,8 +4971,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/OrderService.java` (lines 794-799)
 - Severity: LOW
 - Description: `getAllOrders()` fetches up to 5000 rows at once. Under concurrent admin requests, this could cause memory pressure.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 23:37 UTC)
 - Expected fix direction: Impose pagination or reduce the hard ceiling, and add rate limiting on the admin endpoint.
+- Resolution: Legacy admin order list reads now enforce a 500-row hard ceiling in both `OrderService.getAllOrders()` and the `/orders` admin compatibility path. The active admin order list endpoints remain paginated through `/admin/orders` and `/admin/orders/page`, and those GET endpoints now consume a dedicated `admin:orders:list` rate-limit bucket controlled by `traffic.rate-limit.admin-order-list-per-minute` (default 60/minute).
+- Regression guard: Added `AdminOrderListBoundContractTest`, which requires the 500-row legacy ceiling, dedicated admin order list limiter, and exposed runtime/env defaults.
+- Verification: `./mvnw -q -Dtest=AdminOrderListBoundContractTest test` passed.
 
 ### F2744: LOW — getOrdersByUserId returns all orders without pagination
 

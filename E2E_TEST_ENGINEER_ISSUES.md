@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 23:37 UTC TEST F2743 Admin Order List Bounds Handoff
+
+Source status:
+- TEST F2743 / QA F2490 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Legacy `OrderService.getAllOrders()` now has a 500-row hard ceiling instead of allowing 5000 rows.
+- The `/orders` admin compatibility path uses the same 500-row hard ceiling.
+- `/admin/orders` and `/admin/orders/page` now consume a dedicated `admin:orders:list` rate-limit bucket controlled by `traffic.rate-limit.admin-order-list-per-minute` (default 60/minute).
+- `./mvnw -q -Dtest=AdminOrderListBoundContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin order page pagination | SOURCE_FIXED / ADMIN ORDER E2E PENDING | Load `/admin/orders` with normal filters and verify paged `items`, `total`, `page`, `size`, and `totalPages` still drive the UI correctly. |
+| Legacy admin order compatibility list | SOURCE_FIXED / API E2E PENDING | Call authenticated GET `/orders` as an admin with more than 500 orders available and verify `X-Admin-List-Limit=500`, `X-Admin-List-Truncated=true`, and no oversized response. |
+| Admin order list burst | SOURCE_FIXED / API E2E PENDING | Temporarily lower `traffic.rate-limit.admin-order-list-per-minute`, burst GET `/admin/orders` and `/admin/orders/page`, and verify the over-limit request returns 429 with rate-limit headers. |
+
 ## 2026-06-11 21:32 UTC TEST F2742 Navbar Guest Stock Alert Handoff
 
 Source status:

@@ -132,6 +132,7 @@ public class ConfigCenterService {
             "admin.audit-logs.search-max-rows=1000",
             "admin.audit-logs.export-max-rows=5000",
             "traffic.rate-limit.guest-checkout-per-hour=10",
+            "traffic.rate-limit.admin-order-list-per-minute=60",
             "traffic.rate-limit.pet-gallery-like-per-minute=20",
             "security.ip-blacklist.login-failure-threshold=5",
             "security.ip-blacklist.payment-failure-threshold=5",
