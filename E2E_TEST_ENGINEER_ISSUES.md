@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 03:08 UTC QA F3428 Mobile Update Test Drift Handoff
+
+Source status:
+- QA F3428 is source-fixed.
+- `mobileUpdate.test.ts` no longer hardcodes fallback release `10023` / `1.0.23`.
+- The fallback version assertions now read `currentMobileRelease.versionCode` and `currentMobileRelease.versionName`, so generated `mobileRelease.ts` version bumps should not cause test drift failures.
+
+Local verification already run:
+- Staged source checks confirmed the stale hardcoded fallback values are absent.
+- `git diff --cached --check` passed.
+- Frontend Jest was not run because `frontend/node_modules` is missing in this workspace.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Mobile update Jest guard | SOURCE_FIXED / FRONTEND TEST REQUIRED | After restoring frontend dependencies, run `CI=true npm test -- --runTestsByPath src/utils/mobileUpdate.test.ts --watchAll=false --runInBand` and confirm release-version drift no longer fails the suite. |
+| Android update manifest smoke | SOURCE_FIXED / ANDROID E2E OPTIONAL | In Android WebView/native shell, trigger the update-check path and confirm manifest URL resolution and current-version fallback still use the generated release metadata. |
+
 ## 2026-06-11 01:53 UTC QA F3429 Product Recommendation Cache Handoff
 
 Source status:

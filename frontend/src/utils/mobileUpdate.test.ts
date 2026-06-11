@@ -1,4 +1,5 @@
 import {
+  currentMobileRelease,
   currentNativeMobilePlatform,
   currentMobileVersionCode,
   currentMobileVersionName,
@@ -58,8 +59,8 @@ describe('mobileUpdate release download gate', () => {
       mobileCurrentVersionCode: 10023,
     };
 
-    expect(currentMobileVersionCode()).toBe(10023);
-    expect(currentMobileVersionName()).toBe('1.0.23');
+    expect(currentMobileVersionCode()).toBe(currentMobileRelease.versionCode);
+    expect(currentMobileVersionName()).toBe(currentMobileRelease.versionName);
 
     window.__SHOP_RUNTIME_CONFIG__ = {
       mobileCurrentVersionName: '',
