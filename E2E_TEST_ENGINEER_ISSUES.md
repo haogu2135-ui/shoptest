@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 04:10 UTC QA F3427 Product Options LocalStorage Triage Handoff
+
+Source status:
+- QA F3427 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE with a regression guard.
+- Current `productOptions.ts` has no `localStorage`, `sessionStorage`, `product-options-*`, `expiresAt`, or TTL cache path.
+- Product detail option groups are derived from the current product payload through `getProductOptionGroups(product)`, so the reported indefinite browser cache is not present in current source.
+
+Local verification already run:
+- Source searches confirmed the stale persistent product-options cache key/path is absent.
+- Expanded `productOptions.test.ts` to reject reintroduced persistent product-options cache markers.
+- `git diff --check` passed.
+- Frontend Jest was not run because `frontend/node_modules` is missing in this workspace.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product detail option refresh | CURRENT_SOURCE_NON_ISSUE / STOREFRONT SMOKE OPTIONAL | After restoring frontend dependencies, run `CI=true npm test -- --runTestsByPath src/utils/productOptions.test.ts --watchAll=false --runInBand`; optionally update product option groups in admin and reopen the storefront product detail page to confirm the current API payload drives visible options. |
+
 ## 2026-06-11 03:08 UTC QA F3428 Mobile Update Test Drift Handoff
 
 Source status:

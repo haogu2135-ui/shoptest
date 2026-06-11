@@ -6,6 +6,7 @@ describe('productOptions', () => {
     const source = require('fs').readFileSync(require('path').join(__dirname, 'productOptions.ts'), 'utf8') as string;
 
     expect(source).not.toMatch(/\bany\b/);
+    expect(source).not.toMatch(/localStorage|sessionStorage|product-options|expiresAt|ttl/i);
     expect(source).toContain('const normalizeVariantOptions = (variant: unknown)');
     expect(source).toContain('const normalizeVariants = (items: unknown[])');
   });
