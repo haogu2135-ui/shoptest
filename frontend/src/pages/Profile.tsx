@@ -164,6 +164,7 @@ const Profile: React.FC = () => {
   const { config: appConfig } = useAppConfig();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<OrderCustomer[]>([]);
+  const [ordersInitialLoadComplete, setOrdersInitialLoadComplete] = useState(false);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [petProfiles, setPetProfiles] = useState<PetProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,6 +208,7 @@ const Profile: React.FC = () => {
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [orderSearchText, setOrderSearchText] = useState('');
   const handledPaymentReturnRef = useRef('');
+  const ordersRef = useRef<OrderCustomer[]>([]);
   const mountedRef = useRef(false);
   const ordersRequestSeqRef = useRef(0);
   const profileOrderItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
@@ -279,7 +281,9 @@ const Profile: React.FC = () => {
       const response = await orderApi.getMine();
       const sortedOrders = sortOrdersNewestFirst(response.data || []);
       if (!mountedRef.current || ordersRequestSeqRef.current !== requestSeq) return;
+      ordersRef.current = sortedOrders;
       setOrders(sortedOrders);
+      setOrdersInitialLoadComplete(true);
       const itemResults = await allSettledWithConcurrency(
         sortedOrders.slice(0, 30),
         async (order) => {
@@ -299,6 +303,7 @@ const Profile: React.FC = () => {
       setOrderItemsByOrderId(Object.fromEntries(itemEntries));
     } catch {
       if (mountedRef.current && ordersRequestSeqRef.current === requestSeq) {
+        setOrdersInitialLoadComplete(true);
         message.error(t('pages.profile.fetchOrdersFailed'));
       }
     }
@@ -392,9 +397,10 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (paymentReturnStatus !== 'success') return;
+    if (!ordersInitialLoadComplete) return;
     const targetOrderId = Number.isFinite(paymentReturnOrderId) && paymentReturnOrderId > 0 ? paymentReturnOrderId : null;
-    const targetOrder = orders.find((order) => paymentReturnOrderNo && normalizeProfileOrderNo(order.orderNo) === paymentReturnOrderNo)
-      || orders.find((order) => targetOrderId !== null && order.id === targetOrderId);
+    const targetOrder = ordersRef.current.find((order) => paymentReturnOrderNo && normalizeProfileOrderNo(order.orderNo) === paymentReturnOrderNo)
+      || ordersRef.current.find((order) => targetOrderId !== null && order.id === targetOrderId);
     if (!targetOrder) return;
     const returnKey = `${paymentReturnStatus}:${targetOrder.id}:${paymentReturnOrderNo || targetOrder.orderNo || ''}`;
     if (handledPaymentReturnRef.current === returnKey) return;
@@ -413,7 +419,7 @@ const Profile: React.FC = () => {
         fetchOrders();
       }
     });
-  }, [fetchOrders, orders, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState, t]);
+  }, [fetchOrders, ordersInitialLoadComplete, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState, t]);
 
   useEffect(() => {
     if (profileEmailCodeCountdown <= 0) return undefined;

@@ -18,4 +18,17 @@ describe('Profile type-safety guard', () => {
     expect(source).toContain('if (isFormValidationError(err)) return;');
     expect(source).toContain("message.error(getProfileErrorMessage(err, t('pages.profile.continuePayFailed'), language));");
   });
+
+  it('keeps payment-return synchronization off the mutable orders dependency', () => {
+    const source = readProfileSource();
+
+    expect(source).toContain('const [ordersInitialLoadComplete, setOrdersInitialLoadComplete] = useState(false);');
+    expect(source).toContain('const ordersRef = useRef<OrderCustomer[]>([]);');
+    expect(source).toContain('ordersRef.current = sortedOrders;');
+    expect(source).toContain('setOrdersInitialLoadComplete(true);');
+    expect(source).toContain("if (!ordersInitialLoadComplete) return;");
+    expect(source).toContain('const targetOrder = ordersRef.current.find(');
+    expect(source).toMatch(/\}, \[fetchOrders, ordersInitialLoadComplete, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
+    expect(source).not.toMatch(/\}, \[fetchOrders, orders, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
+  });
 });

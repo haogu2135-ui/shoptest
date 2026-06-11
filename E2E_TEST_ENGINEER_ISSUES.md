@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 04:20 UTC QA F3445 Profile Payment Return Dependency Handoff
+
+Source status:
+- QA F3445 is source-fixed with a regression guard.
+- `Profile.tsx` payment-return synchronization now waits for `ordersInitialLoadComplete`, reads target orders from `ordersRef.current`, and no longer depends on the mutable `orders` array.
+- Sync/catch `fetchOrders()` calls can refresh the order list without retriggering the payment-return effect through the dependency array.
+
+Local verification already run:
+- Staged source checks confirmed the payment-return effect dependency array uses `ordersInitialLoadComplete` instead of `orders`.
+- `ProfileTypeSafety.test.ts` now guards the ref-backed initial-load contract.
+- `git diff --cached --check` passed.
+- Frontend Jest was not run because `frontend/node_modules` is missing in this workspace.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Profile payment return success | SOURCE_FIXED / PROFILE E2E REQUIRED | After restoring frontend dependencies, run `CI=true npm test -- --runTestsByPath src/pages/ProfileTypeSafety.test.ts --watchAll=false --runInBand`; then complete a checkout payment return into `/profile?payment=success&orderNo=...` and confirm one sync attempt, URL cleanup, and no repeated `/orders/me` loop. |
+| Profile payment return sync failure | SOURCE_FIXED / FAILURE E2E OPTIONAL | Simulate payment sync failure after return and confirm the page shows one localized failure message and refreshes orders without repeated sync attempts. |
+
 ## 2026-06-11 04:10 UTC QA F3427 Product Options LocalStorage Triage Handoff
 
 Source status:
