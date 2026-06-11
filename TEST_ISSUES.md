@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer auth/IP blacklist priority duplicate triage (2026-06-11 08:02 UTC)**: Closed TEST **SEC-NEW-008** as **WONTFIX / DUPLICATE_OF_TEST_SEC_NEW_002_AND_QA_SEC_NEW_005 / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_CONFIRMED**. Current `SecurityConfig` registers `ipBlacklistFilter` before `jwtAuthenticationFilter`, and `IpBlacklistAdminCoverageContractTest` already guards the filter order, `/admin/**` admin rule, absence of stale split-chain markers, and default `/admin` IP-blacklist path coverage. Verification: source search confirmed the filter order and admin prefix coverage; `git diff --check` passed; `./mvnw -q -Dtest=IpBlacklistAdminCoverageContractTest test` passed.
+
 - **Maintainer data encryption key naming triage (2026-06-11 07:54 UTC)**: Closed TEST **SEC-NEW-007** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. Current backend production configuration and Java source do not define or consume the deprecated `data.encryption.key` property, and no replacement key is needed until a data-encryption feature exists. Added `DataEncryptionKeyNamingContractTest` to reject future backend uses of the bare `data.encryption.key` property while allowing the conventional `shop.data.encryption.key` namespace if such a feature is introduced. Verification: production source/resource search found no deprecated key; `git diff --check` passed; `./mvnw -q -Dtest=DataEncryptionKeyNamingContractTest test` passed.
 
 - **Maintainer stale blacklisted token schema triage (2026-06-11 07:27 UTC)**: Closed QA **SEC-NEW-008** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. Current production schema and migrations do not define a `blacklisted_tokens` table, and `schema.sql:669` is an `orders.tracking_carrier_code` column rather than the reported table. Added `BlacklistedTokenSchemaContractTest` to reject future `blacklisted_tokens` statements with a `password` column. Verification: production source/resource search found no `blacklisted_tokens` table; `git diff --check` passed; `./mvnw -q -Dtest=BlacklistedTokenSchemaContractTest test` passed. TEST **SEC-NEW-007** was tracked separately as a `data.encryption.key` property-naming issue and is now closed by the 2026-06-11 07:54 UTC triage above.
@@ -3343,8 +3345,9 @@ Notes:
 - Severity: LOW
 - Symptom: The authentication filter chain processes JWT tokens before checking the IP blacklist. An attacker with a valid JWT from a blacklisted IP could potentially bypass the IP check.
 - Impact: IP blacklist bypass for authenticated requests
-- Status: OPEN
+- Status: WONTFIX / DUPLICATE_OF_TEST_SEC_NEW_002_AND_QA_SEC_NEW_005 / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_CONFIRMED
 - Expected fix direction: Ensure IP blacklist is checked before authentication processing.
+- Triage (2026-06-11 08:02 UTC): This duplicates the admin IP blacklist coverage/filter-order work already fixed for TEST SEC-NEW-002 and QA SEC-NEW-005. Current `SecurityConfig` registers `ipBlacklistFilter` before `jwtAuthenticationFilter`, and `IpBlacklistAdminCoverageContractTest` guards that order plus `/admin` path coverage.
 
 ### PERF-001: Order items N+1 query in OrderService
 

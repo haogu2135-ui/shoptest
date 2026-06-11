@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 08:02 UTC TEST SEC-NEW-008 Auth/IP Blacklist Priority Handoff
+
+Source status:
+- TEST SEC-NEW-008 is closed as WONTFIX / DUPLICATE_OF_TEST_SEC_NEW_002_AND_QA_SEC_NEW_005 / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_CONFIRMED.
+- Current `SecurityConfig` registers `ipBlacklistFilter` before `jwtAuthenticationFilter`.
+- Current default IP blacklist path prefixes include `/admin`, so admin JWT requests are checked by IP blacklist before authentication processing when path-prefix mode is used.
+- Existing `IpBlacklistAdminCoverageContractTest` guards the filter order, `/admin/**` admin authorization rule, stale split-chain marker absence, and shipped `/admin` prefix coverage.
+
+Local verification already run:
+- Source search confirmed `addFilterBefore(ipBlacklistFilter, UsernamePasswordAuthenticationFilter.class)` appears before the JWT filter registration.
+- Source search confirmed `/admin` is present in `IpBlacklistService`, `application.properties`, and the config-center template defaults.
+- `git diff --check` passed for the updated issue handoff files.
+- `./mvnw -q -Dtest=IpBlacklistAdminCoverageContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin IP blacklist before JWT auth | CURRENT_SOURCE_COVERED / NO NEW MANUAL E2E REQUIRED | Keep `IpBlacklistAdminCoverageContractTest` in CI. No separate browser/device E2E is required for this duplicate static filter-order closure; any future admin IP blacklist runtime retest should reuse the QA SEC-NEW-005 handoff scope. |
+
 ## 2026-06-11 07:54 UTC TEST SEC-NEW-007 Data Encryption Key Naming Handoff
 
 Source status:
