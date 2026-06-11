@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 14:34 UTC TEST F3487 Checkout Payment Polling Handoff
+
+Source status:
+- TEST F3487 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED.
+
+Local verification already run:
+- `Checkout.tsx` payment polling now guards shared storage result application and queued interval callbacks with `disposed`.
+- The refresh timeout and polling interval clear timers/listeners and keep post-await payment/order state updates behind disposed checks.
+- `./mvnw -q -Dtest=CheckoutPaymentPollingContractTest test` passed.
+- `target/` was removed after Maven verification.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Checkout payment polling unmount | SOURCE_FIXED / CHECKOUT E2E PENDING | Start checkout with a pending payment, navigate away or unmount the checkout page while polling is active, and verify no React setState-after-unmount warnings or duplicate payment status updates appear. |
+| Multi-tab payment polling | SOURCE_FIXED / CHECKOUT E2E OPTIONAL | Open the same pending payment in two tabs, complete or simulate payment in one tab, and verify the other tab consumes the shared result once without leaking polling or showing stale status. |
+
 ## 2026-06-11 14:23 UTC TEST PERF-020 Product Options Cache TTL Handoff
 
 Source status:

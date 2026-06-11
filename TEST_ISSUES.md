@@ -3587,8 +3587,9 @@ Notes:
 - Severity: CRITICAL
 - Symptom: Payment polling interval leaks and double-setState after unmount. Inner timeout has no `isMountedRef` check, and `isMountedRef` is set to false before clearing the interval. Between `pollRef.current` check and clearInterval, setState can fire.
 - Impact: Memory leak, potential React "setState on unmounted component" crash
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use single isMountedRef check pattern; clear interval before setting isMountedRef to false.
+- Fix (2026-06-11 14:34 UTC): Hardened the current `Checkout.tsx` payment polling lifecycle by guarding shared polling result application with `disposed` and by making queued interval callbacks return immediately when `disposed || polling`. The existing refresh timeout already clears its timer and checks `disposed` before `setPayment(...)`; the polling effect also keeps async `paymentApi.getLatestByOrder(...)` and `orderApi.getById(...)` results behind post-await `disposed` checks, clears the interval, removes the storage listener, and releases the poll lock during cleanup. Added `CheckoutPaymentPollingContractTest` to guard the refresh timeout, polling interval entry, storage-result path, async result guards, cleanup, and dependency list so payment polling cannot regress to setState-after-unmount behavior.
 
 ### F3488: Race condition in SupportManagement polling (no disposed check between calls)
 

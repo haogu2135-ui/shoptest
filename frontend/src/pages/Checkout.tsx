@@ -1305,7 +1305,7 @@ const Checkout: React.FC = () => {
     let polling = false;
     let ownsLock = false;
     const applySharedPollResult = (result: CheckoutPaymentPollResult | null) => {
-      if (!result || result.ownerId === ownerId || result.orderId !== createdOrderId) return false;
+      if (disposed || !result || result.ownerId === ownerId || result.orderId !== createdOrderId) return false;
       setPayment(result.payment);
       if (result.order) {
         setCreatedOrder(result.order);
@@ -1319,7 +1319,8 @@ const Checkout: React.FC = () => {
     };
     window.addEventListener('storage', handlePaymentPollStorage);
     const timer = window.setInterval(async () => {
-      if (polling) return;
+      if (disposed) return;
+      if (disposed || polling) return;
       const sharedResult = readCheckoutPaymentPollResult(createdOrderId);
       if (applySharedPollResult(sharedResult) && isCheckoutPaymentPollTerminal(sharedResult?.payment)) {
         return;
