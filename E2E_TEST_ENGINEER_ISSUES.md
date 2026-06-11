@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 00:20 UTC Android UI Pet Tools / Compare Handoff
+
+Source status:
+- Android UI UI-20260608-02/UI-20260608-03 are source-fixed and need runtime regression.
+- `PetFinder.css`, `PetGallery.css`, and `ProductCompare.css` keep the named pet/compare mobile eyebrow labels at 12px instead of 11px.
+- `ProductCompare.css` changes 430px compare header actions to one full-width column with 44px buttons and visible wrapped labels instead of clipped ellipsis text.
+
+Local verification already run:
+- Staged CSS searches confirmed the old 11px eyebrow rules and clipped 430px compare action override are absent from the touched source slices.
+- Added `PetCompareMobileUiGuard.test.ts` source guard for the 12px label and full-width compare action contracts.
+- `git diff --cached --check` passed.
+- Jest/TypeScript/Playwright were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Android App pet tools and compare | SOURCE_FIXED / ANDROID E2E PENDING | Re-run Android WebView/real-device coverage for `/pet-finder`, `/pet-gallery`, and `/compare` at 320/390/430px. Confirm the pet finder eyebrow, pet gallery insight eyebrow, and compare eyebrow computed font-size are all >=12px; compare header actions show full labels for Add all to cart, Add more products, and Clear comparison without text clipping; hit targets remain >=44px and no horizontal page overflow is introduced. |
+
 ## 2026-06-11 00:10 UTC QA F3515 Product Management Full Type-Safety Handoff
 
 Source status:
