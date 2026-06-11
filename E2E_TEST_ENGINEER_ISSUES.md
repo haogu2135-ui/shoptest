@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 16:00 UTC TEST F3489 Cart Quantity Race Handoff
+
+Source status:
+- TEST F3489 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Cart page and CartDrawer now route authenticated quantity changes through shared `useCartQuantitySync(...)`.
+- The shared hook clears debounced timers on unmount, marks the hook disposed, resets pending request maps, guards success/error/finally continuations with mounted + request-version checks, and consumes background promise rejections.
+- `npm test -- --runTestsByPath src/hooks/useCartQuantitySync.test.tsx src/utils/cartTimerCleanup.test.ts --watchAll=false` passed.
+- `npm test -- --runTestsByPath src/utils/cartUi.test.ts --watchAll=false` passed.
+- `target/`, `frontend/node_modules`, `.npm-cache`, and `logs/` were removed after verification.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Cart page quantity debounce unmount | SOURCE_FIXED / STOREFRONT E2E PENDING | In an authenticated cart, edit a line quantity and navigate away before the debounce fires. Verify no late toast, unhandled rejection, stale spinner, or React setState-after-unmount warning appears. |
+| Mini-cart drawer quantity debounce unmount | SOURCE_FIXED / STOREFRONT E2E PENDING | Open the CartDrawer, edit a line quantity, close the drawer or navigate away before the debounce fires, and verify no stale drawer state update, duplicate cart-updated event, or console error occurs after close. |
+| Checkout with pending quantity sync | SOURCE_FIXED / CHECKOUT E2E PENDING | Change an authenticated cart quantity and immediately continue to checkout from full cart and drawer. Verify pending quantity updates flush before navigation and checkout receives the final quantity. |
+
 ## 2026-06-11 15:37 UTC TEST F3486 Frontend Broad Any Type Safety Handoff
 
 Source status:

@@ -3693,7 +3693,10 @@ Notes:
 - Area: Frontend / Cart.tsx (then() blocks)
 - Severity: HIGH
 - Impact: Potential stale setState after unmount
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING 2026-06-11 16:00 UTC
+- Resolution: Cart page and mini-cart drawer authenticated quantity updates now share `useCartQuantitySync(...)` instead of keeping separate component-local debounce timers and Promise/version maps. The shared hook clears pending timers on unmount, marks itself disposed, resets request maps, guards success/error/finally continuations with `isMounted()` plus request version checks, and consumes background promise rejections so stale async quantity updates cannot call page/drawer state setters after unmount.
+- Regression guard: `frontend/src/hooks/useCartQuantitySync.test.tsx` covers debounce coalescing, timer cleanup on unmount, checkout flush of pending timer-backed quantities, and guest-cart no-op flushing. `frontend/src/utils/cartTimerCleanup.test.ts` source-contract coverage keeps Cart/CartDrawer on the shared hook and verifies guarded disposed/version continuations.
+- Verification: `npm test -- --runTestsByPath src/hooks/useCartQuantitySync.test.tsx src/utils/cartTimerCleanup.test.ts --watchAll=false` passed; `npm test -- --runTestsByPath src/utils/cartUi.test.ts --watchAll=false` passed.
 
 ### F3491: isAuthExpiredError duplicated across 3 files
 
