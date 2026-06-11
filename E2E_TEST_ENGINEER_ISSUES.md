@@ -4,6 +4,26 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 01:53 UTC QA F3429 Product Recommendation Cache Handoff
+
+Source status:
+- QA F3429 is closed as current-source-covered with a regression guard.
+- Current `ProductServiceImpl` has no dedicated `productRecommendationsCache` or `categoryRecommendationsCache` unbounded cache fields.
+- Recommendation candidates are fetched through bounded repository windows using `PageRequest.of(0, candidateWindow)`.
+- Shared product result caching remains TTL/max-entry controlled by `product.search-cache-ttl-ms` and `product.search-cache-max-entries`.
+
+Local verification already run:
+- Source searches confirmed stale recommendation cache names are absent.
+- Added `ProductRecommendationCacheContractTest` source guard.
+- `./mvnw -q -Dtest=ProductRecommendationCacheContractTest test` passed.
+- `git diff --cached --check` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product detail related recommendations | CURRENT_SOURCE_COVERED / OPTIONAL STOREFRONT E2E | During product-detail smoke, open several products in different categories and verify related products still render and exclude the current product. |
+| Personalized recommendations | CURRENT_SOURCE_COVERED / OPTIONAL CUSTOMER E2E | With a user that has pet profiles, verify personalized recommendation sections still load bounded product lists and do not noticeably slow the page. |
+| Product finder recommendations | CURRENT_SOURCE_COVERED / OPTIONAL STOREFRONT E2E | Run pet finder/search flows with multiple keywords and verify recommendation results still appear with expected category/keyword relevance. |
+
 ## 2026-06-11 01:49 UTC QA F3460 Service Logging Coverage Handoff
 
 Source status:
