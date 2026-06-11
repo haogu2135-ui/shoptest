@@ -4825,8 +4825,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/OrderService.java` (lines 1119-1121)
 - Severity: MEDIUM
 - Description: `deleteOrder(Long id)` performs no validation on the input `id` and does not verify the order exists or is in a deletable state. A caller could delete a paid or shipped order without any status guard.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 20:06 UTC)
 - Expected fix direction: Fetch the order first and validate its status is cancellable (e.g., only `PENDING_PAYMENT` or `CANCELLED`) before allowing deletion.
+- Resolution: `deleteOrder` now rejects missing/non-positive ids, fetches the order before deletion, returns `false` when the order does not exist, and only permits hard deletion for `CANCELLED` orders. `PENDING_PAYMENT` orders must go through the normal cancellation path first so stock, coupon, and payment state are released; paid/fulfillment states are rejected.
+- Regression guard: Added `OrderDeleteStatusGuardTest`, which verifies invalid ids and non-existent orders never call `deleteById`, cancelled orders can be deleted, and pending-payment or paid/fulfillment orders are rejected before deletion.
+- Verification: `./mvnw -q -DskipTests compile` passed; `./mvnw -q -Dtest=OrderDeleteStatusGuardTest test` passed after main classes were rebuilt. The first clean-target attempt was blocked during test compilation by pre-existing unrelated test/source mismatches.
 
 ### F2732: MEDIUM — SupportService auto-assigns admin role without verification
 

@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 20:06 UTC TEST F2731 Order Delete Status Guard Handoff
+
+Source status:
+- TEST F2731 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `deleteOrder` now validates id, fetches the order before delete, returns `false` for missing rows, and only hard-deletes `CANCELLED` orders.
+- `PENDING_PAYMENT` orders are rejected so callers must use the cancellation flow that releases stock, coupon, and payment state.
+- Paid/fulfillment orders such as `PENDING_SHIPMENT` are rejected before `deleteById`.
+- `./mvnw -q -DskipTests compile` passed.
+- `./mvnw -q -Dtest=OrderDeleteStatusGuardTest test` passed after rebuilding main classes.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Legacy order delete endpoint | SOURCE_FIXED / ORDER E2E PENDING | As an admin, call `DELETE /orders/{id}` for pending, cancelled, and paid/shipped orders. Verify the legacy endpoint remains forbidden and no order is removed. |
+| Service/admin delete guard | SOURCE_FIXED / ADMIN ORDER E2E PENDING | If any admin UI/API path still invokes order hard delete, verify only `CANCELLED` orders can be deleted; `PENDING_PAYMENT`, `PENDING_SHIPMENT`, `SHIPPED`, `COMPLETED`, and return/refund states are rejected. |
+| Cancellation path remains intact | SOURCE_FIXED / ORDER E2E OPTIONAL | Cancel a `PENDING_PAYMENT` order through the normal cancel action, then verify stock/coupon/payment cleanup still occurs and any subsequent hard-delete path treats the now-cancelled order as the only deletable state. |
+
 ## 2026-06-11 19:59 UTC TEST F2730 Guest User Creation Race Handoff
 
 Source status:

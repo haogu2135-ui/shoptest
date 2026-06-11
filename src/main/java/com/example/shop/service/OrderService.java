@@ -974,7 +974,22 @@ public class OrderService {
      */
     @Transactional
     public boolean deleteOrder(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("Order id is required");
+        }
+        Order order = orderRepository.findById(id);
+        if (order == null) {
+            return false;
+        }
+        requireDeletableOrder(order);
         return orderRepository.deleteById(id) > 0;
+    }
+
+    private void requireDeletableOrder(Order order) {
+        String status = order == null ? null : trimToNull(order.getStatus());
+        if (!"CANCELLED".equals(status)) {
+            throw new IllegalStateException("Only cancelled orders can be deleted");
+        }
     }
 
     /**
