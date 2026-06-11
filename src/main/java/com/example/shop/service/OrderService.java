@@ -24,6 +24,7 @@ import com.example.shop.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Service
@@ -81,6 +85,7 @@ public class OrderService {
     private static final int GUEST_USERNAME_TOKEN_LENGTH = 32;
     private static final int GUEST_USERNAME_SEED_MAX_LENGTH =
             GUEST_USERNAME_MAX_LENGTH - GUEST_USERNAME_TOKEN_LENGTH - 1;
+    private final ConcurrentMap<String, ReentrantLock> guestUserCreationLocks = new ConcurrentHashMap<>();
 
     @Autowired
     private OrderRepository orderRepository;
@@ -399,13 +404,32 @@ public class OrderService {
 
     private Long getOrCreateGuestUser(GuestCheckoutRequest request) {
         String email = request.getGuestEmail().trim().toLowerCase();
+        ReentrantLock lock = guestUserCreationLocks.computeIfAbsent(email, ignored -> new ReentrantLock());
+        lock.lock();
+        boolean releaseAfterTransaction = false;
+        try {
+            Long guestUserId = getOrCreateGuestUserLocked(request, email);
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                releaseAfterTransaction = true;
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        releaseGuestUserCreationLock(email, lock);
+                    }
+                });
+            }
+            return guestUserId;
+        } finally {
+            if (!releaseAfterTransaction) {
+                releaseGuestUserCreationLock(email, lock);
+            }
+        }
+    }
+
+    private Long getOrCreateGuestUserLocked(GuestCheckoutRequest request, String email) {
         Optional<User> existing = userRepository.findByEmail(email);
         if (existing.isPresent()) {
-            User user = existing.get();
-            if (!"GUEST".equals(user.getStatus())) {
-                throw new IllegalArgumentException("This email is already registered. Please sign in before checkout.");
-            }
-            return user.getId();
+            return requireGuestUser(existing.get());
         }
         User user = new User();
         user.setUsername(generateGuestUsername(email));
@@ -417,7 +441,27 @@ public class OrderService {
         user.setAddress(request.getShippingAddress());
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
-        return userRepository.save(user).getId();
+        try {
+            return userRepository.saveAndFlush(user).getId();
+        } catch (DataIntegrityViolationException ex) {
+            return requireGuestUser(userRepository.findByEmail(email)
+                    .orElseThrow(() -> ex));
+        }
+    }
+
+    private Long requireGuestUser(User user) {
+        if (!"GUEST".equals(user.getStatus())) {
+            throw new IllegalArgumentException("This email is already registered. Please sign in before checkout.");
+        }
+        return user.getId();
+    }
+
+    private void releaseGuestUserCreationLock(String email, ReentrantLock lock) {
+        try {
+            lock.unlock();
+        } finally {
+            guestUserCreationLocks.remove(email, lock);
+        }
     }
 
     private String generateGuestUsername(String email) {

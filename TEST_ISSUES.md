@@ -4813,8 +4813,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/OrderService.java` (lines 536-557)
 - Severity: MEDIUM
 - Description: `getOrCreateGuestUser` does a `findByEmail` check, then creates a new user in a separate operation. Two concurrent guest checkout requests with the same email could both pass the existence check and create duplicate guest user records.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 19:59 UTC)
 - Expected fix direction: Wrap the find-or-create in a `synchronized` block, or use a database unique constraint on email with an upsert pattern.
+- Resolution: Guest checkout now serializes guest user creation by normalized email with a per-email `ReentrantLock` held until the checkout transaction completes. The insert uses `saveAndFlush(user)` while the lock is held so the database unique constraint is observed before order creation continues; if a database unique-key race still surfaces, the service re-reads the email and returns the existing GUEST user. Existing non-GUEST email rows remain rejected with the sign-in message.
+- Regression guard: Added `OrderGuestUserCreationRaceContractTest`, which requires the per-email lock map, lock acquisition by normalized email, transaction-completion release, flushed insert, unique-key recovery, and registered-email rejection guard.
+- Verification: `./mvnw -q -Dtest=OrderGuestUserCreationRaceContractTest test` passed.
 
 ### F2731: MEDIUM — Order deletion has no status guard
 

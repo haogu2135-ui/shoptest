@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 19:59 UTC TEST F2730 Guest User Creation Race Handoff
+
+Source status:
+- TEST F2730 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Guest checkout user creation is serialized by normalized guest email with a per-email lock held until the checkout transaction completes.
+- Guest user insert uses `saveAndFlush(user)` while the lock is held, and database unique-key races recover by re-reading the email.
+- Existing registered/non-GUEST email rows still fail with the sign-in-before-checkout message.
+- `./mvnw -q -Dtest=OrderGuestUserCreationRaceContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Concurrent same-email guest checkout | SOURCE_FIXED / CHECKOUT E2E PENDING | Submit two guest checkout requests with the same email as close together as the harness allows. Verify only one GUEST user row is created/reused and the flow does not return a duplicate-key 500. |
+| Registered email guard | SOURCE_FIXED / CHECKOUT E2E PENDING | Attempt guest checkout with an email belonging to an existing registered user. Verify checkout is rejected with the sign-in message and no guest user is created. |
+| Distinct guest emails | SOURCE_FIXED / CHECKOUT E2E OPTIONAL | Submit concurrent guest checkout requests with different guest emails. Verify they proceed independently and do not serialize each other unnecessarily. |
+
 ## 2026-06-11 19:50 UTC TEST F2729 Checkout Support Panel Dismiss Handoff
 
 Source status:
