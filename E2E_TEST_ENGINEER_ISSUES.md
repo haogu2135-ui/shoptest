@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 05:39 UTC QA SEC-NEW-006 / TEST SEC-NEW-004 Actuator Env Handoff
+
+Source status:
+- QA SEC-NEW-006 and TEST SEC-NEW-004 are closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED.
+- Current management web exposure is limited to `health,info`; actuator `env` and wildcard `*` are not exposed.
+- `SecurityConfig` has no anonymous `/actuator/env`, `/env`, or actuator wildcard `EndpointRequest` permit rule.
+
+Local verification already run:
+- Actuator env exposure source search returned no matches.
+- Added `ActuatorEnvExposureContractTest` to guard management exposure and anonymous actuator env security rules.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=ActuatorEnvExposureContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Actuator env exposure | CURRENT_SOURCE_NON_ISSUE / API SMOKE OPTIONAL | Keep `ActuatorEnvExposureContractTest` in CI. Optional deployment smoke can call `GET /actuator/env` and confirm it is not anonymously available while `GET /actuator/health` and `/actuator/info` remain aligned with deployment needs. |
+
 ## 2026-06-11 05:25 UTC QA SEC-NEW-005 / TEST SEC-NEW-002 Admin IP Blacklist Handoff
 
 Source status:

@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer actuator env exposure triage (2026-06-11 05:39 UTC)**: Closed QA **SEC-NEW-006** and TEST **SEC-NEW-004** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. The reported actuator `/env` anonymous exposure is stale against current source: management web exposure includes only `health,info`, and `SecurityConfig` has no anonymous `/actuator/env`, `/env`, `EndpointRequest.toAnyEndpoint`, or `EndpointRequest.to("env")` rule. Added `ActuatorEnvExposureContractTest` to guard against actuator env or wildcard exposure. Verification: actuator env exposure source search returned no matches; `git diff --check` passed; `./mvnw -q -Dtest=ActuatorEnvExposureContractTest test` passed.
+
 - **Maintainer admin IP blacklist coverage fix (2026-06-11 05:25 UTC)**: Closed QA **SEC-NEW-005** and TEST **SEC-NEW-002** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. `SecurityConfig` already places `ipBlacklistFilter` before `jwtAuthenticationFilter`, but current default IP blacklist path prefixes omitted `/admin` when `security.ip-blacklist.block-all-paths=false`. Added `/admin` to `IpBlacklistService` defaults, `application.properties`, and the config-center template. Added `IpBlacklistAdminCoverageContractTest` to prove admin paths are checked by default and the filter chain remains ordered before JWT. Verification: `/admin` prefix source search confirmed code/config/template coverage; `git diff --check` passed; `./mvnw -q -Dtest=IpBlacklistAdminCoverageContractTest test` passed.
 
 - **Maintainer admin auth source triage (2026-06-11 05:11 UTC)**: Closed QA **SEC-NEW-004** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. The reported `adminJwtFilter` path is stale against current source: `SecurityConfig` has a single `/admin/**` rule requiring `ROLE_ADMIN`, and `JwtAuthenticationFilter` only accepts `Authorization: Bearer ...`. There is no cookie, `Sec-WebSocket-Protocol`, `admin_token`, or `adminToken` token fallback that could create competing credential-source priority. Added `AdminAuthenticationSourceContractTest` to guard this contract. Verification: stale marker source search returned no matches; `git diff --check` passed; `./mvnw -q -Dtest=AdminAuthenticationSourceContractTest test` passed.
@@ -3296,8 +3298,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: The Spring Boot actuator `/env` endpoint is accessible without authentication, exposing environment variables and configuration properties.
 - Impact: Information disclosure — sensitive configuration values exposed
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED
 - Expected fix direction: Restrict actuator endpoints to admin-only or disable sensitive endpoints in production.
+- Triage: Current source exposes only `health,info` through `management.endpoints.web.exposure.include` and has no anonymous `/actuator/env` or actuator wildcard security rule. `ActuatorEnvExposureContractTest` guards the contract.
 
 ### SEC-NEW-005: CORS allows all origins in development profile
 
