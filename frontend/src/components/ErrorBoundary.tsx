@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button, Result } from 'antd';
 import { HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useLanguage } from '../i18n';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 
 interface Props {
   children: ReactNode;
@@ -36,7 +37,10 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    reportNonBlockingError('ErrorBoundary caught', {
+      error,
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   handleRetry = () => {

@@ -6,7 +6,10 @@ import esES from 'antd/locale/es_ES';
 import zhCN from 'antd/locale/zh_CN';
 import App from './App';
 import { LanguageProvider, useLanguage } from './i18n';
+import { installGlobalErrorReporting } from './utils/nonBlockingError';
 import './index.css';
+
+installGlobalErrorReporting();
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

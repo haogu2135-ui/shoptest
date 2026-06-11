@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 18:17 UTC TEST F3456 Frontend API Error Handling Handoff
+
+Source status:
+- TEST F3456 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- API terminal failures are reported through `reportNonBlockingError('api.response', ...)` after transient retry/auth fallback paths are exhausted.
+- API terminal failures dispatch `shop:api-error` with safe status/method/path/retry-count plus a generic message, without raw Axios errors or response payloads.
+- ErrorBoundary and global `window.error` / `unhandledrejection` now use the shared sanitized remote reporter.
+- `./mvnw -q -Dtest=FrontendApiErrorHandlingContractTest test` passed in the current worktree.
+- `CI=true npm test -- --runTestsByPath src/utils/nonBlockingError.test.ts --watchAll=false --runInBand --testTimeout=30000` passed.
+- `npx tsc --noEmit --pretty false` remains blocked by the pre-existing `frontend/src/api/index.test.ts:437` `config.headers` possibly undefined error.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| API terminal network failure feedback | SOURCE_FIXED / STOREFRONT E2E PENDING | Force a GET network failure after retries and verify the app dispatches/handles `shop:api-error` once with a generic message and no sensitive payload. |
+| Auth expiry terminal failure | SOURCE_FIXED / AUTH E2E PENDING | Force a 401 that cannot refresh. Verify auth redirect behavior is unchanged and the terminal error is reported without duplicate notifications. |
+| Render/global error reporting | SOURCE_FIXED / APP E2E OPTIONAL | Trigger a controlled render error or unhandled rejection in a test build and verify the fallback UI remains usable while a sanitized `/errors` report is sent. |
+
 ## 2026-06-11 18:17 UTC TEST F3457 Payment Observability Handoff
 
 Source status:

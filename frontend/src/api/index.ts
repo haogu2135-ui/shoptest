@@ -7,6 +7,7 @@ import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { normalizePersistentImageUrl } from '../utils/mediaAssets';
 import { resolveApiBaseUrl, resolveSupportWebSocketUrl } from '../utils/runtimeConfig';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getEffectiveRole } from '../utils/roles';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 
@@ -370,6 +371,7 @@ type AuthRetryConfig = AxiosRequestConfig & {
     skipAuthHeader?: boolean;
     skipAuthRedirect?: boolean;
     skipTransientRetry?: boolean;
+    _terminalApiErrorNotified?: boolean;
     allowAnonymousRetry?: boolean;
 };
 
@@ -484,6 +486,45 @@ const shouldRetryTransientError = (error: AxiosError, config?: AuthRetryConfig) 
     if (!isRetryableMethod(config) || !isTransientApiError(error)) return false;
     const retryCount = config._transientRetryCount || 0;
     return retryCount < TRANSIENT_RETRY_DELAYS_MS.length;
+};
+
+const apiErrorPath = (config?: AxiosRequestConfig) => {
+    const rawUrl = String(config?.url || '');
+    return rawUrl.split(/[?#]/)[0] || 'unknown';
+};
+
+const apiErrorStatus = (error: AxiosError) => {
+    const status = Number(error.response?.status || 0);
+    return Number.isFinite(status) && status > 0 ? status : undefined;
+};
+
+const apiErrorUserMessage = (error: AxiosError) => {
+    const status = apiErrorStatus(error);
+    if (!error.response) return 'Network error. Please check your connection and try again.';
+    if (status === 401) return 'Your session expired. Please sign in again.';
+    if (status === 403) return 'You do not have permission to perform this action.';
+    if (status === 429) return 'Too many requests. Please wait and retry.';
+    if (status && status >= 500) return 'Server error. Please try again later.';
+    return 'Request failed. Please check the form and retry.';
+};
+
+const reportTerminalApiError = (error: AxiosError, config?: AuthRetryConfig) => {
+    if (config?._terminalApiErrorNotified) return;
+    if (config) config._terminalApiErrorNotified = true;
+
+    const status = apiErrorStatus(error);
+    const method = String(config?.method || error.config?.method || 'get').toUpperCase();
+    const path = apiErrorPath(config || error.config);
+    const retryCount = config?._transientRetryCount || 0;
+    reportNonBlockingError('api.response', { error, status, method, path, retryCount });
+    dispatchDomEvent('shop:api-error', {
+        status,
+        method,
+        path,
+        retryCount,
+        transient: isTransientApiError(error),
+        message: apiErrorUserMessage(error),
+    });
 };
 
 const getStoredItem = (key: string) => {
@@ -1355,6 +1396,7 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
+        reportNonBlockingError('api.request', error);
         return Promise.reject(error);
     }
 );
@@ -1379,9 +1421,11 @@ api.interceptors.response.use(
                 return api.request(originalRequest);
             }
             if (error.response.status === 403) {
+                reportTerminalApiError(error, originalRequest);
                 return Promise.reject(error);
             }
             if (originalRequest?.skipAuthRedirect) {
+                reportTerminalApiError(error, originalRequest);
                 return Promise.reject(error);
             }
             if (originalRequest && !originalRequest.skipAuthRefresh && !originalRequest._authRetry) {
@@ -1395,6 +1439,7 @@ api.interceptors.response.use(
             clearAuthSession();
             redirectToLogin();
         }
+        reportTerminalApiError(error, originalRequest);
         return Promise.reject(error);
     }
 );
