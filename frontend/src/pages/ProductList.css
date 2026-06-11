@@ -6650,3 +6650,73 @@
     white-space: normal;
   }
 }
+
+/* F3402: keep the smart guide actions readable at the tablet/bottom-nav breakpoint. */
+@media (max-width: 780px) {
+  .product-list__smartBar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .product-list__smartBarLeft,
+  .product-list__smartActions {
+    width: 100%;
+  }
+
+  .product-list__smartActions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    justify-content: stretch;
+  }
+
+  .product-list__smartActions .ant-space-item {
+    min-width: 0;
+  }
+
+  .product-list__smartActions .ant-space-item:has(.product-list__smartPick),
+  .product-list__smartActions .ant-space-item:has(.product-list__smartPersonal) {
+    grid-column: 1 / -1;
+  }
+
+  .product-list__smartActions .ant-btn {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 38px;
+    line-height: 1.15;
+    white-space: normal !important;
+  }
+
+  .product-list__smartActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    white-space: normal !important;
+  }
+
+  .product-list__smartPick {
+    max-width: none;
+  }
+
+  .product-list__smartPick strong {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 780px) {
+  .shop-app-shell--product-list .shop-nav__bottomBar {
+    display: none;
+  }
+
+  .shop-app-shell--product-list .product-list {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

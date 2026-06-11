@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 18:42 UTC TEST F3402 Product List Smart Guide Handoff
+
+Source status:
+- TEST F3402 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `ProductList.css` now collapses `.product-list__smartBar` to one column through the `780px` bottom-nav breakpoint.
+- `.product-list__smartActions` uses bounded grid tracks; the long hero pick and quick-add actions span full rows, and labels can wrap instead of truncating to unreadable one-letter/ellipsis states.
+- `.shop-app-shell--product-list .shop-nav__bottomBar` is hidden only in the mixed `768px-780px` tablet band so it cannot cover smart guide actions while the page still uses tablet/desktop content structure.
+- `./mvnw -q -Dtest=ProductListSmartGuideResponsiveContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product list smart guide tablet portrait | SOURCE_FIXED / STOREFRONT E2E PENDING | Open `/products?q=dog&sort=price_desc` at `768x1024` and `780x1024`. Verify smart guide buttons stay inside the content column, labels are readable, and no bottom nav covers actions. |
+| Product list smart guide mobile/landscape | SOURCE_FIXED / STOREFRONT E2E PENDING | Recheck `430x932` and `740x360`. Verify the smart guide remains usable with the mobile bottom nav and no horizontal overflow. |
+| Product list desktop tablet landscape | SOURCE_FIXED / STOREFRONT E2E OPTIONAL | Recheck `1024x768`. Verify the smart guide still uses the intended wider layout and no action text clips unexpectedly. |
+
 ## 2026-06-11 18:17 UTC TEST F3456 Frontend API Error Handling Handoff
 
 Source status:
