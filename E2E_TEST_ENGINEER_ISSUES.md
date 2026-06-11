@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 12:40 UTC TEST PERF-016 Fuzzy Dedup Service Handoff
+
+Source status:
+- TEST PERF-016 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_DEDUP_SERVICE_REPORT / REGRESSION_GUARD_ADDED.
+- Current production source has no `DedupService.java`, no `DedupServiceImpl.java`, no dedup package/file, and no fuzzy duplicate merge markers such as `fuzzyMatch`, `similarityScore`, `Levenshtein`, `JaroWinkler`, or `mergeDuplicate`.
+- Current duplicate handling rejects exact conflicts instead of merging records: product import duplicate names/headers are explicit validation failures, variant duplicate SKU/option combinations are validation failures, and idempotent duplicate actions rely on exact database uniqueness conflicts.
+- `DedupServiceContractTest` guards against introducing fuzzy dedup/merge behavior without explicit confidence-threshold coverage.
+
+Local verification already run:
+- Production source search found no stale fuzzy dedup target or merge algorithm markers.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=DedupServiceContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Fuzzy dedup merge service | CURRENT_SOURCE_NON_ISSUE / E2E NOT REQUIRED | Keep `DedupServiceContractTest` in CI. No dedicated browser/device E2E is needed unless a real dedup/merge feature is added later. |
+| Exact duplicate conflict behavior | CURRENT_SOURCE_COVERED / ADMIN/API E2E OPTIONAL | During normal product admin/import and wishlist/coupon duplicate-action regressions, verify exact duplicates are rejected or treated idempotently as designed, and distinct records are not silently merged. |
+
 ## 2026-06-11 12:26 UTC TEST PERF-015 Related Products Bounded Query Handoff
 
 Source status:
