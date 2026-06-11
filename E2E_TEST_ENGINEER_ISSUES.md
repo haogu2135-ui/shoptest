@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 10:26 UTC TEST PERF-006 Discount Product Query Handoff
+
+Source status:
+- TEST PERF-006 is closed as FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+- Current `ProductServiceImpl.findDiscountProducts()` builds a bounded `ProductListQuery`, sets `discount=true` and `sort="discount,desc"`, and delegates to `findPublicProductPage(query).getContent()`.
+- The public page query uses `productRepository.findAll(publicProductSpecification(...), pageRequest)`, and the JPA specification applies discount and active limited-time-price predicates before paging results.
+- `ProductDiscountQueryContractTest` guards against direct repository loads or stream filtering in the discount-list helper.
+
+Local verification already run:
+- Source search confirmed the bounded query and specification predicates.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=ProductDiscountQueryContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Public discount product list | SOURCE_COVERED / E2E OPTIONAL | Keep `ProductDiscountQueryContractTest` in CI. Optional browser/API regression can check discount product sections and product-list discount sorting return expected rows with bounded page sizes. |
+
 ## 2026-06-11 10:07 UTC TEST PERF-005 Product Repository FindAll Handoff
 
 Source status:

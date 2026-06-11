@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer discount product query triage (2026-06-11 10:26 UTC)**: Closed TEST **PERF-006** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current `ProductServiceImpl.findDiscountProducts()` builds a bounded `ProductListQuery`, sets `discount=true` and `sort="discount,desc"`, and delegates to `findPublicProductPage(query).getContent()`. The public page path calls `productRepository.findAll(publicProductSpecification(...), pageRequest)`, and the JPA specification adds discount and limited-time-price predicates when discount filtering is requested, so current source does not load the full catalog and filter discounts in Java. Added `ProductDiscountQueryContractTest` to guard the bounded query and database-side discount filtering contract. Verification: source search confirmed the bounded query and specification predicates; `git diff --check` passed; `./mvnw -q -Dtest=ProductDiscountQueryContractTest test` passed.
+
 - **Maintainer product repository findAll triage (2026-06-11 10:07 UTC)**: Closed TEST **PERF-005** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current production Java source has no no-arg `productRepository.findAll()` call. Legacy `ProductServiceImpl.findAll()` uses `productRepository.findAll(PageRequest.of(0, limit, Sort.by(...)))` with `product.legacy-list-max-rows` clamped by `HARD_LEGACY_PRODUCT_LIST_LIMIT = 500`, while public and discount product lists delegate to bounded paged query paths. Added `ProductRepositoryFindAllContractTest` to guard against reintroducing unbounded no-arg product repository loads. Verification: production source search found no no-arg `productRepository.findAll()`; `git diff --check` passed; `./mvnw -q -Dtest=ProductRepositoryFindAllContractTest test` passed.
 
 - **Maintainer Redis KEYS usage triage (2026-06-11 09:49 UTC)**: Closed TEST **PERF-004** as **FIXED / SOURCE_FIXED / DUPLICATE_OF_QA_F3427_AND_F3452 / REGRESSION_GUARD_ADDED**. Current production Java source has no `.keys(...)` Redis calls. `RateLimitService.clearRedisBuckets()` and `TokenBlacklistService.findLoginIpFailures()` enumerate matching keys through `ScanOptions.scanOptions()` and `connection.scan(options)` with bounded runtime-configurable counts. Added `RedisKeysUsageContractTest` to scan production Java for blocking Redis `KEYS` usage and require the current SCAN contracts. Verification: production source search found no `.keys(` calls; `git diff --check` passed; `./mvnw -q -Dtest=RedisKeysUsageContractTest test` passed.
@@ -3415,8 +3417,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: `findDiscountProducts` loads all products and filters those with `originalPrice > price` in Java rather than in SQL.
 - Impact: Slow discount product queries, unnecessary memory usage
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use SQL `WHERE original_price > price` to filter at the database level.
+- Triage (2026-06-11 10:26 UTC): Current `ProductServiceImpl.findDiscountProducts()` no longer performs an unbounded load or Java-side discount filter. It builds a bounded page-0 `ProductListQuery`, sets `discount=true` and `sort="discount,desc"`, and delegates to `findPublicProductPage(query).getContent()`. The public page path uses `productRepository.findAll(publicProductSpecification(...), pageRequest)`, and `publicProductSpecification(...)` adds discount and active limited-time-price predicates when `query.getDiscount()` is true. Added `ProductDiscountQueryContractTest` to reject direct repository loads or stream filtering in `findDiscountProducts()` and to require the bounded JPA specification path.
 
 ### PERF-007: Cache-aside pattern violations — no cache update on write
 
