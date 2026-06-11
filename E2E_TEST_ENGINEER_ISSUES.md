@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 10:07 UTC TEST PERF-005 Product Repository FindAll Handoff
+
+Source status:
+- TEST PERF-005 is closed as FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+- Current production Java source has no no-arg `productRepository.findAll()` call.
+- Legacy `ProductServiceImpl.findAll()` uses `productRepository.findAll(PageRequest.of(0, limit, Sort.by(...)))` with `product.legacy-list-max-rows` clamped by `HARD_LEGACY_PRODUCT_LIST_LIMIT = 500`.
+- Public and discount product list paths delegate to bounded paged query paths instead of loading the full catalog.
+- `ProductRepositoryFindAllContractTest` guards against reintroducing unbounded no-arg product repository loads.
+
+Local verification already run:
+- Production source search found no no-arg `productRepository.findAll()` call.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=ProductRepositoryFindAllContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product list repository bounds | SOURCE_COVERED / E2E OPTIONAL | Keep `ProductRepositoryFindAllContractTest` in CI. Optional browser/API regression can check product list, public discount list, and legacy admin/product lookup still return expected rows with pagination. |
+
 ## 2026-06-11 09:49 UTC TEST PERF-004 Redis KEYS Usage Handoff
 
 Source status:

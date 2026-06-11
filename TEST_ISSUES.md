@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer product repository findAll triage (2026-06-11 10:07 UTC)**: Closed TEST **PERF-005** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current production Java source has no no-arg `productRepository.findAll()` call. Legacy `ProductServiceImpl.findAll()` uses `productRepository.findAll(PageRequest.of(0, limit, Sort.by(...)))` with `product.legacy-list-max-rows` clamped by `HARD_LEGACY_PRODUCT_LIST_LIMIT = 500`, while public and discount product lists delegate to bounded paged query paths. Added `ProductRepositoryFindAllContractTest` to guard against reintroducing unbounded no-arg product repository loads. Verification: production source search found no no-arg `productRepository.findAll()`; `git diff --check` passed; `./mvnw -q -Dtest=ProductRepositoryFindAllContractTest test` passed.
+
 - **Maintainer Redis KEYS usage triage (2026-06-11 09:49 UTC)**: Closed TEST **PERF-004** as **FIXED / SOURCE_FIXED / DUPLICATE_OF_QA_F3427_AND_F3452 / REGRESSION_GUARD_ADDED**. Current production Java source has no `.keys(...)` Redis calls. `RateLimitService.clearRedisBuckets()` and `TokenBlacklistService.findLoginIpFailures()` enumerate matching keys through `ScanOptions.scanOptions()` and `connection.scan(options)` with bounded runtime-configurable counts. Added `RedisKeysUsageContractTest` to scan production Java for blocking Redis `KEYS` usage and require the current SCAN contracts. Verification: production source search found no `.keys(` calls; `git diff --check` passed; `./mvnw -q -Dtest=RedisKeysUsageContractTest test` passed.
 
 - **Maintainer checkout stock distinct-save triage (2026-06-11 09:29 UTC)**: Closed TEST **PERF-003** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. The stale `updateProductStock` / `ProductMapper.updateStock` checkout target is absent. Current member and guest checkout mutate locked product entities during item validation, collect touched products in a `LinkedHashMap`, and call `saveReservedProducts(...)` after the loop so repeated checkout lines for the same product persist once per distinct product rather than once per item. Added `CheckoutStockDistinctProductSaveContractTest` to guard the deferred distinct-product persistence contract. Verification: source search confirmed the stale update target is absent and deferred save contract is present; `git diff --check` passed; `./mvnw -q -Dtest=CheckoutStockDistinctProductSaveContractTest test` passed.
@@ -3403,8 +3405,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: `findAll()` is called without pagination, loading all products into memory at once.
 - Impact: OutOfMemoryError for large product catalogs
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use pagination (`Pageable`) for all product queries.
+- Triage (2026-06-11 10:07 UTC): Current production Java has no no-arg `productRepository.findAll()` call. Legacy all-products reads use a capped pageable repository call, and public/discount list paths delegate to bounded paged queries. Added `ProductRepositoryFindAllContractTest` to guard against unbounded product repository loads.
 
 ### PERF-006: ProductService.findDiscountProducts loads all products then filters in memory
 
