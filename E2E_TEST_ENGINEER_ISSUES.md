@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 21:07 UTC TEST F2738 Home Quick Add MouseEvent Handoff
+
+Source status:
+- TEST F2738 / QA F2485 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `handleQuickAddToCart` now accepts an optional event and only calls `stopPropagation` when a real event exists.
+- Home hero/editorial quick-add buttons call `handleQuickAddToCart(undefined, product)` instead of casting `{ stopPropagation() {} }` to `React.MouseEvent`.
+- `./mvnw -q -Dtest=HomeQuickAddEventContractTest test` passed.
+- Temporary clean staged-state Maven verification was attempted, but compilation remains blocked before this test by existing review-surface contract gaps in the clean source (`ReviewController` old addReview call, missing `OrderRepository.findReviewableOrdersByUserAndProduct`, and missing `Review.imageUrls`). Current-worktree targeted verification passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Hero featured quick add | SOURCE_FIXED / HOME E2E PENDING | On the home page, click the featured hero Add to cart button and verify the item is added or option-selection flow opens without runtime errors. |
+| Editorial feature quick add | SOURCE_FIXED / HOME E2E PENDING | On the home page editorial/best-seller feature, click Add to cart and verify the same behavior with no console error. |
+| Product-card quick add | SOURCE_FIXED / HOME E2E SMOKE | Click a regular product card quick-add icon to confirm real click events still stop propagation and do not navigate unexpectedly. |
+
 ## 2026-06-11 21:00 UTC TEST F2737 Guest Cart Removal Event Handoff
 
 Source status:

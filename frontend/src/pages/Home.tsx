@@ -388,8 +388,8 @@ const Home: React.FC = () => {
     }
   };
 
-  const handleQuickAddToCart = async (event: React.MouseEvent, product: Product) => {
-    event.stopPropagation();
+  const handleQuickAddToCart = async (event: React.MouseEvent | undefined, product: Product) => {
+    event?.stopPropagation();
     if (product.stock !== undefined && product.stock <= 0) {
       message.warning(t('pages.productList.soldOut'));
       return;
@@ -1131,7 +1131,7 @@ const Home: React.FC = () => {
                 >
                     {t('home.buyNow')}
                   </Button>
-                  <Button aria-label={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} title={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, heroFeaturedProduct)}>
+                  <Button aria-label={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} title={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} onClick={() => handleQuickAddToCart(undefined, heroFeaturedProduct)}>
                     {t('pages.productList.addToCart')}
                   </Button>
                 </div>
@@ -1270,7 +1270,7 @@ const Home: React.FC = () => {
                   <Button type="primary" aria-label={`${t('home.buyNow')}: ${editorialFeatureName}`} title={`${t('home.buyNow')}: ${editorialFeatureName}`} onClick={() => openProduct(bestSellers[0].id)}>
                     {t('home.buyNow')}
                   </Button>
-                  <Button aria-label={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} title={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} onClick={() => handleQuickAddToCart({ stopPropagation() {} } as React.MouseEvent, bestSellers[0])}>
+                  <Button aria-label={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} title={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} onClick={() => handleQuickAddToCart(undefined, bestSellers[0])}>
                     {t('pages.productList.addToCart')}
                   </Button>
                 </div>

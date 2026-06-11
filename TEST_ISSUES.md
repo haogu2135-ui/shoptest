@@ -4910,8 +4910,12 @@ Notes:
 - File: `frontend/src/pages/Home.tsx` (lines 1242, 1381)
 - Severity: LOW
 - Description: `handleQuickAddToCart` is called with `{ stopPropagation() {} } as React.MouseEvent` which lies to TypeScript about the shape. If `handleQuickAddToCart` is ever modified to use other event properties, this will crash at runtime.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 21:07 UTC)
 - Expected fix direction: Refactor `handleQuickAddToCart` to make the event parameter optional.
+- Resolution: `handleQuickAddToCart` now accepts an optional `React.MouseEvent`, only calls `stopPropagation` when a real event is present, and the hero/editorial quick-add buttons call it with `undefined` instead of casting a partial object literal to `React.MouseEvent`.
+- Regression guard: Added `HomeQuickAddEventContractTest`, which requires the optional event signature, optional propagation guard, direct `undefined` calls, and absence of the fake MouseEvent cast.
+- Verification: `./mvnw -q -Dtest=HomeQuickAddEventContractTest test` passed.
+- Staged-state note: A temporary clean worktree run with only the staged diff was attempted, but Maven compilation remains blocked before this test by existing review-surface contract gaps in the clean source (`ReviewController` old addReview call, missing `OrderRepository.findReviewableOrdersByUserAndProduct`, and missing `Review.imageUrls`). Current-worktree targeted verification passed.
 
 ### F2739: LOW — Cart quantity input allows non-integer values to be dispatched
 
