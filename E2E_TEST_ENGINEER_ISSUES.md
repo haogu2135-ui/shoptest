@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 20:21 UTC TEST F2733 Redis Login Failure Scan Handoff
+
+Source status:
+- TEST F2733 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `TokenBlacklistService.findLoginIpFailures()` scans `login:ip:*` through Redis `SCAN` with `ScanOptions.match(...)` and bounded `count(batchSize)`.
+- The scan count is runtime configurable through `security.ip-blacklist.redis-scan-count` and defaults to `500`.
+- Production Java source search found no `.keys(` Redis calls.
+- `./mvnw -q -Dtest=TokenBlacklistLoginFailureScanContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin login failure snapshot | SOURCE_FIXED / ADMIN SECURITY E2E PENDING | Seed several `login:ip:*` Redis counters, open the admin security/IP blacklist view that reads login failure snapshots, and verify counters, TTLs, and locked state are shown without errors. |
+| Large keyspace guard | SOURCE_FIXED / PERF E2E OPTIONAL | In a Redis environment with many unrelated keys, request the login failure snapshot view and verify Redis monitoring/logging shows cursor `SCAN` behavior rather than blocking `KEYS`. |
+| Scan failure behavior | SOURCE_FIXED / ADMIN SECURITY E2E OPTIONAL | If the harness can inject Redis scan failures, verify the admin snapshot view degrades gracefully with no 500 and no login flow regression. |
+
 ## 2026-06-11 20:15 UTC TEST F2732 Support Admin Reply Role Guard Handoff
 
 Source status:

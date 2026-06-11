@@ -2,16 +2,19 @@ package com.example.shop.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -31,6 +34,7 @@ public class TokenBlacklistService {
     private static final int MAX_LOGIN_ATTEMPTS_PER_ACCOUNT = 10;
     private static final long IP_LOCKOUT_MINUTES = 15;
     private static final long ACCOUNT_LOCKOUT_MINUTES = 30;
+    private static final int DEFAULT_LOGIN_FAILURE_SCAN_COUNT = 500;
     private static final RedisScript<String> CONSUME_REFRESH_TOKEN_SCRIPT = consumeRefreshTokenScript();
 
     public TokenBlacklistService(ObjectProvider<StringRedisTemplate> redisTemplateProvider,
@@ -132,8 +136,8 @@ public class TokenBlacklistService {
     public List<LoginIpFailureSnapshot> findLoginIpFailures() {
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return List.of();
-        Set<String> keys = redis.keys(LOGIN_ATTEMPT_PREFIX + "*");
-        if (keys == null || keys.isEmpty()) return List.of();
+        List<String> keys = scanLoginFailureKeys(redis);
+        if (keys.isEmpty()) return List.of();
         List<LoginIpFailureSnapshot> snapshots = new ArrayList<>();
         for (String key : keys) {
             if (key == null || !key.startsWith(LOGIN_ATTEMPT_PREFIX)) {
@@ -152,6 +156,29 @@ public class TokenBlacklistService {
                     failureCount >= maxLoginAttemptsPerIp()));
         }
         return snapshots;
+    }
+
+    private List<String> scanLoginFailureKeys(StringRedisTemplate redis) {
+        int batchSize = Math.max(1, runtimeConfig.getInt("security.ip-blacklist.redis-scan-count", DEFAULT_LOGIN_FAILURE_SCAN_COUNT));
+        try {
+            List<String> keys = redis.execute((RedisCallback<List<String>>) connection -> {
+                List<String> matches = new ArrayList<>();
+                ScanOptions options = ScanOptions.scanOptions()
+                        .match(LOGIN_ATTEMPT_PREFIX + "*")
+                        .count(batchSize)
+                        .build();
+                try (Cursor<byte[]> cursor = connection.scan(options)) {
+                    while (cursor.hasNext()) {
+                        matches.add(new String(cursor.next(), StandardCharsets.UTF_8));
+                    }
+                }
+                return matches;
+            });
+            return keys == null ? List.of() : keys;
+        } catch (RuntimeException ex) {
+            log.warn("Redis login failure scan failed; returning no login failure snapshots", ex);
+            return List.of();
+        }
     }
 
     public static class LoginIpFailureSnapshot {

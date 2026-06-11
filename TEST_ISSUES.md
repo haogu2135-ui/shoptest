@@ -4849,8 +4849,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/TokenBlacklistService.java` (line 176)
 - Severity: MEDIUM
 - Description: `findLoginIpFailures` uses `redis.keys(LOGIN_ATTEMPT_PREFIX + "*")` which is an O(N) operation that blocks the Redis server for the entire keyspace scan. In production with many login failure records, this can cause latency spikes for all Redis clients.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 20:21 UTC)
 - Expected fix direction: Replace `KEYS` with `SCAN` (cursor-based iteration), or maintain a separate Redis set tracking active login failure keys.
+- Resolution: `findLoginIpFailures` now obtains login failure keys through a Redis cursor scan over `login:ip:*` using `ScanOptions.scanOptions().match(...).count(batchSize)` instead of the blocking `redis.keys(...)` command. The scan count is bounded and runtime configurable through `security.ip-blacklist.redis-scan-count`, defaulting to `500`; scan failures fail closed for the admin snapshot view by returning an empty list and logging a warning.
+- Regression guard: Added `TokenBlacklistLoginFailureScanContractTest`, which verifies the production source does not call Redis `KEYS` for login failure snapshots and requires the SCAN match/count/cursor contract plus the runtime scan-count configuration key.
+- Verification: `./mvnw -q -Dtest=TokenBlacklistLoginFailureScanContractTest test` passed; `rg -n "\\.keys\\(" src/main/java` returned no production Java matches.
 
 ### F2734: MEDIUM — Product CSV import loads entire catalog into memory
 
