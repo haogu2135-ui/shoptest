@@ -1,5 +1,6 @@
 package com.example.shop.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.Category;
 import com.example.shop.repository.CategoryRepository;
 import com.example.shop.repository.ProductRepository;
@@ -21,6 +22,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class CategoryServiceImpl implements CategoryService {
     private static final int MAX_CATEGORY_COUNT_DEPTH = 3;
 

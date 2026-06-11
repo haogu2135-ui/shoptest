@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Slf4j
 public class TokenBlacklistService {
     private final ObjectProvider<StringRedisTemplate> redisTemplateProvider;
     private final RuntimeConfigService runtimeConfig;

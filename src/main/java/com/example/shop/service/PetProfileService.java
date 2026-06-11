@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.PetProfile;
 import com.example.shop.repository.PetProfileMapper;
 import com.example.shop.repository.UserMapper;
@@ -13,6 +14,7 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PetProfileService {
     private final PetProfileMapper petProfileMapper;
     private final UserMapper userMapper;

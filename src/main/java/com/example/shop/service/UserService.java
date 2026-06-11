@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.UserAdminSummaryResponse;
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
@@ -19,6 +20,7 @@ import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
     private static final int USER_PHONE_MAX_CHARS = 20;
     private static final int PASSWORD_MIN_CHARS = 8;

@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
@@ -29,6 +30,7 @@ import java.util.Locale;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class RefundService {
     private static final String STATUS_PAID = "PAID";
     private static final String STATUS_RECONCILE_REQUIRED = "RECONCILE_REQUIRED";

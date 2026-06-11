@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.PetGalleryQuota;
 import com.example.shop.entity.PetGalleryPhoto;
 import com.example.shop.entity.PetGalleryPhotoLike;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PetGalleryService {
     private static final String ACTIVE_STATUS = "ACTIVE";
     private static final String DELETED_STATUS = "DELETED";

@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.LogisticsCarrier;
 import com.example.shop.repository.LogisticsCarrierRepository;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
+@Slf4j
 public class LogisticsCarrierService {
     private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
 

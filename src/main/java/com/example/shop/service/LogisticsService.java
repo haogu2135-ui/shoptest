@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.Order;
 import com.example.shop.dto.LogisticsTrackResponse;
 import com.example.shop.repository.OrderRepository;
@@ -39,6 +40,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 @Service
+@Slf4j
 public class LogisticsService {
     private static final Pattern TRACKING_NUMBER_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_-]*");
 

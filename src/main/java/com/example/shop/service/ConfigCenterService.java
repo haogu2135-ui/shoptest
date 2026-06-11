@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.PropertyKeyConst;
 import com.alibaba.nacos.api.config.ConfigService;
@@ -38,6 +39,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ConfigCenterService {
     private static final String PROPERTY_SOURCE_NAME = "adminConfigCenterOverrides";
     private static final int DEFAULT_MAX_CONTENT_BYTES = 65536;

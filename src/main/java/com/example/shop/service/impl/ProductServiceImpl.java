@@ -1,5 +1,6 @@
 package com.example.shop.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.ProductImportResult;
 import com.example.shop.dto.ProductListQuery;
 import com.example.shop.entity.Category;
@@ -70,6 +71,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ProductServiceImpl implements ProductService {
     private static final int MAX_IMPORT_IMAGE_URL_LENGTH = 2048;
     private static final int MAX_IMPORT_MONEY_SCALE = 2;

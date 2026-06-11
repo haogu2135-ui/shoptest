@@ -1,5 +1,6 @@
 package com.example.shop.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
 import com.example.shop.dto.ProductQuestionPublicResponse;
 import com.example.shop.entity.Product;
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ProductQuestionServiceImpl implements ProductQuestionService {
     private final ProductQuestionRepository questionRepository;
     private final ProductRepository productRepository;

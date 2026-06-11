@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 01:49 UTC QA F3460 Service Logging Coverage Handoff
+
+Source status:
+- QA F3460 is source-fixed for tracked concrete production service classes.
+- Tracked concrete services under `src/main/java/com/example/shop/service` and `src/main/java/com/example/shop/service/impl` now expose logger capability through Lombok `@Slf4j` or an existing explicit logger.
+- Service interfaces and untracked local worktree-only service files were not included in this committed closure; the regression guard targets committed tracked concrete service classes.
+
+Local verification already run:
+- Staged source search confirmed no tracked concrete service class is missing logger capability.
+- Added `ServiceLoggingContractTest` source guard.
+- `./mvnw -q -Dtest=ServiceLoggingContractTest test` passed.
+- `git diff --cached --check` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin payment/order/coupon operations | SOURCE_FIXED / ADMIN E2E OPTIONAL | During regular admin smoke, exercise payment sync/refund, order status/fulfillment, coupon grant/claim-related admin paths, and confirm behavior is unchanged while backend logs remain available for service-layer diagnostics. |
+| Storefront cart/checkout/account operations | SOURCE_FIXED / CUSTOMER E2E OPTIONAL | During regular storefront smoke, exercise cart add/update, checkout, profile/account update, wishlist, and review flows. Confirm no functional regression from service logger annotations. |
+| Operational log visibility | SOURCE_FIXED / OPS CHECK OPTIONAL | If staging logs are available, verify critical service classes emit through the normal application logger when their existing log paths are triggered; no user-facing E2E assertion is required for annotation-only coverage. |
+
 ## 2026-06-11 01:40 UTC QA F3489/F3491/F3492 Legacy Race Triage Handoff
 
 Source status:

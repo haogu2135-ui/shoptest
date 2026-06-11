@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.SupportAdminSummaryResponse;
 import com.example.shop.dto.SupportAdminSessionPageResponse;
 import com.example.shop.entity.SupportMessage;
@@ -19,6 +20,7 @@ import java.util.concurrent.ConcurrentMap;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SupportService {
     private static final int DEFAULT_MESSAGE_LIMIT = 80;
     private static final int MAX_MESSAGE_LIMIT = 120;

@@ -1,5 +1,6 @@
 package com.example.shop.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.AdminReviewResponse;
 import com.example.shop.dto.PublicReviewResponse;
 import com.example.shop.dto.ReviewableOrderResponse;
@@ -34,6 +35,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ReviewServiceImpl implements ReviewService {
     private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("(?is)<!--.*?-->");
     private static final Pattern HTML_BLOCK_PATTERN = Pattern.compile("(?is)<(script|style|iframe|object|embed|svg|math)\\b[^>]*>.*?</\\1\\s*>");

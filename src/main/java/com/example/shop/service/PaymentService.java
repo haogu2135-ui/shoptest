@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.PaymentCallbackRequest;
 import com.example.shop.dto.PaymentCreateRequest;
@@ -52,6 +53,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class PaymentService {
     private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
     private static final String PENDING = "PENDING";

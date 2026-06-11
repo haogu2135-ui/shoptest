@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.Brand;
 import com.example.shop.repository.BrandRepository;
 import com.example.shop.util.ImageUrlValidator;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
+@Slf4j
 public class BrandService {
     private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
 

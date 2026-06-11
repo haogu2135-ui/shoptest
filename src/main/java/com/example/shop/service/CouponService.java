@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.CouponAdminSummaryResponse;
 import com.example.shop.dto.CouponPublicResponse;
 import com.example.shop.dto.CouponQuoteResponse;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CouponService {
     private static final String UNUSED = "UNUSED";
     private static final String FULL_REDUCTION = "FULL_REDUCTION";

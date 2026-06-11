@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.IpBlacklistBatchReleaseResponse;
 import com.example.shop.dto.IpBlacklistStatusResponse;
 import com.example.shop.entity.IpBlacklistEntry;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class IpBlacklistService {
     public static final String STATUS_MONITORING = "MONITORING";
     public static final String STATUS_BLOCKED = "BLOCKED";

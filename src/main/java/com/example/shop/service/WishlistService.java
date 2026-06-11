@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.Wishlist;
 import com.example.shop.entity.Product;
 import com.example.shop.repository.WishlistMapper;
@@ -20,6 +21,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class WishlistService {
     private static final int DEFAULT_MAX_ITEMS_PER_USER = 500;
     private static final int HARD_MAX_ITEMS_PER_USER = 1000;

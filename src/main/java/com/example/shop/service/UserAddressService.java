@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.UserAddress;
 import com.example.shop.repository.UserAddressMapper;
 import com.example.shop.repository.UserMapper;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserAddressService {
     private final UserAddressMapper userAddressMapper;
     private final UserMapper userMapper;

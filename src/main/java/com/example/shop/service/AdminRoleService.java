@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.AdminRole;
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminRoleService {
     public static final String SUPER_ADMIN = "SUPER_ADMIN";
     public static final String ADMIN = "ADMIN";

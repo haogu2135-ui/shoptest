@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
 import com.example.shop.entity.Coupon;
 import com.example.shop.entity.PetBirthdayCouponConfig;
@@ -25,6 +26,7 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PetBirthdayCouponService {
     private static final long DEFAULT_CONFIG_ID = 1L;
     private static final String FULL_REDUCTION = "FULL_REDUCTION";

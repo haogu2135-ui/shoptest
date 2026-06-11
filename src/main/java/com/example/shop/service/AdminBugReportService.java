@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.AdminBugReportPageResponse;
 import com.example.shop.dto.AdminBugReportRequest;
 import com.example.shop.dto.AdminBugReportStatusRequest;
@@ -27,6 +28,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminBugReportService {
     public static final String STATUS_OPEN = "OPEN";
     public static final String STATUS_FIXING = "FIXING";

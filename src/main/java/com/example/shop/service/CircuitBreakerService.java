@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.TrafficControlStatusResponse;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class CircuitBreakerService {
     private static final int MAX_NAME_LENGTH = 80;
     private static final Pattern UUID_PATTERN = Pattern.compile("\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\b");
