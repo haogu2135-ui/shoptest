@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer empty-catch current-source closure (2026-06-11 17:17 UTC)**: Closed TEST **F3497** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL**. The repeated "~90+ empty catch blocks" report is stale against current production source: a targeted scan of `frontend/src` and `src/main/java` found no empty `catch {}` or `catch (...) {}` blocks. Added `EmptyCatchBlockContractTest` to scan production Java and frontend source files and reject future empty or comment-only catch bodies unless the handler logs, rethrows, returns an explicit fallback, or otherwise handles the error. Verification: source scan returned no empty catch matches; targeted Maven contract test passed.
+
 - **Maintainer fuzzy dedup triage (2026-06-11 12:40 UTC)**: Closed TEST **PERF-016** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_DEDUP_SERVICE_REPORT / REGRESSION_GUARD_ADDED**. Current production source has no `DedupService.java`, no `DedupServiceImpl.java`, no `deduplication` package/file, and no fuzzy duplicate merge markers such as `fuzzyMatch`, `similarityScore`, `Levenshtein`, `JaroWinkler`, or `mergeDuplicate`. Current duplicate handling is explicit conflict handling: product import duplicate names/headers are rejected, variant duplicate SKUs/options are rejected, and idempotent duplicate actions rely on exact database uniqueness conflicts rather than merging distinct records. Added `DedupServiceContractTest` to guard against reintroducing fuzzy dedup/merge behavior without explicit confidence thresholds. Verification: production source search found no stale fuzzy dedup target; `git diff --check` passed; `./mvnw -q -Dtest=DedupServiceContractTest test` passed.
 
 - **Maintainer related products bounded-query triage (2026-06-11 12:26 UTC)**: Closed TEST **PERF-015** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current related-products API no longer loads all products in the category: `ProductController.getRecommendations(...)` resolves the public product and calls `ProductServiceImpl.findRelatedProducts(...)`, which fetches a bounded same-category candidate window through `productRepository.findActiveByCategoryId(categoryId, PageRequest.of(0, 14))`, excludes the current product, keeps only public/sellable products, and returns at most 8. The repository query accepts `Pageable`, filters active/name/positive-price/sellable-stock products in SQL, and uses stable `ORDER BY p.id asc` before the database applies the generated limit/offset. Added `ProductRelatedProductsContractTest` to guard this bounded related-products path and reject unbounded `findByCategoryId(...)` / full-table scans in that endpoint. Verification: source search confirmed the bounded repository call; `git diff --check` passed; `./mvnw -q -Dtest=ProductRelatedProductsContractTest test` passed.
@@ -3725,8 +3727,11 @@ Notes:
 - Area: Frontend / all files (90+ occurrences)
 - Severity: HIGH
 - Impact: Silent failures, impossible to debug production issues
-- Status: OPEN
-- Expected fix direction: At minimum log errors; add user-facing error feedback where appropriate.
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL 2026-06-11 17:17 UTC
+- Current-source finding: The original count is stale against current production source. Targeted source scans across `frontend/src` and `src/main/java` found no empty `catch {}` or `catch (...) {}` bodies.
+- Resolution: Added `src/test/java/com/example/shop/config/EmptyCatchBlockContractTest.java` to scan production Java and frontend source files for empty or comment-only catch bodies and fail if future handlers do not log, rethrow, return an explicit fallback, or otherwise handle the error.
+- Regression guard: `EmptyCatchBlockContractTest.productionSourcesDoNotContainEmptyCatchBlocks()` covers `.java`, `.ts`, `.tsx`, `.js`, and `.jsx` production files under `src/main/java` and `frontend/src`.
+- Verification: `rg -n -U "catch\\s*(?:\\([^)]*\\))?\\s*\\{\\s*\\}" frontend/src src/main/java --glob '!**/node_modules/**'` returned no matches; `./mvnw -q -Dtest=EmptyCatchBlockContractTest test` passed.
 
 ### F3457: CRITICAL — PaymentService contains zero logging statements
 

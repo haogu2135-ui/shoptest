@@ -4,6 +4,20 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 17:17 UTC TEST F3497 Empty Catch Handoff
+
+Source status:
+- TEST F3497 FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL.
+
+Local verification already run:
+- Targeted source scan across `frontend/src` and `src/main/java` found no empty `catch {}` or `catch (...) {}` blocks.
+- `EmptyCatchBlockContractTest` now rejects future empty or comment-only production catch bodies across Java and frontend source files.
+- `./mvnw -q -Dtest=EmptyCatchBlockContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Source-only empty-catch guard | CURRENT_SOURCE_COVERED / E2E OPTIONAL | No dedicated browser E2E is required for the source guard itself. Keep normal checkout, cart, product detail, admin product, support, and mobile update smoke flows to catch runtime regressions in fallback/error paths. |
+
 ## 2026-06-11 16:59 UTC TEST F3492 Quantity Normalization Helper Handoff
 
 Source status:
