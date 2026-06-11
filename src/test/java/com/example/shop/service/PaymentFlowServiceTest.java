@@ -54,22 +54,19 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class PaymentFlowServiceTest {
     @Test
-    void productionPaymentSimulationRequiresHostLevelAllowFlag() {
+    void productionPaymentSimulationCannotBeEnabledByRuntimeFlags() {
         PaymentService service = new PaymentService();
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("production");
-        when(runtimeConfig.getBoolean("payment.simulation-allow-production", false)).thenReturn(true);
-        when(runtimeConfig.getString("payment.simulation-enabled", "")).thenReturn("true");
         ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
 
         String previous = System.getProperty("PAYMENT_SIMULATION_ALLOW_PRODUCTION");
-        System.clearProperty("PAYMENT_SIMULATION_ALLOW_PRODUCTION");
         try {
-            assertFalse(service.isPaymentSimulationEnabled());
-
             System.setProperty("PAYMENT_SIMULATION_ALLOW_PRODUCTION", "true");
 
-            assertTrue(service.isPaymentSimulationEnabled());
+            assertFalse(service.isPaymentSimulationEnabled());
+            verify(runtimeConfig, never()).getBoolean("payment.simulation-allow-production", false);
+            verify(runtimeConfig, never()).getString("payment.simulation-enabled", "");
         } finally {
             if (previous == null) {
                 System.clearProperty("PAYMENT_SIMULATION_ALLOW_PRODUCTION");

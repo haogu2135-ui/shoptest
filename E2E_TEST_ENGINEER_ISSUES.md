@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 19:30 UTC TEST F2725 Production Payment Simulation Handoff
+
+Source status:
+- TEST F2725 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `PaymentService.isPaymentSimulationEnabled()` now hard-disables simulation in `production` and `prod` runtime modes.
+- The previous production override path using `payment.simulation-allow-production` plus `PAYMENT_SIMULATION_ALLOW_PRODUCTION` was removed.
+- `payment.simulation-enabled` is now documented/configured as a non-production override only.
+- `./mvnw -q -Dtest=PaymentFlowServiceTest#productionPaymentSimulationCannotBeEnabledByRuntimeFlags test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Production simulate-paid blocked | SOURCE_FIXED / PAYMENT SECURITY E2E PENDING | In a production-mode environment, set `PAYMENT_SIMULATION_ENABLED=true` and `PAYMENT_SIMULATION_ALLOW_PRODUCTION=true`, then call `POST /payments/{id}/simulate-paid` as an admin with payment simulation permission. Verify it fails with the normal simulation-disabled error and does not change payment or order status. |
+| Production simulate-callback blocked | SOURCE_FIXED / PAYMENT SECURITY E2E PENDING | Repeat for `POST /payments/{id}/simulate-callback`; verify no fake callback can advance the order to `PENDING_SHIPMENT`. |
+| Non-production simulation smoke | SOURCE_FIXED / PAYMENT E2E OPTIONAL | In dev/test runtime mode, verify existing admin-gated simulation still works when `payment.simulation-enabled` is blank or explicitly true, so QA tooling is not regressed outside production. |
+
 ## 2026-06-11 19:24 UTC TEST F2724 Refresh Token Atomic Consume Handoff
 
 Source status:

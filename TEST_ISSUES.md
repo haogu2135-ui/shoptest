@@ -4756,8 +4756,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/PaymentService.java` (lines 1210-1229)
 - Severity: HIGH
 - Description: Production payment simulation can be enabled via two configuration flags. If both are accidentally set to `true` in production, any caller with access to the `simulatePaid` or `simulateCallback` endpoints can create fake payments and advance orders to `PENDING_SHIPMENT` without real money.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 19:30 UTC)
 - Expected fix direction: Remove the production-override path entirely, or gate it behind a compile-time profile that cannot be activated via runtime config alone.
+- Resolution: `PaymentService.isPaymentSimulationEnabled()` now returns `false` immediately for `production` and `prod` runtime modes. The previous production override path through `payment.simulation-allow-production` plus `PAYMENT_SIMULATION_ALLOW_PRODUCTION` was removed, and the base payment configuration/documentation now describes `payment.simulation-enabled` as a non-production override only.
+- Regression guard: Updated `PaymentFlowServiceTest.productionPaymentSimulationCannotBeEnabledByRuntimeFlags` to set the host-level production override flag and still assert simulation remains disabled, with verification that production mode does not read the runtime simulation override keys.
+- Verification: `./mvnw -q -Dtest=PaymentFlowServiceTest#productionPaymentSimulationCannotBeEnabledByRuntimeFlags test` passed.
 
 ### F2726: MEDIUM — Guest shipping fee incorrect when freeShippingThreshold is zero
 

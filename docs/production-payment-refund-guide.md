@@ -211,7 +211,7 @@ app.runtime-mode=debug
 payment.simulation-enabled=
 ```
 
-Blank `payment.simulation-enabled` means the backend derives the behavior from `app.runtime-mode`: enabled in `debug/dev/test`, disabled in `production`. You can still force it with `PAYMENT_SIMULATION_ENABLED=true` or `false`. The frontend reads `/app/config`, so the simulation buttons follow the backend config.
+Blank `payment.simulation-enabled` means the backend derives the behavior from `app.runtime-mode`: enabled in `debug/dev/test`, disabled in `production`. `production` and `prod` runtime modes always disable simulation, even if `PAYMENT_SIMULATION_ENABLED=true` is set. The frontend reads `/app/config`, so the simulation buttons follow the backend config.
 
 In production mode, `/payments/channels` only exposes enabled channels that are actually configured for checkout. Placeholder redirect URLs and Stripe without a secret key are hidden automatically.
 

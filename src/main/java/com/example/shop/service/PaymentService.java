@@ -1258,21 +1258,13 @@ public class PaymentService {
         String mode = runtimeMode();
         boolean productionMode = "production".equals(mode) || "prod".equals(mode);
         if (productionMode) {
-            boolean runtimeAllowsSimulation = runtimeConfig.getBoolean("payment.simulation-allow-production", false);
-            if (!runtimeAllowsSimulation || !hostAllowsProductionPaymentSimulation()) {
-                return false;
-            }
+            return false;
         }
         String paymentSimulationEnabled = runtimeConfig.getString("payment.simulation-enabled", "");
         if (!isBlank(paymentSimulationEnabled)) {
             return Boolean.parseBoolean(paymentSimulationEnabled.trim());
         }
         return "debug".equals(mode) || "dev".equals(mode) || "test".equals(mode);
-    }
-
-    private boolean hostAllowsProductionPaymentSimulation() {
-        return "true".equalsIgnoreCase(System.getenv("PAYMENT_SIMULATION_ALLOW_PRODUCTION"))
-                || Boolean.getBoolean("PAYMENT_SIMULATION_ALLOW_PRODUCTION");
     }
 
     private String sha256(String value) {
