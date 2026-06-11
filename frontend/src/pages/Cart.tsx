@@ -407,7 +407,7 @@ const Cart: React.FC = () => {
           disabled={disabled}
           aria-label={quantityLabel}
           title={quantityLabel}
-          onChange={(event) => updateQuantity(item, Number(event.currentTarget.value) || 1)}
+          onChange={(event) => updateQuantity(item, Math.floor(Number(event.currentTarget.value) || 1))}
         />
         <Button
           size="small"

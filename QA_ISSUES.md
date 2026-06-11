@@ -15787,7 +15787,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `frontend/src/pages/Cart.tsx` (line 364)
 - **Detail**: If the user types "2.5" into the quantity input, `Number("2.5")` returns 2.5, which is passed to `updateQuantity`. The input displays "2.5" until the server response normalizes it, creating a brief UI inconsistency.
 - **Suggested fix**: Apply `Math.floor` immediately in the `onChange` handler before passing to `updateQuantity`.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 21:13 UTC)
+- **Resolution**: Cart quantity input now floors `Number(event.currentTarget.value) || 1` before calling `updateQuantity`, so decimal user input such as `2.5` is dispatched as `2` immediately.
+- **Regression guard**: Added `CartQuantityInputContractTest`, which requires the quantity input `onChange` to floor numeric input and rejects the previous direct `Number(...)` dispatch.
+- **Verification**: `./mvnw -q -Dtest=CartQuantityInputContractTest test` passed.
 
 ### F2487: [LOW] BugManagement pageUrl field has no URL validation
 - **Component**: Frontend — BugManagement

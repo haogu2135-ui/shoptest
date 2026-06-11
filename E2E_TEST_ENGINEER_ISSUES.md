@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 21:13 UTC TEST F2739 Cart Quantity Integer Input Handoff
+
+Source status:
+- TEST F2739 / QA F2486 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Cart quantity input now floors typed numeric values before dispatching `updateQuantity`.
+- Decimal input such as `2.5` is sent as `2` immediately instead of allowing a fractional intermediate value.
+- `./mvnw -q -Dtest=CartQuantityInputContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Authenticated cart decimal quantity | SOURCE_FIXED / CART E2E PENDING | Type `2.5` into a cart quantity input while logged in. Verify the UI immediately shows an integer quantity and the backend update request carries an integer. |
+| Guest cart decimal quantity | SOURCE_FIXED / CART E2E PENDING | As a guest, type `2.5` into a cart quantity input. Verify local cart state and Navbar/cart totals update with integer quantity only. |
+| Boundary quantity input | SOURCE_FIXED / CART E2E OPTIONAL | Try blank, `0`, negative, and over-stock values to confirm existing min/max normalization still works. |
+
 ## 2026-06-11 21:07 UTC TEST F2738 Home Quick Add MouseEvent Handoff
 
 Source status:
