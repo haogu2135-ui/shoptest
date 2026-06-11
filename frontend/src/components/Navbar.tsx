@@ -412,6 +412,10 @@ const Navbar: React.FC = () => {
       }, NAV_BADGE_REFRESH_DEBOUNCE_MS);
     };
     const refreshAlertCount = () => {
+      if (!token) {
+        setAlertCount(0);
+        return;
+      }
       const alerts = readStockAlerts();
       if (alerts.length === 0) {
         setAlertCount(0);

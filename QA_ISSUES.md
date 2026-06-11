@@ -15817,7 +15817,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `frontend/src/components/Navbar.tsx` (lines 520-531)
 - **Detail**: When `token` is empty (guest), `refreshAlertCount` still calls `productApi.getByIds` with stock alert product IDs. If stale alerts exist in localStorage from a previous authenticated session, the guest user triggers unnecessary API calls.
 - **Suggested fix**: Check `token` inside `refreshAlertCount` before making the API call.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 21:32 UTC)
+- **Resolution**: `refreshAlertCount` now clears the stock alert badge and returns immediately when `token` is empty, before reading persisted stock alerts or calling `productApi.getByIds`.
+- **Regression guard**: Added `NavbarGuestStockAlertContractTest`, which requires the guest guard to run before local alert reads and product fetches.
+- **Verification**: `./mvnw -q -Dtest=NavbarGuestStockAlertContractTest test` passed.
 
 ### F2490: [LOW] Order service `getAllOrders` has 5000-row ceiling without pagination
 - **Component**: Backend — OrderService

@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 21:32 UTC TEST F2742 Navbar Guest Stock Alert Handoff
+
+Source status:
+- TEST F2742 / QA F2489 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Navbar `refreshAlertCount` now returns immediately for guests with `setAlertCount(0)`.
+- Guest refresh exits before `readStockAlerts()` and before `productApi.getByIds(...)`.
+- `./mvnw -q -Dtest=NavbarGuestStockAlertContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Guest with stale stock alerts | SOURCE_FIXED / NAVBAR E2E PENDING | Seed `shop-stock-alerts` in localStorage, clear auth token, load storefront, and verify no product batch fetch is made for alert IDs. |
+| Authenticated user with stock alerts | SOURCE_FIXED / NAVBAR E2E PENDING | Sign in with stock alerts and verify the Navbar alert badge still refreshes from product stock. |
+| Guest stock-alert update event | SOURCE_FIXED / NAVBAR E2E OPTIONAL | Dispatch `shop:stock-alerts-updated` as a guest and verify the badge stays zero without API traffic. |
+
 ## 2026-06-11 21:28 UTC TEST F2741 Pet Gallery Upload MIME Validation Handoff
 
 Source status:
