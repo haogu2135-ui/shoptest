@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 11:05 UTC TEST PERF-009 Catalog Filter Query Handoff
+
+Source status:
+- TEST PERF-009 is closed as FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+- Public and admin product list paths create bounded `PageRequest` instances and call `productRepository.findAll(...ProductSpecification(...), pageRequest)`.
+- Price range, category, keyword, discount, pet-size, material, and color filters are represented in JPA specification predicates before pagination.
+- The remaining public Java-side recheck only filters the current `page.getContent()` rows defensively.
+- `ProductFilteringQueryContractTest` guards the paged specification path and SQL-like refinement predicates.
+
+Local verification already run:
+- Source search confirmed the public/admin specification predicates and bounded page queries.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=ProductFilteringQueryContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product list filter scalability | SOURCE_COVERED / E2E OPTIONAL | Keep `ProductFilteringQueryContractTest` in CI. Optional API/browser regression can cover public/admin product list filters for price range, pet size, material, color, keyword, category, and discount across multiple pages to verify totals and page boundaries stay coherent. |
+
 ## 2026-06-11 10:50 UTC TEST PERF-008 Reference Data Cache TTL Handoff
 
 Source status:

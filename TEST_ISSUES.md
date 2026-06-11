@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer catalog filter query triage (2026-06-11 11:05 UTC)**: Closed TEST **PERF-009** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current public and admin product list paths normalize page/size, create `PageRequest`, and call `productRepository.findAll(...ProductSpecification(...), pageRequest)`. Price range, category, keyword, discount, pet-size, material, and color refinements are all pushed into JPA `Specification` predicates before pagination; the public Java-side `matchesPublicListQuery(...)` pass only rechecks the already-returned `page.getContent()` rows. Added `ProductFilteringQueryContractTest` to guard the paged specification path and SQL-like refinement predicates. Verification: source search confirmed the specification predicates and bounded page query; `git diff --check` passed; `./mvnw -q -Dtest=ProductFilteringQueryContractTest test` passed.
+
 - **Maintainer reference data cache TTL fix (2026-06-11 10:50 UTC)**: Closed TEST **PERF-008** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. Added `ReferenceDataCacheConfig`, a Spring `CacheManager` for reference-data caches with a one-hour default TTL and `shop.cache.reference-data-ttl-ms` override. `categoryReferenceData` and `brandReferenceData` cache entries now expire instead of living indefinitely, while existing save/delete `@CacheEvict` and product-driven category cache clears continue to work through normal `Cache.clear()` semantics. Added `ReferenceDataCacheTtlContractTest` to verify configured TTL expiry, loader refresh after expiry, and the one-hour default contract. Verification: source search confirmed the new cache manager and cache names; `git diff --check` passed; `./mvnw -q -Dtest=ReferenceDataCacheTtlContractTest test` passed.
 
 - **Maintainer cache-aside write invalidation triage (2026-06-11 10:33 UTC)**: Closed TEST **PERF-007** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current `ProductServiceImpl` invalidates product result caches and category reference data after product save, status batch update, delete, and applied CSV import; targeted invalidation removes entries containing the changed product plus related, featured, discount, and add-on keys affected by the mutation. Current `CategoryServiceImpl` caches category reference reads under `categoryReferenceData` and evicts all entries on category save/delete. Added `ProductCacheAsideContractTest` to guard the product/category cache-aside write contracts. Verification: source search confirmed the invalidation and `@CacheEvict` paths; `git diff --check` passed; `./mvnw -q -Dtest=ProductCacheAsideContractTest test` passed.
@@ -3451,8 +3453,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: Several product search methods load all matching products and then filter in Java (e.g., by price range, size, color).
 - Impact: Slow queries, unnecessary memory usage
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Push filter predicates to the SQL query.
+- Triage (2026-06-11 11:05 UTC): Current public and admin product list paths already push large-result filters into paged JPA specifications. `findPublicProductPageUncached(...)` and `findAdminProductPage(...)` normalize page/size, create `PageRequest`, and call `productRepository.findAll(...ProductSpecification(...), pageRequest)`. The specifications include category, keyword, discount, min/max price, pet-size, material, and color predicates. The remaining public Java-side filter operates only on `page.getContent()` as a defensive current-page recheck, not as a full-catalog filter. Added `ProductFilteringQueryContractTest` to guard this contract.
 
 ### PERF-010: Rule engine cache has no TTL
 
