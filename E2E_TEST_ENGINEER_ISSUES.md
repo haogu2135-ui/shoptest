@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 19:09 UTC TEST F3404 Home Guest Conversion Handoff
+
+Source status:
+- TEST F3404 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `Home.css` now has a web-only `601px-900px` tablet breakpoint for `.shopee-conversion-band`.
+- The guest conversion band switches from three squeezed columns to two bounded columns in tablet portrait widths.
+- Each conversion card moves the action label below the body instead of reserving a narrow third text column, and the Track order card spans the full tablet row with a wider action track.
+- Primary titles/action labels can show or wrap instead of ellipsizing `Track order`; secondary copy is explicitly two-line clamped.
+- `./mvnw -q -Dtest=HomeConversionBandResponsiveContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Home guest conversion tablet portrait | SOURCE_FIXED / STOREFRONT E2E PENDING | Open unauthenticated `/` at `768x1024` and `820x1180` with `shop-language=en`, `currency=USD`. Verify `Register`, `Log in`, and `Track order` titles/actions are readable and the secondary copy is two-line clamped rather than horizontally cut. |
+| Home guest conversion breakpoint edge | SOURCE_FIXED / STOREFRONT E2E PENDING | Recheck around `600px` width and `430x932`. Verify the mobile one-column conversion layout remains readable and no horizontal overflow appears. |
+| Home guest conversion desktop guard | SOURCE_FIXED / STOREFRONT E2E OPTIONAL | Recheck `1024x768`. Verify the wider desktop conversion row remains usable and does not unexpectedly inherit the tablet two-column layout. |
+
 ## 2026-06-11 18:59 UTC TEST F3403 Product Detail Tablet Handoff
 
 Source status:
