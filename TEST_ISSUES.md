@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer stale rule-engine cache triage (2026-06-11 11:20 UTC)**: Closed TEST **PERF-010** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_RULE_ENGINE_REPORT / REGRESSION_GUARD_ADDED**. Current production source has no `RuleEngineService.java`, no `RuleEngineService`, no `ShopRuleEngine`, and no `ruleEngineCache` / `ruleEngineResultCache` / computed-rule cache markers, so the reported indefinite rule-engine result cache is not present. Added `RuleEngineCacheContractTest` to guard against reintroducing the stale rule-engine cache target without explicit bounded TTL coverage. Verification: production source search found no stale rule-engine cache markers; `git diff --check` passed; `./mvnw -q -Dtest=RuleEngineCacheContractTest test` passed.
+
 - **Maintainer catalog filter query triage (2026-06-11 11:05 UTC)**: Closed TEST **PERF-009** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current public and admin product list paths normalize page/size, create `PageRequest`, and call `productRepository.findAll(...ProductSpecification(...), pageRequest)`. Price range, category, keyword, discount, pet-size, material, and color refinements are all pushed into JPA `Specification` predicates before pagination; the public Java-side `matchesPublicListQuery(...)` pass only rechecks the already-returned `page.getContent()` rows. Added `ProductFilteringQueryContractTest` to guard the paged specification path and SQL-like refinement predicates. Verification: source search confirmed the specification predicates and bounded page query; `git diff --check` passed; `./mvnw -q -Dtest=ProductFilteringQueryContractTest test` passed.
 
 - **Maintainer reference data cache TTL fix (2026-06-11 10:50 UTC)**: Closed TEST **PERF-008** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. Added `ReferenceDataCacheConfig`, a Spring `CacheManager` for reference-data caches with a one-hour default TTL and `shop.cache.reference-data-ttl-ms` override. `categoryReferenceData` and `brandReferenceData` cache entries now expire instead of living indefinitely, while existing save/delete `@CacheEvict` and product-driven category cache clears continue to work through normal `Cache.clear()` semantics. Added `ReferenceDataCacheTtlContractTest` to verify configured TTL expiry, loader refresh after expiry, and the one-hour default contract. Verification: source search confirmed the new cache manager and cache names; `git diff --check` passed; `./mvnw -q -Dtest=ReferenceDataCacheTtlContractTest test` passed.
@@ -3463,8 +3465,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: The rule engine caches computed results indefinitely. If the rules change, stale results are served.
 - Impact: Stale rule engine results after rule changes
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_RULE_ENGINE_REPORT / REGRESSION_GUARD_ADDED
 - Expected fix direction: Add a TTL to the rule engine cache.
+- Triage (2026-06-11 11:20 UTC): The reported target is stale against current source. There is no `src/main/java/com/example/shop/service/RuleEngineService.java`, and production source search found no `RuleEngineService`, `ShopRuleEngine`, `ruleEngineCache`, `ruleEngineResultCache`, or computed-rule cache markers. Added `RuleEngineCacheContractTest` to fail if the stale rule-engine cache target returns without bounded cache coverage.
 
 ### PERF-011: CouponRepository.findAll unbounded query
 

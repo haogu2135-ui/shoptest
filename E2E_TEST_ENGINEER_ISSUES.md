@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 11:20 UTC TEST PERF-010 Rule Engine Cache Handoff
+
+Source status:
+- TEST PERF-010 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_RULE_ENGINE_REPORT / REGRESSION_GUARD_ADDED.
+- Current production source has no `RuleEngineService.java`, no `RuleEngineService`, no `ShopRuleEngine`, and no `ruleEngineCache` / `ruleEngineResultCache` / computed-rule cache markers.
+- `RuleEngineCacheContractTest` guards against reintroducing the stale rule-engine cache target without bounded TTL coverage.
+
+Local verification already run:
+- Production source search found no stale rule-engine cache markers.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=RuleEngineCacheContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Rule-engine computed-result cache | CURRENT_SOURCE_NON_ISSUE / E2E NOT REQUIRED | Keep `RuleEngineCacheContractTest` in CI. No manual E2E is required unless a real rule-engine feature is added later; that feature should then include TTL/eviction runtime coverage. |
+
 ## 2026-06-11 11:05 UTC TEST PERF-009 Catalog Filter Query Handoff
 
 Source status:
