@@ -4,6 +4,26 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 12:15 UTC TEST PERF-014 Inventory Replenishment Handoff
+
+Source status:
+- TEST PERF-014 is closed as WONTFIX / CURRENT_SOURCE_COVERED / STALE_INVENTORY_SERVICE_REPORT / REGRESSION_GUARD_ADDED.
+- Current production source has no `InventoryService.java`, no `InventoryServiceImpl.java`, and no `replenishStock(...)` path.
+- Active stock restoration is handled by `OrderService.restoreStock(List<OrderItem>)`.
+- Simple-product stock rows are grouped by `productId` and restored with one `ProductRepository.increaseStock(productId, totalQuantity)` database UPDATE per product.
+- Selected-spec/variant rows are grouped by `productId`, locked once through `findByIdForUpdate(...)`, updated in memory, and saved once per product.
+- `InventoryReplenishmentContractTest` rejects reintroduced stale replenishment markers and guards the grouped restoration contract.
+
+Local verification already run:
+- Production source search found no stale `InventoryService` / `replenishStock(...)` path.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=InventoryReplenishmentContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Simple-product stock restoration grouping | CURRENT_SOURCE_COVERED / INVENTORY E2E OPTIONAL | If inventory regression is in scope, create or seed an order with multiple simple lines for the same product, cancel or refund with restock, and verify stock increases by the summed quantity once. Capture query-count evidence if available. |
+| Variant stock restoration grouping | CURRENT_SOURCE_COVERED / INVENTORY E2E OPTIONAL | Use an order with multiple selected-spec lines for the same variant product, complete cancellation/refund restock, and verify variant stock plus aggregate product stock are restored without duplicate or lost increments. |
+
 ## 2026-06-11 12:02 UTC TEST PERF-013 Coupon Usage Counter Handoff
 
 Source status:
