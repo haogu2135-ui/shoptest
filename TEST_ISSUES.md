@@ -3577,8 +3577,9 @@ Notes:
 - Severity: LOW
 - Symptom: Product options (size, color) are cached in localStorage without a TTL. If options change on the server, the frontend serves stale data.
 - Impact: Stale product options displayed to users
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Add a TTL to the localStorage cache or invalidate on product update.
+- Triage (2026-06-11 14:23 UTC): Current source does not have a dedicated product-options localStorage cache. `frontend/src/utils/productOptions.ts` derives option groups and variants directly from the current `ProductPublic` payload (`specifications`, `optionGroups`, `sizes`, `colors`, and `variants`) and does not reference `localStorage`, `sessionStorage`, or the safe-storage helpers. The only related persisted storefront fallback is `frontend/src/utils/productCatalogSnapshot.ts`, which stores a bounded product catalog snapshot under `shop-product-catalog-snapshot` with `savedAt` metadata and rejects entries older than `PRODUCT_CATALOG_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000`; this snapshot is where any persisted `sizes`, `colors`, `specifications`, or `variants` are bounded and expired. Added `ProductOptionsClientCacheContractTest` to guard that option derivation remains storage-free and that any persisted catalog snapshot containing option data retains TTL enforcement.
 
 ### F3487: Race condition in Checkout payment polling (disposed check gaps)
 

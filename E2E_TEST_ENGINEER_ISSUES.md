@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 14:23 UTC TEST PERF-020 Product Options Cache TTL Handoff
+
+Source status:
+- TEST PERF-020 FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+
+Local verification already run:
+- Source-contract verification confirmed `frontend/src/utils/productOptions.ts` does not use browser storage for product option derivation.
+- The related `productCatalogSnapshot` localStorage fallback keeps `savedAt` metadata and rejects snapshots older than `PRODUCT_CATALOG_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000`.
+- `./mvnw -q -Dtest=ProductOptionsClientCacheContractTest test` passed.
+- `target/` was removed after Maven verification.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product option freshness | CURRENT_SOURCE_COVERED / STOREFRONT E2E OPTIONAL | Change a product's size/color/variant options in admin, reload product detail and product list quick-add, and verify the UI reflects the latest API payload rather than stale client option storage. |
+| Offline/catalog fallback TTL | CURRENT_SOURCE_COVERED / STOREFRONT E2E OPTIONAL | Seed an expired `shop-product-catalog-snapshot` in localStorage and verify storefront fallback/catalog surfaces ignore it and fetch or render current data paths. |
+
 ## 2026-06-11 14:15 UTC TEST PERF-019 Cart Money Precision Handoff
 
 Source status:
