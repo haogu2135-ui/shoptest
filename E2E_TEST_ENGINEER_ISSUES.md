@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 18:17 UTC TEST F3457 Payment Observability Handoff
+
+Source status:
+- TEST F3457 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `PaymentService` now logs payment creation/reuse/refresh, callback paid/failed transitions, callback validation rejects, Stripe webhook/sync paid transitions, expiry handling, and provider-paid reconciliation through a centralized lifecycle logger.
+- `PaymentServiceObservabilityContractTest` guards the critical log markers and rejects sensitive payment URL / secret placeholders in lifecycle logs.
+- `./mvnw -q -Dtest=PaymentServiceObservabilityContractTest,EmptyCatchBlockContractTest test` passed in a clean staged-state worktree.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Payment create and refresh observability | SOURCE_FIXED / CHECKOUT E2E PENDING | Create a payment, revisit checkout/profile to reuse or refresh an active/expired payment, and confirm the user flow still completes while backend logs include order/payment/channel/status context. |
+| Payment callback success/failure observability | SOURCE_FIXED / PAYMENT E2E PENDING | Simulate or run provider callback success and failure paths. Verify order/payment state transitions are unchanged and backend logs include the callback transition or reject reason without payment URLs or secrets. |
+| Payment expiry and reconciliation observability | SOURCE_FIXED / PAYMENT E2E OPTIONAL | Expire a pending payment and exercise provider-paid-after-local-terminal-state reconciliation if available. Verify no user-visible regression and that backend logs include expiry/reconciliation context. |
+
 ## 2026-06-11 17:17 UTC TEST F3497 Empty Catch Handoff
 
 Source status:

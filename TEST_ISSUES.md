@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer payment observability fix (2026-06-11 18:17 UTC)**: Closed TEST **F3457** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING**. `PaymentService` now emits structured lifecycle logs for payment creation/reuse/refresh, callback validation rejects, callback paid/failed transitions, Stripe webhook paid transitions, Stripe sync paid/expired transitions, expiry scan row failures, payment expiry, and provider-paid reconciliation. The centralized `logPaymentLifecycle(...)` helper records stable payment/order/channel/amount/status context without logging payment URLs, webhook secrets, or gateway secret keys. Current `PaymentService` has no refund execution method to instrument; refund runtime behavior remains covered by the normal payment/after-sale regression paths. Added `PaymentServiceObservabilityContractTest` to guard these observability markers and sensitive-value exclusions.
+
 - **Maintainer empty-catch current-source closure (2026-06-11 17:17 UTC)**: Closed TEST **F3497** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL**. The repeated "~90+ empty catch blocks" report is stale against current production source: a targeted scan of `frontend/src` and `src/main/java` found no empty `catch {}` or `catch (...) {}` blocks. Added `EmptyCatchBlockContractTest` to scan production Java and frontend source files and reject future empty or comment-only catch bodies unless the handler logs, rethrows, returns an explicit fallback, or otherwise handles the error. Verification: source scan returned no empty catch matches; targeted Maven contract test passed.
 
 - **Maintainer fuzzy dedup triage (2026-06-11 12:40 UTC)**: Closed TEST **PERF-016** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_DEDUP_SERVICE_REPORT / REGRESSION_GUARD_ADDED**. Current production source has no `DedupService.java`, no `DedupServiceImpl.java`, no `deduplication` package/file, and no fuzzy duplicate merge markers such as `fuzzyMatch`, `similarityScore`, `Levenshtein`, `JaroWinkler`, or `mergeDuplicate`. Current duplicate handling is explicit conflict handling: product import duplicate names/headers are rejected, variant duplicate SKUs/options are rejected, and idempotent duplicate actions rely on exact database uniqueness conflicts rather than merging distinct records. Added `DedupServiceContractTest` to guard against reintroducing fuzzy dedup/merge behavior without explicit confidence thresholds. Verification: production source search found no stale fuzzy dedup target; `git diff --check` passed; `./mvnw -q -Dtest=DedupServiceContractTest test` passed.
@@ -3738,8 +3740,11 @@ Notes:
 - Area: Backend / PaymentService
 - Severity: CRITICAL
 - Description: `PaymentService.java` (450 lines) has ZERO logging statements. Payment is the most critical business operation — every create, callback, refund, and timeout should be logged. If a payment callback fails silently, money is lost with no audit trail.
-- Status: OPEN
-- Expected fix direction: Add `@Slf4j` and log every payment create, callback, success, failure, timeout, and refund with orderId, amount, and transactionId.
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING 2026-06-11 18:17 UTC
+- Resolution: `PaymentService` now keeps structured lifecycle logging through centralized `logPaymentLifecycle(...)` calls for payment creation, existing-payment reuse, refresh, callback paid/failed transitions, callback reject reasons, Stripe webhook paid transitions, Stripe provider sync paid/expired transitions, expiry scan row failures, payment expiry, and provider-paid reconciliation.
+- Safety: Lifecycle logs include stable payment/order/channel/amount/status context and intentionally avoid payment URLs, webhook secrets, and gateway secret keys. Current `PaymentService` source has no refund execution method; refund flows are handled outside this class and should remain covered by payment/after-sale regression.
+- Regression guard: `PaymentServiceObservabilityContractTest` asserts the critical lifecycle log markers remain present and rejects logging placeholders for payment URLs or payment gateway secrets.
+- Verification: `./mvnw -q -Dtest=PaymentServiceObservabilityContractTest,EmptyCatchBlockContractTest test` passed in a clean staged-state worktree.
 
 ### F3461: CRITICAL — Frontend reports errors to console only, no production error reporting
 

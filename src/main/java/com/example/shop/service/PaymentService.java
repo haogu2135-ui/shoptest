@@ -101,12 +101,14 @@ public class PaymentService {
         Payment existingForChannel = paymentRepository.findByOrderIdAndChannel(order.getId(), channel);
         if (existingForChannel != null) {
             if (PAID.equals(existingForChannel.getStatus())) {
+                logPaymentLifecycle("Payment create reused paid payment", existingForChannel);
                 return existingForChannel;
             }
             if (PENDING.equals(existingForChannel.getStatus())) {
                 if (isExpired(existingForChannel)) {
                     return refreshPayment(existingForChannel, order, channel);
                 }
+                logPaymentLifecycle("Payment create reused active pending payment", existingForChannel);
                 return existingForChannel;
             }
             if (FAILED.equals(existingForChannel.getStatus()) || EXPIRED.equals(existingForChannel.getStatus())) {
@@ -126,6 +128,7 @@ public class PaymentService {
         } catch (DataIntegrityViolationException e) {
             Payment raced = paymentRepository.findByOrderIdAndChannel(order.getId(), channel);
             if (raced != null) {
+                logPaymentLifecycle("Payment create reused concurrently inserted payment", raced);
                 return raced;
             }
             throw e;
@@ -194,11 +197,15 @@ public class PaymentService {
             throw new IllegalArgumentException("Payment not found");
         }
         if (!verifySignature(request)) {
+            log.warn("Payment callback rejected invalid signature: paymentId={}, orderId={}, orderNo={}, channel={}",
+                    payment.getId(), payment.getOrderId(), payment.getOrderNo(), payment.getChannel());
             throw new IllegalArgumentException("Invalid payment callback signature");
         }
         LocalDateTime callbackAt = resolveCallbackAt(request);
         validateCallbackFreshness(callbackAt);
         if (payment.getAmount().compareTo(request.getAmount()) != 0) {
+            log.warn("Payment callback rejected amount mismatch: paymentId={}, orderId={}, orderNo={}, channel={}, expectedAmount={}, callbackAmount={}",
+                    payment.getId(), payment.getOrderId(), payment.getOrderNo(), payment.getChannel(), payment.getAmount(), request.getAmount());
             throw new IllegalArgumentException("Payment amount mismatch");
         }
         assertMatchingPaidCallback(payment, request);
@@ -237,10 +244,12 @@ public class PaymentService {
             if (updated == 0) {
                 Payment latest = paymentRepository.findById(payment.getId());
                 if (latest != null && PAID.equals(latest.getStatus())) {
+                    logPaymentLifecycle("Payment callback observed already paid payment", latest);
                     return latest;
                 }
                 throw new IllegalStateException("Payment state update failed");
             }
+            logPaymentLifecycle("Payment callback marked payment paid", payment, PAID);
         } else if (FAILED.equals(callbackStatus)) {
             if (EXPIRED.equals(payment.getStatus())) {
                 throw new IllegalStateException("Payment has expired");
@@ -249,7 +258,10 @@ public class PaymentService {
                 throw new IllegalStateException("Payment is not pending");
             }
             paymentRepository.markFailed(payment.getId());
+            logPaymentLifecycle("Payment callback marked payment failed", payment, FAILED);
         } else {
+            log.warn("Payment callback rejected unsupported status: paymentId={}, orderId={}, orderNo={}, channel={}, callbackStatus={}",
+                    payment.getId(), payment.getOrderId(), payment.getOrderNo(), payment.getChannel(), callbackStatus);
             throw new IllegalArgumentException("Unsupported payment callback status");
         }
         return paymentRepository.findById(payment.getId());
@@ -265,9 +277,11 @@ public class PaymentService {
         try {
             event = Webhook.constructEvent(payload, signatureHeader, webhookSecret);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid Stripe webhook signature");
+            log.warn("Stripe webhook rejected invalid signature");
+            throw new IllegalArgumentException("Invalid Stripe webhook signature", e);
         }
         if (!"checkout.session.completed".equals(event.getType()) && !"checkout.session.expired".equals(event.getType())) {
+            log.debug("Stripe webhook ignored unsupported event type: type={}", event.getType());
             return null;
         }
         Session session = (Session) event.getDataObjectDeserializer().getObject()
@@ -311,10 +325,12 @@ public class PaymentService {
             if (updated == 0) {
                 Payment latest = paymentRepository.findById(payment.getId());
                 if (latest != null && PAID.equals(latest.getStatus())) {
+                    logPaymentLifecycle("Stripe webhook observed already paid payment", latest);
                     return latest;
                 }
                 throw new IllegalStateException("Stripe payment state update failed");
             }
+            logPaymentLifecycle("Stripe webhook marked payment paid", payment, PAID);
         } else if (PENDING.equals(payment.getStatus())) {
             expirePayment(payment);
         }
@@ -396,8 +412,11 @@ public class PaymentService {
         for (Payment payment : paymentRepository.findExpiredPending()) {
             try {
                 expireSinglePendingPayment(payment.getId());
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException ex) {
                 // Keep scheduler healthy; single-row conflicts should not fail the whole batch.
+                log.warn(
+                        "Payment expiry scan skipped payment after failure: paymentId={}, orderId={}, orderNo={}",
+                        payment.getId(), payment.getOrderId(), payment.getOrderNo(), ex);
             }
         }
     }
@@ -420,6 +439,26 @@ public class PaymentService {
         return sha256(payload);
     }
 
+    private void logPaymentLifecycle(String event, Payment payment) {
+        logPaymentLifecycle(event, payment, payment == null ? null : payment.getStatus());
+    }
+
+    private void logPaymentLifecycle(String event, Payment payment, String status) {
+        if (payment == null) {
+            log.info("{}: paymentId=null", event);
+            return;
+        }
+        log.info(
+                "{}: paymentId={}, orderId={}, orderNo={}, channel={}, amount={}, status={}",
+                event,
+                payment.getId(),
+                payment.getOrderId(),
+                payment.getOrderNo(),
+                payment.getChannel(),
+                payment.getAmount(),
+                status);
+    }
+
     private Payment createRedirectPayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
         validateOrderReadyForPayment(order);
         Payment payment = new Payment();
@@ -433,6 +472,7 @@ public class PaymentService {
         payment.setCreatedAt(now);
         payment.setUpdatedAt(now);
         paymentRepository.insert(payment);
+        logPaymentLifecycle("Payment created via redirect", payment);
         return payment;
     }
 
@@ -443,8 +483,11 @@ public class PaymentService {
                 if (!orderService.cancelOrderForPaymentExpiry(payment.getOrderId())) {
                     return;
                 }
-            } catch (IllegalStateException ignored) {
+            } catch (IllegalStateException ex) {
                 // Order may already have moved on due to another idempotent callback.
+                log.info(
+                        "Payment expiry skipped order cancellation because order state changed: paymentId={}, orderId={}, orderNo={}, reason={}",
+                        payment.getId(), payment.getOrderId(), payment.getOrderNo(), ex.getMessage());
                 return;
             }
         }
@@ -455,6 +498,7 @@ public class PaymentService {
             }
             return;
         }
+        logPaymentLifecycle("Payment expiry marked payment expired", payment, EXPIRED);
         if (cancelOrder) {
             paymentRepository.markPendingCancelledByOrderId(payment.getOrderId());
         }
@@ -482,7 +526,9 @@ public class PaymentService {
         payment.setPaymentUrl(buildPaymentUrl(order, channelConfig, payment.getExpiresAt()));
         payment.setUpdatedAt(now);
         paymentRepository.update(payment);
-        return paymentRepository.findById(payment.getId());
+        Payment refreshed = paymentRepository.findById(payment.getId());
+        logPaymentLifecycle("Payment refreshed", refreshed == null ? payment : refreshed);
+        return refreshed;
     }
 
     private Payment createStripePayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
@@ -508,6 +554,7 @@ public class PaymentService {
             payment.setCreatedAt(now);
             payment.setUpdatedAt(now);
             paymentRepository.insert(payment);
+            logPaymentLifecycle("Payment created via Stripe", payment);
             return payment;
         } catch (StripeException e) {
             throw new IllegalStateException("Failed to create Stripe Checkout session: " + e.getMessage());
@@ -536,7 +583,9 @@ public class PaymentService {
             payment.setCallbackAt(null);
             payment.setUpdatedAt(now);
             paymentRepository.update(payment);
-            return paymentRepository.findById(payment.getId());
+            Payment refreshed = paymentRepository.findById(payment.getId());
+            logPaymentLifecycle("Payment refreshed via Stripe", refreshed == null ? payment : refreshed);
+            return refreshed;
         } catch (StripeException e) {
             throw new IllegalStateException("Failed to create Stripe Checkout session: " + e.getMessage());
         }
@@ -571,6 +620,7 @@ public class PaymentService {
         payment.setCreatedAt(now);
         payment.setUpdatedAt(now);
         paymentRepository.insert(payment);
+        logPaymentLifecycle("Payment created via generic API", payment);
         return payment;
     }
 
@@ -602,7 +652,9 @@ public class PaymentService {
         payment.setPaymentUrl(gateway.paymentUrl);
         payment.setUpdatedAt(now);
         paymentRepository.update(payment);
-        return paymentRepository.findById(payment.getId());
+        Payment refreshed = paymentRepository.findById(payment.getId());
+        logPaymentLifecycle("Payment refreshed via generic API", refreshed == null ? payment : refreshed);
+        return refreshed;
     }
 
     private ResponseEntity<String> requestGenericApiPayment(Order order,
@@ -879,18 +931,25 @@ public class PaymentService {
                 if (updated == 0) {
                     Payment latest = paymentRepository.findById(payment.getId());
                     if (latest != null && PAID.equals(latest.getStatus())) {
+                        logPaymentLifecycle("Stripe sync observed already paid payment", latest);
                         return latest;
                     }
                     throw new IllegalStateException("Stripe payment state update failed");
                 }
-                return paymentRepository.findById(payment.getId());
+                Payment syncedPaid = paymentRepository.findById(payment.getId());
+                logPaymentLifecycle("Stripe sync marked payment paid", syncedPaid == null ? payment : syncedPaid, PAID);
+                return syncedPaid;
             }
             if ("expired".equals(sessionStatus)) {
                 expirePayment(payment);
-                return paymentRepository.findById(payment.getId());
+                Payment expired = paymentRepository.findById(payment.getId());
+                logPaymentLifecycle("Stripe sync marked payment expired", expired == null ? payment : expired, EXPIRED);
+                return expired;
             }
             return null;
         } catch (StripeException e) {
+            log.warn("Stripe payment sync failed: paymentId={}, orderId={}, orderNo={}, channel={}",
+                    payment.getId(), payment.getOrderId(), payment.getOrderNo(), payment.getChannel(), e);
             return null;
         }
     }
@@ -986,11 +1045,14 @@ public class PaymentService {
         if (updated == 0) {
             Payment latest = paymentRepository.findById(payment.getId());
             if (latest != null && (RECONCILE_REQUIRED.equals(latest.getStatus()) || isProviderPaidAlreadyAcknowledged(latest))) {
+                logPaymentLifecycle("Provider paid reconciliation observed existing terminal payment", latest);
                 return latest;
             }
             throw new IllegalStateException("Payment reconciliation state update failed");
         }
-        return paymentRepository.findById(payment.getId());
+        Payment reconciled = paymentRepository.findById(payment.getId());
+        logPaymentLifecycle("Provider paid reconciliation required", reconciled == null ? payment : reconciled);
+        return reconciled;
     }
 
     private Payment claimOrderForProviderPaidSuccessOrReconcile(Payment payment,
@@ -1001,6 +1063,8 @@ public class PaymentService {
             claimOrderForPaymentSuccess(payment.getOrderId());
             return null;
         } catch (IllegalStateException e) {
+            log.info("Payment provider-paid callback requires reconciliation: paymentId={}, orderId={}, orderNo={}, channel={}, reason={}",
+                    payment.getId(), payment.getOrderId(), payment.getOrderNo(), payment.getChannel(), e.getMessage());
             return markProviderPaidReconciliationRequired(payment, transactionId, providerReference, callbackAt);
         }
     }
