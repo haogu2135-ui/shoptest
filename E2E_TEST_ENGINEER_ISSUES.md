@@ -4,6 +4,26 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 12:26 UTC TEST PERF-015 Related Products Bounded Query Handoff
+
+Source status:
+- TEST PERF-015 is closed as FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+- Current source has no active `getSimilarProducts` method that loads a full category.
+- Product detail recommendations are served by `ProductController.getRecommendations(...)`, which calls `ProductServiceImpl.findRelatedProducts(...)`.
+- `findRelatedProducts(...)` uses `productRepository.findActiveByCategoryId(categoryId, PageRequest.of(0, 14))`, excludes the current product, rechecks public/sellable state on the bounded current window, and returns at most 8 products.
+- `ProductRepository.findActiveByCategoryId(...)` accepts `Pageable`, filters active/name/positive-price/sellable-stock rows in SQL, and applies stable ordering before the database limit.
+- `ProductRelatedProductsContractTest` guards the bounded related-products path and rejects unbounded category/full-table scans in this endpoint.
+
+Local verification already run:
+- Source search confirmed the bounded repository call and absence of unbounded related-products category loading.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=ProductRelatedProductsContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product detail related recommendations | CURRENT_SOURCE_COVERED / PRODUCT DETAIL E2E OPTIONAL | Open a product in a large category and verify `/products/{id}/recommendations` returns at most 8 public, sellable products from the same category and does not include the current product. Capture query/latency evidence if available. |
+| Empty or sparse category recommendations | CURRENT_SOURCE_COVERED / PRODUCT DETAIL E2E OPTIONAL | Open products whose category has no other sellable products or fewer than 8 candidates. Verify the detail page handles empty/short recommendation lists without layout or console errors. |
+
 ## 2026-06-11 12:15 UTC TEST PERF-014 Inventory Replenishment Handoff
 
 Source status:
