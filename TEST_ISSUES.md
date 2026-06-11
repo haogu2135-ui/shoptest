@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer coupon repository bounded-query triage (2026-06-11 11:36 UTC)**: Closed TEST **PERF-011** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current production code has no no-arg `couponRepository.findAll()` call. `CouponService.findAll()` uses `couponRepository.findAll(PageRequest.of(0, limit, Sort.by(...)))` with runtime/default/hard caps, admin coupon list/search uses `searchAdminCoupons(..., PageRequest...)`, public coupons use the pageable `findClaimableByScopeAndStatus(...)`, and wallet/available coupon reads use limited mapper calls. Added `CouponRepositoryBoundedQueryContractTest` to guard against reintroducing no-arg coupon repository loads or production call sites for unused unbounded finder methods. Verification: production source search found no no-arg coupon repository load; `git diff --check` passed; `./mvnw -q -Dtest=CouponRepositoryBoundedQueryContractTest test` passed.
+
 - **Maintainer stale rule-engine cache triage (2026-06-11 11:20 UTC)**: Closed TEST **PERF-010** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_RULE_ENGINE_REPORT / REGRESSION_GUARD_ADDED**. Current production source has no `RuleEngineService.java`, no `RuleEngineService`, no `ShopRuleEngine`, and no `ruleEngineCache` / `ruleEngineResultCache` / computed-rule cache markers, so the reported indefinite rule-engine result cache is not present. Added `RuleEngineCacheContractTest` to guard against reintroducing the stale rule-engine cache target without explicit bounded TTL coverage. Verification: production source search found no stale rule-engine cache markers; `git diff --check` passed; `./mvnw -q -Dtest=RuleEngineCacheContractTest test` passed.
 
 - **Maintainer catalog filter query triage (2026-06-11 11:05 UTC)**: Closed TEST **PERF-009** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current public and admin product list paths normalize page/size, create `PageRequest`, and call `productRepository.findAll(...ProductSpecification(...), pageRequest)`. Price range, category, keyword, discount, pet-size, material, and color refinements are all pushed into JPA `Specification` predicates before pagination; the public Java-side `matchesPublicListQuery(...)` pass only rechecks the already-returned `page.getContent()` rows. Added `ProductFilteringQueryContractTest` to guard the paged specification path and SQL-like refinement predicates. Verification: source search confirmed the specification predicates and bounded page query; `git diff --check` passed; `./mvnw -q -Dtest=ProductFilteringQueryContractTest test` passed.
@@ -3475,8 +3477,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: `findAll()` loads all coupons into memory without pagination.
 - Impact: OutOfMemoryError for large coupon sets
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use pagination for all coupon queries.
+- Triage (2026-06-11 11:36 UTC): Current production code has no no-arg `couponRepository.findAll()` call. `CouponService.findAll()` uses a capped pageable `couponRepository.findAll(PageRequest.of(0, limit, Sort.by(...)))`; admin list/search goes through `searchAdminCoupons(..., PageRequest...)`; public coupon center reads use the pageable `findClaimableByScopeAndStatus(...)`; wallet and available coupon reads use `findByUserIdLimited(...)` and `findUnusedByUserIdLimited(...)`. Added `CouponRepositoryBoundedQueryContractTest` to guard these bounded paths and reject production call sites for unused unbounded coupon finder methods.
 
 ### PERF-012: Flush mode ALWAYS causes unnecessary database writes
 

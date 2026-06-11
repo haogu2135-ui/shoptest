@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 11:36 UTC TEST PERF-011 Coupon Repository Bounded Query Handoff
+
+Source status:
+- TEST PERF-011 is closed as FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+- Current production code has no no-arg `couponRepository.findAll()` call.
+- `CouponService.findAll()` uses capped pageable `couponRepository.findAll(PageRequest.of(...))`.
+- Admin coupon list/search uses `searchAdminCoupons(..., PageRequest...)`; public coupon center uses pageable `findClaimableByScopeAndStatus(...)`; wallet/available coupons use limited mapper calls.
+- `CouponRepositoryBoundedQueryContractTest` guards the bounded query contract and rejects production call sites for unused unbounded coupon finders.
+
+Local verification already run:
+- Production source search found no no-arg coupon repository load.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=CouponRepositoryBoundedQueryContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Coupon center/admin/wallet bounded responses | SOURCE_COVERED / E2E OPTIONAL | Keep `CouponRepositoryBoundedQueryContractTest` in CI. Optional API/admin regression can cover coupon center, admin coupon list/search/filter, wallet, available coupons, and checkout coupon selector against large coupon fixtures. |
+
 ## 2026-06-11 11:20 UTC TEST PERF-010 Rule Engine Cache Handoff
 
 Source status:
