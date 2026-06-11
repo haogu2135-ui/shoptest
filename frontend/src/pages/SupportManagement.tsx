@@ -135,6 +135,7 @@ const SupportManagement: React.FC = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const adminSupportToken = readAdminSupportToken();
   const supportOrderItemName = (item: Pick<OrderItem, 'productId' | 'productName'>) => (
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
   );
@@ -155,6 +156,17 @@ const SupportManagement: React.FC = () => {
   const canUpdateSupportReadState = hasAdminPermission(adminPermissions, currentRole, SUPPORT_READ_STATE_PERMISSION);
   const canReissueBirthdayCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_BIRTHDAY_REISSUE_PERMISSION);
   const canViewOrders = hasAdminPermission(adminPermissions, currentRole, 'orders');
+  const canUpdateSupportReadStateRef = useRef(canUpdateSupportReadState);
+  const supportTranslationRef = useRef(t);
+  const mergeSessionIntoCurrentQueueRef = useRef<(session: SupportSession, options?: { countNewMatch?: boolean }) => void>(() => undefined);
+
+  useEffect(() => {
+    canUpdateSupportReadStateRef.current = canUpdateSupportReadState;
+  }, [canUpdateSupportReadState]);
+
+  useEffect(() => {
+    supportTranslationRef.current = t;
+  }, [t]);
 
   useEffect(() => {
     if (!readAdminSupportToken()) return;
@@ -303,6 +315,10 @@ const SupportManagement: React.FC = () => {
       setQueueTotal(nextTotal);
     }
   }, []);
+
+  useEffect(() => {
+    mergeSessionIntoCurrentQueueRef.current = mergeSessionIntoCurrentQueue;
+  }, [mergeSessionIntoCurrentQueue]);
 
   const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string }) => {
     try {
@@ -362,8 +378,7 @@ const SupportManagement: React.FC = () => {
   }, [loadSessions]);
 
   useEffect(() => {
-    const token = readAdminSupportToken();
-    if (!token) return;
+    if (!adminSupportToken) return;
     let shouldReconnect = true;
     const scheduleReconnect = () => {
       if (!shouldReconnect) return;
@@ -381,7 +396,7 @@ const SupportManagement: React.FC = () => {
       if (!shouldReconnect) return;
       let socket: WebSocket;
       try {
-        socket = new WebSocket(supportWebSocketUrl(token), supportWebSocketProtocols(token));
+        socket = new WebSocket(supportWebSocketUrl(adminSupportToken), supportWebSocketProtocols(adminSupportToken));
       } catch {
         setConnected(false);
         scheduleReconnect();
@@ -398,13 +413,13 @@ const SupportManagement: React.FC = () => {
       };
       socket.onerror = () => setConnected(false);
       socket.onmessage = (event) => {
-        const payload = parseSupportSocketPayload(event.data);
-        if (payload.type === 'ERROR') {
-          message.warning(payload.message || t('pages.support.messageRejected'));
-          return;
-        }
+        const payload = parseSupportSocketPayload(event.data);
+        if (payload.type === 'ERROR') {
+          message.warning(payload.message || supportTranslationRef.current('pages.support.messageRejected'));
+          return;
+        }
         if (payload.type === 'MESSAGE') {
-          mergeSessionIntoCurrentQueue(payload.session, { countNewMatch: true });
+          mergeSessionIntoCurrentQueueRef.current(payload.session, { countNewMatch: true });
           if (selectedSessionRef.current?.id === payload.message.sessionId) {
             setMessages((items) => {
               if (items.some((item) => item.id === payload.message.id)) {
@@ -415,7 +430,7 @@ const SupportManagement: React.FC = () => {
               }
               return mergeSupportMessages(items, [payload.message]);
             });
-            if (canUpdateSupportReadState) {
+            if (canUpdateSupportReadStateRef.current) {
               adminSupportApi.markRead(payload.message.sessionId).catch(() => undefined);
             }
           } else if (payload.message.senderRole === 'USER') {
@@ -423,7 +438,7 @@ const SupportManagement: React.FC = () => {
           }
         }
         if (payload.type === 'SESSION_CLOSED' || payload.type === 'SESSION_UPDATED') {
-          mergeSessionIntoCurrentQueue(payload.session);
+          mergeSessionIntoCurrentQueueRef.current(payload.session);
         }
       };
     }
@@ -438,7 +453,7 @@ const SupportManagement: React.FC = () => {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [canUpdateSupportReadState, mergeSessionIntoCurrentQueue, t]);
+  }, [adminSupportToken]);
 
   useEffect(() => {
     let polling = false;

@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 04:33 UTC QA F3446 Support WebSocket Dependency Handoff
+
+Source status:
+- QA F3446 is source-fixed with regression guards.
+- Admin support WebSocket connection is keyed by `adminSupportToken`; permission/read-state, translated fallback text, and queue merge handling are read through refs instead of reconnect-triggering dependencies.
+- Customer support authenticated WebSocket connection is keyed by `[open, token]`; translated fallback text and session sort/upsert handlers are read through refs instead of reconnect-triggering dependencies.
+- Guards also accept the current `useReconnectingWebSocket` implementation when it exposes the same stable connection-key contract.
+
+Local verification already run:
+- Staged source checks confirmed the old WebSocket effect dependencies are absent from the committed implementation.
+- `SupportManagementTypeSafety.test.ts` and `CustomerSupportWidgetTypeSafety.test.ts` now reject the old callback/translation dependency shape.
+- `git diff --cached --check` passed.
+- Frontend Jest was not run because `frontend/node_modules` is missing in this workspace.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin support socket stability | SOURCE_FIXED / SUPPORT E2E REQUIRED | After restoring frontend dependencies, run `CI=true npm test -- --runTestsByPath src/pages/SupportManagementTypeSafety.test.ts --watchAll=false --runInBand`; then open admin Support Management, receive/send messages, change filters/search/permissions-derived UI state if available, and confirm the socket does not reconnect unless the admin token changes. |
+| Customer support socket stability | SOURCE_FIXED / SUPPORT E2E REQUIRED | Run `CI=true npm test -- --runTestsByPath src/components/CustomerSupportWidgetTypeSafety.test.ts --watchAll=false --runInBand`; then open the customer support widget, receive/send messages, switch locale or update session history, and confirm no unnecessary reconnect while `open` and auth token remain stable. |
+
 ## 2026-06-11 04:20 UTC QA F3445 Profile Payment Return Dependency Handoff
 
 Source status:

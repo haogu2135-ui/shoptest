@@ -16,4 +16,18 @@ describe('CustomerSupportWidget type-safety guards', () => {
     expect(source).not.toContain('err: any');
     expect(source).not.toContain('as any');
   });
+
+  it('keeps the authenticated support WebSocket connection keyed only by open state and token', () => {
+    const hasHookBackedSocket = /useReconnectingWebSocket\(\{[\s\S]*enabled: Boolean\(open && token\),[\s\S]*connectionKey: token \|\| ''/.test(source);
+    const hasRefBackedSocket = source.includes('const supportTranslationRef = useRef(t);')
+      && source.includes('const sortSupportSessionsRef = useRef(sortSupportSessions);')
+      && source.includes('const upsertSessionHistoryRef = useRef(upsertSessionHistory);')
+      && source.includes('upsertSessionHistoryRef.current(sessionRes.data);')
+      && source.includes('setSessionHistory(sortSupportSessionsRef.current(res.data || []));')
+      && source.includes('upsertSessionHistoryRef.current(payload.session);')
+      && source.includes('}, [open, token]);');
+
+    expect(hasHookBackedSocket || hasRefBackedSocket).toBe(true);
+    expect(source).not.toMatch(/new WebSocket[\s\S]{0,2500}\}, \[open, token, t, sortSupportSessions, upsertSessionHistory\]\);/);
+  });
 });

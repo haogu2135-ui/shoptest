@@ -146,6 +146,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const detailRequestSeqRef = useRef(0);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const supportTranslationRef = useRef(t);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const supportOrderItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
@@ -254,6 +255,20 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const upsertSessionHistory = useCallback((nextSession: SupportSessionCustomer) => {
     setSessionHistory((items) => sortSupportSessions([nextSession, ...items.filter((item) => item.id !== nextSession.id)]));
   }, [sortSupportSessions]);
+  const sortSupportSessionsRef = useRef(sortSupportSessions);
+  const upsertSessionHistoryRef = useRef(upsertSessionHistory);
+
+  useEffect(() => {
+    supportTranslationRef.current = t;
+  }, [t]);
+
+  useEffect(() => {
+    sortSupportSessionsRef.current = sortSupportSessions;
+  }, [sortSupportSessions]);
+
+  useEffect(() => {
+    upsertSessionHistoryRef.current = upsertSessionHistory;
+  }, [upsertSessionHistory]);
 
   const getDefaultButtonPosition = useCallback((): SupportButtonPosition => ({
     left: Math.max(SUPPORT_BUTTON_MARGIN, window.innerWidth - SUPPORT_BUTTON_SIZE - 24),
@@ -395,20 +410,20 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         const sessionRes = await supportApi.createSession();
         if (disposed) return;
         setSession(sessionRes.data);
-        upsertSessionHistory(sessionRes.data);
+        upsertSessionHistoryRef.current(sessionRes.data);
         const messagesRes = await supportApi.getMessages(sessionRes.data.id, { limit: SUPPORT_MESSAGE_WINDOW });
         if (disposed) return;
         setMessages(mergeSupportMessages([], messagesRes.data));
         supportApi.markRead(sessionRes.data.id).catch(() => undefined);
         supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW })
           .then((res) => {
-            if (!disposed) setSessionHistory(sortSupportSessions(res.data || []));
+            if (!disposed) setSessionHistory(sortSupportSessionsRef.current(res.data || []));
           })
           .catch(() => undefined);
         setUnread(0);
       } catch {
         if (disposed) return;
-        message.error(t('pages.support.loadFailed'));
+        message.error(supportTranslationRef.current('pages.support.loadFailed'));
       }
     };
 
@@ -448,12 +463,12 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       socket.onmessage = (event) => {
         const payload = parseSupportSocketPayload(event.data);
         if (payload.type === 'ERROR') {
-          message.warning(payload.message || t('pages.support.messageRejected'));
+          message.warning(payload.message || supportTranslationRef.current('pages.support.messageRejected'));
           return;
         }
         if (payload.type === 'MESSAGE') {
           setSession(payload.session);
-          upsertSessionHistory(payload.session);
+          upsertSessionHistoryRef.current(payload.session);
           setMessages((items) => {
             const currentSessionId = sessionRef.current?.id;
             const incomingFromAgent = payload.message.senderRole === 'ADMIN';
@@ -473,7 +488,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         }
         if (payload.type === 'SESSION_CLOSED' || payload.type === 'SESSION_UPDATED') {
           setSession(payload.session);
-          upsertSessionHistory(payload.session);
+          upsertSessionHistoryRef.current(payload.session);
         }
       };
     }
@@ -491,7 +506,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [open, token, t, sortSupportSessions, upsertSessionHistory]);
+  }, [open, token]);
 
   useEffect(() => {
     if (!open || !activeGuestContext) return;

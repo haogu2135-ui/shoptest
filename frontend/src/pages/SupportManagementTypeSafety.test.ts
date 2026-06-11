@@ -16,4 +16,20 @@ describe('SupportManagement type-safety guard', () => {
     expect(source).toContain("getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language)");
     expect(source).toContain("getApiErrorMessage(err, t('pages.adminSupport.reissueBirthdayCouponFailed'), language)");
   });
+
+  it('keeps the admin support WebSocket connection keyed only by the admin token', () => {
+    const source = readSupportManagementSource();
+    const hasHookBackedSocket = /useReconnectingWebSocket\(\{[\s\S]*enabled: Boolean\(adminSupportToken\),[\s\S]*connectionKey: adminSupportToken/.test(source);
+    const hasRefBackedSocket = source.includes('const adminSupportToken = readAdminSupportToken();')
+      && source.includes('const canUpdateSupportReadStateRef = useRef(canUpdateSupportReadState);')
+      && source.includes('const supportTranslationRef = useRef(t);')
+      && source.includes('const mergeSessionIntoCurrentQueueRef = useRef<(session: SupportSession, options?: { countNewMatch?: boolean }) => void>(() => undefined);')
+      && source.includes('mergeSessionIntoCurrentQueueRef.current = mergeSessionIntoCurrentQueue;')
+      && source.includes('mergeSessionIntoCurrentQueueRef.current(payload.session, { countNewMatch: true });')
+      && source.includes('if (canUpdateSupportReadStateRef.current) {')
+      && source.includes('}, [adminSupportToken]);');
+
+    expect(hasHookBackedSocket || hasRefBackedSocket).toBe(true);
+    expect(source).not.toMatch(/new WebSocket[\s\S]{0,2500}\}, \[canUpdateSupportReadState, mergeSessionIntoCurrentQueue, t\]\);/);
+  });
 });
