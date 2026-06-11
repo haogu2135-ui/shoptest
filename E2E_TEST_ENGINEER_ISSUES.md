@@ -4,13 +4,30 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 07:54 UTC TEST SEC-NEW-007 Data Encryption Key Naming Handoff
+
+Source status:
+- TEST SEC-NEW-007 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED.
+- Current backend production configuration and Java source do not define or consume `data.encryption.key`.
+- No runtime rename is required because there is no active data-encryption key property in current source.
+- `DataEncryptionKeyNamingContractTest` rejects future backend uses of the bare `data.encryption.key` name while leaving room for the conventional `shop.data.encryption.key` namespace if a real feature is introduced.
+
+Local verification already run:
+- Production source/resource search found no deprecated `data.encryption.key` key.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=DataEncryptionKeyNamingContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Backend encryption-key property naming | CURRENT_SOURCE_NON_ISSUE / NO MANUAL E2E REQUIRED | Keep `DataEncryptionKeyNamingContractTest` in CI. No browser/device E2E is required because this is a backend static configuration naming closure. |
+
 ## 2026-06-11 07:27 UTC QA SEC-NEW-008 Blacklisted Token Schema Handoff
 
 Source status:
 - QA SEC-NEW-008 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED.
 - Current production schema and migrations do not define a `blacklisted_tokens` table.
 - `schema.sql:669` is currently an `orders.tracking_carrier_code` column, not the reported blacklisted-token password column.
-- TEST SEC-NEW-007 remains open separately because it tracks `data.encryption.key` property naming, not this stale schema-table report.
+- TEST SEC-NEW-007 was tracked separately because it covered `data.encryption.key` property naming, not this stale schema-table report; it is now closed by the 2026-06-11 07:54 UTC handoff above.
 
 Local verification already run:
 - Production source/resource search found no `blacklisted_tokens` table.

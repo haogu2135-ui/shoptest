@@ -4,7 +4,9 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
-- **Maintainer stale blacklisted token schema triage (2026-06-11 07:27 UTC)**: Closed QA **SEC-NEW-008** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. Current production schema and migrations do not define a `blacklisted_tokens` table, and `schema.sql:669` is an `orders.tracking_carrier_code` column rather than the reported table. Added `BlacklistedTokenSchemaContractTest` to reject future `blacklisted_tokens` statements with a `password` column. Verification: production source/resource search found no `blacklisted_tokens` table; `git diff --check` passed; `./mvnw -q -Dtest=BlacklistedTokenSchemaContractTest test` passed. TEST **SEC-NEW-007** remains OPEN because it is a separate `data.encryption.key` property-naming issue.
+- **Maintainer data encryption key naming triage (2026-06-11 07:54 UTC)**: Closed TEST **SEC-NEW-007** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. Current backend production configuration and Java source do not define or consume the deprecated `data.encryption.key` property, and no replacement key is needed until a data-encryption feature exists. Added `DataEncryptionKeyNamingContractTest` to reject future backend uses of the bare `data.encryption.key` property while allowing the conventional `shop.data.encryption.key` namespace if such a feature is introduced. Verification: production source/resource search found no deprecated key; `git diff --check` passed; `./mvnw -q -Dtest=DataEncryptionKeyNamingContractTest test` passed.
+
+- **Maintainer stale blacklisted token schema triage (2026-06-11 07:27 UTC)**: Closed QA **SEC-NEW-008** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. Current production schema and migrations do not define a `blacklisted_tokens` table, and `schema.sql:669` is an `orders.tracking_carrier_code` column rather than the reported table. Added `BlacklistedTokenSchemaContractTest` to reject future `blacklisted_tokens` statements with a `password` column. Verification: production source/resource search found no `blacklisted_tokens` table; `git diff --check` passed; `./mvnw -q -Dtest=BlacklistedTokenSchemaContractTest test` passed. TEST **SEC-NEW-007** was tracked separately as a `data.encryption.key` property-naming issue and is now closed by the 2026-06-11 07:54 UTC triage above.
 
 - **Maintainer CORS allow-all origin fix (2026-06-11 07:12 UTC)**: Closed QA **SEC-NEW-007** and TEST **SEC-NEW-005** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. The reported `ShopWebMvcConfigurer` / `WebMvcConfig` allow-all file path is stale, but current `CorsOriginProperties` still accepted a runtime-configured exact `*` outside production while credentialed CORS is enabled. `CorsOriginProperties` now rejects exact `*` in every runtime mode while preserving explicit local development origins such as `http://localhost:*`. Added `CorsAllowAllOriginContractTest`. Verification: allow-all CORS source search returned no matches; `git diff --check` passed; `./mvnw -q -Dtest=CorsAllowAllOriginContractTest test` passed.
 
@@ -3331,8 +3333,9 @@ Notes:
 - Severity: LOW
 - Symptom: The data encryption key property name (`data.encryption.key`) does not follow the application's naming convention (`shop.data.encryption.key`).
 - Impact: Configuration confusion, potential key mismatch
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED
 - Expected fix direction: Rename to `shop.data.encryption.key` for consistency.
+- Triage (2026-06-11 07:54 UTC): Current backend production configuration and Java source have no `data.encryption.key` property and no data-encryption key consumer. Added `DataEncryptionKeyNamingContractTest` to guard against reintroducing the deprecated bare property name.
 
 ### SEC-NEW-008: Authentication source priority may allow bypass
 
