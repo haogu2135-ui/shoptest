@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-11 01:32 UTC - Maintainer QA stock reservation race closure | Total: 3243 issues
+Last updated: 2026-06-11 01:40 UTC - Maintainer legacy race triage closure | Total: 3243 issues
 
 Legend: OPEN / FIXED / WONTFIX / REGRESSED
 
@@ -10,8 +10,17 @@ Legend: OPEN / FIXED / WONTFIX / REGRESSED
 
 - Total issues: 3243
 - FIXED: 2369 (+249 verified)
-- WONTFIX: 166
-- OPEN: 708 (1113 - 310 additional TEST/QA tracker resolutions - 1 PERF source fix - 7 AdminLayout closures - 5 BugManagement current-source closures - 2 BrowsingHistory closures - 4 BugManagement backend fixes - 15 Checkout/Cart F1196-F1211 closures - 1 F975 frontend catch-binding closure - 1 F933 current-source password exposure closure - 1 F3447 current-source payment polling closure - 1 F3448 support polling source fix - 1 F3499 backend empty catch duplicate closure - 1 F3450 service transaction rollback fix - 1 F3452 Redis KEYS removal - 1 F3454 admin support unread query optimization - 1 F3455 scheduled expiry bounded batch scans - 2 F3458/F3459 API 4xx observability fixes - 1 F3457 payment lifecycle observability fix - 1 F3461 frontend remote error reporting fix - 1 F3462 payment gateway HTTP retry fix - 1 F3463 payment expiry scheduler failure logging closure - 1 F3464 backend slow request latency logging fix - 1 F3465 route error boundary coverage closure - 1 F3466 support websocket exhaustion fallback closure - 1 F3467 ProductUrlImportService duplicate/current-source observability closure - 1 F3486 product category/name uniqueness fix - 1 F3487 product status atomic update fix - 1 F3488 stock reservation current-source closure - 1 F3490 JsonNodeUtil current-source non-issue - 1 F3493 notification send silent failure current-source closure - 1 F3494 Pet controller silent catch current-source closure - 1 F3495 vaccination notification current-source closure - 1 F3496 IP blacklist current-source closure - 1 F3497 product search cache current-source closure - 1 F3515 ConfigCenter any closure - 1 F3515 PetPersonalizedAssistant any closure - 1 F3515 AddOnAssistant any closure - 1 F3515 Payment component any closure - 1 F3515 SeventeenTrackWidget any closure - 1 F3515 limitedTimeCountdown test any closure - 1 F3515 UserManagement any closure - 1 F3515 StockAlerts any closure - 1 F3515 LogisticsCarrierManagement any closure - 1 F3515 PetGalleryManagement any closure - 1 F3515 AnnouncementManagement any closure - 1 F3515 ForgotPassword any closure - 1 F3515 Register any closure - 1 F3515 ProductReview any closure - 1 F3515 Navbar any closure - 1 F3515 AdminDashboard any closure - 1 F3515 SecurityAuditLogManagement any closure - 1 F3515 BugManagement any closure - 1 F3515 OrderTracking any closure - 1 F3515 CartDrawer any closure - 1 F3515 CustomerSupportWidget any closure - 1 F3515 Checkout any closure - 1 F3515 TrafficControl any closure - 1 F3515 market test any closure - 1 F3515 Wishlist test any closure - 1 F3515 API interceptor test any closure - 1 F3515 Checkout payment-method test any closure - 1 F3515 product options any closure - 1 F3515 ProductQuestionManagement catch any closure - 1 F3515 ReviewManagement any closure - 1 F3515 AdminLayout menu any closure - 1 F3515 API product normalization any closure - 1 F3515 API auth header any closure)
+- WONTFIX: 169
+- OPEN: 705 (1113 - 310 additional TEST/QA tracker resolutions - 1 PERF source fix - 7 AdminLayout closures - 5 BugManagement current-source closures - 2 BrowsingHistory closures - 4 BugManagement backend fixes - 15 Checkout/Cart F1196-F1211 closures - 1 F975 frontend catch-binding closure - 1 F933 current-source password exposure closure - 1 F3447 current-source payment polling closure - 1 F3448 support polling source fix - 1 F3499 backend empty catch duplicate closure - 1 F3450 service transaction rollback fix - 1 F3452 Redis KEYS removal - 1 F3454 admin support unread query optimization - 1 F3455 scheduled expiry bounded batch scans - 2 F3458/F3459 API 4xx observability fixes - 1 F3457 payment lifecycle observability fix - 1 F3461 frontend remote error reporting fix - 1 F3462 payment gateway HTTP retry fix - 1 F3463 payment expiry scheduler failure logging closure - 1 F3464 backend slow request latency logging fix - 1 F3465 route error boundary coverage closure - 1 F3466 support websocket exhaustion fallback closure - 1 F3467 ProductUrlImportService duplicate/current-source observability closure - 1 F3486 product category/name uniqueness fix - 1 F3487 product status atomic update fix - 1 F3488 stock reservation current-source closure - 1 F3490 JsonNodeUtil current-source non-issue - 3 F3489/F3491/F3492 current-source race non-issues - 1 F3493 notification send silent failure current-source closure - 1 F3494 Pet controller silent catch current-source closure - 1 F3495 vaccination notification current-source closure - 1 F3496 IP blacklist current-source closure - 1 F3497 product search cache current-source closure - 1 F3515 ConfigCenter any closure - 1 F3515 PetPersonalizedAssistant any closure - 1 F3515 AddOnAssistant any closure - 1 F3515 Payment component any closure - 1 F3515 SeventeenTrackWidget any closure - 1 F3515 limitedTimeCountdown test any closure - 1 F3515 UserManagement any closure - 1 F3515 StockAlerts any closure - 1 F3515 LogisticsCarrierManagement any closure - 1 F3515 PetGalleryManagement any closure - 1 F3515 AnnouncementManagement any closure - 1 F3515 ForgotPassword any closure - 1 F3515 Register any closure - 1 F3515 ProductReview any closure - 1 F3515 Navbar any closure - 1 F3515 AdminDashboard any closure - 1 F3515 SecurityAuditLogManagement any closure - 1 F3515 BugManagement any closure - 1 F3515 OrderTracking any closure - 1 F3515 CartDrawer any closure - 1 F3515 CustomerSupportWidget any closure - 1 F3515 Checkout any closure - 1 F3515 TrafficControl any closure - 1 F3515 market test any closure - 1 F3515 Wishlist test any closure - 1 F3515 API interceptor test any closure - 1 F3515 Checkout payment-method test any closure - 1 F3515 product options any closure - 1 F3515 ProductQuestionManagement catch any closure - 1 F3515 ReviewManagement any closure - 1 F3515 AdminLayout menu any closure - 1 F3515 API product normalization any closure - 1 F3515 API auth header any closure)
+
+### Maintainer Update (2026-06-11 01:40 UTC)
+
+- **F3489 WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**: Closed the stale `AdminHealthCheckController` disk-space TOCTOU report against current source. There is no production `AdminHealthCheckController.java`, no `class AdminHealthCheckController`, and no `Files.move(...)` backup-restore path under `src/main/java`. The reported manual backup restore race is not reachable in this workspace.
+- **F3491 WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**: Closed the stale `PetHealthController.findNearestClinics()` external-location cache report. Current source has no production `PetHealthController`, no `findNearestClinics(...)`, and no nearest-clinic cache path; there is no runtime clinic lookup endpoint to document or TTL-harden.
+- **F3492 WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**: Closed the stale promotion/points race report. Current source has no `AdminPromotionController`, `PromotionController`, or `UserPointsService`. The only overlapping coupon quantity path uses transactional service methods and an atomic `CouponRepository.incrementClaimedQuantity(...)` update with a `claimedQuantity < totalQuantity` predicate, plus compensating decrement on duplicate insert.
+- Count update: WONTFIX +3, OPEN -3.
+- Regression coverage: Added `LegacyRaceConditionControllerContractTest` to reject reintroduced legacy health/pet/promotion race targets and require the current coupon quantity-limit atomic update contract.
+- Verification: source searches confirmed the legacy controllers/services/methods are absent and the current coupon repository atomic update is present; `git diff --cached --check` passed; `./mvnw -q -Dtest=LegacyRaceConditionControllerContractTest test` passed in the current dirty worktree. Clean-HEAD broader Maven risk remains the review-image compile gap recorded in the 00:35 UTC update.
 
 ### Maintainer Update (2026-06-11 01:32 UTC)
 
@@ -17098,7 +17107,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Closure evidence (2026-06-11 01:32 UTC)**: The reported service/method does not exist in current production source. Current checkout stock reservation is handled by `OrderService` under transaction, with reserve paths loading products via `ProductRepository.findAllByIdForUpdate(...)`; that repository method uses `@Lock(LockModeType.PESSIMISTIC_WRITE)`. Added `OrderStockReservationRaceContractTest` to guard the current-source contract and prevent reintroducing the old check-then-deduct pattern.
 
 ### F3489: MEDIUM — AdminHealthCheckController has TOCTOU disk space check
-- **Status**: OPEN
+- **Status**: WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED
 - **Opened**: 2026-06-10 10:30 UTC
 - **Source**: Race Condition Analysis
 - **How found**: Static code analysis
@@ -17107,6 +17116,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Risk**: Manual backup restore fails despite "green" health check
 - **Component**: AdminHealthCheckController
 - **File**: src/main/java/com/example/shop/controller/AdminHealthCheckController.java:233-261
+- **Triage (2026-06-11 01:40 UTC)**: Non-issue against current source. There is no production `AdminHealthCheckController.java`, no `class AdminHealthCheckController`, and no `Files.move(...)` backup-restore implementation under `src/main/java`. Added `LegacyRaceConditionControllerContractTest` to guard against reintroducing the stale health-check restore target.
 
 ### F3490: MEDIUM — JsonNodeUtil.readFileContent() has TOCTOU race on concurrent file reads
 - **Status**: WONTFIX / CURRENT_SOURCE_NON_ISSUE
@@ -17121,7 +17131,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Triage (2026-06-11 00:35 UTC)**: Non-issue against current source. `src/main/java/com/example/shop/util/JsonNodeUtil.java` does not exist, and repository search finds no `class JsonNodeUtil` or `readFileContent(...)` production method. The reported utility appears to be from a stale code snapshot.
 
 ### F3491: LOW — PetHealthController.findNearestClinics() has TOCTOU on external location API
-- **Status**: OPEN
+- **Status**: WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED
 - **Opened**: 2026-06-10 10:30 UTC
 - **Source**: Race Condition Analysis
 - **How found**: Static code analysis
@@ -17130,9 +17140,10 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Risk**: Very low — external location data is quasi-static
 - **Component**: PetHealthController
 - **File**: src/main/java/com/example/shop/controller/PetHealthController.java:186-237
+- **Triage (2026-06-11 01:40 UTC)**: Non-issue against current source. There is no production `PetHealthController.java`, no `class PetHealthController`, no `findNearestClinics(...)`, and no nearest-clinic cache path under `src/main/java`; the reported external-location cache race is from a stale snapshot. Added `LegacyRaceConditionControllerContractTest` to guard against reintroducing this stale controller/method target.
 
 ### F3492: MEDIUM — AdminPromotionController has complex race conditions across multiple TOCTOU patterns
-- **Status**: OPEN
+- **Status**: WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED
 - **Opened**: 2026-06-10 10:30 UTC
 - **Source**: Race Condition Analysis
 - **How found**: Static code analysis
@@ -17141,6 +17152,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Risk**: Flash sale overselling, points over-spend, coupon limit violations
 - **Component**: AdminPromotionController, PromotionController, UserPointsService, CouponService
 - **File**: src/main/java/com/example/shop/controller/AdminPromotionController.java
+- **Triage (2026-06-11 01:40 UTC)**: Non-issue against current source for the reported promotion/points controllers and services. There is no production `AdminPromotionController`, `PromotionController`, or `UserPointsService`. The overlapping coupon quantity path is current-source covered: `CouponService.claim(...)` and `grant(...)` are transactional, call `CouponRepository.incrementClaimedQuantity(...)`, and that repository method performs a single `UPDATE` guarded by `claimedQuantity < totalQuantity`; duplicate user-coupon inserts compensate with `decrementClaimedQuantity(...)`. Added `LegacyRaceConditionControllerContractTest` to guard both the absent legacy targets and the current coupon quantity-limit atomic update contract.
 
 ### F3493: CRITICAL — NotificationController.sendNotification() silently swallows all send failures
 - **Status**: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL

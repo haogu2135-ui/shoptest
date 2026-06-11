@@ -4,6 +4,29 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 01:40 UTC QA F3489/F3491/F3492 Legacy Race Triage Handoff
+
+Source status:
+- QA F3489, F3491, and F3492 are closed as current-source non-issues with a regression guard.
+- Current production source has no `AdminHealthCheckController`, `PetHealthController`, `AdminPromotionController`, `PromotionController`, or `UserPointsService`.
+- Current production source has no `findNearestClinics(...)` endpoint and no `Files.move(...)` backup-restore path.
+- The only overlapping coupon quantity path uses transactional `CouponService.claim(...)` / `grant(...)` methods and an atomic `CouponRepository.incrementClaimedQuantity(...)` update guarded by `claimedQuantity < totalQuantity`, with compensating decrement on duplicate insert.
+
+Local verification already run:
+- Source searches confirmed the stale controllers/services/methods are absent.
+- Source searches confirmed the coupon quantity-limit atomic repository update is present.
+- Added `LegacyRaceConditionControllerContractTest` source guard.
+- `git diff --cached --check` passed.
+- `./mvnw -q -Dtest=LegacyRaceConditionControllerContractTest test` passed in the current dirty worktree.
+- Clean-HEAD broader Maven risk remains the review-image compile gap recorded in the 00:35 UTC handoff.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Legacy admin health restore | CURRENT_SOURCE_NON_ISSUE / NO E2E REQUIRED | No route exists for the reported `AdminHealthCheckController` backup restore flow. Do not spend device/browser cycles on this stale endpoint unless the controller is reintroduced. |
+| Legacy pet nearest clinics | CURRENT_SOURCE_NON_ISSUE / NO E2E REQUIRED | No route exists for the reported `PetHealthController.findNearestClinics()` flow. Do not run the old clinic-location cache scenario unless a clinic lookup feature is added back. |
+| Legacy promotion and points flows | CURRENT_SOURCE_NON_ISSUE / NO E2E REQUIRED | No admin promotion, public promotion, or points service exists for the reported race paths. |
+| Coupon claim/grant quantity limit | CURRENT_SOURCE_COVERED / OPTIONAL ADMIN+CUSTOMER E2E | If coupon regression is already in scope, verify public coupon claim respects remaining quantity and admin coupon grant does not exceed total quantity under repeated requests; this is an optional validation of the current overlapping coupon boundary, not the stale promotion report. |
+
 ## 2026-06-11 01:32 UTC QA F3488 Checkout Stock Reservation Race Handoff
 
 Source status:
