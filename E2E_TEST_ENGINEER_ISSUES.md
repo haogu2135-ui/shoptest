@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 18:59 UTC TEST F3403 Product Detail Tablet Handoff
+
+Source status:
+- TEST F3403 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `ProductDetail.css` now has an explicit web tablet portrait band for `768px-900px` widths with `min-height: 700px`, so `768x1024` and `820x1180` no longer fall into a gallery-first single-column layout.
+- The product detail row is restored to two bounded grid columns in that band; AntD mobile `100%` column overrides are neutralized only inside the detail row.
+- The gallery height is capped to `clamp(280px, 36dvh, 360px)`, and the tablet purchase rail is static in the summary card with Add to cart / Buy now as the focused actions.
+- `ProductDetailTabletResponsiveContractTest` guards the tablet portrait media band, two-column layout, capped gallery, static buybar, and hidden duplicate desktop action row.
+- `./mvnw -q -Dtest=ProductDetailTabletResponsiveContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product detail tablet portrait first viewport | SOURCE_FIXED / STOREFRONT E2E PENDING | Open unauthenticated `/products/1` at `768x1024` and `820x1180`. Verify the first viewport includes product identity plus price and reachable Add to cart / Buy now controls, with no full-screen gallery pushing all commercial context below the fold. |
+| Product detail mobile and landscape guard | SOURCE_FIXED / STOREFRONT E2E PENDING | Recheck `430x932` and `740x360`. Verify mobile gallery, title, price, and buy controls remain readable and the existing short-landscape purchase layout is not regressed. |
+| Product detail desktop guard | SOURCE_FIXED / STOREFRONT E2E OPTIONAL | Recheck `1024x768`. Verify the desktop summary/title/price layout remains beside the gallery and no duplicate tablet purchase rail appears unexpectedly. |
+
 ## 2026-06-11 18:42 UTC TEST F3402 Product List Smart Guide Handoff
 
 Source status:

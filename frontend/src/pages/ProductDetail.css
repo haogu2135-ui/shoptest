@@ -4471,3 +4471,146 @@
     mask-image: none;
   }
 }
+
+/* F3403: tablet portrait detail layout keeps title, price and purchase actions
+   inside the first viewport instead of treating 768px as a phone gallery. */
+@media (min-width: 768px) and (max-width: 900px) and (min-height: 700px) {
+  body:not(.shop-mobile-app) .product-detail-page {
+    padding: 12px 12px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-detail-shell {
+    max-width: 100% !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-detail-shell > .ant-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr) !important;
+    gap: 12px !important;
+    align-items: start !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-detail-shell > .ant-row > .ant-col {
+    flex: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-gallery-card,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card {
+    border: 1px solid rgba(18, 71, 52, 0.08) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 12px 26px rgba(18, 71, 52, 0.08) !important;
+    overflow: hidden !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-gallery-card .ant-card-body,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .ant-card-body {
+    padding: 10px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card {
+    position: static !important;
+    top: auto !important;
+    max-height: none !important;
+    margin-top: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-space {
+    gap: 10px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-detail-main-image {
+    height: clamp(280px, 36dvh, 360px) !important;
+    min-height: clamp(280px, 36dvh, 360px) !important;
+    aspect-ratio: auto !important;
+    border-radius: 8px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-title-block h2.ant-typography {
+    margin-bottom: 4px !important;
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    font-size: 22px !important;
+    line-height: 1.18 !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-price-panel {
+    margin: 0 !important;
+    padding: 10px !important;
+    max-width: 100% !important;
+    border: 1px solid #e4ebe4 !important;
+    border-radius: 8px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-price-line__current {
+    font-size: 28px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:
+      "meta meta"
+      "cart buy" !important;
+    grid-template-rows: auto minmax(46px, auto) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    gap: 8px !important;
+    margin: 8px 0 0 !important;
+    padding: 8px !important;
+    overflow: visible !important;
+    border: 1px solid rgba(18, 71, 52, 0.12) !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08) !important;
+    transform: none !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__meta {
+    grid-area: meta !important;
+    grid-column: auto !important;
+    min-width: 0 !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__tool--home,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__tool--compare {
+    display: none !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__cart {
+    grid-area: cart !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__buy {
+    grid-area: buy !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__buy {
+    min-height: 46px !important;
+    height: auto !important;
+    width: 100% !important;
+    padding: 9px 10px !important;
+    white-space: normal !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-actions {
+    display: none !important;
+  }
+}
