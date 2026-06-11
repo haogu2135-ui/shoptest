@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 20:35 UTC TEST F2735 Product Import Name Duplicate Exists Query Handoff
+
+Source status:
+- TEST F2735 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- CSV import duplicate product-name preflight now uses repository exists queries instead of loading all products in a category.
+- New rows use `existsByCategoryIdAndNameIgnoreCase(categoryId, normalizedName)`.
+- Update rows use `existsByCategoryIdAndNameIgnoreCaseAndIdNot(categoryId, normalizedName, currentId)` so self-updates are not flagged.
+- `./mvnw -q -Dtest=ProductImportNameDuplicateQueryContractTest,ProductImportServiceTest#rejectsNewProductNamesThatAlreadyExistInSameCategory+rejectsExistingProductUpdatesThatWouldDuplicateNamesAfterImport test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| New CSV product duplicate name | SOURCE_FIXED / ADMIN PRODUCT E2E PENDING | Import a CSV row whose normalized name/category matches an existing product. Verify preview/import blocks with the existing duplicate-name error and no product is saved. |
+| Existing product self-update | SOURCE_FIXED / ADMIN PRODUCT E2E PENDING | Import/update an existing product id without changing its name/category, or with the same normalized name/category. Verify it is allowed and not flagged as a duplicate of itself. |
+| Large category import preflight | SOURCE_FIXED / PERFORMANCE E2E OPTIONAL | With a category containing many products, run CSV import preview and capture SQL/log evidence that duplicate-name validation uses exists queries rather than loading the whole category per row. |
+
 ## 2026-06-11 20:27 UTC TEST F2734 Product Import Variant SKU Projection Scan Handoff
 
 Source status:

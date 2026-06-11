@@ -2253,23 +2253,13 @@ public class ProductServiceImpl implements ProductService {
         if (name == null || name.isBlank() || categoryId == null || productRepository == null) {
             return;
         }
-        String nameKey = normalizeImportProductNameKey(name);
+        String normalizedName = normalizeImportText(name);
         Long currentId = existing == null ? null : existing.getId();
-        List<Product> matches = productRepository.findByCategoryId(categoryId);
-        if (matches == null || matches.isEmpty()) {
-            return;
-        }
-        for (Product match : matches) {
-            if (match == null || match.getId() == null) {
-                continue;
-            }
-            if (currentId != null && currentId.equals(match.getId())) {
-                continue;
-            }
-            String matchName = normalizeImportProductNameKey(match.getName());
-            if (nameKey.equals(matchName)) {
-                throw new IllegalArgumentException("name already exists in this category: " + name);
-            }
+        boolean duplicate = currentId == null
+                ? productRepository.existsByCategoryIdAndNameIgnoreCase(categoryId, normalizedName)
+                : productRepository.existsByCategoryIdAndNameIgnoreCaseAndIdNot(categoryId, normalizedName, currentId);
+        if (duplicate) {
+            throw new IllegalArgumentException("name already exists in this category: " + normalizedName);
         }
     }
 

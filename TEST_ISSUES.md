@@ -4873,8 +4873,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/impl/ProductServiceImpl.java` (lines 2173-2197)
 - Severity: MEDIUM
 - Description: `validateImportProductNameDoesNotDuplicateExisting` calls `productRepository.findByCategoryId(categoryId)` which loads all products in a category into memory for each import row. This is an N+1-like performance issue.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 20:35 UTC)
 - Expected fix direction: Add a repository method like `existsByNameAndCategoryIdAndIdNot(name, categoryId, excludeId)` to check existence without loading all records.
+- Resolution: CSV import duplicate-name preflight now checks category/name conflicts with repository exists queries instead of calling `productRepository.findByCategoryId(categoryId)` and scanning every product in the category. New rows call `existsByCategoryIdAndNameIgnoreCase(categoryId, normalizedName)`, and update rows call `existsByCategoryIdAndNameIgnoreCaseAndIdNot(categoryId, normalizedName, currentId)` so self-updates are excluded while conflicting category/name pairs are rejected.
+- Regression guard: Added `ProductImportNameDuplicateQueryContractTest`, which requires the import duplicate-name method to avoid `findByCategoryId`, avoid `List<Product> matches` in-memory scans, and use the create/update exists queries exposed by `ProductRepository`.
+- Verification: `./mvnw -q -Dtest=ProductImportNameDuplicateQueryContractTest,ProductImportServiceTest#rejectsNewProductNamesThatAlreadyExistInSameCategory+rejectsExistingProductUpdatesThatWouldDuplicateNamesAfterImport test` passed.
 
 ### F2736: MEDIUM — Review image upload accepts null file without validation
 

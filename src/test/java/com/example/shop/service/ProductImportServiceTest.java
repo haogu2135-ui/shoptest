@@ -560,11 +560,7 @@ class ProductImportServiceTest {
     @Test
     void rejectsNewProductNamesThatAlreadyExistInSameCategory() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
-        Product existing = new Product();
-        existing.setId(10L);
-        existing.setName("Travel Harness");
-        existing.setCategoryId(1L);
-        when(productRepository.findByCategoryId(1L)).thenReturn(List.of(existing));
+        when(productRepository.existsByCategoryIdAndNameIgnoreCase(1L, "travel harness")).thenReturn(true);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -583,6 +579,7 @@ class ProductImportServiceTest {
         assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
         assertFalse(result.isApplied());
         verify(productRepository, never()).save(any());
+        verify(productRepository, never()).findByCategoryId(1L);
     }
 
     @Test
@@ -602,7 +599,7 @@ class ProductImportServiceTest {
         collar.setCategoryId(1L);
         when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(leash));
         when(productRepository.findById(4L)).thenReturn(java.util.Optional.of(collar));
-        when(productRepository.findByCategoryId(1L)).thenReturn(List.of(leash, collar));
+        when(productRepository.existsByCategoryIdAndNameIgnoreCaseAndIdNot(1L, "travel harness", 4L)).thenReturn(true);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -622,6 +619,7 @@ class ProductImportServiceTest {
         assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
         assertFalse(result.isReadyToImport());
         verify(productRepository, never()).save(any());
+        verify(productRepository, never()).findByCategoryId(1L);
     }
 
     @Test
