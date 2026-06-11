@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer CORS allow-all origin fix (2026-06-11 07:12 UTC)**: Closed QA **SEC-NEW-007** and TEST **SEC-NEW-005** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. The reported `ShopWebMvcConfigurer` / `WebMvcConfig` allow-all file path is stale, but current `CorsOriginProperties` still accepted a runtime-configured exact `*` outside production while credentialed CORS is enabled. `CorsOriginProperties` now rejects exact `*` in every runtime mode while preserving explicit local development origins such as `http://localhost:*`. Added `CorsAllowAllOriginContractTest`. Verification: allow-all CORS source search returned no matches; `git diff --check` passed; `./mvnw -q -Dtest=CorsAllowAllOriginContractTest test` passed.
+
 - **Maintainer actuator env exposure triage (2026-06-11 05:39 UTC)**: Closed QA **SEC-NEW-006** and TEST **SEC-NEW-004** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. The reported actuator `/env` anonymous exposure is stale against current source: management web exposure includes only `health,info`, and `SecurityConfig` has no anonymous `/actuator/env`, `/env`, `EndpointRequest.toAnyEndpoint`, or `EndpointRequest.to("env")` rule. Added `ActuatorEnvExposureContractTest` to guard against actuator env or wildcard exposure. Verification: actuator env exposure source search returned no matches; `git diff --check` passed; `./mvnw -q -Dtest=ActuatorEnvExposureContractTest test` passed.
 
 - **Maintainer admin IP blacklist coverage fix (2026-06-11 05:25 UTC)**: Closed QA **SEC-NEW-005** and TEST **SEC-NEW-002** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. `SecurityConfig` already places `ipBlacklistFilter` before `jwtAuthenticationFilter`, but current default IP blacklist path prefixes omitted `/admin` when `security.ip-blacklist.block-all-paths=false`. Added `/admin` to `IpBlacklistService` defaults, `application.properties`, and the config-center template. Added `IpBlacklistAdminCoverageContractTest` to prove admin paths are checked by default and the filter chain remains ordered before JWT. Verification: `/admin` prefix source search confirmed code/config/template coverage; `git diff --check` passed; `./mvnw -q -Dtest=IpBlacklistAdminCoverageContractTest test` passed.
@@ -3308,8 +3310,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: The CORS configuration allows all origins (`*`) when the `dev` profile is active. If the dev profile is accidentally enabled in production, this bypasses CORS protections.
 - Impact: Cross-origin attacks possible if dev profile is active in production
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use a whitelist of allowed origins even in development, or ensure dev profile is never active in production.
+- Fix: `CorsOriginProperties` rejects exact `*` for all runtime modes while preserving explicit localhost development patterns; `CorsAllowAllOriginContractTest` guards this contract.
 
 ### SEC-NEW-006: Dependency CVE audit not performed
 

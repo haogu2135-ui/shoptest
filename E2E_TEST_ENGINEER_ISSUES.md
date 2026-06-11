@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 07:12 UTC QA SEC-NEW-007 / TEST SEC-NEW-005 CORS Allow-All Handoff
+
+Source status:
+- QA SEC-NEW-007 and TEST SEC-NEW-005 are source-fixed with a regression guard.
+- Exact `*` configured CORS origins are rejected in all runtime modes.
+- Explicit local development port patterns such as `http://localhost:*` remain allowed for development ergonomics.
+
+Local verification already run:
+- Allow-all CORS source search returned no hardcoded credentialed allow-all origin APIs.
+- Added `CorsAllowAllOriginContractTest` to guard exact `*` rejection and hardcoded allow-all CORS APIs.
+- `git diff --check` passed for the updated source, guard, and issue handoff files.
+- `./mvnw -q -Dtest=CorsAllowAllOriginContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| CORS allow-all regression | SOURCE_FIXED / API E2E OPTIONAL | Keep `CorsAllowAllOriginContractTest` in CI. Optional API smoke can set `app.cors.allowed-origin-patterns=*` in a non-production runtime and confirm credentialed cross-origin responses do not echo arbitrary origins; also confirm configured localhost origins still work for local dev. |
+
 ## 2026-06-11 05:39 UTC QA SEC-NEW-006 / TEST SEC-NEW-004 Actuator Env Handoff
 
 Source status:

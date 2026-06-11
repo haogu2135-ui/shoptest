@@ -41,6 +41,7 @@ public class CorsOriginProperties {
         List<String> patterns = Arrays.stream(source.split(","))
                 .map(String::trim)
                 .filter(this::hasText)
+                .filter(pattern -> !"*".equals(pattern))
                 .filter(pattern -> !isProductionMode() || isSafeProductionOrigin(pattern))
                 .distinct()
                 .collect(Collectors.toList());
