@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 10:33 UTC TEST PERF-007 Cache-Aside Write Invalidation Handoff
+
+Source status:
+- TEST PERF-007 is closed as FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+- Current `ProductServiceImpl` invalidates product result caches and evicts `categoryReferenceData` after product save, status batch update, delete, and applied CSV import.
+- Product cache invalidation removes entries containing the changed product plus related, featured, discount, and add-on keys affected by the mutation.
+- Current `CategoryServiceImpl` caches category reference reads under `categoryReferenceData` and evicts all entries on category save/delete.
+- `ProductCacheAsideContractTest` guards the source contract.
+
+Local verification already run:
+- Source search confirmed the product invalidation and category `@CacheEvict` paths.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=ProductCacheAsideContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Product/category cache freshness after writes | SOURCE_COVERED / E2E OPTIONAL | Keep `ProductCacheAsideContractTest` in CI. Optional API/admin regression can warm product list, discount, featured, related, add-on, and category responses, mutate products/categories, and verify the next read refreshes affected data without stale results. |
+
 ## 2026-06-11 10:26 UTC TEST PERF-006 Discount Product Query Handoff
 
 Source status:

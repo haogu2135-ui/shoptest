@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer cache-aside write invalidation triage (2026-06-11 10:33 UTC)**: Closed TEST **PERF-007** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current `ProductServiceImpl` invalidates product result caches and category reference data after product save, status batch update, delete, and applied CSV import; targeted invalidation removes entries containing the changed product plus related, featured, discount, and add-on keys affected by the mutation. Current `CategoryServiceImpl` caches category reference reads under `categoryReferenceData` and evicts all entries on category save/delete. Added `ProductCacheAsideContractTest` to guard the product/category cache-aside write contracts. Verification: source search confirmed the invalidation and `@CacheEvict` paths; `git diff --check` passed; `./mvnw -q -Dtest=ProductCacheAsideContractTest test` passed.
+
 - **Maintainer discount product query triage (2026-06-11 10:26 UTC)**: Closed TEST **PERF-006** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current `ProductServiceImpl.findDiscountProducts()` builds a bounded `ProductListQuery`, sets `discount=true` and `sort="discount,desc"`, and delegates to `findPublicProductPage(query).getContent()`. The public page path calls `productRepository.findAll(publicProductSpecification(...), pageRequest)`, and the JPA specification adds discount and limited-time-price predicates when discount filtering is requested, so current source does not load the full catalog and filter discounts in Java. Added `ProductDiscountQueryContractTest` to guard the bounded query and database-side discount filtering contract. Verification: source search confirmed the bounded query and specification predicates; `git diff --check` passed; `./mvnw -q -Dtest=ProductDiscountQueryContractTest test` passed.
 
 - **Maintainer product repository findAll triage (2026-06-11 10:07 UTC)**: Closed TEST **PERF-005** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current production Java source has no no-arg `productRepository.findAll()` call. Legacy `ProductServiceImpl.findAll()` uses `productRepository.findAll(PageRequest.of(0, limit, Sort.by(...)))` with `product.legacy-list-max-rows` clamped by `HARD_LEGACY_PRODUCT_LIST_LIMIT = 500`, while public and discount product lists delegate to bounded paged query paths. Added `ProductRepositoryFindAllContractTest` to guard against reintroducing unbounded no-arg product repository loads. Verification: production source search found no no-arg `productRepository.findAll()`; `git diff --check` passed; `./mvnw -q -Dtest=ProductRepositoryFindAllContractTest test` passed.
@@ -3427,8 +3429,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: Several service methods update the database but do not invalidate or update the corresponding cache entries.
 - Impact: Stale cache data served to users after updates
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Invalidate cache entries after database writes, or use write-through caching.
+- Triage (2026-06-11 10:33 UTC): Current source invalidates the affected caches after the relevant product/category writes. `ProductServiceImpl.save(...)`, `updateStatusByIds(...)`, `deleteById(...)`, and applied CSV imports invalidate product result caches and evict `categoryReferenceData`, while targeted product invalidation removes changed-product, related, featured, discount, and add-on keys. `CategoryServiceImpl.save(...)` and `deleteById(...)` use `@CacheEvict(cacheNames = "categoryReferenceData", allEntries = true)` for cached category reference reads. Added `ProductCacheAsideContractTest` to guard the cache-aside write invalidation contract.
 
 ### PERF-008: No cache TTL for static reference data
 
