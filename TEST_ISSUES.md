@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer reference data cache TTL fix (2026-06-11 10:50 UTC)**: Closed TEST **PERF-008** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**. Added `ReferenceDataCacheConfig`, a Spring `CacheManager` for reference-data caches with a one-hour default TTL and `shop.cache.reference-data-ttl-ms` override. `categoryReferenceData` and `brandReferenceData` cache entries now expire instead of living indefinitely, while existing save/delete `@CacheEvict` and product-driven category cache clears continue to work through normal `Cache.clear()` semantics. Added `ReferenceDataCacheTtlContractTest` to verify configured TTL expiry, loader refresh after expiry, and the one-hour default contract. Verification: source search confirmed the new cache manager and cache names; `git diff --check` passed; `./mvnw -q -Dtest=ReferenceDataCacheTtlContractTest test` passed.
+
 - **Maintainer cache-aside write invalidation triage (2026-06-11 10:33 UTC)**: Closed TEST **PERF-007** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current `ProductServiceImpl` invalidates product result caches and category reference data after product save, status batch update, delete, and applied CSV import; targeted invalidation removes entries containing the changed product plus related, featured, discount, and add-on keys affected by the mutation. Current `CategoryServiceImpl` caches category reference reads under `categoryReferenceData` and evicts all entries on category save/delete. Added `ProductCacheAsideContractTest` to guard the product/category cache-aside write contracts. Verification: source search confirmed the invalidation and `@CacheEvict` paths; `git diff --check` passed; `./mvnw -q -Dtest=ProductCacheAsideContractTest test` passed.
 
 - **Maintainer discount product query triage (2026-06-11 10:26 UTC)**: Closed TEST **PERF-006** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current `ProductServiceImpl.findDiscountProducts()` builds a bounded `ProductListQuery`, sets `discount=true` and `sort="discount,desc"`, and delegates to `findPublicProductPage(query).getContent()`. The public page path calls `productRepository.findAll(publicProductSpecification(...), pageRequest)`, and the JPA specification adds discount and limited-time-price predicates when discount filtering is requested, so current source does not load the full catalog and filter discounts in Java. Added `ProductDiscountQueryContractTest` to guard the bounded query and database-side discount filtering contract. Verification: source search confirmed the bounded query and specification predicates; `git diff --check` passed; `./mvnw -q -Dtest=ProductDiscountQueryContractTest test` passed.
@@ -3439,8 +3441,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: Static reference data (categories, brands, etc.) is cached without a TTL. If the data changes, the cache serves stale data indefinitely.
 - Impact: Stale reference data after updates
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Set a reasonable TTL (e.g., 1 hour) for reference data caches.
+- Fix (2026-06-11 10:50 UTC): Added `ReferenceDataCacheConfig`, which provides a Spring `CacheManager` with expiring entries for reference-data caches. The default TTL is one hour and can be overridden with `shop.cache.reference-data-ttl-ms`; `categoryReferenceData` and `brandReferenceData` are pre-registered and additional cache names also use the same bounded TTL. Existing category/brand write `@CacheEvict` paths and product-driven `categoryReferenceData` clears continue to call `Cache.clear()`. Added `ReferenceDataCacheTtlContractTest` to guard TTL expiry and loader refresh after expiry.
 
 ### PERF-009: In-memory filtering for large result sets
 

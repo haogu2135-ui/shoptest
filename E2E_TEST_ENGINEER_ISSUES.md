@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 10:50 UTC TEST PERF-008 Reference Data Cache TTL Handoff
+
+Source status:
+- TEST PERF-008 is closed as FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED.
+- Added `ReferenceDataCacheConfig`, a Spring `CacheManager` for reference-data caches with a one-hour default TTL and `shop.cache.reference-data-ttl-ms` override.
+- `categoryReferenceData` and `brandReferenceData` entries now expire instead of remaining indefinitely cached.
+- Existing category/brand `@CacheEvict` write paths and product-driven `categoryReferenceData` clears still work through `Cache.clear()`.
+- `ReferenceDataCacheTtlContractTest` guards configured TTL expiry and loader refresh after expiry.
+
+Local verification already run:
+- Source search confirmed the new cache manager, one-hour default TTL, and reference cache names.
+- `git diff --check` passed for the updated issue handoff files, cache config, and guard.
+- `./mvnw -q -Dtest=ReferenceDataCacheTtlContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Category/brand reference data cache TTL | SOURCE_FIXED / E2E OPTIONAL | Keep `ReferenceDataCacheTtlContractTest` in CI. Optional API/admin regression can run with a short `shop.cache.reference-data-ttl-ms`, warm category/brand responses, wait for expiry, and verify subsequent reads refresh while save/delete still evicts immediately. |
+
 ## 2026-06-11 10:33 UTC TEST PERF-007 Cache-Aside Write Invalidation Handoff
 
 Source status:
