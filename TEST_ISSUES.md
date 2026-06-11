@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer order item list N+1 triage (2026-06-11 08:17 UTC)**: Closed TEST **PERF-001** as **WONTFIX / CURRENT_SOURCE_COVERED / STALE_ORDER_LIST_WITH_ITEMS_REPORT / REGRESSION_GUARD_ADDED**. Current customer order list paths use paged `orderRepository.findByUserIdPage(...)` and do not attach order items in a per-order loop; item details are served through explicit single-order item endpoints, while bulk item reads remain available through `OrderItemRepository.findByOrderIds(...)` for list/export flows that need them. Added `OrderItemListNPlusOneContractTest` to reject the stale `getOrdersByUserIdWithItems` pattern and any customer-list `findByOrderId` item lookup. Verification: source search confirmed the paged list and bulk item contracts; `git diff --check` passed; `./mvnw -q -Dtest=OrderItemListNPlusOneContractTest test` passed.
+
 - **Maintainer auth/IP blacklist priority duplicate triage (2026-06-11 08:02 UTC)**: Closed TEST **SEC-NEW-008** as **WONTFIX / DUPLICATE_OF_TEST_SEC_NEW_002_AND_QA_SEC_NEW_005 / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_CONFIRMED**. Current `SecurityConfig` registers `ipBlacklistFilter` before `jwtAuthenticationFilter`, and `IpBlacklistAdminCoverageContractTest` already guards the filter order, `/admin/**` admin rule, absence of stale split-chain markers, and default `/admin` IP-blacklist path coverage. Verification: source search confirmed the filter order and admin prefix coverage; `git diff --check` passed; `./mvnw -q -Dtest=IpBlacklistAdminCoverageContractTest test` passed.
 
 - **Maintainer data encryption key naming triage (2026-06-11 07:54 UTC)**: Closed TEST **SEC-NEW-007** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED**. Current backend production configuration and Java source do not define or consume the deprecated `data.encryption.key` property, and no replacement key is needed until a data-encryption feature exists. Added `DataEncryptionKeyNamingContractTest` to reject future backend uses of the bare `data.encryption.key` property while allowing the conventional `shop.data.encryption.key` namespace if such a feature is introduced. Verification: production source/resource search found no deprecated key; `git diff --check` passed; `./mvnw -q -Dtest=DataEncryptionKeyNamingContractTest test` passed.
@@ -3355,8 +3357,9 @@ Notes:
 - Severity: HIGH
 - Symptom: `getOrderById` loads the order, then separately queries order items for each order. For order lists, this results in N+1 queries.
 - Impact: Slow order list loading, database connection pool exhaustion
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_COVERED / STALE_ORDER_LIST_WITH_ITEMS_REPORT / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use a JOIN fetch or batch query to load order items in a single query.
+- Triage (2026-06-11 08:17 UTC): Current customer order list paths do not load order items in the list query path; they return paged order summaries via `orderRepository.findByUserIdPage(...)`. Explicit item endpoints fetch one order's items, and bulk item reads use `OrderItemRepository.findByOrderIds(...)` where list/export flows need item details. Added `OrderItemListNPlusOneContractTest` to guard against reintroducing the stale list-with-items N+1 pattern.
 
 ### PERF-002: Stock check N+1 query in OrderService
 

@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 08:17 UTC TEST PERF-001 Order Item List N+1 Handoff
+
+Source status:
+- TEST PERF-001 is closed as WONTFIX / CURRENT_SOURCE_COVERED / STALE_ORDER_LIST_WITH_ITEMS_REPORT / REGRESSION_GUARD_ADDED.
+- Current customer order list paths return paged order summaries through `orderRepository.findByUserIdPage(...)` and do not attach order items with a per-order loop.
+- Single-order item details remain available through explicit item endpoints, which is not the reported list N+1 path.
+- Bulk order-item reads remain available through `OrderItemRepository.findByOrderIds(...)` and `OrderItemMapper.xml` for export/list flows that need item detail summaries.
+- `OrderItemListNPlusOneContractTest` rejects the stale `getOrdersByUserIdWithItems` pattern and any customer-list `findByOrderId` item lookup.
+
+Local verification already run:
+- Source search confirmed customer order lists use the paged order query and no stale `getOrdersByUserIdWithItems` method exists.
+- Source search confirmed `OrderItemRepository.findByOrderIds(...)` and the matching mapper query exist.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=OrderItemListNPlusOneContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Customer order list item loading | CURRENT_SOURCE_COVERED / NO MANUAL E2E REQUIRED | Keep `OrderItemListNPlusOneContractTest` in CI. Optional browser regression can check that customer order list still renders summaries and order-detail item endpoints still render items. |
+
 ## 2026-06-11 08:02 UTC TEST SEC-NEW-008 Auth/IP Blacklist Priority Handoff
 
 Source status:
