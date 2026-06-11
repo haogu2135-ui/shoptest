@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 07:27 UTC QA SEC-NEW-008 Blacklisted Token Schema Handoff
+
+Source status:
+- QA SEC-NEW-008 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED.
+- Current production schema and migrations do not define a `blacklisted_tokens` table.
+- `schema.sql:669` is currently an `orders.tracking_carrier_code` column, not the reported blacklisted-token password column.
+- TEST SEC-NEW-007 remains open separately because it tracks `data.encryption.key` property naming, not this stale schema-table report.
+
+Local verification already run:
+- Production source/resource search found no `blacklisted_tokens` table.
+- Added `BlacklistedTokenSchemaContractTest` to reject future `blacklisted_tokens` statements with a `password` column.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=BlacklistedTokenSchemaContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Blacklisted token schema naming | CURRENT_SOURCE_NON_ISSUE / NO MANUAL E2E REQUIRED | Keep `BlacklistedTokenSchemaContractTest` in CI. No browser/device E2E is required because this is a schema static-guard closure. |
+
 ## 2026-06-11 07:12 UTC QA SEC-NEW-007 / TEST SEC-NEW-005 CORS Allow-All Handoff
 
 Source status:
