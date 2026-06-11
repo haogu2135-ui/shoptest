@@ -1,13 +1,17 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.ReviewableOrderResponse;
+import com.example.shop.dto.ReviewImageUploadResponse;
 import com.example.shop.dto.PublicReviewResponse;
+import com.example.shop.service.ReviewImageService;
 import com.example.shop.service.ReviewService;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -19,6 +23,7 @@ import java.util.List;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final ReviewImageService reviewImageService;
 
     @GetMapping("/product/{productId}")
     public ResponseEntity<Map<String, Object>> getProductReviews(@PathVariable Long productId, Authentication authentication) {
@@ -57,6 +62,15 @@ public class ReviewController {
             rating,
             request.get("comment") == null ? "" : String.valueOf(request.get("comment"))
         ), userDetails.getId()));
+    }
+
+    @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ReviewImageUploadResponse> uploadReviewImage(
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            Authentication authentication) {
+        SecurityUtils.requireUser(authentication);
+        reviewImageService.validateUploadRequest(file);
+        return ResponseEntity.ok(new ReviewImageUploadResponse(reviewImageService.upload(file)));
     }
 
     private Long parseLong(Object value, String field) {

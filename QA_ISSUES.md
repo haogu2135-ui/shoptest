@@ -15755,7 +15755,11 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `src/main/java/com/example/shop/controller/ReviewController.java` (lines 70-76)
 - **Detail**: The `uploadReviewImage` endpoint accepts `required = false` for the file parameter and passes it directly to `reviewImageService.upload(file)`. If the service does not handle a null file gracefully, this will throw an unhandled NullPointerException. No explicit file size or content-type validation at the controller level.
 - **Suggested fix**: Add a null check for the file and return 400 if missing. Add `@RequestParam` constraints for file size and allowed content types.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 20:49 UTC)
+- **Resolution**: `ReviewController.uploadReviewImage` now validates the multipart file before calling upload, while `ReviewImageService.upload` keeps the same null/empty, max-size, and allowed-content-type checks as a service-level guard before storage. Missing or unsupported files return 400, and oversized files return 413 instead of reaching image storage or producing a null-pointer failure.
+- **Regression guard**: Added `ReviewControllerImageUploadValidationTest` and expanded `ReviewImageServiceTest` for missing-file, oversized-file, unsupported-content-type, and valid upload paths.
+- **Verification**: `./mvnw -q -Dtest=ReviewControllerImageUploadValidationTest,ReviewImageServiceTest,ImageStorageServiceTest test` passed.
+- **Staged-state note**: A temporary clean worktree run with only the staged diff was attempted, but Maven compilation remains blocked before these tests by existing review-surface contract gaps in the clean source (`ReviewController` old addReview call, missing `OrderRepository.findReviewableOrdersByUserAndProduct`, and missing `Review.imageUrls`). Current-worktree targeted verification passed.
 
 ### F2484: [LOW] Guest cart removal does not dispatch cart-updated event
 - **Component**: Frontend — Cart

@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 20:49 UTC TEST F2736 Review Image Upload Validation Handoff
+
+Source status:
+- TEST F2736 / QA F2483 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Review image upload now validates the multipart file before storage at both controller and service boundaries.
+- Missing or empty files return 400 before `reviewImageService.upload(...)` is called.
+- Oversized review images return 413, and unsupported content types return 400 before image storage.
+- `./mvnw -q -Dtest=ReviewControllerImageUploadValidationTest,ReviewImageServiceTest,ImageStorageServiceTest test` passed.
+- Temporary clean staged-state Maven verification was attempted, but compilation remains blocked before these tests by existing review-surface contract gaps in the clean source (`ReviewController` old addReview call, missing `OrderRepository.findReviewableOrdersByUserAndProduct`, and missing `Review.imageUrls`). Current-worktree targeted verification passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Missing review image file | SOURCE_FIXED / REVIEW E2E PENDING | As an authenticated shopper, submit `/reviews/images` without a `file` part. Verify HTTP 400, a user-safe validation message, and no stored image record/file. |
+| Oversized review image | SOURCE_FIXED / REVIEW E2E PENDING | Upload an image larger than `review.image.max-file-size-bytes`. Verify HTTP 413 and no stored file. |
+| Unsupported review image content type | SOURCE_FIXED / REVIEW E2E PENDING | Upload a non-image or unsupported MIME type. Verify HTTP 400 and no stored file. |
+| Valid review image upload | SOURCE_FIXED / REVIEW E2E PENDING | Upload a valid JPG/PNG/GIF review photo, verify 200 with `imageUrl`, then submit a review using that URL and confirm it renders in product reviews. |
+
 ## 2026-06-11 20:35 UTC TEST F2735 Product Import Name Duplicate Exists Query Handoff
 
 Source status:

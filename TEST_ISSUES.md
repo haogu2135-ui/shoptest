@@ -4885,8 +4885,12 @@ Notes:
 - File: `src/main/java/com/example/shop/controller/ReviewController.java` (lines 70-76)
 - Severity: MEDIUM
 - Description: The `uploadReviewImage` endpoint accepts `required = false` for the file parameter and passes it directly to `reviewImageService.upload(file)`. No explicit file size or content-type validation at the controller level.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 20:49 UTC)
 - Expected fix direction: Add a null check for the file and return 400 if missing. Add constraints for file size and allowed content types.
+- Resolution: `ReviewController.uploadReviewImage` now explicitly calls `reviewImageService.validateUploadRequest(file)` before upload, and `ReviewImageService.upload` independently rejects null/empty files, oversized files, and unsupported content types before storage. Missing or unsupported files return 400, and oversized files return 413.
+- Regression guard: Added `ReviewControllerImageUploadValidationTest` for controller pre-upload validation and expanded `ReviewImageServiceTest` to require service-level null, size, and content-type rejection before storage.
+- Verification: `./mvnw -q -Dtest=ReviewControllerImageUploadValidationTest,ReviewImageServiceTest,ImageStorageServiceTest test` passed.
+- Staged-state note: A temporary clean worktree run with only the staged diff was attempted, but Maven compilation remains blocked before these tests by existing review-surface contract gaps in the clean source (`ReviewController` old addReview call, missing `OrderRepository.findReviewableOrdersByUserAndProduct`, and missing `Review.imageUrls`). Current-worktree targeted verification passed.
 
 ### F2737: LOW — Guest cart removal does not dispatch cart-updated event
 
