@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 08:59 UTC TEST PERF-002 Checkout Stock Batch Loading Handoff
+
+Source status:
+- TEST PERF-002 is closed as WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+- Current member checkout uses `loadProductsForCartItems(selectedItems, reserveStock)`, which de-duplicates product IDs and uses `productRepository.findAllByIdForUpdate(productIds)` when stock is reserved.
+- Current guest checkout also de-duplicates product IDs and uses `productRepository.findAllByIdForUpdate(productIds)` for reservation stock validation.
+- Single-product detail lookups are not used for checkout stock validation.
+- `CheckoutStockBatchLoadingContractTest` guards the bulk pessimistic-lock contract and rejects per-item product stock lookups in checkout preparation.
+
+Local verification already run:
+- Source search confirmed the member and guest checkout bulk stock-load paths.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=CheckoutStockBatchLoadingContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Checkout stock validation query shape | CURRENT_SOURCE_COVERED / NO MANUAL E2E REQUIRED | Keep `CheckoutStockBatchLoadingContractTest` in CI. Optional runtime regression can place multi-item member and guest orders and confirm stock reservation succeeds without user-visible checkout regressions. |
+
 ## 2026-06-11 08:17 UTC TEST PERF-001 Order Item List N+1 Handoff
 
 Source status:

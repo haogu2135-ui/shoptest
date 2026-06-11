@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer checkout stock batch-load triage (2026-06-11 08:59 UTC)**: Closed TEST **PERF-002** as **WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current member checkout loads selected cart products through `loadProductsForCartItems(selectedItems, reserveStock)`, which de-duplicates product IDs and uses `productRepository.findAllByIdForUpdate(productIds)` when reserving stock. Current guest checkout also de-duplicates product IDs and uses the same bulk pessimistic-lock query for reservations. Added `CheckoutStockBatchLoadingContractTest` to reject per-item product stock lookups and require the bulk lock contract. Verification: source search confirmed the bulk stock-load paths; `git diff --check` passed; `./mvnw -q -Dtest=CheckoutStockBatchLoadingContractTest test` passed.
+
 - **Maintainer order item list N+1 triage (2026-06-11 08:17 UTC)**: Closed TEST **PERF-001** as **WONTFIX / CURRENT_SOURCE_COVERED / STALE_ORDER_LIST_WITH_ITEMS_REPORT / REGRESSION_GUARD_ADDED**. Current customer order list paths use paged `orderRepository.findByUserIdPage(...)` and do not attach order items in a per-order loop; item details are served through explicit single-order item endpoints, while bulk item reads remain available through `OrderItemRepository.findByOrderIds(...)` for list/export flows that need them. Added `OrderItemListNPlusOneContractTest` to reject the stale `getOrdersByUserIdWithItems` pattern and any customer-list `findByOrderId` item lookup. Verification: source search confirmed the paged list and bulk item contracts; `git diff --check` passed; `./mvnw -q -Dtest=OrderItemListNPlusOneContractTest test` passed.
 
 - **Maintainer auth/IP blacklist priority duplicate triage (2026-06-11 08:02 UTC)**: Closed TEST **SEC-NEW-008** as **WONTFIX / DUPLICATE_OF_TEST_SEC_NEW_002_AND_QA_SEC_NEW_005 / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_CONFIRMED**. Current `SecurityConfig` registers `ipBlacklistFilter` before `jwtAuthenticationFilter`, and `IpBlacklistAdminCoverageContractTest` already guards the filter order, `/admin/**` admin rule, absence of stale split-chain markers, and default `/admin` IP-blacklist path coverage. Verification: source search confirmed the filter order and admin prefix coverage; `git diff --check` passed; `./mvnw -q -Dtest=IpBlacklistAdminCoverageContractTest test` passed.
@@ -3367,8 +3369,9 @@ Notes:
 - Severity: HIGH
 - Symptom: `createOrder` iterates through order items and queries product stock for each item individually.
 - Impact: Slow order creation, database connection pool exhaustion
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Batch stock queries or use a single JOIN query.
+- Triage (2026-06-11 08:59 UTC): Current member and guest checkout paths de-duplicate selected product IDs and bulk-load products before stock validation. Reservation paths use `productRepository.findAllByIdForUpdate(productIds)` rather than per-item product lookups, and `CheckoutStockBatchLoadingContractTest` guards the contract.
 
 ### PERF-003: Stock decrement updates products one by one
 
