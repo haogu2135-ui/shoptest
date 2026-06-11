@@ -27,7 +27,10 @@ import javax.validation.constraints.Size;
 
 @Data
 @Entity
-@Table(name = "products")
+@Table(name = "products",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_products_category_name",
+                columnNames = {"category_id", "name"}))
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

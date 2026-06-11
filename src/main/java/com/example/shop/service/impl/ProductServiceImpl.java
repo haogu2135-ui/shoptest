@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -753,12 +754,20 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Product save(Product product) {
         validateDirectProduct(product);
-        Product saved = productRepository.save(product);
-        clearProductSearchCache();
-        return saved;
+        validateDirectProductNameUniqueness(product);
+        try {
+            Product saved = productRepository.save(product);
+            clearProductSearchCache();
+            return saved;
+        } catch (DataIntegrityViolationException e) {
+            if (isProductCategoryNameConstraintViolation(e)) {
+                throw duplicateProductNameException(product, e);
+            }
+            throw e;
+        }
     }
 
     @Override
@@ -2294,6 +2303,36 @@ public class ProductServiceImpl implements ProductService {
         validateImportSpecifications(product.getSpecifications());
         product.setDetailContent(normalizeImportDetailContent(product.getDetailContent()));
         product.setVariants(normalizeImportVariants(product.getVariants()));
+    }
+
+    private void validateDirectProductNameUniqueness(Product product) {
+        if (productRepository == null || product.getName() == null || product.getCategoryId() == null) {
+            return;
+        }
+        boolean duplicate = product.getId() == null
+                ? productRepository.existsByCategoryIdAndNameIgnoreCase(product.getCategoryId(), product.getName())
+                : productRepository.existsByCategoryIdAndNameIgnoreCaseAndIdNot(
+                        product.getCategoryId(), product.getName(), product.getId());
+        if (duplicate) {
+            throw duplicateProductNameException(product, null);
+        }
+    }
+
+    private IllegalArgumentException duplicateProductNameException(Product product, Throwable cause) {
+        String message = "name already exists in this category: " + product.getName();
+        return cause == null ? new IllegalArgumentException(message) : new IllegalArgumentException(message, cause);
+    }
+
+    private boolean isProductCategoryNameConstraintViolation(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase(Locale.ROOT).contains("uk_products_category_name")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private String normalizeDirectText(String value, String field, int maxLength, boolean required) {

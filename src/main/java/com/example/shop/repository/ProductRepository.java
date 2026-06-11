@@ -25,6 +25,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     List<Product> findPublicFeaturedProducts(Pageable pageable);
     List<Product> findByCategoryId(Long categoryId);
     boolean existsByCategoryId(Long categoryId);
+    boolean existsByCategoryIdAndNameIgnoreCase(Long categoryId, String name);
+    boolean existsByCategoryIdAndNameIgnoreCaseAndIdNot(Long categoryId, String name, Long id);
     @Query("select p from Product p where p.categoryId = :categoryId and (p.status is null or upper(p.status) = 'ACTIVE') order by p.id asc")
     List<Product> findActiveByCategoryId(@Param("categoryId") Long categoryId, Pageable pageable);
     @Query("select p from Product p where (p.status is null or upper(p.status) = 'ACTIVE')"

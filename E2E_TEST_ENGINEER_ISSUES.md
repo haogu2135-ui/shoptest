@@ -4,6 +4,26 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 00:58 UTC QA F3486 Product Category/Name Uniqueness Handoff
+
+Source status:
+- QA F3486 is source-fixed with a database migration.
+- Admin product create/update now checks duplicate product names inside the same category before saving.
+- Fresh schemas and migrated databases get `uk_products_category_name (category_id, name)` through `schema.sql` and repeatable Flyway migration `R__product_category_name_unique.sql`.
+- Concurrent duplicate creates/renames should fail as validation/database conflicts instead of creating duplicate catalog rows.
+
+Local verification already run:
+- Staged source searches confirmed the service duplicate validation, repository lookup helpers, entity unique constraint, schema unique key, and Flyway DDL are present.
+- Added `ProductNameUniquenessContractTest` as a source guard.
+- `git diff --cached --check` passed.
+- Targeted Maven remains blocked by the current HEAD review-image compile gap recorded in the 00:35 UTC handoff.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin product duplicate create | SOURCE_FIXED / ADMIN E2E RECOMMENDED | In Product Management, create a product with a name/category pair that already exists. Verify the UI shows a validation failure, no duplicate row appears, and the existing product remains unchanged. |
+| Admin product duplicate rename | SOURCE_FIXED / ADMIN E2E RECOMMENDED | Edit an existing product and rename/move it to another product's same category/name pair. Verify the save is rejected, form state remains recoverable, and no unrelated product fields are overwritten. |
+| DB migration duplicate preflight | DB_MIGRATION_ADDED / RELEASE CHECK REQUIRED | Before applying `R__product_category_name_unique.sql` to shared/staging/prod data, scan for duplicate `(category_id, name)` rows; the migration is expected to fail if duplicates exist and those rows must be resolved before release. |
+
 ## 2026-06-11 00:35 UTC QA F3487 Admin Product Status Atomic Update Handoff
 
 Source status:
