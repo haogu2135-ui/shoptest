@@ -44,6 +44,7 @@ import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import type { ProductCatalogSnapshotProduct } from '../utils/productCatalogSnapshot';
+import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import SocialProofToast from '../components/SocialProofToast';
 import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
@@ -327,9 +328,7 @@ const Home: React.FC = () => {
     event.target.value = '';
     if (!file) return;
 
-    const isSupportedImage =
-      ['image/jpeg', 'image/png', 'image/gif'].includes(file.type) ||
-      /\.(jpe?g|png|gif)$/i.test(file.name);
+    const isSupportedImage = isSupportedPetGalleryImageFile(file);
     if (!isSupportedImage) {
       message.error(t('home.petUgcInvalidType'));
       return;

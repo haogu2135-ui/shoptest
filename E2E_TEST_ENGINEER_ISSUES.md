@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 21:28 UTC TEST F2741 Pet Gallery Upload MIME Validation Handoff
+
+Source status:
+- TEST F2741 / QA F2488 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Home pet gallery upload now uses `isSupportedPetGalleryImageFile(file)`.
+- Standalone PetGallery page upload now uses the same MIME validator.
+- Client validation accepts only `image/jpeg`, `image/png`, and `image/gif` MIME types and no longer trusts renamed file extensions.
+- `./mvnw -q -Dtest=PetGalleryUploadMimeValidationContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Valid JPG/PNG/GIF upload from Home | SOURCE_FIXED / PET GALLERY E2E PENDING | Upload a real `image/jpeg`, `image/png`, or `image/gif` file from the home pet gallery entry and verify success. |
+| Renamed non-image from Home | SOURCE_FIXED / PET GALLERY E2E PENDING | Attempt to upload a non-image file renamed to `.jpg` from Home and verify the client blocks it before submit when MIME is not supported. |
+| Empty or unsupported MIME from PetGallery page | SOURCE_FIXED / PET GALLERY E2E PENDING | In the standalone PetGallery page, attempt an upload with empty/unsupported `file.type` and verify the invalid type message appears and no upload request is sent. |
+
 ## 2026-06-11 21:18 UTC TEST F2740 Bug Page URL Validation Handoff
 
 Source status:

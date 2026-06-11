@@ -18,6 +18,7 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import type { PetGalleryPhotoPublic, PetGalleryQuota } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
+import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import './PetGallery.css';
 import '../styles/mobile-page-contrast.css';
@@ -210,9 +211,7 @@ const PetGallery: React.FC = () => {
     event.target.value = '';
     if (!file) return;
 
-    const isSupportedImage =
-      ['image/jpeg', 'image/png', 'image/gif'].includes(file.type) ||
-      /\.(jpe?g|png|gif)$/i.test(file.name);
+    const isSupportedImage = isSupportedPetGalleryImageFile(file);
     if (!isSupportedImage) {
       message.error(t('home.petUgcInvalidType'));
       return;

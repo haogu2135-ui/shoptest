@@ -4947,8 +4947,11 @@ Notes:
 - File: `frontend/src/pages/Home.tsx` (lines 582-589)
 - Severity: LOW
 - Description: A user could rename an arbitrary file to `.jpg` and pass the extension check when `file.type` is empty (which happens on some systems). Backend should also validate, but frontend should reject files where `file.type` is empty.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 21:28 UTC)
 - Expected fix direction: Require `file.type` to be one of the supported types, falling back to extension only when `file.type` is empty.
+- Resolution: Home and PetGallery upload flows now use the shared `isSupportedPetGalleryImageFile` MIME validator. The client accepts only browser-reported `image/jpeg`, `image/png`, or `image/gif` types and no longer trusts renamed `.jpg` / `.png` / `.gif` filenames.
+- Regression guard: Added `PetGalleryUploadMimeValidationContractTest`, which requires the shared MIME validator, both upload entry points to use it, and no extension regex fallback.
+- Verification: `./mvnw -q -Dtest=PetGalleryUploadMimeValidationContractTest test` passed.
 
 ### F2742: LOW — Navbar fetches stock alerts for guest users unnecessarily
 
