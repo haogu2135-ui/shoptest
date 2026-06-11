@@ -4780,8 +4780,11 @@ Notes:
 - File: `frontend/src/pages/Checkout.tsx` (lines 1266-1353)
 - Severity: MEDIUM
 - Description: When `handleSubmit` succeeds in creating the order but `paymentApi.create` throws, the outer `catch` block only clears `checkoutIdempotencyKey` when `error?.response` is truthy. Network errors without a `.response` property leave the key in session storage, preventing the next submit attempt from generating a new key and effectively freezing checkout.
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 19:45 UTC)
 - Expected fix direction: Always call `clearCheckoutIdempotencyKey()` in the `finally` block unconditionally.
+- Current-source resolution: The current Checkout source no longer relies on “retry the whole checkout submit” after `paymentApi.create(...)` fails. It persists `checkoutPendingOrder` before payment creation, keeps the idempotency key with that pending order when payment creation fails, hydrates the pending order on refresh, and clears both `checkoutIdempotencyKey` and `checkoutPendingOrder` after payment creation succeeds, after retry succeeds, after rollback/cancel succeeds, or when order creation/auth recovery invalidates the checkout session. Therefore the original proposed unconditional `finally` cleanup would regress refresh recovery for an order that was already created.
+- Regression guard: Added `CheckoutIdempotencyLifecycleContractTest`, which requires any Checkout idempotency-key implementation to either clear the key in submit `finally` or pair it with pending-order recovery that persists the order before `paymentApi.create(...)`, preserves retry state on payment-create failure, and clears recovery storage after payment exists or retry succeeds.
+- Verification: `./mvnw -q -Dtest=CheckoutIdempotencyLifecycleContractTest test` passed.
 
 ### F2728: MEDIUM — Passive touch event prevents preventDefault for pinch-zoom
 

@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 19:45 UTC TEST F2727 Checkout Idempotency Recovery Handoff
+
+Source status:
+- TEST F2727 WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Current Checkout persists `checkoutPendingOrder` before `paymentApi.create(...)` and intentionally keeps `checkoutIdempotencyKey` when payment creation fails, so refresh can recover the created order instead of submitting checkout again.
+- Recovery storage clears after payment exists, retry payment succeeds, rollback/cancel succeeds, or order creation/auth recovery invalidates the checkout session.
+- `CheckoutIdempotencyLifecycleContractTest` now guards that Checkout idempotency keys are either cleared in submit `finally` or paired with pending-order payment recovery.
+- `./mvnw -q -Dtest=CheckoutIdempotencyLifecycleContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Payment-create network failure recovery | CURRENT_SOURCE_COVERED / CHECKOUT E2E PENDING | Force order creation to succeed and `paymentApi.create` to fail without an HTTP response. Verify the shopper lands on the payment-pending/retry screen, `checkoutIdempotencyKey` and `checkoutPendingOrder` remain, refresh restores the same order, and retry payment does not create a second order. |
+| Recovery cleanup after retry success | CURRENT_SOURCE_COVERED / CHECKOUT E2E PENDING | From the recovered pending-order screen, make retry payment succeed. Verify `checkoutIdempotencyKey` and `checkoutPendingOrder` are cleared and a later checkout starts with a fresh key. |
+| Order-create failure guard | CURRENT_SOURCE_COVERED / CHECKOUT E2E PENDING | Force order creation itself to fail with a server response and with a network failure. Verify the user can retry checkout and does not get stuck with a stale key or stale pending-order snapshot. |
+
 ## 2026-06-11 19:38 UTC TEST F2726 Guest Zero-Threshold Shipping Handoff
 
 Source status:
