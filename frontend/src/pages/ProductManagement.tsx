@@ -9,10 +9,22 @@ import {
   SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined, LinkOutlined,
 } from '@ant-design/icons';
 import { adminApi } from '../api';
-import type { Product, CategoryPublic, Brand, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview } from '../types';
+import type {
+  Product,
+  CategoryPublic,
+  Brand,
+  ProductBundleItem,
+  ProductDetailBlock,
+  ProductImportResult,
+  ProductImportHistoryEntry,
+  ProductOptionGroup,
+  ProductUrlImportPreview,
+  ProductVariant,
+} from '../types';
 import { buildCategoryTree, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import ProductRichDetailEditor from '../components/ProductRichDetailEditor';
 import ProductRichDetail, { isHttpMediaUrl } from '../components/ProductRichDetail';
 import { useMarket } from '../hooks/useMarket';
@@ -59,10 +71,55 @@ const productDisplayLabel = (product: Pick<Product, 'id' | 'name'>) => (
 );
 
 type ProductDetailContentBlock = { type: string; content?: string; url?: string; caption?: string };
+type ProductDetailBlockType = ProductDetailBlock['type'];
+type ProductSpecificationFormRow = { key?: string; value?: string };
+type ProductOptionGroupFormRow = { name?: string; values?: string };
+type ProductVariantFormRow = {
+  sku?: string;
+  optionText?: string;
+  price?: unknown;
+  stock?: unknown;
+  imageUrl?: string;
+};
+type ProductBundleItemFormRow = { name?: string; quantity?: unknown };
+type ProductDetailContentFormBlock = {
+  type?: ProductDetailBlockType | string;
+  content?: string;
+  url?: string;
+  caption?: string;
+};
+type ProductLocalizedContentForm = Partial<Record<'es' | 'zh', Partial<Record<'name' | 'description' | 'brand', string>>>>;
+type ProductFormValues = Omit<Partial<Product>, 'specifications' | 'images' | 'detailContent' | 'localizedContent' | 'optionGroups' | 'variants' | 'bundle'> & {
+  specifications?: ProductSpecificationFormRow[];
+  images?: unknown[];
+  detailContent?: ProductDetailContentFormBlock[];
+  localizedContent?: ProductLocalizedContentForm;
+  optionGroups?: ProductOptionGroupFormRow[];
+  variants?: ProductVariantFormRow[];
+  bundleEnabled?: boolean;
+  bundleTitle?: string;
+  bundlePrice?: number;
+  bundleItems?: ProductBundleItemFormRow[];
+  limitedTimeRange?: [Dayjs | null | undefined, Dayjs | null | undefined];
+};
+type ProductMutationPayload = Omit<Partial<Product>, 'specifications' | 'images' | 'detailContent' | 'variants' | 'limitedTimeStartAt' | 'limitedTimeEndAt'> & {
+  imageUrl: string;
+  stock?: number;
+  specifications: Product['specifications'] | null;
+  images: string[] | null;
+  detailContent: ProductDetailBlock[] | null;
+  variants: ProductVariant[] | null;
+  limitedTimeStartAt: string | null;
+  limitedTimeEndAt: string | null;
+};
 
 const emptyDetailBlock = { type: 'text', content: '', url: '', caption: '' };
 
-const parseJsonArray = (value: unknown) => {
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const parseJsonArray = (value: unknown): unknown[] => {
   if (Array.isArray(value)) return value;
   if (typeof value !== 'string' || !value.trim()) return [];
   try {
@@ -96,6 +153,57 @@ const parseJsonObject = (value: unknown) => {
   }
 };
 
+const toOptionalString = (value: unknown) => {
+  const text = String(value || '').trim();
+  return text || undefined;
+};
+
+const toFormArray = (value: unknown): unknown[] => (
+  Array.isArray(value) ? value : []
+);
+
+const productOptionGroupValues = (group: ProductOptionGroup) => (
+  Array.isArray(group.values) ? group.values : (Array.isArray(group.options) ? group.options : [])
+);
+
+const toProductOptionGroupFormRows = (value: unknown): ProductOptionGroupFormRow[] => (
+  toFormArray(value).map((item) => {
+    const row = isRecord(item) ? item : {};
+    return {
+      name: toOptionalString(row.name),
+      values: toOptionalString(row.values),
+    };
+  })
+);
+
+const toProductVariantFormRow = (value: unknown): ProductVariantFormRow => {
+  const row = isRecord(value) ? value : {};
+  return {
+    sku: toOptionalString(row.sku),
+    optionText: toOptionalString(row.optionText),
+    price: row.price,
+    stock: row.stock,
+    imageUrl: toOptionalString(row.imageUrl),
+  };
+};
+
+const toProductVariantFormRows = (value: unknown): ProductVariantFormRow[] => (
+  toFormArray(value).map(toProductVariantFormRow)
+);
+
+const hasVariantOptionText = (row: ProductVariantFormRow) => Boolean(String(row.optionText || '').trim());
+
+const normalizeProductDetailBlockType = (type: unknown): ProductDetailBlockType => (
+  type === 'image' || type === 'video' ? type : 'text'
+);
+
+const importResultTranslationParams = (result: ProductImportResult): Record<string, string | number> => ({
+  totalRows: result.totalRows,
+  created: result.created,
+  updated: result.updated,
+  failed: result.failed,
+});
+
 const getProductAdminSpecs = (product: Product) => {
   const specs = { ...parseJsonObject(product.specifications) };
   const localizedContent = product.localizedContent && typeof product.localizedContent === 'object'
@@ -108,9 +216,9 @@ const getProductAdminSpecs = (product: Product) => {
       if (locale && field && text) specs[`i18n.${locale}.${field}`] = text;
     });
   });
-  (Array.isArray(product.optionGroups) ? product.optionGroups : []).forEach((group: any) => {
+  (Array.isArray(product.optionGroups) ? product.optionGroups : []).forEach((group: ProductOptionGroup) => {
     const name = String(group?.name || '').trim();
-    const values = Array.isArray(group?.values) ? group.values : (Array.isArray(group?.options) ? group.options : []);
+    const values = productOptionGroupValues(group);
     const normalizedValues = Array.from(new Set(values.map((value: unknown) => String(value || '').trim()).filter(Boolean)));
     if (name && normalizedValues.length > 0) specs[`options.${name}`] = normalizedValues.join(',');
   });
@@ -167,8 +275,8 @@ const toSafeNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const parseVariantOptions = (variant: any) => {
-  if (variant?.options && typeof variant.options === 'object' && !Array.isArray(variant.options)) {
+const parseVariantOptions = (variant: { options?: unknown; optionText?: unknown }): Record<string, string> => {
+  if (isRecord(variant.options)) {
     return Object.entries(variant.options).reduce((result: Record<string, string>, [key, value]) => {
       const normalizedKey = String(key || '').trim();
       const normalizedValue = String(value || '').trim();
@@ -188,7 +296,7 @@ const parseVariantOptions = (variant: any) => {
     }, {});
 };
 
-const formatVariantOptionText = (variant: any) =>
+const formatVariantOptionText = (variant: { options?: unknown; optionText?: unknown }) =>
   Object.entries(parseVariantOptions(variant)).map(([key, value]) => `${key}=${value}`).join(', ');
 
 const createSkuFromOptions = (options: Record<string, string>, index: number) => {
@@ -250,10 +358,6 @@ type ImportErrorCopy = {
 type FormValidationError = {
   errorFields?: unknown[];
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> => (
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-);
 
 const isFormValidationError = (error: unknown): error is FormValidationError => (
   isRecord(error) && Array.isArray(error.errorFields)
@@ -492,8 +596,8 @@ const hasProductImage = (product: Product) => {
 
 const hasRichProductContent = (product: Product) => {
   const detailBlocks = parseJsonArray(product.detailContent);
-  const hasDetailBlock = detailBlocks.some((block: any) =>
-    hasMeaningfulText(block?.content, 24) || hasMeaningfulText(block?.url, 8)
+  const hasDetailBlock = detailBlocks.some((block) =>
+    isRecord(block) && (hasMeaningfulText(block.content, 24) || hasMeaningfulText(block.url, 8))
   );
   return hasMeaningfulText(product.description, 36) || hasDetailBlock;
 };
@@ -652,12 +756,12 @@ const ProductManagement: React.FC = () => {
     falseValue: t('pages.productAdmin.importErrorReport.falseValue'),
   }), [t]);
   const variantSummary = useMemo(() => {
-    const rows = Array.isArray(previewVariants) ? previewVariants : [];
-    const validRows = rows.filter((row: any) => String(row?.optionText || '').trim());
-    const totalStock = validRows.reduce((sum: number, row: any) => sum + toSafeNumber(row?.stock), 0);
+    const rows = toProductVariantFormRows(previewVariants);
+    const validRows = rows.filter(hasVariantOptionText);
+    const totalStock = validRows.reduce((sum, row) => sum + toSafeNumber(row.stock), 0);
     const prices = validRows
-      .map((row: any) => toSafeNumber(row?.price))
-      .filter((price: number) => price > 0);
+      .map((row) => toSafeNumber(row.price))
+      .filter((price) => price > 0);
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
     return { count: validRows.length, totalStock, minPrice, maxPrice };
@@ -977,13 +1081,16 @@ const ProductManagement: React.FC = () => {
       if (key.startsWith('bundle.')) delete specsObj[key];
     });
     const detailContent = parseJsonArray(record.detailContent);
-    const variants = parseJsonArray(record.variants).map((variant: any) => ({
-      sku: variant.sku,
-      optionText: formatVariantOptionText(variant),
-      price: variant.price,
-      stock: variant.stock,
-      imageUrl: variant.imageUrl,
-    })).filter((variant: any) => variant.optionText);
+    const variants = parseJsonArray(record.variants).map((variant): ProductVariantFormRow => {
+      const row = isRecord(variant) ? variant : {};
+      return {
+        sku: toOptionalString(row.sku),
+        optionText: formatVariantOptionText({ options: row.options, optionText: row.optionText }),
+        price: row.price,
+        stock: row.stock,
+        imageUrl: toOptionalString(row.imageUrl),
+      };
+    }).filter(hasVariantOptionText);
     const specs = Object.keys(specsObj).length > 0
       ? Object.entries(specsObj).map(([key, value]) => ({ key, value }))
       : [{}];
@@ -1087,12 +1194,12 @@ const ProductManagement: React.FC = () => {
   };
 
   const generateVariantRows = () => {
-    const optionGroups: Array<{ name: string; values: string[] }> = (form.getFieldValue('optionGroups') || [])
-      .map((group: any) => ({
+    const optionGroups: Array<{ name: string; values: string[] }> = toProductOptionGroupFormRows(form.getFieldValue('optionGroups'))
+      .map((group) => ({
         name: String(group?.name || '').trim(),
-        values: String(group?.values || '').split(',').map((item: string) => item.trim()).filter(Boolean),
+        values: String(group?.values || '').split(',').map((item) => item.trim()).filter(Boolean),
       }))
-      .filter((group: any) => group.name && group.values.length > 0);
+      .filter((group) => group.name && group.values.length > 0);
     if (optionGroups.length === 0) {
       message.warning(t('pages.productAdmin.variantOptionsRequired'));
       return;
@@ -1103,14 +1210,14 @@ const ProductManagement: React.FC = () => {
       }
       return rows.flatMap((row) => group.values.map((value: string) => ({ ...row, [group.name]: value })));
     }, []);
-    const existingRows = new Map(
-      (form.getFieldValue('variants') || [])
-        .map((row: any) => [normalizeVariantOptionText(row?.optionText), row])
-        .filter(([optionText]: any) => optionText)
+    const existingRows = new Map<string, ProductVariantFormRow>(
+      toProductVariantFormRows(form.getFieldValue('variants'))
+        .map((row): [string, ProductVariantFormRow] => [normalizeVariantOptionText(row.optionText), row])
+        .filter(([optionText]) => Boolean(optionText))
     );
     form.setFieldValue('variants', combinations.map((options, index) => {
       const optionText = Object.entries(options).map(([key, value]) => `${key}=${value}`).join(', ');
-      const existing = existingRows.get(normalizeVariantOptionText(optionText)) as any;
+      const existing = existingRows.get(normalizeVariantOptionText(optionText));
       return {
         sku: existing?.sku || createSkuFromOptions(options, index),
         optionText,
@@ -1122,8 +1229,8 @@ const ProductManagement: React.FC = () => {
   };
 
   const syncStockFromVariants = () => {
-    const rows = (form.getFieldValue('variants') || []).filter((row: any) => String(row?.optionText || '').trim());
-    const totalStock = rows.reduce((sum: number, row: any) => sum + toSafeNumber(row?.stock), 0);
+    const rows = toProductVariantFormRows(form.getFieldValue('variants')).filter(hasVariantOptionText);
+    const totalStock = rows.reduce((sum, row) => sum + toSafeNumber(row.stock), 0);
     form.setFieldValue('stock', totalStock);
     message.success(t('pages.productAdmin.stockSyncedFromVariants', { count: rows.length, stock: totalStock }));
   };
@@ -1134,12 +1241,12 @@ const ProductManagement: React.FC = () => {
       return;
     }
     try {
-      const values = await form.validateFields();
+      const values = await form.validateFields() as ProductFormValues;
       setProductSubmitting(true);
       // Convert specifications from array of {key, value} to object
       const specs: Record<string, string> = {};
       if (values.specifications) {
-        values.specifications.forEach((s: any) => {
+        values.specifications.forEach((s) => {
           if (s.key && s.key.trim() && s.value && s.value.trim()) specs[s.key.trim()] = s.value.trim();
         });
       }
@@ -1148,37 +1255,37 @@ const ProductManagement: React.FC = () => {
       const imageList = normalizeProductImageList(rawMainImage, values.images);
       const mainImage = isHttpMediaUrl(rawMainImage) ? rawMainImage : imageList[0] || '';
       const detailContent = (values.detailContent || [])
-        .map((block: any) => ({
-          type: block.type || 'text',
+        .map((block): ProductDetailBlock => ({
+          type: normalizeProductDetailBlockType(block.type),
           content: block.content?.trim(),
           url: block.url?.trim(),
           caption: block.caption?.trim(),
         }))
-        .filter((block: any) => block.type === 'text' ? !!block.content : !!block.url && isHttpMediaUrl(block.url));
+        .filter((block) => block.type === 'text' ? !!block.content : !!block.url && isHttpMediaUrl(block.url));
       const localizedContent = values.localizedContent || {};
-      ['es', 'zh'].forEach((locale) => {
-        ['name', 'description', 'brand'].forEach((field) => {
+      (['es', 'zh'] as const).forEach((locale) => {
+        (['name', 'description', 'brand'] as const).forEach((field) => {
           const text = localizedContent?.[locale]?.[field];
           if (typeof text === 'string' && text.trim()) {
             specs[`i18n.${locale}.${field}`] = text.trim();
           }
         });
       });
-      (values.optionGroups || []).forEach((group: any) => {
+      (values.optionGroups || []).forEach((group) => {
         const name = String(group?.name || '').trim();
         const valuesText = String(group?.values || '').trim();
         if (name && valuesText) {
-          const options = valuesText.split(',').map((item: string) => item.trim()).filter(Boolean);
+          const options = valuesText.split(',').map((item) => item.trim()).filter(Boolean);
           if (options.length) specs[`options.${name}`] = options.join(',');
         }
       });
       if (values.bundleEnabled) {
         const bundleItems = (values.bundleItems || [])
-          .map((item: any) => ({
+          .map((item): ProductBundleItem => ({
             name: String(item?.name || '').trim(),
             quantity: Number(item?.quantity || 1),
           }))
-          .filter((item: any) => item.name && item.quantity > 0);
+          .filter((item) => item.name && Number(item.quantity || 0) > 0);
         if (bundleItems.length > 0 && Number(values.bundlePrice || 0) > 0) {
           specs['bundle.enabled'] = 'true';
           specs['bundle.title'] = String(values.bundleTitle || values.name || '').trim();
@@ -1187,21 +1294,21 @@ const ProductManagement: React.FC = () => {
         }
       }
       const variants = (values.variants || [])
-        .map((variant: any) => {
+        .map((variant): ProductVariant => {
           const optionText = String(variant?.optionText || '').trim();
           const options = parseVariantOptions({ optionText });
           const price = toSafeNumber(variant?.price);
           const stock = toSafeNumber(variant?.stock, NaN);
           return {
-            sku: variant?.sku?.trim(),
+            sku: toOptionalString(variant?.sku),
             options,
             price,
             stock: Number.isFinite(stock) ? stock : undefined,
-            imageUrl: variant?.imageUrl?.trim(),
+            imageUrl: toOptionalString(variant?.imageUrl),
           };
         })
-        .filter((variant: any) => Object.keys(variant.options).length > 0 && Number.isFinite(variant.price) && variant.price > 0);
-      const variantStockTotal = variants.reduce((sum: number, variant: any) => sum + toSafeNumber(variant.stock), 0);
+        .filter((variant) => Object.keys(variant.options).length > 0 && Number.isFinite(variant.price) && variant.price > 0);
+      const variantStockTotal = variants.reduce((sum, variant) => sum + toSafeNumber(variant.stock), 0);
       const {
         specifications: _specs,
         images: _images,
@@ -1216,7 +1323,7 @@ const ProductManagement: React.FC = () => {
         limitedTimeRange,
         ...rest
       } = values;
-      const payload: any = {
+      const payload: ProductMutationPayload = {
         ...rest,
         imageUrl: mainImage,
         stock: variants.length > 0 ? variantStockTotal : rest.stock,
@@ -1228,10 +1335,10 @@ const ProductManagement: React.FC = () => {
         limitedTimeEndAt: limitedTimeRange?.[1] ? limitedTimeRange[1].format('YYYY-MM-DDTHH:mm:ss') : null,
       };
       if (editingProduct) {
-        await adminApi.updateProduct(editingProduct.id, payload);
+        await adminApi.updateProduct(editingProduct.id, payload as Partial<Product>);
         message.success(t('pages.productAdmin.updated'));
       } else {
-        await adminApi.createProduct(payload);
+        await adminApi.createProduct(payload as Partial<Product>);
         message.success(t('pages.productAdmin.created'));
       }
       setModalVisible(false);
@@ -1473,7 +1580,7 @@ const ProductManagement: React.FC = () => {
   ) => (
     <div className="product-import-result">
       <Alert type="warning" showIcon message={notice} />
-      <p>{t('pages.productAdmin.importSummary', result as any)}</p>
+      <p>{t('pages.productAdmin.importSummary', importResultTranslationParams(result))}</p>
       {(result.maxRows || result.maxFileSizeBytes) && (
         <Space wrap className="product-import-result__limits">
           {result.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: result.maxRows })}</Tag> : null}
@@ -1535,13 +1642,13 @@ const ProductManagement: React.FC = () => {
         fetchImportHistory();
         return false;
       }
-      const importTargetLabel = `${t('pages.productAdmin.importConfirmApply')}: ${file.name}, ${t('pages.productAdmin.importPreviewMessage', preview as any)}`;
+      const importTargetLabel = `${t('pages.productAdmin.importConfirmApply')}: ${file.name}, ${t('pages.productAdmin.importPreviewMessage', importResultTranslationParams(preview))}`;
       Modal.confirm({
         title: t('pages.productAdmin.importPreviewTitle'),
         content: (
           <div className="product-import-result">
             <Alert type="success" showIcon message={t('pages.productAdmin.importPreviewReadyNotice')} />
-            <p>{t('pages.productAdmin.importPreviewMessage', preview as any)}</p>
+            <p>{t('pages.productAdmin.importPreviewMessage', importResultTranslationParams(preview))}</p>
             <Space wrap className="product-import-result__limits">
               {preview.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: preview.maxRows })}</Tag> : null}
               {preview.maxFileSizeBytes ? <Tag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(preview.maxFileSizeBytes) })}</Tag> : null}
@@ -1574,7 +1681,7 @@ const ProductManagement: React.FC = () => {
                 content: (
                   <div className="product-import-result">
                     <Alert type="success" showIcon message={t('pages.productAdmin.importAppliedNotice')} />
-                    <p>{t('pages.productAdmin.importSuccess', result as any)}</p>
+                    <p>{t('pages.productAdmin.importSuccess', importResultTranslationParams(result))}</p>
                     {renderImportTrace(result)}
                   </div>
                 ),

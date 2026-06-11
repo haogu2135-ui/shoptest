@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 00:10 UTC QA F3515 Product Management Full Type-Safety Handoff
+
+Source status:
+- QA F3515 remains OPEN overall for other frontend backlog/test-guard string scopes, but the current-source Product Management production file is reconciled.
+- `frontend/src/pages/ProductManagement.tsx` now has no standalone `any` token.
+- This pass removes the remaining broad Product Management `any` usage from option/spec extraction, rich-content quality checks, variant preview/edit/generation/stock sync helpers, product submit payload assembly, bundle/detail/variant form rows, and import summary/preview/success translation params.
+- Runtime admin product behavior should be unchanged; this is a type-safety/source-maintenance reconciliation.
+
+Local verification already run:
+- Staged source search for Product Management `any` and old broad catch/callback/payload/import cast patterns returned no matches.
+- Expanded `ProductManagementCatchTypeSafety.test.ts` into a full Product Management source guard.
+- `git diff --cached --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin product management smoke | RECONCILED_SOURCE_FIXED / ADMIN E2E OPTIONAL | If product admin coverage is in the regression pass, verify list/search/filter/pagination, category/brand option loading, URL import validation/failure/success, product create/edit validation and submit, variant generation and stock sync, duplicate-as-draft, delete, featured toggle, single/batch status changes, CSV import preview/apply failure modals, export CSV, permission-gated controls, and localized failure toasts. No dedicated E2E is required for this type-safety-only reconciliation. |
+
 ## 2026-06-11 00:00 UTC QA F3515 Product Management Catch/Render Type-Safety Handoff
 
 Source status:
