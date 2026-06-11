@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 09:29 UTC TEST PERF-003 Checkout Stock Distinct Save Handoff
+
+Source status:
+- TEST PERF-003 is closed as FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+- The stale checkout `updateProductStock` / `ProductMapper.updateStock` target is absent from current source.
+- Current member and guest checkout reserve stock on already locked product entities, collect touched products in a `LinkedHashMap`, and call `saveReservedProducts(...)` after item validation.
+- Repeated checkout lines for the same product now persist once per distinct product instead of saving inside each checkout item branch.
+- `CheckoutStockDistinctProductSaveContractTest` guards the deferred distinct-product persistence contract.
+
+Local verification already run:
+- Source search confirmed the stale checkout `updateProductStock` target is absent.
+- Source search confirmed member and guest checkout collect `reservedProducts` and call `saveReservedProducts(...)` after validation.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=CheckoutStockDistinctProductSaveContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Checkout stock persistence for repeated product lines | SOURCE_COVERED / E2E OPTIONAL | Keep `CheckoutStockDistinctProductSaveContractTest` in CI. Optional runtime regression can place member and guest checkouts with two lines for the same product/variant and confirm stock is decremented correctly with no checkout error. |
+
 ## 2026-06-11 08:59 UTC TEST PERF-002 Checkout Stock Batch Loading Handoff
 
 Source status:

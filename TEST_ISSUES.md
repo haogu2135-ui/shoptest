@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer checkout stock distinct-save triage (2026-06-11 09:29 UTC)**: Closed TEST **PERF-003** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. The stale `updateProductStock` / `ProductMapper.updateStock` checkout target is absent. Current member and guest checkout mutate locked product entities during item validation, collect touched products in a `LinkedHashMap`, and call `saveReservedProducts(...)` after the loop so repeated checkout lines for the same product persist once per distinct product rather than once per item. Added `CheckoutStockDistinctProductSaveContractTest` to guard the deferred distinct-product persistence contract. Verification: source search confirmed the stale update target is absent and deferred save contract is present; `git diff --check` passed; `./mvnw -q -Dtest=CheckoutStockDistinctProductSaveContractTest test` passed.
+
 - **Maintainer checkout stock batch-load triage (2026-06-11 08:59 UTC)**: Closed TEST **PERF-002** as **WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current member checkout loads selected cart products through `loadProductsForCartItems(selectedItems, reserveStock)`, which de-duplicates product IDs and uses `productRepository.findAllByIdForUpdate(productIds)` when reserving stock. Current guest checkout also de-duplicates product IDs and uses the same bulk pessimistic-lock query for reservations. Added `CheckoutStockBatchLoadingContractTest` to reject per-item product stock lookups and require the bulk lock contract. Verification: source search confirmed the bulk stock-load paths; `git diff --check` passed; `./mvnw -q -Dtest=CheckoutStockBatchLoadingContractTest test` passed.
 
 - **Maintainer order item list N+1 triage (2026-06-11 08:17 UTC)**: Closed TEST **PERF-001** as **WONTFIX / CURRENT_SOURCE_COVERED / STALE_ORDER_LIST_WITH_ITEMS_REPORT / REGRESSION_GUARD_ADDED**. Current customer order list paths use paged `orderRepository.findByUserIdPage(...)` and do not attach order items in a per-order loop; item details are served through explicit single-order item endpoints, while bulk item reads remain available through `OrderItemRepository.findByOrderIds(...)` for list/export flows that need them. Added `OrderItemListNPlusOneContractTest` to reject the stale `getOrdersByUserIdWithItems` pattern and any customer-list `findByOrderId` item lookup. Verification: source search confirmed the paged list and bulk item contracts; `git diff --check` passed; `./mvnw -q -Dtest=OrderItemListNPlusOneContractTest test` passed.
@@ -3379,8 +3381,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: `updateProductStock` is called in a loop, issuing one UPDATE per product. This is slow for orders with many items.
 - Impact: Slow order creation for multi-item orders
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use a batch UPDATE or a single SQL statement with CASE WHEN.
+- Triage (2026-06-11 09:29 UTC): Current source has no checkout `updateProductStock` or `ProductMapper.updateStock` path. Member and guest checkout reserve stock on locked product entities, collect touched products in a `LinkedHashMap`, and save after item validation so repeated lines for the same product persist once per distinct product. Added `CheckoutStockDistinctProductSaveContractTest` to guard against reintroducing immediate per-item stock saves.
 
 ### PERF-004: Redis KEYS command used for cache invalidation
 
