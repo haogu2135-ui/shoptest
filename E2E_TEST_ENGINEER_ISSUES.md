@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 11:53 UTC TEST PERF-012 Hibernate Flush Mode Handoff
+
+Source status:
+- TEST PERF-012 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_CONFIG_REPORT / REGRESSION_GUARD_ADDED.
+- Current production resources and deployment examples do not set `spring.jpa.properties.hibernate.flush_mode=always`, `hibernate.flush_mode=always`, or `hibernate.flush-mode=always`.
+- Base `src/main/resources/application.properties` does not force a global Hibernate flush mode, so current source relies on Hibernate's default AUTO flush behavior.
+- `HibernateFlushModeContractTest` guards production/deploy config against reintroducing `ALWAYS` flush mode and keeps the base application properties default intact.
+
+Local verification already run:
+- Production config search found no forced Hibernate flush mode.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=HibernateFlushModeContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Hibernate flush-mode configuration | CURRENT_SOURCE_NON_ISSUE / E2E NOT REQUIRED | Keep `HibernateFlushModeContractTest` in CI. No browser/device E2E is required unless profile/deploy configuration starts setting Hibernate flush mode explicitly; then run backend config smoke with the changed profile. |
+
 ## 2026-06-11 11:36 UTC TEST PERF-011 Coupon Repository Bounded Query Handoff
 
 Source status:

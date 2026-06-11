@@ -4,6 +4,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer Hibernate flush-mode triage (2026-06-11 11:53 UTC)**: Closed TEST **PERF-012** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_CONFIG_REPORT / REGRESSION_GUARD_ADDED**. Current production resources and deployment examples do not set `spring.jpa.properties.hibernate.flush_mode=always`, `hibernate.flush_mode=always`, or any base `application.properties` override for global Hibernate flush mode, so current source relies on Hibernate's default AUTO flush behavior. Added `HibernateFlushModeContractTest` to reject future production/deploy config that forces `ALWAYS` flush mode and to guard the base application properties default. Verification: production config search found no forced flush mode; `git diff --check` passed; `./mvnw -q -Dtest=HibernateFlushModeContractTest test` passed.
+
 - **Maintainer coupon repository bounded-query triage (2026-06-11 11:36 UTC)**: Closed TEST **PERF-011** as **FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED**. Current production code has no no-arg `couponRepository.findAll()` call. `CouponService.findAll()` uses `couponRepository.findAll(PageRequest.of(0, limit, Sort.by(...)))` with runtime/default/hard caps, admin coupon list/search uses `searchAdminCoupons(..., PageRequest...)`, public coupons use the pageable `findClaimableByScopeAndStatus(...)`, and wallet/available coupon reads use limited mapper calls. Added `CouponRepositoryBoundedQueryContractTest` to guard against reintroducing no-arg coupon repository loads or production call sites for unused unbounded finder methods. Verification: production source search found no no-arg coupon repository load; `git diff --check` passed; `./mvnw -q -Dtest=CouponRepositoryBoundedQueryContractTest test` passed.
 
 - **Maintainer stale rule-engine cache triage (2026-06-11 11:20 UTC)**: Closed TEST **PERF-010** as **WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_RULE_ENGINE_REPORT / REGRESSION_GUARD_ADDED**. Current production source has no `RuleEngineService.java`, no `RuleEngineService`, no `ShopRuleEngine`, and no `ruleEngineCache` / `ruleEngineResultCache` / computed-rule cache markers, so the reported indefinite rule-engine result cache is not present. Added `RuleEngineCacheContractTest` to guard against reintroducing the stale rule-engine cache target without explicit bounded TTL coverage. Verification: production source search found no stale rule-engine cache markers; `git diff --check` passed; `./mvnw -q -Dtest=RuleEngineCacheContractTest test` passed.
@@ -3487,8 +3489,9 @@ Notes:
 - Severity: LOW
 - Symptom: `spring.jpa.properties.hibernate.flush_mode=always` forces Hibernate to flush all pending changes before every query, causing unnecessary database writes.
 - Impact: Increased database load, slower queries
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_NON_ISSUE / STALE_CONFIG_REPORT / REGRESSION_GUARD_ADDED
 - Expected fix direction: Change to `flush_mode=auto` (the default) to let Hibernate optimize flush timing.
+- Triage (2026-06-11 11:53 UTC): The reported `spring.jpa.properties.hibernate.flush_mode=always` setting is stale against current source. Production resource and deploy config search found no `hibernate.flush_mode=always`, no `hibernate.flush-mode=always`, and no base `application.properties` global flush-mode override; current configuration therefore uses Hibernate's default AUTO flush behavior. Added `HibernateFlushModeContractTest` to guard against reintroducing `ALWAYS` flush mode in production/deploy configuration and to keep the base application properties from forcing a global Hibernate flush mode.
 
 ### PERF-013: Coupon usage counter not incremented atomically
 
