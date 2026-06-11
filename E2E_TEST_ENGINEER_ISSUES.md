@@ -4,6 +4,26 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 01:32 UTC QA F3488 Checkout Stock Reservation Race Handoff
+
+Source status:
+- QA F3488 is closed as current-source-covered with a regression guard.
+- The reported `InventoryService.checkAndDeductStock()` production path is absent.
+- Active checkout stock reservation happens in `OrderService` and locks product rows through `ProductRepository.findAllByIdForUpdate(...)` with `@Lock(LockModeType.PESSIMISTIC_WRITE)` before stock/variant-stock decrement.
+
+Local verification already run:
+- Staged source searches confirmed the locked reservation path and absence of `InventoryService/checkAndDeductStock` production code.
+- Added `OrderStockReservationRaceContractTest` source guard.
+- `git diff --cached --check` passed.
+- Targeted Maven remains blocked by the current HEAD review-image compile gap recorded in the 00:35 UTC handoff.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Authenticated checkout stock reservation | CURRENT_SOURCE_COVERED / CHECKOUT E2E RECOMMENDED | Run checkout for a cart item with limited stock. Verify successful checkout decrements stock once, removes selected cart items, and keeps price/name/image snapshots correct. |
+| Guest checkout stock reservation | CURRENT_SOURCE_COVERED / CHECKOUT E2E RECOMMENDED | Run guest checkout for a limited-stock item and verify stock decrements once, guest order is created, and contact/shipping details persist. |
+| Concurrent low-stock checkout | CURRENT_SOURCE_COVERED / CONCURRENCY E2E RECOMMENDED | With stock quantity 1, submit two authenticated or guest checkouts concurrently. Verify only one order reserves stock and the second receives an insufficient-stock failure without negative stock. |
+| Variant-only stock checkout | CURRENT_SOURCE_COVERED / CHECKOUT E2E RECOMMENDED | Checkout a variant-only SKU and verify the variant stock decrements while product-level null stock remains valid. |
+
 ## 2026-06-11 00:58 UTC QA F3486 Product Category/Name Uniqueness Handoff
 
 Source status:
