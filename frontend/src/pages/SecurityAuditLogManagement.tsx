@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, DatePicker, Input, InputNumber, Popconfirm, Progress, Select, Space, Table, Tag, Typography, message } from 'antd';
+import type { RangePickerProps } from 'antd/es/date-picker';
 import { AlertOutlined, DeleteOutlined, DownloadOutlined, KeyOutlined, MailOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api';
@@ -1047,7 +1048,7 @@ const SecurityAuditLogManagement: React.FC = () => {
   const [result, setResult] = useState<string | undefined>(searchParams.get('result') || undefined);
   const [resourceType, setResourceType] = useState<string | undefined>(searchParams.get('resourceType') || undefined);
   const [actorUsername, setActorUsername] = useState('');
-  const [range, setRange] = useState<any>(null);
+  const [range, setRange] = useState<RangePickerProps['value']>(null);
   const [retentionDays, setRetentionDays] = useState(180);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const canExportAuditLogs = hasAdminPermission(adminPermissions, currentRole, AUDIT_LOGS_EXPORT_PERMISSION);

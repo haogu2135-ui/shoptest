@@ -3607,8 +3607,9 @@ Notes:
 - Severity: CRITICAL
 - Symptom: Widespread `any` usage defeats TypeScript's compile-time guarantees. Critical paths include productApi.deleteProduct, createOrder, handleSubmit callbacks, PaymentService webhook logging, and OrderService order status API call.
 - Impact: Runtime errors that should be caught at compile time, unmaintainable code
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Replace with proper interfaces and type assertions; use `unknown` where type is truly dynamic.
+- Fix (2026-06-11 15:37 UTC): Current production frontend source no longer matches broad `any` type patterns after excluding test files and type-safety test fixtures. The last production match was `SecurityAuditLogManagement.tsx` using `useState<any>(null)` for the audit date range; it is now typed as `RangePickerProps['value']`. A production-source scan for `: any`, `as any`, `any[]`, `<any>`, `Promise<any>`, `Record<..., any>`, `useRef<any>`, `useState<any>`, and `catch (...: any)` over `frontend/src` with test files excluded returns zero matches. The critical paths called out in the report are typed in current source: `productApi.deleteProduct` accepts a numeric id, checkout `handleSubmit` uses `CheckoutFormValues`, and backend Java payment/order code has no TypeScript-style `any` surface. Remaining `any` text appears in tests, Jest matchers such as `expect.any(...)`, type-safety assertions, or natural-language strings, not production type escapes. Added `FrontendBroadAnyContractTest` to guard production frontend source against reintroducing broad `any` usage.
 
 ### F3468: Product catalog loaded entirely into memory for findDiscountProducts
 

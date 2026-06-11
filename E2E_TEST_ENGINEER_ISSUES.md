@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 15:37 UTC TEST F3486 Frontend Broad Any Type Safety Handoff
+
+Source status:
+- TEST F3486 FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+
+Local verification already run:
+- Production frontend scan excluding tests found zero broad `any` type patterns (`: any`, `as any`, `any[]`, `<any>`, `Promise<any>`, `Record<..., any>`, `useRef<any>`, `useState<any>`, `catch (...: any)`).
+- `SecurityAuditLogManagement.tsx` audit range state now uses `RangePickerProps['value']` instead of `useState<any>(null)`.
+- `./mvnw -q -Dtest=FrontendBroadAnyContractTest test` passed.
+- `target/` was removed after Maven verification.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Type-only frontend guard | CURRENT_SOURCE_COVERED / E2E NOT REQUIRED | No browser-only E2E is required for the type guard itself. Keep normal checkout, product admin, audit log, and payment smoke coverage to catch runtime regressions from typed API boundaries. |
+| Security audit date range | SOURCE_FIXED / ADMIN E2E OPTIONAL | In Security Audit Logs, select and clear a date range, search, export if permitted, and verify query results and pagination still work after the typed RangePicker state change. |
+
 ## 2026-06-11 15:02 UTC TEST F3488 Support Management Polling Handoff
 
 Source status:
