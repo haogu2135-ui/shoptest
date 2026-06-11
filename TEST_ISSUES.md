@@ -3557,8 +3557,9 @@ Notes:
 - Severity: LOW
 - Symptom: `recommendProducts` loads all products and filters in Java based on user preferences.
 - Impact: Slow recommendations, unnecessary memory usage
-- Status: OPEN
+- Status: FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use SQL or a recommendation engine to filter at the data layer.
+- Triage (2026-06-11 13:14 UTC): The reported `RecommendationService.recommendProducts(...)` path is stale against current source: there is no production `RecommendationService.java` and no `recommendProducts` production method. The active personalized endpoint is `ProductController.getPersonalizedRecommendations(...)`, which delegates to `ProductServiceImpl.findPersonalizedRecommendations(...)`. That path derives at most 12 search terms from pet profiles, resolves a capped `product.recommendation-candidate-window` with a hard maximum of 300, and calls `boundedRecommendationCandidates(...)`. Candidate products come from pageable repository queries `findPublicKeywordCandidateWindow(...)` and `findPublicSellableCandidateWindow(PageRequest.of(0, candidateWindow))`, which filter active/sellable public products in SQL before the service scores and sorts the bounded window. Added `ProductRecommendationQueryContractTest` to reject stale `recommendProducts` full-scan paths and guard the bounded SQL-backed recommendation candidate queries.
 
 ### PERF-019: CartService.calculateTotal uses double for money
 

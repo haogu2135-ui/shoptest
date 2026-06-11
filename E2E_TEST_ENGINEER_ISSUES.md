@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 13:14 UTC TEST PERF-018 Product Recommendation Query Handoff
+
+Source status:
+- TEST PERF-018 FIXED / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED.
+
+Local verification already run:
+- Source search confirmed there is no production `RecommendationService.java` or `recommendProducts` method.
+- Current personalized recommendation endpoint delegates to `ProductServiceImpl.findPersonalizedRecommendations(...)`, and product candidates are fetched through bounded `findPublicKeywordCandidateWindow(...)` / `findPublicSellableCandidateWindow(...)` repository queries.
+- `./mvnw -q -Dtest=ProductRecommendationQueryContractTest test` passed.
+- `target/` was removed after Maven verification.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Personalized recommendations | CURRENT_SOURCE_COVERED / STOREFRONT E2E OPTIONAL | Log in with dog, cat, and mixed pet profiles. Verify `/products/personalized-recommendations` returns relevant, sellable public products without requiring a legacy `RecommendationService` path. |
+| Large catalog recommendation performance | CURRENT_SOURCE_COVERED / API E2E OPTIONAL | Seed a catalog larger than the recommendation candidate window and verify the personalized recommendation response remains bounded, stable, and usable in the storefront. |
+
 ## 2026-06-11 13:01 UTC TEST PERF-017 Coupon Eligibility Query Handoff
 
 Source status:
