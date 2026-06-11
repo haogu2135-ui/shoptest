@@ -15766,7 +15766,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `frontend/src/pages/Cart.tsx` (lines 384-404)
 - **Detail**: For the guest path, `removeGuestCartItem` updates localStorage but does not dispatch `'shop:cart-updated'`. The Navbar badge count will not update in real time when a guest removes a cart item.
 - **Suggested fix**: Dispatch `dispatchDomEvent('shop:cart-updated')` for the guest path as well.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 21:00 UTC)
+- **Resolution**: Cart removal mutations now dispatch `shop:cart-updated` after successful mutation for both authenticated carts and guest local carts. This covers single-item removal, moving a guest cart item to save-for-later, and bulk removal/unavailable cleanup paths.
+- **Regression guard**: Added `CartGuestRemovalEventContractTest`, which requires guest removal calls in `Cart.tsx` to emit an unconditional cart-updated event.
+- **Verification**: `./mvnw -q -Dtest=CartGuestRemovalEventContractTest test` passed.
 
 ### F2485: [LOW] Home page uses incomplete fake MouseEvent cast
 - **Component**: Frontend — Home

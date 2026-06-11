@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 21:00 UTC TEST F2737 Guest Cart Removal Event Handoff
+
+Source status:
+- TEST F2737 / QA F2484 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Guest cart single-item removal now dispatches `shop:cart-updated` after local storage mutation.
+- Moving a guest cart item to save-for-later dispatches `shop:cart-updated` after local cart removal.
+- Guest bulk removal/unavailable cleanup dispatches `shop:cart-updated` after local cart removal.
+- `./mvnw -q -Dtest=CartGuestRemovalEventContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Guest single item removal | SOURCE_FIXED / CART E2E PENDING | As a guest with multiple cart items, remove one item from the cart page and verify the Navbar/cart badge updates immediately without refresh. |
+| Guest save-for-later removal | SOURCE_FIXED / CART E2E PENDING | As a guest, move a cart item to save-for-later and verify the badge/count updates immediately while the saved item appears in save-for-later. |
+| Guest bulk removal | SOURCE_FIXED / CART E2E PENDING | Select multiple guest cart items or clear unavailable items, remove them, and verify the Navbar/cart badge updates immediately without refresh. |
+
 ## 2026-06-11 20:49 UTC TEST F2736 Review Image Upload Validation Handoff
 
 Source status:

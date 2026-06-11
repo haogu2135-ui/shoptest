@@ -443,7 +443,7 @@ const Cart: React.FC = () => {
       message.success(t('messages.deleteSuccess'));
       setSelectedIds((ids) => ids.filter((id) => id !== itemId));
       resetCheckoutStateAfterCartMutation();
-      if (authenticated) dispatchDomEvent('shop:cart-updated');
+      dispatchDomEvent('shop:cart-updated');
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
@@ -477,7 +477,7 @@ const Cart: React.FC = () => {
       setSelectedIds((ids) => ids.filter((id) => id !== item.id));
       resetCheckoutStateAfterCartMutation();
       message.success(t('pages.cart.savedForLater'));
-      if (authenticated) dispatchDomEvent('shop:cart-updated');
+      dispatchDomEvent('shop:cart-updated');
     } catch (error: unknown) {
       replaceSavedForLaterItems(previousSavedItems);
       if (!mountedRef.current) return;
@@ -606,7 +606,7 @@ const Cart: React.FC = () => {
       setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
       resetCheckoutStateAfterCartMutation();
       message.success(successMessage);
-      if (authenticated) dispatchDomEvent('shop:cart-updated');
+      dispatchDomEvent('shop:cart-updated');
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
