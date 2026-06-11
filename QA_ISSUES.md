@@ -1,6 +1,6 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-06-11 00:20 UTC - Maintainer QA Android pet/compare mobile UI closure | Total: 3243 issues
+Last updated: 2026-06-11 00:35 UTC - Maintainer QA product status race closure | Total: 3243 issues
 
 Legend: OPEN / FIXED / WONTFIX / REGRESSED
 
@@ -9,9 +9,17 @@ Legend: OPEN / FIXED / WONTFIX / REGRESSED
 ## Summary
 
 - Total issues: 3243
-- FIXED: 2366 (+249 verified)
-- WONTFIX: 165
-- OPEN: 712 (1113 - 310 additional TEST/QA tracker resolutions - 1 PERF source fix - 7 AdminLayout closures - 5 BugManagement current-source closures - 2 BrowsingHistory closures - 4 BugManagement backend fixes - 15 Checkout/Cart F1196-F1211 closures - 1 F975 frontend catch-binding closure - 1 F933 current-source password exposure closure - 1 F3447 current-source payment polling closure - 1 F3448 support polling source fix - 1 F3499 backend empty catch duplicate closure - 1 F3450 service transaction rollback fix - 1 F3452 Redis KEYS removal - 1 F3454 admin support unread query optimization - 1 F3455 scheduled expiry bounded batch scans - 2 F3458/F3459 API 4xx observability fixes - 1 F3457 payment lifecycle observability fix - 1 F3461 frontend remote error reporting fix - 1 F3462 payment gateway HTTP retry fix - 1 F3463 payment expiry scheduler failure logging closure - 1 F3464 backend slow request latency logging fix - 1 F3465 route error boundary coverage closure - 1 F3466 support websocket exhaustion fallback closure - 1 F3467 ProductUrlImportService duplicate/current-source observability closure - 1 F3493 notification send silent failure current-source closure - 1 F3494 Pet controller silent catch current-source closure - 1 F3495 vaccination notification current-source closure - 1 F3496 IP blacklist current-source closure - 1 F3497 product search cache current-source closure - 1 F3515 ConfigCenter any closure - 1 F3515 PetPersonalizedAssistant any closure - 1 F3515 AddOnAssistant any closure - 1 F3515 Payment component any closure - 1 F3515 SeventeenTrackWidget any closure - 1 F3515 limitedTimeCountdown test any closure - 1 F3515 UserManagement any closure - 1 F3515 StockAlerts any closure - 1 F3515 LogisticsCarrierManagement any closure - 1 F3515 PetGalleryManagement any closure - 1 F3515 AnnouncementManagement any closure - 1 F3515 ForgotPassword any closure - 1 F3515 Register any closure - 1 F3515 ProductReview any closure - 1 F3515 Navbar any closure - 1 F3515 AdminDashboard any closure - 1 F3515 SecurityAuditLogManagement any closure - 1 F3515 BugManagement any closure - 1 F3515 OrderTracking any closure - 1 F3515 CartDrawer any closure - 1 F3515 CustomerSupportWidget any closure - 1 F3515 Checkout any closure - 1 F3515 TrafficControl any closure - 1 F3515 market test any closure - 1 F3515 Wishlist test any closure - 1 F3515 API interceptor test any closure - 1 F3515 Checkout payment-method test any closure - 1 F3515 product options any closure - 1 F3515 ProductQuestionManagement catch any closure - 1 F3515 ReviewManagement any closure - 1 F3515 AdminLayout menu any closure - 1 F3515 API product normalization any closure - 1 F3515 API auth header any closure)
+- FIXED: 2367 (+249 verified)
+- WONTFIX: 166
+- OPEN: 710 (1113 - 310 additional TEST/QA tracker resolutions - 1 PERF source fix - 7 AdminLayout closures - 5 BugManagement current-source closures - 2 BrowsingHistory closures - 4 BugManagement backend fixes - 15 Checkout/Cart F1196-F1211 closures - 1 F975 frontend catch-binding closure - 1 F933 current-source password exposure closure - 1 F3447 current-source payment polling closure - 1 F3448 support polling source fix - 1 F3499 backend empty catch duplicate closure - 1 F3450 service transaction rollback fix - 1 F3452 Redis KEYS removal - 1 F3454 admin support unread query optimization - 1 F3455 scheduled expiry bounded batch scans - 2 F3458/F3459 API 4xx observability fixes - 1 F3457 payment lifecycle observability fix - 1 F3461 frontend remote error reporting fix - 1 F3462 payment gateway HTTP retry fix - 1 F3463 payment expiry scheduler failure logging closure - 1 F3464 backend slow request latency logging fix - 1 F3465 route error boundary coverage closure - 1 F3466 support websocket exhaustion fallback closure - 1 F3467 ProductUrlImportService duplicate/current-source observability closure - 1 F3487 product status atomic update fix - 1 F3490 JsonNodeUtil current-source non-issue - 1 F3493 notification send silent failure current-source closure - 1 F3494 Pet controller silent catch current-source closure - 1 F3495 vaccination notification current-source closure - 1 F3496 IP blacklist current-source closure - 1 F3497 product search cache current-source closure - 1 F3515 ConfigCenter any closure - 1 F3515 PetPersonalizedAssistant any closure - 1 F3515 AddOnAssistant any closure - 1 F3515 Payment component any closure - 1 F3515 SeventeenTrackWidget any closure - 1 F3515 limitedTimeCountdown test any closure - 1 F3515 UserManagement any closure - 1 F3515 StockAlerts any closure - 1 F3515 LogisticsCarrierManagement any closure - 1 F3515 PetGalleryManagement any closure - 1 F3515 AnnouncementManagement any closure - 1 F3515 ForgotPassword any closure - 1 F3515 Register any closure - 1 F3515 ProductReview any closure - 1 F3515 Navbar any closure - 1 F3515 AdminDashboard any closure - 1 F3515 SecurityAuditLogManagement any closure - 1 F3515 BugManagement any closure - 1 F3515 OrderTracking any closure - 1 F3515 CartDrawer any closure - 1 F3515 CustomerSupportWidget any closure - 1 F3515 Checkout any closure - 1 F3515 TrafficControl any closure - 1 F3515 market test any closure - 1 F3515 Wishlist test any closure - 1 F3515 API interceptor test any closure - 1 F3515 Checkout payment-method test any closure - 1 F3515 product options any closure - 1 F3515 ProductQuestionManagement catch any closure - 1 F3515 ReviewManagement any closure - 1 F3515 AdminLayout menu any closure - 1 F3515 API product normalization any closure - 1 F3515 API auth header any closure)
+
+### Maintainer Update (2026-06-11 00:35 UTC)
+
+- **F3487 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED**: Closed the admin product status read-modify-write race. `/admin/products/{id}/status` and `/admin/products/batch-status` now call `ProductService.updateStatusByIds(...)` instead of loading a Product, mutating `status`, and saving the whole row. `ProductRepository.updateStatusByIdIn(...)` performs one direct `UPDATE Product p set p.status = :status, p.updatedAt = CURRENT_TIMESTAMP where p.id in :ids`, and `ProductServiceImpl.updateStatusByIds(...)` normalizes status, filters duplicate/invalid ids, runs inside a rollback transaction, and clears the product search cache only after rows change.
+- **F3490 WONTFIX / CURRENT_SOURCE_NON_ISSUE**: Current source has no `src/main/java/com/example/shop/util/JsonNodeUtil.java`, no `class JsonNodeUtil`, and no `readFileContent(...)` implementation under `src/main/java`; the reported `file.exists()` plus `objectMapper.readValue()` race is stale for this workspace. No source change is needed unless that utility is reintroduced.
+- Count update: FIXED +1, WONTFIX +1, OPEN -2.
+- Regression coverage: Added `AdminControllerProductStatusAtomicTest` to prove single and batch admin product status paths use `updateStatusByIds(...)` and do not call `findById(...)` or `save(...)`.
+- Verification: staged source searches confirm the old `product.setStatus(status); productService.save(product);` status paths are absent from `AdminController.java`, and `git diff --cached --check` passed. Targeted Maven was attempted in a temporary worktree, but current HEAD does not compile before this test because review-image code references still-untracked/current-worktree contracts (`ReviewImageUrlCodec`, review image fields, and reviewable-order repository methods). The new test did not execute under Maven.
 
 ### Maintainer Update (2026-06-11 00:20 UTC)
 
@@ -17049,7 +17057,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **File**: src/main/java/com/example/shop/service/impl/ProductServiceImpl.java:722-729
 
 ### F3487: HIGH — ProductServiceImpl.updateProductStatus() has non-atomic read-modify-write
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
 - **Opened**: 2026-06-10 10:30 UTC
 - **Source**: Race Condition Analysis
 - **How found**: Static code analysis
@@ -17058,6 +17066,8 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Risk**: Lost status updates under concurrent admin operations
 - **Component**: ProductServiceImpl
 - **File**: src/main/java/com/example/shop/service/impl/ProductServiceImpl.java:753-784
+- **Fix (2026-06-11 00:35 UTC)**: Admin single and batch status endpoints now route through `ProductService.updateStatusByIds(...)`; the service normalizes statuses, de-duplicates positive ids, runs in a rollback transaction, and delegates to `ProductRepository.updateStatusByIdIn(...)` for a direct status-only update instead of saving a previously read Product entity.
+- **Regression coverage**: `AdminControllerProductStatusAtomicTest` verifies both admin status endpoints call the atomic service method and never call `findById(...)`/`save(...)`.
 
 ### F3488: HIGH — InventoryService.checkAndDeductStock() has TOCTOU race on stock check
 - **Status**: OPEN
@@ -17082,7 +17092,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **File**: src/main/java/com/example/shop/controller/AdminHealthCheckController.java:233-261
 
 ### F3490: MEDIUM — JsonNodeUtil.readFileContent() has TOCTOU race on concurrent file reads
-- **Status**: OPEN
+- **Status**: WONTFIX / CURRENT_SOURCE_NON_ISSUE
 - **Opened**: 2026-06-10 10:30 UTC
 - **Source**: Race Condition Analysis
 - **How found**: Static code analysis
@@ -17091,6 +17101,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Risk**: Intermittent parsing failures during concurrent import operations
 - **Component**: JsonNodeUtil
 - **File**: src/main/java/com/example/shop/util/JsonNodeUtil.java:87-97
+- **Triage (2026-06-11 00:35 UTC)**: Non-issue against current source. `src/main/java/com/example/shop/util/JsonNodeUtil.java` does not exist, and repository search finds no `class JsonNodeUtil` or `readFileContent(...)` production method. The reported utility appears to be from a stale code snapshot.
 
 ### F3491: LOW — PetHealthController.findNearestClinics() has TOCTOU on external location API
 - **Status**: OPEN

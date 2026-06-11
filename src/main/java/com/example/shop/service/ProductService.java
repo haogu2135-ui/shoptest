@@ -23,6 +23,7 @@ public interface ProductService {
     List<Product> findByIds(List<Long> ids);
     List<Product> findPublicByIds(List<Long> ids);
     Product save(Product product);
+    int updateStatusByIds(List<Long> ids, String status);
     void deleteById(Long id);
     List<Product> findByIsFeaturedTrueOrderByIdAsc();
     List<Product> findPublicFeaturedProducts();

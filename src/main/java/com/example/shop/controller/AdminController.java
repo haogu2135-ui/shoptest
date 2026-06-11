@@ -83,6 +83,7 @@ import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -1390,20 +1391,15 @@ public class AdminController {
                     "Invalid product status", "status=" + body.get("status"));
             return ResponseEntity.badRequest().body(Map.of("error", "status must be one of " + ProductStatusUtils.PRODUCT_STATUSES));
         }
-        return productService.findById(id)
-                .map(product -> {
-                    String previousStatus = product.getStatus();
-                    product.setStatus(status);
-                    productService.save(product);
-                    auditLogService.record("PRODUCT_STATUS_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
-                            "Product status updated", "from=" + previousStatus + ",to=" + status);
-                    return ResponseEntity.ok(Map.of("message", "status updated", "status", status));
-                })
-                .orElseGet(() -> {
-                    auditLogService.record("PRODUCT_STATUS_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
-                            "Product not found", "to=" + status);
-                    return ResponseEntity.notFound().build();
-                });
+        int updated = productService.updateStatusByIds(List.of(id), status);
+        if (updated == 0) {
+            auditLogService.record("PRODUCT_STATUS_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
+                    "Product not found", "to=" + status);
+            return ResponseEntity.notFound().build();
+        }
+        auditLogService.record("PRODUCT_STATUS_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
+                "Product status updated", "to=" + status);
+        return ResponseEntity.ok(Map.of("message", "status updated", "status", status));
     }
 
     @PostMapping("/products/batch-status")
@@ -1437,25 +1433,22 @@ public class AdminController {
                     "max", maxBatchSize));
         }
 
-        int success = 0;
         int failed = 0;
+        List<Long> productIds = new ArrayList<>();
         for (Object idValue : rawIds) {
             try {
                 Long id = parseBatchId(idValue);
-                boolean updated = productService.findById(id).map(product -> {
-                    product.setStatus(status);
-                    productService.save(product);
-                    return true;
-                }).orElse(false);
-                if (updated) {
-                    success++;
-                } else {
+                if (id == null || id <= 0 || productIds.contains(id)) {
                     failed++;
+                } else {
+                    productIds.add(id);
                 }
             } catch (Exception e) {
                 failed++;
             }
         }
+        int success = productIds.isEmpty() ? 0 : productService.updateStatusByIds(productIds, status);
+        failed += Math.max(0, productIds.size() - success);
         auditLogService.record("PRODUCT_BATCH_STATUS_UPDATE", failed == 0 ? "SUCCESS" : "FAILURE", authentication, "PRODUCT", null, request,
                 "Product batch status updated",
                 "status=" + status + ",requested=" + rawIds.size() + ",max=" + maxBatchSize

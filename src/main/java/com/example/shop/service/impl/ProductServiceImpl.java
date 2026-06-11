@@ -762,6 +762,29 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int updateStatusByIds(List<Long> ids, String status) {
+        String normalizedStatus = ProductStatusUtils.normalizeProductStatus(status);
+        if (normalizedStatus == null) {
+            throw new IllegalArgumentException("status must be one of " + ProductStatusUtils.PRODUCT_STATUSES);
+        }
+        List<Long> normalizedIds = ids == null
+                ? List.of()
+                : ids.stream()
+                        .filter(id -> id != null && id > 0)
+                        .distinct()
+                        .collect(Collectors.toList());
+        if (normalizedIds.isEmpty()) {
+            return 0;
+        }
+        int updated = productRepository.updateStatusByIdIn(normalizedIds, normalizedStatus);
+        if (updated > 0) {
+            clearProductSearchCache();
+        }
+        return updated;
+    }
+
+    @Override
     @Transactional
     public void deleteById(Long id) {
         productRepository.deleteById(id);

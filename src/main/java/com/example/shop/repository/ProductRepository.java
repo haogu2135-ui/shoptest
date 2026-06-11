@@ -90,4 +90,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     @Query(value = "update products set stock = stock + ?2, updated_at = current_timestamp where id = ?1",
             nativeQuery = true)
     int increaseStock(Long productId, Integer quantity);
-} 
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Product p set p.status = :status, p.updatedAt = CURRENT_TIMESTAMP where p.id in :ids")
+    int updateStatusByIdIn(@Param("ids") List<Long> ids, @Param("status") String status);
+}

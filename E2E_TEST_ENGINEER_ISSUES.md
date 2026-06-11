@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 00:35 UTC QA F3487 Admin Product Status Atomic Update Handoff
+
+Source status:
+- QA F3487 is source-fixed. Admin product status updates no longer read a product entity, mutate `status`, and save the whole row.
+- `/admin/products/{id}/status` and `/admin/products/batch-status` now use `ProductService.updateStatusByIds(...)`, which delegates to a direct repository update for status and `updatedAt`.
+- QA F3490 was triaged as a current-source non-issue because the reported `JsonNodeUtil.readFileContent()` production utility does not exist in this workspace.
+
+Local verification already run:
+- Staged source search confirmed the old `product.setStatus(status); productService.save(product);` admin status path is absent.
+- Added `AdminControllerProductStatusAtomicTest` source/unit guard for single and batch admin product status endpoints.
+- `git diff --cached --check` passed.
+- Targeted Maven was attempted in a temporary worktree, but current HEAD fails compilation before this test because review-image code references still-untracked/current-worktree contracts (`ReviewImageUrlCodec`, review image fields, and reviewable-order repository methods).
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin product single status update | SOURCE_FIXED / ADMIN E2E RECOMMENDED | In Product Management, change one product status through the single-row action. Verify the UI reports success, the row status and updated timestamp refresh, filters/search still work, and no unrelated product fields such as price, stock, featured flag, images, or description are overwritten. |
+| Admin product batch status update | SOURCE_FIXED / ADMIN E2E RECOMMENDED | Select multiple products, include at least one invalid/stale id if the harness supports it, run batch status change, and verify success/failed counts, audit-visible result, refreshed list state, permission-gated behavior, and no whole-row data regression on untouched fields. |
+
 ## 2026-06-11 00:20 UTC Android UI Pet Tools / Compare Handoff
 
 Source status:
