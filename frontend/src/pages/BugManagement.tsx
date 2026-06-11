@@ -7,6 +7,7 @@ import { adminApi } from '../api';
 import type { AdminBugReport, AdminBugReportSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import {
   BUGS_ACCESS_PERMISSIONS,
   BUGS_SCAN_PERMISSION,
@@ -124,6 +125,21 @@ const BugManagement: React.FC = () => {
   const noPermissionLabel = t('adminLayout.noPermission');
   const tx = useCallback((key: string, defaultValue: string, params?: Record<string, string | number>) =>
     t(`pages.bugAdmin.${key}`, { defaultValue, ...(params || {}) }), [t]);
+  const validatePageUrl = useCallback((_: unknown, value?: string) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return Promise.resolve();
+    }
+    try {
+      const parsed = new URL(normalized);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return Promise.resolve();
+      }
+    } catch (error) {
+      reportNonBlockingError('BugManagement.validatePageUrl', error);
+    }
+    return Promise.reject(new Error(tx('pageUrlInvalid', 'Enter a valid http or https URL')));
+  }, [tx]);
   const withPermissionTooltip = useCallback((control: React.ReactElement, allowed: boolean, reason?: string) => (
     allowed && !reason ? control : (
       <Tooltip title={allowed ? reason : noPermissionLabel}>
@@ -661,7 +677,7 @@ const BugManagement: React.FC = () => {
             <TextArea rows={4} maxLength={4000} />
           </Form.Item>
           <div className="bug-management__formGrid">
-            <Form.Item name="pageUrl" label={tx('pageUrl', 'Page URL')}>
+            <Form.Item name="pageUrl" label={tx('pageUrl', 'Page URL')} rules={[{ validator: validatePageUrl }]}>
               <Input maxLength={500} />
             </Form.Item>
             <Form.Item name="environment" label={tx('environment', 'Environment')}>

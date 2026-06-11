@@ -4935,8 +4935,11 @@ Notes:
 - File: `frontend/src/pages/BugManagement.tsx` (line 706)
 - Severity: LOW
 - Description: The `pageUrl` field has no URL format validation. An admin could enter arbitrary text or a `javascript:` URI. Currently displayed as plain text, so this is a latent XSS risk.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 21:18 UTC)
 - Expected fix direction: Add a URL format validator or at minimum validate the protocol is `http:` or `https:`.
+- Resolution: Bug report `pageUrl` now uses a form validator that allows blank values, parses non-empty values with `new URL(...)`, and accepts only `http:` or `https:` protocols. Plain text, `javascript:`, and non-web protocols are rejected before submit.
+- Regression guard: Added `BugManagementPageUrlValidationContractTest`, which requires the page URL validator, http/https protocol check, localized validation message, and `Form.Item` rules binding.
+- Verification: `./mvnw -q -Dtest=BugManagementPageUrlValidationContractTest test` passed.
 
 ### F2741: LOW — Pet gallery upload validates by extension only when MIME type is empty
 

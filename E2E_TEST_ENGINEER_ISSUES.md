@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 21:18 UTC TEST F2740 Bug Page URL Validation Handoff
+
+Source status:
+- TEST F2740 / QA F2487 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- BugManagement `pageUrl` now validates non-empty values with `new URL(...)`.
+- Only `http:` and `https:` protocols are accepted; plain text, `javascript:`, `ftp:`, and other protocols are rejected before submit.
+- Blank `pageUrl` remains allowed.
+- `./mvnw -q -Dtest=BugManagementPageUrlValidationContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Invalid bug page URL | SOURCE_FIXED / ADMIN BUG E2E PENDING | In admin Bug Management create/edit, enter `javascript:alert(1)` or plain text in Page URL and verify validation blocks submit. |
+| Valid bug page URL | SOURCE_FIXED / ADMIN BUG E2E PENDING | Enter an `https://...` or `http://...` Page URL and verify create/edit can submit successfully. |
+| Blank bug page URL | SOURCE_FIXED / ADMIN BUG E2E OPTIONAL | Leave Page URL blank and verify required fields still submit normally. |
+
 ## 2026-06-11 21:13 UTC TEST F2739 Cart Quantity Integer Input Handoff
 
 Source status:
