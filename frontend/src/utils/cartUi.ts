@@ -11,6 +11,11 @@ const toNonNegativeFinite = (value: unknown) => {
   return Number.isFinite(numeric) ? Math.max(0, numeric) : 0;
 };
 
+const isExactZeroFinite = (value: unknown) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric === 0;
+};
+
 const toOptionalPositiveFinite = (value: unknown) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
@@ -79,8 +84,9 @@ export const deriveCartShippingSummary = (
   const subtotal = subtotalOverride === undefined
     ? roundCartMoney(safeItems.reduce((sum, item) => sum + getCartLineAmount(item), 0))
     : roundCartMoney(subtotalOverride);
+  const zeroThresholdFreeShipping = isExactZeroFinite(freeShippingThreshold);
   const threshold = toNonNegativeFinite(freeShippingThreshold);
-  const globalFreeShippingUnlocked = threshold > 0 && subtotal >= threshold;
+  const globalFreeShippingUnlocked = zeroThresholdFreeShipping || (threshold > 0 && subtotal >= threshold);
   const allItemsQualifyForFreeShipping = safeItems.length > 0 && safeItems.every(isCartItemFreeShippingQualified);
   const freeShippingUnlocked = globalFreeShippingUnlocked || allItemsQualifyForFreeShipping;
   const remainingAmount = freeShippingUnlocked || threshold <= 0

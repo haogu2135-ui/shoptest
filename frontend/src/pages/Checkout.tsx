@@ -637,7 +637,9 @@ const Checkout: React.FC = () => {
       });
   }, [cartItems, cartTotal, couponManuallyChanged, language, selectedUserCouponId, t]);
 
-  const guestShippingFee = market.freeShippingThreshold > 0 && cartTotal >= market.freeShippingThreshold ? 0 : market.defaultShippingFee;
+  const guestFreeShippingUnlocked = market.freeShippingThreshold === 0
+    || (market.freeShippingThreshold > 0 && cartTotal >= market.freeShippingThreshold);
+  const guestShippingFee = guestFreeShippingUnlocked ? 0 : market.defaultShippingFee;
   const shippingFee = toSafeMoney(couponQuote?.shippingFee ?? (isGuestCheckout ? guestShippingFee : 0));
   const payableAmount = Math.max(0, toSafeMoney(couponQuote?.payableAmount ?? (cartTotal + shippingFee)));
   const discountAmount = Math.min(cartTotal, toSafeMoney(couponQuote?.discountAmount ?? 0));

@@ -76,6 +76,25 @@ describe('cartUi', () => {
     );
   });
 
+  it('treats a zero global threshold as free shipping for guest checkout estimates', () => {
+    expect(deriveCartShippingSummary([cartItem({ price: 10, quantity: 1 })], 0)).toEqual(
+      expect.objectContaining({
+        freeShippingUnlocked: true,
+        remainingAmount: 0,
+        progressPercent: 100,
+        threshold: 0,
+      }),
+    );
+  });
+
+  it('does not treat malformed global thresholds as free shipping', () => {
+    const summary = deriveCartShippingSummary([cartItem({ price: 10, quantity: 1 })], Number.NaN);
+
+    expect(summary.freeShippingUnlocked).toBe(false);
+    expect(summary.remainingAmount).toBe(0);
+    expect(summary.progressPercent).toBe(0);
+  });
+
   it('marks shipping unlocked when every selected item qualifies by product shipping policy', () => {
     const freeByFlag = cartItem({ price: 12, quantity: 1, freeShipping: true });
     const freeByProductThreshold = cartItem({ price: 30, quantity: 2, freeShippingThreshold: 50 });

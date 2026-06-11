@@ -4768,8 +4768,11 @@ Notes:
 - File: `frontend/src/pages/Checkout.tsx` (line 757)
 - Severity: MEDIUM
 - Description: When `freeShippingThreshold` is `0`, the condition `0 > 0` is false, so `guestShippingFee` always equals `market.defaultShippingFee`. Even when the market intends free shipping for everyone (threshold = 0), guest users are still charged.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-11 19:38 UTC)
 - Expected fix direction: Treat a zero threshold as "free shipping always": `market.freeShippingThreshold === 0 || cartTotal >= market.freeShippingThreshold`.
+- Resolution: Shared cart/checkout shipping estimation now treats an exact finite `0` global free-shipping threshold as immediately unlocked, so guest checkout estimates do not add `market.defaultShippingFee` when the market config means free shipping for all orders. Malformed thresholds such as `NaN` still do not unlock free shipping.
+- Regression guard: Added `cartUi.test.ts` coverage for zero global thresholds unlocking free shipping and malformed thresholds not unlocking it. Checkout's direct `guestShippingFee` calculation path also checks `market.freeShippingThreshold === 0`.
+- Verification: `CI=true npm test -- --runTestsByPath src/utils/cartUi.test.ts --watchAll=false --runInBand --testTimeout=30000` passed.
 
 ### F2727: MEDIUM — Checkout idempotency key not cleared on network errors
 

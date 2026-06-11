@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 19:38 UTC TEST F2726 Guest Zero-Threshold Shipping Handoff
+
+Source status:
+- TEST F2726 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Shared cart/checkout shipping estimation treats an exact finite `0` global free-shipping threshold as free shipping unlocked.
+- Malformed thresholds such as `NaN` still do not unlock free shipping.
+- Guest checkout now estimates zero shipping when the market config intentionally means free shipping for every order.
+- `CI=true npm test -- --runTestsByPath src/utils/cartUi.test.ts --watchAll=false --runInBand --testTimeout=30000` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Guest checkout zero free-shipping threshold | SOURCE_FIXED / CHECKOUT E2E PENDING | Configure storefront app config with `freeShippingThreshold=0` and a positive `defaultShippingFee`, add a guest cart item below any normal threshold, open checkout, and verify shipping is `$0.00` / free and payable equals subtotal. |
+| Guest checkout standard threshold guard | SOURCE_FIXED / CHECKOUT E2E PENDING | Recheck a positive threshold market such as `899`; below-threshold guest orders should still show the default shipping fee, while at/above threshold shows free shipping. |
+| Cart/drawer progress copy | SOURCE_FIXED / STOREFRONT E2E OPTIONAL | With `freeShippingThreshold=0`, verify cart, cart drawer, and checkout do not show a misleading remaining-to-free-shipping amount. |
+
 ## 2026-06-11 19:30 UTC TEST F2725 Production Payment Simulation Handoff
 
 Source status:
