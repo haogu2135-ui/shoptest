@@ -3567,8 +3567,9 @@ Notes:
 - Severity: MEDIUM
 - Symptom: `calculateTotal` uses `double` for monetary calculations, which can cause floating-point precision errors.
 - Impact: Incorrect order totals due to floating-point rounding
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
 - Expected fix direction: Use `BigDecimal` for all monetary calculations.
+- Fix (2026-06-11 14:15 UTC): `CartService` now performs cart total aggregation through `calculateTotalAmount(Long userId)`, which multiplies each cart line with `BigDecimal`, rounds line totals to cents with `RoundingMode.HALF_UP`, and sums via `reduce(BigDecimal.ZERO, BigDecimal::add)`. The legacy `calculateTotal(Long userId)` method remains only as a compatibility adapter that converts the already-rounded `BigDecimal` result to `double`; it no longer uses `mapToDouble` or `price.doubleValue()` for internal money math. Added `CartMoneyPrecisionContractTest` to cover repeated decimal values, half-up cent rounding per line, and the source contract that internal cart money accumulation stays on `BigDecimal`.
 
 ### PERF-020: Product options localStorage cache has no TTL
 

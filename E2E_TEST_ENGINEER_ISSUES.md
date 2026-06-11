@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 14:15 UTC TEST PERF-019 Cart Money Precision Handoff
+
+Source status:
+- TEST PERF-019 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED.
+
+Local verification already run:
+- `CartService` now exposes `calculateTotalAmount(Long userId)` for internal `BigDecimal` cart total aggregation; the legacy `calculateTotal(Long userId)` only converts the completed decimal result for compatibility.
+- `CartMoneyPrecisionContractTest` guards repeated decimal totals, half-up per-line cent rounding, and absence of `mapToDouble` / internal `.doubleValue()` accumulation in `calculateTotalAmount(...)`.
+- `./mvnw -q -Dtest=CartMoneyPrecisionContractTest test` passed.
+- `target/` was removed after Maven verification.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Cart total precision | SOURCE_FIXED / STOREFRONT E2E PENDING | Add cart lines with prices such as 33.33 x 3 and 10.005-equivalent backend data if available. Verify cart subtotal, checkout subtotal, coupon quote subtotal, and order preview totals stay cent-accurate. |
+| Checkout compatibility | SOURCE_FIXED / ORDER E2E PENDING | Complete checkout from a cart with multiple lines and variant prices. Verify displayed totals, persisted order `originalAmount`, coupon discount, shipping fee, and final payment amount remain aligned to cents. |
+
 ## 2026-06-11 13:14 UTC TEST PERF-018 Product Recommendation Query Handoff
 
 Source status:

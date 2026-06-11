@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.CartItem;
 import com.example.shop.entity.Product;
 import com.example.shop.repository.CartItemMapper;
@@ -12,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +22,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class CartService {
     private static final int DEFAULT_MAX_QUANTITY_PER_LINE = 99;
     private static final int HARD_MAX_QUANTITY_PER_LINE = 999;
@@ -47,7 +47,7 @@ public class CartService {
         return cartItemMapper.findById(cartItemId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void addToCart(Long userId, Long productId, Integer quantity, String selectedSpecs) {
         int normalizedQuantity = normalizeQuantity(quantity);
         Product product = requirePurchasableProductForUpdate(productId, normalizedQuantity);
@@ -83,7 +83,7 @@ public class CartService {
         cartItemMapper.insert(cartItem);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateQuantity(Long cartItemId, Integer quantity) {
         CartItem cartItemSnapshot = cartItemMapper.findById(cartItemId);
         if (cartItemSnapshot == null) {
@@ -108,12 +108,12 @@ public class CartService {
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void removeFromCart(Long cartItemId) {
         cartItemMapper.deleteById(cartItemId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void removeFromCart(List<Long> cartItemIds, Authentication authentication) {
         List<Long> normalizedIds = cartItemIds.stream()
                 .filter(id -> id != null && id > 0)
@@ -140,16 +140,30 @@ public class CartService {
         cartItemMapper.deleteByIds(normalizedIds);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void clearCart(Long userId) {
         cartItemMapper.deleteByUserId(userId);
     }
 
     public double calculateTotal(Long userId) {
+        return calculateTotalAmount(userId).doubleValue();
+    }
+
+    public BigDecimal calculateTotalAmount(Long userId) {
         List<CartItem> items = getCartItems(userId);
         return items.stream()
-                .mapToDouble(item -> item.getQuantity() * item.getPrice().doubleValue())
-                .sum();
+                .map(this::calculateLineAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateLineAmount(CartItem item) {
+        if (item == null || item.getPrice() == null || item.getQuantity() == null || item.getQuantity() <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return item.getPrice()
+                .multiply(BigDecimal.valueOf(item.getQuantity()))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private void refreshCartItemSnapshots(List<CartItem> items) {
