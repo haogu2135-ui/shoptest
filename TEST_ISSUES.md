@@ -3703,7 +3703,11 @@ Notes:
 - Area: Frontend / api/index.ts, utils/mobileUpdate.ts, pages/Cart.tsx
 - Severity: HIGH
 - Impact: 3 copies of identical utility to maintain
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL 2026-06-11 16:39 UTC
+- Current-source finding: The original `api/index.ts` / `utils/mobileUpdate.ts` locations no longer contain `isAuthExpiredError`, but the same auth-expired response predicate existed as separate page-local helpers in Cart, CartDrawer, and Checkout.
+- Resolution: Added shared `getApiErrorStatus(...)` and `isAuthExpiredError(...)` exports in `frontend/src/utils/apiError.ts`, then updated Cart, CartDrawer, and Checkout to import the shared helper instead of defining page-local response-status parsing.
+- Regression guard: `frontend/src/utils/apiError.test.ts` now covers numeric/string 401/403 classification. Cart, CartDrawer, Checkout, and auth redirect type/source guards were updated to assert the shared import and reject page-local `const isAuthExpiredError =` definitions.
+- Verification: `rg -n "const isAuthExpiredError\\s*=|isAuthExpiredError" frontend/src --glob '!**/*.test.*'` shows only the shared export plus imports/usages; focused frontend tests passed for `apiError`, `authRedirect`, `CartTypeSafety`, `CartDrawerTypeSafety`, and `CheckoutTypeSafety`.
 
 ### F3492: normalizeQuantity duplicated with different signatures in 3 files
 

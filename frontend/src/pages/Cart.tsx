@@ -40,7 +40,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
-import { getApiErrorMessage } from '../utils/apiError';
+import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Cart.css';
@@ -99,11 +99,6 @@ const isCartItemStockOut = (stock?: number | null) => {
   if (stock === undefined || stock === null) return false;
   const numeric = Number(stock);
   return Number.isFinite(numeric) && numeric <= 0;
-};
-
-const isAuthExpiredError = (error: unknown) => {
-  const status = Number((error as { response?: { status?: unknown } } | null | undefined)?.response?.status);
-  return status === 401 || status === 403;
 };
 
 const getLineTotal = (item: Pick<CartItem, 'price' | 'quantity'> | Pick<SavedForLaterItem, 'price' | 'quantity'>) =>

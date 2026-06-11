@@ -30,7 +30,7 @@ import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/media
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
-import { getApiErrorMessage } from '../utils/apiError';
+import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import './CartDrawer.css';
 import '../styles/mobile-page-contrast.css';
@@ -51,14 +51,6 @@ const expressPaymentIcon = (code: string) => {
   if (code === 'GOOGLE_PAY') return <GoogleOutlined />;
   if (code === 'STRIPE' || code === 'MX_LOCAL_CARD') return <CreditCardOutlined />;
   return <WalletOutlined />;
-};
-
-const isAuthExpiredError = (error: unknown) => {
-  const response = typeof error === 'object' && error !== null && 'response' in error
-    ? (error as { response?: { status?: unknown } }).response
-    : undefined;
-  const status = Number(response?.status);
-  return status === 401 || status === 403;
 };
 
 const applyCartImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {

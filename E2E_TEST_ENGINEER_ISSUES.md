@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 16:39 UTC TEST F3491 Auth Expiry Helper Dedup Handoff
+
+Source status:
+- TEST F3491 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL.
+
+Local verification already run:
+- `isAuthExpiredError(...)` is now exported from `frontend/src/utils/apiError.ts` together with `getApiErrorStatus(...)`.
+- Cart, CartDrawer, and Checkout import the shared helper instead of defining page-local 401/403 response checks.
+- Source search confirms production frontend has only the shared helper definition plus imports/usages.
+- Focused frontend tests passed for `apiError`, `authRedirect`, `CartTypeSafety`, `CartDrawerTypeSafety`, and `CheckoutTypeSafety`.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Cart auth expiry fallback | SOURCE_FIXED / STOREFRONT E2E OPTIONAL | In an authenticated cart session with an expired/invalid token, force cart load to return 401/403 and verify Cart falls back to guest cart handling without crashing. |
+| Mini-cart auth expiry fallback | SOURCE_FIXED / STOREFRONT E2E OPTIONAL | Open CartDrawer with an expired/invalid token and verify it falls back to guest cart handling or shows the existing localized fetch error path correctly. |
+| Checkout auth expiry handling | SOURCE_FIXED / CHECKOUT E2E OPTIONAL | Start checkout with an expired/invalid authenticated session and verify the existing auth-expired/session-clear/login redirect behavior is unchanged. |
+
 ## 2026-06-11 16:00 UTC TEST F3489 Cart Quantity Race Handoff
 
 Source status:

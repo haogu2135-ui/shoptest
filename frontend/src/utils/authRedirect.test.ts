@@ -3,6 +3,10 @@ import {
   getCurrentRelativeUrl,
   getPostLoginRedirectTarget,
 } from './authRedirect';
+import fs from 'fs';
+import path from 'path';
+
+const readPageSource = (fileName: string) => fs.readFileSync(path.resolve(__dirname, '../pages', fileName), 'utf8');
 
 describe('authRedirect', () => {
   it('builds login urls only for safe relative redirects', () => {
@@ -29,5 +33,17 @@ describe('authRedirect', () => {
     expect(getPostLoginRedirectTarget('?redirect=%2Fproducts%2500hidden')).toBe('/');
     expect(getPostLoginRedirectTarget('?redirect=%2Flogin')).toBe('/');
     expect(getPostLoginRedirectTarget('')).toBe('/');
+  });
+
+  it('does not duplicate auth-expired predicates across checkout, profile, and tracking pages', () => {
+    const checkoutSource = readPageSource('Checkout.tsx');
+    const profileSource = readPageSource('Profile.tsx');
+    const orderTrackingSource = readPageSource('OrderTracking.tsx');
+    const pageSources = [checkoutSource, profileSource, orderTrackingSource].join('\n');
+
+    expect(pageSources).not.toMatch(/const isAuthExpiredError\s*=/);
+    expect(profileSource).not.toContain('isAuthExpiredError');
+    expect(orderTrackingSource).not.toContain('isAuthExpiredError');
+    expect(checkoutSource).toContain("isAuthExpiredError } from '../utils/apiError'");
   });
 });

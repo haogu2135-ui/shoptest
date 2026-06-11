@@ -16,7 +16,7 @@ import { getGiftThreshold, getNearestCartBenefitTarget } from '../utils/cartBene
 import { clearCheckoutCartItemIds, readCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
-import { getApiErrorMessage } from '../utils/apiError';
+import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { saveGuestSupportContext } from '../utils/guestSupportContext';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
@@ -163,11 +163,6 @@ const getCheckoutErrorResponse = (error: unknown) => (
     ? (error as CheckoutErrorResponseLike).response
     : undefined
 );
-
-const isAuthExpiredError = (error: unknown) => {
-  const status = Number(getCheckoutErrorResponse(error)?.status);
-  return status === 401 || status === 403;
-};
 
 const clearExpiredCheckoutSession = () => {
   clearStoredAuthSession();

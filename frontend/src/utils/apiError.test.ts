@@ -1,4 +1,4 @@
-import { getApiErrorMessage } from './apiError';
+import { getApiErrorMessage, getApiErrorStatus, isAuthExpiredError } from './apiError';
 
 const apiError = (message: string) => ({ response: { data: { error: message } } });
 const rateLimitedError = (retryAfterSeconds?: number | string) => ({
@@ -35,5 +35,13 @@ describe('getApiErrorMessage', () => {
       .toBe('请求过于频繁，请在 7 秒后重试。');
     expect(getApiErrorMessage(rateLimitedError(), 'No se pudo pagar', 'es'))
       .toBe('Demasiadas solicitudes. Espera e inténtalo de nuevo.');
+  });
+
+  it('classifies auth-expired API responses from one shared helper', () => {
+    expect(getApiErrorStatus({ response: { status: '401' } })).toBe(401);
+    expect(isAuthExpiredError({ response: { status: 401 } })).toBe(true);
+    expect(isAuthExpiredError({ response: { status: '403' } })).toBe(true);
+    expect(isAuthExpiredError({ response: { status: 404 } })).toBe(false);
+    expect(isAuthExpiredError(new Error('network'))).toBe(false);
   });
 });

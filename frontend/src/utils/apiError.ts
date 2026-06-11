@@ -21,6 +21,16 @@ const hasChineseText = (value: string) => /[\u3400-\u9fff]/.test(value);
 const hasSpanishSignal = (value: string) =>
   /[áéíóúñü¿¡]/i.test(value) || /\b(el|la|los|las|un|una|pedido|pago|usuario|correo|contraseña|direccion|dirección|envio|envío|reembolso)\b/i.test(value);
 
+export const getApiErrorStatus = (error: unknown) => {
+  const status = Number((error as ApiErrorLike | null | undefined)?.response?.status);
+  return Number.isFinite(status) ? status : null;
+};
+
+export const isAuthExpiredError = (error: unknown) => {
+  const status = getApiErrorStatus(error);
+  return status === 401 || status === 403;
+};
+
 const normalizeRetryAfterSeconds = (error: ApiErrorLike) => {
   const headers = error.response?.headers;
   const headerValue = headers?.get?.('Retry-After')

@@ -9,7 +9,8 @@ describe('Checkout type-safety guards', () => {
     expect(source).toContain('type CheckoutFormValues = {');
     expect(source).toContain('status?: unknown;');
     expect(source).toContain('const getCheckoutErrorResponse = (error: unknown)');
-    expect(source).toContain('const isAuthExpiredError = (error: unknown)');
+    expect(source).toContain("import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';");
+    expect(source).not.toContain('const isAuthExpiredError = (error: unknown)');
     expect(source).toContain('const [form] = Form.useForm<CheckoutFormValues>();');
     expect(source).toContain('const buildAddress = (values: CheckoutFormValues)');
     expect(source).toContain('const handleSubmit = async (values: CheckoutFormValues)');
