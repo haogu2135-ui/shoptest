@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 05:11 UTC QA SEC-NEW-004 Admin Auth Source Handoff
+
+Source status:
+- QA SEC-NEW-004 is closed as WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED.
+- The reported `adminJwtFilter` implementation is not present in current source.
+- Current admin authorization uses the shared `JwtAuthenticationFilter` plus `/admin/**` `ROLE_ADMIN` authorization.
+- The JWT filter accepts only `Authorization: Bearer ...` and does not read cookies, `Sec-WebSocket-Protocol`, `admin_token`, or `adminToken`.
+
+Local verification already run:
+- Source inspection confirmed the stale multi-source admin auth path is absent.
+- Added `AdminAuthenticationSourceContractTest` to guard the single Bearer-header contract.
+- `rg -n "adminJwtFilter|Sec-WebSocket-Protocol|admin_token|adminToken|getCookies\(\)" src/main/java/com/example/shop/config/SecurityConfig.java src/main/java/com/example/shop/security/JwtAuthenticationFilter.java` returned no matches.
+- `git diff --check` passed for the updated issue handoff files and guard.
+- `./mvnw -q -Dtest=AdminAuthenticationSourceContractTest test` passed, and generated `target/` output was removed after the run.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin authentication source priority | CURRENT_SOURCE_NON_ISSUE / NO MANUAL E2E REQUIRED | Keep `AdminAuthenticationSourceContractTest` in CI. Optional API smoke can confirm an admin request with a valid Bearer token succeeds and an invalid Bearer token fails; no browser/device E2E is required for the stale multi-source path. |
+
 ## 2026-06-11 05:01 UTC QA SEC-NEW-003 Stale Stack Trace Leak Handoff
 
 Source status:
