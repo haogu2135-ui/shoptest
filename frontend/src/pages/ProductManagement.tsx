@@ -247,6 +247,23 @@ type ImportErrorCopy = {
   row: (rowNumber: number) => string;
 };
 
+type FormValidationError = {
+  errorFields?: unknown[];
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isFormValidationError = (error: unknown): error is FormValidationError => (
+  isRecord(error) && Array.isArray(error.errorFields)
+);
+
+const getErrorResponseData = (error: unknown): unknown => {
+  if (!isRecord(error) || !isRecord(error.response)) return undefined;
+  return error.response.data;
+};
+
 type ImportErrorReportCopy = {
   importId: string;
   filename: string;
@@ -408,8 +425,8 @@ const downloadImportErrorReport = (
   URL.revokeObjectURL(url);
 };
 
-const isProductImportResultPayload = (value: any) => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+const isProductImportResultPayload = (value: unknown): value is Partial<ProductImportResult> => {
+  if (!isRecord(value)) {
     return false;
   }
   const status = typeof value.status === 'string' ? value.status : '';
@@ -419,8 +436,8 @@ const isProductImportResultPayload = (value: any) => {
     || Array.isArray(value.rowErrors);
 };
 
-const productImportResultFromError = (error: any): ProductImportResult | null => {
-  const data = error?.response?.data;
+const productImportResultFromError = (error: unknown): ProductImportResult | null => {
+  const data = getErrorResponseData(error);
   if (!isProductImportResultPayload(data)) {
     return null;
   }
@@ -435,10 +452,10 @@ const productImportResultFromError = (error: any): ProductImportResult | null =>
   };
 };
 
-const importErrorMessageFromError = (error: any, fallback: string, language: ReturnType<typeof useLanguage>['language']) => {
-  const data = error?.response?.data;
-  if (Array.isArray(data?.errors) && data.errors.length > 0) {
-    return data.errors.join('\n');
+const importErrorMessageFromError = (error: unknown, fallback: string, language: ReturnType<typeof useLanguage>['language']) => {
+  const data = getErrorResponseData(error);
+  if (isRecord(data) && Array.isArray(data.errors) && data.errors.length > 0) {
+    return data.errors.map((messageText) => String(messageText || '').trim()).filter(Boolean).join('\n');
   }
   return getApiErrorMessage(error, fallback, language);
 };
@@ -681,7 +698,7 @@ const ProductManagement: React.FC = () => {
       if (productPageData.size !== productPageSize) {
         setProductPageSize(productPageData.size);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchProductsFailed'), language));
     } finally {
       setLoading(false);
@@ -693,7 +710,7 @@ const ProductManagement: React.FC = () => {
       const response = await adminApi.getProductCategories();
       setCategories(response.data);
       setCategoryOptionsTruncated(String(response.headers?.['x-admin-list-truncated'] || '').toLowerCase() === 'true');
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchCategoriesFailed'), language));
     }
   }, [language, t]);
@@ -703,7 +720,7 @@ const ProductManagement: React.FC = () => {
       const response = await adminApi.getProductBrands({ activeOnly: false });
       setBrands(response.data);
       setBrandOptionsTruncated(String(response.headers?.['x-admin-list-truncated'] || '').toLowerCase() === 'true');
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchBrandsFailed'), language));
     }
   }, [language, t]);
@@ -907,8 +924,8 @@ const ProductManagement: React.FC = () => {
       setUrlImportSubmitting(true);
       const response = await adminApi.importProductFromUrl(values.importUrl);
       setUrlImportPreview(response.data || null);
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.productAdmin.urlImportFailed'), language));
     } finally {
       setUrlImportSubmitting(false);
@@ -999,7 +1016,7 @@ const ProductManagement: React.FC = () => {
       await adminApi.deleteProduct(id);
       message.success(t('pages.productAdmin.deleted'));
       fetchProducts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('messages.deleteFailed'), language));
     }
   };
@@ -1013,7 +1030,7 @@ const ProductManagement: React.FC = () => {
       await adminApi.updateProduct(record.id, { ...record, isFeatured: !record.isFeatured });
       message.success(record.isFeatured ? t('pages.productAdmin.unfeatured') : t('pages.productAdmin.featured'));
       fetchProducts();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
@@ -1027,7 +1044,7 @@ const ProductManagement: React.FC = () => {
       await adminApi.updateProductStatus(record.id, status);
       message.success(t('messages.updateSuccess'));
       fetchProducts();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     }
   };
@@ -1047,7 +1064,7 @@ const ProductManagement: React.FC = () => {
       message.success(t('pages.productAdmin.batchUpdateResult', res.data));
       setSelectedProductIds([]);
       fetchProducts();
-    } catch (err: any) {
+    } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setBatchStatusUpdating(null);
@@ -1222,8 +1239,8 @@ const ProductManagement: React.FC = () => {
       setImagePreviewUrl('');
       form.resetFields();
       fetchProducts();
-    } catch (error: any) {
-      if (error?.errorFields) return;
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
       setProductSubmitting(false);
@@ -1302,7 +1319,7 @@ const ProductManagement: React.FC = () => {
       'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping',
       'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
-    const rows = filteredProducts.map((product: any) => {
+    const rows = filteredProducts.map((product: Product) => {
       return [
         product.id,
         product.name,
@@ -1567,7 +1584,7 @@ const ProductManagement: React.FC = () => {
               fetchImportHistory();
             }
             fetchProducts();
-          } catch (error: any) {
+          } catch (error: unknown) {
             const result = productImportResultFromError(error);
             if (result) {
               showImportProblemModal(
@@ -1585,7 +1602,7 @@ const ProductManagement: React.FC = () => {
           }
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       const result = productImportResultFromError(error);
       if (result) {
         showImportProblemModal(
@@ -1708,7 +1725,7 @@ const ProductManagement: React.FC = () => {
       title: t('pages.productAdmin.price'),
       key: 'price',
       width: 140,
-      render: (_: any, record: Product) => renderPrice(record),
+      render: (_: unknown, record: Product) => renderPrice(record),
     },
     {
       title: t('pages.productAdmin.stock'),
@@ -1721,7 +1738,7 @@ const ProductManagement: React.FC = () => {
       title: t('pages.productAdmin.shipping'),
       key: 'shippingRule',
       width: 150,
-      render: (_: any, record: Product) => (
+      render: (_: unknown, record: Product) => (
         <Space direction="vertical" size={0}>
           {record.freeShipping ? <Tag color="green">{t('pages.productAdmin.freeShipping')}</Tag> : <Tag>{t('pages.productAdmin.standardShipping')}</Tag>}
           {record.freeShippingThreshold ? <Text type="secondary" style={{ fontSize: 12 }}>{t('pages.productAdmin.freeOver', { amount: formatMoney(record.freeShippingThreshold) })}</Text> : null}
@@ -1756,7 +1773,7 @@ const ProductManagement: React.FC = () => {
       title: t('pages.productAdmin.listingQualityColumn'),
       key: 'listingQuality',
       width: 180,
-      render: (_: any, record: Product) => {
+      render: (_: unknown, record: Product) => {
         const issues = getListingQualityIssues(record);
         if (issues.length === 0) {
           return <Tag color="green">{t('pages.productAdmin.listingReady')}</Tag>;
@@ -1775,7 +1792,7 @@ const ProductManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 340,
-      render: (_: any, record: Product) => {
+      render: (_: unknown, record: Product) => {
         const productName = record.name || `#${record.id}`;
         const featureActionText = record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured');
         const featureActionLabel = `${featureActionText}: ${productName}`;

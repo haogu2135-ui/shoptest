@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-11 00:00 UTC QA F3515 Product Management Catch/Render Type-Safety Handoff
+
+Source status:
+- QA F3515 remains OPEN overall, and broader Product Management utility/form/variant/payload `any` usage still remains.
+- This pass partially reconciles the current-source Product Management catch/render scope only.
+- `frontend/src/pages/ProductManagement.tsx` now uses `unknown` catch bindings plus typed form-validation/API-error helpers for admin product load/category/brand, URL import, delete, featured/status/batch status, product submit, and import preview/apply failures; product export rows and product table render placeholders no longer use broad `any`.
+- Runtime admin product behavior should be unchanged.
+
+Local verification already run:
+- Staged source search for Product Management catch/import-helper/render/export-row broad `any` patterns returned no matches.
+- Added `ProductManagementCatchTypeSafety.test.ts` source guard for the typed failure-path/render contract.
+- `git diff --check` passed for the staged update.
+- Jest/TypeScript were not rerun because `frontend/node_modules` remains intentionally removed after workspace cleanup.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin product management smoke | PARTIAL_RECONCILED_SOURCE_FIXED / ADMIN E2E OPTIONAL | If product admin coverage is in the regression pass, verify product list/category/brand loading failures, URL import validation/failure/success, product create/edit validation and submit failures, delete, featured toggle, single/batch status changes, CSV import preview/apply failure modals, export CSV, permission-gated controls, and localized failure toasts. No dedicated E2E is required for this type-safety-only partial reconciliation. |
+
 ## 2026-06-10 23:55 UTC QA F3515 Login Type-Safety Reconciliation Handoff
 
 Source status:
