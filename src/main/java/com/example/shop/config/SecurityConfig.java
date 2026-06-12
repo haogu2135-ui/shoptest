@@ -64,7 +64,7 @@ public class SecurityConfig {
                             .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
             .authorizeRequests()
             .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-            .antMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+            .antMatchers(HttpMethod.GET, "/actuator/health", "/actuator/info").permitAll()
             .antMatchers(HttpMethod.GET, "/announcements/active").permitAll()
             .antMatchers(HttpMethod.GET, "/app/config").permitAll()
             .antMatchers(HttpMethod.GET, "/search").permitAll()

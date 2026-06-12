@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 05:53 UTC QA F959 Actuator Health Exposure
+
+Source status:
+- QA F959 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `SecurityConfig` anonymously permits only exact aggregate `GET /actuator/health` plus `GET /actuator/info`.
+- Anonymous `/actuator/health/**` component subpaths are no longer in the security permit rule and should require authentication.
+- Base runtime config defaults `management.endpoint.health.show-details` to `never`.
+- `./mvnw -q -Dtest=ActuatorHealthExposureContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Public aggregate health | SOURCE_FIXED / OPS API E2E PENDING | Without authentication, call exact `GET /actuator/health` and verify it remains reachable for load-balancer/smoke probes and does not include component detail keys such as `components`, `db`, `redis`, or disk-space internals. |
+| Public actuator info | SOURCE_FIXED / OPS API E2E PENDING | Without authentication, call exact `GET /actuator/info` and verify the response contains only the intended app metadata. |
+| Component health subpaths | SOURCE_FIXED / SECURITY API E2E PENDING | Without authentication, call `/actuator/health/db`, `/actuator/health/redis`, and another `/actuator/health/{component}` path. Verify 401/403 and no infrastructure detail payload. |
+
 ## 2026-06-12 05:30 UTC QA F956 Stock Reservation Race
 
 Source status:
