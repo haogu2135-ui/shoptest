@@ -5090,8 +5090,11 @@ Notes:
 - File: `src/main/resources/mapper/OrderMapper.xml` (lines 388-405)
 - Severity: LOW
 - Description: `findReviewableOrdersByUserAndProduct` uses a correlated `NOT EXISTS` subquery against the `reviews` table. Without a composite index on `reviews(order_id, product_id, user_id)`, this query could be slow.
-- Status: OPEN
+- Status: NOT_ISSUE / VERIFIED / REGRESSION_GUARD_ADDED / DB_E2E_PENDING (2026-06-12 00:45 UTC)
 - Expected fix direction: Verify that a composite index on `reviews(order_id, product_id, user_id)` exists.
+- Resolution: No new index is required. The `NOT EXISTS` branch constrains `reviews.product_id`, `reviews.user_id`, and `reviews.order_id` with equality predicates, and the existing `uk_reviews_product_user_order (product_id, user_id, order_id)` composite unique index in the baseline schema and Flyway upgrade covers that lookup. Adding a second `(order_id, product_id, user_id)` index would duplicate write overhead without improving this three-column equality lookup.
+- Regression guard: Added `ReviewableOrdersIndexContractTest`, which verifies the reviewable-orders query predicates and the baseline/Flyway/startup schema coverage for the composite review index.
+- Verification: `./mvnw -q -Dtest=ReviewableOrdersIndexContractTest test` passed.
 
 ---
 

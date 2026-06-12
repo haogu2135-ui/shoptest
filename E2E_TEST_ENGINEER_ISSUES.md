@@ -4,6 +4,21 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 00:45 UTC TEST F2753 Reviewable Orders Review Index Verification
+
+Source status:
+- TEST F2753 / QA F2500 NOT_ISSUE / VERIFIED / REGRESSION_GUARD_ADDED / DB_E2E_PENDING.
+
+Local verification already run:
+- `findReviewableOrdersByUserAndProduct` constrains `reviews.order_id`, `reviews.product_id`, and `reviews.user_id` with equality predicates.
+- Baseline schema and Flyway migration include `uk_reviews_product_user_order (product_id, user_id, order_id)`, which covers the three-column equality lookup.
+- `./mvnw -q -Dtest=ReviewableOrdersIndexContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Staging review index check | SOURCE_VERIFIED / DB E2E PENDING | Inspect staging/prod schema and confirm `reviews` has `uk_reviews_product_user_order` or an equivalent composite index covering `product_id`, `user_id`, and `order_id`. |
+| Reviewable orders smoke | SOURCE_VERIFIED / DB E2E PENDING | With a completed order and existing review for the same product/user/order, confirm the product reviewable-orders endpoint excludes that order without slow-query warnings. |
+
 ## 2026-06-12 00:39 UTC TEST F2752 Guest Order Email LIKE Escape Handoff
 
 Source status:
