@@ -15894,7 +15894,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `src/main/java/com/example/shop/controller/ReviewController.java` (lines 33, 45, 52)
 - **Detail**: `@PathVariable Long productId` has no validation annotation. A null or non-positive productId will cause an unhandled error downstream rather than a clean 400 response.
 - **Suggested fix**: Add `@Positive` or `@Min(1)` validation annotation on `productId`.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 00:19 UTC)
+- **Resolution**: `ReviewController` now enables method validation with `@Validated` and annotates all three review `productId` path variables with `@Positive`, covering public review listing, reviewable orders, and review creation.
+- **Regression guard**: Added `ReviewControllerProductIdValidationContractTest`, which requires `@Validated`, the `@Positive` import, and exactly three `@Positive @PathVariable Long productId` declarations.
+- **Verification**: `./mvnw -q -Dtest=ReviewControllerProductIdValidationContractTest test` passed.
 
 ### F2498: [LOW] Search endpoint has no rate limiting
 - **Component**: Backend — SearchController

@@ -11,22 +11,25 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.constraints.Positive;
 import java.util.Map;
 import java.util.List;
 
 @RestController
 @RequestMapping("/reviews")
 @RequiredArgsConstructor
+@Validated
 public class ReviewController {
 
     private final ReviewService reviewService;
     private final ReviewImageService reviewImageService;
 
     @GetMapping("/product/{productId}")
-    public ResponseEntity<Map<String, Object>> getProductReviews(@PathVariable Long productId, Authentication authentication) {
+    public ResponseEntity<Map<String, Object>> getProductReviews(@Positive @PathVariable Long productId, Authentication authentication) {
         Long currentUserId = null;
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
             currentUserId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
@@ -38,7 +41,7 @@ public class ReviewController {
     }
 
     @GetMapping("/product/{productId}/reviewable-orders")
-    public ResponseEntity<?> getReviewableOrders(@PathVariable Long productId, Authentication authentication) {
+    public ResponseEntity<?> getReviewableOrders(@Positive @PathVariable Long productId, Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         List<ReviewableOrderResponse> orders = reviewService.getReviewableOrders(productId, userDetails.getId());
         return ResponseEntity.ok(orders);
@@ -46,7 +49,7 @@ public class ReviewController {
 
     @PostMapping("/product/{productId}")
     public ResponseEntity<?> addReview(
-            @PathVariable Long productId,
+            @Positive @PathVariable Long productId,
             @RequestBody(required = false) Map<String, Object> request,
             Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);

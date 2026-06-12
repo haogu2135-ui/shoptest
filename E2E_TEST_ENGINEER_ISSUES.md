@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 00:19 UTC TEST F2750 Review Product ID Validation Handoff
+
+Source status:
+- TEST F2750 / QA F2497 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `ReviewController` now has class-level `@Validated`.
+- All three review product routes annotate `productId` as `@Positive @PathVariable Long productId`.
+- `./mvnw -q -Dtest=ReviewControllerProductIdValidationContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Public reviews invalid product ID | SOURCE_FIXED / REVIEWS E2E PENDING | Request `GET /reviews/product/0` and verify the API returns a clean 400 response instead of calling review services. |
+| Reviewable orders invalid product ID | SOURCE_FIXED / REVIEWS E2E PENDING | Authenticated request to `GET /reviews/product/0/reviewable-orders` should return 400 before service lookup. |
+| Add review invalid product ID | SOURCE_FIXED / REVIEWS E2E PENDING | Authenticated `POST /reviews/product/0` with a valid payload should return 400 before creating a review. |
+
 ## 2026-06-12 00:11 UTC TEST F2749 Category Tree Depth Guard Handoff
 
 Source status:
