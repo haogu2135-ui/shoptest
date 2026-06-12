@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 00:07 UTC TEST F2748 Account Login Failure Key Length Handoff
+
+Source status:
+- TEST F2748 / QA F2495 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `TokenBlacklistService.normalizeAccountKey(...)` now enforces `MAX_ACCOUNT_KEY_CHARS = 255`.
+- Blank or overlong normalized usernames return `null`, so account Redis key construction is skipped for unsafe account keys.
+- IP login failure counters still run for the request path.
+- `./mvnw -q -Dtest=TokenBlacklistAccountKeyLengthContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Normal failed login account key | SOURCE_FIXED / AUTH E2E PENDING | Submit a failed login with a normal email/username and verify `login:account:<normalized>` is created with a bounded key and positive TTL. |
+| Overlong failed login username | SOURCE_FIXED / AUTH E2E PENDING | Submit a failed login with a username longer than 255 normalized characters and verify no overlong `login:account:*` Redis key is created. |
+| Overlong username IP counter | SOURCE_FIXED / AUTH E2E PENDING | For the same overlong failed login, verify `login:ip:<client-ip>` still increments and preserves rate-limit protection. |
+
 ## 2026-06-12 00:01 UTC TEST F2747 Login Failure Redis TTL Handoff
 
 Source status:

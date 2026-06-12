@@ -32,6 +32,7 @@ public class TokenBlacklistService {
     private static final long REFRESH_TOKEN_EXPIRE_DAYS = 7;
     private static final int MAX_LOGIN_ATTEMPTS_PER_IP = 5;
     private static final int MAX_LOGIN_ATTEMPTS_PER_ACCOUNT = 10;
+    private static final int MAX_ACCOUNT_KEY_CHARS = 255;
     private static final long IP_LOCKOUT_MINUTES = 15;
     private static final long ACCOUNT_LOCKOUT_MINUTES = 30;
     private static final int DEFAULT_LOGIN_FAILURE_SCAN_COUNT = 500;
@@ -268,7 +269,10 @@ public class TokenBlacklistService {
                 .replaceAll("\\s+", " ")
                 .trim()
                 .toLowerCase();
-        return normalized.isBlank() ? null : normalized;
+        if (normalized.isBlank() || normalized.length() > MAX_ACCOUNT_KEY_CHARS) {
+            return null;
+        }
+        return normalized;
     }
 
     private int parseCounter(String value) {

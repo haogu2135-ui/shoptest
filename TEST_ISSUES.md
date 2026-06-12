@@ -5030,8 +5030,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/TokenBlacklistService.java` (lines 326-335)
 - Severity: LOW
 - Description: An attacker could submit an extremely long username that gets stored as a Redis key, consuming memory.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 00:07 UTC)
 - Expected fix direction: Add a length check (e.g., max 255 characters) before constructing Redis keys.
+- Resolution: `TokenBlacklistService.normalizeAccountKey(...)` now enforces `MAX_ACCOUNT_KEY_CHARS = 255`; blank or overlong normalized usernames return `null`, so `recordLoginFailure(...)` skips account Redis key construction while the IP failure counter still protects the request path.
+- Regression guard: Added `TokenBlacklistAccountKeyLengthContractTest`, which requires the 255-character account key bound, verifies overlong normalized usernames are rejected before Redis key construction, and confirms `recordLoginFailure(...)` only builds account keys from bounded normalized values.
+- Verification: `./mvnw -q -Dtest=TokenBlacklistAccountKeyLengthContractTest test` passed.
 
 ### F2749: LOW — Category tree recursion has no depth guard
 
