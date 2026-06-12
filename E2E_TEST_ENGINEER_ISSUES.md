@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 05:30 UTC QA F956 Stock Reservation Race
+
+Source status:
+- QA F956 WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / E2E_PENDING.
+
+Local verification already run:
+- Member and guest checkout methods are rollback-aware transactional entry points before stock reservation.
+- Reservation paths bulk-load distinct product rows through `ProductRepository.findAllByIdForUpdate(...)`; the repository method is guarded by `@Lock(LockModeType.PESSIMISTIC_WRITE)`.
+- Stock is checked from the locked product/variant state before decrementing; `reserveProductStock(...)` mutates the locked entity only and does not call `productRepository.save(...)`.
+- Touched products are de-duplicated in `reservedProducts` and saved once after checkout line validation.
+- `./mvnw -q -Dtest=OrderStockReservationRaceContractTest,OrderStockReservationServiceTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Concurrent member checkout | SOURCE_COVERED / CHECKOUT E2E PENDING | With a low-stock simple product, fire two authenticated checkout attempts for overlapping quantity at nearly the same time and verify only available stock is reserved, the losing checkout receives an insufficient-stock error, and product stock never goes negative. |
+| Concurrent guest checkout | SOURCE_COVERED / GUEST CHECKOUT E2E PENDING | Repeat the same low-stock race through guest checkout and confirm at most one order reserves the final units. |
+| Variant stock race | SOURCE_COVERED / VARIANT CHECKOUT E2E PENDING | Race two checkouts for the same SKU/selected specs and verify variant stock remains non-negative while simple product stock is not created for variant-only products. |
+
 ## 2026-06-12 05:16 UTC QA SEC-NEW-001 Dependency Archive Exposure
 
 Source status:

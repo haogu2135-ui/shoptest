@@ -28,6 +28,10 @@ class OrderStockReservationRaceContractTest {
                 "authenticated checkout should enter the stock-reserving path");
         assertTrue(orderService.contains("prepareGuestCheckoutItems(guestUserId, request.getItems(), true)"),
                 "guest checkout should enter the stock-reserving path");
+        assertTrue(orderService.contains("@Transactional(rollbackFor = Exception.class)\n    public Order checkout(CheckoutRequest request)"),
+                "authenticated checkout stock reservation should run inside a rollback-aware transaction");
+        assertTrue(orderService.contains("@Transactional(rollbackFor = Exception.class)\n    public Order guestCheckout(GuestCheckoutRequest request)"),
+                "guest checkout stock reservation should run inside a rollback-aware transaction");
         assertTrue(orderService.contains("loadProductsForCartItems(selectedItems, reserveStock)"),
                 "cart checkout reservation should load products through the reserve-aware loader");
         assertTrue(orderService.contains("productRepository.findAllByIdForUpdate(productIds)"),
@@ -42,6 +46,28 @@ class OrderStockReservationRaceContractTest {
                 "product repository should declare pessimistic row locking for checkout reservations");
         assertTrue(productRepository.contains("List<Product> findAllByIdForUpdate(@Param(\"ids\") List<Long> ids)"),
                 "checkout reservation should use a dedicated locked product lookup");
+
+        String memberCheckout = methodBlock(orderService,
+                "private CheckoutItemsSelection prepareCheckoutItems(Long userId, List<Long> cartItemIds, boolean reserveStock)");
+        String guestCheckout = methodBlock(orderService,
+                "private CheckoutItemsSelection prepareGuestCheckoutItems(Long userId, List<GuestCheckoutItemRequest> items, boolean reserveStock)");
+        String reserveProductStock = methodBlock(orderService,
+                "private void reserveProductStock(Product product, String selectedSpecs, int quantity)");
+
+        assertOccursBefore(
+                memberCheckout,
+                "if (availableStock == null || availableStock < item.getQuantity())",
+                "reserveProductStock(product, item.getSelectedSpecs(), item.getQuantity())",
+                "member checkout should reject insufficient locked stock before decrementing");
+        assertOccursBefore(
+                guestCheckout,
+                "if (availableStock == null || availableStock < normalizedQuantity)",
+                "reserveProductStock(product, normalizedSpecs, normalizedQuantity)",
+                "guest checkout should reject insufficient locked stock before decrementing");
+        assertFalse(reserveProductStock.contains("productRepository.save("),
+                "stock deduction helper should mutate only the already-locked entity");
+        assertTrue(orderService.contains("saveReservedProducts(reservedProducts);"),
+                "touched products should be saved after checkout line validation, not by an unlocked per-line helper");
     }
 
     private String readAllJavaSource() throws IOException {
@@ -58,5 +84,33 @@ class OrderStockReservationRaceContractTest {
                     });
         }
         return builder.toString();
+    }
+
+    private static String methodBlock(String source, String signature) {
+        int start = source.indexOf(signature);
+        assertTrue(start >= 0, "Missing method signature: " + signature);
+        int openBrace = source.indexOf('{', start);
+        assertTrue(openBrace >= 0, "Missing method body: " + signature);
+        int depth = 0;
+        for (int index = openBrace; index < source.length(); index++) {
+            char ch = source.charAt(index);
+            if (ch == '{') {
+                depth++;
+            } else if (ch == '}') {
+                depth--;
+                if (depth == 0) {
+                    return source.substring(start, index + 1);
+                }
+            }
+        }
+        throw new AssertionError("Unterminated method body: " + signature);
+    }
+
+    private static void assertOccursBefore(String source, String first, String second, String message) {
+        int firstIndex = source.indexOf(first);
+        int secondIndex = source.indexOf(second);
+        assertTrue(firstIndex >= 0, "Missing first source marker: " + first);
+        assertTrue(secondIndex >= 0, "Missing second source marker: " + second);
+        assertTrue(firstIndex < secondIndex, message);
     }
 }
