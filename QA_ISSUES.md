@@ -16005,7 +16005,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Backend — AdminUserController
 - **Detail**: The admin user list and detail endpoints return the full User entity including the password hash field. While passwords are hashed, exposing them increases attack surface.
 - **Impact**: Password hashes exposed to admin users, potential offline cracking.
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_HARDENED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 04:02 UTC)
+- **Resolution**: `User.password` was already protected with Jackson `WRITE_ONLY`, and `/admin/users/export` already omitted password/hash columns. This round hardens the admin user JSON response surface by mapping admin user list, role-update, and profile-update responses through `AdminUserResponse`, a dedicated DTO that does not declare or read password material.
+- **Regression guard**: Added `AdminUserPasswordExposureContractTest` to verify `User.password` remains non-serialized, `AdminUserResponse` has no password field and never calls `getPassword()`, admin user JSON responses map through the safe DTO, and CSV export does not include or read password/hash values.
+- **Verification**: `./mvnw -q -Dtest=AdminUserPasswordExposureContractTest test` passed.
 
 ### F2797: [MEDIUM] Order Cancel Does Not Validate Order Status
 - **Component**: Backend — OrderService.cancelOrder

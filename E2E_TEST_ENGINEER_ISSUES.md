@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 04:02 UTC QA F2796 Admin User Password Exposure
+
+Source status:
+- QA F2796 FIXED / SOURCE_HARDENED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `User.password` remains Jackson `WRITE_ONLY`, so legacy `User` serialization does not emit password hashes.
+- Admin user list, role-update, and profile-update JSON responses map through `AdminUserResponse`, which has no password field and does not call `getPassword()`.
+- `/admin/users/export` CSV headers/data omit password/hash columns and values.
+- `./mvnw -q -Dtest=AdminUserPasswordExposureContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin user list payload | SOURCE_HARDENED / SECURITY API E2E PENDING | Log in as an admin, call `/admin/users` with fixture users that have encoded passwords, and verify each item omits `password`, `passwordHash`, and the encoded hash value. |
+| Admin user mutation responses | SOURCE_HARDENED / SECURITY API E2E PENDING | Exercise admin user status/address update and role-code assignment; verify successful response JSON omits `password`, `passwordHash`, and encoded hash values. |
+| Admin user CSV export | SOURCE_HARDENED / SECURITY API E2E PENDING | Call `/admin/users/export` and verify CSV headers/data contain only allowed user columns and no password/hash material. |
+
 ## 2026-06-12 03:53 UTC QA F2795 JWT Pre-Expiry Refresh
 
 Source status:

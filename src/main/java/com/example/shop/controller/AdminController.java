@@ -4,6 +4,7 @@ import com.example.shop.dto.CouponGrantRequest;
 import com.example.shop.dto.AdminOrderBatchShipResponse;
 import com.example.shop.dto.AdminOrderResponse;
 import com.example.shop.dto.AdminReviewResponse;
+import com.example.shop.dto.AdminUserResponse;
 import com.example.shop.dto.CouponAdminSummaryResponse;
 import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
@@ -861,7 +862,7 @@ public class AdminController {
             User updated = userService.findById(id);
             auditLogService.record("USER_ROLE_ASSIGN", "SUCCESS", authentication, "USER", id, request,
                     "User role assigned", userRoleChangeMetadata(before, updated));
-            return ResponseEntity.ok(updated);
+            return ResponseEntity.ok(AdminUserResponse.from(updated));
         } catch (IllegalArgumentException e) {
             auditLogService.record("USER_ROLE_ASSIGN", "FAILURE", authentication, "USER", id, request,
                     e.getMessage(), "roleCode=" + body.get("roleCode"));
@@ -991,7 +992,7 @@ public class AdminController {
         String action = user.getRole() != null ? "USER_ROLE_UPDATE" : user.getStatus() != null ? "USER_STATUS_UPDATE" : "USER_UPDATE";
         auditLogService.record(action, "SUCCESS", authentication, "USER", id, request,
                 userUpdateMessage(action), userChangeMetadata(before, updated == null ? existing : updated));
-        return ResponseEntity.ok(existing);
+        return ResponseEntity.ok(AdminUserResponse.from(updated == null ? existing : updated));
     }
 
     @DeleteMapping("/users/{id}")
@@ -2332,7 +2333,10 @@ public class AdminController {
         if (totalPages > 0 && safePage > totalPages) {
             safePage = totalPages;
         }
-        List<User> users = userService.searchPage(safeKeyword, safeRole, safeStatus, safePage, safeSize);
+        List<AdminUserResponse> users = userService.searchPage(safeKeyword, safeRole, safeStatus, safePage, safeSize)
+                .stream()
+                .map(AdminUserResponse::from)
+                .collect(Collectors.toList());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("items", users);
         response.put("total", total);
