@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 05:16 UTC QA SEC-NEW-001 Dependency Archive Exposure
+
+Source status:
+- QA SEC-NEW-001 WONTFIX / CURRENT_SOURCE_NON_ISSUE / REGRESSION_GUARD_ADDED / E2E_OPTIONAL.
+
+Local verification already run:
+- Root/module POMs do not declare Janino, `commons-compress`, `junrar`, `sevenzipjbinding`, `zip4j`, or `unrar`.
+- Production Java source contains no archive parser markers such as `commons-compress`, `junrar`, `zip4j`, `sevenzip`, or archive input stream APIs.
+- `./mvnw -q -Dtest=DependencyArchiveExposureContractTest test` passed.
+- `./mvnw -q -DskipTests dependency:tree -Dincludes=org.codehaus.janino,org.apache.commons:commons-compress,com.github.junrar:junrar,net.sf.sevenzipjbinding:sevenzipjbinding,net.lingala.zip4j:zip4j` passed with no matching dependency output.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Dependency audit | SOURCE_NON_ISSUE / CI AUDIT OPTIONAL | On the normal CI worker, run the same targeted dependency tree command and confirm there is still no Janino/archive parser output. |
+| Build guard | REGRESSION_GUARD_ADDED / CI OPTIONAL | Include `DependencyArchiveExposureContractTest` in backend regression to prevent reintroducing checked-in Janino/archive parser dependencies without a new reviewed use case. |
+| Runtime archive exposure | NO CURRENT RUNTIME FLOW / E2E NOT REQUIRED | No browser/device flow is required unless a future feature introduces archive upload/import support. |
+
 ## 2026-06-12 05:01 UTC QA F1767 Frontend Jest Optional Chaining
 
 Source status:
