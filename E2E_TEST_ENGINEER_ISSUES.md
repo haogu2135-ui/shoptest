@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 00:25 UTC TEST F2751 Search Endpoint Rate Limit Handoff
+
+Source status:
+- TEST F2751 / QA F2498 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `GET /search` now uses a dedicated `search:catalog` rate-limit bucket in `RateLimitService`.
+- The bucket is controlled by `traffic.rate-limit.search-per-minute` with default `30`.
+- The config is exposed in `application.properties`, Config Center defaults, and `deploy/backend.env.example`.
+- `./mvnw -q -Dtest=SearchRateLimitContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Search burst limit | SOURCE_FIXED / SEARCH E2E PENDING | Temporarily lower `traffic.rate-limit.search-per-minute`, burst `GET /search?q=...`, and verify the over-limit response is 429 with rate-limit headers. |
+| Search still works under limit | SOURCE_FIXED / SEARCH E2E PENDING | With the same low limit, send requests below the threshold and verify normal search results still return. |
+| Authenticated search uses same endpoint bucket | SOURCE_FIXED / SEARCH E2E OPTIONAL | Repeat the burst while authenticated and verify requests are still constrained by the dedicated `search:catalog` endpoint bucket per client. |
+
 ## 2026-06-12 00:19 UTC TEST F2750 Review Product ID Validation Handoff
 
 Source status:

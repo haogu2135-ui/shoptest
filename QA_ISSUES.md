@@ -15904,7 +15904,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `src/main/java/com/example/shop/controller/SearchController.java` (lines 23-60)
 - **Detail**: The `/search` endpoint has no rate limiting. An automated scraper could make unlimited search requests, enabling product catalog enumeration.
 - **Suggested fix**: Add rate limiting at the controller or gateway level.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 00:25 UTC)
+- **Resolution**: `RateLimitService` now assigns `GET /search` to a dedicated `search:catalog` endpoint bucket controlled by `traffic.rate-limit.search-per-minute` with a default of 30/minute, while the global public/auth/admin rate limits continue to apply.
+- **Regression guard**: Added `SearchRateLimitContractTest`, which requires the dedicated search config, verifies `GET /search` is checked before non-POST requests return no endpoint limit, and confirms application/config-center/env defaults are exposed.
+- **Verification**: `./mvnw -q -Dtest=SearchRateLimitContractTest test` passed.
 
 ### F2499: [LOW] Guest email LIKE pattern does not escape wildcards
 - **Component**: Backend — OrderMapper

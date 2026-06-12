@@ -153,6 +153,7 @@ public class RateLimitService {
                 positiveInt("traffic.rate-limit.refresh-per-minute", 20),
                 positiveInt("traffic.rate-limit.admin-bootstrap-per-hour", 3),
                 positiveInt("traffic.rate-limit.guest-checkout-per-hour", 10),
+                positiveInt("traffic.rate-limit.search-per-minute", 30),
                 positiveInt("traffic.rate-limit.admin-order-list-per-minute", 60),
                 positiveInt("traffic.rate-limit.pet-gallery-like-per-minute", 20),
                 runtimeConfig.getBoolean("traffic.rate-limit.redis-enabled", true),
@@ -285,6 +286,9 @@ public class RateLimitService {
     }
 
     private EndpointLimit endpointLimitFor(String method, String path, Config config) {
+        if ("GET".equals(method) && path.equals("/search")) {
+            return new EndpointLimit("GET", "search:catalog", config.searchPerMinute, 60);
+        }
         if ("GET".equals(method) && isAdminOrderListPath(path)) {
             return new EndpointLimit("GET", "admin:orders:list", config.adminOrderListPerMinute, 60);
         }
@@ -478,6 +482,7 @@ public class RateLimitService {
         private final int refreshPerMinute;
         private final int adminBootstrapPerHour;
         private final int guestCheckoutPerHour;
+        private final int searchPerMinute;
         private final int adminOrderListPerMinute;
         private final int petGalleryLikePerMinute;
         private final boolean redisEnabled;
@@ -497,6 +502,7 @@ public class RateLimitService {
                        int refreshPerMinute,
                        int adminBootstrapPerHour,
                        int guestCheckoutPerHour,
+                       int searchPerMinute,
                        int adminOrderListPerMinute,
                        int petGalleryLikePerMinute,
                        boolean redisEnabled,
@@ -515,6 +521,7 @@ public class RateLimitService {
             this.refreshPerMinute = refreshPerMinute;
             this.adminBootstrapPerHour = adminBootstrapPerHour;
             this.guestCheckoutPerHour = guestCheckoutPerHour;
+            this.searchPerMinute = searchPerMinute;
             this.adminOrderListPerMinute = adminOrderListPerMinute;
             this.petGalleryLikePerMinute = petGalleryLikePerMinute;
             this.redisEnabled = redisEnabled;
