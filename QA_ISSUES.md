@@ -15933,7 +15933,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Backend — AdminBootstrapController
 - **Detail**: The admin bootstrap endpoint allows creating the initial admin account without any authentication or rate limiting. If no admin exists yet, anyone can create one.
 - **Impact**: Full admin account takeover on fresh deployments or if admin table is cleared.
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / SECURITY_E2E_PENDING (2026-06-12 00:50 UTC)
+- **Resolution**: Current source has no `AdminBootstrapController` or `/admin/bootstrap/first-super-admin` route. The only anonymous first-admin route is `POST /users/create-admin`, which remains `permitAll()` only because a fresh deployment has no admin session yet; it is gated by configured `admin.bootstrap-token`, required `X-Bootstrap-Token`, constant-time token comparison, dedicated rate limiting, IP failure recording, audit logging, DB bootstrap lock, and `countAdminUsers()` completion checks.
+- **Regression guard**: Added `UserControllerAdminBootstrapTest`, which verifies missing-token rejection, not-configured rejection, and already-completed rejection without silently creating extra admin users.
+- **Verification**: `./mvnw -q -Dtest=UserControllerAdminBootstrapTest test` passed.
 
 ### F2789: [CRITICAL] Config Center Exposes JWT Secret for Runtime Editing
 - **Component**: Backend — AdminConfigController

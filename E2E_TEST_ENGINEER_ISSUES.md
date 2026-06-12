@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 00:50 UTC QA F2788 Admin Bootstrap Duplicate Sync
+
+Source status:
+- QA F2788 CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / SECURITY_E2E_PENDING.
+
+Local verification already run:
+- Current source has no `AdminBootstrapController` or `/admin/bootstrap/first-super-admin` route.
+- `POST /users/create-admin` is anonymous only for fresh first-admin bootstrap and is gated by configured `admin.bootstrap-token`, required `X-Bootstrap-Token`, constant-time comparison, audit/IP failure logging, dedicated rate limiting, and `UserService.registerAdmin()` DB lock plus existing-admin checks.
+- `./mvnw -q -Dtest=UserControllerAdminBootstrapTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Missing and wrong bootstrap token | SOURCE_COVERED / SECURITY E2E PENDING | Unauthenticated `POST /users/create-admin` with no or wrong `X-Bootstrap-Token` should return forbidden and leave user/admin counts unchanged. |
+| Blank bootstrap config | SOURCE_COVERED / SECURITY E2E PENDING | With blank `admin.bootstrap-token`, verify `POST /users/create-admin` is forbidden even if the request supplies a token. |
+| Completed bootstrap | SOURCE_COVERED / SECURITY E2E PENDING | In a disposable DB, create one first admin with the temporary token, repeat the request, and verify the second attempt is rejected as already completed. |
+
 ## 2026-06-12 00:45 UTC TEST F2753 Reviewable Orders Review Index Verification
 
 Source status:
