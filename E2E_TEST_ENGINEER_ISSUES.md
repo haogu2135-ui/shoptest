@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 03:53 UTC QA F2795 JWT Pre-Expiry Refresh
+
+Source status:
+- QA F2795 NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Current frontend source has no standalone `frontend/src/api/interceptors/authInterceptor.ts`.
+- `frontend/src/api/index.ts` decodes JWT `exp`, treats tokens expiring within 30 seconds as expiring, and awaits `refreshAuthToken()` before attaching `Authorization`.
+- `/auth/refresh` is sent with `skipAuthRefresh` and `skipAuthHeader`, so refresh calls do not recursively refresh and do not attach stale access tokens.
+- `./mvnw -q -Dtest=JwtRefreshBeforeExpiryContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Near-expiry active session | SOURCE_VERIFIED / AUTH E2E PENDING | Log in with an access token that expires within 30 seconds and a valid refresh token, trigger a protected API call, and verify `/auth/refresh` completes before the original request is sent with the new `Authorization` header. |
+| Refresh failure before request | SOURCE_VERIFIED / AUTH E2E PENDING | Use an expired or rejected refresh token with a near-expiry access token, trigger a protected API call, and verify the stale access token is not attached after refresh fails and the normal login/expired-session handling remains intact. |
+| Refresh recursion guard | SOURCE_VERIFIED / AUTH E2E PENDING | Inspect the refresh request and verify it does not send an access-token `Authorization` header and does not trigger another pre-expiry refresh attempt. |
+
 ## 2026-06-12 03:36 UTC QA F2794/F2800 User-Facing API Error Details
 
 Source status:

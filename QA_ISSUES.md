@@ -15996,7 +15996,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Frontend — api/interceptors/authInterceptor.ts
 - **Detail**: The auth interceptor does not check token expiry time or refresh the token before it expires. Users get logged out abruptly when the token expires.
 - **Impact**: Poor user experience with unexpected logouts during active sessions.
-- **Status**: OPEN
+- **Status**: NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 03:53 UTC)
+- **Resolution**: Current source has no standalone `frontend/src/api/interceptors/authInterceptor.ts`. The active request auth flow lives in `frontend/src/api/index.ts`, decodes JWT `exp`, treats tokens expiring within 30 seconds as expiring, awaits `refreshAuthToken()` before applying the `Authorization` header, and sends `/auth/refresh` with `skipAuthRefresh` and `skipAuthHeader` so refresh requests do not recursively refresh or attach stale access tokens. The response interceptor still keeps the 401 refresh-and-retry fallback.
+- **Regression guard**: Added `JwtRefreshBeforeExpiryContractTest` to verify JWT expiry parsing, the 30-second pre-expiry check, refresh-before-attach ordering, refresh recursion guards, and failed-refresh null-token behavior.
+- **Verification**: `./mvnw -q -Dtest=JwtRefreshBeforeExpiryContractTest test` passed.
 
 ### F2796: [HIGH] Admin User Response Exposes Password Hash
 - **Component**: Backend — AdminUserController
