@@ -876,6 +876,11 @@ public class OrderService {
         return escaped.toString();
     }
 
+    private String emailLikeTerm(String email) {
+        String normalized = normalizeEmail(email);
+        return normalized == null ? null : escapeLikeLiteral(normalized);
+    }
+
     /**
      * 根据ID获取订单
      */
@@ -912,7 +917,10 @@ public class OrderService {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email is required");
         }
-        Order order = orderRepository.findByOrderNoAndEmail(orderNo.trim(), email.trim().toLowerCase());
+        Order order = orderRepository.findByOrderNoAndEmail(
+                orderNo.trim(),
+                email.trim().toLowerCase(),
+                emailLikeTerm(email));
         if (order == null) {
             throw new IllegalArgumentException("Order not found");
         }
@@ -936,7 +944,10 @@ public class OrderService {
                 || email == null || email.trim().isEmpty()) {
             return false;
         }
-        Order matched = orderRepository.findByOrderNoAndEmail(order.getOrderNo(), email.trim().toLowerCase());
+        Order matched = orderRepository.findByOrderNoAndEmail(
+                order.getOrderNo(),
+                email.trim().toLowerCase(),
+                emailLikeTerm(email));
         return matched != null && order.getId().equals(matched.getId());
     }
 

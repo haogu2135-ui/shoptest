@@ -5078,8 +5078,11 @@ Notes:
 - File: `src/main/resources/mapper/OrderMapper.xml` (lines 362-377)
 - Severity: LOW
 - Description: In `findByOrderNoAndEmail`, the guest email match uses `LIKE CONCAT(...)` with `#{email}`. While safely bound against SQL injection, `%` and `_` in the email value are treated as LIKE wildcards. A crafted email like `a%@b.com` could match unintended addresses.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 00:39 UTC)
 - Expected fix direction: Escape `%`, `_`, and `!` in the email value before binding into the LIKE pattern.
+- Resolution: `OrderService` now derives a normalized `emailLike` value for guest order lookup, escaping `!`, `%`, `_`, and `\` before passing it to `OrderRepository.findByOrderNoAndEmail`; `OrderMapper.xml` binds that escaped value in the legacy guest shipping-address fallback and declares `ESCAPE '!'`.
+- Regression guard: Added `GuestOrderEmailLikeEscapeContractTest`, which verifies the escaped value, the repository `emailLike` parameter, and the mapper's escaped LIKE pattern.
+- Verification: `./mvnw -q -Dtest=GuestOrderEmailLikeEscapeContractTest test` passed.
 
 ### F2753: LOW — Reviewable orders query may be slow without composite index
 

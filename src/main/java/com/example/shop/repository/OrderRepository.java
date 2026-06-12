@@ -28,7 +28,9 @@ public interface OrderRepository {
     Map<String, Object> countAdminOrderSummary(@Param("search") String search);
     Order findById(Long id);
     Order findByOrderNo(String orderNo);
-    Order findByOrderNoAndEmail(@Param("orderNo") String orderNo, @Param("email") String email);
+    Order findByOrderNoAndEmail(@Param("orderNo") String orderNo,
+                                @Param("email") String email,
+                                @Param("emailLike") String emailLike);
     List<Order> findByUserId(Long userId);
     List<Order> findPendingPaymentBefore(@Param("cutoff") LocalDateTime cutoff);
     int insert(Order order);

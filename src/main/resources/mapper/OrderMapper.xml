@@ -368,7 +368,8 @@
               OR LOWER(TRIM(o.contact_email)) = LOWER(TRIM(#{email}))
               OR (
                   o.shipping_address LIKE '[Guest]%'
-                  AND LOWER(o.shipping_address) LIKE CONCAT('% / ', LOWER(TRIM(#{email})), ' /%')
+                  AND #{emailLike} IS NOT NULL
+                  AND LOWER(o.shipping_address) LIKE CONCAT('% / ', LOWER(#{emailLike}), ' /%') ESCAPE '!'
               )
           )
         LIMIT 1

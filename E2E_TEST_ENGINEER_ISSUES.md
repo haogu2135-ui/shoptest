@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 00:39 UTC TEST F2752 Guest Order Email LIKE Escape Handoff
+
+Source status:
+- TEST F2752 / QA F2499 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Guest order lookup now passes a normalized, escaped `emailLike` value into `OrderRepository.findByOrderNoAndEmail`.
+- The legacy `[Guest] name / email / address` shipping-address fallback now uses `LOWER(#{emailLike})` with `ESCAPE '!'`.
+- `./mvnw -q -Dtest=GuestOrderEmailLikeEscapeContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Guest order email with `%` | SOURCE_FIXED / GUEST ORDER E2E PENDING | Create or seed two guest orders with similar legacy shipping-address emails, including one containing a literal `%`, then verify tracking/access only matches the exact literal email. |
+| Guest order email with `_` and `!` | SOURCE_FIXED / GUEST ORDER E2E PENDING | Repeat guest order tracking/access with literal `_` and `!` in the email local-part and verify wildcard expansion does not match other orders. |
+| Normal guest order email | SOURCE_FIXED / GUEST ORDER E2E PENDING | Verify a standard guest order email still tracks successfully after the escaped LIKE fallback change. |
+
 ## 2026-06-12 00:25 UTC TEST F2751 Search Endpoint Rate Limit Handoff
 
 Source status:
