@@ -4,6 +4,26 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 03:36 UTC QA F2794/F2800 User-Facing API Error Details
+
+Source status:
+- QA F2794 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+- QA F2800 DUPLICATE / COVERED_BY_F2794 / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `frontend/src/utils/apiError.ts` now preserves backend `error/message` plus structured `detail`, `details`, `errors`, `fieldErrors`, and `validationErrors` entries.
+- English UI error messages keep field-level validation details instead of collapsing to generic fallback copy.
+- Network, timeout, 503, 429, auth-expired, and non-English fallback behavior remains guarded.
+- `npm test -- --runTestsByPath src/utils/apiError.test.ts --watchAll=false --runInBand` passed.
+- `npx tsc --noEmit --pretty false` remains blocked by existing `frontend/src/api/index.test.ts:437` (`config.headers` possibly undefined), outside the F2794 touched files.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin validation error detail | SOURCE_FIXED / ADMIN E2E PENDING | Submit an invalid admin form that returns field-specific backend validation and verify the toast/form message includes the field detail, not only generic save-failed copy. |
+| Storefront checkout/cart error detail | SOURCE_FIXED / STOREFRONT E2E PENDING | Trigger a controlled cart/checkout validation failure such as insufficient stock or invalid shipping data and verify the user sees the actionable backend reason. |
+| Network/rate-limit fallback | SOURCE_FIXED / FRONTEND E2E PENDING | Simulate network failure, 503, and 429 responses and verify localized fallback/rate-limit messages still appear without leaking raw stack or Axios text. |
+| Non-English pages | SOURCE_FIXED / I18N E2E PENDING | On zh/es pages, verify English backend messages still fall back to localized UI copy, while already-localized backend messages are shown. |
+
 ## 2026-06-12 03:15 UTC QA F2793 Coupon Claim Stock Race
 
 Source status:

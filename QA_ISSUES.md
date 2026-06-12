@@ -15987,7 +15987,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Frontend — api/interceptors/errorInterceptor.ts
 - **Detail**: The error interceptor maps all errors to generic messages like "Network error" or "System error", losing useful context like validation field errors or specific failure reasons.
 - **Impact**: Users get unhelpful error messages; harder to debug issues.
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 03:36 UTC)
+- **Resolution**: Current source has no standalone `frontend/src/api/interceptors/errorInterceptor.ts`; user-facing error handling is centralized in `frontend/src/utils/apiError.ts`. The shared helper now preserves backend `error/message` plus structured `detail`, `details`, `errors`, `fieldErrors`, and `validationErrors` entries, including field/message objects and `{ field: message }` maps, instead of collapsing validation failures to a generic fallback. Network, timeout, service-unavailable, rate-limit, auth, and non-English fallback behavior remain guarded.
+- **Regression guard**: Extended `apiError.test.ts` to verify English UI messages keep field-level validation details and mapped backend error details while existing localization/rate-limit/auth-expiry behavior remains intact.
+- **Verification**: `npm test -- --runTestsByPath src/utils/apiError.test.ts --watchAll=false --runInBand` passed. `npx tsc --noEmit --pretty false` is still blocked by existing `frontend/src/api/index.test.ts:437` (`config.headers` possibly undefined), outside the F2794 touched files.
 
 ### F2795: [MEDIUM] JWT Token Not Refreshed Before Expiry
 - **Component**: Frontend — api/interceptors/authInterceptor.ts
@@ -16023,7 +16026,8 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Frontend — api/interceptors/errorInterceptor.ts
 - **Detail**: The error interceptor replaces server error messages with generic ones. Validation errors with field-specific details are lost.
 - **Impact**: Users cannot understand what went wrong; harder to fix form errors.
-- **Status**: OPEN
+- **Status**: DUPLICATE / COVERED_BY_F2794 / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 03:36 UTC)
+- **Resolution**: Duplicate of F2794. `getApiErrorMessage(...)` / `getApiErrorDiagnosticText(...)` now retain server error text and structured validation details from backend response payloads; see F2794 for implementation and verification.
 
 ---
 

@@ -1,25 +1,118 @@
 import type { Language } from '../i18n';
 
+type ApiErrorData = {
+  code?: string;
+  error?: string;
+  message?: string;
+  retryAfterSeconds?: number | string;
+  details?: unknown;
+  detail?: unknown;
+  errors?: unknown;
+  fieldErrors?: unknown;
+  validationErrors?: unknown;
+};
+
 type ApiErrorLike = {
   code?: string;
   message?: string;
   response?: {
-    status?: number;
-    data?: {
-      code?: string;
-      error?: string;
-      message?: string;
-      retryAfterSeconds?: number | string;
-    };
+    status?: unknown;
+    data?: ApiErrorData;
     headers?: Record<string, unknown> & {
       get?: (name: string) => unknown;
     };
   };
 };
 
+type ApiErrorMessageOptions = {
+  includeClientMessage?: boolean;
+};
+
+const MAX_ERROR_DETAIL_ITEMS = 4;
+const MAX_ERROR_DETAIL_LENGTH = 180;
+
 const hasChineseText = (value: string) => /[\u3400-\u9fff]/.test(value);
 const hasSpanishSignal = (value: string) =>
   /[áéíóúñü¿¡]/i.test(value) || /\b(el|la|los|las|un|una|pedido|pago|usuario|correo|contraseña|direccion|dirección|envio|envío|reembolso)\b/i.test(value);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value && typeof value === 'object' && !Array.isArray(value));
+
+const normalizeErrorText = (value: unknown) => {
+  if (value === undefined || value === null) return '';
+  const normalized = String(value)
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized.length > MAX_ERROR_DETAIL_LENGTH
+    ? `${normalized.slice(0, MAX_ERROR_DETAIL_LENGTH - 1).trim()}…`
+    : normalized;
+};
+
+const compactErrorTexts = (values: string[]) => {
+  const seen = new Set<string>();
+  return values
+    .map(normalizeErrorText)
+    .filter((value) => {
+      if (!value || seen.has(value.toLowerCase())) return false;
+      seen.add(value.toLowerCase());
+      return true;
+    })
+    .slice(0, MAX_ERROR_DETAIL_ITEMS);
+};
+
+const errorDetailTexts = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap(errorDetailTexts);
+  }
+  if (!isRecord(value)) {
+    return compactErrorTexts([normalizeErrorText(value)]);
+  }
+
+  const field = normalizeErrorText(value.field ?? value.name ?? value.property ?? value.path);
+  const message = normalizeErrorText(value.message ?? value.defaultMessage ?? value.error ?? value.detail);
+  if (field && message) {
+    return [`${field}: ${message}`];
+  }
+  if (message) {
+    return [message];
+  }
+
+  return Object.entries(value).flatMap(([key, entry]) => {
+    if (Array.isArray(entry)) {
+      return entry.flatMap((item) => {
+        const itemText = normalizeErrorText(item);
+        return itemText ? [`${key}: ${itemText}`] : [];
+      });
+    }
+    if (isRecord(entry)) {
+      return errorDetailTexts({ field: key, ...entry });
+    }
+    const entryText = normalizeErrorText(entry);
+    return entryText ? [`${key}: ${entryText}`] : [];
+  });
+};
+
+const responseDetailTexts = (data?: ApiErrorData) => {
+  if (!data) return [];
+  return compactErrorTexts([
+    ...errorDetailTexts(data.detail),
+    ...errorDetailTexts(data.details),
+    ...errorDetailTexts(data.errors),
+    ...errorDetailTexts(data.fieldErrors),
+    ...errorDetailTexts(data.validationErrors),
+  ]);
+};
+
+export const getApiErrorDiagnosticText = (error: unknown) => {
+  const errorLike = error as ApiErrorLike;
+  const responseMessage = errorLike.response?.data;
+  const primary = normalizeErrorText(responseMessage?.error || responseMessage?.message || errorLike.message);
+  const details = responseDetailTexts(responseMessage)
+    .filter((item) => item.toLowerCase() !== primary.toLowerCase());
+  if (!primary) return details.join('; ');
+  return details.length ? `${primary}: ${details.join('; ')}` : primary;
+};
 
 export const getApiErrorStatus = (error: unknown) => {
   const status = Number((error as ApiErrorLike | null | undefined)?.response?.status);
@@ -41,7 +134,12 @@ const normalizeRetryAfterSeconds = (error: ApiErrorLike) => {
   return Number.isFinite(numeric) && numeric > 0 ? Math.ceil(numeric) : null;
 };
 
-export const getApiErrorMessage = (error: unknown, fallback: string, language: Language = 'en') => {
+export const getApiErrorMessage = (
+  error: unknown,
+  fallback: string,
+  language: Language = 'en',
+  options: ApiErrorMessageOptions = {},
+) => {
   const errorLike = error as ApiErrorLike;
   const errorText = String(errorLike.message || '');
   const localMessages = {
@@ -69,13 +167,16 @@ export const getApiErrorMessage = (error: unknown, fallback: string, language: L
         ? `Demasiadas solicitudes. Inténtalo de nuevo en ${seconds} segundos.`
         : 'Demasiadas solicitudes. Espera e inténtalo de nuevo.',
     },
-  }[language] || undefined;
+  }[language];
   if (!errorLike.response) {
     if (errorLike.code === 'ECONNABORTED' || /timeout/i.test(errorText)) {
       return localMessages?.timeout || fallback;
     }
     if (/network error|failed to fetch|load failed/i.test(errorText)) {
       return localMessages?.network || fallback;
+    }
+    if (options.includeClientMessage && errorText.trim()) {
+      return errorText.trim();
     }
     return fallback;
   }
@@ -88,7 +189,7 @@ export const getApiErrorMessage = (error: unknown, fallback: string, language: L
   if (responseCode === 'RATE_LIMITED' || status === 429) {
     return localMessages?.rateLimited(normalizeRetryAfterSeconds(errorLike)) || fallback;
   }
-  const serverMessage = String(responseMessage?.error || responseMessage?.message || '').trim();
+  const serverMessage = getApiErrorDiagnosticText(errorLike);
 
   if (!serverMessage) return fallback;
   if (language === 'en') return serverMessage;
