@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 06:56 UTC QA F962 Order Search Bound
+
+Source status:
+- QA F962 WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL.
+
+Local verification already run:
+- Admin order page and export paths call `normalizeAdminFilter(search, 120)` before count/search/summary/export queries.
+- `OrderService.searchLikeTerm(...)` escapes LIKE wildcard characters `!`, `%`, `_`, and `\` before mapper execution.
+- `OrderMapper.xml` uses parameterized `#{search}` with `ESCAPE '!'` and no `${search}` interpolation.
+- `./mvnw -q -Dtest=AdminOrderSearchBoundContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Long admin order search | SOURCE_COVERED / ADMIN API E2E OPTIONAL | As an authenticated admin, search orders with a string longer than 120 characters and verify the page remains responsive, returns a bounded result, and logs/metrics show no unbounded raw search value is used. |
+| Literal wildcard search | SOURCE_COVERED / ADMIN API E2E OPTIONAL | Search with values containing `%`, `_`, `!`, and `\`; verify they are treated as literal characters rather than widening the match set as SQL wildcards. |
+| Export search parity | SOURCE_COVERED / EXPORT E2E OPTIONAL | Export orders with the same long and wildcard search values and verify the exported rows match the page filter/count semantics. |
+
 ## 2026-06-12 05:53 UTC QA F959 Actuator Health Exposure
 
 Source status:
