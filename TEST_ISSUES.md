@@ -5018,8 +5018,11 @@ Notes:
 - File: `src/main/java/com/example/shop/service/TokenBlacklistService.java` (lines 149-154)
 - Severity: LOW
 - Description: `recordLoginFailure` performs `increment` and `expire` as two separate Redis commands. If the process crashes between them, the key persists indefinitely without a TTL.
-- Status: OPEN
+- Status: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 00:01 UTC)
 - Expected fix direction: Use a Redis Lua script to atomically increment and set TTL.
+- Resolution: `TokenBlacklistService.recordLoginFailure(...)` now sends both IP and account failure counters through `incrementLoginFailureCounter(...)`, which executes a Redis Lua script that performs `INCR`, checks `TTL`, and applies `EXPIRE` in one atomic operation when the key has no TTL.
+- Regression guard: Added `TokenBlacklistLoginFailureTtlContractTest`, which requires the login-failure Redis script/helper and verifies `recordLoginFailure` no longer uses separate `opsForValue().increment` and `redis.expire(...)` calls.
+- Verification: `./mvnw -q -Dtest=TokenBlacklistLoginFailureTtlContractTest test` passed.
 
 ### F2748: LOW — normalizeAccountKey has no length limit on username
 

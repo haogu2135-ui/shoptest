@@ -36,6 +36,7 @@ public class TokenBlacklistService {
     private static final long ACCOUNT_LOCKOUT_MINUTES = 30;
     private static final int DEFAULT_LOGIN_FAILURE_SCAN_COUNT = 500;
     private static final RedisScript<String> CONSUME_REFRESH_TOKEN_SCRIPT = consumeRefreshTokenScript();
+    private static final RedisScript<Long> LOGIN_FAILURE_INCREMENT_SCRIPT = loginFailureIncrementScript();
 
     public TokenBlacklistService(ObjectProvider<StringRedisTemplate> redisTemplateProvider,
                                  RuntimeConfigService runtimeConfig) {
@@ -111,19 +112,13 @@ public class TokenBlacklistService {
 
         // Per-IP rate limiting
         String ipKey = LOGIN_ATTEMPT_PREFIX + clientIp;
-        Long ipCount = redis.opsForValue().increment(ipKey);
-        if (ipCount != null && ipCount == 1) {
-            redis.expire(ipKey, ipFailureWindowMinutes(), TimeUnit.MINUTES);
-        }
+        incrementLoginFailureCounter(redis, ipKey, TimeUnit.MINUTES.toSeconds(ipFailureWindowMinutes()));
 
         // Per-account lockout
         String normalizedUsername = normalizeAccountKey(username);
         if (normalizedUsername != null) {
             String accountKey = ACCOUNT_LOCK_PREFIX + normalizedUsername;
-            Long accountCount = redis.opsForValue().increment(accountKey);
-            if (accountCount != null && accountCount == 1) {
-                redis.expire(accountKey, accountLockoutMinutes(), TimeUnit.MINUTES);
-            }
+            incrementLoginFailureCounter(redis, accountKey, TimeUnit.MINUTES.toSeconds(accountLockoutMinutes()));
         }
     }
 
@@ -248,6 +243,20 @@ public class TokenBlacklistService {
         DefaultRedisScript<String> script = new DefaultRedisScript<>();
         script.setScriptText("local value = redis.call('GET', KEYS[1]); if value then redis.call('DEL', KEYS[1]); end; return value");
         script.setResultType(String.class);
+        return script;
+    }
+
+    private Long incrementLoginFailureCounter(StringRedisTemplate redis, String key, long ttlSeconds) {
+        return redis.execute(LOGIN_FAILURE_INCREMENT_SCRIPT, List.of(key), String.valueOf(ttlSeconds));
+    }
+
+    private static RedisScript<Long> loginFailureIncrementScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setScriptText("local count = redis.call('INCR', KEYS[1]); "
+                + "local ttl = redis.call('TTL', KEYS[1]); "
+                + "if ttl < 0 then redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1])); end; "
+                + "return count");
+        script.setResultType(Long.class);
         return script;
     }
 

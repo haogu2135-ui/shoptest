@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 00:01 UTC TEST F2747 Login Failure Redis TTL Handoff
+
+Source status:
+- TEST F2747 / QA F2494 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `TokenBlacklistService.recordLoginFailure(...)` now routes both IP and account counters through `incrementLoginFailureCounter(...)`.
+- The helper executes a Redis Lua script that performs `INCR`, checks `TTL`, and applies `EXPIRE` atomically when the key lacks a TTL.
+- `recordLoginFailure(...)` no longer contains separate `opsForValue().increment(...)` and `redis.expire(...)` calls.
+- `./mvnw -q -Dtest=TokenBlacklistLoginFailureTtlContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Failed login IP counter TTL | SOURCE_FIXED / AUTH E2E PENDING | Trigger a failed password login, inspect Redis `login:ip:<client-ip>`, and verify the counter increments and has a positive TTL in the same failure path. |
+| Failed login account counter TTL | SOURCE_FIXED / AUTH E2E PENDING | Trigger failed logins for a username, inspect Redis `login:account:<normalized-username>`, and verify the counter increments and has a positive TTL. |
+| Repeated failures preserve expiry | SOURCE_FIXED / AUTH E2E OPTIONAL | Trigger repeated failures before expiry and verify the counters increase while TTL remains present and does not become persistent. |
+
 ## 2026-06-11 23:54 UTC TEST F2746 Support Rate Bucket Cleanup Handoff
 
 Source status:
