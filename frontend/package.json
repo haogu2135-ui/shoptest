@@ -2,6 +2,9 @@
   "name": "shop-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@ant-design/icons": "^5.0.1",
     "@testing-library/jest-dom": "^5.16.5",
@@ -28,10 +31,16 @@
     "build": "GENERATE_SOURCEMAP=false react-scripts build",
     "postbuild": "node scripts/restore-build-ownership.js",
     "test": "react-scripts test --watchAll=false",
+    "test:jest-config": "node scripts/jest-transform-config.test.js",
     "eject": "react-scripts eject"
   },
   "overrides": {
     "@adobe/css-tools": "4.2.0"
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@adobe/css-tools|@testing-library)/)"
+    ]
   },
   "eslintConfig": {
     "extends": [

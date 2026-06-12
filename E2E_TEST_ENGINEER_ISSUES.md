@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 05:01 UTC QA F1767 Frontend Jest Optional Chaining
+
+Source status:
+- QA F1767 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `frontend/package.json` declares Node `>=18`, keeps `react-scripts test --watchAll=false` without `testPathIgnorePatterns`, and keeps Jest transforming `@testing-library` plus `@adobe/css-tools` from `node_modules`.
+- `frontend/scripts/jest-transform-config.test.js` guards the Node runtime requirement, the absence of SupportManagement suite exclusions, and the transform behavior for `@testing-library/dom/dist/config.js`, `@testing-library/dom/dist/pretty-dom.js`, and `@adobe/css-tools/dist/index.cjs`.
+- `npm run test:jest-config` passed.
+- `CI=true npm test -- --runTestsByPath src/pages/SupportManagement.test.tsx --watchAll=false --runInBand --testTimeout=30000` passed 7/7 under Node `v20.20.2`; only existing React/AntD act warning noise was emitted.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| CI Node runtime | SOURCE_FIXED / CI CONFIG E2E PENDING | Confirm the frontend CI/regression worker uses Node `>=18` or honors `frontend/package.json` `engines.node`; do not run this suite under the historical Node 12 worker. |
+| SupportManagement Jest discovery | SOURCE_FIXED / FRONTEND REGRESSION PENDING | Run `CI=true npm test -- --runTestsByPath src/pages/SupportManagement.test.tsx --watchAll=false --runInBand --testTimeout=30000` on the standard regression worker and verify it passes without `SyntaxError: Unexpected token '.'` from `@testing-library/dom` or `@adobe/css-tools`. |
+| Full frontend Jest | SOURCE_FIXED / FULL JEST PENDING | Run the normal frontend Jest gate without `--testPathIgnorePatterns`; verify SupportManagement is included and no optional-chaining dependency parse error returns. Track unrelated flaky failures separately. |
+
 ## 2026-06-12 04:39 UTC QA F2799 Review Duplicate Creation Guard
 
 Source status:
