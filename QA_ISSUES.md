@@ -15951,7 +15951,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Frontend — api/interceptors/cartMockInterceptor.ts
 - **Detail**: A mock data interceptor for cart operations is still present in the codebase. While it may be disabled, it could be re-enabled accidentally.
 - **Impact**: Cart operations could return mock data instead of real data.
-- **Status**: OPEN
+- **Status**: NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 02:58 UTC)
+- **Resolution**: Current source has no `frontend/src/api/interceptors/cartMockInterceptor.ts`, no `cartMockInterceptor` references, and production cart flows use the normal API module plus guest-cart local storage helpers. The report appears stale against the current frontend tree.
+- **Regression guard**: Added `CartMockInterceptorContractTest`, which scans production frontend source files and fails if a cart mock interceptor file or reference is reintroduced.
+- **Verification**: `./mvnw -q -Dtest=CartMockInterceptorContractTest test` passed.
 
 ### F2791: [HIGH] Product Name Regex Validation Too Strict
 - **Component**: Backend — ProductValidator

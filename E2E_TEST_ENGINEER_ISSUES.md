@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 02:58 UTC QA F2790 Cart Mock Interceptor Stale Report
+
+Source status:
+- QA F2790 NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- No `frontend/src/api/interceptors/cartMockInterceptor.ts` exists in current source.
+- Production frontend source has no `cartMockInterceptor` / cart mock interceptor references.
+- `./mvnw -q -Dtest=CartMockInterceptorContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Bundle source grep | SOURCE_VERIFIED / FRONTEND E2E PENDING | Build the frontend artifact and confirm the emitted bundle does not contain `cartMockInterceptor` or mock cart interceptor strings. |
+| Cart API smoke | SOURCE_VERIFIED / FRONTEND E2E PENDING | Add/update/remove cart items as a signed-in user and verify network calls hit the real cart API, not mock responses. |
+| Guest cart smoke | SOURCE_VERIFIED / FRONTEND E2E PENDING | Add/update/remove guest cart items and verify behavior uses guest local storage helpers only until login/checkout merge. |
+
 ## 2026-06-12 01:00 UTC QA F2789 Config Center Protected Runtime Keys
 
 Source status:
