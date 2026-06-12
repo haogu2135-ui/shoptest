@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 01:00 UTC QA F2789 Config Center Protected Runtime Keys
+
+Source status:
+- QA F2789 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / SECURITY_E2E_PENDING.
+
+Local verification already run:
+- `ConfigCenterService` rejects protected JWT/CORS/WebSocket/session/bootstrap/infrastructure keys during validation and filters protected prefixes from overridden allowlists.
+- Default `admin.config-center.allowed-key-prefixes` no longer advertises `app.cors.*` or `app.websocket.*`.
+- `./mvnw -q -Dtest=ConfigCenterServiceTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Protected-key apply rejection | SOURCE_FIXED / SECURITY E2E PENDING | As an admin, submit `/admin/config-center/apply` content containing `app.jwtSecret`, `security.jwt.secret`, CORS/WebSocket origin keys, and `security.session.timeout-seconds`; verify the response reports validation errors and `runtimeApplied=false`. |
+| Overridden allowlist hardening | SOURCE_FIXED / SECURITY E2E PENDING | Temporarily configure `admin.config-center.allowed-key-prefixes` to include protected prefixes and verify the protected keys are still rejected/filtered while a safe key such as `order.default-shipping-fee` remains allowed. |
+| Safe-key regression | SOURCE_FIXED / SECURITY E2E PENDING | Verify ordinary business keys still publish/apply through Config Center after protected-key hardening. |
+
 ## 2026-06-12 00:50 UTC QA F2788 Admin Bootstrap Duplicate Sync
 
 Source status:

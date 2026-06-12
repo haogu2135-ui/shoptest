@@ -77,15 +77,15 @@ public class ConfigCenterService {
             "security.login.",
             "traffic.",
             "app.mail.",
-            "app.cors.",
-            "app.websocket.",
             "app.storefront.",
             "logging.level.");
     private static final Pattern SENSITIVE_KEY_PATTERN = Pattern.compile(
             ".*(password|passwd|pwd|secret|token|credential|private[-._]?key|access[-._]?key|api[-._]?key|auth[-._]?header|[._-]key$).*",
             Pattern.CASE_INSENSITIVE);
-    private static final Pattern BLOCKED_RUNTIME_KEY_PATTERN = Pattern.compile(
-            "^(spring\\.|server\\.|management\\.|mybatis\\.|logging\\.file\\.|logging\\.pattern\\.|stripe\\.|app\\.jwt|admin\\.bootstrap-token).*",
+    private static final Pattern PROTECTED_CONFIG_KEY_PATTERN = Pattern.compile(
+            "^(spring\\.|server\\.|management\\.|mybatis\\.|logging\\.file\\.|logging\\.pattern\\.|stripe\\.|"
+                    + "app\\.jwt|app\\.cors\\.|app\\.websocket\\.|admin\\.bootstrap-token|"
+                    + "security\\.jwt\\.|security\\.cors\\.|security\\.session\\.).*",
             Pattern.CASE_INSENSITIVE);
     private static final String DEFAULT_CONTENT = String.join("\n",
             "# Shop runtime properties",
@@ -426,7 +426,7 @@ public class ConfigCenterService {
     private Map<String, String> runtimeApplicableProperties(Map<String, String> parsed) {
         return parsed.entrySet().stream()
                 .filter(entry -> isAllowedKey(entry.getKey()))
-                .filter(entry -> !BLOCKED_RUNTIME_KEY_PATTERN.matcher(entry.getKey()).matches())
+                .filter(entry -> !PROTECTED_CONFIG_KEY_PATTERN.matcher(entry.getKey()).matches())
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         Map.Entry::getValue,
@@ -644,7 +644,7 @@ public class ConfigCenterService {
         if (key == null || key.isBlank() || key.length() > 160 || !key.matches("[A-Za-z0-9_.\\-\\[\\]]+")) {
             return false;
         }
-        if (BLOCKED_RUNTIME_KEY_PATTERN.matcher(key).matches()) {
+        if (PROTECTED_CONFIG_KEY_PATTERN.matcher(key).matches()) {
             return false;
         }
         return allowedKeyPrefixes().stream().anyMatch(key::startsWith);
@@ -659,6 +659,7 @@ public class ConfigCenterService {
                 .map(String::trim)
                 .filter(item -> !item.isEmpty())
                 .filter(item -> item.matches("[A-Za-z0-9_.\\-]+"))
+                .filter(item -> !PROTECTED_CONFIG_KEY_PATTERN.matcher(item).matches())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         if (!prefixes.isEmpty()) {
             return prefixes;

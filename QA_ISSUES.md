@@ -15942,7 +15942,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Backend — AdminConfigController
 - **Detail**: The admin config center lists `jwt.secret` as a runtime-editable property. Changing this invalidates all existing tokens, potentially locking out all users.
 - **Impact**: Admin can accidentally or intentionally invalidate all user sessions.
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / SECURITY_E2E_PENDING (2026-06-12 01:00 UTC)
+- **Resolution**: `ConfigCenterService` now treats JWT, CORS, WebSocket origin, session, bootstrap token, Stripe, Spring/server/management/MyBatis, and logging file/pattern keys as protected config keys. Protected keys are rejected by validation, excluded from runtime apply, and filtered out even if `admin.config-center.allowed-key-prefixes` is overridden. The default Config Center allowlist no longer advertises `app.cors.*` or `app.websocket.*`.
+- **Regression guard**: Extended `ConfigCenterServiceTest` to verify `app.jwtSecret`, `app.cors.allowed-origin-patterns`, `app.websocket.allowed-origin-patterns`, `security.jwt.secret`, `security.cors.allowed-origins`, and `security.session.timeout-seconds` are rejected even when prefixes are explicitly configured as allowed.
+- **Verification**: `./mvnw -q -Dtest=ConfigCenterServiceTest test` passed.
 
 ### F2790: [HIGH] Cart Mock Data Interceptor Left in Production Code
 - **Component**: Frontend — api/interceptors/cartMockInterceptor.ts

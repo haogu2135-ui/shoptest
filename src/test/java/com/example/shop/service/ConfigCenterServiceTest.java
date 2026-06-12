@@ -78,6 +78,37 @@ class ConfigCenterServiceTest {
     }
 
     @Test
+    void rejectsProtectedSecurityAndOriginKeysEvenWhenAllowedPrefixesAreOverridden() {
+        environment.setProperty("admin.config-center.max-properties", "10");
+        environment.setProperty("admin.config-center.allowed-key-prefixes",
+                "order.,app.jwt,app.cors.,app.websocket.,security.jwt.,security.cors.,security.session.");
+        ConfigCenterPublishRequest request = request(
+                "app.jwtSecret=rotated-jwt-secret\n"
+                        + "app.cors.allowed-origin-patterns=https://evil.example\n"
+                        + "app.websocket.allowed-origin-patterns=https://evil.example\n"
+                        + "security.jwt.secret=legacy-secret\n"
+                        + "security.cors.allowed-origins=https://evil.example\n"
+                        + "security.session.timeout-seconds=0\n"
+                        + "order.default-shipping-fee=59.00\n");
+
+        ConfigCenterSnapshotResponse response = service.apply(request);
+
+        assertFalse(response.getErrors().isEmpty());
+        assertTrue(response.getErrors().stream().anyMatch(error -> error.contains("app.jwtSecret")));
+        assertTrue(response.getErrors().stream().anyMatch(error -> error.contains("app.cors.allowed-origin-patterns")));
+        assertTrue(response.getErrors().stream().anyMatch(error -> error.contains("app.websocket.allowed-origin-patterns")));
+        assertTrue(response.getErrors().stream().anyMatch(error -> error.contains("security.jwt.secret")));
+        assertTrue(response.getErrors().stream().anyMatch(error -> error.contains("security.cors.allowed-origins")));
+        assertTrue(response.getErrors().stream().anyMatch(error -> error.contains("security.session.timeout-seconds")));
+        assertFalse(response.isRuntimeApplied());
+        assertEquals(null, environment.getProperty("order.default-shipping-fee"));
+        assertFalse(response.getAllowedKeyPrefixes().contains("app.cors."));
+        assertFalse(response.getAllowedKeyPrefixes().contains("app.websocket."));
+        assertFalse(response.getAllowedKeyPrefixes().contains("security.jwt."));
+        assertTrue(response.getAllowedKeyPrefixes().contains("order."));
+    }
+
+    @Test
     void preservesMaskedSensitivePlaceholderFromCurrentNacosContent() throws Exception {
         when(configService.getConfig("shop-backend.properties", "DEFAULT_GROUP", 3000))
                 .thenReturn("payment.callback-secret=super-secret-value-1234567890\n"
