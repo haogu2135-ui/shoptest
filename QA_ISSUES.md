@@ -16014,7 +16014,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Backend — OrderService.cancelOrder
 - **Detail**: The cancel order endpoint does not properly validate order status before allowing cancellation. Orders in DELIVERED or COMPLETED status can be cancelled.
 - **Impact**: Business logic violation; delivered orders can be cancelled.
-- **Status**: OPEN
+- **Status**: NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 04:12 UTC)
+- **Resolution**: Current `OrderService.cancelOrder(...)` delegates to `cancelPendingPaymentOrder(...)`, fetches the order first, and rejects every status except `PENDING_PAYMENT` with `Only pending-payment orders can be cancelled directly. Use refund flow for paid orders.` The only allowed direct cancellation transition is `PENDING_PAYMENT -> CANCELLED` via `orderRepository.updateStatusIfCurrent(...)`; shipped, delivered/legacy, completed, return, refunded, and already-cancelled orders never reach stock restoration or pending-payment closure.
+- **Regression guard**: Added `OrderCancelStatusGuardTest` to verify missing orders return false and non-pending-payment statuses, including `DELIVERED` and `COMPLETED`, cannot be directly cancelled or mutate order/payment/inventory state.
+- **Verification**: `./mvnw -q -Dtest=OrderCancelStatusGuardTest test` passed.
 
 ### F2798: [MEDIUM] Search Results Not Paginated
 - **Component**: Backend — ProductController.search

@@ -4,6 +4,22 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 04:12 UTC QA F2797 Order Cancel Status Guard
+
+Source status:
+- QA F2797 NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `OrderService.cancelOrder(...)` delegates to `cancelPendingPaymentOrder(...)` and only allows direct cancellation when the current status is `PENDING_PAYMENT`.
+- Non-pending-payment statuses throw before `updateStatusIfCurrent(...)`, stock restoration, coupon release, or pending-payment closure.
+- `./mvnw -q -Dtest=OrderCancelStatusGuardTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Pending-payment cancellation | SOURCE_VERIFIED / ORDER E2E PENDING | Create or seed a `PENDING_PAYMENT` order, cancel it through customer/guest/admin-supported flow, and verify it becomes `CANCELLED` with stock/coupon/payment cleanup intact. |
+| Fulfilled-order cancellation denial | SOURCE_VERIFIED / ORDER E2E PENDING | Attempt direct cancellation for `SHIPPED`, legacy `DELIVERED` if present, and `COMPLETED` orders; verify the API rejects the request and the order status, inventory, coupon, and payment rows remain unchanged. |
+| After-sales route separation | SOURCE_VERIFIED / ORDER E2E PENDING | For completed or returned orders, verify operators/customers use return/refund flows instead of the direct cancel endpoint, and valid after-sales transitions still work. |
+
 ## 2026-06-12 04:02 UTC QA F2796 Admin User Password Exposure
 
 Source status:
