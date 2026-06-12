@@ -15978,7 +15978,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Backend — CouponService.claimCoupon
 - **Detail**: The coupon stock check (`getCouponStock`) and decrement (`decrementCouponStock`) are not atomic. Concurrent claims can exceed the coupon quantity limit.
 - **Impact**: More coupons issued than available, overselling promotions.
-- **Status**: OPEN
+- **Status**: NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 03:15 UTC)
+- **Resolution**: Current source has no `getCouponStock` or `decrementCouponStock` helper. `CouponService.claim(...)` and admin `grant(...)` both issue a coupon only after `couponRepository.incrementClaimedQuantity(couponId)` succeeds, and `CouponRepository.incrementClaimedQuantity(...)` is one database-side `UPDATE` guarded by `coalesce(claimedQuantity, 0) < totalQuantity`. If a duplicate user-coupon insert loses a concurrent race, the service compensates with `decrementClaimedQuantity(couponId, 1)` and returns the existing user coupon.
+- **Regression guard**: Added `CouponClaimStockRaceContractTest` to verify claim/grant ordering, out-of-stock no-insert behavior, duplicate-claim counter refund, and absence of stale read-then-decrement stock helpers.
+- **Verification**: `./mvnw -q -Dtest=CouponClaimStockRaceContractTest test` passed.
 
 ### F2794: [MEDIUM] ErrorInterceptor Strips Technical Details from User-Facing Messages
 - **Component**: Frontend — api/interceptors/errorInterceptor.ts

@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 03:15 UTC QA F2793 Coupon Claim Stock Race
+
+Source status:
+- QA F2793 NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Current source has no `getCouponStock` / `decrementCouponStock` read-then-decrement helper.
+- `CouponService.claim(...)` and `grant(...)` issue user coupons only after `couponRepository.incrementClaimedQuantity(couponId)` succeeds.
+- `CouponRepository.incrementClaimedQuantity(...)` is a single guarded database `UPDATE` with `coalesce(claimedQuantity, 0) < totalQuantity`.
+- `./mvnw -q -Dtest=CouponClaimStockRaceContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Concurrent public claim burst | SOURCE_VERIFIED / COUPON E2E PENDING | Seed a public active coupon with `totalQuantity=1`, fire multiple concurrent `POST /coupons/me/{id}/claim` requests from different users, and verify exactly one user coupon is created and claimed quantity is `1`. |
+| Duplicate same-user claim burst | SOURCE_VERIFIED / COUPON E2E PENDING | Fire concurrent claim requests for the same user/coupon and verify the API returns the same existing coupon without permanently incrementing claimed quantity more than once. |
+| Admin grant near sold out | SOURCE_VERIFIED / ADMIN COUPON E2E PENDING | Grant a coupon with limited remaining quantity to multiple users and verify grants stop at remaining stock without creating excess user-coupon rows. |
+
 ## 2026-06-12 03:10 UTC QA F2792 Cookie Consent Default Stale Report
 
 Source status:
