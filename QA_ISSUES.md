@@ -15884,7 +15884,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **File**: `src/main/java/com/example/shop/service/impl/ProductServiceImpl.java` (lines 3146-3149)
 - **Detail**: `collectCategoryIds` is recursive and issues a database query for each level of the category tree. For deeply nested trees, this results in N+1 queries with no depth guard.
 - **Suggested fix**: Add a maximum depth guard (e.g., 10 levels), or load all categories once and build the tree in memory.
-- **Status**: OPEN (new finding)
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 00:11 UTC)
+- **Resolution**: `ProductServiceImpl.collectCategoryIds(...)` now starts traversal at level 1 and enforces `MAX_CATEGORY_TREE_DEPTH = 10`; null IDs and over-depth traversal return immediately, and the max-depth node is included without querying another child level.
+- **Regression guard**: Added `ProductCategoryTreeDepthContractTest`, which requires the hard depth constant, depth-aware traversal, child recursion with `depth + 1`, and forbids the old unbounded child traversal.
+- **Verification**: `./mvnw -q -Dtest=ProductCategoryTreeDepthContractTest test` passed.
 
 ### F2497: [LOW] ReviewController productId has no validation annotation
 - **Component**: Backend — ReviewController

@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 00:11 UTC TEST F2749 Category Tree Depth Guard Handoff
+
+Source status:
+- TEST F2749 / QA F2496 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `ProductServiceImpl.collectCategoryIds(...)` now enforces `MAX_CATEGORY_TREE_DEPTH = 10`.
+- Traversal starts at level 1, includes the max-depth node, and stops before querying children beyond the max depth.
+- The old unbounded `collectCategoryIds(child.getId(), ids)` traversal is removed.
+- `./mvnw -q -Dtest=ProductCategoryTreeDepthContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Normal nested category filter | SOURCE_FIXED / CATALOG E2E PENDING | Create or use a normal 2-3 level category tree, filter products by a parent category with children included, and verify descendant products still appear. |
+| Deep category tree guard | SOURCE_FIXED / CATALOG E2E PENDING | Seed a category chain deeper than 10 levels, filter from the root, and verify the request completes without runaway child lookups. |
+| Max-depth boundary | SOURCE_FIXED / CATALOG E2E OPTIONAL | Verify products assigned at level 10 are included while level 11 descendants are not traversed through the child lookup path. |
+
 ## 2026-06-12 00:07 UTC TEST F2748 Account Login Failure Key Length Handoff
 
 Source status:

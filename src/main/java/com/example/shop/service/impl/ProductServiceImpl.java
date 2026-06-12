@@ -82,6 +82,7 @@ public class ProductServiceImpl implements ProductService {
     private static final int HARD_ADMIN_PRODUCT_PAGE_SIZE_LIMIT = 500;
     private static final int DEFAULT_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE = 500;
     private static final int HARD_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE = 1_000;
+    private static final int MAX_CATEGORY_TREE_DEPTH = 10;
     private static final int HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS = 5_000;
     private static final String SMART_DEVICES_COLLECTION = "smart-devices";
     private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("(?is)<!--.*?-->");
@@ -2967,7 +2968,7 @@ public class ProductServiceImpl implements ProductService {
 
     private List<Long> collectCategoryIds(Long id) {
         List<Long> ids = new java.util.ArrayList<>();
-        collectCategoryIds(id, ids);
+        collectCategoryIds(id, ids, 1);
         return ids;
     }
 
@@ -3271,9 +3272,15 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private void collectCategoryIds(Long id, List<Long> ids) {
+    private void collectCategoryIds(Long id, List<Long> ids, int depth) {
+        if (id == null || depth > MAX_CATEGORY_TREE_DEPTH) {
+            return;
+        }
         ids.add(id);
-        categoryRepository.findByParentId(id).forEach(child -> collectCategoryIds(child.getId(), ids));
+        if (depth == MAX_CATEGORY_TREE_DEPTH) {
+            return;
+        }
+        categoryRepository.findByParentId(id).forEach(child -> collectCategoryIds(child.getId(), ids, depth + 1));
     }
 
     private boolean matchesNormalizedKeyword(Product product, String normalizedKeyword, Map<Long, Category> categoryLookup) {
