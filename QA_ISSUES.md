@@ -15969,7 +15969,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Frontend — CookieConsent.tsx
 - **Detail**: Cookie consent defaults to "accepted" instead of requiring explicit user action. This violates GDPR/CCPA requirements.
 - **Impact**: Legal compliance issue for EU/California users.
-- **Status**: OPEN
+- **Status**: NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 03:10 UTC)
+- **Resolution**: Current frontend source has no `CookieConsent.tsx`, no cookie-consent local/session storage key, and no source path that initializes a consent state to `accepted`. `frontend/public/index.html` and `runtime-config.js` also do not preload Google Analytics, Tag Manager, Meta Pixel, Hotjar, Clarity, Segment, Mixpanel, Amplitude, or similar third-party analytics scripts before consent. The report appears stale against the current frontend tree.
+- **Regression guard**: Added `CookieConsentDefaultContractTest`, which scans production frontend source/public files and fails if a cookie-consent state defaults to `accepted` or if common third-party analytics scripts are introduced without an explicit consent gate.
+- **Verification**: `./mvnw -q -Dtest=CookieConsentDefaultContractTest test` passed.
 
 ### F2793: [HIGH] Race Condition in Coupon Stock Check
 - **Component**: Backend — CouponService.claimCoupon

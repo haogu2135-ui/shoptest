@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 03:10 UTC QA F2792 Cookie Consent Default Stale Report
+
+Source status:
+- QA F2792 NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Current frontend source has no `CookieConsent.tsx`.
+- Production frontend source/public files have no cookie-consent storage key initialized to `accepted`.
+- `frontend/public/index.html` and `runtime-config.js` do not preload common third-party analytics scripts.
+- `./mvnw -q -Dtest=CookieConsentDefaultContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| First anonymous visit | SOURCE_VERIFIED / PRIVACY E2E PENDING | Open a fresh browser profile and verify no `cookieConsent=accepted` or equivalent local/session storage value is created automatically. |
+| Reload/navigation persistence | SOURCE_VERIFIED / PRIVACY E2E PENDING | Navigate through storefront and admin login routes, refresh, and verify no consent state flips to accepted without an explicit user action. |
+| Built bundle scan | SOURCE_VERIFIED / PRIVACY E2E PENDING | Build the frontend and confirm the emitted HTML/JS does not contain a default-accepted consent value or common third-party analytics loaders. |
+
 ## 2026-06-12 03:05 UTC QA F2791 Product Name Internationalization
 
 Source status:
