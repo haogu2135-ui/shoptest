@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 04:39 UTC QA F2799 Review Duplicate Creation Guard
+
+Source status:
+- QA F2799 NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `ReviewServiceImpl.addReview(...)` checks `existsByProduct_IdAndUser_IdAndOrderId(productId, userId, orderId)` before saving a review.
+- Concurrent duplicate races are handled by translating `DataIntegrityViolationException` from `uk_reviews_product_user_order` into the same controlled duplicate-review business error.
+- Fresh schema, baseline Flyway, and `V6__review_unique_product_user_order.sql` enforce `UNIQUE INDEX uk_reviews_product_user_order (product_id, user_id, order_id)`.
+- `./mvnw -q -Dtest=ReviewDuplicateCreationGuardContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Duplicate same-order review | SOURCE_VERIFIED / REVIEW E2E PENDING | As a customer with one completed order containing a product, submit one review successfully, then submit another review for the same product/order/user and verify the second request fails with a controlled duplicate-review error and no extra row. |
+| Concurrent duplicate review race | SOURCE_VERIFIED / REVIEW API E2E PENDING | Fire two review-create requests for the same product/order/user as close together as the harness allows and verify at most one review row is created while the losing request returns the duplicate-review error. |
+| Different order review remains allowed | SOURCE_VERIFIED / REVIEW E2E PENDING | With two completed orders for the same product/user, verify one review per distinct order is allowed and product review lists still show the expected moderation state. |
+
 ## 2026-06-12 04:27 UTC QA F2798 Search Results Pagination
 
 Source status:

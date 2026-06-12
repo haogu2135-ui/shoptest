@@ -16032,7 +16032,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Backend — ReviewService.createReview
 - **Detail**: The review creation does not check if the user has already reviewed the same product for the same order. Users can submit multiple reviews.
 - **Impact**: Data integrity issue; duplicate reviews possible.
-- **Status**: OPEN
+- **Status**: NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 04:39 UTC)
+- **Resolution**: Current `ReviewServiceImpl.addReview(...)` validates the completed order/product purchase context, then calls `reviewRepository.existsByProduct_IdAndUser_IdAndOrderId(productId, userId, orderId)` before saving and raises `This product has already been reviewed for this order` for duplicates. Concurrent duplicate races are also translated by catching `DataIntegrityViolationException` for `uk_reviews_product_user_order`. Fresh schema, baseline Flyway, and `V6__review_unique_product_user_order.sql` enforce `UNIQUE INDEX uk_reviews_product_user_order (product_id, user_id, order_id)`.
+- **Regression guard**: Added `ReviewDuplicateCreationGuardContractTest` to verify the service duplicate check runs before save, duplicate unique-key failures are translated, the repository exposes the exact duplicate lookup, and schema/migrations enforce the product/user/order unique index.
+- **Verification**: `./mvnw -q -Dtest=ReviewDuplicateCreationGuardContractTest test` passed.
 
 ### F2800: [MEDIUM] User-Facing Error Messages Stripped of Useful Detail
 - **Component**: Frontend — api/interceptors/errorInterceptor.ts
