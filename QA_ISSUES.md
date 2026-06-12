@@ -16023,7 +16023,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Backend — ProductController.search
 - **Detail**: The search endpoint returns all matching products without pagination. Large result sets can cause performance issues and high memory usage.
 - **Impact**: Performance degradation with large product catalogs.
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 04:27 UTC)
+- **Resolution**: `GET /search` now delegates to `productService.findPublicProductPage(...)` instead of the legacy `findPublicProducts(...)` list path and returns `ProductPublicPageResponse` with `items`, `total`, `page`, `size`, `totalPages`, `hasNext`, and `hasPrevious`. Missing pagination parameters default to page `0` and size `24`, while explicit `page`/`size` are passed through the bounded public product page query.
+- **Regression guard**: Added `SearchControllerPaginationContractTest` to verify `/search?q=...&page=...&size=...` returns page metadata, forwards page/size into `ProductListQuery`, and never calls the old unpaged list method.
+- **Verification**: `./mvnw -q -Dtest=SearchControllerPaginationContractTest test` passed.
 
 ### F2799: [MEDIUM] Review Creation Has No Duplicate Check
 - **Component**: Backend — ReviewService.createReview

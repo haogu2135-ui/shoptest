@@ -4,6 +4,23 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 04:27 UTC QA F2798 Search Results Pagination
+
+Source status:
+- QA F2798 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- `GET /search` now calls `productService.findPublicProductPage(...)`, not the legacy `findPublicProducts(...)` list path.
+- The response is a `ProductPublicPageResponse` envelope with `items`, `total`, `page`, `size`, `totalPages`, `hasNext`, and `hasPrevious`.
+- Missing `page`/`size` default to `0`/`24`; explicit `page` and `size` are forwarded through `ProductListQuery`.
+- `./mvnw -q -Dtest=SearchControllerPaginationContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Search API pagination | SOURCE_FIXED / SEARCH API E2E PENDING | Seed more than one page of matching products, call `/search?q=...&page=0&size=12` and `/search?q=...&page=1&size=12`, and verify distinct page items plus coherent `total`, `page`, `size`, `totalPages`, `hasNext`, and `hasPrevious`. |
+| Search filters with pagination | SOURCE_FIXED / SEARCH API E2E PENDING | Combine keyword with category/price/material/color filters and verify pagination metadata remains bounded and accurate. |
+| Storefront search UI | SOURCE_FIXED / STOREFRONT E2E PENDING | Use the storefront search box/list page against a multi-page result set and verify the UI can move between pages without loading all matching products at once. |
+
 ## 2026-06-12 04:12 UTC QA F2797 Order Cancel Status Guard
 
 Source status:
