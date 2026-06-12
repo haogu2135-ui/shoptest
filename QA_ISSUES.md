@@ -15960,7 +15960,10 @@ New files reviewed: `frontend/src/pages/StorefrontBugReport.tsx`, `frontend/src/
 - **Component**: Backend — ProductValidator
 - **Detail**: Product name validation regex rejects non-ASCII characters (Chinese, Japanese, Korean, emoji). International product names are rejected.
 - **Impact**: International users cannot create products with localized names.
-- **Status**: OPEN
+- **Status**: NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING (2026-06-12 03:05 UTC)
+- **Resolution**: Current source has no `ProductValidator` class and `Product.name` is constrained by `@NotBlank` plus `@Size(max = 200)` without `@Pattern`. Direct product save uses `ProductServiceImpl.normalizeDirectText(...)`, CSV import uses `normalizeImportText(...)`, and URL import preview uses `ProductUrlImportService.cleanText(...)`; these paths strip HTML/control characters or collapse whitespace but do not apply an ASCII-only product-name regex.
+- **Regression guard**: Added `ProductNameInternationalizationContractTest` to verify the entity field does not use `@Pattern`, no stale `ProductValidator.java` is present, and direct/CSV/URL import name normalizers preserve Chinese, Japanese, Korean, Spanish accent characters, and emoji.
+- **Verification**: `./mvnw -q -Dtest=ProductNameInternationalizationContractTest test` passed.
 
 ### F2792: [MEDIUM] Cookie Consent Default Set to "accepted"
 - **Component**: Frontend — CookieConsent.tsx

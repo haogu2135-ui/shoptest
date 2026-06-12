@@ -4,6 +4,24 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 03:05 UTC QA F2791 Product Name Internationalization
+
+Source status:
+- QA F2791 NOT_ISSUE / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Current backend source has no `ProductValidator.java`.
+- `Product.name` has `@NotBlank` and `@Size(max = 200)` without `@Pattern`.
+- Direct save, CSV import, and URL import preview name normalization preserve Chinese, Japanese, Korean, Spanish accent characters, and emoji.
+- `./mvnw -q -Dtest=ProductNameInternationalizationContractTest test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Admin create product | SOURCE_VERIFIED / ADMIN E2E PENDING | Create a product whose name includes Chinese, Japanese, Korean, Spanish accent characters, and emoji; verify the admin API accepts it and the admin list/detail display the exact normalized name. |
+| Admin update product | SOURCE_VERIFIED / ADMIN E2E PENDING | Edit an existing product to the same internationalized name mix and verify save, reload, and audit/display paths keep the characters. |
+| Storefront/search display | SOURCE_VERIFIED / STOREFRONT E2E PENDING | Confirm the product appears correctly in storefront list/detail/search results without mojibake, truncation, or fallback names. |
+| Product import | SOURCE_VERIFIED / IMPORT E2E PENDING | Import a CSV row and preview a URL-derived product name with non-ASCII characters; verify both paths preserve the localized name after save. |
+
 ## 2026-06-12 02:58 UTC QA F2790 Cart Mock Interceptor Stale Report
 
 Source status:
