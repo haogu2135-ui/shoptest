@@ -18,4 +18,16 @@ describe('OrderManagement type-safety guard', () => {
     expect(source).toContain("getApiErrorMessage(err, t('pages.adminOrders.paymentSyncFailed'), language)");
     expect(source).toContain("getApiErrorMessage(error, t('pages.adminOrders.exportFailed'), language)");
   });
+
+  it('keeps OrderManagement non-blocking diagnostics using a string context first', () => {
+    const source = readOrderManagementSource();
+
+    expect(source).toContain("reportNonBlockingError('OrderManagement carriers load failed', error);");
+    expect(source).toContain("reportNonBlockingError('OrderManagement.formatLabelSpecs', error);");
+    expect(source).toContain("reportNonBlockingError('OrderManagement.loadLabelItems', error);");
+    expect(source).toContain("reportNonBlockingError('OrderManagement.printShippingLabel', error);");
+    expect(source).toContain("reportNonBlockingError('OrderManagement.openRefundModal.payments', error);");
+    expect(source).not.toContain("reportNonBlockingError(err, 'order-actions-reorder')");
+    expect(source).not.toMatch(/reportNonBlockingError\s*\(\s*(err|error|[A-Za-z_$][\w$]*Error)\s*,/);
+  });
 });

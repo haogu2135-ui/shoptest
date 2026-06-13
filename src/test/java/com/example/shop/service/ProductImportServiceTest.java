@@ -15,6 +15,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -1604,6 +1606,24 @@ class ProductImportServiceTest {
         assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
         assertFalse(result.isApplied());
         verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void importedProductLengthLimitsMatchEntityContracts() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/impl/ProductServiceImpl.java"),
+                StandardCharsets.UTF_8
+        );
+        int validateStart = source.indexOf("private void validateImportedProduct(");
+        int validateEnd = source.indexOf("private void validateImportTargetIdentity(", validateStart);
+        assertTrue(validateStart >= 0);
+        assertTrue(validateEnd > validateStart);
+        String validateImportedProduct = source.substring(validateStart, validateEnd);
+
+        assertTrue(validateImportedProduct.contains("requireLength(product.getName(), 200, \"name\");"));
+        assertFalse(validateImportedProduct.contains("requireLength(product.getName(), 180, \"name\");"));
+        assertTrue(validateImportedProduct.contains("requireLength(product.getDescription(), 1000, \"description\");"));
+        assertFalse(validateImportedProduct.contains("requireLength(product.getDescription(), 2000, \"description\");"));
     }
 
     private void assertImportTrace(ProductImportResult result) {

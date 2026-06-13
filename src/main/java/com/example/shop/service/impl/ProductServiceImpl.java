@@ -2164,8 +2164,8 @@ public class ProductServiceImpl implements ProductService {
         if (newProduct || updateFields.contains("categoryId")) {
             requirePresent(product.getCategoryId(), "categoryId");
         }
-        requireLength(product.getName(), 180, "name");
-        requireLength(product.getDescription(), 2000, "description");
+        requireLength(product.getName(), 200, "name");
+        requireLength(product.getDescription(), 1000, "description");
         requireLength(product.getBrand(), 120, "brand");
         requireLength(product.getTag(), 80, "tag");
         requireLength(product.getWarranty(), 500, "warranty");

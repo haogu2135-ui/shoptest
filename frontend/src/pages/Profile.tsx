@@ -227,6 +227,7 @@ const Profile: React.FC = () => {
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [orderSearchText, setOrderSearchText] = useState('');
   const handledPaymentReturnRef = useRef('');
+  const paymentReturnSyncSeqRef = useRef(0);
   const ordersRef = useRef<OrderCustomer[]>([]);
   const mountedRef = useRef(false);
   const ordersRequestSeqRef = useRef(0);
@@ -276,6 +277,7 @@ const Profile: React.FC = () => {
     return () => {
       mountedRef.current = false;
       ordersRequestSeqRef.current += 1;
+      paymentReturnSyncSeqRef.current += 1;
     };
   }, []);
 
@@ -333,11 +335,15 @@ const Profile: React.FC = () => {
   }, [t]);
 
   const syncPaymentReturnState = useCallback(async (order: OrderCustomer) => {
+    const syncSeq = paymentReturnSyncSeqRef.current + 1;
+    paymentReturnSyncSeqRef.current = syncSeq;
+    const isCurrentPaymentReturnSync = () => mountedRef.current && paymentReturnSyncSeqRef.current === syncSeq;
     const paymentListRes = await paymentApi.getByOrder(order.id);
-    if (!mountedRef.current) return;
+    if (!isCurrentPaymentReturnSync()) return;
     const paymentList = paymentListRes.data || [];
     const syncedById = new Map<number, PaymentCustomer>();
     await Promise.all(paymentList.map(async (payment) => {
+      if (!isCurrentPaymentReturnSync()) return;
       try {
         const synced = await paymentApi.sync(payment.id);
         syncedById.set(payment.id, synced.data);
@@ -345,7 +351,7 @@ const Profile: React.FC = () => {
         reportNonBlockingError('Profile.syncPaymentReturnState', error);
       }
     }));
-    if (!mountedRef.current) return;
+    if (!isCurrentPaymentReturnSync()) return;
     const mergedPayments = paymentList.map((payment) => syncedById.get(payment.id) || payment);
     const latestPayment = mergedPayments[0] || null;
     setOrderPayments(mergedPayments);
@@ -354,7 +360,7 @@ const Profile: React.FC = () => {
       setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
     }
     await fetchOrders();
-    if (!mountedRef.current) return;
+    if (!isCurrentPaymentReturnSync()) return;
     if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'RECONCILE_REQUIRED')) {
       message.warning(t('pages.profile.paymentReturnReconcileRequired'));
     } else if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'PAID')) {
@@ -439,7 +445,7 @@ const Profile: React.FC = () => {
     }
     setSearchParams(nextParams, { replace: true });
     syncPaymentReturnState(targetOrder).catch(() => {
-      if (mountedRef.current) {
+      if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {
         message.error(t('pages.profile.paymentReturnSyncFailed'));
         fetchOrders();
       }

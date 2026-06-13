@@ -247,6 +247,10 @@ const OrderTracking: React.FC = () => {
     const isCurrentTrackRequest = () => mountedRef.current && trackRequestSeqRef.current === requestSeq && !abortController.signal.aborted;
     setLoading(true);
     setLookupError('');
+    setReturnRequestOpen(false);
+    setReturnShipmentOpen(false);
+    setReturnReason('');
+    setReturnTrackingNumber('');
     const normalizedEmail = values.email.trim().toLowerCase();
     try {
       const res = await orderApi.track(values.orderNo.trim(), normalizedEmail, { signal: abortController.signal });

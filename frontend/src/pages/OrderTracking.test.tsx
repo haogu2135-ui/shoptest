@@ -308,4 +308,27 @@ describe('OrderTracking auto refresh', () => {
     expect(source).toContain('aria-label={item.label}');
     expect(source).not.toContain('OrderTimeline');
   });
+
+  it('resets stale lookup errors and action modals before a new order lookup starts', () => {
+    const source = readOrderTrackingSource();
+    const trackStart = source.indexOf("const trackOrder = useCallback(async (values: { orderNo: string; email: string }, quiet = false) => {");
+    const trackEnd = source.indexOf('const onFinish = (values: { orderNo: string; email: string }) => {', trackStart);
+    const trackSource = source.slice(trackStart, trackEnd);
+    const apiCallIndex = trackSource.indexOf('await orderApi.track');
+
+    expect(trackStart).toBeGreaterThan(-1);
+    expect(trackEnd).toBeGreaterThan(trackStart);
+    expect(apiCallIndex).toBeGreaterThan(-1);
+    [
+      "setLookupError('');",
+      'setReturnRequestOpen(false);',
+      'setReturnShipmentOpen(false);',
+      "setReturnReason('');",
+      "setReturnTrackingNumber('');",
+    ].forEach((resetCall) => {
+      const resetIndex = trackSource.indexOf(resetCall);
+      expect(resetIndex).toBeGreaterThan(-1);
+      expect(resetIndex).toBeLessThan(apiCallIndex);
+    });
+  });
 });
