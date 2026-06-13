@@ -51,6 +51,9 @@ const resolveProductAdminImage = resolveProductImage;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const productEditorPopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
+const productAdminTableCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
+  'data-label': label,
+});
 
 const tagColorMap: Record<string, string> = { hot: 'red', new: 'blue', discount: 'orange' };
 const productStatusColors: Record<string, string> = {
@@ -1889,6 +1892,7 @@ const ProductManagement: React.FC = () => {
       dataIndex: 'imageUrl',
       key: 'imageUrl',
       width: 80,
+      onCell: () => productAdminTableCell(t('common.image')),
       render: (url: string, record: Product) => (
         <Image src={resolveProductAdminImage(url)} alt={record.name || t('pages.productAdmin.productTitlePreview')} width={50} height={50} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
       ),
@@ -1898,6 +1902,7 @@ const ProductManagement: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       width: 180,
+      onCell: () => productAdminTableCell(t('pages.productAdmin.productName')),
       render: (name: string, record: Product) => (
         <div>
           <b>{name}</b>
@@ -1910,12 +1915,14 @@ const ProductManagement: React.FC = () => {
       dataIndex: 'categoryId',
       key: 'categoryId',
       width: 180,
+      onCell: () => productAdminTableCell(t('common.category')),
       render: (id: number) => getCategoryPath(flatCategories, id, language) || id,
     },
     {
       title: t('pages.productAdmin.price'),
       key: 'price',
       width: 140,
+      onCell: () => productAdminTableCell(t('pages.productAdmin.price')),
       render: (_: unknown, record: Product) => renderPrice(record),
     },
     {
@@ -1923,12 +1930,14 @@ const ProductManagement: React.FC = () => {
       dataIndex: 'stock',
       key: 'stock',
       width: 70,
+      onCell: () => productAdminTableCell(t('pages.productAdmin.stock')),
       render: (stock: number) => stock <= 0 ? <Tag color="red">{t('pages.productAdmin.outOfStock')}</Tag> : stock < 10 ? <Tag color="orange">{stock}</Tag> : stock,
     },
     {
       title: t('pages.productAdmin.shipping'),
       key: 'shippingRule',
       width: 150,
+      onCell: () => productAdminTableCell(t('pages.productAdmin.shipping')),
       render: (_: unknown, record: Product) => (
         <Space direction="vertical" size={0}>
           {record.freeShipping ? <Tag color="green">{t('pages.productAdmin.freeShipping')}</Tag> : <Tag>{t('pages.productAdmin.standardShipping')}</Tag>}
@@ -1941,6 +1950,7 @@ const ProductManagement: React.FC = () => {
       dataIndex: 'tag',
       key: 'tag',
       width: 80,
+      onCell: () => productAdminTableCell(t('pages.productAdmin.tag')),
       render: (tag: string) => tag ? <Tag color={tagColorMap[tag]}>{tagLabelMap[tag] || tag}</Tag> : '-',
     },
     {
@@ -1948,6 +1958,7 @@ const ProductManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 110,
+      onCell: () => productAdminTableCell(t('pages.productAdmin.reviewStatus')),
       render: (status: string) => {
         const value = status || 'ACTIVE';
         return <Tag color={productStatusColors[value]}>{productStatusLabels[value] ? t(productStatusLabels[value]) : value}</Tag>;
@@ -1958,12 +1969,14 @@ const ProductManagement: React.FC = () => {
       dataIndex: 'isFeatured',
       key: 'isFeatured',
       width: 80,
+      onCell: () => productAdminTableCell(t('pages.productAdmin.featuredColumn')),
       render: (v: boolean) => v ? <Tag color="gold" icon={<StarFilled />}>{t('pages.productAdmin.featuredYes')}</Tag> : <Tag icon={<StarOutlined />}>{t('pages.productAdmin.featuredNo')}</Tag>,
     },
     {
       title: t('pages.productAdmin.listingQualityColumn'),
       key: 'listingQuality',
       width: 180,
+      onCell: () => productAdminTableCell(t('pages.productAdmin.listingQualityColumn')),
       render: (_: unknown, record: Product) => {
         const issues = getListingQualityIssues(record);
         if (issues.length === 0) {
@@ -1983,6 +1996,7 @@ const ProductManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'action',
       width: 340,
+      onCell: () => productAdminTableCell(t('common.actions')),
       render: (_: unknown, record: Product) => {
         const productName = record.name || `#${record.id}`;
         const featureActionText = record.isFeatured ? t('pages.productAdmin.unsetFeatured') : t('pages.productAdmin.setFeatured');
@@ -2462,7 +2476,7 @@ const ProductManagement: React.FC = () => {
       </section>
 
       <Table
-        className="shop-admin-selection-table"
+        className="shop-admin-selection-table product-management-page__mobileCardTable"
         columns={columns}
         dataSource={filteredProducts}
         rowKey="id"

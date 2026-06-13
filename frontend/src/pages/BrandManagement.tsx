@@ -33,6 +33,9 @@ const brandImageFallback = imageFallbacks.brand;
 const resolveBrandImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, brandImageFallback);
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
+const brandAdminTableCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
+  'data-label': label,
+});
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
@@ -274,6 +277,7 @@ const BrandManagement: React.FC = () => {
       dataIndex: 'logoUrl',
       key: 'logoUrl',
       width: 88,
+      onCell: () => brandAdminTableCell(t('pages.brandAdmin.logo')),
       render: (url?: string, record?: Brand) => {
         const brandLabel = getBrandLabel(record);
         const logoLabel = `${t('pages.brandAdmin.logo')}: ${brandLabel}`;
@@ -290,6 +294,7 @@ const BrandManagement: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       width: 220,
+      onCell: () => brandAdminTableCell(t('pages.brandAdmin.brand')),
       render: (name: string, record: Brand) => (
         <Space direction="vertical" size={0}>
           <Text strong>{name}</Text>
@@ -302,12 +307,14 @@ const BrandManagement: React.FC = () => {
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
+      onCell: () => brandAdminTableCell(t('pages.brandAdmin.description')),
     },
     {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
       width: 110,
+      onCell: () => brandAdminTableCell(t('common.status')),
       render: (status = 'ACTIVE') => {
         const normalizedStatus = String(status || 'ACTIVE').trim().toUpperCase();
         return <Tag color={statusColors[normalizedStatus] || 'default'}>{formatBrandStatus(status)}</Tag>;
@@ -317,6 +324,7 @@ const BrandManagement: React.FC = () => {
       title: t('pages.brandAdmin.readiness'),
       key: 'readiness',
       width: 140,
+      onCell: () => brandAdminTableCell(t('pages.brandAdmin.readiness')),
       render: (_: unknown, record: Brand) => {
         const readySignals = getBrandReadiness(record);
         return (
@@ -331,17 +339,19 @@ const BrandManagement: React.FC = () => {
       dataIndex: 'sortOrder',
       key: 'sortOrder',
       width: 90,
+      onCell: () => brandAdminTableCell(t('pages.brandAdmin.sortOrder')),
     },
     {
       title: t('common.actions'),
       key: 'actions',
       width: 180,
+      onCell: () => brandAdminTableCell(t('common.actions')),
       render: (_: unknown, record: Brand) => {
         const brandName = getBrandLabel(record);
         const editActionLabel = `${t('common.edit')}: ${brandName}`;
         const deleteActionLabel = `${t('common.delete')}: ${brandName}`;
         return (
-          <Space size="small">
+          <Space size="small" wrap className="brand-management-page__tableActions">
             {canWriteBrands ? <Button icon={<EditOutlined />} size="small" disabled={brandActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
               {t('common.edit')}
             </Button> : null}
@@ -476,7 +486,16 @@ const BrandManagement: React.FC = () => {
         </div>
       </section>
 
-      <Table columns={columns} dataSource={filteredBrands} rowKey="id" loading={loading} bordered size="middle" scroll={{ x: 860 }} />
+      <Table
+        className="brand-management-page__mobileCardTable"
+        columns={columns}
+        dataSource={filteredBrands}
+        rowKey="id"
+        loading={loading}
+        bordered
+        size="middle"
+        scroll={{ x: 860 }}
+      />
         </>
       ) : null}
 

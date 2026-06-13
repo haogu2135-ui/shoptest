@@ -1063,11 +1063,12 @@ const OrderManagement: React.FC = () => {
 
 
   const columns = [
-    { title: t('pages.adminOrders.orderId'), dataIndex: 'id', key: 'id', width: 76 },
+    { title: t('pages.adminOrders.orderId'), dataIndex: 'id', key: 'id', width: 76, onCell: () => evidenceCell(t('pages.adminOrders.orderId')) },
     {
       title: t('pages.adminOrders.customer'),
       key: 'customer',
       width: 190,
+      onCell: () => evidenceCell(t('pages.adminOrders.customer')),
       render: (_: unknown, record: Order) => renderCustomer(record),
     },
     {
@@ -1075,6 +1076,7 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'totalAmount',
       key: 'totalAmount',
       width: 100,
+      onCell: () => evidenceCell(t('common.amount')),
       render: (v: number) => <span className="order-management-page__amount commerce-money">{formatMoney(v)}</span>,
     },
     {
@@ -1082,18 +1084,21 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 112,
+      onCell: () => evidenceCell(t('common.status')),
       render: (s: string) => <Tag color={getOrderStatusColor(s)}>{formatOrderStatusLabel(s)}</Tag>,
     },
     {
       title: t('pages.adminOrders.nextAction'),
       key: 'nextAction',
       width: 170,
+      onCell: () => evidenceCell(t('pages.adminOrders.nextAction')),
       render: (_: unknown, record: Order) => renderNextAction(record),
     },
     {
       title: t('pages.adminOrders.returnInfo'),
       key: 'returnInfo',
       width: 180,
+      onCell: () => evidenceCell(t('pages.adminOrders.returnInfo')),
       render: (_: unknown, record: Order) => (
         <Space direction="vertical" size={2} className="order-management-page__compactStack">
           <Typography.Text>{record.returnReason || '-'}</Typography.Text>
@@ -1111,6 +1116,7 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'shippingAddress',
       key: 'shippingAddress',
       width: 220,
+      onCell: () => evidenceCell(t('pages.adminOrders.address')),
       render: (_: string, record: Order) => (
         <Space direction="vertical" size={0} className="order-management-page__compactStack">
           {orderRecipientLine(record) ? <Typography.Text strong>{orderRecipientLine(record)}</Typography.Text> : null}
@@ -1124,6 +1130,7 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'paymentMethod',
       key: 'paymentMethod',
       width: 92,
+      onCell: () => evidenceCell(t('pages.adminOrders.paymentMethod')),
       render: (v: string) => v || '-',
     },
     {
@@ -1131,6 +1138,7 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'trackingNumber',
       key: 'trackingNumber',
       width: 150,
+      onCell: () => evidenceCell(t('pages.adminOrders.tracking')),
       render: (v: string, record: Order) => {
         if (!v) return '-';
         const orderLabel = orderDisplayLabel(record);
@@ -1153,12 +1161,14 @@ const OrderManagement: React.FC = () => {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 145,
+      onCell: () => evidenceCell(t('pages.adminOrders.createdAt')),
       render: (v: string) => v ? new Date(v).toLocaleString(dateLocale) : '-',
     },
     {
       title: t('common.actions'),
       key: 'action',
       width: 180,
+      onCell: () => evidenceCell(t('common.actions')),
       render: (_: unknown, record: Order) => {
         const orderLabel = orderDisplayLabel(record);
         const transitions = orderValidTransitions[record.status] || [];
@@ -1334,7 +1344,7 @@ const OrderManagement: React.FC = () => {
           </Card>
           <div className="order-management-page__table">
             <Table
-              className="shop-admin-selection-table"
+              className="shop-admin-selection-table order-management-page__mobileCardTable"
               columns={columns}
               dataSource={orders}
               rowKey="id"

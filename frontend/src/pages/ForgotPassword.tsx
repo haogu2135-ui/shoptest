@@ -193,7 +193,7 @@ const ForgotPassword: React.FC = () => {
     <main className="shopee-login-root shopee-login-root--reset">
       <section className="shopee-login-card shopee-login-card--reset">
         <div className="shopee-login-brand">
-          <div className="shopee-login-mark">ShopMX</div>
+          <div className="shopee-login-mark">{t('common.brand')}</div>
           <div className="shopee-login-subtitle">{t('pages.auth.resetPasswordTitle')}</div>
         </div>
         <div className="shopee-login-reset-guide" aria-label={t('pages.auth.resetGuideTitle')}>

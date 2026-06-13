@@ -99,6 +99,29 @@ describe('BugManagement mobile modal guards', () => {
     }
   });
 
+  it('keeps BUG admin buttons and filters accessible by contextual names', () => {
+    expect(pageSource).toContain("const bugStatusFilterLabel = `${bugPageLabel}: ${tx('status', 'Status')}`;");
+    expect(pageSource).toContain("const bugSeverityFilterLabel = `${bugPageLabel}: ${tx('severity', 'Severity')}`;");
+    expect(pageSource).toContain("const bugModuleFilterLabel = `${bugPageLabel}: ${tx('module', 'Module')}`;");
+    expect(pageSource).toContain("const bugRefreshActionLabel = `${bugPageLabel}: ${tx('refresh', 'Refresh')}`;");
+    expect(pageSource).toContain("const newBugActionLabel = `${bugPageLabel}: ${tx('newBug', 'New bug')}`;");
+    expect(pageSource).toContain("const editActionLabel = `${tx('edit', 'Edit')}: ${bugLabel}`;");
+    expect(pageSource).toContain("const scanActionLabel = `${tx('scan', 'Scan')}: ${bugLabel}`;");
+    expect(pageSource).toContain("const statusActionLabel = `${tx('statusAction', 'Status')}: ${bugLabel}`;");
+    expect(pageSource).toContain('aria-label={editActionLabel} title={editActionLabel}');
+    expect(pageSource).toContain('aria-label={scanActionLabel} title={scanActionLabel}');
+    expect(pageSource).toContain('aria-label={statusActionLabel} title={statusActionLabel}');
+    expect(pageSource).toContain('aria-label={bugRefreshActionLabel} title={bugRefreshActionLabel}');
+    expect(pageSource).toContain('aria-label={newBugActionLabel} title={newBugActionLabel}');
+    expect(pageSource).toContain('aria-label={bugStatusFilterLabel}');
+    expect(pageSource).toContain('aria-label={bugSeverityFilterLabel}');
+    expect(pageSource).toContain('aria-label={bugModuleFilterLabel}');
+    expect(pageSource).toContain("okButtonProps={{ disabled: bugMutationDisabled, 'aria-label': saveBugActionLabel, title: saveBugActionLabel }}");
+    expect(pageSource).toContain("cancelButtonProps={{ 'aria-label': cancelBugActionLabel, title: cancelBugActionLabel }}");
+    expect(pageSource).toContain("okButtonProps={{ disabled: bugMutationDisabled, 'aria-label': saveBugStatusActionLabel, title: saveBugStatusActionLabel }}");
+    expect(pageSource).toContain("cancelButtonProps={{ 'aria-label': cancelBugStatusActionLabel, title: cancelBugStatusActionLabel }}");
+  });
+
   it('uses the server-provided scan interval with a bounded fallback instead of a fixed poll cadence', () => {
     const scanRefreshStart = pageSource.indexOf('const scanRefreshMs = useMemo(() => {');
     const scanRefreshSource = pageSource.slice(scanRefreshStart, pageSource.indexOf('const noPermissionLabel', scanRefreshStart));

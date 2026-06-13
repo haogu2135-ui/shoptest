@@ -5126,7 +5126,7 @@ Notes:
 - Environment: Authenticated `SUPER_ADMIN`, viewport `390x844`, routes `/admin/products`, `/admin/orders`, `/admin/users`, `/admin/brands`, and `/admin/bugs`
 - Severity: MEDIUM
 - Description: Several admin pages still render desktop-width data tables on mobile. At the default mobile viewport the first columns are visible, but important status, review, readiness, and action columns are offscreen until the user horizontally scrolls a very wide table. This makes common admin workflows hard to complete from mobile because the row state and row actions are not discoverable in the initial view.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 13:06 UTC) / REGRESSION_PENDING — Added mobile labelled-card contracts for the Product, Order, User, and Brand admin primary tables: all business cells now emit `data-label`, each table has a page-specific mobile card class, and the final F2718 CSS at mobile/tablet/short-landscape widths converts rows into full-width cards with visible identity/status/readiness/action rows and 44px actions. Bug Management already had the current-source `data-label` mobile card path, so it was covered without further source edits. Added `AdminMobileTablesResponsive.test.ts` as a static source guard, but did not run Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands.
 - Evidence: `app-ui-audit-20260607T1624-admin-codex/admin-products-mobile.png`, `admin-orders-mobile.png`, `admin-users-mobile.png`, `admin-brands-mobile.png`, and `admin-bugs-mobile.png`. Source examples: `frontend/src/pages/ProductManagement.tsx` uses `scroll={{ x: 1240 }}`, `OrderManagement.tsx` uses `scroll={{ x: 1500 }}`, `UserManagement.tsx` uses `scroll={{ x: 1200 }}`, `BrandManagement.tsx` uses `scroll={{ x: 860 }}`, and `BugManagement.tsx` uses `scroll={{ x: 1100 }}`.
 - Expected fix direction: Add mobile-specific row cards or compact management rows that keep identity, status, and primary actions visible without horizontal exploration. If a table remains available, make it a secondary detailed view and preserve obvious access to row actions.
 
@@ -5505,7 +5505,7 @@ Notes:
 - Environment: `src/pages/admin/BugManagement.tsx:2145, 2177, 2185`
 - Severity: LOW
 - Description: Delete and resolution action icon buttons have no `aria-label` for screen readers.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 13:23 UTC) / REGRESSION_PENDING — Bug Management row actions now build bug-specific accessible names for Edit, Scan, and Status actions and pass them through `aria-label`/`title`; page toolbar Refresh/New bug, warning retry buttons, status/severity/module filters, and both Bug modals' OK/Cancel buttons now have contextual accessible names. Added `BugManagement.test.ts` static source guards for the F2320 naming contract. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Add `aria-label={t('admin.bugManagement.delete')}` etc.
 
 ### F2319: `isAdminRole` treats any non-USER role as admin
@@ -5543,7 +5543,7 @@ Notes:
 - Environment: `src/pages/Home.tsx:1987-1998`
 - Severity: HIGH
 - Description: Trust badge text like "24/7 Customer Support" and "SSL Encrypted" are hardcoded outside the translation framework. Creates a non-localizable section.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 13:36 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — Current `Home.tsx` no longer hardcodes the reported `24/7 Customer Support` / `SSL Encrypted` trust badge copy; homepage hero trust pills, curated story trust card, and `.pet-trust-strip` all render through `t('home.trust.*')` keys. The remaining `24/7` and `SSL` strings are locale values for login trust stats, not hardcoded homepage JSX. Added `HomeTrustI18n.test.ts` static guards to keep homepage trust badges translated and require `home.trust` keys in en/es/zh. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Wrap in `t()` function.
 
 ### F2315: Storefront header hardcoded "ShopMX" brand not translatable
@@ -5552,7 +5552,7 @@ Notes:
 - Environment: `src/pages/Home.tsx:1507-1512`
 - Severity: HIGH
 - Description: The "ShopMX" brand name in the header is hardcoded HTML, not wrapped in translation function. Brand names that need localization (e.g., Chinese market adaptation) cannot be translated.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 13:52 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — Storefront brand marks now render through the shared `t('common.brand')` locale key. `Navbar.tsx` was already using `t('common.brand')`, and the remaining hardcoded auth brand mark in `ForgotPassword.tsx` now uses the same key. Added `StorefrontBrandI18n.test.ts` static guards to ensure Navbar/ForgotPassword do not hardcode `ShopMX` in component source and that `common.brand` exists in en/es/zh. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Use `t('common.brandName')` or similar.
 
 ### F2314: `useAuth` login/logout call `setState` after potential unmount

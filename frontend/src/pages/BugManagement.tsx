@@ -29,6 +29,9 @@ const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 
 const toBugApiPage = (tablePage: number) => Math.max(DEFAULT_PAGE_INDEX, tablePage - 1);
 const toBugTablePage = (apiPage: number) => apiPage + 1;
+const bugDisplayLabel = (bug: Pick<AdminBugReport, 'id' | 'title'>) => (
+  String(bug.title || '').trim() || `#${bug.id}`
+);
 
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
@@ -162,6 +165,19 @@ const BugManagement: React.FC = () => {
   }, [tx]);
   const bugPageLabel = tx('title', 'Bug management');
   const bugSearchLabel = `${bugPageLabel}: ${tx('searchPlaceholder', 'Search title, URL, description or notes')}`;
+  const bugStatusFilterLabel = `${bugPageLabel}: ${tx('status', 'Status')}`;
+  const bugSeverityFilterLabel = `${bugPageLabel}: ${tx('severity', 'Severity')}`;
+  const bugModuleFilterLabel = `${bugPageLabel}: ${tx('module', 'Module')}`;
+  const bugRefreshActionLabel = `${bugPageLabel}: ${tx('refresh', 'Refresh')}`;
+  const newBugActionLabel = `${bugPageLabel}: ${tx('newBug', 'New bug')}`;
+  const bugListRetryActionLabel = `${t('common.retry')}: ${bugPageLabel}`;
+  const bugSummaryRetryActionLabel = `${t('common.retry')}: ${tx('summary', 'Bug summary')}`;
+  const editingBugLabel = editingBug ? bugDisplayLabel(editingBug) : tx('createBug', 'Create bug');
+  const statusBugLabel = statusBug ? bugDisplayLabel(statusBug) : tx('updateStatus', 'Update status');
+  const saveBugActionLabel = `${t('common.save')}: ${editingBugLabel}`;
+  const cancelBugActionLabel = `${t('common.cancel')}: ${editingBugLabel}`;
+  const saveBugStatusActionLabel = `${t('common.save')}: ${statusBugLabel}`;
+  const cancelBugStatusActionLabel = `${t('common.cancel')}: ${statusBugLabel}`;
   const bugActionUnavailableMessage = bugListLoadError || (loading ? t('common.loading') : tx('loadFailed', 'Failed to load bugs'));
   const bugPaginationItemRender = useMemo(() => buildPaginationItemRender(
     `${t('common.previousPage')}: ${bugPageLabel}`,
@@ -590,24 +606,28 @@ const BugManagement: React.FC = () => {
       onCell: () => ({ 'data-label': tx('actions', 'Actions') } as React.HTMLAttributes<HTMLElement>),
       render: (_, bug) => {
         const canScanCurrentBug = isScannableStatus(bug.status);
+        const bugLabel = bugDisplayLabel(bug);
+        const editActionLabel = `${tx('edit', 'Edit')}: ${bugLabel}`;
+        const scanActionLabel = `${tx('scan', 'Scan')}: ${bugLabel}`;
+        const statusActionLabel = `${tx('statusAction', 'Status')}: ${bugLabel}`;
         return (
           <Space wrap>
             {withPermissionTooltip(
-              <Button size="small" icon={<EditOutlined />} onClick={() => openEditor(bug)} disabled={!canWriteBugs || bugMutationDisabled}>
+              <Button size="small" icon={<EditOutlined />} onClick={() => openEditor(bug)} disabled={!canWriteBugs || bugMutationDisabled} aria-label={editActionLabel} title={editActionLabel}>
                 {tx('edit', 'Edit')}
               </Button>,
               canWriteBugs,
               bugMutationDisabled ? bugActionUnavailableMessage : undefined,
             )}
             {withPermissionTooltip(
-              <Button size="small" icon={<SyncOutlined />} onClick={() => openStatusEditor(bug, 'scan')} disabled={!canScanBugs || !canScanCurrentBug || bugMutationDisabled}>
+              <Button size="small" icon={<SyncOutlined />} onClick={() => openStatusEditor(bug, 'scan')} disabled={!canScanBugs || !canScanCurrentBug || bugMutationDisabled} aria-label={scanActionLabel} title={scanActionLabel}>
                 {tx('scan', 'Scan')}
               </Button>,
               canScanBugs,
               canScanCurrentBug ? (bugMutationDisabled ? bugActionUnavailableMessage : undefined) : tx('scanUnavailable', 'Scan is available only for open, fixing, or regression-failed bugs'),
             )}
             {withPermissionTooltip(
-              <Button size="small" icon={<CheckCircleOutlined />} onClick={() => openStatusEditor(bug, 'status')} disabled={!canUpdateBugStatus || bugMutationDisabled}>
+              <Button size="small" icon={<CheckCircleOutlined />} onClick={() => openStatusEditor(bug, 'status')} disabled={!canUpdateBugStatus || bugMutationDisabled} aria-label={statusActionLabel} title={statusActionLabel}>
                 {tx('statusAction', 'Status')}
               </Button>,
               canUpdateBugStatus,
@@ -633,13 +653,13 @@ const BugManagement: React.FC = () => {
         </div>
         <Space wrap>
           {withPermissionTooltip(
-            <Button icon={<ReloadOutlined />} onClick={() => reload(false)} loading={loading} disabled={!canReadBugs}>
+            <Button icon={<ReloadOutlined />} onClick={() => reload(false)} loading={loading} disabled={!canReadBugs} aria-label={bugRefreshActionLabel} title={bugRefreshActionLabel}>
               {tx('refresh', 'Refresh')}
             </Button>,
             canReadBugs,
           )}
           {withPermissionTooltip(
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()} disabled={!canWriteBugs || bugMutationDisabled}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()} disabled={!canWriteBugs || bugMutationDisabled} aria-label={newBugActionLabel} title={newBugActionLabel}>
               {tx('newBug', 'New bug')}
             </Button>,
             canWriteBugs,
@@ -666,7 +686,7 @@ const BugManagement: React.FC = () => {
               message={bugListLoadError}
               description={bugSnapshotLoaded ? tx('staleDataWarning', 'Showing the last successful bug queue snapshot. Bug create, edit, scan, and status actions are disabled until refresh succeeds.') : undefined}
               action={(
-                <Button size="small" onClick={() => reload(false)} loading={loading}>
+                <Button size="small" onClick={() => reload(false)} loading={loading} aria-label={bugListRetryActionLabel} title={bugListRetryActionLabel}>
                   {t('common.retry')}
                 </Button>
               )}
@@ -681,7 +701,7 @@ const BugManagement: React.FC = () => {
               message={summaryLoadError}
               description={summarySnapshotLoaded ? tx('summaryStaleDataWarning', 'Showing the last successful bug summary. Summary counts may be stale until refresh succeeds.') : undefined}
               action={(
-                <Button size="small" onClick={() => loadSummary(false)}>
+                <Button size="small" onClick={() => loadSummary(false)} aria-label={bugSummaryRetryActionLabel} title={bugSummaryRetryActionLabel}>
                   {t('common.retry')}
                 </Button>
               )}
@@ -726,6 +746,8 @@ const BugManagement: React.FC = () => {
                   options={statusOptions.map((status) => ({ value: status, label: statusLabels[status] || status }))}
                   classNames={mobilePopupClassNames}
                   disabled={!canReadBugs}
+                  aria-label={bugStatusFilterLabel}
+                  title={bugStatusFilterLabel}
                 />
                 <Select
                   className="bug-management__filter"
@@ -734,6 +756,8 @@ const BugManagement: React.FC = () => {
                   options={severityOptions.map((severity) => ({ value: severity, label: severityLabels[severity] || severity }))}
                   classNames={mobilePopupClassNames}
                   disabled={!canReadBugs}
+                  aria-label={bugSeverityFilterLabel}
+                  title={bugSeverityFilterLabel}
                 />
                 <Select
                   className="bug-management__filter"
@@ -742,6 +766,8 @@ const BugManagement: React.FC = () => {
                   options={moduleOptions.map((module) => ({ value: module, label: moduleLabels[module] || module }))}
                   classNames={mobilePopupClassNames}
                   disabled={!canReadBugs}
+                  aria-label={bugModuleFilterLabel}
+                  title={bugModuleFilterLabel}
                 />
                 <Space className="bug-management__scanToggle">
                   <Switch checked={scanQueueOnly} onChange={setScanQueueOnly} aria-label={tx('scanQueueOnly', 'Scan queue')} disabled={!canReadBugs} />
@@ -819,7 +845,8 @@ const BugManagement: React.FC = () => {
         onCancel={() => setEditorOpen(false)}
         onOk={handleSave}
         confirmLoading={saving}
-        okButtonProps={{ disabled: bugMutationDisabled }}
+        okButtonProps={{ disabled: bugMutationDisabled, 'aria-label': saveBugActionLabel, title: saveBugActionLabel }}
+        cancelButtonProps={{ 'aria-label': cancelBugActionLabel, title: cancelBugActionLabel }}
         width={860}
         className="profile-mobile-safe-modal bug-management__modal"
       >
@@ -875,7 +902,8 @@ const BugManagement: React.FC = () => {
         onCancel={() => setStatusOpen(false)}
         onOk={handleStatusSave}
         confirmLoading={acting}
-        okButtonProps={{ disabled: bugMutationDisabled }}
+        okButtonProps={{ disabled: bugMutationDisabled, 'aria-label': saveBugStatusActionLabel, title: saveBugStatusActionLabel }}
+        cancelButtonProps={{ 'aria-label': cancelBugStatusActionLabel, title: cancelBugStatusActionLabel }}
         width={720}
         className="profile-mobile-safe-modal bug-management__modal bug-management__statusModal"
       >

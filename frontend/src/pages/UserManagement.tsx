@@ -26,6 +26,9 @@ const DEFAULT_USER_PAGE_SIZE = 20;
 const USER_MANAGEMENT_BUILT_IN_ROLE_LABEL_KEYS = new Set(['USER', 'ADMIN', 'SUPER_ADMIN']);
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
+const userAdminTableCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
+  'data-label': label,
+});
 
 type UserProfileFormValues = {
   email?: string;
@@ -364,15 +367,16 @@ const UserManagement: React.FC = () => {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: t('pages.adminUsers.username'), dataIndex: 'username', key: 'username', width: 120 },
-    { title: t('pages.adminUsers.email'), dataIndex: 'email', key: 'email', width: 180 },
-    { title: t('pages.adminUsers.phone'), dataIndex: 'phone', key: 'phone', width: 120, render: (v: string) => v || '-' },
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, onCell: () => userAdminTableCell('ID') },
+    { title: t('pages.adminUsers.username'), dataIndex: 'username', key: 'username', width: 120, onCell: () => userAdminTableCell(t('pages.adminUsers.username')) },
+    { title: t('pages.adminUsers.email'), dataIndex: 'email', key: 'email', width: 180, onCell: () => userAdminTableCell(t('pages.adminUsers.email')) },
+    { title: t('pages.adminUsers.phone'), dataIndex: 'phone', key: 'phone', width: 120, onCell: () => userAdminTableCell(t('pages.adminUsers.phone')), render: (v: string) => v || '-' },
     {
       title: t('pages.adminUsers.roleCode'),
       dataIndex: 'roleCode',
       key: 'roleCode',
       width: 180,
+      onCell: () => userAdminTableCell(t('pages.adminUsers.roleCode')),
       render: (roleCode: string, record: User) => {
         const userLabel = record.username || record.email || `#${record.id}`;
         const isSelf = record.id === currentUserId;
@@ -406,6 +410,7 @@ const UserManagement: React.FC = () => {
       dataIndex: 'role',
       key: 'role',
       width: 120,
+      onCell: () => userAdminTableCell(t('pages.adminUsers.role')),
       render: (role: string) => <Tag color={roleColor(role)}>{formatRoleLabel(role)}</Tag>,
     },
     {
@@ -413,6 +418,7 @@ const UserManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 80,
+      onCell: () => userAdminTableCell(t('common.status')),
       render: (status: string) => {
         const normalizedStatus = normalizeUserAccountStatus(status);
         const statusLabel = normalizedStatus === 'ACTIVE'
@@ -431,6 +437,7 @@ const UserManagement: React.FC = () => {
       title: t('pages.adminUsers.readiness'),
       key: 'readiness',
       width: 130,
+      onCell: () => userAdminTableCell(t('pages.adminUsers.readiness')),
       render: (_: unknown, record: User) => {
         const readySignals = getUserReadiness(record);
         return (
@@ -445,12 +452,14 @@ const UserManagement: React.FC = () => {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 170,
+      onCell: () => userAdminTableCell(t('pages.adminUsers.createdAt')),
       render: (v: string) => v ? new Date(v).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : '-',
     },
     {
       title: t('common.actions'),
       key: 'action',
       width: 180,
+      onCell: () => userAdminTableCell(t('common.actions')),
       render: (_: unknown, record: User) => {
         const userLabel = record.username || record.email || `#${record.id}`;
         const isSelf = record.id === currentUserId;
@@ -473,7 +482,7 @@ const UserManagement: React.FC = () => {
           ? t('pages.adminUsers.banConfirm', { user: userLabel })
           : t('pages.adminUsers.unbanConfirm', { user: userLabel });
         return (
-          <Space size="small">
+          <Space size="small" wrap className="user-management-page__tableActions">
             <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={profileEditDisabled} onClick={() => openProfileModal(record)}>
               {t('common.edit')}
             </Button>
@@ -655,6 +664,7 @@ const UserManagement: React.FC = () => {
         </div>
       </section>
       <Table
+        className="user-management-page__mobileCardTable"
         columns={columns}
         dataSource={users}
         rowKey="id"
