@@ -65,6 +65,15 @@ class AdminRequestValidationContractTest {
     }
 
     @Test
+    void staleAdminFeedbackEntityEndpointIsAbsent() throws Exception {
+        String adminControllerSource = Files.readString(Path.of("src/main/java/com/example/shop/controller/AdminController.java"));
+
+        assertFalse(adminControllerSource.contains("createFeedback("));
+        assertFalse(adminControllerSource.contains("@RequestBody Feedback"));
+        assertFalse(adminControllerSource.contains("@RequestBody(required = false) Feedback"));
+    }
+
+    @Test
     void adminBugReportRequestRejectsBlankTitleAndOversizedFields() {
         AdminBugReportRequest request = new AdminBugReportRequest();
         request.setTitle(" ");

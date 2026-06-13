@@ -381,11 +381,19 @@ const normalizeProductPayload = (product: ProductMutationPayload) => {
 const normalizeCouponMutationValue = <T,>(value: unknown, normalize: (raw: unknown) => T) =>
     value === null || value === undefined ? null : normalize(value);
 
+const normalizeRequiredCouponText = (value: unknown, fieldName: string, maxLength: number) => {
+    const normalized = normalizeTextParam(value, maxLength);
+    if (!normalized) {
+        throw new Error(`${fieldName} is required`);
+    }
+    return normalized;
+};
+
 const normalizeCouponPayload = (coupon: Partial<Coupon>) => {
-    const source = coupon as Record<string, unknown>;
+    const source = (coupon || {}) as Record<string, unknown>;
     const payload: Record<string, unknown> = {};
-    if (hasOwn(source, 'name')) payload.name = normalizeTextParam(source.name, 120);
-    if (hasOwn(source, 'couponType')) payload.couponType = normalizeTextParam(source.couponType, 40).toUpperCase();
+    payload.name = normalizeRequiredCouponText(source.name, 'Coupon name', 120);
+    payload.couponType = normalizeRequiredCouponText(source.couponType, 'Coupon type', 40).toUpperCase();
     if (hasOwn(source, 'scope')) payload.scope = normalizeCouponMutationValue(source.scope, (value) => normalizeTextParam(value, 20).toUpperCase());
     if (hasOwn(source, 'status')) payload.status = normalizeCouponMutationValue(source.status, (value) => normalizeTextParam(value, 20).toUpperCase());
     if (hasOwn(source, 'thresholdAmount')) payload.thresholdAmount = normalizeCouponMutationValue(source.thresholdAmount, normalizeNonNegativeNumberParam);

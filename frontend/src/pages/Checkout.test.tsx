@@ -419,6 +419,24 @@ describe('Checkout payment availability', () => {
     expect(mountedGuardSource).toContain('mountedRef.current = false;');
   });
 
+  it('loads payment channels from a guarded effect instead of during render', () => {
+    const source = readCheckoutPageSource();
+    const componentStart = source.indexOf('const Checkout: React.FC = () => {');
+    const channelsEffectStart = source.indexOf('useEffect(() => {\n    if (!hasCheckoutItems) {', componentStart);
+    const channelsEffectEnd = source.indexOf('}, [currency, form, hasCheckoutItems]);', channelsEffectStart);
+    const renderBeforeChannelsEffect = source.slice(componentStart, channelsEffectStart);
+    const channelsEffect = source.slice(channelsEffectStart, channelsEffectEnd);
+
+    expect(componentStart).toBeGreaterThan(-1);
+    expect(channelsEffectStart).toBeGreaterThan(componentStart);
+    expect(channelsEffectEnd).toBeGreaterThan(channelsEffectStart);
+    expect(renderBeforeChannelsEffect).not.toContain('paymentApi.getChannels()');
+    expect(channelsEffect).toContain('paymentApi.getChannels()');
+    expect(channelsEffect).toContain('let disposed = false;');
+    expect(channelsEffect).toContain('if (disposed || !mountedRef.current) return;');
+    expect(channelsEffect).toContain('disposed = true;');
+  });
+
   it('keeps payment timers lifecycle-bound without delayed location redirects', () => {
     const source = readCheckoutPageSource();
     const refreshEffectStart = source.indexOf('if (!createdOrderId || payment || !pendingPaymentMethod) return;');

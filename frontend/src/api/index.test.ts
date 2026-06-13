@@ -1614,6 +1614,18 @@ describe('api parameter normalization', () => {
     });
   });
 
+  it('rejects admin coupon upsert payloads missing backend required fields', () => {
+    const { adminApi } = require('./index');
+
+    expect(() => adminApi.createCoupon({ name: 'Spring' } as any)).toThrow('Coupon type is required');
+    expect(() => adminApi.updateCoupon(7, { couponType: 'DISCOUNT' } as any)).toThrow('Coupon name is required');
+    expect(() => adminApi.createCoupon({ name: '   ', couponType: '   ' } as any)).toThrow('Coupon name is required');
+    expect(() => adminApi.updateCoupon(7, undefined as any)).toThrow('Coupon name is required');
+
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(mockPut).not.toHaveBeenCalled();
+  });
+
   it('clears order tracking cache when cancelling an order', async () => {
     const { orderApi } = require('./index');
 
@@ -1741,7 +1753,7 @@ describe('api parameter normalization', () => {
 
     await couponApi.getPublic();
     await couponApi.getPublic();
-    await adminApi.createCoupon({ name: 'Spring' });
+    await adminApi.createCoupon({ name: 'Spring', couponType: 'FULL_REDUCTION' });
     await couponApi.getPublic();
 
     expect(mockGet.mock.calls.map((call) => call[0])).toEqual([

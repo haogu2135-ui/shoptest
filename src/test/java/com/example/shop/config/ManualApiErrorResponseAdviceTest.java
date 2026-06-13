@@ -35,6 +35,7 @@ class ManualApiErrorResponseAdviceTest {
         assertEquals(HttpStatus.CONFLICT.value(), response.getStatus());
         assertEquals("Insufficient stock", body.get("error"));
         assertEquals("Insufficient stock", body.get("message"));
+        assertEquals("CONFLICT", body.get("code"));
         assertEquals(409, body.get("status"));
         assertEquals("Conflict", body.get("statusText"));
         assertEquals("/cart/add", body.get("path"));
@@ -58,7 +59,25 @@ class ManualApiErrorResponseAdviceTest {
         assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatus());
         assertEquals(400, body.get("status"));
         assertEquals("Bad Request", body.get("statusText"));
+        assertEquals("BAD_REQUEST", body.get("code"));
         assertEquals("Brand payload is required", body.get("message"));
+    }
+
+    @Test
+    void normalizesCartAndCouponManualErrorsToUniformApiPayload() {
+        Map<String, Object> cartBody = writeBody(
+                Map.of("error", "No cart items selected"),
+                MediaType.APPLICATION_JSON,
+                request("DELETE", "/cart/remove", "cart-manual-400"),
+                response(HttpStatus.BAD_REQUEST));
+        Map<String, Object> couponBody = writeBody(
+                Map.of("error", "Coupon quote payload is required"),
+                MediaType.APPLICATION_JSON,
+                request("POST", "/coupons/me/quote", "coupon-manual-400"),
+                response(HttpStatus.BAD_REQUEST));
+
+        assertUniformBadRequest(cartBody, "No cart items selected", "/cart/remove", "cart-manual-400");
+        assertUniformBadRequest(couponBody, "Coupon quote payload is required", "/coupons/me/quote", "coupon-manual-400");
     }
 
     @Test
@@ -136,5 +155,27 @@ class ManualApiErrorResponseAdviceTest {
         MockHttpServletRequest request = new MockHttpServletRequest(method, path);
         request.setAttribute(RequestCorrelationFilter.REQUEST_ID_ATTRIBUTE, requestId);
         return request;
+    }
+
+    private MockHttpServletResponse response(HttpStatus status) {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(status.value());
+        return response;
+    }
+
+    private void assertUniformBadRequest(
+            Map<String, Object> body,
+            String message,
+            String path,
+            String requestId
+    ) {
+        assertEquals(message, body.get("error"));
+        assertEquals(message, body.get("message"));
+        assertEquals("BAD_REQUEST", body.get("code"));
+        assertEquals(400, body.get("status"));
+        assertEquals("Bad Request", body.get("statusText"));
+        assertEquals(path, body.get("path"));
+        assertEquals(requestId, body.get("requestId"));
+        assertDoesNotThrow(() -> Instant.parse(String.valueOf(body.get("timestamp"))));
     }
 }

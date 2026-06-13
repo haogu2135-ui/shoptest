@@ -15270,46 +15270,52 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Dimension**: Frontend Logic
 
 ### F2817: MEDIUM — SupportManagement polling interval is a hardcoded 30-second constant
-- **Status**: OPEN
-- **File**: `SupportManagement.tsx:333`
+- **Status**: SOURCE_FIXED (covered by 2026-06-12 SupportManagement polling contract) / REGRESSION_PENDING
+- **File**: `frontend/src/pages/SupportManagement.tsx:34`, `frontend/src/pages/SupportManagement.test.tsx:120-128`
 - **Impact**: The support management page polls for new messages every 30 seconds via `setInterval(loadMessages, 30000)`. This is a hardcoded magic number that is not configurable by the admin. In high-traffic stores, 30 seconds is too slow; in low-traffic stores, it wastes bandwidth. The interval should be configurable via the config center or at least use a named constant.
 - **Severity**: MEDIUM
 - **Dimension**: UX / Performance
+- **Maintainer note (2026-06-13):** Current source no longer contains the stale 30-second literal. `SupportManagement.tsx` defines `SUPPORT_POLL_INTERVAL_MS = 10 * 1000` and the polling effect passes that named constant to `window.setInterval(...)`. `SupportManagement.test.tsx` guards the named constant and interval call. See the later "F2817: SupportManagement polling interval named contract" entry for detailed source evidence and regression request. No tests/build/runtime commands were run in this reconciliation pass.
 
 ### F2818: MEDIUM — PaymentChannelRecommendationService creates new RestTemplate instances per request
-- **Status**: OPEN
-- **File**: `PaymentChannelRecommendationService.java:26`
+- **Status**: SOURCE_FIXED (covered by 2026-06-13 Payment channel geo lookup fix) / REGRESSION_PENDING
+- **File**: `src/main/java/com/example/shop/service/PaymentChannelRecommendationService.java`, `src/main/java/com/example/shop/config/HttpClientConfig.java`, `src/test/java/com/example/shop/service/PaymentChannelRecommendationServiceTest.java`
 - **Impact**: `restTemplate()` creates a new `RestTemplate` on every call. Each `RestTemplate` creates new HTTP connection pools. Under load, this causes connection exhaustion and slow response times. The `RestTemplate` should be injected as a bean or created once and reused.
 - **Severity**: MEDIUM
 - **Dimension**: Performance
+- **Maintainer note (2026-06-13):** Current source no longer creates a new `RestTemplate` or `SimpleClientHttpRequestFactory` inside each geo lookup. `PaymentChannelRecommendationService` caches timeout-specific clients and uses `HttpClientConfig.restTemplateWithTimeouts(...)`; `PaymentChannelRecommendationServiceTest` guards the cached geo client contract. See the later "F2818 (Payment channel geo lookup)" entry for detailed source evidence and regression request. No tests/build/runtime commands were run in this reconciliation pass.
 
 ### F2819: MEDIUM — AdminController.createFeedback has no @Valid annotation on request body
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `AdminController.java:565`
 - **Impact**: The `createFeedback()` endpoint accepts a `Feedback` entity with `@RequestBody` but no `@Valid` annotation. This means Bean Validation annotations on the Feedback entity (like `@NotBlank`, `@Size`) are never enforced. The endpoint also uses the raw entity as a request body, which can lead to mass assignment issues if new fields are added to the Feedback entity.
 - **Severity**: MEDIUM
 - **Dimension**: API Design / Data Integrity
+- **Maintainer note:** The reported endpoint is stale against current source. Focused source search found no `createFeedback` method, no `Feedback` entity/controller request binding, and no feedback endpoint in current backend production source. Added `AdminRequestValidationContractTest.staleAdminFeedbackEntityEndpointIsAbsent()` to guard against reintroducing a raw admin feedback entity endpoint without an explicit validation contract. No tests/build/runtime commands were run in this reconciliation pass.
 
 ### F2820: MEDIUM — CouponManagement admin endpoints missing @Valid annotations on create/update
-- **Status**: OPEN
-- **File**: `CouponManagement.java:33-34, 40-41`
+- **Status**: SOURCE_FIXED / DUPLICATE_COVERED_BY_F9311 / REGRESSION_PENDING
+- **File**: `src/main/java/com/example/shop/controller/AdminController.java:536,559`, `src/test/java/com/example/shop/controller/AdminRequestValidationContractTest.java:127-139`
 - **Impact**: `addCoupon()` and `updateCoupon()` accept `Coupon` entities with `@RequestBody` but no `@Valid`. The entity's Bean Validation annotations are never enforced. The `updateCoupon()` method uses `updateTime` from the request body instead of `DateUtils.getCurrentDate()`, allowing clients to set arbitrary update timestamps.
 - **Severity**: MEDIUM
 - **Dimension**: API Design / Data Integrity
+- **Maintainer note:** Current source does not have the stale `CouponManagement.java` controller path. Active admin coupon mutations live in `AdminController.createCoupon(...)` and `updateCoupon(...)`, both accept `@Valid @RequestBody(required = false) CouponUpsertRequest` rather than a raw `Coupon` entity. `AdminRequestValidationContractTest.adminCatalogAndCouponWriteEndpointsValidateRequestBodies()` and `adminCatalogAndCouponRequestsRejectInvalidFields()` guard controller validation and invalid coupon fields. This is the same current-source fix covered by F9311. No tests/build/runtime commands were run in this reconciliation pass.
 
 ### F2821: MEDIUM — ProductController admin endpoints missing @Valid on create/update (Brand/Category)
-- **Status**: OPEN
-- **File**: `ProductController.java:107-117, 176-181`
+- **Status**: SOURCE_FIXED / DUPLICATE_COVERED_BY_F9311 / REGRESSION_PENDING
+- **File**: `src/main/java/com/example/shop/controller/AdminController.java:267,293,349,375`, `src/test/java/com/example/shop/controller/AdminRequestValidationContractTest.java:127-139`
 - **Impact**: `createBrand()`, `createCategory()`, `updateBrand()`, and `updateCategory()` accept raw entities with `@RequestBody` but no `@Valid`. Bean Validation annotations are never enforced. `createCategory()` overrides the request's `createTime` and `updateTime` with server time, but `updateCategory()` does not.
 - **Severity**: MEDIUM
 - **Dimension**: API Design / Data Integrity
+- **Maintainer note:** Current active admin brand/category mutation endpoints are in `AdminController`, and `createBrand(...)`, `updateBrand(...)`, `createCategory(...)`, and `updateCategory(...)` all use `@Valid @RequestBody(required = false)`. `AdminRequestValidationContractTest.adminCatalogAndCouponWriteEndpointsValidateRequestBodies()` and `adminCatalogAndCouponRequestsRejectInvalidFields()` guard validation activation plus representative invalid brand/category fields. This is the same current-source fix covered by F9311. No tests/build/runtime commands were run in this reconciliation pass.
 
 ### F2822: MEDIUM — Checkout page has potential concurrent async race condition
-- **Status**: OPEN
-- **File**: `Checkout.tsx:38-42`
+- **Status**: CURRENT_SOURCE_COVERED (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **File**: `frontend/src/pages/Checkout.tsx:881-912`, `frontend/src/pages/Checkout.test.tsx`
 - **Impact**: `paymentApi.getChannels()` is called directly in the render body (not in a `useEffect`), creating a new promise on every render. While `paymentChannels` is only set when the previous fetch has completed, this pattern can still cause unnecessary re-fetches if the component re-renders for other reasons. The `useState` setter with functional update prevents double-setting, but the fetch call itself wastes resources.
 - **Severity**: MEDIUM
 - **Dimension**: Frontend Performance / Correctness
+- **Maintainer note:** The reported render-body request is stale against current source. `Checkout.tsx` loads payment channels inside a `useEffect` guarded by `hasCheckoutItems`, uses a `disposed` flag plus `mountedRef.current` checks before state updates, clears channels when there are no checkout items, and depends on `[currency, form, hasCheckoutItems]`. Added a `Checkout.test.tsx` source guard requiring `paymentApi.getChannels()` to live in that guarded effect and not in the render path before the effect. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2823: MEDIUM — LoginController has inconsistent error handling between demo and OAuth paths
 - **Status**: OPEN
@@ -15319,11 +15325,12 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Dimension**: API Design
 
 ### F2824: MEDIUM — ProductUrlImportService has 18+ suppressed exceptions in helper methods
-- **Status**: OPEN
-- **File**: `ProductUrlImportService.java:38-480`
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **File**: `src/main/java/com/example/shop/service/ProductUrlImportService.java`, `src/test/java/com/example/shop/service/ProductUrlImportServiceTest.java`
 - **Impact**: Multiple helper methods (`parseBrands`, `parsePetTypes`, `parseSize`, `parseGender`, `parseColor`, `parseAgeGroup`, `parseMaterial`, `parseSeason`, `parsePattern`, `parseFeature`, `parseCondition`, `parseWeightRange`, `parseAgeRange`, `parseSizeRange`, `parseHeightRange`, `parseMaterialComposition`, `parseCertification`, `parseOccasion`) all catch exceptions and rethrow as `RuntimeException("Error parsing <field>: " + value, e)`. This creates 18+ nearly identical catch blocks that obscure the original error location and stack trace.
 - **Severity**: MEDIUM
 - **Dimension**: Error Handling / Code Quality
+- **Maintainer note:** The reported parser helper set is stale against current `ProductUrlImportService`. Focused source search found none of the listed helper methods and no `RuntimeException("Error parsing...")` / `Error parsing ` catch text. Current catch fallbacks are spread across distinct fetch, charset, TOPM fallback, JSON/image extraction, and best-effort parsing paths, and `ProductUrlImportServiceTest.productUrlImportExceptionFallbacksRemainObservable()` already requires non-`ResponseStatusException` catches to log context. Added `staleAttributeParserCatchBlocksAreNotPresent()` to guard the old helper names and duplicated parser-error text from returning. No backend Maven/JUnit execution, frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2825: MEDIUM — TokenBlacklistService silently catches and logs Redis failures
 - **Status**: OPEN
@@ -15333,11 +15340,12 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Dimension**: Security / Reliability
 
 ### F2826: LOW — CheckoutIdempotencyService has dead code — early return before idempotency check
-- **Status**: OPEN
-- **File**: `CheckoutIdempotencyService.java:28-56`
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **File**: `src/main/java/com/example/shop/service/CheckoutIdempotencyService.java:21-83`, `src/test/java/com/example/shop/service/CheckoutIdempotencyServiceContractTest.java`
 - **Impact**: `save()` method starts by calling `get(key)` and returning early if the idempotency key already exists. But the `get()` method itself has a 30-day TTL check and calls `remove()` if expired. The `save()` method's `@Transactional` annotation is unnecessary since the method doesn't perform any database operations — it only calls `remove()` and `save()` on the entity.
 - **Severity**: LOW
 - **Dimension**: Code Quality
+- **Maintainer note:** The reported service shape is stale against current source. `CheckoutIdempotencyService` no longer exposes legacy public `save(...)`, `get(...)`, or `remove(...)` methods and has no `@Transactional` annotation. Current idempotency handling uses `claim(...)` to insert a `PROCESSING` row, catches duplicate-key `DataIntegrityViolationException`, resolves matching fingerprints through `claimExisting(...)`, and uses `complete(...)` to attach the order id. Added `CheckoutIdempotencyServiceContractTest` to guard the atomic claim/complete flow and reject the old save/get/remove/@Transactional shape. No backend Maven/JUnit execution, frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2827: LOW — WebSocket authentication token passed in headers instead of query parameter
 - **Status**: OPEN
@@ -15347,25 +15355,28 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Dimension**: Security
 
 ### F2828: LOW — Cart page has module-level mutable state (maxQuantity per item)
-- **Status**: OPEN
-- **File**: `Cart.tsx:13-18, 45-50`
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **File**: `frontend/src/pages/Cart.tsx`, `frontend/src/pages/FrontendModuleState.test.ts`
 - **Impact**: `maxQuantity` is initialized as a module-level `Record<number, number>` (`{ 1: 99, 2: 99, 3: 99 }`). This state persists across component remounts and is shared between all instances of the Cart component. If the Cart is rendered in multiple routes (e.g., via React Router), changes to `maxQuantity` in one instance affect all others.
 - **Severity**: LOW
 - **Dimension**: Frontend Architecture
+- **Maintainer note:** The reported Cart quantity map is stale against current source. Focused source search found no module-level `maxQuantity: Record<number, number>` and no `{ 1: 99, 2: 99, 3: 99 }` quantity map in `Cart.tsx`; cart quantity limits are resolved through cart item/product utilities rather than a shared page-level mutable map. Added `FrontendModuleState.test.ts` to guard the stale Cart module-level quantity map shape from returning. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2829: LOW — ProductList page has module-level mutable state (productQuantities, productMaxQuantities)
-- **Status**: OPEN
-- **File**: `ProductList.tsx:14-18`
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **File**: `frontend/src/pages/ProductList.tsx`, `frontend/src/pages/FrontendModuleState.test.ts`
 - **Impact**: Similar to F2828 — `productQuantities` and `productMaxQuantities` are module-level `Record<number, number>` objects. They persist across component remounts and are shared between all instances.
 - **Severity**: LOW
 - **Dimension**: Frontend Architecture
+- **Maintainer note:** The reported `ProductList.tsx` module-level `productQuantities` / `productMaxQuantities` maps are absent in current source. Product List now keeps page UI state inside the component with hooks and uses product option/cart utilities for per-item behavior. `FrontendModuleState.test.ts` guards the stale module-level quantity map declarations from returning. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2830: LOW — Profile.tsx productQuantities has module-level mutable state
-- **Status**: OPEN
-- **File**: `Profile.tsx:15`
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **File**: `frontend/src/pages/Profile.tsx`, `frontend/src/pages/FrontendModuleState.test.ts`
 - **Impact**: Same pattern as F2828/F2829 — module-level `productQuantities` state persists across remounts.
 - **Severity**: LOW
 - **Dimension**: Frontend Architecture
+- **Maintainer note:** The reported module-level `productQuantities` state is absent from current `Profile.tsx`. Profile keeps its order/payment/profile UI state inside the component via hooks and refs; no shared page-level product quantity map was found. `FrontendModuleState.test.ts` guards the stale declaration from returning. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2831: LOW — NotFound.tsx missing accessibility attributes (aria-label, aria-labelledby)
 - **Status**: SOURCE_FIXED (2026-06-13 20:06 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
@@ -15620,18 +15631,20 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Maintainer note:** The unified backend error payload now includes a stable `code` field from `ApiErrorResponseFactory.buildPayload(...)`. Most statuses use `HttpStatus.name()`, while HTTP 429 maps to the frontend's existing `RATE_LIMITED` classifier. `getApiErrorMessage(...)` now also recognizes the generic `SERVICE_UNAVAILABLE` code in addition to the legacy login-specific code and status fallback. `GlobalApiExceptionHandlerTest` source-guards `NOT_FOUND`, `RATE_LIMITED`, and `SERVICE_UNAVAILABLE` payload codes, and `apiError.test.ts` source-guards code-only rate-limit and service-unavailable classification paths. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2868: MEDIUM — Admin coupon create/update sends raw Partial<Coupon> without normalization or validation
-- **Status**: OPEN
-- **File**: `frontend/src/api/index.ts:2391-2393`
+- **Status**: SOURCE_FIXED (2026-06-13 22:33 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **File**: `frontend/src/api/index.ts:384-407`
 - **Impact**: `adminApi.createCoupon` and `updateCoupon` send the Coupon object as-is with no normalization. Frontend `Coupon` type includes fields the backend does not accept (`id`, `remainingQuantity`, `claimedQuantity`) which are silently ignored. More critically, there is no frontend validation of required fields (`name`, `couponType`), so partial data produces confusing backend 400 errors.
 - **Severity**: MEDIUM
 - **Dimension**: API Contract / UX
+- **Maintainer note:** The raw-payload portion of this report was already stale in current source: `adminApi.createCoupon(...)` and `updateCoupon(...)` call `normalizeCouponPayload(...)`, which white-lists the backend `CouponUpsertRequest` fields and drops entity-only fields such as `id`, `claimedQuantity`, `remainingQuantity`, and `createdAt`; `api/index.test.ts` already guarded that normalization. The remaining valid gap is now source-fixed: `normalizeCouponPayload(...)` always normalizes and requires `name` and `couponType`, treating null/undefined payloads as empty input and throwing `Coupon name is required` / `Coupon type is required` before any request is sent. Added API guards for missing required coupon upsert fields and updated the coupon cache-clearing test fixture to submit a backend-valid coupon type. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2869: MEDIUM — Backend controllers return inconsistent error response shapes
-- **Status**: OPEN
-- **File**: `src/main/java/com/example/shop/controller/CartController.java:46-47`, `CouponController.java:47-48`, `src/main/java/com/example/shop/config/ApiErrorResponseFactory.java:28-37`
+- **Status**: CURRENT_SOURCE_COVERED (2026-06-13 22:52 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **File**: `src/main/java/com/example/shop/controller/CartController.java:46-47`, `CouponController.java:47-48`, `src/main/java/com/example/shop/config/ManualApiErrorResponseAdvice.java:19-65`, `src/main/java/com/example/shop/config/ApiErrorResponseFactory.java:24-37`
 - **Impact**: Some controllers return `Map.of("error", e.getMessage())` for validation errors, while `GlobalApiExceptionHandler` returns `{ error, message, status, statusText, path, requestId, timestamp }`. The frontend reads both `data.error` and `data.message` so messages display correctly, but the response shape inconsistency could cause issues if frontend ever depends on `data.status` or other fields.
 - **Severity**: MEDIUM
 - **Dimension**: API Contract / Consistency
+- **Maintainer note:** Current source already normalizes externally written JSON error bodies through `ManualApiErrorResponseAdvice`. When a controller returns a manual `Map` with `error` but missing uniform fields, the advice builds the standard `ApiErrorResponseFactory` payload and preserves extra keys; it also normalizes null JSON error bodies for error statuses. Added focused guards in `ManualApiErrorResponseAdviceTest` for Cart and Coupon manual error maps, asserting the response body contains `error`, `message`, `code`, `status`, `statusText`, `path`, `requestId`, and parseable `timestamp`. No production controller rewrite was required. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2870: LOW — Dead code: orderApi.create/update/delete hit disabled backend endpoints
 - **Status**: SOURCE_FIXED / DUPLICATE_COVERED_BY_F3384 / REGRESSION_PENDING

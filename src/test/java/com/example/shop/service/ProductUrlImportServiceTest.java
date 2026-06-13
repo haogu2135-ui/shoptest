@@ -482,6 +482,24 @@ class ProductUrlImportServiceTest {
                 () -> "ProductUrlImportService catch fallbacks must log debug context: " + silentCatches);
     }
 
+    @Test
+    void staleAttributeParserCatchBlocksAreNotPresent() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/ProductUrlImportService.java"),
+                StandardCharsets.UTF_8);
+        List<String> staleHelpers = List.of(
+                "parseBrands", "parsePetTypes", "parseSize", "parseGender", "parseColor", "parseAgeGroup",
+                "parseMaterial", "parseSeason", "parsePattern", "parseFeature", "parseCondition",
+                "parseWeightRange", "parseAgeRange", "parseSizeRange", "parseHeightRange",
+                "parseMaterialComposition", "parseCertification", "parseOccasion");
+
+        for (String helper : staleHelpers) {
+            assertFalse(source.contains(helper + "("), () -> "Stale parser helper should stay absent: " + helper);
+        }
+        assertFalse(source.contains("Error parsing "));
+        assertFalse(source.contains("RuntimeException(\"Error parsing"));
+    }
+
     private static int findMatchingBrace(String source, int bodyStart) {
         int depth = 1;
         Character stringQuote = null;
