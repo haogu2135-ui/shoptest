@@ -3328,3 +3328,63 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     overflow: visible !important;
   }
 }
+
+/* F2710: mobile category navigation needs an explicit horizontal-scroll affordance. */
+@media (max-width: 780px) {
+  body:not(.shop-mobile-app) .shop-nav:not(.shop-nav--es) .shop-nav__mega {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    padding: 6px 36px 6px 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-padding-inline: 0 44px !important;
+    scroll-snap-type: x proximity !important;
+    scrollbar-width: none !important;
+    overscroll-behavior-x: contain !important;
+    touch-action: pan-x !important;
+    -webkit-overflow-scrolling: touch !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  body:not(.shop-mobile-app) .shop-nav:not(.shop-nav--es) .shop-nav__mega::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  body:not(.shop-mobile-app) .shop-nav:not(.shop-nav--es) .shop-nav__mega::after {
+    content: '>' !important;
+    position: sticky !important;
+    right: 0 !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    flex: 0 0 34px !important;
+    align-self: stretch !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    padding-right: 8px !important;
+    pointer-events: none !important;
+    color: #fff7f0 !important;
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    background: linear-gradient(90deg, rgba(18, 71, 52, 0), rgba(18, 71, 52, 0.96) 54%) !important;
+    text-shadow: 0 1px 2px rgba(18, 71, 52, 0.45) !important;
+  }
+
+  body:not(.shop-mobile-app) .shop-nav:not(.shop-nav--es) .shop-nav__mega button,
+  body:not(.shop-mobile-app) .shop-nav:not(.shop-nav--es) .shop-nav__megaButton {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+    max-width: min(196px, 68vw) !important;
+    min-height: 38px !important;
+    scroll-snap-align: start !important;
+    scroll-margin-inline: 0 44px !important;
+  }
+}

@@ -5186,9 +5186,14 @@ Notes:
 - Environment: `http://127.0.0.1:4187/cart`, viewport `390x844`
 - Severity: HIGH
 - Description: The cart hero stats strip does not fit the mobile viewport. The right-side `Saved for later` stat is clipped, making the hero summary difficult to scan before checkout decisions. DOM metrics confirm `.cart-page__heroStats` has `scrollWidth: 412` while its `clientWidth` is only `316`.
-- Status: OPEN
+- Status: SOURCE_FIXED / REGRESSION_PENDING
 - Evidence: `app-ui-audit-20260607T1602-codex/cart-mobile.png`; `app-ui-audit-20260607T1602-codex/report.json` lines around the `cart-page__heroStats` entry.
 - Expected fix direction: On narrow screens, turn the stats into a stable two-row grid or single-column stack, or use an intentional horizontal scroller with visible affordance and safe end padding. Re-test at `390px` and `360px` widths.
+- Fixed: 2026-06-13
+- Files: frontend/src/pages/Cart.css; frontend/src/pages/CartCheckoutFlow.test.tsx
+- Fix evidence: `Cart.css` now ends with an explicit F2709 mobile closure after the older APP cart KPI rules. At `max-width: 640px`, `.cart-page__heroStats` is forced back to a contained two-column grid with row flow, no horizontal rail, no mask, no scroll-snap, and visible overflow. At `max-width: 380px`, the stats stack into one column. Stat titles and values now use normal wrapping with `text-overflow: clip`, so `Saved for later` and money/count phrases can stay inside the viewport.
+- Verification: Source-only inspection confirmed the F2709 closure appears after `UI-20260607-06D`, overrides the older `max-width: 420px` horizontal rail, and `CartCheckoutFlow.test.tsx` now statically guards the two-column/single-column no-clipped-rail contract. No frontend build, Jest, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- Regression request: When checks are allowed, run `CartCheckoutFlow.test.tsx` and visual regression for `/cart` at mobile `390x844`, narrow mobile `360x800`, compact `320x568`, Spanish locale, loaded/empty/saved-item states, and APP/WebView. Expected: all hero stats fit without clipping or horizontal page overflow, `Saved for later` is readable, loading skeleton stats do not overflow, and checkout summary/actions remain reachable below the hero.
 
 ### F2710: MEDIUM — Mobile storefront category nav extends beyond viewport without a clear scroll affordance
 
@@ -5196,9 +5201,14 @@ Notes:
 - Environment: Mobile storefront routes at `390x844` including `/`, `/products`, `/cart`, `/coupons`, `/pet-finder`, `/pet-gallery`, `/track-order`, `/login`, `/register`, and `/forgot-password`
 - Severity: MEDIUM
 - Description: The mobile category row renders `Dog`, `Cat`, `Small Pets`, `Walking`, `Sleeping`, `Smart Devices`, `Pet finder`, and `Pet gallery`, but later entries extend beyond the viewport. The current row provides no clear visual hint that it can be scrolled, so users can miss categories. The audit repeatedly records `Smart Devices` as outside the viewport on mobile pages.
-- Status: OPEN
+- Status: SOURCE_FIXED / REGRESSION_PENDING
 - Evidence: `app-ui-audit-20260607T1602-codex/home-mobile.png`, `products-mobile.png`, and `cart-mobile.png`; `app-ui-audit-20260607T1602-codex/report.json` mobile `outside` entries for `Smart Devices`.
 - Expected fix direction: Add an explicit horizontal-scroll affordance with fade/chevron and safe padding, or wrap the category links into a compact responsive layout. Ensure focus/keyboard navigation still exposes hidden entries.
+- Fixed: 2026-06-13
+- Files: frontend/src/components/Navbar.css; frontend/src/components/Navbar.test.tsx
+- Fix evidence: `Navbar.css` now ends with an explicit F2710 mobile-web category rail closure for non-APP, non-Spanish rails. At `max-width: 780px`, the category row keeps horizontal scrolling but adds right-side safe padding, scroll padding, snap alignment, and a sticky `>` affordance with a gradient end cap. Category buttons remain `max-content` flex items with scroll margins so keyboard/focus navigation can reveal entries beyond the first viewport. Spanish mobile-web remains on the existing wrapped grid rule instead of receiving the scroll affordance.
+- Verification: Source-only inspection confirmed the F2710 closure appears after the Spanish mobile-web grid fix, does not override `.shop-nav--es` grid behavior, and `Navbar.test.tsx` now statically guards the mobile rail overflow affordance, scroll padding, sticky indicator, and source presence of `Smart Devices`, `Pet finder`, and `Pet gallery`. No frontend build, Jest, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- Regression request: When checks are allowed, run `Navbar.test.tsx` and visual regression on `/`, `/products`, `/cart`, `/coupons`, `/pet-finder`, `/pet-gallery`, `/track-order`, `/login`, `/register`, and `/forgot-password` at mobile `390x844`, `360x800`, `320x568`, Spanish locale, keyboard focus traversal, and APP/WebView. Expected: users see a clear right-edge scroll affordance or the Spanish wrapped grid, hidden categories can be scrolled/focused into view, category chips remain tappable, and the fixed bottom nav is unaffected.
 
 ### F2711: MEDIUM — Mobile Pet Finder recommendation actions collapse to unreadable labels
 
@@ -5206,9 +5216,14 @@ Notes:
 - Environment: `http://127.0.0.1:4187/pet-finder`, viewport `390x844`
 - Severity: MEDIUM
 - Description: Pet Finder recommendation cards compress the `View details` action into a tiny column; the label renders effectively as `Vi...` across repeated cards. DOM metrics show multiple `View details` elements with `scrollWidth: 68` and `clientWidth: 28`.
-- Status: OPEN
+- Status: SOURCE_FIXED / REGRESSION_PENDING
 - Evidence: `app-ui-audit-20260607T1602-codex/pet-finder-mobile.png`; `app-ui-audit-20260607T1602-codex/report.json` repeated `View details` clipping entries.
 - Expected fix direction: At mobile widths, switch recommendation cards to one column or move the action onto its own full-width row. Avoid fixed-width action cells that force label truncation.
+- Fixed: 2026-06-13
+- Files: frontend/src/pages/PetFinder.css; frontend/src/pages/PetFinder.test.ts
+- Fix evidence: `PetFinder.css` now ends with an explicit F2711 mobile-web closure after the F2758 bottom-nav clearance rules. At `max-width: 640px`, recommendation card actions are forced into a one-column full-width action row, action list items and inner spans take the full card width, buttons keep 44px touch targets, and `View details` label text uses normal wrapping with `text-overflow: clip` instead of ellipsis. The existing APP/WebView full-width action closure remains intact.
+- Verification: Source-only inspection confirmed the F2711 closure is after the older mobile action stability pass that used ellipsis, and `PetFinder.test.ts` now statically guards the full-width action row, full-width button, normal wrapping, and absence of ellipsis in the F2711 closure. No frontend build, Jest, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- Regression request: When checks are allowed, run `PetFinder.test.ts` and visual regression for `/pet-finder` at mobile `390x844`, narrow mobile `360x800`, compact `320x568`, Spanish locale, loaded/recommendation-empty states, and APP/WebView. Expected: every `View details` action is fully readable or wraps cleanly, recommendation card actions occupy a full row, cards do not create horizontal overflow, and finder controls remain reachable above the bottom nav.
 
 ### F2712: MEDIUM — Product detail tabs concatenate without visible separation
 

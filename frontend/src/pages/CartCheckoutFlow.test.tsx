@@ -789,6 +789,20 @@ describe('cart to checkout flows', () => {
     expect(css).toMatch(/\.cart-page__quantityInput[\s\S]*?height:\s*48px\s*!important/);
   });
 
+  it('keeps mobile cart hero stats inside the viewport instead of a clipped rail', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
+    const f2709Start = css.lastIndexOf('F2709: mobile cart hero stats must fit the viewport without clipping.');
+    const f2709Css = css.slice(f2709Start);
+
+    expect(f2709Start).toBeGreaterThan(css.lastIndexOf('UI-20260607-06D: keep APP cart KPI cards and lower actions out of fixed rails.'));
+    expect(f2709Css).toMatch(/@media \(max-width:\s*640px\)\s*\{/);
+    expect(f2709Css).toMatch(/\.cart-page__heroStats\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[\s\S]*?grid-auto-flow:\s*row\s*!important;[\s\S]*?overflow-x:\s*visible\s*!important;[\s\S]*?mask-image:\s*none\s*!important;/);
+    expect(f2709Css).toMatch(/\.cart-page__heroStat,[\s\S]*?\.cart-page__loadingStat\s*\{[\s\S]*?min-width:\s*0\s*!important;[\s\S]*?max-width:\s*100%\s*!important;[\s\S]*?scroll-snap-align:\s*none\s*!important;/);
+    expect(f2709Css).toMatch(/\.cart-page__heroStat strong,[\s\S]*?\.cart-page__heroStat span\s*\{[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?text-overflow:\s*clip\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(f2709Css).toMatch(/@media \(max-width:\s*380px\)\s*\{[\s\S]*?\.cart-page__heroStats\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
+    expect(f2709Css).not.toMatch(/grid-auto-flow:\s*column/);
+  });
+
   it('keeps checkout as the primary next action once purchasable items are selected', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
     const checkoutBranch = source.indexOf('if (selectedItems.some(canCheckout))');

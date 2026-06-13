@@ -292,6 +292,22 @@ describe('Navbar Android app download entry', () => {
     expect(fixCss).toMatch(/@media \(max-width:\s*340px\)\s*\{[\s\S]*?body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
   });
 
+  it('shows a mobile category rail overflow affordance while preserving scroll focus padding', () => {
+    const source = readNavbarSource();
+    const css = readNavbarCss();
+    const f2710Start = css.lastIndexOf('F2710: mobile category navigation needs an explicit horizontal-scroll affordance.');
+    const f2710Css = css.slice(f2710Start);
+
+    expect(source).toContain("{ key: 'smart-devices', label: t('nav.petNav.smartDevices')");
+    expect(source).toContain("{ key: 'pet-finder', label: t('nav.petFinder')");
+    expect(source).toContain("{ key: 'pet-gallery', label: t('nav.petGallery')");
+    expect(f2710Start).toBeGreaterThan(css.lastIndexOf('UI-20260608-04: mobile-web Spanish category labels should be readable'));
+    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav:not\(\.shop-nav--es\) \.shop-nav__mega\s*\{[\s\S]*?overflow-x:\s*auto\s*!important;[\s\S]*?scroll-padding-inline:\s*0 44px\s*!important;[\s\S]*?scroll-snap-type:\s*x proximity\s*!important;/);
+    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav:not\(\.shop-nav--es\) \.shop-nav__mega::after\s*\{[\s\S]*?content:\s*'>'\s*!important;[\s\S]*?position:\s*sticky\s*!important;[\s\S]*?right:\s*0\s*!important;/);
+    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav:not\(\.shop-nav--es\) \.shop-nav__megaButton\s*\{[\s\S]*?min-width:\s*max-content\s*!important;[\s\S]*?scroll-margin-inline:\s*0 44px\s*!important;/);
+    expect(f2710Css).not.toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega::after/);
+  });
+
   it('keeps More dropdown menus scrollable inside short landscape viewports', () => {
     const source = readNavbarSource();
     const css = readNavbarCss();

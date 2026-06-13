@@ -3173,3 +3173,57 @@
     margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* F2709: mobile cart hero stats must fit the viewport without clipping. */
+@media (max-width: 640px) {
+  .cart-page__heroStats {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-flow: row !important;
+    grid-auto-columns: auto !important;
+    gap: 8px !important;
+    padding-bottom: 0 !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    scroll-snap-type: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  .cart-page__heroStat,
+  .cart-page__loadingStat {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 72px !important;
+    display: grid !important;
+    align-content: start !important;
+    gap: 5px !important;
+    padding: 10px 12px !important;
+    overflow: visible !important;
+    scroll-snap-align: none !important;
+  }
+
+  .cart-page__heroStat strong,
+  .cart-page__heroStat span {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: block !important;
+    overflow: visible !important;
+    text-align: left !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    line-height: 1.22 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .cart-page__heroStats {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
