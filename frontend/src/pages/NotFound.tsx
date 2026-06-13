@@ -8,13 +8,26 @@ import './NotFound.css';
 const NotFound: React.FC = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const title = t('notFound.title');
+  const subtitle = t('notFound.subtitle');
+  const titleId = 'not-found-title';
+  const subtitleId = 'not-found-subtitle';
 
   return (
-    <div className="not-found-page">
+    <main
+      className="not-found-page"
+      aria-label={title}
+      aria-labelledby={titleId}
+      aria-describedby={subtitleId}
+    >
       <Result
         status="404"
-        title={t('notFound.title')}
-        subTitle={t('notFound.subtitle')}
+        title={<span id={titleId}>{title}</span>}
+        subTitle={(
+          <span id={subtitleId} role="status" aria-live="polite">
+            {subtitle}
+          </span>
+        )}
         extra={[
           <Button
             key="home"
@@ -33,7 +46,7 @@ const NotFound: React.FC = () => {
           </Button>,
         ]}
       />
-    </div>
+    </main>
   );
 };
 

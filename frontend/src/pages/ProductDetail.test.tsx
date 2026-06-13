@@ -364,7 +364,13 @@ describe('ProductDetail loading state', () => {
 
     expect(gallery).toHaveAttribute('tabindex', '0');
     expect(gallery).toHaveAttribute('role', 'region');
+    expect(gallery).toHaveAttribute('aria-roledescription', 'carousel');
+    expect(gallery).toHaveAttribute('aria-label', expect.stringContaining('Smart feeder bowl'));
     expect(heroImage).toHaveAttribute('src', expect.stringContaining('main.jpg'));
+    const firstMobileSlide = container.querySelector('.product-mobile-gallery__slide') as HTMLElement;
+    expect(firstMobileSlide).toHaveAttribute('role', 'group');
+    expect(firstMobileSlide).toHaveAttribute('aria-roledescription', 'slide');
+    expect(firstMobileSlide).toHaveAttribute('aria-label', 'pages.productDetail.imageThumb');
 
     fireEvent.keyDown(gallery, { key: 'ArrowRight' });
     await waitFor(() => expect(heroImage).toHaveAttribute('src', expect.stringContaining('side.jpg')));
@@ -381,6 +387,18 @@ describe('ProductDetail loading state', () => {
     fireEvent.keyDown(firstThumb, { key: 'ArrowLeft' });
 
     await waitFor(() => expect(heroImage).toHaveAttribute('src', expect.stringContaining('detail.jpg')));
+  });
+
+  it('keeps product image carousel labels tied to product name and slide position', () => {
+    const source = readProductDetailSource();
+
+    expect(source).toContain("const galleryRegionLabel = `${productName}: ${t('pages.productDetail.product')} ${t('common.image')}`;");
+    expect(source).toContain("const getGalleryImageLabel = (index: number) => t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: productName });");
+    expect(source).toContain('aria-label={galleryRegionLabel}');
+    expect(source).toContain('aria-roledescription="carousel"');
+    expect(source).toContain('role="group"');
+    expect(source).toContain('aria-roledescription="slide"');
+    expect(source).toContain('aria-label={getGalleryImageLabel(index)}');
   });
 
   it('supports mobile pinch zoom with a non-passive touchmove listener', async () => {

@@ -8,12 +8,25 @@ describe('NotFound mobile recovery layout contract', () => {
   it('renders primary home and product-search recovery actions', () => {
     const source = readNotFoundSource();
 
+    expect(source).toContain('<main');
     expect(source).toContain('className="not-found-page"');
     expect(source).toContain('status="404"');
     expect(source).toContain("t('notFound.backHome')");
     expect(source).toContain("t('notFound.searchProducts')");
     expect(source).toContain("navigate('/')");
     expect(source).toContain("navigate('/products')");
+  });
+
+  it('exposes the 404 result as a named and described status region', () => {
+    const source = readNotFoundSource();
+
+    expect(source).toContain("const titleId = 'not-found-title';");
+    expect(source).toContain("const subtitleId = 'not-found-subtitle';");
+    expect(source).toContain('aria-label={title}');
+    expect(source).toContain('aria-labelledby={titleId}');
+    expect(source).toContain('aria-describedby={subtitleId}');
+    expect(source).toContain('title={<span id={titleId}>{title}</span>}');
+    expect(source).toContain('<span id={subtitleId} role="status" aria-live="polite">');
   });
 
   it('reserves fixed bottom-nav clearance for mobile recovery buttons', () => {

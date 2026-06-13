@@ -13443,7 +13443,8 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 ### F2371: LOW — Frontend i18n key `cart.empty.title` missing in `es.json`
 - **File**: `frontend/src/locales/es.json`
 - **Detail**: The Spanish locale file does not include the `cart.empty.title` and `cart.empty.cta` keys that exist in `en.json` and `zh.json`. Spanish-speaking users see the i18n key as raw text in the empty cart state. Same for the `coupon.expired` key in `fr.json`.
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 20:06 UTC) / REGRESSION_PENDING
+- **Maintainer note:** The reported key shape is stale against current source. The active i18n layer supports `en`, `es`, and `zh` only; there is no `frontend/src/locales/fr.json` in the current app. Current cart empty UI uses the nested `pages.cart.empty` and related `pages.cart.empty*` keys rather than `cart.empty.title` / `cart.empty.cta`, and `frontend/src/locales/es.json` already provides the active Spanish empty-cart copy. A source search found no production `cart.empty.title`, `cart.empty.cta`, or `coupon.expired` references under `frontend/src`. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2372: HIGH — Frontend `Home.tsx` compile-blocking: `HomeProductCard` 5 required props missing at all 5 call sites
 - **File**: `frontend/src/pages/Home.tsx` (definition line 234/250; call sites 1356, 1447, 1519, 1537, 1554)
@@ -15367,18 +15368,20 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Dimension**: Frontend Architecture
 
 ### F2831: LOW — NotFound.tsx missing accessibility attributes (aria-label, aria-labelledby)
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 20:06 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `NotFound.tsx`
 - **Impact**: The 404 page has no `aria-label` on the main container, no `role="alert"` or `role="status"` on the error message, and no `aria-labelledby` linking the heading to the description. Screen readers may not properly announce the error state.
 - **Severity**: LOW
 - **Dimension**: Accessibility
+- **Maintainer note:** `NotFound.tsx` now renders the page wrapper as a semantic `main` with `aria-label`, `aria-labelledby`, and `aria-describedby` tied to stable title/subtitle ids. The AntD `Result` title/subtitle are now explicit spans, and the subtitle carries `role="status"` plus `aria-live="polite"` so assistive tech can announce the 404 recovery message without changing the visual layout. `NotFound.test.ts` source-guards the semantic wrapper and status-region contract. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2832: LOW — Product.tsx missing aria-label on product image carousel
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 20:17 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Product.tsx`
 - **Impact**: The product detail page has an image carousel with no `aria-label` on the carousel container, no `role="region"` or `aria-roledescription="carousel"`, and no `aria-label` on individual slides. Screen readers cannot navigate the image gallery.
 - **Severity**: LOW
 - **Dimension**: Accessibility
+- **Maintainer note:** The active product detail implementation is `ProductDetail.tsx`, not a current `Product.tsx` page. Its main media wrapper already had keyboard navigation and `role="region"` / `aria-roledescription="carousel"`; it now also names the carousel with the current product name and gives every mobile gallery slide `role="group"`, `aria-roledescription="slide"`, and a localized `aria-label` generated from image index, total image count, and product name. `ProductDetail.test.tsx` guards the named carousel region and slide semantics. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2833: LOW — Login.tsx missing aria-label on OAuth buttons
 - **Status**: OPEN

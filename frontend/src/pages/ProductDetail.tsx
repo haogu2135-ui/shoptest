@@ -862,6 +862,8 @@ const ProductDetail: React.FC = () => {
   const compareActionLabel = `${isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}: ${productName}`;
   const homeActionLabel = `${t('nav.ariaHome')}: ${productName}`;
   const mainImagePreviewActionLabel = `${t('pages.productList.quickPreview')}: ${productName}`;
+  const galleryRegionLabel = `${productName}: ${t('pages.productDetail.product')} ${t('common.image')}`;
+  const getGalleryImageLabel = (index: number) => t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: productName });
   const sizeGuideActionLabel = `${t('pages.productDetail.sizeGuide')}: ${productName}`;
   const resetSelectedOptionsActionLabel = `${t('pages.productList.resetFilters')}: ${productName}`;
   const sizeBreedInputLabel = `${t('pages.productDetail.sizeCalculatorBreed')}: ${productName}`;
@@ -1283,7 +1285,7 @@ const ProductDetail: React.FC = () => {
                 className="product-detail-main-image"
                 role="region"
                 aria-roledescription="carousel"
-                aria-label={`${t('pages.productDetail.product')} ${t('common.image')}`}
+                aria-label={galleryRegionLabel}
                 tabIndex={0}
                 onMouseEnter={pauseImageRotation}
                 onMouseLeave={resumeImageRotation}
@@ -1304,13 +1306,16 @@ const ProductDetail: React.FC = () => {
                     <div
                       key={`${image}-${index}`}
                       className="product-mobile-gallery__slide"
+                      role="group"
+                      aria-roledescription="slide"
+                      aria-label={getGalleryImageLabel(index)}
                       aria-hidden={index === activeMobileImageIndex ? undefined : true}
                     >
                       <img
                         src={getOptimizedImageUrl(image, index === 0 ? 720 : 540)}
                         srcSet={buildResponsiveImageSrcSet(image, [360, 540, 720, 900])}
                         sizes="100vw"
-                        alt={`${productName} - ${index + 1}`}
+                        alt={getGalleryImageLabel(index)}
                         className="product-mobile-gallery__img"
                         width={900}
                         height={900}
@@ -1375,7 +1380,7 @@ const ProductDetail: React.FC = () => {
                     { breakpoint: 480, settings: { slidesToShow: 2 } },
                   ]}>
                     {galleryImages.map((image: string, index: number) => {
-                      const thumbLabel = t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: productName });
+                      const thumbLabel = getGalleryImageLabel(index);
                       const selectThumb = () => {
                         selectGalleryImage(image, index);
                         pauseImageRotation();
@@ -1421,15 +1426,15 @@ const ProductDetail: React.FC = () => {
                       type="button"
                       className={`product-mobile-thumbs__button${activeMobileImageIndex === index ? ' product-mobile-thumbs__button--active' : ''}`}
                       aria-pressed={activeMobileImageIndex === index}
-                      aria-label={t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: productName })}
-                      title={t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: productName })}
+                      aria-label={getGalleryImageLabel(index)}
+                      title={getGalleryImageLabel(index)}
                       onClick={() => selectGalleryImage(image, index)}
                     >
                       <img
                         src={getOptimizedImageUrl(image, 96)}
                         srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
                         sizes="56px"
-                        alt={`${productName} - ${index + 1}`}
+                        alt={getGalleryImageLabel(index)}
                         className="product-mobile-thumbs__img"
                         width={96}
                         height={96}
