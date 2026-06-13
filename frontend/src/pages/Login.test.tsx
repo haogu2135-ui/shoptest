@@ -7,6 +7,7 @@ import Login from './Login';
 let mockLanguage = 'en';
 const readLoginPageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Login.tsx'), 'utf8') as string;
 const readLoginCss = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Login.css'), 'utf8') as string;
+const readMobileAppCss = () => require('fs').readFileSync(require('path').resolve(__dirname, '../mobile-app.css'), 'utf8') as string;
 const readMobilePageContrastCss = () => require('fs').readFileSync(require('path').resolve(__dirname, '../styles/mobile-page-contrast.css'), 'utf8') as string;
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -229,6 +230,19 @@ describe('Login accessibility labels', () => {
     expect(linkStart).toBeGreaterThanOrEqual(0);
     expect(linkCss).toContain('.shopee-login-links a[href]');
     expect(linkCss).toMatch(/text-decoration:\s*none\s*!important;/);
+  });
+
+  it('keeps the native APP login header readable on the dark auth surface', () => {
+    const css = readMobileAppCss();
+    const guardStart = css.indexOf('UI-20260607-11');
+    const guardCss = css.slice(guardStart);
+
+    expect(guardStart).toBeGreaterThanOrEqual(0);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-appHeader\s*\{[\s\S]*?background:\s*#124734\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-appHeader__icon\s*\{[\s\S]*?background:\s*#ffffff\s*!important;[\s\S]*?color:\s*#124734\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-appHeader__copy strong,[\s\S]*?\.shop-app-shell--auth-flow \.shopee-login-appHeader__copy span\s*\{[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-appHeader__copy span\s*\{[\s\S]*?color:\s*#d8f1e3\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-appHeader__status\s*\{[\s\S]*?background:\s*rgba\(255,\s*255,\s*255,\s*0\.12\)\s*!important;[\s\S]*?color:\s*#ffffff\s*!important;/);
   });
 
   it('keeps Login primary CTAs and validation errors contrast-safe outside APP', () => {
