@@ -706,7 +706,7 @@ const Navbar: React.FC = () => {
       <header className={`shop-nav shop-nav--${language}`}>
       <div
         className="shop-nav__announcement"
-        role="region"
+        role="status"
         aria-label={t('nav.announcements')}
         aria-live="polite"
         aria-atomic="false"

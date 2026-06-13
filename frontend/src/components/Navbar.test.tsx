@@ -253,6 +253,20 @@ describe('Navbar Android app download entry', () => {
     expect(css).not.toMatch(/\.shop-nav__bottomItem[^{]*\{[^}]*outline:\s*none/);
   });
 
+  it('announces storefront announcement ticker updates accessibly', () => {
+    const source = readNavbarSource();
+    const announcementStart = source.indexOf('className="shop-nav__announcement"');
+    const announcementSource = source.slice(announcementStart, source.indexOf('<div className="shop-nav__ticker">', announcementStart));
+
+    expect(announcementStart).toBeGreaterThanOrEqual(0);
+    expect(announcementSource).toContain('role="status"');
+    expect(announcementSource).toContain("aria-label={t('nav.announcements')}");
+    expect(announcementSource).toContain('aria-live="polite"');
+    expect(announcementSource).toContain('aria-atomic="false"');
+    expect(announcementSource).toContain('aria-relevant="additions text"');
+    expect(announcementSource).toContain("aria-roledescription={t('nav.announcementTicker')}");
+  });
+
   it('keeps the mobile bottom bar storefront-only for non-admin roles', () => {
     const source = readNavbarSource();
     const bottomBarStart = source.indexOf('<nav className={bottomBarClassName}');
