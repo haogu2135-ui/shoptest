@@ -857,6 +857,41 @@ describe('cart to checkout flows', () => {
     expect(source).not.toContain('catch (err: any)');
   });
 
+  it('guards cart state against stale authenticated snapshot responses', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const fetchStart = source.indexOf('const fetchCartItems = useCallback(async () => {');
+    const fetchEnd = source.indexOf('const isCartMounted = useCallback', fetchStart);
+    const fetchSource = source.slice(fetchStart, fetchEnd);
+    const mutationStart = source.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
+    const mutationEnd = source.indexOf('const cartCheckoutMetrics = useMemo', mutationStart);
+    const mutationSource = source.slice(mutationStart, mutationEnd);
+    const suggestedStart = source.indexOf('const addSuggestedProduct = async (product: Product) => {');
+    const suggestedEnd = source.indexOf('const addRecentProduct = async (product: Product) => {', suggestedStart);
+    const suggestedSource = source.slice(suggestedStart, suggestedEnd);
+
+    expect(source).toContain('const cartSnapshotRequestRef = useRef(0);');
+    expect(source).toContain('const beginCartSnapshotRequest = useCallback(() => {');
+    expect(source).toContain('const isCurrentCartSnapshotRequest = useCallback((requestId: number) => (');
+    expect(source).toContain('const invalidateCartSnapshotRequests = useCallback(() => {');
+    expect(fetchStart).toBeGreaterThan(-1);
+    expect(fetchEnd).toBeGreaterThan(fetchStart);
+    expect(fetchSource).toContain('const requestId = beginCartSnapshotRequest();');
+    expect(fetchSource).toContain('const response = await cartApi.getItems(0);');
+    expect(fetchSource).toContain('if (!isCurrentCartSnapshotRequest(requestId)) return;');
+    expect(fetchSource).toContain('if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);');
+    expect(mutationStart).toBeGreaterThan(-1);
+    expect(mutationEnd).toBeGreaterThan(mutationStart);
+    expect(mutationSource).toContain('invalidateCartSnapshotRequests();');
+    expect(mutationSource).toContain('const cartSnapshotRequestId = invalidateCartSnapshotRequests();');
+    expect(mutationSource).toContain('if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {');
+    expect(suggestedStart).toBeGreaterThan(-1);
+    expect(suggestedEnd).toBeGreaterThan(suggestedStart);
+    expect(suggestedSource).toContain('const cartSnapshotRequestId = invalidateCartSnapshotRequests();');
+    expect(suggestedSource).toContain('const response = await cartApi.getItems(0);');
+    expect(suggestedSource).toContain('if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {');
+    expect(suggestedSource).toContain('setCartItems(nextItems);');
+  });
+
   it('persists only the final visible quantity after rapid authenticated input edits', async () => {
     const item = { ...memberCartItem, stock: 20 };
     mockLocalStorage = { token: 'member-token', userId: '7' };

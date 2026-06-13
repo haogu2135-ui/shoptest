@@ -13827,7 +13827,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Submit checkout with a failing backend (e.g. insufficient stock) → observe both a toast message AND a console error/unhandled rejection warning.
 - **Why MEDIUM**: Double error handling confuses users (two error messages) and pollutes error monitoring with duplicate reports.
 - **Suggested fix**: Remove the `throw err` after `handleApiError(err)`, or return a sentinel value instead of re-throwing. If the caller needs to know the checkout failed, return `null` or a result object with `success: false`.
-- **Status**: OPEN (new finding)
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 18:59 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The reported checkout submit `handleApiError(err); throw err;` shape is absent from current `Checkout.tsx`. `handleSubmit(...)` catches `error: unknown`, handles auth-expired checkout by clearing state and navigating to login, clears idempotency/pending-order state for checkout error responses, and otherwise calls `showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.orderCreateFailed'), language))` without rethrowing. `CheckoutTypeSafety.test.ts` now source-guards the submit slice against `handleApiError(...)` followed by `throw err/error` and any direct `throw err/error` inside submit handling. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2473: [MEDIUM] Cycle #547 — Cart quantity input allows any string and has no `onBlur` clamp for empty/invalid values
 - **Files**: `frontend/src/pages/Cart.tsx` (lines 1415-1431, quantity input rendering)
@@ -13843,7 +13843,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Open cart → remove an item → immediately navigate to home → navigate back to cart → the old cart state (before removal) may flash briefly as the stale fetch response arrives.
 - **Why MEDIUM**: Race conditions in cart state cause confusing UI flicker and potential data loss (item appears to re-add itself).
 - **Suggested fix**: Create an `AbortController` in the `useEffect` cleanup and pass its signal to all `apiGet`/`apiPost` calls. In mutation functions, use a ref to track the latest request and discard responses from superseded requests.
-- **Status**: OPEN (new finding)
+- **Status**: SOURCE_FIXED (2026-06-13 18:59 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — `Cart.tsx` now uses a monotonic `cartSnapshotRequestRef` guard for authenticated cart snapshots. `fetchCartItems(...)` records a request id and only writes cart items, selection, load errors, and loading state when that id is still current. Cart mutations that can supersede a pending snapshot (`updateQuantity`, remove, save-for-later, single/bulk saved restore, add suggested/recent product) invalidate older snapshot ids before changing cart state, and authenticated `getItems(...)` responses from saved restore or suggested/recent add only replace cart state when their snapshot id is still current. This prevents a slower old `/cart/me` response from overwriting a newer optimistic mutation or restore snapshot without changing the cart API signature. `CartCheckoutFlow.test.tsx` now source-guards the snapshot versioning contract including `addSuggestedProduct(...)`. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2475: [MEDIUM] Cycle #547 — `moveSavedItemToCart` has no loading indicator — user sees no feedback during slow API call
 - **Files**: `frontend/src/pages/Cart.tsx` (lines 157-195, `moveSavedItemToCart`)
@@ -14252,12 +14252,13 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Add an early `if (!user?.isAdmin) return;` guard in the main `useEffect` before any API calls.
 
 ### F2499: [HIGH] Cycle #548 — Checkout.tsx `addSuggestedProduct` re-throws after `handleApiError` — no outer catch for user feedback
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_NON_ISSUE (2026-06-13 19:18 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File:** `frontend/src/pages/Checkout.tsx`
 - **Type:** Bug / UX
 - **Found by:** Deep source review
 - **Description:** The `addSuggestedProduct` function calls `handleApiError(err, { silent: false, rethrow: true })`. With `rethrow: true`, the error propagates to the caller. However, the calling code is typically a button click handler with no `try/catch`, meaning the re-thrown error becomes an unhandled promise rejection. The user sees no toast or error message — the add-to-cart button just silently fails.
 - **Fix:** Either set `rethrow: false` (handleApiError shows the toast, done), or wrap the call site in a try/catch with a user-facing fallback.
+- **Maintainer note:** The reported `handleApiError(..., { rethrow: true })` shape is absent from current `Checkout.tsx` `addSuggestedProduct(...)`. Non-auth authenticated add failures are still thrown from the page helper, but the only current call site is `AddOnAssistant`, whose `handleAdd(...)` wraps `await onAdd(product)` in `try/catch` and shows `message.error(getApiErrorMessage(error, t('messages.addFailed'), language))`. Added source guards in `CheckoutTypeSafety.test.ts` and `AddOnAssistant.test.ts` to reject a reintroduced `handleApiError(... rethrow: true)` path and to require the add-on quick-add catch. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2500: [HIGH] Cycle #548 — OrderTracking.tsx stale tracking data shown when switching between order lookups
 - **Status:** OPEN

@@ -183,6 +183,7 @@ const Cart: React.FC = () => {
   const [quantityDrafts, setQuantityDrafts] = useState<Record<number, string>>({});
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
   const mountedRef = useRef(true);
+  const cartSnapshotRequestRef = useRef(0);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
@@ -200,6 +201,20 @@ const Cart: React.FC = () => {
     removeSessionStorageItem('checkoutPaymentMethod');
   }, []);
 
+  const beginCartSnapshotRequest = useCallback(() => {
+    cartSnapshotRequestRef.current += 1;
+    return cartSnapshotRequestRef.current;
+  }, []);
+
+  const isCurrentCartSnapshotRequest = useCallback((requestId: number) => (
+    mountedRef.current && cartSnapshotRequestRef.current === requestId
+  ), []);
+
+  const invalidateCartSnapshotRequests = useCallback(() => {
+    cartSnapshotRequestRef.current += 1;
+    return cartSnapshotRequestRef.current;
+  }, []);
+
   useEffect(() => {
     cartFetchErrorFallbackRef.current = t('pages.cart.fetchFailed');
     cartFetchErrorLanguageRef.current = language;
@@ -207,9 +222,11 @@ const Cart: React.FC = () => {
 
   const fetchCartItems = useCallback(async () => {
     if (!mountedRef.current) return;
+    const requestId = beginCartSnapshotRequest();
     const authenticated = hasAuthenticatedCartSession();
     if (!authenticated) {
       const guestItems = normalizeCartItems(getGuestCartItems());
+      if (!isCurrentCartSnapshotRequest(requestId)) return;
       if (guestItems.length === 0) {
         resetCheckoutStateAfterCartMutation();
       }
@@ -224,7 +241,7 @@ const Cart: React.FC = () => {
       setLoadError(false);
       setLoadErrorMessage(null);
       const response = await cartApi.getItems(0);
-      if (!mountedRef.current) return;
+      if (!isCurrentCartSnapshotRequest(requestId)) return;
       const nextItems = normalizeCartItems(response.data);
       if (nextItems.length === 0) {
         resetCheckoutStateAfterCartMutation();
@@ -232,7 +249,7 @@ const Cart: React.FC = () => {
       setCartItems(nextItems);
       setSelectedIds(nextItems.filter(canCheckout).map((item) => item.id));
     } catch (error: unknown) {
-      if (!mountedRef.current) return;
+      if (!isCurrentCartSnapshotRequest(requestId)) return;
       if (isAuthExpiredError(error)) {
         const guestItems = normalizeCartItems(getGuestCartItems());
         if (guestItems.length === 0) {
@@ -249,9 +266,9 @@ const Cart: React.FC = () => {
         message.error(errorMessage);
       }
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);
     }
-  }, [resetCheckoutStateAfterCartMutation]);
+  }, [beginCartSnapshotRequest, isCurrentCartSnapshotRequest, resetCheckoutStateAfterCartMutation]);
 
   const isCartMounted = useCallback(() => mountedRef.current, []);
 
@@ -383,6 +400,7 @@ const Cart: React.FC = () => {
   const updateQuantity = (item: CartItem, quantity: number) => {
     const normalizedQuantity = normalizeCartQuantity(item, quantity);
     const authenticated = hasAuthenticatedCartSession();
+    invalidateCartSnapshotRequests();
     setQuantityDrafts((drafts) => {
       if (!(item.id in drafts)) return drafts;
       const nextDrafts = { ...drafts };
@@ -484,6 +502,7 @@ const Cart: React.FC = () => {
 
   const removeItem = async (itemId: number) => {
     if (removingItemIds.includes(itemId)) return;
+    invalidateCartSnapshotRequests();
     cancelPendingQuantitySync([itemId]);
     try {
       setRemovingItemIds((ids) => Array.from(new Set([...ids, itemId])));
@@ -511,6 +530,7 @@ const Cart: React.FC = () => {
 
   const saveForLater = async (item: CartItem) => {
     if (removingItemIds.includes(item.id)) return;
+    invalidateCartSnapshotRequests();
     cancelPendingQuantitySync([item.id]);
     const previousSavedItems = getSavedForLaterItemsSnapshot();
     const savedItem = saveCartItemForLater(item);
@@ -547,6 +567,7 @@ const Cart: React.FC = () => {
 
   const moveSavedItemToCart = async (item: SavedForLaterItem) => {
     if (restoringSaved || restoringSavedItemIds.includes(item.id)) return;
+    const cartSnapshotRequestId = invalidateCartSnapshotRequests();
     setRestoringSavedItemIds((ids) => Array.from(new Set([...ids, item.id])));
     try {
       const authenticated = hasAuthenticatedCartSession();
@@ -554,10 +575,12 @@ const Cart: React.FC = () => {
         await cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs);
         const response = await cartApi.getItems(0);
         if (!mountedRef.current) return;
-        const nextItems = normalizeCartItems(response.data);
-        setCartItems(nextItems);
-        clearRecentProductsCache();
-        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+        if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
+          const nextItems = normalizeCartItems(response.data);
+          setCartItems(nextItems);
+          clearRecentProductsCache();
+          setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+        }
       } else {
         addGuestCartItem(
           {
@@ -592,6 +615,7 @@ const Cart: React.FC = () => {
   const moveSavedItemsToCart = async (items: SavedForLaterItem[]) => {
     if (items.length === 0) return;
     const targetItems = items.slice(0, conversionConfig.saveForLater.maxBulkRestoreItems);
+    const cartSnapshotRequestId = invalidateCartSnapshotRequests();
     setRestoringSaved(true);
     try {
       const authenticated = hasAuthenticatedCartSession();
@@ -610,10 +634,12 @@ const Cart: React.FC = () => {
         }
         const response = await cartApi.getItems(0);
         if (!mountedRef.current) return;
-        const nextItems = normalizeCartItems(response.data);
-        setCartItems(nextItems);
-        clearRecentProductsCache();
-        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+        if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
+          const nextItems = normalizeCartItems(response.data);
+          setCartItems(nextItems);
+          clearRecentProductsCache();
+          setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+        }
       } else {
         targetItems.forEach((item) => {
           addGuestCartItem(
@@ -657,6 +683,7 @@ const Cart: React.FC = () => {
   const removeItems = async (itemIds: number[], successMessage: string) => {
     if (itemIds.length === 0) return;
     const normalizedIds = Array.from(new Set(itemIds));
+    invalidateCartSnapshotRequests();
     cancelPendingQuantitySync(normalizedIds);
     try {
       setRemovingItemIds((ids) => Array.from(new Set([...ids, ...normalizedIds])));
@@ -923,18 +950,22 @@ const Cart: React.FC = () => {
     if (productId === null) {
       throw new Error(t('messages.addFailed'));
     }
+    const cartSnapshotRequestId = invalidateCartSnapshotRequests();
     const productWithSafeId = { ...product, id: productId };
     const authenticated = hasAuthenticatedCartSession();
     if (authenticated) {
       await cartApi.addItem(0, productId, 1);
       const response = await cartApi.getItems(0);
-      const nextItems = normalizeCartItems(response.data);
-      setCartItems(nextItems);
+      if (!mountedRef.current) return;
       clearRecentProductsCache();
-      const addedItemIds = nextItems
-        .filter((item) => item.productId === productId && canCheckout(item))
-        .map((item) => item.id);
-      setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
+      if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
+        const nextItems = normalizeCartItems(response.data);
+        setCartItems(nextItems);
+        const addedItemIds = nextItems
+          .filter((item) => item.productId === productId && canCheckout(item))
+          .map((item) => item.id);
+        setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
+      }
       dispatchDomEvent('shop:cart-updated');
       return;
     }
