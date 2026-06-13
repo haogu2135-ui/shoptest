@@ -2944,3 +2944,47 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
 body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
   display: none !important;
 }
+
+/* UI-20260608-04: mobile-web Spanish category labels should be readable in
+   the first viewport instead of clipped behind the horizontal rail fade. */
+@media (min-width: 341px) and (max-width: 430px) {
+  body:not(.shop-mobile-app) .shop-nav.shop-nav--es .shop-nav__mega {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 6px 0 2px !important;
+    scroll-padding-inline: 0 !important;
+  }
+
+  body:not(.shop-mobile-app) .shop-nav.shop-nav--es .shop-nav__mega::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  body:not(.shop-mobile-app) .shop-nav.shop-nav--es .shop-nav__mega button,
+  body:not(.shop-mobile-app) .shop-nav.shop-nav--es .shop-nav__megaButton {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+    padding: 8px 10px !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    line-height: 1.15 !important;
+  }
+}
+
+@media (max-width: 340px) {
+  body:not(.shop-mobile-app) .shop-nav.shop-nav--es .shop-nav__mega {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 6px !important;
+    overflow: visible !important;
+  }
+}

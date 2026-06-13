@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { message } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
@@ -163,6 +165,8 @@ const renderNavbar = () => render(
   </MemoryRouter>,
 );
 
+const readNavbarCss = () => fs.readFileSync(path.resolve(__dirname, 'Navbar.css'), 'utf8');
+
 describe('Navbar Android app download entry', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -192,6 +196,17 @@ describe('Navbar Android app download entry', () => {
     expect(warningSpy).toHaveBeenCalledWith('The Android package is not published yet. Please try again later.');
 
     warningSpy.mockRestore();
+  });
+
+  it('wraps Spanish mobile-web category rail labels instead of clipping them', () => {
+    const css = readNavbarCss();
+    const fixCss = css.slice(css.indexOf('/* UI-20260608-04'));
+
+    expect(fixCss).toContain('@media (min-width: 341px) and (max-width: 430px)');
+    expect(fixCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[\s\S]*?overflow:\s*visible\s*!important;/);
+    expect(fixCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega::after\s*\{[\s\S]*?content:\s*none\s*!important;[\s\S]*?display:\s*none\s*!important;/);
+    expect(fixCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega button,[\s\S]*?body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__megaButton\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*break-word\s*!important;/);
+    expect(fixCss).toMatch(/@media \(max-width:\s*340px\)\s*\{[\s\S]*?body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
   });
 
   it('turns the browser entry into an APK link only when release metadata allows it', async () => {
