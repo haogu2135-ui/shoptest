@@ -77,6 +77,15 @@ describe('frontend current page CSS surface contracts', () => {
     expect(currentOrderCss).not.toMatch(/--(?:card-shadow|background|text-primary|text-secondary|border|text-tertiary)\s*:/);
   });
 
+  it('keeps current order CSS free of stale webkit-only left gradient syntax', () => {
+    const currentOrderCss = [
+      readPageCss('OrderManagement.css'),
+      readPageCss('OrderTracking.css'),
+    ].join('\n');
+
+    expect(currentOrderCss).not.toMatch(/-webkit-linear-gradient\(\s*left\s*,/);
+  });
+
   it('keeps current coupon pagination free of stale global font-size important overrides', () => {
     const currentCouponCss = [
       readPageCss('CouponCenter.css'),

@@ -10,6 +10,11 @@ const rateLimitedError = (retryAfterSeconds?: number | string) => ({
     data: { code: 'RATE_LIMITED', error: 'Too many requests', retryAfterSeconds },
   },
 });
+const responseCodeError = (code: string, retryAfterSeconds?: number | string) => ({
+  response: {
+    data: { code, error: 'Request failed', retryAfterSeconds },
+  },
+});
 
 describe('getApiErrorMessage', () => {
   it('uses server detail for English pages', () => {
@@ -62,10 +67,19 @@ describe('getApiErrorMessage', () => {
   it('shows localized retry guidance for rate-limited requests', () => {
     expect(getApiErrorMessage(rateLimitedError(12), 'Payment failed', 'en'))
       .toBe('Too many requests. Please try again in 12 seconds.');
+    expect(getApiErrorMessage(responseCodeError('RATE_LIMITED', 4), 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again in 4 seconds.');
     expect(getApiErrorMessage(rateLimitedError('7'), '支付失败', 'zh'))
       .toBe('请求过于频繁，请在 7 秒后重试。');
     expect(getApiErrorMessage(rateLimitedError(), 'No se pudo pagar', 'es'))
       .toBe('Demasiadas solicitudes. Espera e inténtalo de nuevo.');
+  });
+
+  it('uses backend service-unavailable codes even when status is unavailable', () => {
+    expect(getApiErrorMessage(responseCodeError('SERVICE_UNAVAILABLE'), 'Payment failed', 'en'))
+      .toBe('The service is temporarily unavailable. Please try again later.');
+    expect(getApiErrorMessage(responseCodeError('LOGIN_SERVICE_UNAVAILABLE'), '支付失败', 'zh'))
+      .toBe('服务暂不可用，请稍后重试。');
   });
 
   it('exposes diagnostic text for classifiers without duplicating response parsing in pages', () => {

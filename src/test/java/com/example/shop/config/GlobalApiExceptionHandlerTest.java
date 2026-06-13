@@ -53,11 +53,30 @@ class GlobalApiExceptionHandlerTest {
         assertNotNull(body);
         assertEquals("Order not found", body.get("error"));
         assertEquals("Order not found", body.get("message"));
+        assertEquals("NOT_FOUND", body.get("code"));
         assertEquals(404, body.get("status"));
         assertEquals("Not Found", body.get("statusText"));
         assertEquals("/payments/order/9", body.get("path"));
         assertEquals("req-123", body.get("requestId"));
         assertDoesNotThrow(() -> Instant.parse(String.valueOf(body.get("timestamp"))));
+    }
+
+    @Test
+    void apiErrorFactoryIncludesFrontendStableErrorCodes() {
+        ApiErrorResponseFactory factory = new ApiErrorResponseFactory();
+        MockHttpServletRequest request = request("/gateway/payments");
+
+        Map<String, Object> rateLimited = factory.buildPayload(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "Too many requests",
+                request);
+        Map<String, Object> serviceUnavailable = factory.buildPayload(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Service unavailable",
+                request);
+
+        assertEquals("RATE_LIMITED", rateLimited.get("code"));
+        assertEquals("SERVICE_UNAVAILABLE", serviceUnavailable.get("code"));
     }
 
     @Test

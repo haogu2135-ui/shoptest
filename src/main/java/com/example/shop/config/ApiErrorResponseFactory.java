@@ -30,12 +30,23 @@ public class ApiErrorResponseFactory {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("error", safeMessage);
         payload.put("message", safeMessage);
+        payload.put("code", resolveCode(status));
         payload.put("status", status.value());
         payload.put("statusText", status.getReasonPhrase());
         payload.put("path", resolvePath(request));
         payload.put("requestId", resolveRequestId(request));
         payload.put("timestamp", Instant.now().toString());
         return payload;
+    }
+
+    public String resolveCode(HttpStatus status) {
+        if (status == null) {
+            return "REQUEST_FAILED";
+        }
+        if (status == HttpStatus.TOO_MANY_REQUESTS) {
+            return "RATE_LIMITED";
+        }
+        return status.name();
     }
 
     public String resolvePath(HttpServletRequest request) {

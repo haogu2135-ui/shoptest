@@ -15496,81 +15496,92 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Maintainer note:** The reported debug `body { background: var(--background) !important; }` override is stale against current source. The active `Home.css` line area is section-header styling, and focused source search found no top-level `body` rule setting `background: var(--background) !important` in `Home.css`. `FrontendCssCurrentSurfaces.test.ts` now source-guards against reintroducing this stale Home body background override. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2847: LOW — Orders.css has CSS gradient syntax without standard syntax fallback
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:59 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Orders.css:368`
 - **Impact**: The orders page uses `-webkit-linear-gradient(left, ...)` without the standard `linear-gradient(to right, ...)` syntax. This may cause gradient rendering issues in non-WebKit browsers.
 - **Severity**: LOW
 - **Dimension**: CSS Compatibility
+- **Maintainer note:** The reported `Orders.css` path is stale against current source. There is no active `frontend/src/pages/Orders.css` or `Orders.tsx`; current order surfaces are `OrderTracking.tsx`/`OrderTracking.css` and `OrderManagement.tsx`/`OrderManagement.css`. Focused source search found no `-webkit-linear-gradient(left, ...)` syntax in current order CSS. `FrontendCssCurrentSurfaces.test.ts` now source-guards current order CSS against reintroducing this stale webkit-only left-gradient syntax. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2848: LOW — BrowsingHistory page has hardcoded Chinese strings not in i18n
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:59 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `BrowsingHistory.tsx:34, 38, 39`
 - **Impact**: The browsing history page contains hardcoded Chinese strings "暂无浏览记录" (no browsing history), "加载中..." (loading...), "个商品" (items) that are not in the i18n locale files.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported hardcoded Chinese browsing-history copy is stale against current source. Active `BrowsingHistory.tsx` contains no Han characters and no stale literals `暂无浏览记录`, `加载中...`, or `个商品`; the page uses `useLanguage()` and `t('pages.browsingHistory.*')`/shared locale keys for empty states, counts, actions, and messages. English, Spanish, and Chinese locale files already contain `pages.browsingHistory.empty` and count-bearing `pages.browsingHistory.subtitle` entries. `FrontendHardcodedI18n.test.ts` now includes a focused BrowsingHistory source/locale contract in addition to the broader no-Han production-source guard. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2849: LOW — Profile page has hardcoded Chinese strings for pet breed labels
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 22:07 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Profile.tsx:184, 371, 539`
 - **Impact**: The profile page contains hardcoded Chinese strings "宠物品种" (pet breed) and "品种" (breed) that are not in the i18n locale files.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported hardcoded Profile pet-breed labels are stale against current source. Active `Profile.tsx` contains no Han characters and no stale literals `宠物品种` or `品种`; profile copy is routed through locale keys such as `pages.profile.*`. `FrontendHardcodedI18n.test.ts` source-guards `Profile.tsx` against these stale literals and against any Han characters in the production page source. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2850: LOW — Product page has hardcoded Chinese string for product name validation
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 22:07 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Product.tsx:436`
 - **Impact**: The product page contains hardcoded Chinese string "商品名称不能为空" (product name required) that is not in the i18n locale files.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported `Product.tsx` path is stale against current source; there is no active `frontend/src/pages/Product.tsx`, and `App.tsx` has no active route import for `./pages/Product`. Current product-facing/admin surfaces are `ProductDetail.tsx`, `ProductList.tsx`, and `ProductManagement.tsx`, and focused source search found no `商品名称不能为空` literal or Han characters in those current files. Locale files already contain product-name validation keys such as `pages.productAdmin.nameRequired`. `FrontendHardcodedI18n.test.ts` now guards against reintroducing the stale `Product.tsx` path/import and rejects the stale validation literal in current production source. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2851: LOW — ProductList page has hardcoded Chinese strings for category labels
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 22:07 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `ProductList.tsx:132, 341`
 - **Impact**: The product list page contains hardcoded Chinese strings "未知分类" (unknown category) and "默认分类" (default category) that are not in the i18n locale files.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported ProductList hardcoded category labels are stale against current source. Active `ProductList.tsx` contains no Han characters and no stale literals `未知分类` or `默认分类`; current category/result copy is routed through `t('pages.productList.*')` and shared locale keys. `FrontendHardcodedI18n.test.ts` source-guards `ProductList.tsx` against these stale literals and against any Han characters in the production page source. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2852: LOW — ProductImport page has hardcoded Chinese strings
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 22:07 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `ProductImport.tsx:196`, `ProductImportExport.tsx:418, 486`
 - **Impact**: The product import/export pages contain hardcoded Chinese strings "商品管理" (product management), "库存" (stock), "导出商品" (export), "导出成功" (export success), "导出失败" (export failed), "正在导出" (exporting) that are not in the i18n locale files.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported product import/export page paths are stale against current source. There is no active `frontend/src/pages/ProductImport.tsx` or `ProductImportExport.tsx`, and `App.tsx` has no active route import for those pages. Current product administration lives in `ProductManagement.tsx`, where focused source search found no stale literals `商品管理`, `库存`, `导出商品`, `导出成功`, `导出失败`, or `正在导出`, and no Han characters in production source. `FrontendHardcodedI18n.test.ts` now guards against reintroducing the stale import/export page paths and rejects those stale literals in current production source. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2853: LOW — AdminDashboard page has hardcoded Chinese strings for traffic stats
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 22:07 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `AdminDashboard.tsx:913, 1000`
 - **Impact**: The admin dashboard contains hardcoded Chinese strings "仅管理员可用" (admin only) and "流量统计" (traffic stats) that are not in the i18n locale files.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported AdminDashboard hardcoded strings are stale against current source. Active `AdminDashboard.tsx` contains no Han characters and no stale literals `仅管理员可用` or `流量统计`; dashboard labels, stats, traffic/logistics/action-center copy, and error states are routed through `t('pages.adminDashboard.*')` and related shared locale keys. `FrontendHardcodedI18n.test.ts` source-guards `AdminDashboard.tsx` against these stale literals and against any Han characters in the production page source. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2854: LOW — OrderDetail page has hardcoded Chinese string for add item action
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 22:07 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `OrderDetail.tsx:835`
 - **Impact**: The order detail page contains hardcoded Chinese string "添加商品" (add item) that is not in the i18n locale files.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported `OrderDetail.tsx` path is stale against current source; there is no active `frontend/src/pages/OrderDetail.tsx`, and `App.tsx` has no active route import for `./pages/OrderDetail`. Current order/detail surfaces are handled through `OrderManagement.tsx`, `OrderTracking.tsx`, `SupportManagement.tsx`, and support/order detail components, and focused source search found no stale `添加商品` literal or Han characters in the current order/detail source surface. `FrontendHardcodedI18n.test.ts` now guards against reintroducing the stale `OrderDetail.tsx` path/import, includes `OrderManagement.tsx` in the no-Han production-source scan, and rejects the stale `添加商品` literal. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2860: HIGH — orderApi.pay sends no body; backend expects transactionId
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 22:13 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `frontend/src/api/index.ts:1776`, `src/main/java/com/example/shop/controller/OrderController.java:256-277`
 - **Impact**: Frontend `orderApi.pay` calls `api.put('/orders/{id}/pay')` with no request body. Backend `payOrder` reads `body.get("transactionId")` from `Map<String, String> body`. While `transactionId` is nullable, the payment confirmation record will always have a null transaction ID, making it impossible to reconcile payments with external payment providers.
 - **Severity**: HIGH
 - **Dimension**: API Contract / Data Integrity
+- **Maintainer note:** The current method was already POST, so the `PUT` wording in the report is stale, but the missing request body was real. `orderApi.pay(...)` now accepts an optional transaction-id payload/string and always posts a normalized body to `/orders/{id}/pay`, allowing callers to preserve gateway/manual reconciliation identifiers while keeping backend manual-id generation available when no transaction id is supplied. `frontend/src/api/index.test.ts` now checks the normalized payment body, and `OrderControllerHttpMethodContractTest` rejects the old body-less `orderApi.pay(id)` signature. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2861: HIGH — orderApi.ship sends no body; backend expects trackingNumber and trackingCarrierCode
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 22:13 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `frontend/src/api/index.ts:1777`, `src/main/java/com/example/shop/controller/OrderController.java:279-303`
 - **Impact**: Frontend `orderApi.ship` calls `api.put('/orders/{id}/ship')` with no request body. Backend `shipOrder` reads `trackingNumber` and `trackingCarrierCode` from the request body. Both will be null when called from the frontend, resulting in shipped orders with no tracking information. Customers cannot track shipments.
 - **Severity**: HIGH
 - **Dimension**: API Contract / Business Logic
+- **Maintainer note:** The current method was already POST, so the `PUT` wording in the report is stale, but the missing request body was real. `orderApi.ship(...)` now requires a tracking-number payload/string, normalizes `trackingNumber` and optional `trackingCarrierCode`, rejects empty tracking numbers before sending, and posts the body to `/orders/{id}/ship`. This matches `OrderController.shipOrder(...)` and `OrderService.shipOrder(...)`, where tracking number is required and carrier code is optional but validated when provided. `frontend/src/api/index.test.ts` now checks normalized shipment payloads and empty-tracking rejection, and `OrderControllerHttpMethodContractTest` rejects the old body-less `orderApi.ship(id)` signature. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2862: HIGH — selectedSpecs max length mismatch: frontend 2000 vs backend 1000
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 22:13 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `frontend/src/api/index.ts:21` (MAX_SELECTED_SPECS_LENGTH=2000), `src/main/java/com/example/shop/dto/CartAddRequest.java:23` (@Size(max=1000))
 - **Impact**: Frontend normalizes `selectedSpecs` to 2000 characters, but backend CartAddRequest DTO limits to 1000. Specs between 1001-2000 chars pass frontend validation but fail backend with a 400 error. Affects `cartApi.addItem`.
 - **Severity**: HIGH
 - **Dimension**: API Contract / Validation
+- **Maintainer note:** The reported 2000/1000 mismatch is stale against current source. Active `frontend/src/api/index.ts` defines `MAX_SELECTED_SPECS_LENGTH = 1000`, and both `cartApi.addItem(...)` plus guest checkout item normalization use that constant. Backend `CartAddRequest.selectedSpecs` remains `@Size(max = 1000)`. Existing `frontend/src/api/index.test.ts` guards cart and guest checkout selected-spec truncation to 1000 characters, and `OrderControllerHttpMethodContractTest` now source-guards the frontend constant against returning to 2000 while requiring the backend DTO to stay at `@Size(max = 1000)`. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2863: MEDIUM — Missing Content-Security-Policy header
 - **Status**: OPEN
@@ -15601,11 +15612,12 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Dimension**: Security / Privacy
 
 ### F2867: MEDIUM — Frontend checks for `code` field in error responses; backend never returns it
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 22:24 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `frontend/src/utils/apiError.ts:73-80`, `src/main/java/com/example/shop/config/ApiErrorResponseFactory.java:28-37`
 - **Impact**: Frontend `getApiErrorMessage` checks `response.data.code` for `LOGIN_SERVICE_UNAVAILABLE` and `RATE_LIMITED`. Backend `ApiErrorResponseFactory.buildPayload()` never includes a `code` field. The `LOGIN_SERVICE_UNAVAILABLE` check will never match. The `RATE_LIMITED` check has a fallback to HTTP 429 status which works, but the code-based check is dead logic.
 - **Severity**: MEDIUM
 - **Dimension**: API Contract / Error Handling
+- **Maintainer note:** The unified backend error payload now includes a stable `code` field from `ApiErrorResponseFactory.buildPayload(...)`. Most statuses use `HttpStatus.name()`, while HTTP 429 maps to the frontend's existing `RATE_LIMITED` classifier. `getApiErrorMessage(...)` now also recognizes the generic `SERVICE_UNAVAILABLE` code in addition to the legacy login-specific code and status fallback. `GlobalApiExceptionHandlerTest` source-guards `NOT_FOUND`, `RATE_LIMITED`, and `SERVICE_UNAVAILABLE` payload codes, and `apiError.test.ts` source-guards code-only rate-limit and service-unavailable classification paths. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2868: MEDIUM — Admin coupon create/update sends raw Partial<Coupon> without normalization or validation
 - **Status**: OPEN

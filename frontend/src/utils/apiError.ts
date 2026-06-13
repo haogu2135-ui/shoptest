@@ -167,7 +167,7 @@ export const getApiErrorMessage = (
   const responseMessage = errorLike.response?.data;
   const responseCode = String(responseMessage?.code || '').trim();
   const status = Number(errorLike.response?.status);
-  if (responseCode === 'LOGIN_SERVICE_UNAVAILABLE' || status === 503) {
+  if (responseCode === 'LOGIN_SERVICE_UNAVAILABLE' || responseCode === 'SERVICE_UNAVAILABLE' || status === 503) {
     return apiErrorMessage(language, 'serviceUnavailable', fallback);
   }
   if (responseCode === 'RATE_LIMITED' || status === 429) {

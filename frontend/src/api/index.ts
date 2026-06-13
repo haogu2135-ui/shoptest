@@ -1930,6 +1930,30 @@ export const cartApi = {
     clear: (_userId: number) => api.delete('/cart/me/clear')
 };
 
+type OrderPaymentPayload = {
+    transactionId?: string | null;
+};
+
+type OrderShipmentPayload = {
+    trackingNumber: string;
+    trackingCarrierCode?: string | null;
+};
+
+const normalizeOrderPaymentBody = (payload?: string | OrderPaymentPayload) => ({
+    transactionId: normalizeTextParam(typeof payload === 'string' ? payload : payload?.transactionId, 120) || undefined,
+});
+
+const normalizeOrderShipmentBody = (payload: string | OrderShipmentPayload, trackingCarrierCode?: string | null) => {
+    const trackingNumber = normalizeTextParam(typeof payload === 'string' ? payload : payload?.trackingNumber, 120);
+    if (!trackingNumber) {
+        throw new Error('Tracking number is required');
+    }
+    return {
+        trackingNumber,
+        trackingCarrierCode: normalizeTextParam(typeof payload === 'string' ? trackingCarrierCode : payload?.trackingCarrierCode, 40) || undefined,
+    };
+};
+
 // 订单相关 API
 export const orderApi = {
     getAll: () => api.get<Order[]>('/orders').then(withArrayData),
@@ -2025,8 +2049,9 @@ export const orderApi = {
             ...(credentials || {}),
         }, guestRequestConfig(guestEmail, orderNo)).finally(clearOrderTrackCache);
     },
-    pay: (id: number) => api.post(`/orders/${toPathId(id)}/pay`),
-    ship: (id: number) => api.post(`/orders/${toPathId(id)}/ship`),
+    pay: (id: number, payload?: string | OrderPaymentPayload) => api.post(`/orders/${toPathId(id)}/pay`, normalizeOrderPaymentBody(payload)),
+    ship: (id: number, payload: string | OrderShipmentPayload, trackingCarrierCode?: string) =>
+        api.post(`/orders/${toPathId(id)}/ship`, normalizeOrderShipmentBody(payload, trackingCarrierCode)),
     getItems: (orderId: number, guestEmail?: string, orderNo?: string) => {
         const normalizedOrderId = normalizePositiveInt(orderId);
         if (!normalizedOrderId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<OrderItemCustomer[]>);

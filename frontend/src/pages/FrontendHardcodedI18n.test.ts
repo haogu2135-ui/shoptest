@@ -8,8 +8,16 @@ const productionSourceFiles = [
   ['ProductManagement.tsx', 'ProductManagement.tsx'],
   ['AdminDashboard.tsx', 'AdminDashboard.tsx'],
   ['ProductDetail.tsx', 'ProductDetail.tsx'],
+  ['OrderManagement.tsx', 'OrderManagement.tsx'],
   ['ConfigCenter.tsx', 'ConfigCenter.tsx'],
   ['Navbar.tsx', '../components/Navbar.tsx'],
+];
+
+const staleI18nReportPageFiles = [
+  'Product.tsx',
+  'ProductImport.tsx',
+  'ProductImportExport.tsx',
+  'OrderDetail.tsx',
 ];
 
 const staleChineseUiLiterals = [
@@ -44,11 +52,27 @@ const staleChineseUiLiterals = [
   '立即更新',
 ];
 
+const readSource = (relativePath: string) =>
+  fs.readFileSync(path.join(__dirname, relativePath), 'utf8');
+
+const readJson = (relativePath: string) =>
+  JSON.parse(readSource(relativePath));
+
 describe('frontend page i18n hardcoded string guards', () => {
+  it('keeps stale i18n report page paths out of the active frontend source', () => {
+    const appSource = readSource('../App.tsx');
+
+    staleI18nReportPageFiles.forEach((filename) => {
+      expect(fs.existsSync(path.join(__dirname, filename))).toBe(false);
+    });
+    expect(appSource).not.toMatch(/import\('\.\/pages\/(?:Product|ProductImport|ProductImportExport|OrderDetail)'\)/);
+    expect(appSource).not.toMatch(/from ['"]\.\/pages\/(?:Product|ProductImport|ProductImportExport|OrderDetail)['"]/);
+  });
+
   it('keeps stale Chinese UI literals out of production source files', () => {
     const pageSources = productionSourceFiles.map(([filename, relativePath]) => ({
       filename,
-      source: fs.readFileSync(path.join(__dirname, relativePath), 'utf8'),
+      source: readSource(relativePath),
     }));
 
     for (const { filename, source } of pageSources) {
@@ -57,5 +81,28 @@ describe('frontend page i18n hardcoded string guards', () => {
       }
       expect(source).not.toMatch(/[\u4e00-\u9fff]/);
     }
+  });
+
+  it('keeps browsing history empty, loading, and count copy in locale data', () => {
+    const source = readSource('BrowsingHistory.tsx');
+    const locales = [
+      readJson('../locales/en.json'),
+      readJson('../locales/es.json'),
+      readJson('../locales/zh.json'),
+    ];
+
+    expect(source).toContain("t('pages.browsingHistory.empty')");
+    expect(source).toContain("t('pages.browsingHistory.subtitle'");
+    expect(source).not.toContain('暂无浏览记录');
+    expect(source).not.toContain('加载中...');
+    expect(source).not.toContain('个商品');
+    expect(source).not.toMatch(/[\u4e00-\u9fff]/);
+
+    locales.forEach((locale) => {
+      expect(locale.common.loading).toEqual(expect.any(String));
+      expect(locale.common.itemsCount).toContain('{count}');
+      expect(locale.pages.browsingHistory.empty).toEqual(expect.any(String));
+      expect(locale.pages.browsingHistory.subtitle).toContain('{count}');
+    });
   });
 });

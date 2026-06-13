@@ -61,8 +61,21 @@ class OrderControllerHttpMethodContractTest {
         assertTrue(api.contains("api.post(`${guestOrderPath(id, guestEmail, orderNo)}/confirm`"));
         assertTrue(api.contains("api.post(`${guestOrderPath(id, guestEmail, orderNo)}/return`"));
         assertTrue(api.contains("api.post(`${guestOrderPath(id, guestEmail, orderNo)}/return-shipment`"));
-        assertTrue(api.contains("pay: (id: number) => api.post(`/orders/${toPathId(id)}/pay`)"));
-        assertTrue(api.contains("ship: (id: number) => api.post(`/orders/${toPathId(id)}/ship`)"));
+        assertTrue(api.contains("pay: (id: number, payload?: string | OrderPaymentPayload) => api.post(`/orders/${toPathId(id)}/pay`, normalizeOrderPaymentBody(payload))"));
+        assertTrue(api.contains("ship: (id: number, payload: string | OrderShipmentPayload, trackingCarrierCode?: string) =>"));
+        assertTrue(api.contains("api.post(`/orders/${toPathId(id)}/ship`, normalizeOrderShipmentBody(payload, trackingCarrierCode))"));
+        assertFalse(api.contains("pay: (id: number) => api.post(`/orders/${toPathId(id)}/pay`)"));
+        assertFalse(api.contains("ship: (id: number) => api.post(`/orders/${toPathId(id)}/ship`)"));
+    }
+
+    @Test
+    void frontendSelectedSpecsLimitMatchesBackendCartRequestLimit() throws IOException {
+        String api = read("frontend/src/api/index.ts");
+        String cartAddRequest = read("src/main/java/com/example/shop/dto/CartAddRequest.java");
+
+        assertTrue(api.contains("const MAX_SELECTED_SPECS_LENGTH = 1000;"));
+        assertTrue(cartAddRequest.contains("@Size(max = 1000)"));
+        assertFalse(api.contains("const MAX_SELECTED_SPECS_LENGTH = 2000;"));
     }
 
     private String read(String path) throws IOException {

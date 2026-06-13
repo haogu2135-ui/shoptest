@@ -1355,6 +1355,9 @@ describe('api parameter normalization', () => {
     await orderApi.confirm(9, ' USER@Example.COM ', ' so202605260001 ');
     await orderApi.returnOrder(9, '  Too\t small  ', ' USER@Example.COM ', ' so202605260001 ');
     await orderApi.submitReturnShipment(11, '  TRACK   123  ', ' USER@Example.COM ', ' so202605260001 ');
+    await orderApi.pay(12, '  txn\u0000   123  ');
+    await orderApi.ship(13, { trackingNumber: '  SHIP\u0000   456  ', trackingCarrierCode: '  DHL ' });
+    expect(() => orderApi.ship(14, '   ')).toThrow('Tracking number is required');
     await orderApi.getItems(10);
 
     expect(mockPost.mock.calls[0][0]).toBe('/orders/checkout/me');
@@ -1375,6 +1378,10 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[3][1]).toEqual({ reason: 'Too small', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockPost.mock.calls[4][0]).toBe('/orders/guest/11/return-shipment');
     expect(mockPost.mock.calls[4][1]).toEqual({ returnTrackingNumber: 'TRACK 123', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPost.mock.calls[5][0]).toBe('/orders/12/pay');
+    expect(mockPost.mock.calls[5][1]).toEqual({ transactionId: 'txn 123' });
+    expect(mockPost.mock.calls[6][0]).toBe('/orders/13/ship');
+    expect(mockPost.mock.calls[6][1]).toEqual({ trackingNumber: 'SHIP 456', trackingCarrierCode: 'DHL' });
     expect(mockGet.mock.calls[0][0]).toBe('/orders/10/items');
   });
 
