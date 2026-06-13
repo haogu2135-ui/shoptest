@@ -18,6 +18,17 @@ export const isAdminRole = (role?: string | null) =>
 export const isSuperAdminRole = (role?: string | null) =>
   normalizeRole(role) === SUPER_ADMIN_ROLE;
 
+const ROLE_LABEL_KEYS: Record<string, 'USER' | 'ADMIN' | 'SUPER_ADMIN'> = {
+  USER: 'USER',
+  ADMIN: 'ADMIN',
+  [SUPER_ADMIN_ROLE]: 'SUPER_ADMIN',
+};
+
+export const roleLabelKey = (role?: string | null) => {
+  const normalized = normalizeRole(role);
+  return `pages.adminUsers.roleValues.${ROLE_LABEL_KEYS[normalized] || 'UNKNOWN'}`;
+};
+
 export const roleColor = (role?: string | null) => {
   const normalized = normalizeRole(role);
   if (normalized === SUPER_ADMIN_ROLE) return 'gold';

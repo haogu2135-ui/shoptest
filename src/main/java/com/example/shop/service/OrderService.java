@@ -68,6 +68,24 @@ public class OrderService {
     private static final String GUEST_ADDRESS_PREFIX = "[Guest]";
     private static final Pattern CHECKOUT_PHONE_PATTERN = Pattern.compile("^(?=(?:.*\\d){6,20})\\+?[\\d\\s().-]{6,40}$");
     private static final Set<String> RECONCILIATION_REFUNDABLE_STATUSES = Set.of("PENDING_PAYMENT", "CANCELLED");
+    private static final Map<String, String> ORDER_STATUS_NEXT_STEP = Map.of(
+            "PENDING_PAYMENT", "PENDING_SHIPMENT",
+            "PENDING_SHIPMENT", "SHIPPED",
+            "SHIPPED", "COMPLETED",
+            "COMPLETED", "RETURN_REQUESTED",
+            "RETURN_REQUESTED", "RETURN_APPROVED",
+            "RETURN_APPROVED", "RETURN_SHIPPED",
+            "RETURN_SHIPPED", "RETURNED"
+    );
+    private static final Set<String> ORDER_STATUS_REFUNDABLE_STEPS = Set.of(
+            "PENDING_SHIPMENT",
+            "SHIPPED",
+            "COMPLETED",
+            "RETURN_REQUESTED",
+            "RETURN_APPROVED",
+            "RETURN_SHIPPED",
+            "RETURNED"
+    );
 
     private static final List<String> DASHBOARD_REVENUE_STATUSES = List.of(
             "PENDING_SHIPMENT",
@@ -2097,24 +2115,14 @@ public class OrderService {
     }
 
     public void assertNextStatus(String currentStatus, String nextStatus) {
-        Map<String, String> next = Map.of(
-                "PENDING_PAYMENT", "PENDING_SHIPMENT",
-                "PENDING_SHIPMENT", "SHIPPED",
-                "SHIPPED", "COMPLETED",
-                "COMPLETED", "RETURN_REQUESTED",
-                "RETURN_REQUESTED", "RETURN_APPROVED",
-                "RETURN_APPROVED", "RETURN_SHIPPED",
-                "RETURN_SHIPPED", "RETURNED"
-        );
         if ("CANCELLED".equals(nextStatus) && "PENDING_PAYMENT".equals(currentStatus)) {
             return;
         }
         if ("REFUNDED".equals(nextStatus)
-                && Set.of("PENDING_SHIPMENT", "SHIPPED", "COMPLETED", "RETURN_REQUESTED", "RETURN_APPROVED", "RETURN_SHIPPED", "RETURNED")
-                .contains(currentStatus)) {
+                && ORDER_STATUS_REFUNDABLE_STEPS.contains(currentStatus)) {
             return;
         }
-        if (!nextStatus.equals(next.get(currentStatus))) {
+        if (!nextStatus.equals(ORDER_STATUS_NEXT_STEP.get(currentStatus))) {
             throw new IllegalStateException("Invalid order status transition: " + currentStatus + " -> " + nextStatus);
         }
     }

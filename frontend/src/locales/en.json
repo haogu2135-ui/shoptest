@@ -1443,7 +1443,8 @@
       "roleValues": {
         "USER": "Customer",
         "ADMIN": "Admin",
-        "SUPER_ADMIN": "Super admin"
+        "SUPER_ADMIN": "Super admin",
+        "UNKNOWN": "Unknown role"
       },
       "createdAt": "Created at",
       "normal": "Normal",

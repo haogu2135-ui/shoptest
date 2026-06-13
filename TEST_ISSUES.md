@@ -5378,7 +5378,7 @@ Notes:
 - Environment: `src/main/java/com/example/shop/domain/OrderStatusMachine.java:89`
 - Severity: MEDIUM
 - Description: `assertNextStatus()` creates a fresh `HashMap` for each call. For hot paths (batch order processing), this could be optimized by pre-computing allowed transitions as a static map.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 17:28 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The stale `OrderStatusMachine.java` path is absent; active order transition validation lives in `src/main/java/com/example/shop/service/OrderService.java`. Current source no longer creates a `HashMap`, but `assertNextStatus(...)` still rebuilt immutable `Map.of(...)` and `Set.of(...)` values on each call. Moved the transition map and refundable status set to `private static final` constants (`ORDER_STATUS_NEXT_STEP`, `ORDER_STATUS_REFUNDABLE_STEPS`) and updated `assertNextStatus(...)` to reuse them. Added `OrderStatusTransitionContractTest` source guard to keep transition rules precomputed outside the hot path. No Maven/JUnit/backend/API/frontend/browser/APP/deploy/service/Nginx commands were run.
 - Expected fix direction: Pre-compute transition map as static field.
 
 ### F2333: `cancelExpiredUnpaidOrders` silently swallows exceptions
@@ -5396,7 +5396,7 @@ Notes:
 - Environment: `src/utils/product.ts:158-185`
 - Severity: LOW
 - Description: `product: any` parameter type hides the actual Product interface and bypasses compile-time checks.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 17:08 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The stale `src/utils/product.ts` path is absent from current frontend source. Active product API response normalization lives in `frontend/src/api/index.ts`, where `normalizeProductImages` accepts `{ images?: unknown; imageUrl?: unknown }` instead of `any`, parses image lists through typed `unknown` handling, and is covered by `ProductApiTypeSafety.test.ts`. The guard now explicitly requires the typed signature and rejects reintroducing `normalizeProductImages(product: any)` or broad `as any` casts in the product normalization slice. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Import and use `Product` type from `types.ts`.
 
 ### F2331: Frontend `product.ts` maps unused field `p.imageGallery`
@@ -5405,7 +5405,7 @@ Notes:
 - Environment: `src/utils/product.ts:52`
 - Severity: LOW
 - Description: `parseListProducts()` maps `p.imageGallery ?? []` but the list API doesn't include imageGallery; always empty array.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 17:18 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The stale `src/utils/product.ts` and `parseListProducts()` path is absent from current frontend source. Active product response normalization lives in `frontend/src/api/index.ts`, normalizes image arrays through `normalizeProductImages(...)`, and has no `imageGallery` mapping or `p.imageGallery ?? []` dead fallback. `ProductApiTypeSafety.test.ts` now rejects reintroducing `parseListProducts`, `imageGallery:`, and the old stale field mapping. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Remove the dead mapping.
 
 ### F2330: Frontend `product.ts` maps `p.stock` but list API doesn't return it
@@ -5414,7 +5414,7 @@ Notes:
 - Environment: `src/utils/product.ts:53`
 - Severity: LOW
 - Description: `parseListProducts()` maps `p.stock ?? 0` but the list API response type doesn't include stock; always zero for list items.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 17:18 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The stale `src/utils/product.ts` and `parseListProducts()` path is absent from current frontend source. Active product normalization preserves typed `ProductPublic.stock` when returned and leaves it undefined when absent; it does not default list stock to zero via `p.stock ?? 0`. `ProductApiTypeSafety.test.ts` now rejects `parseListProducts` and the old `p.stock ?? 0` stale-list mapping. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Remove stock from list mapping or add to API.
 
 ### F2329: Frontend `ErrorBoundary` already handles i18n with `t()` and `i18n.exists()`
@@ -5432,7 +5432,7 @@ Notes:
 - Environment: `src/utils/product.ts:235-265`
 - Severity: LOW
 - Description: `normalizeProductImages(product: any)` bypasses type safety. Should accept `Partial<Product>` or a specific interface.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 17:08 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The stale `src/utils/product.ts` path is absent from current frontend source. Active `normalizeProductImages` in `frontend/src/api/index.ts` uses the explicit `{ images?: unknown; imageUrl?: unknown }` input shape and typed `unknown` parsing, not `any`. `ProductApiTypeSafety.test.ts` now specifically requires that typed signature and rejects `normalizeProductImages(product: any)` plus broad casts inside the product normalization slice. This also aligns with the existing global production source broad-any guard. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Use `Partial<Product>` type.
 
 ### F2327: Roles utility dynamic key lookup has no fallback safety
@@ -5441,7 +5441,7 @@ Notes:
 - Environment: `src/utils/roles.ts:61-72`
 - Severity: MEDIUM
 - Description: `ROLE_HIERARCHY[role as keyof typeof ROLE_HIERARCHY]` returns undefined for unknown roles. `ROLE_DISPLAY_NAMES` uses `String(role)` fallback which produces uppercase enum values (e.g., "ROLE_SUPPORT").
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 16:32 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The stale `ROLE_HIERARCHY` and `ROLE_DISPLAY_NAMES` fallback patterns are absent from current `roles.ts`. Added `roleLabelKey(...)` with an explicit `UNKNOWN` fallback so unknown backend role codes render through locale resources instead of exposing raw uppercase enum values. `UserManagement.tsx` now uses this shared role utility when no backend role name is available, and en/es/zh define `pages.adminUsers.roleValues.UNKNOWN`. `roles.test.ts` now guards built-in role key mapping, unknown-role fallback, and absence of the old unsafe dynamic role display patterns. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Add explicit fallback or validation for unknown roles.
 
 ### F2326: `apiError.ts` has hardcoded error messages in 3 languages
@@ -5561,7 +5561,7 @@ Notes:
 - Environment: `src/store/authStore.ts:52-86`
 - Severity: LOW
 - Description: `login()` and `logout()` call `set({user: null})` which triggers React setState. If component unmounts during API call, React warning occurs.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 16:46 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The stale `src/store/authStore.ts` path is absent; active auth state lives in `hooks/useAuth.ts`. Added a Provider-level `mountedRef` guard so profile hydrate, login, and logout async callbacks avoid `setUser`, `setLoading`, and auth success/failure messages after the Provider unmounts. Login responses that resolve after unmount now return before persisting session data or writing local auth state, and cleanup invalidates in-flight profile/login requests. `useAuth.test.tsx` now covers the login-after-unmount path in addition to existing stale profile/unmount guards. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Add mounted check or use AbortController.
 
 ### F2313: `useAuth` login/logout not memoized — new function reference every render

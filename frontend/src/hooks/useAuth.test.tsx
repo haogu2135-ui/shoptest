@@ -1,6 +1,7 @@
+import React from 'react';
 import { act, render, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from './useAuth';
-import { clearStoredAuthSession, userApi } from '../api';
+import { clearStoredAuthSession, persistAuthSession, userApi } from '../api';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -74,6 +75,14 @@ const AuthStateProbe = () => {
       <span data-testid="username">{user?.username || 'guest'}</span>
     </div>
   );
+};
+
+const AutoLoginProbe = () => {
+  const { login } = useAuth();
+  React.useEffect(() => {
+    void login('jane', 'secret').catch(() => undefined);
+  }, [login]);
+  return <div>login probe</div>;
 };
 
 describe('AuthProvider initial profile cleanup', () => {
@@ -197,5 +206,24 @@ describe('AuthProvider initial profile cleanup', () => {
     expect(getByTestId('username').textContent).toBe('sol');
     expect(setLocalStorageItem).not.toHaveBeenCalledWith('userId', '7');
     expect(setLocalStorageItem).toHaveBeenCalledWith('userId', '8');
+  });
+
+  it('ignores login responses after unmount', async () => {
+    const loginRequest = createDeferred<typeof profileResponse>();
+    (getLocalStorageItem as jest.Mock).mockReturnValue(null);
+    (userApi.login as jest.Mock).mockReturnValue(loginRequest.promise);
+
+    const { unmount } = render(<AuthProvider><AutoLoginProbe /></AuthProvider>);
+
+    await waitFor(() => expect(userApi.login).toHaveBeenCalledTimes(1));
+    unmount();
+
+    await act(async () => {
+      loginRequest.resolve(profileResponse);
+      await Promise.resolve();
+    });
+
+    expect(persistAuthSession).not.toHaveBeenCalled();
+    expect(setLocalStorageItem).not.toHaveBeenCalled();
   });
 });

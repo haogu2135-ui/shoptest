@@ -1842,7 +1842,8 @@
       "roleValues": {
         "USER": "Cliente",
         "ADMIN": "Administrador",
-        "SUPER_ADMIN": "Superadministrador"
+        "SUPER_ADMIN": "Superadministrador",
+        "UNKNOWN": "Rol desconocido"
       },
       "createdAt": "Fecha de registro",
       "normal": "Normal",

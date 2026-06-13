@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     // Monotonic sequence invalidates stale profile hydrations from auth/storage events and unmount cleanup.
     const profileRequestSeqRef = React.useRef(0);
     const loginRequestRef = React.useRef<Promise<void> | null>(null);
+    const mountedRef = React.useRef(true);
 
     const applyProfile = useCallback((profile: UserProfile) => {
         const effectiveRole = getEffectiveRole(profile.role, profile.roleCode);
@@ -45,20 +46,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
         profileRequestSeqRef.current = requestSeq;
         const token = getLocalStorageItem('token');
         if (!token) {
-            setUser(null);
-            setLoading(false);
+            if (mountedRef.current) {
+                setUser(null);
+                setLoading(false);
+            }
             return;
         }
-        if (setBusy) {
+        if (setBusy && mountedRef.current) {
             setLoading(true);
         }
         userApi.getProfile({ skipAuthRedirect: true })
             .then(response => {
-                if (profileRequestSeqRef.current !== requestSeq) return;
+                if (!mountedRef.current || profileRequestSeqRef.current !== requestSeq) return;
                 applyProfile(response.data);
             })
             .catch((error) => {
-                if (profileRequestSeqRef.current !== requestSeq) return;
+                if (!mountedRef.current || profileRequestSeqRef.current !== requestSeq) return;
                 reportNonBlockingError('useAuth.hydrateStoredProfile', error);
                 if (isAuthExpiredError(error)) {
                     setUser(null);
@@ -66,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
             })
             .finally(() => {
-                if (profileRequestSeqRef.current === requestSeq) {
+                if (mountedRef.current && profileRequestSeqRef.current === requestSeq) {
                     setLoading(false);
                 }
             });
@@ -78,6 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
         loginRequest = (async () => {
             try {
                 const response = await userApi.login(username, password);
+                if (!mountedRef.current) return;
                 const { id, username: name, email, phone, role, roleCode } = response.data;
                 const effectiveRole = getEffectiveRole(role, roleCode);
                 const displayName = String(name || email || phone || id || '');
@@ -88,7 +92,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                 setUser({ id, username: displayName, role: effectiveRole, roleCode, email: email || '', phone });
                 message.success(t('pages.auth.loginSuccess'));
             } catch (error) {
-                message.error(t('pages.auth.loginFailed'));
+                if (mountedRef.current) {
+                    message.error(t('pages.auth.loginFailed'));
+                }
                 throw error;
             } finally {
                 if (loginRequestRef.current === loginRequest) {
@@ -104,17 +110,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
         const refreshToken = getLocalStorageItem('refreshToken');
         void userApi.logout(refreshToken)
             .then(() => {
-                message.success(t('pages.auth.logoutSuccess'));
+                if (mountedRef.current) {
+                    message.success(t('pages.auth.logoutSuccess'));
+                }
             })
             .catch((error) => {
                 reportNonBlockingError('useAuth.logoutRevoke', error);
-                message.warning(t('messages.logoutPartialFailure'));
-        });
-        setUser(null);
+                if (mountedRef.current) {
+                    message.warning(t('messages.logoutPartialFailure'));
+                }
+            });
+        if (mountedRef.current) {
+            setUser(null);
+        }
         clearStoredAuthSession();
     }, [t]);
 
     React.useEffect(() => {
+        mountedRef.current = true;
         hydrateStoredProfile(true);
         const handleAuthSessionChanged = () => hydrateStoredProfile(false);
         const handleStorageChange = (event: StorageEvent) => {
@@ -125,7 +138,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
         window.addEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
         window.addEventListener('storage', handleStorageChange);
         return () => {
+            mountedRef.current = false;
             profileRequestSeqRef.current += 1;
+            loginRequestRef.current = null;
             window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
             window.removeEventListener('storage', handleStorageChange);
         };

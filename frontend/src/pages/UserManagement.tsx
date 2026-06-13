@@ -14,6 +14,7 @@ import {
   isAdminRole,
   isSuperAdminRole,
   roleColor,
+  roleLabelKey,
 } from '../utils/roles';
 import { hasStoredValue } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -23,7 +24,6 @@ import './UserManagement.css';
 const { Title, Text } = Typography;
 type UserAccountStatus = 'ACTIVE' | 'BANNED' | 'GUEST';
 const DEFAULT_USER_PAGE_SIZE = 20;
-const USER_MANAGEMENT_BUILT_IN_ROLE_LABEL_KEYS = new Set(['USER', 'ADMIN', 'SUPER_ADMIN']);
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const userAdminTableCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
@@ -84,10 +84,7 @@ const UserManagement: React.FC = () => {
     const rawValue = String(roleValue || '').trim();
     if (!rawValue) return fallbackName?.trim() || '-';
     const normalized = rawValue.toUpperCase();
-    if (USER_MANAGEMENT_BUILT_IN_ROLE_LABEL_KEYS.has(normalized)) {
-      return t(`pages.adminUsers.roleValues.${normalized}`);
-    }
-    return fallbackName?.trim() || rawValue;
+    return fallbackName?.trim() || t(roleLabelKey(normalized));
   }, [t]);
 
   const localUserHealth = useMemo(() => {
