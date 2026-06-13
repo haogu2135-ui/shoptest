@@ -159,6 +159,44 @@ const LocationProbe = () => {
   return <span data-testid="location">{location.pathname}{location.search}</span>;
 };
 
+describe('Login CSS contracts', () => {
+  it('keeps the login page responsive across desktop, tablet, and narrow mobile rails', () => {
+    const css = readLoginCss();
+
+    expect(css).toContain('@media (max-width: 900px)');
+    expect(css).toContain('@media (max-width: 480px)');
+    expect(css).toContain('@media (max-width: 430px)');
+    expect(css).toContain('@media (max-width: 360px)');
+    expect(css).toContain('grid-template-columns: 1fr;');
+    expect(css).toContain('overflow-x: clip;');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr) 70px;');
+  });
+
+  it('keeps login page colors behind local CSS custom properties', () => {
+    const css = readLoginCss();
+    const cssWithoutTokenDefinitions = css
+      .split('\n')
+      .filter((line) => !/^\s*--login-/.test(line))
+      .join('\n');
+
+    expect(css).toContain('--login-brand: #124734;');
+    expect(css).toContain('--login-accent: #ee4d2d;');
+    expect(cssWithoutTokenDefinitions).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(cssWithoutTokenDefinitions).not.toMatch(/rgba?\(\s*\d/);
+    expect(css).not.toMatch(/#(?:1890ff|52c41a|722ed1|f0f2f5|fff)\b/i);
+  });
+
+  it('keeps CSS pseudo-element content free of hardcoded localized text', () => {
+    const css = readLoginCss();
+    const contentDeclarations = css.match(/content:\s*(['"])[\s\S]*?\1\s*;/g) || [];
+
+    expect(css).not.toContain('或使用以下方式登录');
+    contentDeclarations.forEach((declaration) => {
+      expect(declaration).not.toMatch(/[\u4e00-\u9fff]/);
+    });
+  });
+});
+
 describe('Login accessibility labels', () => {
   beforeEach(() => {
     mockLanguage = 'en';
@@ -251,9 +289,9 @@ describe('Login accessibility labels', () => {
     const contrastCss = css.slice(contrastStart);
 
     expect(contrastStart).toBeGreaterThanOrEqual(0);
-    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\),[\s\S]*?\.shopee-login-panel__actions \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\)\s*\{[\s\S]*?background:\s*#a8321f\s*!important;[\s\S]*?border-color:\s*#a8321f\s*!important;[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?-webkit-text-fill-color:\s*#ffffff\s*!important;/);
-    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\):hover,[\s\S]*?\.shopee-login-panel__actions \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\):focus-visible\s*\{[\s\S]*?background:\s*#8f2d17\s*!important;[\s\S]*?border-color:\s*#8f2d17\s*!important;/);
-    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-form-item-explain-error,[\s\S]*?\.shopee-login-card \.ant-typography-danger\s*\{[\s\S]*?color:\s*#8f2d17\s*!important;[\s\S]*?-webkit-text-fill-color:\s*#8f2d17\s*!important;[\s\S]*?opacity:\s*1\s*!important;/);
+    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\),[\s\S]*?\.shopee-login-panel__actions \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\)\s*\{[\s\S]*?background:\s*var\(--login-accent-hover\)\s*!important;[\s\S]*?border-color:\s*var\(--login-accent-hover\)\s*!important;[\s\S]*?color:\s*var\(--login-surface\)\s*!important;[\s\S]*?-webkit-text-fill-color:\s*var\(--login-surface\)\s*!important;/);
+    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\):hover,[\s\S]*?\.shopee-login-panel__actions \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\):focus-visible\s*\{[\s\S]*?background:\s*var\(--login-link-active\)\s*!important;[\s\S]*?border-color:\s*var\(--login-link-active\)\s*!important;/);
+    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-form-item-explain-error,[\s\S]*?\.shopee-login-card \.ant-typography-danger\s*\{[\s\S]*?color:\s*var\(--login-link-active\)\s*!important;[\s\S]*?-webkit-text-fill-color:\s*var\(--login-link-active\)\s*!important;[\s\S]*?opacity:\s*1\s*!important;/);
   });
 
   it('does not expose the stale unlabeled guest login button and names guest-friendly actions', () => {

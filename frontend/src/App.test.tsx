@@ -190,6 +190,71 @@ describe('App chunking contracts', () => {
     expect(source).toContain('installAsyncUiGuard(');
     expect(source).toContain('refreshAsyncUiGuard(');
   });
+
+  it('keeps storefront and admin page routes lazy loaded behind the route Suspense boundary', () => {
+    const source = readAppSource();
+    const routePageChunks = [
+      ['AdminDashboard', './pages/AdminDashboard'],
+      ['AlertManagement', './pages/AlertManagement'],
+      ['AnnouncementManagement', './pages/AnnouncementManagement'],
+      ['BrandManagement', './pages/BrandManagement'],
+      ['BugManagement', './pages/BugManagement'],
+      ['BrowsingHistory', './pages/BrowsingHistory'],
+      ['Cart', './pages/Cart'],
+      ['CategoryManagement', './pages/CategoryManagement'],
+      ['Checkout', './pages/Checkout'],
+      ['ConfigCenter', './pages/ConfigCenter'],
+      ['CouponCenter', './pages/CouponCenter'],
+      ['CouponManagement', './pages/CouponManagement'],
+      ['ForgotPassword', './pages/ForgotPassword'],
+      ['Home', './pages/Home'],
+      ['Login', './pages/Login'],
+      ['IpBlacklistManagement', './pages/IpBlacklistManagement'],
+      ['LogisticsCarrierManagement', './pages/LogisticsCarrierManagement'],
+      ['LogManagement', './pages/LogManagement'],
+      ['Notifications', './pages/Notifications'],
+      ['NotificationManagement', './pages/NotificationManagement'],
+      ['OrderManagement', './pages/OrderManagement'],
+      ['OrderTracking', './pages/OrderTracking'],
+      ['PaymentInstructions', './pages/PaymentInstructions'],
+      ['PetFinder', './pages/PetFinder'],
+      ['PetGallery', './pages/PetGallery'],
+      ['PetGalleryManagement', './pages/PetGalleryManagement'],
+      ['PermissionManagement', './pages/PermissionManagement'],
+      ['ProductCompare', './pages/ProductCompare'],
+      ['ProductDetail', './pages/ProductDetail'],
+      ['ProductList', './pages/ProductList'],
+      ['ProductManagement', './pages/ProductManagement'],
+      ['ProductQuestionManagement', './pages/ProductQuestionManagement'],
+      ['Profile', './pages/Profile'],
+      ['Register', './pages/Register'],
+      ['RegistryManagement', './pages/RegistryManagement'],
+      ['ReviewManagement', './pages/ReviewManagement'],
+      ['SecurityAuditLogManagement', './pages/SecurityAuditLogManagement'],
+      ['StockAlerts', './pages/StockAlerts'],
+      ['SupportManagement', './pages/SupportManagement'],
+      ['SystemMonitor', './pages/SystemMonitor'],
+      ['TrafficControl', './pages/TrafficControl'],
+      ['UserManagement', './pages/UserManagement'],
+      ['Wishlist', './pages/Wishlist'],
+      ['NotFound', './pages/NotFound'],
+    ];
+    const directPageImports = source
+      .split('\n')
+      .filter((line) => /^import\s+/.test(line) && /from ['"]\.\/pages\//.test(line));
+    const routesIndex = source.indexOf('<Routes>');
+    const routeSuspenseStart = source.lastIndexOf('<Suspense fallback={<LoadingFallback />}>', routesIndex);
+    const routeSuspenseEnd = source.indexOf('</Suspense>', routesIndex);
+
+    expect(source).toContain('import React, { Suspense, lazy');
+    expect(directPageImports).toEqual([]);
+    routePageChunks.forEach(([componentName, importPath]) => {
+      expect(source).toContain(`const ${componentName} = lazy(() => import('${importPath}'));`);
+    });
+    expect(routeSuspenseStart).toBeGreaterThan(-1);
+    expect(routesIndex).toBeGreaterThan(routeSuspenseStart);
+    expect(routeSuspenseEnd).toBeGreaterThan(routesIndex);
+  });
 });
 
 describe('App route error boundary contracts', () => {

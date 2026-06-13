@@ -15424,67 +15424,76 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Maintainer note:** The reported English locale value is stale against current source. Current `frontend/src/locales/en.json` defines `pages.auth.phonePlaceholder` as `+52 55 1234 5678` at the active auth locale block, with no Chinese parentheses or Chinese copy. Spanish matches the same neutral phone example, while Chinese intentionally includes localized explanatory copy. `frontend/src/i18n.test.ts` now source-guards the English phone placeholder against Chinese punctuation and Han characters while preserving the Chinese-locale guard. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2838: LOW — No code splitting for page components — all pages loaded in single bundle
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:18 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `App.tsx`
 - **Impact**: All page components (ProductList, Product, Cart, Checkout, Profile, NotFound, AdminDashboard, etc.) are imported directly without `React.lazy()`. This means the entire application is loaded in a single JavaScript bundle, increasing initial load time. Pages that are rarely visited (like AdminDashboard for non-admin users) are still downloaded.
 - **Severity**: LOW
 - **Dimension**: Performance
+- **Maintainer note:** The reported eager page-loading path is stale against current source. Active `App.tsx` imports `Suspense` and `lazy`, defines storefront and admin route pages with `lazy(() => import('./pages/...'))`, lazy-loads the admin shell/cart drawer helpers separately, and wraps the `<Routes>` tree with `<Suspense fallback={<LoadingFallback />}>`. `App.test.tsx` now source-guards the route chunking contract by rejecting direct static `./pages/*` imports, requiring the current storefront/admin page chunk declarations, and confirming the route tree remains inside the loading fallback Suspense boundary. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2839: LOW — Login page CSS has no responsive media queries
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:27 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Login.css`
 - **Impact**: The login page has no `@media` queries for responsive design. The login form width is fixed at 400px. On mobile devices (< 480px), the form may overflow horizontally or have excessive padding. On very large screens (> 1440px), the form may appear too narrow.
 - **Severity**: LOW
 - **Dimension**: UI/UX
+- **Maintainer note:** The reported no-responsive-query state is stale against current source. Active `Login.css` already contains desktop/tablet/mobile/narrow-mobile breakpoints, including max-width 900px, 480px, 430px, and 360px rules that collapse the shell, constrain horizontal overflow, resize the verification-code rail, and adjust card/panel density. `Login.test.tsx` now source-guards these responsive contracts so the login page cannot regress to a fixed-width, no-media-query layout unnoticed. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2840: LOW — Login page CSS uses hardcoded color values instead of CSS variables
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 21:27 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Login.css`
 - **Impact**: The login page uses hardcoded colors like `#1890ff`, `#52c41a`, `#722ed1`, `#fff`, `#f0f2f5` instead of CSS custom properties. If a dark mode or theme system is added, these colors will need to be updated manually. Other pages use CSS variables (via antd theming).
 - **Severity**: LOW
 - **Dimension**: UI/UX / Maintainability
+- **Maintainer note:** The active login page no longer uses the stale blue/green/purple/default gray literals from the report, but it still had many page-local hardcoded color declarations. `Login.css` now defines a local `--login-*` palette for surfaces, brand/accent colors, text, borders, warning states, RGB alpha helpers, and mask colors, then routes login page color declarations through those variables. `Login.test.tsx` now source-guards that non-token CSS declarations do not reintroduce raw hex colors or numeric `rgb/rgba(...)` colors, and explicitly rejects the stale reported literals. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2841: LOW — Multiple CSS files have no responsive media queries
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:35 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `AppDownload.css`, `Coupons.css`, `Home.css`, `Orders.css`, `PetGallery.css`, `PetMissing.css`, `Support.css`
 - **Impact**: These pages have no `@media` queries for responsive design. They will not adapt to different screen sizes, potentially causing layout issues on mobile devices.
 - **Severity**: LOW
 - **Dimension**: UI/UX
+- **Maintainer note:** The reported file set is stale against current source. `AppDownload.css`, `Coupons.css`, `Orders.css`, `PetMissing.css`, and `Support.css` are not current frontend page CSS files, and `App.tsx` has no active lazy routes for the stale `AppDownload`, `Coupons`, `Orders`, `PetMissing`, or `Support` page names. The current replacement CSS surfaces (`Home.css`, `CouponCenter.css`, `CouponManagement.css`, `OrderTracking.css`, `OrderManagement.css`, `PetGallery.css`, and `SupportManagement.css`) already contain responsive `@media` rules. `FrontendCssCurrentSurfaces.test.ts` now source-guards both contracts by keeping stale paths out and requiring the current replacement CSS surfaces to retain responsive breakpoints. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2842: LOW — Coupons.css has 7 hardcoded !important CSS overrides
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:35 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Coupons.css:13-21`
 - **Impact**: The coupons page uses 7 `!important` overrides to force antd component styling. This creates specificity conflicts and makes future style changes difficult. The overrides should use more specific selectors or CSS modules.
 - **Severity**: LOW
 - **Dimension**: CSS Quality
+- **Maintainer note:** The reported `Coupons.css` file/path is stale against current source. There is no active `frontend/src/pages/Coupons.css` or `Coupons.tsx`; current coupon surfaces are `CouponCenter.tsx`/`CouponCenter.css` and `CouponManagement.tsx`/`CouponManagement.css`. `FrontendCssCurrentSurfaces.test.ts` now source-guards against reintroducing the stale `Coupons.css` file/import and confirms current coupon pages import their current CSS files instead. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2843: LOW — Orders.css has 11+ hardcoded CSS variable values
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:40 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Orders.css:60-181`
 - **Impact**: The orders page defines CSS custom properties (`--card-shadow`, `--background`, `--text-primary`, `--text-secondary`, `--border`, `--text-tertiary`) in the component stylesheet instead of using the global theme. This creates duplicate definitions and maintenance burden.
 - **Severity**: LOW
 - **Dimension**: CSS Quality
+- **Maintainer note:** The reported `Orders.css` file/path is stale against current source. There is no active `frontend/src/pages/Orders.css` or `Orders.tsx`; current order surfaces are `OrderTracking.tsx`/`OrderTracking.css` and `OrderManagement.tsx`/`OrderManagement.css`. Focused source search found none of the reported stale local variables (`--card-shadow`, `--background`, `--text-primary`, `--text-secondary`, `--border`, `--text-tertiary`) in the current order CSS files. `FrontendCssCurrentSurfaces.test.ts` now source-guards the stale `Orders.css` path/import absence, the current order CSS imports, and the absence of those stale local variable overrides in current order CSS. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2844: LOW — Coupons.css overrides antd pagination font size with !important
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:40 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Coupons.css:273`
 - **Impact**: The coupons page overrides `.ant-pagination` font-size with `!important`, which affects all pagination components on the page and may conflict with future antd theme customizations.
 - **Severity**: LOW
 - **Dimension**: CSS Quality
+- **Maintainer note:** The reported `Coupons.css` file/path is stale against current source. There is no active `frontend/src/pages/Coupons.css` or `Coupons.tsx`; current coupon surfaces are `CouponCenter.tsx`/`CouponCenter.css` and `CouponManagement.tsx`/`CouponManagement.css`. Current coupon CSS has responsive and APP-specific font sizing in scoped selectors, but focused source search found no `.ant-pagination { font-size: ... !important }` override in current coupon CSS. `FrontendCssCurrentSurfaces.test.ts` now source-guards against reintroducing the stale `Coupons.css` file/import and rejects current coupon pagination `font-size` important overrides. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2845: LOW — Login.css uses hardcoded Chinese text in ::after pseudo-element
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:48 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Login.css:364`
 - **Impact**: The login page has a `::after` pseudo-element with content "或使用以下方式登录" (or login with the following methods) that is not in the i18n system. This text will always appear in Chinese regardless of the selected language.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported hardcoded Chinese pseudo-element text is stale against current source. Active `Login.css` has no `content: "或使用以下方式登录"` declaration and no Han characters in CSS pseudo-element `content:` declarations; current pseudo-elements use empty string content for decorative layers. `Login.test.tsx` now source-guards login CSS pseudo-element `content:` declarations against Han characters and explicitly rejects the stale Chinese literal. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2846: LOW — Home.css has debug CSS variable override (body background)
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:48 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Home.css:446`
 - **Impact**: The home page CSS includes a `body { background: var(--background) !important; }` rule that overrides the body background. This appears to be a debug/development artifact that should be removed for production.
 - **Severity**: LOW
 - **Dimension**: CSS Quality
+- **Maintainer note:** The reported debug `body { background: var(--background) !important; }` override is stale against current source. The active `Home.css` line area is section-header styling, and focused source search found no top-level `body` rule setting `background: var(--background) !important` in `Home.css`. `FrontendCssCurrentSurfaces.test.ts` now source-guards against reintroducing this stale Home body background override. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2847: LOW — Orders.css has CSS gradient syntax without standard syntax fallback
 - **Status**: OPEN
