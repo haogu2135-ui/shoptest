@@ -122,6 +122,23 @@ describe('BugManagement mobile modal guards', () => {
     expect(pageSource).toContain("cancelButtonProps={{ 'aria-label': cancelBugStatusActionLabel, title: cancelBugStatusActionLabel }}");
   });
 
+  it('keeps BUG row cards and actions responsive at tablet and short-landscape widths', () => {
+    expect(pageSource).toContain('<Space wrap className="bug-management__rowActions">');
+
+    const f2718ResidualStart = cssSource.indexOf('/* F2718/F2320 residual');
+    const f2718ResidualCss = cssSource.slice(f2718ResidualStart);
+
+    expect(f2718ResidualStart).toBeGreaterThanOrEqual(0);
+    expect(f2718ResidualCss).toMatch(/@media \(max-width:\s*900px\),\s*\(max-height:\s*640px\)\s*\{/);
+    expect(f2718ResidualCss).toMatch(/\.bug-management__table \.ant-table-content > table\s*\{[\s\S]*?display:\s*block;[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-width:\s*0\s*!important;/);
+    expect(f2718ResidualCss).toMatch(/\.bug-management__table \.ant-table-thead\s*\{[\s\S]*?display:\s*none;/);
+    expect(f2718ResidualCss).toMatch(/td\[data-label\]\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*minmax\(104px,\s*34%\) minmax\(0,\s*1fr\);/);
+    expect(f2718ResidualCss).toContain('.bug-management__table .bug-management__rowActions');
+    expect(f2718ResidualCss).toContain('grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));');
+    expect(f2718ResidualCss).toContain('min-height: 44px;');
+    expect(f2718ResidualCss).toContain('grid-template-columns: minmax(0, 1fr);');
+  });
+
   it('uses the server-provided scan interval with a bounded fallback instead of a fixed poll cadence', () => {
     const scanRefreshStart = pageSource.indexOf('const scanRefreshMs = useMemo(() => {');
     const scanRefreshSource = pageSource.slice(scanRefreshStart, pageSource.indexOf('const noPermissionLabel', scanRefreshStart));

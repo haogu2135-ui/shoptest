@@ -72,8 +72,11 @@ describe('Admin mobile data table responsive contracts', () => {
     const css = readPageFile('BugManagement.css');
 
     expect(source.match(/data-label/g)?.length || 0).toBeGreaterThanOrEqual(6);
+    expect(source).toContain('bug-management__rowActions');
+    expect(css).toContain('@media (max-width: 900px), (max-height: 640px)');
     expect(css).toContain('.bug-management__table .ant-table-thead');
     expect(css).toContain('content: attr(data-label);');
     expect(css).toContain('.bug-management__table .ant-table-tbody > tr:not(.ant-table-expanded-row)');
+    expect(css).toContain('.bug-management__table .bug-management__rowActions');
   });
 });

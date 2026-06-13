@@ -5126,7 +5126,7 @@ Notes:
 - Environment: Authenticated `SUPER_ADMIN`, viewport `390x844`, routes `/admin/products`, `/admin/orders`, `/admin/users`, `/admin/brands`, and `/admin/bugs`
 - Severity: MEDIUM
 - Description: Several admin pages still render desktop-width data tables on mobile. At the default mobile viewport the first columns are visible, but important status, review, readiness, and action columns are offscreen until the user horizontally scrolls a very wide table. This makes common admin workflows hard to complete from mobile because the row state and row actions are not discoverable in the initial view.
-- Status: SOURCE_FIXED (2026-06-13 13:06 UTC) / REGRESSION_PENDING — Added mobile labelled-card contracts for the Product, Order, User, and Brand admin primary tables: all business cells now emit `data-label`, each table has a page-specific mobile card class, and the final F2718 CSS at mobile/tablet/short-landscape widths converts rows into full-width cards with visible identity/status/readiness/action rows and 44px actions. Bug Management already had the current-source `data-label` mobile card path, so it was covered without further source edits. Added `AdminMobileTablesResponsive.test.ts` as a static source guard, but did not run Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands.
+- Status: SOURCE_FIXED (2026-06-13 13:06 UTC) / FOLLOW_UP_SOURCE_FIXED (2026-06-13 14:11 UTC) / REGRESSION_PENDING — Added mobile labelled-card contracts for the Product, Order, User, and Brand admin primary tables: all business cells now emit `data-label`, each table has a page-specific mobile card class, and the final F2718 CSS at mobile/tablet/short-landscape widths converts rows into full-width cards with visible identity/status/readiness/action rows and 44px actions. Follow-up: runtime smoke found Bug Management still used the 1100px desktop row at `768x1024` and `740x360`, so `BugManagement.css` now has a final `<=900px` / short-landscape card closure for `.bug-management__table`; `BugManagement.tsx` also exposes `bug-management__rowActions` for stable mobile action layout. Static guards were updated, but Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were not run.
 - Evidence: `app-ui-audit-20260607T1624-admin-codex/admin-products-mobile.png`, `admin-orders-mobile.png`, `admin-users-mobile.png`, `admin-brands-mobile.png`, and `admin-bugs-mobile.png`. Source examples: `frontend/src/pages/ProductManagement.tsx` uses `scroll={{ x: 1240 }}`, `OrderManagement.tsx` uses `scroll={{ x: 1500 }}`, `UserManagement.tsx` uses `scroll={{ x: 1200 }}`, `BrandManagement.tsx` uses `scroll={{ x: 860 }}`, and `BugManagement.tsx` uses `scroll={{ x: 1100 }}`.
 - Expected fix direction: Add mobile-specific row cards or compact management rows that keep identity, status, and primary actions visible without horizontal exploration. If a table remains available, make it a secondary detailed view and preserve obvious access to row actions.
 
@@ -5294,10 +5294,10 @@ Notes:
 - Environment: `src/components/BottomBar.tsx:32,37`
 - Severity: MEDIUM
 - Description: All 5 tab constants are declared at module scope and always active regardless of user role. The tab constants are fully defined but `isGuest`/`isAdmin` booleans from `useAuth()` only gate layout className (`styles.contentWithBottomBar`), not the tab array itself.
-- Status: **PARTIALLY FIXED** by commit `1aa4128` (2026-06-07 04:02 UTC, "Fix mobile cart and nav layout"). The new `mobile-app.css` and `Navbar.tsx` updates render the bottom-bar nav correctly inside the mobile app shell, but role-based tab hiding is **not** addressed: admin-only tabs (User Management, Audit Log, Config Center) still show for non-admin users when the bottom bar is rendered. Dev needs a follow-up commit to filter the tabs array by `isAdminRole()` from `useAuth()`.
-- Sub-issue (REOPENED): Bottom bar nav layout OK, but admin tabs leak to all roles.
-- Verification: re-read `frontend/src/components/Navbar.tsx` after `1aa4128` — bottom bar layout renders, but the tabs array is still the full 5-item constant; no `isAdmin` filter.
-- Closed-by-fix-portion: QA Regression #511 + Diff Audit #112. **REOPEN** for the admin-tab-leakage sub-issue.
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 14:25 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — Current `Navbar.tsx` bottom bar is storefront-only: Home, Products, Coupons, Cart, optional App download, and Account/Login. The bottom bar source no longer contains `/admin` destinations or admin labels such as User Management, Audit Log, or Config Center. Added a `Navbar.test.tsx` static guard for the F2343 storefront-only bottom-bar contract. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
+- Sub-issue triage: The old `BottomBar.tsx` path is stale for current source; the rendered mobile bottom bar lives in `Navbar.tsx` and contains only storefront destinations.
+- Verification: source inspection confirms the bottom bar block has Home, Products, Coupons, Cart, optional App, and Account/Login only; `Navbar.test.tsx` now guards against `/admin` links and admin labels inside the bottom bar source.
+- Regression request: Recheck mobile web/APP bottom navigation for customer, guest, and admin sessions to confirm storefront tabs stay populated while admin-only destinations remain absent from the bottom bar.
 
 ### F2342: `GuestUsername` TOCTOU race — concurrent guest registrations can claim same slug
 
@@ -5333,7 +5333,7 @@ Notes:
 - Environment: `src/utils/storeUtils.ts:20-22`
 - Severity: LOW
 - Description: Module-level `recentProductsCache` (plus `recentReviewsCache` and `recentPetsCache`) lives for the entire SPA session. If a store adds new products, the stale cache persists until the user refreshes. No TTL or max-age is applied.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 14:43 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The old `src/utils/storeUtils.ts` path is absent. Current recent-product caching lives in `Cart.tsx` and is bounded by `RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000`, `RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50`, expiry pruning, hit-order refresh, and mutation-time `clearRecentProductsCache()` calls for cart/saved-item changes. Added `CartRecentProductsCache.test.ts` as a static source guard. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Add 5-minute TTL or use React Query with staleTime.
 
 ### F2338: No frontend component tests for Cart.tsx
@@ -5505,7 +5505,7 @@ Notes:
 - Environment: `src/pages/admin/BugManagement.tsx:2145, 2177, 2185`
 - Severity: LOW
 - Description: Delete and resolution action icon buttons have no `aria-label` for screen readers.
-- Status: SOURCE_FIXED (2026-06-13 13:23 UTC) / REGRESSION_PENDING — Bug Management row actions now build bug-specific accessible names for Edit, Scan, and Status actions and pass them through `aria-label`/`title`; page toolbar Refresh/New bug, warning retry buttons, status/severity/module filters, and both Bug modals' OK/Cancel buttons now have contextual accessible names. Added `BugManagement.test.ts` static source guards for the F2320 naming contract. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
+- Status: SOURCE_FIXED (2026-06-13 13:23 UTC) / FOLLOW_UP_SOURCE_FIXED (2026-06-13 14:11 UTC) / REGRESSION_PENDING — Bug Management row actions now build bug-specific accessible names for Edit, Scan, and Status actions and pass them through `aria-label`/`title`; page toolbar Refresh/New bug, warning retry buttons, status/severity/module filters, and both Bug modals' OK/Cancel buttons now have contextual accessible names. Follow-up: runtime smoke confirmed the names but found row action hit targets overlapping at `390x844`; row actions now use `bug-management__rowActions` with a grid layout, full-width 44px buttons, and narrow-phone one-column fallback. Static guards were updated, but Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were not run.
 - Expected fix direction: Add `aria-label={t('admin.bugManagement.delete')}` etc.
 
 ### F2319: `isAdminRole` treats any non-USER role as admin
@@ -13511,7 +13511,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
   3. Add a `MobileBottomBar.test.tsx` that mounts the component with `effectiveRole=undefined`, `effectiveRole='USER'`, and `effectiveRole='ADMIN'`, and asserts the rendered tab count for each.
 - **Severity rationale**: MEDIUM — no data loss or security leak, but logged-out and non-admin users on mobile are unable to navigate via the bottom bar (a primary navigation surface for the mobile app shell that F2343 just added in `1aa4128`). The bug is reproducible 100% of the time for mobile-app-shell users on deep links.
 - **Why this is a new F# and not a re-open of F2343**: F2343 documents the *admin-tab-leak* symptom (admin tabs show for non-admin users). F2388 documents the *empty-bar* symptom (no tabs show for logged-out or non-admin users), which is a different rendering path inside the same component and warrants its own fix-and-test plan.
-- **Status**: OPEN
+- **Status**: NON_ISSUE / CURRENT_SOURCE_COVERED (2026-06-13 14:25 UTC) / REGRESSION_GUARD_ADDED — The reported `MobileBottomBar.tsx` code path is absent from current source; storefront bottom navigation is implemented in `Navbar.tsx` with default Home, Products, Coupons, Cart, optional App, and Account/Login links that are not filtered through `isAdminRole`. The F2343 `Navbar.test.tsx` guard now also protects this contract by rejecting `/admin` links and admin labels in the bottom-bar block. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 
 ---
 

@@ -611,7 +611,7 @@ const BugManagement: React.FC = () => {
         const scanActionLabel = `${tx('scan', 'Scan')}: ${bugLabel}`;
         const statusActionLabel = `${tx('statusAction', 'Status')}: ${bugLabel}`;
         return (
-          <Space wrap>
+          <Space wrap className="bug-management__rowActions">
             {withPermissionTooltip(
               <Button size="small" icon={<EditOutlined />} onClick={() => openEditor(bug)} disabled={!canWriteBugs || bugMutationDisabled} aria-label={editActionLabel} title={editActionLabel}>
                 {tx('edit', 'Edit')}

@@ -253,6 +253,23 @@ describe('Navbar Android app download entry', () => {
     expect(css).not.toMatch(/\.shop-nav__bottomItem[^{]*\{[^}]*outline:\s*none/);
   });
 
+  it('keeps the mobile bottom bar storefront-only for non-admin roles', () => {
+    const source = readNavbarSource();
+    const bottomBarStart = source.indexOf('<nav className={bottomBarClassName}');
+    const bottomBarSource = source.slice(bottomBarStart, source.indexOf('</nav>', bottomBarStart));
+
+    expect(bottomBarStart).toBeGreaterThanOrEqual(0);
+    expect(bottomBarSource).toContain('to="/"');
+    expect(bottomBarSource).toContain('to="/products"');
+    expect(bottomBarSource).toContain('to="/coupons"');
+    expect(bottomBarSource).toContain('to="/cart"');
+    expect(bottomBarSource).toContain("to={token ? '/profile' : '/login'}");
+    expect(bottomBarSource).not.toContain('/admin');
+    expect(bottomBarSource).not.toContain('User Management');
+    expect(bottomBarSource).not.toContain('Audit Log');
+    expect(bottomBarSource).not.toContain('Config Center');
+  });
+
   it('keeps scroll state from withdrawing the native bottom rail', () => {
     const css = readNavbarCss();
     const mobileCss = readMobileAppCss();
