@@ -445,6 +445,18 @@ class ProductUrlImportServiceTest {
     }
 
     @Test
+    void productUrlImportDoesNotHardcodeImportedImageMimeType() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/ProductUrlImportService.java"),
+                StandardCharsets.UTF_8);
+
+        assertFalse(source.contains("createImageRecord("));
+        assertFalse(source.contains("setMimeType(\"image/jpeg\")"));
+        assertFalse(Pattern.compile("\\bmimeType\\s*=\\s*\"image/jpeg\"").matcher(source).find());
+        assertFalse(Pattern.compile("createImageRecord[\\s\\S]{0,800}\"image/jpeg\"").matcher(source).find());
+    }
+
+    @Test
     void productUrlImportExceptionFallbacksRemainObservable() throws Exception {
         String source = Files.readString(
                 Path.of("src/main/java/com/example/shop/service/ProductUrlImportService.java"),

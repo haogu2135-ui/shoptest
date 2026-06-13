@@ -66,6 +66,11 @@ describe('locale coverage', () => {
     expect(en.pages.checkout.readinessEyebrow).not.toMatch(/\bQA\b/i);
   });
 
+  it('keeps English phone placeholders free of Chinese punctuation or copy', () => {
+    expect(en.pages.auth.phonePlaceholder).toBe('+52 55 1234 5678');
+    expect(en.pages.auth.phonePlaceholder).not.toMatch(/[（）\u3400-\u9fff]/);
+  });
+
   it('keeps Chinese phone placeholders localized instead of pure number examples', () => {
     expect(zh.pages.auth.phonePlaceholder).toContain('手机号示例');
     expect(zh.pages.auth.phonePlaceholder).toMatch(/[\u3400-\u9fff]/);

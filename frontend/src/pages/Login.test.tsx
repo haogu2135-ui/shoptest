@@ -272,6 +272,16 @@ describe('Login accessibility labels', () => {
     expect(screen.getByRole('button', { name: 'Help: Quick actions' })).toHaveAttribute('title', 'Help: Quick actions');
   });
 
+  it('keeps any future OAuth or social login buttons explicitly named', () => {
+    const source = readLoginPageSource();
+    const buttonBlocks = source.match(/<(?:Button|button)\b[\s\S]*?<\/(?:Button|button)>/g) || [];
+    const oauthButtonBlocks = buttonBlocks.filter((block) => /\b(?:OAuth|oauth|Google|google|GitHub|github|thirdParty|social)\b/.test(block));
+
+    oauthButtonBlocks.forEach((block) => {
+      expect(block).toMatch(/aria-label=|aria-labelledby=/);
+    });
+  });
+
   it('does not clear stored auth data when the login page mounts', () => {
     render(
       <MemoryRouter initialEntries={['/login']}>

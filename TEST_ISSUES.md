@@ -15384,39 +15384,44 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Maintainer note:** The active product detail implementation is `ProductDetail.tsx`, not a current `Product.tsx` page. Its main media wrapper already had keyboard navigation and `role="region"` / `aria-roledescription="carousel"`; it now also names the carousel with the current product name and gives every mobile gallery slide `role="group"`, `aria-roledescription="slide"`, and a localized `aria-label` generated from image index, total image count, and product name. `ProductDetail.test.tsx` guards the named carousel region and slide semantics. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2833: LOW — Login.tsx missing aria-label on OAuth buttons
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 20:35 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Login.tsx`
 - **Impact**: OAuth login buttons (Google, GitHub) have no `aria-label` describing what they do. The icons alone are not accessible to screen readers.
 - **Severity**: LOW
 - **Dimension**: Accessibility
+- **Maintainer note:** The active `Login.tsx` does not render OAuth, Google, GitHub, third-party, or social-login buttons; current login options are password login, email-code login, registration, order tracking, support, and recovery links, with existing button/input `aria-label` coverage. `Login.test.tsx` now source-guards the reported path by scanning current/future login button blocks and requiring any OAuth/social-provider button block to expose `aria-label` or `aria-labelledby`. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2834: LOW — ProductUrlImportService.createImageRecord sets hardcoded MIME type image/jpeg
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 20:48 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `ProductUrlImportService.java:479-494`
 - **Impact**: `createImageRecord()` always sets `mimeType = "image/jpeg"` regardless of the actual image type. PNG, WebP, and GIF images will all be stored with incorrect MIME types. The `mediaType` field is set correctly from the Content-Type header, but `mimeType` is hardcoded.
 - **Severity**: LOW
 - **Dimension**: Data Integrity
+- **Maintainer note:** The reported persistence path is stale against current source. Active `ProductUrlImportService` returns `ProductUrlImportPreview` metadata only; it has no `createImageRecord(...)`, `mimeType`, `setMimeType(...)`, `mediaType`, or hardcoded `image/jpeg` image-record write path. `ProductUrlImportServiceTest` now source-guards this by requiring the service to stay free of the stale `createImageRecord(` path and fixed `image/jpeg` MIME assignment patterns. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2835: LOW — i18n hardcoded strings in frontend code not in locale files
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 20:54 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `Profile.tsx:184, 371, 539`, `Product.tsx:436`, `ProductList.tsx:132, 341`, `BrowsingHistory.tsx:34, 38, 39`, `ProductImport.tsx:196`, `ProductImportExport.tsx:418, 486`, `AdminDashboard.tsx:913, 1000`, `OrderDetail.tsx:835`
 - **Impact**: Multiple pages contain Chinese text not in locale files: "宠物品种" (pet breed), "品种" (breed), "商品名称不能为空" (product name required), "未知分类" (unknown category), "默认分类" (default category), "暂无浏览记录" (no browsing history), "加载中..." (loading...), "个商品" (items), "暂无相关商品" (no related products), "仅管理员可用" (admin only), "流量统计" (traffic stats), "添加商品" (add product), "编辑商品" (edit product), "商品管理" (product management), "库存" (stock), "导出商品" (export), "导出成功" (export success), "导出失败" (export failed), "正在导出" (exporting).
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported file/line set is stale against current source. Current production pages include `Profile.tsx`, `ProductList.tsx`, `BrowsingHistory.tsx`, `ProductManagement.tsx`, `AdminDashboard.tsx`, and `ProductDetail.tsx`; `Product.tsx`, `ProductImport.tsx`, `ProductImportExport.tsx`, and `OrderDetail.tsx` are not current page files. A focused source scan found no Han characters in the current listed/replacement production page files, and no production references to the reported Chinese UI literals in those pages. `FrontendHardcodedI18n.test.ts` now source-guards the current production page set against the stale Chinese literals and any Han characters in those page sources. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2836: LOW — i18n hardcoded strings in ConfigCenter.tsx and Navbar.tsx
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:00 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `ConfigCenter.tsx:348, 443`, `Navbar.tsx:177, 178`, `MobileUpdate.tsx:19`
 - **Impact**: Additional hardcoded Chinese strings: "内容不能为空" (content required), "确认清除当前设备的IP封禁状态?" (confirm clear IP ban?), "已清除封禁" (ban cleared), "操作" (action), "添加" (add), "新版本可用" (new version available), "正在更新" (updating), "重新启动" (restart), "忽略此版本" (ignore version), "立即更新" (update now).
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported hardcoded UI strings are stale against current source. Focused scans found no Han characters or reported Chinese literals in current `ConfigCenter.tsx` or `Navbar.tsx`, and there is no current `frontend/src/components/MobileUpdate.tsx` / `frontend/src/pages/MobileUpdate.tsx` file. `ConfigCenter.tsx` uses `t('pages.configCenter.*')` and shared `common/adminLayout` keys for validation, actions, confirmation copy, and status labels; `Navbar.tsx` uses nav/common locale keys for Android update and navigation copy. `FrontendHardcodedI18n.test.ts` now source-guards `ConfigCenter.tsx` and `Navbar.tsx` against the stale F2836 literals and Han characters. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2837: LOW — i18n phone placeholder uses Chinese parentheses in English locale
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 21:07 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: `en.json:187`
 - **Impact**: The phone placeholder uses Chinese parentheses `（）` instead of English parentheses `()`: `"Please enter your phone number（For login credentials recovery）"`. This is inconsistent with the English locale.
 - **Severity**: LOW
 - **Dimension**: i18n
+- **Maintainer note:** The reported English locale value is stale against current source. Current `frontend/src/locales/en.json` defines `pages.auth.phonePlaceholder` as `+52 55 1234 5678` at the active auth locale block, with no Chinese parentheses or Chinese copy. Spanish matches the same neutral phone example, while Chinese intentionally includes localized explanatory copy. `frontend/src/i18n.test.ts` now source-guards the English phone placeholder against Chinese punctuation and Han characters while preserving the Chinese-locale guard. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2838: LOW — No code splitting for page components — all pages loaded in single bundle
 - **Status**: OPEN
