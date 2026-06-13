@@ -101,6 +101,7 @@
 .payment-instructions-page__steps {
   display: grid;
   gap: 10px;
+  min-height: 0;
 }
 
 .payment-instructions-page__step {
@@ -108,9 +109,10 @@
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
+  min-height: max-content;
 }
 
-.payment-instructions-page__step > span {
+.payment-instructions-page__stepNumber {
   width: 28px;
   height: 28px;
   display: inline-grid;
@@ -121,8 +123,14 @@
   font-weight: 800;
 }
 
-.payment-instructions-page__steps .ant-typography {
+.payment-instructions-page__step .ant-typography {
+  min-width: 0;
+  width: 100%;
+  display: block;
   line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .payment-instructions-page__amount {
@@ -137,22 +145,33 @@
 
 .payment-instructions-page__actions .ant-btn {
   min-width: 0;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .payment-instructions-page__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   overflow-wrap: normal;
   word-break: normal;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.payment-instructions-page__actions .ant-btn-primary,
+.payment-instructions-page__actions .ant-btn-primary:hover,
+.payment-instructions-page__actions .ant-btn-primary:focus {
+  color: #ffffff !important;
+}
+
+.payment-instructions-page__actions .ant-btn-primary :where(.anticon, span) {
+  color: #ffffff !important;
 }
 
 @media (max-width: 760px) {
   .payment-instructions-page {
     width: min(100% - 20px, 520px);
     padding-top: 12px;
+    padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
   }
 
   .payment-instructions-page__hero {
@@ -185,5 +204,23 @@
   .payment-instructions-page__actions .ant-btn {
     min-height: 44px;
     touch-action: manipulation;
+  }
+
+  .payment-instructions-page__steps {
+    align-content: start;
+    gap: 12px;
+    overflow: visible;
+  }
+
+  .payment-instructions-page__step {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+    min-height: 0;
+    padding: 2px 0;
+  }
+
+  .payment-instructions-page__step .ant-typography {
+    overflow: visible;
+    line-height: 1.5;
   }
 }

@@ -1260,3 +1260,86 @@
     min-height: 44px;
   }
 }
+
+/* Android UI closure: registration form actions stay tappable. */
+@media (max-width: 780px) {
+  .register-page__card .ant-input,
+  .register-page__card .ant-input-affix-wrapper,
+  .register-page__card .ant-select-selector,
+  .register-page__card .ant-input-group-addon .ant-btn,
+  .register-page__card .ant-btn,
+  .register-page__footer a,
+  .register-page__footer button {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .register-page__card :where(input, textarea, .ant-input, .ant-input-affix-wrapper input) {
+    font-size: 16px !important;
+  }
+
+  .register-page__codeHint,
+  .register-page__card .ant-form-item-explain,
+  .register-page__footer a,
+  .register-page__footer button,
+  .register-page__card .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* F3413: empty-submit validation must land below sticky mobile storefront chrome. */
+@media (max-width: 640px) {
+  .register-page {
+    scroll-padding-top: calc(176px + env(safe-area-inset-top, 0px));
+  }
+
+  .register-page__card {
+    scroll-padding-top: 16px;
+  }
+
+  .register-page__card .ant-form-item,
+  .register-page__card .ant-form-item-has-error {
+    scroll-margin-top: calc(176px + env(safe-area-inset-top, 0px));
+    scroll-margin-bottom: 24px;
+  }
+}
+
+/* Mobile auth closure: keep verification-code input readable beside resend controls. */
+@media (max-width: 430px) {
+  .register-page__codeField .ant-input-group,
+  .register-page__codeField .ant-input-wrapper {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .register-page__codeField .ant-input-group .ant-input-affix-wrapper {
+    width: 100% !important;
+    border: 1px solid #dce9df !important;
+    border-radius: 13px !important;
+  }
+
+  .register-page__codeField .ant-input-group-addon {
+    width: 100% !important;
+    display: block !important;
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  .register-page__codeField .ant-input-group-addon .ant-btn {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 44px !important;
+    border: 1px solid #dce9df !important;
+    border-radius: 13px !important;
+    background: #ffffff !important;
+    color: #124734 !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+}

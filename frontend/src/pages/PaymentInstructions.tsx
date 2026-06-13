@@ -7,7 +7,8 @@ import { useLanguage } from '../i18n';
 import type { OrderCustomer, PaymentCustomer } from '../types';
 import { markets } from '../utils/market';
 import { dispatchDomEvent } from '../utils/domEvents';
-import { loadGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
+import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import './PaymentInstructions.css';
 
@@ -39,11 +40,19 @@ const PaymentInstructions: React.FC = () => {
   const [verifyError, setVerifyError] = useState('');
   const normalizedOrderNo = cleanParam(orderNo, 80);
   const searchQuery = searchParams.toString();
+  const queryGuestContext = useMemo(
+    () => normalizeGuestSupportContext({
+      orderNo: normalizedOrderNo,
+      email: searchParams.get('guestEmail') || searchParams.get('email'),
+    }),
+    [normalizedOrderNo, searchQuery, searchParams],
+  );
   const storedGuestContext = useMemo(() => {
+    if (queryGuestContext) return queryGuestContext;
     const context = loadGuestSupportContext();
     if (!context || !normalizedOrderNo) return null;
     return context.orderNo.toUpperCase() === normalizedOrderNo.toUpperCase() ? context : null;
-  }, [normalizedOrderNo]);
+  }, [normalizedOrderNo, queryGuestContext]);
   const guestEmail = storedGuestContext?.email || '';
   const isAuthenticated = Boolean(getLocalStorageItem('token'));
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
@@ -70,11 +79,18 @@ const PaymentInstructions: React.FC = () => {
     const sanitized = new URLSearchParams(searchQuery);
     const hadGuestEmail = sanitized.has('guestEmail') || sanitized.has('email');
     if (!hadGuestEmail) return;
+    const nextGuestContext = normalizeGuestSupportContext({
+      orderNo: normalizedOrderNo,
+      email: sanitized.get('guestEmail') || sanitized.get('email'),
+    });
+    if (nextGuestContext) {
+      saveGuestSupportContext(nextGuestContext);
+    }
     sanitized.delete('guestEmail');
     sanitized.delete('email');
     const nextQuery = sanitized.toString();
     navigate(`${location.pathname}${nextQuery ? `?${nextQuery}` : ''}`, { replace: true });
-  }, [location.pathname, navigate, searchQuery]);
+  }, [location.pathname, navigate, normalizedOrderNo, searchQuery]);
 
   useEffect(() => {
     if (!normalizedOrderNo || (!guestEmail && !isAuthenticated)) {
@@ -105,13 +121,16 @@ const PaymentInstructions: React.FC = () => {
           setPayment(null);
           return;
         }
+        if (disposed) return;
         try {
           const paymentResponse = await paymentApi.getLatestByOrder(nextOrder.id, guestEmail || undefined, nextOrder.orderNo || normalizedOrderNo);
           if (!disposed) setPayment(paymentResponse.data);
-        } catch {
+        } catch (error) {
+          reportNonBlockingError('PaymentInstructions.loadLatestPayment', error);
           if (!disposed) setPayment(null);
         }
-      } catch {
+      } catch (error) {
+        reportNonBlockingError('PaymentInstructions.verifyPaymentDetails', error);
         if (disposed) return;
         setOrder(null);
         setPayment(null);
@@ -193,7 +212,7 @@ const PaymentInstructions: React.FC = () => {
             <div className="payment-instructions-page__steps" role="list" aria-label={`${t('pages.paymentInstructions.nextTitle')}: ${paymentContextLabel}`}>
               {paymentSteps.map((step, index) => (
                 <div className="payment-instructions-page__step" role="listitem" aria-label={`${index + 1}. ${step}`} key={step}>
-                  <span aria-hidden="true">{index + 1}</span>
+                  <span className="payment-instructions-page__stepNumber" aria-hidden="true">{index + 1}</span>
                   <Text>{step}</Text>
                 </div>
               ))}

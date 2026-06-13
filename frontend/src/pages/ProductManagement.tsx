@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Input, InputNumber, message, Space, Select, Tag, Switch, DatePicker,
-  Tooltip, Typography, Divider, Image, Popconfirm, TreeSelect, Upload, Tabs, Alert,
+  Tooltip, Typography, Divider, Image, Popconfirm, TreeSelect, Upload, Tabs, Alert, Card,
 } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -13,25 +13,27 @@ import type {
   Product,
   CategoryPublic,
   Brand,
-  ProductBundleItem,
-  ProductDetailBlock,
   ProductImportResult,
   ProductImportHistoryEntry,
-  ProductOptionGroup,
   ProductUrlImportPreview,
+  ProductDetailBlock,
+  ProductMutationPayload,
   ProductVariant,
+  ProductImportRowError,
 } from '../types';
 import { buildCategoryTree, flattenCategoryTree, getCategoryPath, toTreeOptions } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import ProductRichDetailEditor from '../components/ProductRichDetailEditor';
 import ProductRichDetail, { isHttpMediaUrl } from '../components/ProductRichDetail';
 import { useMarket } from '../hooks/useMarket';
+import { useDebounce } from '../hooks/useDebounce';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { csvRow } from '../utils/csvExport';
 import { getApiErrorMessage } from '../utils/apiError';
 import { labelTableSelectionCheckbox } from '../utils/tableSelectionAccessibility';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { buildPaginationItemRender } from '../utils/paginationLabels';
 import {
   PRODUCTS_DELETE_PERMISSION,
   PRODUCTS_IMPORT_PERMISSION,
@@ -47,6 +49,7 @@ const { TextArea } = Input;
 const productAdminImageFallback = productImageFallback;
 const resolveProductAdminImage = resolveProductImage;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
+const productEditorPopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const tagColorMap: Record<string, string> = { hot: 'red', new: 'blue', discount: 'orange' };
@@ -65,67 +68,110 @@ const productStatusLabels: Record<string, string> = {
 const DEFAULT_ADMIN_PRODUCT_PAGE_SIZE = 50;
 const PRODUCT_SEARCH_DEBOUNCE_MS = 300;
 const ADMIN_PRODUCT_DEFAULT_SORT = 'updatedAt,desc';
+const PRODUCT_NAME_MAX_LENGTH = 200;
+const PRODUCT_DESCRIPTION_MAX_LENGTH = 1000;
 
 const productDisplayLabel = (product: Pick<Product, 'id' | 'name'>) => (
   String(product.name || '').trim() || `#${product.id}`
 );
 
-type ProductDetailContentBlock = { type: string; content?: string; url?: string; caption?: string };
-type ProductDetailBlockType = ProductDetailBlock['type'];
-type ProductSpecificationFormRow = { key?: string; value?: string };
-type ProductOptionGroupFormRow = { name?: string; values?: string };
+type ProductDetailContentBlock = ProductDetailBlock;
+
+const emptyDetailBlock: ProductDetailContentBlock = { type: 'text', content: '', url: '', caption: '' };
+
+type ProductSpecificationFormRow = {
+  key?: unknown;
+  value?: unknown;
+};
+
+type ProductOptionGroupFormRow = {
+  name?: unknown;
+  values?: unknown;
+};
+
 type ProductVariantFormRow = {
   sku?: string;
   optionText?: string;
-  price?: unknown;
-  stock?: unknown;
+  price?: number;
+  stock?: number;
   imageUrl?: string;
 };
-type ProductBundleItemFormRow = { name?: string; quantity?: unknown };
-type ProductDetailContentFormBlock = {
-  type?: ProductDetailBlockType | string;
-  content?: string;
-  url?: string;
-  caption?: string;
+
+type ProductBundleItemFormRow = {
+  name?: unknown;
+  quantity?: unknown;
 };
-type ProductLocalizedContentForm = Partial<Record<'es' | 'zh', Partial<Record<'name' | 'description' | 'brand', string>>>>;
-type ProductFormValues = Omit<Partial<Product>, 'specifications' | 'images' | 'detailContent' | 'localizedContent' | 'optionGroups' | 'variants' | 'bundle'> & {
-  specifications?: ProductSpecificationFormRow[];
+
+type ProductFormValues = Partial<Omit<
+  Product,
+  'images' | 'specifications' | 'detailContent' | 'localizedContent' | 'optionGroups' | 'variants' | 'bundle' | 'limitedTimeStartAt' | 'limitedTimeEndAt'
+>> & {
   images?: unknown[];
-  detailContent?: ProductDetailContentFormBlock[];
-  localizedContent?: ProductLocalizedContentForm;
+  specifications?: ProductSpecificationFormRow[];
+  detailContent?: ProductDetailContentBlock[];
+  localizedContent?: Record<string, Record<string, unknown> | undefined>;
   optionGroups?: ProductOptionGroupFormRow[];
   variants?: ProductVariantFormRow[];
   bundleEnabled?: boolean;
-  bundleTitle?: string;
-  bundlePrice?: number;
+  bundleTitle?: unknown;
+  bundlePrice?: unknown;
   bundleItems?: ProductBundleItemFormRow[];
   limitedTimeRange?: [Dayjs | null | undefined, Dayjs | null | undefined];
 };
-type ProductMutationPayload = Omit<Partial<Product>, 'specifications' | 'images' | 'detailContent' | 'variants' | 'limitedTimeStartAt' | 'limitedTimeEndAt'> & {
-  imageUrl: string;
-  stock?: number;
-  specifications: Product['specifications'] | null;
-  images: string[] | null;
-  detailContent: ProductDetailBlock[] | null;
-  variants: ProductVariant[] | null;
-  limitedTimeStartAt: string | null;
-  limitedTimeEndAt: string | null;
+
+type ProductVariantSource = Partial<ProductVariant> & {
+  optionText?: unknown;
 };
 
-const emptyDetailBlock = { type: 'text', content: '', url: '', caption: '' };
+type ProductImportResultPayload = Partial<ProductImportResult> & Record<string, unknown>;
+
+type FormValidationError = {
+  errorFields?: unknown[];
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
+const isFormValidationError = (error: unknown): error is FormValidationError => (
+  isRecord(error) && Array.isArray(error.errorFields)
+);
+
+const getErrorResponseData = (error: unknown): unknown => {
+  if (!isRecord(error) || !isRecord(error.response)) return undefined;
+  return error.response.data;
+};
+
+const stringListFromUnknown = (value: unknown) => (
+  Array.isArray(value)
+    ? value.map((item) => String(item || '').trim()).filter(Boolean)
+    : []
+);
+
+const productImportRowErrorsFromUnknown = (value: unknown): ProductImportRowError[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): ProductImportRowError[] => {
+    if (!isRecord(item)) return [];
+    const messageText = String(item.message || '').trim();
+    if (!messageText) return [];
+    const rowNumber = Number(item.rowNumber || 0);
+    const fieldText = typeof item.field === 'string' && item.field.trim() ? item.field.trim() : undefined;
+    return [{
+      rowNumber: Number.isFinite(rowNumber) ? rowNumber : 0,
+      field: fieldText,
+      message: messageText,
+    }];
+  });
+};
+
 const parseJsonArray = (value: unknown): unknown[] => {
   if (Array.isArray(value)) return value;
   if (typeof value !== 'string' || !value.trim()) return [];
   try {
-    const parsed = JSON.parse(value);
+    const parsed: unknown = JSON.parse(value);
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('ProductManagement.parseJsonArray', error);
     return [];
   }
 };
@@ -133,7 +179,8 @@ const parseJsonArray = (value: unknown): unknown[] => {
 const normalizeProductImageList = (...values: unknown[]) => {
   const flattened = values.flatMap((value) => {
     if (Array.isArray(value)) return value;
-    return parseJsonArray(value).length > 0 ? parseJsonArray(value) : [value];
+    const parsedArray = parseJsonArray(value);
+    return parsedArray.length > 0 ? parsedArray : [value];
   });
   return Array.from(new Set(
     flattened
@@ -143,66 +190,16 @@ const normalizeProductImageList = (...values: unknown[]) => {
 };
 
 const parseJsonObject = (value: unknown) => {
-  if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, string>;
+  if (isRecord(value)) return value as Record<string, string>;
   if (typeof value !== 'string' || !value.trim()) return {};
   try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, string> : {};
-  } catch {
+    const parsed: unknown = JSON.parse(value);
+    return isRecord(parsed) ? parsed as Record<string, string> : {};
+  } catch (error) {
+    reportNonBlockingError('ProductManagement.parseJsonObject', error);
     return {};
   }
 };
-
-const toOptionalString = (value: unknown) => {
-  const text = String(value || '').trim();
-  return text || undefined;
-};
-
-const toFormArray = (value: unknown): unknown[] => (
-  Array.isArray(value) ? value : []
-);
-
-const productOptionGroupValues = (group: ProductOptionGroup) => (
-  Array.isArray(group.values) ? group.values : (Array.isArray(group.options) ? group.options : [])
-);
-
-const toProductOptionGroupFormRows = (value: unknown): ProductOptionGroupFormRow[] => (
-  toFormArray(value).map((item) => {
-    const row = isRecord(item) ? item : {};
-    return {
-      name: toOptionalString(row.name),
-      values: toOptionalString(row.values),
-    };
-  })
-);
-
-const toProductVariantFormRow = (value: unknown): ProductVariantFormRow => {
-  const row = isRecord(value) ? value : {};
-  return {
-    sku: toOptionalString(row.sku),
-    optionText: toOptionalString(row.optionText),
-    price: row.price,
-    stock: row.stock,
-    imageUrl: toOptionalString(row.imageUrl),
-  };
-};
-
-const toProductVariantFormRows = (value: unknown): ProductVariantFormRow[] => (
-  toFormArray(value).map(toProductVariantFormRow)
-);
-
-const hasVariantOptionText = (row: ProductVariantFormRow) => Boolean(String(row.optionText || '').trim());
-
-const normalizeProductDetailBlockType = (type: unknown): ProductDetailBlockType => (
-  type === 'image' || type === 'video' ? type : 'text'
-);
-
-const importResultTranslationParams = (result: ProductImportResult): Record<string, string | number> => ({
-  totalRows: result.totalRows,
-  created: result.created,
-  updated: result.updated,
-  failed: result.failed,
-});
 
 const getProductAdminSpecs = (product: Product) => {
   const specs = { ...parseJsonObject(product.specifications) };
@@ -216,9 +213,9 @@ const getProductAdminSpecs = (product: Product) => {
       if (locale && field && text) specs[`i18n.${locale}.${field}`] = text;
     });
   });
-  (Array.isArray(product.optionGroups) ? product.optionGroups : []).forEach((group: ProductOptionGroup) => {
+  (Array.isArray(product.optionGroups) ? product.optionGroups : []).forEach((group) => {
     const name = String(group?.name || '').trim();
-    const values = productOptionGroupValues(group);
+    const values = Array.isArray(group?.values) ? group.values : (Array.isArray(group?.options) ? group.options : []);
     const normalizedValues = Array.from(new Set(values.map((value: unknown) => String(value || '').trim()).filter(Boolean)));
     if (name && normalizedValues.length > 0) specs[`options.${name}`] = normalizedValues.join(',');
   });
@@ -253,8 +250,8 @@ const bundleItemsToFormRows = (value?: string) => {
         .filter((item) => item.name);
       return rows.length > 0 ? rows : [{ name: '', quantity: 1 }];
     }
-  } catch {
-    // Fall through to plain text parsing.
+  } catch (error) {
+    reportNonBlockingError('ProductManagement.parseBundleItems', error);
   }
   const rows = value
     .split(/[+,，、]/)
@@ -275,9 +272,15 @@ const toSafeNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const parseVariantOptions = (variant: { options?: unknown; optionText?: unknown }): Record<string, string> => {
-  if (isRecord(variant.options)) {
-    return Object.entries(variant.options).reduce((result: Record<string, string>, [key, value]) => {
+const optionalString = (value: unknown) => {
+  const text = String(value || '').trim();
+  return text || undefined;
+};
+
+const parseVariantOptions = (variant: ProductVariantSource | ProductVariantFormRow | unknown): Record<string, string> => {
+  const source = isRecord(variant) ? variant : {};
+  if (isRecord(source.options)) {
+    return Object.entries(source.options).reduce((result: Record<string, string>, [key, value]) => {
       const normalizedKey = String(key || '').trim();
       const normalizedValue = String(value || '').trim();
       if (normalizedKey && normalizedValue) result[normalizedKey] = normalizedValue;
@@ -285,7 +288,7 @@ const parseVariantOptions = (variant: { options?: unknown; optionText?: unknown 
     }, {});
   }
 
-  return String(variant?.optionText || '')
+  return String(source.optionText || '')
     .split(',')
     .reduce((result: Record<string, string>, item) => {
       const [rawKey, ...rawValue] = item.split('=');
@@ -296,8 +299,20 @@ const parseVariantOptions = (variant: { options?: unknown; optionText?: unknown 
     }, {});
 };
 
-const formatVariantOptionText = (variant: { options?: unknown; optionText?: unknown }) =>
+const formatVariantOptionText = (variant: ProductVariantSource | ProductVariantFormRow | unknown) =>
   Object.entries(parseVariantOptions(variant)).map(([key, value]) => `${key}=${value}`).join(', ');
+
+const productDetailContentBlockFromUnknown = (block: unknown): ProductDetailContentBlock | null => {
+  if (!isRecord(block)) return null;
+  const rawType = String(block.type || 'text');
+  const type: ProductDetailContentBlock['type'] = rawType === 'image' || rawType === 'video' ? rawType : 'text';
+  return {
+    type,
+    content: optionalString(block.content),
+    url: optionalString(block.url),
+    caption: optionalString(block.caption),
+  };
+};
 
 const createSkuFromOptions = (options: Record<string, string>, index: number) => {
   const suffix = Object.values(options)
@@ -353,19 +368,6 @@ const formatImportFieldLabel = (field?: string, labels: Record<string, string> =
 type ImportErrorCopy = {
   file: string;
   row: (rowNumber: number) => string;
-};
-
-type FormValidationError = {
-  errorFields?: unknown[];
-};
-
-const isFormValidationError = (error: unknown): error is FormValidationError => (
-  isRecord(error) && Array.isArray(error.errorFields)
-);
-
-const getErrorResponseData = (error: unknown): unknown => {
-  if (!isRecord(error) || !isRecord(error.response)) return undefined;
-  return error.response.data;
 };
 
 type ImportErrorReportCopy = {
@@ -529,7 +531,7 @@ const downloadImportErrorReport = (
   URL.revokeObjectURL(url);
 };
 
-const isProductImportResultPayload = (value: unknown): value is Partial<ProductImportResult> => {
+const isProductImportResultPayload = (value: unknown): value is ProductImportResultPayload => {
   if (!isRecord(value)) {
     return false;
   }
@@ -551,18 +553,28 @@ const productImportResultFromError = (error: unknown): ProductImportResult | nul
     created: Number(data.created || 0),
     updated: Number(data.updated || 0),
     failed: Number(data.failed || 0),
-    errors: Array.isArray(data.errors) ? data.errors : [],
-    rowErrors: Array.isArray(data.rowErrors) ? data.rowErrors : [],
+    errors: stringListFromUnknown(data.errors),
+    rowErrors: productImportRowErrorsFromUnknown(data.rowErrors),
   };
 };
 
 const importErrorMessageFromError = (error: unknown, fallback: string, language: ReturnType<typeof useLanguage>['language']) => {
   const data = getErrorResponseData(error);
-  if (isRecord(data) && Array.isArray(data.errors) && data.errors.length > 0) {
-    return data.errors.map((messageText) => String(messageText || '').trim()).filter(Boolean).join('\n');
+  if (isRecord(data)) {
+    const errors = stringListFromUnknown(data.errors);
+    if (errors.length > 0) {
+      return errors.join('\n');
+    }
   }
   return getApiErrorMessage(error, fallback, language);
 };
+
+const productImportTranslationParams = (result: Pick<ProductImportResult, 'totalRows' | 'created' | 'updated' | 'failed'>): Record<string, string | number> => ({
+  totalRows: Number(result.totalRows || 0),
+  created: Number(result.created || 0),
+  updated: Number(result.updated || 0),
+  failed: Number(result.failed || 0),
+});
 
 const productCreateDefaults = () => ({
   images: [],
@@ -596,9 +608,10 @@ const hasProductImage = (product: Product) => {
 
 const hasRichProductContent = (product: Product) => {
   const detailBlocks = parseJsonArray(product.detailContent);
-  const hasDetailBlock = detailBlocks.some((block) =>
-    isRecord(block) && (hasMeaningfulText(block.content, 24) || hasMeaningfulText(block.url, 8))
-  );
+  const hasDetailBlock = detailBlocks.some((block) => {
+    if (!isRecord(block)) return false;
+    return hasMeaningfulText(block.content, 24) || hasMeaningfulText(block.url, 8);
+  });
   return hasMeaningfulText(product.description, 36) || hasDetailBlock;
 };
 
@@ -648,7 +661,9 @@ const ProductManagement: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categoryOptionsTruncated, setCategoryOptionsTruncated] = useState(false);
   const [brandOptionsTruncated, setBrandOptionsTruncated] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [productLoadError, setProductLoadError] = useState<string | null>(null);
+  const [productSnapshotLoaded, setProductSnapshotLoaded] = useState(false);
   const [productSubmitting, setProductSubmitting] = useState(false);
   const [importSubmitting, setImportSubmitting] = useState(false);
   const [urlImportVisible, setUrlImportVisible] = useState(false);
@@ -659,7 +674,7 @@ const ProductManagement: React.FC = () => {
   const [batchStatusUpdating, setBatchStatusUpdating] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<ProductFormValues>();
   const [urlImportForm] = Form.useForm();
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filterCategory, setFilterCategory] = useState<number | undefined>();
@@ -672,8 +687,9 @@ const ProductManagement: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const { t, language } = useLanguage();
-  const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState('');
   const [productPage, setProductPage] = useState(1);
+  const resetProductPageForSearch = useCallback(() => setProductPage(1), []);
+  const debouncedSearchKeyword = useDebounce(searchKeyword.trim(), PRODUCT_SEARCH_DEBOUNCE_MS, resetProductPageForSearch);
   const [productPageSize, setProductPageSize] = useState(DEFAULT_ADMIN_PRODUCT_PAGE_SIZE);
   const [productTotal, setProductTotal] = useState(0);
   const detailContentPreview = Form.useWatch('detailContent', form);
@@ -695,6 +711,8 @@ const ProductManagement: React.FC = () => {
   const canDeleteProducts = hasAdminPermission(adminPermissions, currentRole, PRODUCTS_DELETE_PERMISSION);
   const canChangeProductStatus = hasAdminPermission(adminPermissions, currentRole, PRODUCTS_STATUS_PERMISSION);
   const canImportProducts = hasAdminPermission(adminPermissions, currentRole, PRODUCTS_IMPORT_PERMISSION);
+  const productActionDisabled = loading || Boolean(productLoadError) || !productSnapshotLoaded;
+  const productActionUnavailableMessage = productLoadError || (loading ? t('common.loading') : t('pages.productAdmin.fetchProductsFailed'));
   const formatListingIssue = useCallback((issue: string) => (
     t(`pages.productAdmin.listingIssue.${issue}`, { defaultValue: issue })
   ), [t]);
@@ -756,11 +774,11 @@ const ProductManagement: React.FC = () => {
     falseValue: t('pages.productAdmin.importErrorReport.falseValue'),
   }), [t]);
   const variantSummary = useMemo(() => {
-    const rows = toProductVariantFormRows(previewVariants);
-    const validRows = rows.filter(hasVariantOptionText);
-    const totalStock = validRows.reduce((sum, row) => sum + toSafeNumber(row.stock), 0);
+    const rows: ProductVariantFormRow[] = Array.isArray(previewVariants) ? previewVariants : [];
+    const validRows = rows.filter((row) => String(row?.optionText || '').trim());
+    const totalStock = validRows.reduce((sum: number, row) => sum + toSafeNumber(row?.stock), 0);
     const prices = validRows
-      .map((row) => toSafeNumber(row.price))
+      .map((row) => toSafeNumber(row?.price))
       .filter((price) => price > 0);
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
@@ -770,14 +788,6 @@ const ProductManagement: React.FC = () => {
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const categoryOptions = useMemo(() => toTreeOptions(categoryTree, undefined, language), [categoryTree, language]);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setProductPage(1);
-      setDebouncedSearchKeyword(searchKeyword.trim());
-    }, PRODUCT_SEARCH_DEBOUNCE_MS);
-    return () => window.clearTimeout(timeoutId);
-  }, [searchKeyword]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -793,6 +803,8 @@ const ProductManagement: React.FC = () => {
       const productPageData = response.data;
       setProducts(productPageData.items);
       setProductTotal(productPageData.total);
+      setProductLoadError(null);
+      setProductSnapshotLoaded(true);
       const nextPage = productPageData.totalPages > 0
         ? Math.min(productPageData.page + 1, productPageData.totalPages)
         : 1;
@@ -803,7 +815,9 @@ const ProductManagement: React.FC = () => {
         setProductPageSize(productPageData.size);
       }
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchProductsFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.productAdmin.fetchProductsFailed'), language);
+      setProductLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -860,15 +874,22 @@ const ProductManagement: React.FC = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    let disposed = false;
     adminApi.getMyPermissions()
       .then((response) => {
+        if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
-      .catch(() => {
+      .catch((error) => {
+        if (disposed) return;
+        reportNonBlockingError('ProductManagement.loadPermissions', error);
         setCurrentRole('');
         setAdminPermissions([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const baseFilteredProducts = useMemo(() => {
@@ -950,6 +971,10 @@ const ProductManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     setEditingProduct(null);
     form.resetFields();
     form.setFieldsValue(productCreateDefaults());
@@ -973,6 +998,10 @@ const ProductManagement: React.FC = () => {
   };
 
   const applyUrlImportPreview = (preview: ProductUrlImportPreview) => {
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     const uniqueImages = normalizeProductImageList(preview.imageUrl, preview.images);
     const mainImage = uniqueImages[0] || '';
     const specs = [
@@ -990,7 +1019,7 @@ const ProductManagement: React.FC = () => {
       importedDetailContent.push({ type: 'text', content: preview.description });
     }
     importedDetailContent.push(
-      ...uniqueImages.slice(0, 6).map((image) => ({ type: 'image', url: image, caption: preview.name || '' })),
+      ...uniqueImages.slice(0, 6).map((image): ProductDetailContentBlock => ({ type: 'image', url: image, caption: preview.name || '' })),
     );
 
     form.setFieldsValue({
@@ -1017,6 +1046,10 @@ const ProductManagement: React.FC = () => {
   const handleImportProductFromUrl = async () => {
     if (!canImportProducts) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
       return;
     }
     if (urlImportPreview) {
@@ -1051,6 +1084,10 @@ const ProductManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     setEditingProduct(record);
     const images = parseJsonArray(record.images).filter((image): image is string => typeof image === 'string');
     const specsObj = getProductAdminSpecs(record);
@@ -1080,17 +1117,19 @@ const ProductManagement: React.FC = () => {
     Object.keys(specsObj).forEach((key) => {
       if (key.startsWith('bundle.')) delete specsObj[key];
     });
-    const detailContent = parseJsonArray(record.detailContent);
+    const detailContent = parseJsonArray(record.detailContent)
+      .map(productDetailContentBlockFromUnknown)
+      .filter((block): block is ProductDetailContentBlock => Boolean(block));
     const variants = parseJsonArray(record.variants).map((variant): ProductVariantFormRow => {
-      const row = isRecord(variant) ? variant : {};
+      const source = isRecord(variant) ? variant : {};
       return {
-        sku: toOptionalString(row.sku),
-        optionText: formatVariantOptionText({ options: row.options, optionText: row.optionText }),
-        price: row.price,
-        stock: row.stock,
-        imageUrl: toOptionalString(row.imageUrl),
+        sku: optionalString(source.sku),
+        optionText: formatVariantOptionText(variant),
+        price: toSafeNumber(source.price),
+        stock: toSafeNumber(source.stock),
+        imageUrl: optionalString(source.imageUrl),
       };
-    }).filter(hasVariantOptionText);
+    }).filter((variant) => variant.optionText);
     const specs = Object.keys(specsObj).length > 0
       ? Object.entries(specsObj).map(([key, value]) => ({ key, value }))
       : [{}];
@@ -1119,6 +1158,10 @@ const ProductManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     try {
       await adminApi.deleteProduct(id);
       message.success(t('pages.productAdmin.deleted'));
@@ -1131,6 +1174,10 @@ const ProductManagement: React.FC = () => {
   const handleToggleFeatured = async (record: Product) => {
     if (!canWriteProducts) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
       return;
     }
     try {
@@ -1147,6 +1194,10 @@ const ProductManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     try {
       await adminApi.updateProductStatus(record.id, status);
       message.success(t('messages.updateSuccess'));
@@ -1159,6 +1210,10 @@ const ProductManagement: React.FC = () => {
   const handleBatchProductStatus = async (status: string) => {
     if (!canChangeProductStatus) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
       return;
     }
     if (selectedVisibleProductIds.length === 0) {
@@ -1183,6 +1238,10 @@ const ProductManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     handleEdit(record);
     setEditingProduct(null);
     form.setFieldsValue({
@@ -1194,10 +1253,11 @@ const ProductManagement: React.FC = () => {
   };
 
   const generateVariantRows = () => {
-    const optionGroups: Array<{ name: string; values: string[] }> = toProductOptionGroupFormRows(form.getFieldValue('optionGroups'))
-      .map((group) => ({
+    const optionGroupRows = (form.getFieldValue('optionGroups') as ProductOptionGroupFormRow[] | undefined) || [];
+    const optionGroups: Array<{ name: string; values: string[] }> = optionGroupRows
+      .map((group: ProductOptionGroupFormRow) => ({
         name: String(group?.name || '').trim(),
-        values: String(group?.values || '').split(',').map((item) => item.trim()).filter(Boolean),
+        values: String(group?.values || '').split(',').map((item: string) => item.trim()).filter(Boolean),
       }))
       .filter((group) => group.name && group.values.length > 0);
     if (optionGroups.length === 0) {
@@ -1210,10 +1270,10 @@ const ProductManagement: React.FC = () => {
       }
       return rows.flatMap((row) => group.values.map((value: string) => ({ ...row, [group.name]: value })));
     }, []);
-    const existingRows = new Map<string, ProductVariantFormRow>(
-      toProductVariantFormRows(form.getFieldValue('variants'))
-        .map((row): [string, ProductVariantFormRow] => [normalizeVariantOptionText(row.optionText), row])
-        .filter(([optionText]) => Boolean(optionText))
+    const existingRows = new Map(
+      ((form.getFieldValue('variants') as ProductVariantFormRow[] | undefined) || [])
+        .map((row): [string, ProductVariantFormRow] => [normalizeVariantOptionText(String(row?.optionText || '')), row])
+        .filter(([optionText]) => optionText)
     );
     form.setFieldValue('variants', combinations.map((options, index) => {
       const optionText = Object.entries(options).map(([key, value]) => `${key}=${value}`).join(', ');
@@ -1229,8 +1289,9 @@ const ProductManagement: React.FC = () => {
   };
 
   const syncStockFromVariants = () => {
-    const rows = toProductVariantFormRows(form.getFieldValue('variants')).filter(hasVariantOptionText);
-    const totalStock = rows.reduce((sum, row) => sum + toSafeNumber(row.stock), 0);
+    const rows = ((form.getFieldValue('variants') as ProductVariantFormRow[] | undefined) || [])
+      .filter((row) => String(row?.optionText || '').trim());
+    const totalStock = rows.reduce((sum, row) => sum + toSafeNumber(row?.stock), 0);
     form.setFieldValue('stock', totalStock);
     message.success(t('pages.productAdmin.stockSyncedFromVariants', { count: rows.length, stock: totalStock }));
   };
@@ -1240,14 +1301,20 @@ const ProductManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     try {
-      const values = await form.validateFields() as ProductFormValues;
+      const values = await form.validateFields();
       setProductSubmitting(true);
       // Convert specifications from array of {key, value} to object
       const specs: Record<string, string> = {};
       if (values.specifications) {
-        values.specifications.forEach((s) => {
-          if (s.key && s.key.trim() && s.value && s.value.trim()) specs[s.key.trim()] = s.value.trim();
+        values.specifications.forEach((item) => {
+          const key = String(item?.key || '').trim();
+          const value = String(item?.value || '').trim();
+          if (key && value) specs[key] = value;
         });
       }
       // Filter out empty image URLs
@@ -1255,16 +1322,20 @@ const ProductManagement: React.FC = () => {
       const imageList = normalizeProductImageList(rawMainImage, values.images);
       const mainImage = isHttpMediaUrl(rawMainImage) ? rawMainImage : imageList[0] || '';
       const detailContent = (values.detailContent || [])
-        .map((block): ProductDetailBlock => ({
-          type: normalizeProductDetailBlockType(block.type),
-          content: block.content?.trim(),
-          url: block.url?.trim(),
-          caption: block.caption?.trim(),
-        }))
+        .map((block): ProductDetailContentBlock => {
+          const rawType = String(block?.type || 'text');
+          const type: ProductDetailContentBlock['type'] = rawType === 'image' || rawType === 'video' ? rawType : 'text';
+          return {
+            type,
+            content: String(block?.content || '').trim() || undefined,
+            url: String(block?.url || '').trim() || undefined,
+            caption: String(block?.caption || '').trim() || undefined,
+          };
+        })
         .filter((block) => block.type === 'text' ? !!block.content : !!block.url && isHttpMediaUrl(block.url));
       const localizedContent = values.localizedContent || {};
-      (['es', 'zh'] as const).forEach((locale) => {
-        (['name', 'description', 'brand'] as const).forEach((field) => {
+      ['es', 'zh'].forEach((locale) => {
+        ['name', 'description', 'brand'].forEach((field) => {
           const text = localizedContent?.[locale]?.[field];
           if (typeof text === 'string' && text.trim()) {
             specs[`i18n.${locale}.${field}`] = text.trim();
@@ -1275,17 +1346,17 @@ const ProductManagement: React.FC = () => {
         const name = String(group?.name || '').trim();
         const valuesText = String(group?.values || '').trim();
         if (name && valuesText) {
-          const options = valuesText.split(',').map((item) => item.trim()).filter(Boolean);
+          const options = valuesText.split(',').map((item: string) => item.trim()).filter(Boolean);
           if (options.length) specs[`options.${name}`] = options.join(',');
         }
       });
       if (values.bundleEnabled) {
         const bundleItems = (values.bundleItems || [])
-          .map((item): ProductBundleItem => ({
+          .map((item) => ({
             name: String(item?.name || '').trim(),
             quantity: Number(item?.quantity || 1),
           }))
-          .filter((item) => item.name && Number(item.quantity || 0) > 0);
+          .filter((item) => item.name && item.quantity > 0);
         if (bundleItems.length > 0 && Number(values.bundlePrice || 0) > 0) {
           specs['bundle.enabled'] = 'true';
           specs['bundle.title'] = String(values.bundleTitle || values.name || '').trim();
@@ -1294,17 +1365,17 @@ const ProductManagement: React.FC = () => {
         }
       }
       const variants = (values.variants || [])
-        .map((variant): ProductVariant => {
+        .map((variant) => {
           const optionText = String(variant?.optionText || '').trim();
           const options = parseVariantOptions({ optionText });
           const price = toSafeNumber(variant?.price);
           const stock = toSafeNumber(variant?.stock, NaN);
           return {
-            sku: toOptionalString(variant?.sku),
+            sku: String(variant?.sku || '').trim() || undefined,
             options,
             price,
             stock: Number.isFinite(stock) ? stock : undefined,
-            imageUrl: toOptionalString(variant?.imageUrl),
+            imageUrl: String(variant?.imageUrl || '').trim() || undefined,
           };
         })
         .filter((variant) => Object.keys(variant.options).length > 0 && Number.isFinite(variant.price) && variant.price > 0);
@@ -1335,10 +1406,11 @@ const ProductManagement: React.FC = () => {
         limitedTimeEndAt: limitedTimeRange?.[1] ? limitedTimeRange[1].format('YYYY-MM-DDTHH:mm:ss') : null,
       };
       if (editingProduct) {
-        await adminApi.updateProduct(editingProduct.id, payload as Partial<Product>);
+        payload.updatedAt = editingProduct.updatedAt;
+        await adminApi.updateProduct(editingProduct.id, payload);
         message.success(t('pages.productAdmin.updated'));
       } else {
-        await adminApi.createProduct(payload as Partial<Product>);
+        await adminApi.createProduct(payload);
         message.success(t('pages.productAdmin.created'));
       }
       setModalVisible(false);
@@ -1387,6 +1459,10 @@ const ProductManagement: React.FC = () => {
   };
 
   const downloadPriceStockUpdateTemplate = () => {
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     const selectedIdSet = new Set(selectedVisibleProductIds);
     const sourceProducts = selectedIdSet.size > 0
       ? products.filter((product) => selectedIdSet.has(Number(product.id)))
@@ -1416,6 +1492,10 @@ const ProductManagement: React.FC = () => {
   };
 
   const exportFilteredProducts = () => {
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return;
+    }
     if (filteredProducts.length === 0) {
       message.warning(t('pages.productAdmin.exportEmpty'));
       return;
@@ -1426,7 +1506,7 @@ const ProductManagement: React.FC = () => {
       'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping',
       'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
-    const rows = filteredProducts.map((product: Product) => {
+    const rows = filteredProducts.map((product) => {
       return [
         product.id,
         product.name,
@@ -1580,7 +1660,7 @@ const ProductManagement: React.FC = () => {
   ) => (
     <div className="product-import-result">
       <Alert type="warning" showIcon message={notice} />
-      <p>{t('pages.productAdmin.importSummary', importResultTranslationParams(result))}</p>
+      <p>{t('pages.productAdmin.importSummary', productImportTranslationParams(result))}</p>
       {(result.maxRows || result.maxFileSizeBytes) && (
         <Space wrap className="product-import-result__limits">
           {result.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: result.maxRows })}</Tag> : null}
@@ -1618,6 +1698,10 @@ const ProductManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return false;
     }
+    if (productActionDisabled) {
+      message.error(productActionUnavailableMessage);
+      return false;
+    }
     if (importSubmitting) {
       return false;
     }
@@ -1642,13 +1726,13 @@ const ProductManagement: React.FC = () => {
         fetchImportHistory();
         return false;
       }
-      const importTargetLabel = `${t('pages.productAdmin.importConfirmApply')}: ${file.name}, ${t('pages.productAdmin.importPreviewMessage', importResultTranslationParams(preview))}`;
+      const importTargetLabel = `${t('pages.productAdmin.importConfirmApply')}: ${file.name}, ${t('pages.productAdmin.importPreviewMessage', productImportTranslationParams(preview))}`;
       Modal.confirm({
         title: t('pages.productAdmin.importPreviewTitle'),
         content: (
           <div className="product-import-result">
             <Alert type="success" showIcon message={t('pages.productAdmin.importPreviewReadyNotice')} />
-            <p>{t('pages.productAdmin.importPreviewMessage', importResultTranslationParams(preview))}</p>
+            <p>{t('pages.productAdmin.importPreviewMessage', productImportTranslationParams(preview))}</p>
             <Space wrap className="product-import-result__limits">
               {preview.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: preview.maxRows })}</Tag> : null}
               {preview.maxFileSizeBytes ? <Tag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(preview.maxFileSizeBytes) })}</Tag> : null}
@@ -1659,7 +1743,7 @@ const ProductManagement: React.FC = () => {
         ),
         okText: t('pages.productAdmin.importConfirmApply'),
         cancelText: t('common.cancel'),
-        okButtonProps: { 'aria-label': importTargetLabel, title: importTargetLabel },
+        okButtonProps: { disabled: productActionDisabled, 'aria-label': importTargetLabel, title: importTargetLabel },
         cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${importTargetLabel}`, title: `${t('common.cancel')}: ${importTargetLabel}` },
         width: 640,
         className: 'profile-mobile-safe-modal product-management-page__importConfirmModal',
@@ -1681,7 +1765,7 @@ const ProductManagement: React.FC = () => {
                 content: (
                   <div className="product-import-result">
                     <Alert type="success" showIcon message={t('pages.productAdmin.importAppliedNotice')} />
-                    <p>{t('pages.productAdmin.importSuccess', importResultTranslationParams(result))}</p>
+                    <p>{t('pages.productAdmin.importSuccess', productImportTranslationParams(result))}</p>
                     {renderImportTrace(result)}
                   </div>
                 ),
@@ -1920,7 +2004,8 @@ const ProductManagement: React.FC = () => {
 	                  onConfirm={() => handleToggleFeatured(record)}
 	                  okText={t('common.confirm')}
 	                  cancelText={t('common.cancel')}
-	                  okButtonProps={{ danger: Boolean(record.isFeatured), 'aria-label': featureActionLabel, title: featureActionLabel }}
+	                  disabled={productActionDisabled}
+	                  okButtonProps={{ danger: Boolean(record.isFeatured), disabled: productActionDisabled, 'aria-label': featureActionLabel, title: featureActionLabel }}
 	                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${featureActionLabel}`, title: `${t('common.cancel')}: ${featureActionLabel}` }}
 	                >
 	                  <Button
@@ -1929,18 +2014,20 @@ const ProductManagement: React.FC = () => {
 	                    aria-pressed={Boolean(record.isFeatured)}
 	                    aria-label={featureActionLabel}
 	                    title={featureActionLabel}
+	                    disabled={productActionDisabled}
 	                    size="small"
 	                  />
 	                </Popconfirm>
 	              ) : <span />}
 	            </Tooltip>
-            {canWriteProducts ? <Button type="primary" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button> : null}
+            {canWriteProducts ? <Button type="primary" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={productActionDisabled} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button> : null}
             {canWriteProducts ? (
               <Tooltip title={duplicateActionLabel}>
                 <Button
                   icon={<CopyOutlined />}
                   aria-label={duplicateActionLabel}
                   title={duplicateActionLabel}
+                  disabled={productActionDisabled}
                   onClick={() => handleDuplicate(record)}
                   size="small"
                 />
@@ -1953,10 +2040,11 @@ const ProductManagement: React.FC = () => {
                 onConfirm={() => handleProductStatus(record, 'ACTIVE')}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
-                okButtonProps={{ 'aria-label': approveActionLabel, title: approveActionLabel }}
+                disabled={productActionDisabled}
+                okButtonProps={{ disabled: productActionDisabled, 'aria-label': approveActionLabel, title: approveActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${approveActionLabel}`, title: `${t('common.cancel')}: ${approveActionLabel}` }}
               >
-                <Button size="small" aria-label={approveActionLabel} title={approveActionLabel}>{t('pages.productAdmin.approve')}</Button>
+                <Button size="small" disabled={productActionDisabled} aria-label={approveActionLabel} title={approveActionLabel}>{t('pages.productAdmin.approve')}</Button>
               </Popconfirm>
             )}
             {canChangeProductStatus && (record.status || 'ACTIVE') !== 'REJECTED' && (
@@ -1966,10 +2054,11 @@ const ProductManagement: React.FC = () => {
                 onConfirm={() => handleProductStatus(record, 'REJECTED')}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
-                okButtonProps={{ danger: true, 'aria-label': rejectActionLabel, title: rejectActionLabel }}
+                disabled={productActionDisabled}
+                okButtonProps={{ danger: true, disabled: productActionDisabled, 'aria-label': rejectActionLabel, title: rejectActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${rejectActionLabel}`, title: `${t('common.cancel')}: ${rejectActionLabel}` }}
               >
-                <Button size="small" danger aria-label={rejectActionLabel} title={rejectActionLabel}>{t('pages.productAdmin.reject')}</Button>
+                <Button size="small" danger disabled={productActionDisabled} aria-label={rejectActionLabel} title={rejectActionLabel}>{t('pages.productAdmin.reject')}</Button>
               </Popconfirm>
             )}
             {canChangeProductStatus && (record.status || 'ACTIVE') !== 'PENDING_REVIEW' && (
@@ -1979,10 +2068,11 @@ const ProductManagement: React.FC = () => {
                 onConfirm={() => handleProductStatus(record, 'PENDING_REVIEW')}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
-                okButtonProps={{ 'aria-label': reviewActionLabel, title: reviewActionLabel }}
+                disabled={productActionDisabled}
+                okButtonProps={{ disabled: productActionDisabled, 'aria-label': reviewActionLabel, title: reviewActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${reviewActionLabel}`, title: `${t('common.cancel')}: ${reviewActionLabel}` }}
               >
-                <Button size="small" aria-label={reviewActionLabel} title={reviewActionLabel}>{t('pages.productAdmin.review')}</Button>
+                <Button size="small" disabled={productActionDisabled} aria-label={reviewActionLabel} title={reviewActionLabel}>{t('pages.productAdmin.review')}</Button>
               </Popconfirm>
             )}
             {canDeleteProducts ? (
@@ -1992,10 +2082,11 @@ const ProductManagement: React.FC = () => {
                 onConfirm={() => handleDelete(record.id)}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
-                okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                disabled={productActionDisabled}
+                okButtonProps={{ danger: true, disabled: productActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
               >
-                <Button danger icon={<DeleteOutlined />} size="small" aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                <Button danger icon={<DeleteOutlined />} size="small" disabled={productActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
               </Popconfirm>
             ) : null}
           </Space>
@@ -2019,6 +2110,12 @@ const ProductManagement: React.FC = () => {
   const importProductsActionLabel = `${pageLabel}: ${t('pages.productAdmin.importProducts')}`;
   const addProductActionLabel = `${pageLabel}: ${t('pages.productAdmin.addProduct')}`;
   const refreshImportHistoryLabel = `${pageLabel}: ${t('common.refresh')}`;
+  const productPaginationItemRender = useMemo(() => buildPaginationItemRender(
+    `${t('common.previousPage')}: ${pageLabel}`,
+    `${t('common.nextPage')}: ${pageLabel}`,
+    `${t('common.previousPages')}: ${pageLabel}`,
+    `${t('common.nextPages')}: ${pageLabel}`,
+  ), [pageLabel, t]);
   const saveProductActionLabel = `${t('common.save')}: ${productEditorLabel}`;
   const cancelProductActionLabel = `${t('common.cancel')}: ${productEditorLabel}`;
   const bundleEnabledSwitchLabel = `${productEditorLabel}: ${t('bundle.bundleDeal')}`;
@@ -2035,6 +2132,9 @@ const ProductManagement: React.FC = () => {
   const bestSellerSwitchLabel = `${productEditorLabel}: ${t('pages.productAdmin.bestSeller')}`;
   const previewUrlImportLabel = `${urlImportPreview ? t('pages.productAdmin.urlImportApply') : t('pages.productAdmin.urlImportAction')}: ${t('pages.productAdmin.urlImportField')}`;
   const cancelUrlImportLabel = `${t('common.cancel')}: ${t('pages.productAdmin.urlImportTitle')}`;
+  const showInitialProductLoading = loading && !productSnapshotLoaded;
+  const productSnapshotUnavailable = Boolean(productLoadError) && !productSnapshotLoaded;
+  const canRenderProductSnapshot = !showInitialProductLoading && !productSnapshotUnavailable;
 
   return (
     <div className="product-management-page">
@@ -2044,6 +2144,27 @@ const ProductManagement: React.FC = () => {
       ) : null}
       <Divider />
 
+      {productLoadError ? (
+        <Alert
+          className="product-management-page__alert"
+          type="warning"
+          showIcon
+          message={productLoadError}
+          description={productSnapshotLoaded ? t('pages.productAdmin.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={fetchProducts}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialProductLoading ? (
+        <Card className="product-management-page__loadingState" loading />
+      ) : null}
+
+      {canRenderProductSnapshot ? (
+        <>
       <div className="product-management-page__toolbar">
         <Space className="product-management-page__filters">
           <Input
@@ -2054,6 +2175,7 @@ const ProductManagement: React.FC = () => {
             className="product-management-page__filterSearch"
             aria-label={searchLabel}
             title={searchLabel}
+            disabled={productActionDisabled}
             allowClear
           />
           <TreeSelect
@@ -2064,6 +2186,7 @@ const ProductManagement: React.FC = () => {
             aria-label={categoryFilterLabel}
             title={categoryFilterLabel}
             value={filterCategory}
+            disabled={productActionDisabled}
             onChange={(v) => {
               setFilterCategory(v);
               setProductPage(1);
@@ -2079,6 +2202,7 @@ const ProductManagement: React.FC = () => {
             aria-label={statusFilterLabel}
             title={statusFilterLabel}
             value={filterStatus}
+            disabled={productActionDisabled}
             onChange={(value) => {
               setFilterStatus(value);
               setProductPage(1);
@@ -2093,7 +2217,7 @@ const ProductManagement: React.FC = () => {
             ]}
           />
         </Space>
-        <Space wrap>
+        <Space wrap className="product-management-page__actions">
           {canChangeProductStatus ? (
 	            <Popconfirm
 	              classNames={mobilePopconfirmClassNames}
@@ -2101,11 +2225,11 @@ const ProductManagement: React.FC = () => {
               onConfirm={() => handleBatchProductStatus('ACTIVE')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              disabled={selectedVisibleProductIds.length === 0 || !!batchStatusUpdating}
-              okButtonProps={{ 'aria-label': batchApproveActionLabel, title: batchApproveActionLabel }}
+              disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating}
+              okButtonProps={{ disabled: productActionDisabled, 'aria-label': batchApproveActionLabel, title: batchApproveActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchApproveActionLabel}`, title: `${t('common.cancel')}: ${batchApproveActionLabel}` }}
             >
-              <Button disabled={selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'ACTIVE'} aria-label={batchApproveActionLabel} title={batchApproveActionLabel}>
+              <Button disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'ACTIVE'} aria-label={batchApproveActionLabel} title={batchApproveActionLabel}>
                 {t('pages.productAdmin.batchApprove')}
               </Button>
             </Popconfirm>
@@ -2117,11 +2241,11 @@ const ProductManagement: React.FC = () => {
               onConfirm={() => handleBatchProductStatus('REJECTED')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              disabled={selectedVisibleProductIds.length === 0 || !!batchStatusUpdating}
-              okButtonProps={{ danger: true, 'aria-label': batchRejectActionLabel, title: batchRejectActionLabel }}
+              disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating}
+              okButtonProps={{ danger: true, disabled: productActionDisabled, 'aria-label': batchRejectActionLabel, title: batchRejectActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchRejectActionLabel}`, title: `${t('common.cancel')}: ${batchRejectActionLabel}` }}
             >
-              <Button disabled={selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'REJECTED'} danger aria-label={batchRejectActionLabel} title={batchRejectActionLabel}>
+              <Button disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'REJECTED'} danger aria-label={batchRejectActionLabel} title={batchRejectActionLabel}>
                 {t('pages.productAdmin.batchReject')}
               </Button>
             </Popconfirm>
@@ -2129,39 +2253,41 @@ const ProductManagement: React.FC = () => {
           <Button icon={<DownloadOutlined />} onClick={downloadImportTemplate} aria-label={downloadTemplateActionLabel} title={downloadTemplateActionLabel}>
             {t('pages.productAdmin.downloadTemplate')}
           </Button>
-          <Tooltip title={t('pages.productAdmin.importUpdateTemplateHint')}>
+          <Tooltip title={t('pages.productAdmin.importUpdateTemplateHint')} overlayClassName="product-management-page__importTooltip">
             <Button
               icon={<DownloadOutlined />}
               onClick={downloadPriceStockUpdateTemplate}
-              disabled={selectedVisibleProductIds.length === 0 && filteredProducts.length === 0}
+              disabled={productActionDisabled || (selectedVisibleProductIds.length === 0 && filteredProducts.length === 0)}
               aria-label={downloadUpdateTemplateActionLabel}
               title={downloadUpdateTemplateActionLabel}
             >
               {t('pages.productAdmin.downloadUpdateTemplate')}
             </Button>
           </Tooltip>
-          <Button icon={<DownloadOutlined />} onClick={exportFilteredProducts} disabled={filteredProducts.length === 0} aria-label={exportProductsActionLabel} title={exportProductsActionLabel}>
+          <Button icon={<DownloadOutlined />} onClick={exportFilteredProducts} disabled={productActionDisabled || filteredProducts.length === 0} aria-label={exportProductsActionLabel} title={exportProductsActionLabel}>
             {t('pages.productAdmin.exportProducts')}
           </Button>
           {canImportProducts ? (
-            <Upload accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts}>
-              <Tooltip title={t('pages.productAdmin.importCsvHint')}>
-                <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={importSubmitting} aria-label={importProductsActionLabel} title={importProductsActionLabel}>{t('pages.productAdmin.importProducts')}</Button>
+            <Upload className="product-management-page__uploadAction" accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts} disabled={productActionDisabled || importSubmitting}>
+              <Tooltip title={t('pages.productAdmin.importCsvHint')} overlayClassName="product-management-page__importTooltip">
+                <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={productActionDisabled || importSubmitting} aria-label={importProductsActionLabel} title={importProductsActionLabel}>{t('pages.productAdmin.importProducts')}</Button>
               </Tooltip>
             </Upload>
           ) : null}
           {canImportProducts ? (
-            <Button icon={<LinkOutlined />} disabled={urlImportSubmitting} aria-label={urlImportActionLabel} title={urlImportActionLabel} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
+            <Button icon={<LinkOutlined />} disabled={productActionDisabled || urlImportSubmitting} aria-label={urlImportActionLabel} title={urlImportActionLabel} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
               {t('pages.productAdmin.importFromUrl')}
             </Button>
           ) : null}
           {canWriteProducts ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} aria-label={addProductActionLabel} title={addProductActionLabel}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} disabled={productActionDisabled} aria-label={addProductActionLabel} title={addProductActionLabel}>
               {t('pages.productAdmin.addProduct')}
             </Button>
           ) : null}
         </Space>
       </div>
+        </>
+      ) : null}
 
       <section className="product-import-history">
         <div className="product-import-history__header">
@@ -2231,6 +2357,8 @@ const ProductManagement: React.FC = () => {
         )}
       </section>
 
+      {canRenderProductSnapshot ? (
+        <>
       <section className="product-listing-quality" aria-label={t('pages.productAdmin.listingQualityTitle')}>
         <div className="product-listing-quality__summary">
           <div>
@@ -2249,6 +2377,7 @@ const ProductManagement: React.FC = () => {
             className={!listingQualityFilter ? 'is-active' : ''}
             aria-pressed={!listingQualityFilter}
             aria-label={`${t('pages.productAdmin.allListings')}: ${listingQualityStats.total}`}
+            disabled={productActionDisabled}
             onClick={() => applyListingQualityFilter(undefined)}
           >
             <span>{listingQualityStats.total}</span>
@@ -2259,6 +2388,7 @@ const ProductManagement: React.FC = () => {
             className={listingQualityFilter === 'ready' ? 'is-active' : ''}
             aria-pressed={listingQualityFilter === 'ready'}
             aria-label={`${t('pages.productAdmin.listingReady')}: ${listingQualityStats.ready}`}
+            disabled={productActionDisabled}
             onClick={() => applyListingQualityFilter('ready')}
           >
             <span>{listingQualityStats.ready}</span>
@@ -2269,6 +2399,7 @@ const ProductManagement: React.FC = () => {
             className={listingQualityFilter === 'image' ? 'is-active' : ''}
             aria-pressed={listingQualityFilter === 'image'}
             aria-label={`${t('pages.productAdmin.missingImages')}: ${listingQualityStats.image}`}
+            disabled={productActionDisabled}
             onClick={() => applyListingQualityFilter('image')}
           >
             <span>{listingQualityStats.image}</span>
@@ -2279,6 +2410,7 @@ const ProductManagement: React.FC = () => {
             className={listingQualityFilter === 'content' ? 'is-active' : ''}
             aria-pressed={listingQualityFilter === 'content'}
             aria-label={`${t('pages.productAdmin.weakContent')}: ${listingQualityStats.content}`}
+            disabled={productActionDisabled}
             onClick={() => applyListingQualityFilter('content')}
           >
             <span>{listingQualityStats.content}</span>
@@ -2289,6 +2421,7 @@ const ProductManagement: React.FC = () => {
             className={listingQualityFilter === 'stock' ? 'is-active' : ''}
             aria-pressed={listingQualityFilter === 'stock'}
             aria-label={`${t('pages.productAdmin.stockRisk')}: ${listingQualityStats.stock}`}
+            disabled={productActionDisabled}
             onClick={() => applyListingQualityFilter('stock')}
           >
             <span>{listingQualityStats.stock}</span>
@@ -2299,6 +2432,7 @@ const ProductManagement: React.FC = () => {
             className={listingQualityFilter === 'localized' ? 'is-active' : ''}
             aria-pressed={listingQualityFilter === 'localized'}
             aria-label={`${t('pages.productAdmin.localizationGaps')}: ${listingQualityStats.localized}`}
+            disabled={productActionDisabled}
             onClick={() => applyListingQualityFilter('localized')}
           >
             <span>{listingQualityStats.localized}</span>
@@ -2309,6 +2443,7 @@ const ProductManagement: React.FC = () => {
             className={listingQualityFilter === 'commercialHook' ? 'is-active' : ''}
             aria-pressed={listingQualityFilter === 'commercialHook'}
             aria-label={`${t('pages.productAdmin.missingCommercialHook')}: ${listingQualityStats.commercialHook}`}
+            disabled={productActionDisabled}
             onClick={() => applyListingQualityFilter('commercialHook')}
           >
             <span>{listingQualityStats.commercialHook}</span>
@@ -2319,7 +2454,7 @@ const ProductManagement: React.FC = () => {
           <span>{t('pages.productAdmin.activeListings', { count: listingQualityStats.active })}</span>
           <span>{t('pages.productAdmin.featuredListings', { count: listingQualityStats.featured })}</span>
           {listingQualityFilter ? (
-            <Button size="small" onClick={() => applyListingQualityFilter(undefined)}>
+            <Button size="small" disabled={productActionDisabled} onClick={() => applyListingQualityFilter(undefined)}>
               {t('pages.productAdmin.clearQualityFilter')}
             </Button>
           ) : null}
@@ -2339,6 +2474,7 @@ const ProductManagement: React.FC = () => {
           getCheckboxProps: (record) => {
             const selectionLabel = t('pages.productAdmin.selectProductRow', { product: productDisplayLabel(record) });
             return {
+              disabled: productActionDisabled,
               'aria-label': selectionLabel,
               title: selectionLabel,
             };
@@ -2352,8 +2488,10 @@ const ProductManagement: React.FC = () => {
           showSizeChanger: !listingQualityFilter,
           pageSizeOptions: ['10', '20', '50', '100', '200'],
           showTotal: (total) => t('pages.productAdmin.tableTotal', { count: total }),
+          itemRender: productPaginationItemRender,
         }}
         onChange={(pagination) => {
+          if (productActionDisabled) return;
           if (listingQualityFilter) return;
           const nextPage = Number(pagination.current || 1);
           const nextSize = Number(pagination.pageSize || productPageSize);
@@ -2364,6 +2502,8 @@ const ProductManagement: React.FC = () => {
         size="middle"
         scroll={{ x: 1240 }}
       />
+        </>
+      ) : null}
 
       <Modal
         title={editingProduct ? t('pages.productAdmin.editTitle') : t('pages.productAdmin.addTitle')}
@@ -2375,29 +2515,56 @@ const ProductManagement: React.FC = () => {
         className="profile-mobile-safe-modal shopify-product-modal"
         okText={editingProduct ? t('pages.productAdmin.saveProduct') : t('pages.productAdmin.addProduct')}
         confirmLoading={productSubmitting}
-        okButtonProps={{ 'aria-label': saveProductActionLabel, title: saveProductActionLabel }}
+        okButtonProps={{ disabled: productActionDisabled, 'aria-label': saveProductActionLabel, title: saveProductActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelProductActionLabel, title: cancelProductActionLabel }}
       >
         <Form form={form} layout="vertical" initialValues={{ images: [], specifications: [{}], optionGroups: [{ name: 'Size', values: '' }, { name: 'Color', values: '' }], detailContent: [emptyDetailBlock], bundleEnabled: false, bundleItems: [{ name: '', quantity: 1 }], freeShipping: false }}>
           <div className="shopify-product-editor">
             <div className="shopify-product-editor__main">
               <section className="shopify-card">
-                <Form.Item name="name" label={t('pages.productAdmin.titleField')} rules={[{ required: true, message: t('pages.productAdmin.nameRequired') }]}>
-                  <Input className="shopify-input" placeholder={t('pages.productAdmin.namePlaceholder')} />
+                <Form.Item
+                  name="name"
+                  label={t('pages.productAdmin.titleField')}
+                  rules={[
+                    { required: true, message: t('pages.productAdmin.nameRequired') },
+                    { max: PRODUCT_NAME_MAX_LENGTH, message: t('pages.productAdmin.nameMaxLength', { count: PRODUCT_NAME_MAX_LENGTH }) },
+                  ]}
+                >
+                  <Input className="shopify-input" maxLength={PRODUCT_NAME_MAX_LENGTH} showCount placeholder={t('pages.productAdmin.namePlaceholder')} />
                 </Form.Item>
 
-                <Form.Item name="description" label={t('pages.productAdmin.description')} rules={[{ required: true, message: t('pages.productAdmin.descriptionRequired') }]}>
-                  <TextArea className="shopify-rich-text" rows={7} placeholder={t('pages.productAdmin.descriptionRichPlaceholder')} />
+                <Form.Item
+                  name="description"
+                  label={t('pages.productAdmin.description')}
+                  rules={[
+                    { required: true, message: t('pages.productAdmin.descriptionRequired') },
+                    { max: PRODUCT_DESCRIPTION_MAX_LENGTH, message: t('pages.productAdmin.descriptionMaxLength', { count: PRODUCT_DESCRIPTION_MAX_LENGTH }) },
+                  ]}
+                >
+                  <TextArea
+                    className="shopify-rich-text"
+                    rows={7}
+                    maxLength={PRODUCT_DESCRIPTION_MAX_LENGTH}
+                    showCount
+                    placeholder={t('pages.productAdmin.descriptionRichPlaceholder')}
+                  />
                 </Form.Item>
 
                 <Divider>{t('pages.productAdmin.languageSettings')}</Divider>
                 <Tabs
+                  className="shopify-localized-tabs"
+                  tabBarGutter={8}
                   items={[
                     {
                       key: 'es',
-                      label: spanishNamePreview || t('pages.productAdmin.spanish'),
+                      label: <span className="shopify-localized-tabs__label">{t('pages.productAdmin.spanish')}</span>,
                       children: (
                         <div className="shopify-two-col">
+                          {spanishNamePreview ? (
+                            <Text type="secondary" className="shopify-localized-preview">
+                              {t('pages.productAdmin.spanishTitle')}: {spanishNamePreview}
+                            </Text>
+                          ) : null}
                           <Form.Item name={['localizedContent', 'es', 'name']} label={t('pages.productAdmin.spanishTitle')}>
                             <Input className="shopify-input" placeholder={t('pages.productAdmin.fallbackEnglishTitle')} />
                           </Form.Item>
@@ -2412,9 +2579,14 @@ const ProductManagement: React.FC = () => {
                     },
                     {
                       key: 'zh',
-                      label: chineseNamePreview || t('pages.productAdmin.chinese'),
+                      label: <span className="shopify-localized-tabs__label">{t('pages.productAdmin.chinese')}</span>,
                       children: (
                         <div className="shopify-two-col">
+                          {chineseNamePreview ? (
+                            <Text type="secondary" className="shopify-localized-preview">
+                              {t('pages.productAdmin.chineseTitle')}: {chineseNamePreview}
+                            </Text>
+                          ) : null}
                           <Form.Item name={['localizedContent', 'zh', 'name']} label={t('pages.productAdmin.chineseTitle')}>
                             <Input className="shopify-input" placeholder={t('pages.productAdmin.fallbackEnglishTitle')} />
                           </Form.Item>
@@ -2484,8 +2656,9 @@ const ProductManagement: React.FC = () => {
                     treeData={categoryOptions}
                     aria-label={`${productEditorLabel}: ${t('common.category')}`}
                     title={`${productEditorLabel}: ${t('common.category')}`}
-                    classNames={mobilePopupClassNames}
+                    classNames={productEditorPopupClassNames}
                     getPopupContainer={() => document.body}
+                    placement="bottomLeft"
                   />
                 </Form.Item>
                 <Text type="secondary">{t('pages.productAdmin.categoryHint')}</Text>
@@ -2757,8 +2930,9 @@ const ProductManagement: React.FC = () => {
                     className="shopify-input"
                     aria-label={`${productEditorLabel}: ${t('common.status')}`}
                     title={`${productEditorLabel}: ${t('common.status')}`}
-                    classNames={mobilePopupClassNames}
+                    classNames={productEditorPopupClassNames}
                     getPopupContainer={() => document.body}
+                    placement="bottomLeft"
                     options={[
                       { value: 'ACTIVE', label: t('status.ACTIVE') },
                       { value: 'PENDING_REVIEW', label: t('pages.productAdmin.draft') },
@@ -2789,8 +2963,9 @@ const ProductManagement: React.FC = () => {
                     optionFilterProp="label"
                     aria-label={`${productEditorLabel}: ${t('pages.productAdmin.vendor')}`}
                     title={`${productEditorLabel}: ${t('pages.productAdmin.vendor')}`}
-                    classNames={mobilePopupClassNames}
+                    classNames={productEditorPopupClassNames}
                     getPopupContainer={() => document.body}
+                    placement="bottomLeft"
                     options={brands.map((brand) => ({ value: brand.name, label: brand.name }))}
                   />
                 </Form.Item>
@@ -2801,8 +2976,9 @@ const ProductManagement: React.FC = () => {
                     placeholder={t('pages.productAdmin.selectTag')}
                     aria-label={`${productEditorLabel}: ${t('pages.productAdmin.tags')}`}
                     title={`${productEditorLabel}: ${t('pages.productAdmin.tags')}`}
-                    classNames={mobilePopupClassNames}
+                    classNames={productEditorPopupClassNames}
                     getPopupContainer={() => document.body}
+                    placement="bottomLeft"
                     options={tagOptions.map(option => ({ value: option.value, label: option.label }))}
                   />
                 </Form.Item>
@@ -2819,8 +2995,9 @@ const ProductManagement: React.FC = () => {
                   disabled
                   aria-label={`${productEditorLabel}: ${t('pages.productAdmin.themeTemplate')}`}
                   title={`${productEditorLabel}: ${t('pages.productAdmin.themeTemplate')}`}
-                  classNames={mobilePopupClassNames}
+                  classNames={productEditorPopupClassNames}
                   getPopupContainer={() => document.body}
+                  placement="bottomLeft"
                   options={[{ value: 'default-product', label: t('pages.productAdmin.defaultProduct') }]}
                 />
               </section>
@@ -2834,8 +3011,9 @@ const ProductManagement: React.FC = () => {
                   <DatePicker.RangePicker
                     showTime
                     className="shopify-range-picker"
-                    classNames={mobilePopupClassNames}
+                    classNames={productEditorPopupClassNames}
                     getPopupContainer={() => document.body}
+                    placement="bottomLeft"
                     id={{ start: 'product-limited-time-start', end: 'product-limited-time-end' }}
                     placeholder={[t('common.start'), t('common.end')]}
                     aria-label={`${productEditorLabel}: ${t('pages.productAdmin.limitedTimeRange')}`}
@@ -2855,7 +3033,7 @@ const ProductManagement: React.FC = () => {
         onCancel={closeUrlImportModal}
         okText={urlImportPreview ? t('pages.productAdmin.urlImportApply') : t('pages.productAdmin.urlImportAction')}
         confirmLoading={urlImportSubmitting}
-        okButtonProps={{ 'aria-label': previewUrlImportLabel, title: previewUrlImportLabel }}
+        okButtonProps={{ disabled: productActionDisabled, 'aria-label': previewUrlImportLabel, title: previewUrlImportLabel }}
         cancelButtonProps={{ 'aria-label': cancelUrlImportLabel, title: cancelUrlImportLabel }}
         destroyOnHidden
         width={720}
@@ -2870,7 +3048,7 @@ const ProductManagement: React.FC = () => {
               { type: 'url', message: t('pages.productAdmin.urlImportInvalid') },
             ]}
           >
-            <Input placeholder={t('pages.productAdmin.urlImportPlaceholder')} allowClear aria-label={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} title={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} />
+            <Input placeholder={t('pages.productAdmin.urlImportPlaceholder')} disabled={productActionDisabled} allowClear aria-label={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} title={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} />
           </Form.Item>
           <Text type="secondary">{t('pages.productAdmin.urlImportHint')}</Text>
           <Alert

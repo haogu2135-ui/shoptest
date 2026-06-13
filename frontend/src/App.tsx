@@ -7,16 +7,23 @@ import ErrorBoundary from './components/ErrorBoundary';
 import CustomerSupportWidget from './components/CustomerSupportWidget';
 import SkipToContentLink, { MAIN_CONTENT_ID } from './components/SkipToContentLink';
 import { useLanguage } from './i18n';
-import type { CartItem } from './types';
+import type { CartItem, UserProfile } from './types';
 import { dispatchDomEvent } from './utils/domEvents';
-import { scrollAppToTop } from './utils/nativeScroll';
+import { addAppScrollListener, getAppScrollMetrics, scrollAppToTop } from './utils/nativeScroll';
 import { consumeNativeBack, useNativeBackHandler } from './utils/nativeBack';
-import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from './utils/safeStorage';
+import { getLocalStorageItem, hasStoredValue, removeLocalStorageItem, setLocalStorageItem } from './utils/safeStorage';
 import { clearGuestSupportContext, loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from './utils/guestSupportContext';
-import { installMobileContrastGuard, refreshMobileContrastGuard } from './utils/mobileContrastGuard';
+import { clearStoredAuthSession, userApi } from './api';
+import { buildLoginUrl, buildLoginUrlFromWindow, getCurrentRelativeUrl } from './utils/authRedirect';
+import { AUTH_SESSION_CHANGED_EVENT, AUTH_SESSION_STORAGE_KEYS } from './utils/authEvents';
+import { isAuthExpiredError } from './utils/apiError';
+import { getEffectiveRole } from './utils/roles';
+import { reportNonBlockingError } from './utils/nonBlockingError';
+import { subscribeAccessibleMessages, type AccessibleMessageAnnouncement } from './utils/accessibleMessage';
 import {
   currentMobileVersionName,
   currentMobileVersionCode,
+  currentNativeMobilePlatform,
   fetchLatestMobileRelease,
   isMobileReleaseDownloadAllowed,
   isNativeAndroidApp,
@@ -102,6 +109,75 @@ const Wishlist = lazy(() => import('./pages/Wishlist'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const loadCartDrawer = () => import('./components/CartDrawer');
 const LazyCartDrawer = lazy(loadCartDrawer);
+const loadAndroidUiFinalGuard = () => import('./utils/androidUiFinalGuard');
+const loadMobileContrastGuard = () => import('./utils/mobileContrastGuard');
+
+type GuardCleanup = () => void;
+
+const installAsyncUiGuard = <TModule,>(
+  loadModule: () => Promise<TModule>,
+  installGuard: (module: TModule) => GuardCleanup | void,
+  errorContext: string,
+): GuardCleanup => {
+  let disposed = false;
+  let cleanup: GuardCleanup | void;
+
+  void loadModule()
+    .then((module) => {
+      if (disposed) {
+        return;
+      }
+      cleanup = installGuard(module);
+    })
+    .catch((error) => {
+      if (!disposed) {
+        reportNonBlockingError(errorContext, error);
+      }
+    });
+
+  return () => {
+    disposed = true;
+    cleanup?.();
+  };
+};
+
+const refreshAsyncUiGuard = <TModule,>(
+  loadModule: () => Promise<TModule>,
+  refreshGuard: (module: TModule) => void,
+  errorContext: string,
+): GuardCleanup => {
+  let disposed = false;
+  let frameId: number | undefined;
+  const timeoutIds: number[] = [];
+
+  void loadModule()
+    .then((module) => {
+      if (disposed) {
+        return;
+      }
+      const refresh = () => refreshGuard(module);
+
+      refresh();
+      frameId = window.requestAnimationFrame(refresh);
+      timeoutIds.push(
+        window.setTimeout(refresh, 80),
+        window.setTimeout(refresh, 260),
+      );
+    })
+    .catch((error) => {
+      if (!disposed) {
+        reportNonBlockingError(errorContext, error);
+      }
+    });
+
+  return () => {
+    disposed = true;
+    if (frameId !== undefined) {
+      window.cancelAnimationFrame(frameId);
+    }
+    timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+  };
+};
 
 type CartDrawerOpenRequest = {
   id: number;
@@ -123,6 +199,26 @@ type SupportOpenDetail = {
   clearGuestContext?: boolean;
   clearGuestSupportContext?: boolean;
 };
+
+type AdminRouteBoundaryProps = {
+  boundaryKey: string;
+  children: React.ReactNode;
+};
+
+const AdminRouteBoundary: React.FC<AdminRouteBoundaryProps> = ({ boundaryKey, children }) => {
+  const { t } = useLanguage();
+  return (
+    <ErrorBoundary key={boundaryKey} homePath="/admin/dashboard" homeLabel={t('adminLayout.dashboard')}>
+      {children}
+    </ErrorBoundary>
+  );
+};
+
+const adminRouteElement = (boundaryKey: string, element: React.ReactElement) => (
+  <AdminRouteBoundary boundaryKey={boundaryKey}>
+    {element}
+  </AdminRouteBoundary>
+);
 
 type SupportWidgetBoundaryProps = {
   fallback: React.ReactNode;
@@ -171,24 +267,148 @@ const getSupportOpenDetail = (event?: Event): SupportOpenDetail | null => {
 const toSupportOpenDetail = (context: ReturnType<typeof loadGuestSupportContext>): SupportOpenDetail | null =>
   context ? { guestOrderNo: context.orderNo, guestEmail: context.email } : null;
 
-const LoadingFallback = () => (
-  <div className="app-route-loading">
-    <Spin size="large" />
-  </div>
+const LoadingFallback = () => {
+  const { t } = useLanguage();
+
+  return (
+    <div className="app-route-loading">
+      <Spin size="large" />
+      <span className="app-route-loading__text" role="status" aria-live="polite">
+        {t('app.loading')}
+      </span>
+    </div>
+  );
+};
+
+export const AccessibleMessageLiveRegion: React.FC = () => {
+  const { t } = useLanguage();
+  const [announcement, setAnnouncement] = useState<AccessibleMessageAnnouncement | null>(null);
+
+  useEffect(() => subscribeAccessibleMessages(setAnnouncement), []);
+
+  return (
+    <div
+      className="app-message-live-region"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={t('app.statusAnnouncementLabel')}
+    >
+      {announcement ? <span key={announcement.id}>{announcement.text}</span> : null}
+    </div>
+  );
+};
+
+const applyStartupProfile = (profile: UserProfile) => {
+  const effectiveRole = getEffectiveRole(profile?.role, profile?.roleCode);
+  setLocalStorageItem('userId', String(profile?.id || ''));
+  setLocalStorageItem('username', String(profile?.username || profile?.email || profile?.phone || profile?.id || ''));
+  if (effectiveRole) {
+    setLocalStorageItem('role', effectiveRole);
+  } else {
+    removeLocalStorageItem('role');
+  }
+};
+
+const AUTH_REQUIRED_ROUTE_PREFIXES = ['/admin', '/checkout', '/notifications', '/profile', '/wishlist'];
+
+const isAuthRequiredRoutePath = (pathname: string) => (
+  AUTH_REQUIRED_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+);
+
+export const AuthStartupGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [checking, setChecking] = useState(() => hasStoredValue('token'));
+  const navigate = useNavigate();
+
+  const validateStoredSession = useCallback(() => {
+    if (!hasStoredValue('token')) {
+      setChecking(false);
+      return undefined;
+    }
+
+    let disposed = false;
+    setChecking(true);
+    userApi.getProfile({ skipAuthRedirect: true })
+      .then((response) => {
+        if (disposed) return;
+        applyStartupProfile(response.data);
+      })
+      .catch((error) => {
+        if (disposed) return;
+        if (isAuthExpiredError(error)) {
+          clearStoredAuthSession();
+          if (isAuthRequiredRoutePath(window.location.pathname)) {
+            navigate(buildLoginUrlFromWindow(), { replace: true });
+          }
+          return;
+        }
+        reportNonBlockingError('AuthStartupGate.validateStoredSession', error);
+      })
+      .finally(() => {
+        if (!disposed) {
+          setChecking(false);
+        }
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    const cleanup = validateStoredSession();
+    return cleanup;
+  }, [validateStoredSession]);
+
+  useEffect(() => {
+    const handleAuthSessionChanged = () => {
+      if (!hasStoredValue('token')) {
+        setChecking(false);
+      }
+    };
+    const handleStorageChange = (event: StorageEvent) => {
+      if (!event.key || AUTH_SESSION_STORAGE_KEYS.includes(event.key)) {
+        handleAuthSessionChanged();
+      }
+    };
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  if (checking) {
+    return <LoadingFallback />;
+  }
+
+  return <>{children}</>;
+};
+
+const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const location = useLocation();
+  if (!hasStoredValue('token')) {
+    return <Navigate to={buildLoginUrl(getCurrentRelativeUrl(location))} replace />;
+  }
+  return children;
+};
+
+const protectedRouteElement = (element: React.ReactElement) => (
+  <ProtectedRoute>
+    {element}
+  </ProtectedRoute>
 );
 
 const NativeAppClassHost: React.FC = () => {
   useEffect(() => {
     const capacitor = window.Capacitor;
-    const platform = capacitor?.getPlatform?.();
-    const isNative = capacitor?.isNativePlatform?.() === true
-      || platform === 'android'
-      || platform === 'ios'
-      || window.location.protocol === 'capacitor:';
-    if (!isNative) return undefined;
+    const platform = currentNativeMobilePlatform() || capacitor?.getPlatform?.();
+    const isNative = isNativeMobileApp();
+    if (!isNative) return;
 
     const body = document.body;
-    if (!body) return undefined;
+    if (!body) return;
 
     document.documentElement.classList.add('shop-mobile-app-root');
     body.classList.add('shop-mobile-app');
@@ -218,7 +438,7 @@ const NativeMobileUpdateGate: React.FC = () => {
   const downloadUrl = resolveMobileReleaseDownloadUrl(release);
 
   useEffect(() => {
-    if (!isNativeAndroidApp()) return undefined;
+    if (!isNativeAndroidApp()) return;
 
     let disposed = false;
     let checking = false;
@@ -292,8 +512,8 @@ const NativeMobileUpdateGate: React.FC = () => {
             }
             listenerRemovers.push(() => handle.remove());
           });
-        } catch {
-          // Browser-like Capacitor shims may expose only backButton; skip update retry hooks.
+        } catch (error) {
+          reportNonBlockingError('App.addNativeReleaseCheckListener', error);
         }
       };
 
@@ -340,7 +560,8 @@ const NativeMobileUpdateGate: React.FC = () => {
     try {
       const opened = await openMobileReleaseDownload(release);
       setDownloadFailed(!opened);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('App.mobileUpdateDownload', error);
       setDownloadFailed(true);
     } finally {
       setOpeningDownload(false);
@@ -352,7 +573,8 @@ const NativeMobileUpdateGate: React.FC = () => {
     try {
       await navigator.clipboard.writeText(downloadUrl);
       message.success(t('appUpdate.copyDownloadLinkSuccess'));
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('App.copyDownloadLink', error);
       message.error(t('appUpdate.copyDownloadLinkFailed'));
     }
   };
@@ -375,6 +597,14 @@ const NativeMobileUpdateGate: React.FC = () => {
       maskClosable={!updateRequired}
       onCancel={handleDismiss}
       title={t(updateRequired ? 'appUpdate.requiredTitle' : 'appUpdate.title')}
+      rootClassName="shop-mobile-update-modal-root"
+      className="profile-mobile-safe-modal shop-mobile-update-modal"
+      maskStyle={{
+        background: 'rgba(15, 30, 22, 0.48)',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+        filter: 'none',
+      }}
       footer={(
         <Space wrap>
           {!updateRequired ? (
@@ -431,27 +661,45 @@ const NativeMobileContrastGuard: React.FC = () => {
 
   useEffect(() => {
     if (!isNativeMobileApp() && !document.body?.classList.contains('shop-mobile-app')) {
-      return undefined;
+      return;
     }
-    return installMobileContrastGuard();
+    return installAsyncUiGuard(
+      loadMobileContrastGuard,
+      ({ installMobileContrastGuard }) => installMobileContrastGuard(),
+      'App.loadMobileContrastGuard.install',
+    );
   }, []);
 
   useEffect(() => {
     if (!isNativeMobileApp() && !document.body?.classList.contains('shop-mobile-app')) {
-      return undefined;
+      return;
     }
 
-    refreshMobileContrastGuard();
-    const frameId = window.requestAnimationFrame(refreshMobileContrastGuard);
-    const timeoutIds = [
-      window.setTimeout(refreshMobileContrastGuard, 80),
-      window.setTimeout(refreshMobileContrastGuard, 260),
-    ];
+    return refreshAsyncUiGuard(
+      loadMobileContrastGuard,
+      ({ refreshMobileContrastGuard }) => refreshMobileContrastGuard(),
+      'App.loadMobileContrastGuard.refresh',
+    );
+  }, [location.pathname, location.search, location.hash]);
 
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
-    };
+  return null;
+};
+
+const AndroidUiFinalGuard: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => installAsyncUiGuard(
+    loadAndroidUiFinalGuard,
+    ({ installAndroidUiFinalGuard }) => installAndroidUiFinalGuard(),
+    'App.loadAndroidUiFinalGuard.install',
+  ), []);
+
+  useEffect(() => {
+    return refreshAsyncUiGuard(
+      loadAndroidUiFinalGuard,
+      ({ refreshAndroidUiFinalGuard }) => refreshAndroidUiFinalGuard(),
+      'App.loadAndroidUiFinalGuard.refresh',
+    );
   }, [location.pathname, location.search, location.hash]);
 
   return null;
@@ -517,9 +765,9 @@ const NativeBackNavigation: React.FC = () => {
   }, [currentRouteKey, navigationType]);
 
   useEffect(() => {
-    if (!isNativeMobileApp()) return undefined;
+    if (!isNativeMobileApp()) return;
     const appPlugin = window.Capacitor?.Plugins?.App;
-    if (!appPlugin || typeof appPlugin.addListener !== 'function') return undefined;
+    if (!appPlugin || typeof appPlugin.addListener !== 'function') return;
 
     let disposed = false;
     let removeListener: (() => Promise<void> | void) | null = null;
@@ -574,7 +822,7 @@ const LazyCartDrawerHost: React.FC = () => {
   const requestSeqRef = useRef(0);
 
   useEffect(() => {
-    if (drawerReady) return undefined;
+    if (drawerReady) return;
     const handleOpenCart = (event: Event) => {
       const detailItems = (event as CustomEvent<{ items?: CartItem[] }>).detail?.items;
       requestSeqRef.current += 1;
@@ -652,7 +900,7 @@ const LazySupportWidgetHost: React.FC = () => {
   const preloadSupport = useCallback(() => undefined, []);
 
   useEffect(() => {
-    if (widgetReady) return undefined;
+    if (widgetReady) return;
     window.addEventListener('shop:open-support', openSupport);
     return () => window.removeEventListener('shop:open-support', openSupport);
   }, [openSupport, widgetReady]);
@@ -683,20 +931,77 @@ const StorefrontLayout: React.FC = () => {
   const { t } = useLanguage();
   const location = useLocation();
   const isAuthenticated = hasStoredValue('token');
+  const [appScrolled, setAppScrolled] = useState(false);
+  const [bottomRailConflict, setBottomRailConflict] = useState(false);
   const openSupport = useCallback(() => {
     const guestDetail = toSupportOpenDetail(loadGuestSupportContext());
     dispatchDomEvent('shop:open-support', guestDetail || undefined);
   }, []);
+
+  useEffect(() => {
+    if (!isNativeMobileApp() && !document.body?.classList.contains('shop-mobile-app')) {
+      setAppScrolled(false);
+      setBottomRailConflict(false);
+      return;
+    }
+
+    const updateScrolledState = () => {
+      const metrics = getAppScrollMetrics();
+      const nextScrolled = metrics.scrollTop > 24;
+      setAppScrolled((current) => (current === nextScrolled ? current : nextScrolled));
+
+      const mainContent = document.getElementById(MAIN_CONTENT_ID);
+      const possibleBottomRailTop = window.innerHeight - 76 - Math.max(0, Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0'));
+      const interactiveSelector = [
+        'button',
+        'a[href]',
+        'input',
+        'textarea',
+        '[role="button"]',
+        '.ant-select-selector',
+        '.ant-checkbox-wrapper',
+        '.ant-radio-wrapper',
+        '.ant-pagination-item',
+      ].join(',');
+      const nextBottomRailConflict = Boolean(mainContent && Array.from(mainContent.querySelectorAll<HTMLElement>(interactiveSelector)).some((element) => {
+        const style = window.getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) === 0) return false;
+        const rect = element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0 || rect.top >= window.innerHeight) return false;
+        return Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, possibleBottomRailTop) > 0.5;
+      }));
+      setBottomRailConflict((current) => (current === nextBottomRailConflict ? current : nextBottomRailConflict));
+    };
+
+    updateScrolledState();
+    const removeScrollListener = addAppScrollListener(updateScrolledState, { passive: true });
+    const frameId = window.requestAnimationFrame(updateScrolledState);
+    const timeoutId = window.setTimeout(updateScrolledState, 160);
+
+    return () => {
+      removeScrollListener();
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [location.pathname, location.search, location.hash]);
+
   const shellClassName = [
     'shop-app-shell',
+    location.pathname === '/' ? 'shop-app-shell--home' : '',
+    appScrolled ? 'shop-app-shell--scrolled' : '',
+    bottomRailConflict ? 'shop-app-shell--bottom-rail-conflict' : '',
     location.pathname === '/products' ? 'shop-app-shell--product-list' : '',
     location.pathname === '/products' || location.pathname.startsWith('/products/') ? 'shop-app-shell--product-area' : '',
     location.pathname.startsWith('/products/') ? 'shop-app-shell--product-detail' : '',
     location.pathname === '/cart' ? 'shop-app-shell--cart' : '',
     location.pathname === '/coupons' ? 'shop-app-shell--coupon-center' : '',
     location.pathname === '/checkout' ? 'shop-app-shell--checkout' : '',
+    location.pathname === '/profile' ? 'shop-app-shell--profile-flow' : '',
     location.pathname === '/history' ? 'shop-app-shell--history' : '',
+    location.pathname === '/track-order' ? 'shop-app-shell--order-tracking-flow' : '',
+    location.pathname.startsWith('/payment/') ? 'shop-app-shell--payment-instructions' : '',
     location.pathname === '/pet-finder' ? 'shop-app-shell--pet-finder' : '',
+    location.pathname === '/pet-gallery' ? 'shop-app-shell--pet-gallery' : '',
     location.pathname === '/checkout' ? 'shop-app-shell--checkout-flow' : '',
     ['/login', '/register', '/forgot-password'].includes(location.pathname) ? 'shop-app-shell--auth-flow' : '',
   ].filter(Boolean).join(' ');
@@ -786,72 +1091,76 @@ const StorefrontLayout: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
+      <AccessibleMessageLiveRegion />
       <NativeAppClassHost />
       <NativeMobileUpdateGate />
+      <AndroidUiFinalGuard />
       <NativeMobileContrastGuard />
       <NativeBackNavigation />
-      <RouteScrollReset />
-      <ErrorBoundary>
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            <Route path="/" element={<StorefrontLayout />}>
-              <Route index element={<Home />} />
-              <Route path="products" element={<ProductList />} />
-              <Route path="pet-finder" element={<PetFinder />} />
-              <Route path="pet-gallery" element={<PetGallery />} />
-              <Route path="compare" element={<ProductCompare />} />
-              <Route path="products/:id" element={<ProductDetail />} />
-              <Route path="cart" element={<Cart />} />
-              <Route path="checkout" element={<Checkout />} />
-              <Route path="coupons" element={<CouponCenter />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="wishlist" element={<Wishlist />} />
-              <Route path="history" element={<BrowsingHistory />} />
-              <Route path="stock-alerts" element={<StockAlerts />} />
-              <Route path="notifications" element={<Notifications />} />
-              <Route path="track-order" element={<OrderTracking />} />
-              <Route path="payment/:orderNo" element={<PaymentInstructions />} />
-              <Route path="login" element={<Login />} />
-              <Route path="forgot-password" element={<ForgotPassword />} />
-              <Route path="register" element={<Register />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
+      <AuthStartupGate>
+        <RouteScrollReset />
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<StorefrontLayout />}>
+                <Route index element={<Home />} />
+                <Route path="products" element={<ProductList />} />
+                <Route path="pet-finder" element={<PetFinder />} />
+                <Route path="pet-gallery" element={<PetGallery />} />
+                <Route path="compare" element={<ProductCompare />} />
+                <Route path="products/:id" element={<ProductDetail />} />
+                <Route path="cart" element={<Cart />} />
+                <Route path="checkout" element={<Checkout />} />
+                <Route path="coupons" element={<CouponCenter />} />
+                <Route path="profile" element={protectedRouteElement(<Profile />)} />
+                <Route path="wishlist" element={protectedRouteElement(<Wishlist />)} />
+                <Route path="history" element={<BrowsingHistory />} />
+                <Route path="stock-alerts" element={<StockAlerts />} />
+                <Route path="notifications" element={protectedRouteElement(<Notifications />)} />
+                <Route path="track-order" element={<OrderTracking />} />
+                <Route path="payment/:orderNo" element={<PaymentInstructions />} />
+                <Route path="login" element={<Login />} />
+                <Route path="forgot-password" element={<ForgotPassword />} />
+                <Route path="register" element={<Register />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
 
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="products" element={<ProductManagement />} />
-              <Route path="brands" element={<BrandManagement />} />
-              <Route path="categories" element={<CategoryManagement />} />
-              <Route path="orders" element={<OrderManagement />} />
-              <Route path="logistics-carriers" element={<LogisticsCarrierManagement />} />
-              <Route path="coupons" element={<CouponManagement />} />
-              <Route path="users" element={<UserManagement />} />
-              <Route path="permissions" element={<PermissionManagement />} />
-              <Route path="reviews" element={<ReviewManagement />} />
-              <Route path="questions" element={<ProductQuestionManagement />} />
-              <Route path="notifications" element={<NotificationManagement />} />
-              <Route path="announcements" element={<AnnouncementManagement />} />
-              <Route path="support" element={<SupportManagement />} />
-              <Route path="audit-logs" element={<SecurityAuditLogManagement />} />
-              <Route path="alerts" element={<AlertManagement />} />
-              <Route path="bugs" element={<BugManagement />} />
-              <Route path="ip-blacklist" element={<IpBlacklistManagement />} />
-              <Route path="logs" element={<LogManagement />} />
-              <Route path="pet-gallery" element={<PetGalleryManagement />} />
-              <Route path="registry" element={<RegistryManagement />} />
-              <Route path="config-center" element={<ConfigCenter />} />
-              <Route path="traffic-control" element={<TrafficControl />} />
-              <Route path="system" element={<SystemMonitor />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="dashboard" element={adminRouteElement('admin-dashboard', <AdminDashboard />)} />
+                <Route path="products" element={adminRouteElement('admin-products', <ProductManagement />)} />
+                <Route path="brands" element={adminRouteElement('admin-brands', <BrandManagement />)} />
+                <Route path="categories" element={adminRouteElement('admin-categories', <CategoryManagement />)} />
+                <Route path="orders" element={adminRouteElement('admin-orders', <OrderManagement />)} />
+                <Route path="logistics-carriers" element={adminRouteElement('admin-logistics-carriers', <LogisticsCarrierManagement />)} />
+                <Route path="coupons" element={adminRouteElement('admin-coupons', <CouponManagement />)} />
+                <Route path="users" element={adminRouteElement('admin-users', <UserManagement />)} />
+                <Route path="permissions" element={adminRouteElement('admin-permissions', <PermissionManagement />)} />
+                <Route path="reviews" element={adminRouteElement('admin-reviews', <ReviewManagement />)} />
+                <Route path="questions" element={adminRouteElement('admin-questions', <ProductQuestionManagement />)} />
+                <Route path="notifications" element={adminRouteElement('admin-notifications', <NotificationManagement />)} />
+                <Route path="announcements" element={adminRouteElement('admin-announcements', <AnnouncementManagement />)} />
+                <Route path="support" element={adminRouteElement('admin-support', <SupportManagement />)} />
+                <Route path="audit-logs" element={adminRouteElement('admin-audit-logs', <SecurityAuditLogManagement />)} />
+                <Route path="alerts" element={adminRouteElement('admin-alerts', <AlertManagement />)} />
+                <Route path="bugs" element={adminRouteElement('admin-bugs', <BugManagement />)} />
+                <Route path="ip-blacklist" element={adminRouteElement('admin-ip-blacklist', <IpBlacklistManagement />)} />
+                <Route path="logs" element={adminRouteElement('admin-logs', <LogManagement />)} />
+                <Route path="pet-gallery" element={adminRouteElement('admin-pet-gallery', <PetGalleryManagement />)} />
+                <Route path="registry" element={adminRouteElement('admin-registry', <RegistryManagement />)} />
+                <Route path="config-center" element={adminRouteElement('admin-config-center', <ConfigCenter />)} />
+                <Route path="traffic-control" element={adminRouteElement('admin-traffic-control', <TrafficControl />)} />
+                <Route path="system" element={adminRouteElement('admin-system', <SystemMonitor />)} />
+                <Route path="*" element={adminRouteElement('admin-not-found', <NotFound />)} />
+              </Route>
 
-            <Route path="/product-management" element={<Navigate to="/admin/products" replace />} />
-            <Route path="/category-management" element={<Navigate to="/admin/categories" replace />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </ErrorBoundary>
+              <Route path="/product-management" element={<Navigate to="/admin/products" replace />} />
+              <Route path="/category-management" element={<Navigate to="/admin/categories" replace />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+      </AuthStartupGate>
     </Router>
   );
 };
