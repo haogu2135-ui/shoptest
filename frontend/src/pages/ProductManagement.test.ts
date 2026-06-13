@@ -102,6 +102,23 @@ describe('ProductManagement editor popup guards', () => {
     expect(localizedTabsCss).toMatch(/\.shopify-localized-tabs__label\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?text-overflow:\s*ellipsis;[\s\S]*?white-space:\s*nowrap;/);
   });
 
+  it('keeps the URL import preview modal scrollable without overlapping mobile actions', () => {
+    const modalCssStart = cssSource.indexOf('.product-management-page__urlImportModal.ant-modal');
+    const modalCssEnd = cssSource.indexOf('@media (max-width: 430px)', modalCssStart);
+    const modalCss = cssSource.slice(modalCssStart, modalCssEnd);
+
+    expect(pageSource).toContain('className="profile-mobile-safe-modal product-management-page__urlImportModal"');
+    expect(modalCssStart).toBeGreaterThanOrEqual(0);
+    expect(modalCssEnd).toBeGreaterThan(modalCssStart);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-content\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-direction:\s*column\s*!important;[\s\S]*?overflow:\s*hidden\s*!important;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-body\s*\{[\s\S]*?flex:\s*1 1 auto\s*!important;[\s\S]*?min-height:\s*0\s*!important;[\s\S]*?overflow-y:\s*auto\s*!important;[\s\S]*?-webkit-overflow-scrolling:\s*touch;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.product-url-import-preview__body p\s*\{[\s\S]*?display:\s*block\s*!important;[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?-webkit-line-clamp:\s*unset\s*!important;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer\s*\{[\s\S]*?position:\s*static\s*!important;[\s\S]*?flex:\s*0 0 auto\s*!important;[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer \.ant-btn\s*\{[\s\S]*?justify-content:\s*center\s*!important;[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer \.ant-btn > span:not\(\.anticon\):not\(\.ant-btn-icon\)\s*\{[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?text-overflow:\s*clip\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(cssSource).toMatch(/@media \(max-width:\s*360px\)\s*\{[\s\S]*?\.product-management-page__urlImportModal \.ant-modal-footer\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
+  });
+
   it('pins product editor popups above modal chrome and keeps the range picker in view', () => {
     const f3538Start = cssSource.indexOf('/* F3538');
     const f3538Css = cssSource.slice(f3538Start);

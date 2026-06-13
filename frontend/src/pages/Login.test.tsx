@@ -6,6 +6,7 @@ import Login from './Login';
 
 let mockLanguage = 'en';
 const readLoginPageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Login.tsx'), 'utf8') as string;
+const readLoginCss = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Login.css'), 'utf8') as string;
 const readMobilePageContrastCss = () => require('fs').readFileSync(require('path').resolve(__dirname, '../styles/mobile-page-contrast.css'), 'utf8') as string;
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -228,6 +229,17 @@ describe('Login accessibility labels', () => {
     expect(linkStart).toBeGreaterThanOrEqual(0);
     expect(linkCss).toContain('.shopee-login-links a[href]');
     expect(linkCss).toMatch(/text-decoration:\s*none\s*!important;/);
+  });
+
+  it('keeps Login primary CTAs and validation errors contrast-safe outside APP', () => {
+    const css = readLoginCss();
+    const contrastStart = css.indexOf('/* Login commercial contrast closure');
+    const contrastCss = css.slice(contrastStart);
+
+    expect(contrastStart).toBeGreaterThanOrEqual(0);
+    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\),[\s\S]*?\.shopee-login-panel__actions \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\)\s*\{[\s\S]*?background:\s*#a8321f\s*!important;[\s\S]*?border-color:\s*#a8321f\s*!important;[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?-webkit-text-fill-color:\s*#ffffff\s*!important;/);
+    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\):hover,[\s\S]*?\.shopee-login-panel__actions \.ant-btn-primary:not\(:disabled\):not\(\.ant-btn-disabled\):focus-visible\s*\{[\s\S]*?background:\s*#8f2d17\s*!important;[\s\S]*?border-color:\s*#8f2d17\s*!important;/);
+    expect(contrastCss).toMatch(/\.shopee-login-card \.ant-form-item-explain-error,[\s\S]*?\.shopee-login-card \.ant-typography-danger\s*\{[\s\S]*?color:\s*#8f2d17\s*!important;[\s\S]*?-webkit-text-fill-color:\s*#8f2d17\s*!important;[\s\S]*?opacity:\s*1\s*!important;/);
   });
 
   it('does not expose the stale unlabeled guest login button and names guest-friendly actions', () => {

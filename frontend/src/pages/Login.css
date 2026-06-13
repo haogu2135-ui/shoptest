@@ -2654,3 +2654,35 @@
     line-height: 1.25 !important;
   }
 }
+
+/* Login commercial contrast closure: primary CTAs and validation errors must
+   stay readable on desktop, mobile web, and APP shells. */
+.shopee-login-card .ant-btn-primary:not(:disabled):not(.ant-btn-disabled),
+.shopee-login-panel__actions .ant-btn-primary:not(:disabled):not(.ant-btn-disabled) {
+  background: #a8321f !important;
+  border-color: #a8321f !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(168, 50, 31, 0.22) !important;
+}
+
+.shopee-login-card .ant-btn-primary:not(:disabled):not(.ant-btn-disabled) *,
+.shopee-login-panel__actions .ant-btn-primary:not(:disabled):not(.ant-btn-disabled) * {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+.shopee-login-card .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover,
+.shopee-login-card .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):focus-visible,
+.shopee-login-panel__actions .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover,
+.shopee-login-panel__actions .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):focus-visible {
+  background: #8f2d17 !important;
+  border-color: #8f2d17 !important;
+}
+
+.shopee-login-card .ant-form-item-explain-error,
+.shopee-login-card .ant-typography-danger {
+  color: #8f2d17 !important;
+  -webkit-text-fill-color: #8f2d17 !important;
+  opacity: 1 !important;
+}
