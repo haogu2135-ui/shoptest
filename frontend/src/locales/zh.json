@@ -115,6 +115,13 @@
     "retry": "重试",
     "logoutPartialFailure": "退出时未能完全撤销当前会话。如本设备仍显示登录状态，请重新登录后再退出。"
   },
+  "apiErrors": {
+    "network": "网络连接失败，请检查前台 API 代理后重试。",
+    "timeout": "请求超时，请稍后重试。",
+    "serviceUnavailable": "服务暂不可用，请稍后重试。",
+    "rateLimited": "请求过于频繁，请稍后重试。",
+    "rateLimitedWithSeconds": "请求过于频繁，请在 {seconds} 秒后重试。"
+  },
   "appUpdate": {
     "title": "发现新版本 App",
     "requiredTitle": "需要升级 App",

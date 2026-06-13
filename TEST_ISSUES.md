@@ -5450,7 +5450,7 @@ Notes:
 - Environment: `src/utils/apiError.ts:28, 38, 47`
 - Severity: HIGH
 - Description: Separate ERROR_MESSAGES constants for Chinese, English, Spanish bypass i18n framework. Dynamic language selection at runtime duplicates all messages and adds maintenance burden.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 15:02 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — `apiError.ts` no longer keeps a local English/Chinese/Spanish message dictionary. Shared network, timeout, service-unavailable, and rate-limit API error copy now lives under `apiErrors.*` in en/es/zh locale resources and is read through exported `translateForLanguage(...)`, preserving the existing fallback and server-message filtering behavior. `apiError.test.ts` now statically guards against reintroducing a local `localMessages` dictionary and requires the locale keys. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Migrate to i18n `t()` function with error code keys.
 
 ### F2325: Fallback product images loaded eagerly on every page
@@ -5459,7 +5459,7 @@ Notes:
 - Environment: `src/utils/fallbackProducts.ts`
 - Severity: LOW
 - Description: `getProductImages()` always creates all 6 Image objects even if only 1 image is needed.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 16:09 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The old `src/utils/fallbackProducts.ts` path and `getProductImages()` eager image loader are absent from current source. Active fallback catalog data lives in `productCatalogSnapshot.ts` as bounded normalized product data; no `new Image(...)` eager loader is present. Added `productCatalogSnapshot.test.ts` source guard to reject `new Image(` and `getProductImages` in the fallback catalog path. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Load images on demand.
 
 ### F2324: Fallback product images use hardcoded legacy URLs
@@ -5468,7 +5468,7 @@ Notes:
 - Environment: `src/utils/fallbackProducts.ts:19, 33, 47`
 - Severity: LOW
 - Description: `image_url: '/images/product-1.jpg'` hardcoded paths may not exist in production deployment.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 16:09 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The old `src/utils/fallbackProducts.ts` path is absent, and current fallback catalog source has no legacy `/images/product-*.jpg` literals. Active fallback products use normalized external/public image URLs through `productCatalogSnapshot.ts`. Added `productCatalogSnapshot.test.ts` source guard to reject `/images/product-*.jpg` legacy paths and ensure loaded fallback image URLs do not start with `/images/product-`. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Use environment variable or API for image URLs.
 
 ### F2323: `Navbar` languageOptions recreated every render
@@ -5487,7 +5487,7 @@ Notes:
 - Environment: `src/pages/Home.tsx:101-104, 114-125`
 - Severity: MEDIUM
 - Description: `EMPTY_OBJECT`, `EMPTY_PRODUCT_IDS`, `EMPTY_PRODUCT_MAP`, `promotionMap`, `homeProductIds` created in component body without memoization.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 15:17 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The old reported `EMPTY_OBJECT`, `EMPTY_PRODUCT_IDS`, `EMPTY_PRODUCT_MAP`, `promotionMap`, and `homeProductIds` symbols are absent from current `Home.tsx`. Current Home product/category sections already memoized promo, bestseller, recent, discovery, local personalization, preference label, and display category roots; follow-up source change now also memoizes personalized display products, ready personalized products, personalized deal count, visible discovery slice, category tiles, and hero category tiles. Added `HomeRenderMemo.test.ts` as a static guard. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Move constants outside component, wrap derived data in useMemo.
 
 ### F2321: Frontend components exceed 2000 lines
@@ -5580,7 +5580,7 @@ Notes:
 - Environment: `src/pages/ProductDetail.tsx:101`
 - Severity: MEDIUM
 - Description: User's recent viewing history persists even after navigating away and coming back, which may not be desired.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 15:47 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The reported `recentProductsCache` module-level Map is absent from current `ProductDetail.tsx` and `productDetailHelpers.tsx`. Product detail view history now records through `recordProductView(...)` in `productViewPreferences`, which normalizes storage, caps recent products/recent entries at 30, supports explicit clearing/removal, and dispatches preference updates. Added a `ProductDetail.test.tsx` source guard to reject a ProductDetail `recentProductsCache` regression and require the `recordProductView(res.data)` path. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Clear on unmount or use session storage.
 
 ### F2311: `productRecommendationsCache` module-level Map persists across navigations
@@ -5589,7 +5589,7 @@ Notes:
 - Environment: `src/pages/ProductDetail.tsx:95`
 - Severity: MEDIUM
 - Description: Recommendations cached for 5 minutes may show stale recommendations if user browses different product categories.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 15:47 UTC) / REGRESSION_GUARD_CONFIRMED / REGRESSION_PENDING — The stale `ProductDetail.tsx` module-level recommendation cache is absent from current source. Active recommendation caching lives in `productDetailHelpers.tsx` with a 2-minute TTL, 50-entry cap, expired-entry pruning, hit-order refresh, and `clearProductDetailSessionCaches()` called from ProductDetail cleanup. Existing `ProductDetail.test.tsx` guards the bounded helper cache; the new F2312 guard also keeps ProductDetail free of unbounded recent-product Maps. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Clear cache on category change or use shorter TTL.
 
 ### F2310: Frontend has 30+ unbounded module-level cache Maps
@@ -5607,7 +5607,7 @@ Notes:
 - Environment: `src/utils/login/index.ts:56, 65, 95, 112, 129`
 - Severity: LOW
 - Description: Multiple `catch (error: any)` and `error instanceof Error ? error.message : String(error)` patterns. TypeScript strict mode discourages `any`.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 16:01 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The old `src/utils/login/index.ts` path is absent from current source. Login/Register/Forgot Password pages already use typed `unknown` error handling and focused type-safety guards; added `FrontendTypeSafetySourceGuard.test.ts` to scan production frontend source and reject `catch (...: any)`, `as any`, `useRef<any>`, `: any`, and `any[]` broad escapes. Static production-source search found no matching broad-any patterns. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Use `unknown` type.
 
 ### F2308: `ProductReviews.tsx` `useRef<any>` for IntersectionObserver
@@ -5616,7 +5616,7 @@ Notes:
 - Environment: `src/components/ProductReviews.tsx:29`
 - Severity: LOW
 - Description: `useRef<any>()` for IntersectionObserver. Should be `useRef<IntersectionObserver | null>(null)`.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 16:01 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The old `src/components/ProductReviews.tsx` path is absent from current source. The active Product Detail lazy-load path uses `let observer: IntersectionObserver | null = null`, and production-source search found no `useRef<any>` usage. Added `FrontendTypeSafetySourceGuard.test.ts` to keep production frontend source free of `useRef<any>` and other broad-any escapes. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Use proper type.
 
 ### F2307: API normalization layer uses `as any` casts
@@ -5625,7 +5625,7 @@ Notes:
 - Environment: `src/api/index.ts`, `src/utils/product.ts`, `src/utils/normalize.ts`
 - Severity: MEDIUM
 - Description: The `as any` casts in normalizeApiResponse bypass type checking. Any API contract change won't be caught at compile time.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 16:01 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — Current production frontend source has no `as any` broad casts. The old `src/utils/product.ts` path is absent, product API normalization already has focused type-safety guards, and added `FrontendTypeSafetySourceGuard.test.ts` now scans production source for `as any` plus other broad-any escapes. Static production-source search found no `as any` in non-test frontend source. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Use generic types and proper type guards.
 
 ### F2306: Frontend uses widespread `any` type in catch blocks
@@ -5634,7 +5634,7 @@ Notes:
 - Environment: Multiple files
 - Severity: MEDIUM
 - Description: `catch (error: any)` and `catch (err: any)` found across 20+ files. Bypasses TypeScript's type checking on error objects.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED (2026-06-13 16:01 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — Current production frontend source has no `catch (...: any)`, `.catch((...: any)`, `as any`, `useRef<any>`, `: any`, or `any[]` broad-any patterns. Existing focused type-safety tests cover many individual pages/components; added `FrontendTypeSafetySourceGuard.test.ts` as a production-source-wide guard. No Jest/Playwright/browser/build/API/APP/backend/deploy/service/Nginx commands were run.
 - Expected fix direction: Use `unknown` type with type guards.
 
 ### F2305: Backend rate limiting is comprehensive

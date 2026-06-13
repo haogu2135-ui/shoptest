@@ -522,6 +522,16 @@ describe('ProductDetail recommendation cache', () => {
     expect(helpersSource).toContain('while (productRecommendationsCache.size > PRODUCT_RECOMMENDATIONS_CACHE_MAX_ENTRIES)');
   });
 
+  it('keeps recent product history out of unbounded ProductDetail module caches', () => {
+    const productDetailSource = readProductDetailSource();
+    const helpersSource = readProductDetailHelpersSource();
+
+    expect(productDetailSource).not.toContain('const recentProductsCache =');
+    expect(helpersSource).not.toContain('const recentProductsCache =');
+    expect(productDetailSource).toContain("import { recordProductView } from '../utils/productViewPreferences';");
+    expect(productDetailSource).toContain('recordProductView(res.data);');
+  });
+
   it('keeps recommendation helpers and state typed without broad any usage', () => {
     const productDetailSource = readProductDetailSource();
     const helpersSource = readProductDetailHelpersSource();

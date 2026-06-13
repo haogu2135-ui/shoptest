@@ -1,4 +1,5 @@
-import type { Language } from '../i18n';
+import { translateForLanguage } from '../i18n';
+import type { Language, TranslationParams } from '../i18n';
 
 type ApiErrorData = {
   code?: string;
@@ -136,6 +137,13 @@ const normalizeRetryAfterSeconds = (error: ApiErrorLike) => {
   return Math.min(Math.ceil(numeric), MAX_RETRY_AFTER_SECONDS);
 };
 
+const apiErrorMessage = (
+  language: Language,
+  key: string,
+  defaultValue: string,
+  params: TranslationParams = {},
+) => translateForLanguage(language, `apiErrors.${key}`, { defaultValue, ...params });
+
 export const getApiErrorMessage = (
   error: unknown,
   fallback: string,
@@ -144,38 +152,12 @@ export const getApiErrorMessage = (
 ) => {
   const errorLike = error as ApiErrorLike;
   const errorText = String(errorLike.message || '');
-  const localMessages = {
-    en: {
-      network: 'Network connection failed. Please check the storefront API proxy and try again.',
-      timeout: 'The request timed out. Please try again.',
-      serviceUnavailable: 'The service is temporarily unavailable. Please try again later.',
-      rateLimited: (seconds: number | null) => seconds
-        ? `Too many requests. Please try again in ${seconds} seconds.`
-        : 'Too many requests. Please wait and try again.',
-    },
-    zh: {
-      network: '网络连接失败，请检查前台 API 代理后重试。',
-      timeout: '请求超时，请稍后重试。',
-      serviceUnavailable: '服务暂不可用，请稍后重试。',
-      rateLimited: (seconds: number | null) => seconds
-        ? `请求过于频繁，请在 ${seconds} 秒后重试。`
-        : '请求过于频繁，请稍后重试。',
-    },
-    es: {
-      network: 'Falló la conexión de red. Verifica el proxy API de la tienda e inténtalo de nuevo.',
-      timeout: 'La solicitud agotó el tiempo. Inténtalo de nuevo.',
-      serviceUnavailable: 'El servicio no está disponible temporalmente. Inténtalo más tarde.',
-      rateLimited: (seconds: number | null) => seconds
-        ? `Demasiadas solicitudes. Inténtalo de nuevo en ${seconds} segundos.`
-        : 'Demasiadas solicitudes. Espera e inténtalo de nuevo.',
-    },
-  }[language];
   if (!errorLike.response) {
     if (errorLike.code === 'ECONNABORTED' || /timeout/i.test(errorText)) {
-      return localMessages?.timeout || fallback;
+      return apiErrorMessage(language, 'timeout', fallback);
     }
     if (/network error|failed to fetch|load failed/i.test(errorText)) {
-      return localMessages?.network || fallback;
+      return apiErrorMessage(language, 'network', fallback);
     }
     if (options.includeClientMessage && errorText.trim()) {
       return errorText.trim();
@@ -186,10 +168,13 @@ export const getApiErrorMessage = (
   const responseCode = String(responseMessage?.code || '').trim();
   const status = Number(errorLike.response?.status);
   if (responseCode === 'LOGIN_SERVICE_UNAVAILABLE' || status === 503) {
-    return localMessages?.serviceUnavailable || fallback;
+    return apiErrorMessage(language, 'serviceUnavailable', fallback);
   }
   if (responseCode === 'RATE_LIMITED' || status === 429) {
-    return localMessages?.rateLimited(normalizeRetryAfterSeconds(errorLike)) || fallback;
+    const retryAfterSeconds = normalizeRetryAfterSeconds(errorLike);
+    return retryAfterSeconds
+      ? apiErrorMessage(language, 'rateLimitedWithSeconds', fallback, { seconds: retryAfterSeconds })
+      : apiErrorMessage(language, 'rateLimited', fallback);
   }
   const serverMessage = getApiErrorDiagnosticText(errorLike);
 

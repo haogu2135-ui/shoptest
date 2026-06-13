@@ -110,6 +110,15 @@ describe('productCatalogSnapshot', () => {
     expect(fallbackProducts.every((item) => item.name && item.price >= 0 && item.imageUrl)).toBe(true);
   });
 
+  it('keeps fallback catalog images lazy and free of legacy local product paths', () => {
+    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'productCatalogSnapshot.ts'), 'utf8') as string;
+
+    expect(source).not.toContain('new Image(');
+    expect(source).not.toContain('getProductImages');
+    expect(source).not.toMatch(/['"`]\/images\/product-\d+\.jpg['"`]/);
+    expect(loadFallbackProductCatalog().every((item) => !String(item.imageUrl || '').startsWith('/images/product-'))).toBe(true);
+  });
+
   it('builds human category fallback names without exposing raw category ids', () => {
     const categories = buildProductCatalogFallbackCategories([
       product({

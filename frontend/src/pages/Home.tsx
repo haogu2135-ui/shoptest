@@ -597,13 +597,23 @@ const Home: React.FC = () => {
       .slice(0, 8);
   }, [products, viewPreferences]);
 
-  const personalizedDisplayProducts = personalizedProducts.length > 0 ? personalizedProducts : localPersonalizedProducts;
+  const personalizedDisplayProducts = useMemo(
+    () => (personalizedProducts.length > 0 ? personalizedProducts : localPersonalizedProducts),
+    [localPersonalizedProducts, personalizedProducts],
+  );
   const personalizedRecommendationSource = personalizedProducts.length > 0 ? 'petProfile' : 'recentViews';
-  const personalizedReadyProducts = personalizedDisplayProducts
-    .filter((product) => !needsOptionSelection(product) && (product.stock === undefined || product.stock > 0))
-    .slice(0, 4);
+  const personalizedReadyProducts = useMemo(
+    () =>
+      personalizedDisplayProducts
+        .filter((product) => !needsOptionSelection(product) && (product.stock === undefined || product.stock > 0))
+        .slice(0, 4),
+    [personalizedDisplayProducts],
+  );
   const personalizedReadyCount = personalizedReadyProducts.length;
-  const personalizedDealCount = personalizedDisplayProducts.filter((product) => getDiscountPercent(product) > 0 || product.activeLimitedTimeDiscount).length;
+  const personalizedDealCount = useMemo(
+    () => personalizedDisplayProducts.filter((product) => getDiscountPercent(product) > 0 || product.activeLimitedTimeDiscount).length,
+    [personalizedDisplayProducts],
+  );
   const personalizedPreferenceLabel = useMemo(() => {
     const topCategory = Object.entries(viewPreferences.categories).sort((left, right) => right[1] - left[1])[0];
     if (topCategory) {
@@ -616,7 +626,10 @@ const Home: React.FC = () => {
     return topTag?.[0] || '';
   }, [categories, language, viewPreferences]);
 
-  const visibleDiscoveryProducts = discoveryProducts.slice(0, visibleCount);
+  const visibleDiscoveryProducts = useMemo(
+    () => discoveryProducts.slice(0, visibleCount),
+    [discoveryProducts, visibleCount],
+  );
   const hasMoreDiscoveryProducts = visibleCount < discoveryProducts.length;
 
   useEffect(() => {
@@ -644,8 +657,8 @@ const Home: React.FC = () => {
   }, [discoveryProducts.length]);
 
   const displayCategoryRoots = useMemo(() => getDisplayCategoryRoots(categories), [categories]);
-  const categoryTiles = displayCategoryRoots.slice(0, 8);
-  const heroCategoryTiles = categoryTiles.slice(0, 4);
+  const categoryTiles = useMemo(() => displayCategoryRoots.slice(0, 8), [displayCategoryRoots]);
+  const heroCategoryTiles = useMemo(() => categoryTiles.slice(0, 4), [categoryTiles]);
   const petUploadRemaining = petGalleryQuota ? Math.max(0, petGalleryQuota.remaining) : 3;
   const petUploadButtonLabel = uploadingPetPhoto
     ? t('home.petUgcUploading')

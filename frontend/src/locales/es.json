@@ -115,6 +115,13 @@
     "retry": "Reintentar",
     "logoutPartialFailure": "No se pudo revocar por completo la sesión actual. Vuelve a iniciar sesión si este dispositivo sigue activo."
   },
+  "apiErrors": {
+    "network": "Falló la conexión de red. Verifica el proxy API de la tienda e inténtalo de nuevo.",
+    "timeout": "La solicitud agotó el tiempo. Inténtalo de nuevo.",
+    "serviceUnavailable": "El servicio no está disponible temporalmente. Inténtalo más tarde.",
+    "rateLimited": "Demasiadas solicitudes. Espera e inténtalo de nuevo.",
+    "rateLimitedWithSeconds": "Demasiadas solicitudes. Inténtalo de nuevo en {seconds} segundos."
+  },
   "appUpdate": {
     "title": "Nueva versión disponible",
     "requiredTitle": "Actualización requerida",

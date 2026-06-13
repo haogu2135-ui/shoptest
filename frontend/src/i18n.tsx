@@ -85,7 +85,7 @@ const humanizeKey = (key: string) => {
     .replace(/^./, (char) => char.toUpperCase());
 };
 
-const translate = (language: Language, key: string, params?: TranslationParams) => {
+export const translateForLanguage = (language: Language, key: string, params?: TranslationParams) => {
   const translated = getNestedValue(translations[language], key);
   const fallback = getNestedValue(translations.en, key);
   const hasDefaultValue = Boolean(params && Object.prototype.hasOwnProperty.call(params, 'defaultValue'));
@@ -120,7 +120,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     () => ({
       language,
       setLanguage,
-      t: (key: string, params?: TranslationParams) => translate(language, key, params),
+      t: (key: string, params?: TranslationParams) => translateForLanguage(language, key, params),
     }),
     [language],
   );

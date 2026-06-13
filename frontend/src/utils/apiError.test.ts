@@ -97,6 +97,28 @@ describe('getApiErrorMessage', () => {
     expect(source).not.toContain('}[language] || undefined');
   });
 
+  it('keeps localizable API error copy in locale resources instead of apiError.ts dictionaries', () => {
+    const apiErrorSource = fs.readFileSync(path.resolve(__dirname, 'apiError.ts'), 'utf8');
+    const i18nSource = fs.readFileSync(path.resolve(__dirname, '../i18n.tsx'), 'utf8');
+    const localeFiles = ['en.json', 'es.json', 'zh.json'].map((file) => (
+      fs.readFileSync(path.resolve(__dirname, '../locales', file), 'utf8')
+    ));
+
+    expect(i18nSource).toContain('export const translateForLanguage =');
+    expect(apiErrorSource).toContain('translateForLanguage(language, `apiErrors.${key}`');
+    expect(apiErrorSource).not.toContain('const localMessages =');
+    expect(apiErrorSource).not.toContain('网络连接失败，请检查前台 API 代理后重试。');
+    expect(apiErrorSource).not.toContain('Falló la conexión de red');
+    localeFiles.forEach((localeSource) => {
+      expect(localeSource).toContain('"apiErrors"');
+      expect(localeSource).toContain('"network"');
+      expect(localeSource).toContain('"timeout"');
+      expect(localeSource).toContain('"serviceUnavailable"');
+      expect(localeSource).toContain('"rateLimited"');
+      expect(localeSource).toContain('"rateLimitedWithSeconds"');
+    });
+  });
+
   it('keeps F3501 user-facing error handling on shared helpers', () => {
     const sourceFiles = [
       path.resolve(__dirname, '../components/SeventeenTrackWidget.tsx'),
